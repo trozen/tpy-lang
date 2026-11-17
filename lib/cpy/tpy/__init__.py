@@ -469,13 +469,37 @@ def _as_annotation(item):
     return _typing.ForwardRef(item) if isinstance(item, str) else item
 
 
+class _OwnSelf:
+    """What `Own[Self]` evaluates to: @dispatch tells a consuming variant
+    (`self: Own[Self]`) from its lending twin by it."""
+
+
+# The plain ForwardRefs a quoted `Own["..."]` produced, so @dispatch can
+# tell one by identity and resolve it in the function's globals: whatever
+# spelling names `typing.Self` there (`"Self"`, an alias, `"typing.Self"`)
+# is the consuming marker. A registry rather than a ForwardRef subclass,
+# which CPython 3.14 forbids. One ref per (module, string): postponed
+# annotations re-evaluate `Own["Self"]` on every dispatch call, and a ref
+# shared across modules would keep the first module's evaluation (CPython
+# before 3.14 caches it on the ref).
+_own_quoted_refs: dict = {}
+
+
 class _OwnMeta(type):
     """Metaclass to support Own[T] syntax."""
 
     def __getitem__(cls, item):
+        if item is _typing.Self:
+            return _OwnSelf
+        if isinstance(item, str):
+            key = (_sys._getframe(1).f_globals.get("__name__"), item)
+            ref = _own_quoted_refs.get(key)
+            if ref is None:
+                ref = _own_quoted_refs[key] = _typing.ForwardRef(item)
+            return ref
         # As `readonly[T]`: the wrapped type, so @dispatch matches an
         # `Own[Animal]` parameter as the `Animal` the compiler sees.
-        return _as_annotation(item)
+        return item
 
 
 if _typing.TYPE_CHECKING:
@@ -905,6 +929,12 @@ def _type_matches(func, args: tuple, hints: dict,
         if pname not in hints:
             continue
         ann = hints[pname]
+        if ann is _OwnSelf or ann is _typing.Self:
+            # `Self` names the class defining the method, as TPy resolves it.
+            owner = _defining_class(func, args)
+            if owner is None or not isinstance(arg, owner):
+                return False
+            continue
         if isinstance(ann, _typing.ForwardRef):
             # A name the stub cannot resolve (a nested class) matches
             # nothing, rather than every argument.
@@ -963,6 +993,59 @@ def _type_matches(func, args: tuple, hints: dict,
     return True
 
 
+def _defining_class(func, args: tuple):
+    """The class whose body defines the method `func`, found on the
+    receiver's MRO by qualified name; None when there is no receiver.
+    A classmethod's receiver is the class itself, so a class receiver's own
+    MRO is searched first."""
+    if not args:
+        return None
+    owner_qualname = func.__qualname__.rpartition(".")[0]
+    receiver = args[0]
+    mro = type(receiver).__mro__
+    if isinstance(receiver, type):
+        mro = receiver.__mro__ + mro
+    for cls in mro:
+        if (cls.__qualname__ == owner_qualname
+                and cls.__module__ == func.__module__):
+            return cls
+    return None
+
+
+_consumes_receiver_cache: dict = {}
+# Each @dispatch set's variants in call order (see `dispatch`).
+_dispatch_order: dict = {}
+
+
+def _consumes_receiver(func) -> bool:
+    """Whether `func`'s first parameter is annotated `Own[Self]`: a
+    consuming variant, which takes its receiver over."""
+    cached = _consumes_receiver_cache.get(func)
+    if cached is None:
+        import inspect
+        params = list(inspect.signature(func).parameters)
+        cached = bool(params) and _is_own_self(
+            func, func.__annotations__.get(params[0]))
+        _consumes_receiver_cache[func] = cached
+    return cached
+
+
+def _is_own_self(func, ann) -> bool:
+    """Whether the raw annotation `ann` resolves, in `func`'s globals, to
+    `Own[Self]` -- read before get_type_hints, which resolves a quoted
+    `Own["Self"]` to the bare `typing.Self` and so drops the Own tag."""
+    globalns = getattr(func, "__globals__", {})
+    try:
+        if isinstance(ann, str):
+            ann = eval(ann, globalns)
+        if (isinstance(ann, _typing.ForwardRef) and _own_quoted_refs.get(
+                (globalns.get("__name__"), ann.__forward_arg__)) is ann):
+            return eval(ann.__forward_arg__, globalns) is _typing.Self
+    except Exception:
+        return False
+    return ann is _OwnSelf
+
+
 def dispatch(func):
     """CPython implementation of tpy.dispatch.
 
@@ -975,7 +1058,9 @@ def dispatch(func):
     slot by the literal's range or a widening, an int at a `float` slot,
     converted to it, a `Literal` by value, a non-runtime protocol by its
     attributes, a builtin container by its class, a `Callable[[...], R]`
-    by the callable's arity; element types and unions are not checked).
+    by the callable's arity, a non-receiver `Self` / `Own[Self]` as an
+    instance of the class defining the method; element types and unions
+    are not checked).
     When none matches by type, the first the call binds to runs. A test whose
     output CPython also produces therefore declares the compiler's winner
     first; that the compiler's pick does not depend on declaration order
@@ -985,6 +1070,10 @@ def dispatch(func):
     of that value, `@readonly` receiver twins called on a readonly
     receiver, aliased classes (`StrView` / `String` are `str` here),
     element types, union members; such a case goes compiler-only. `@readonly` twins: declare the mutating twin first.
+    A lending variant runs before a consuming one (`self: Own[Self]`, any
+    spelling that resolves to `typing.Self`) whatever their order: TPy runs the consuming one only where it gives
+    the receiver up, and the two must be observationally equivalent apart
+    from that.
     `typing.overload` is left untouched: its stubs-plus-implementation
     form already runs under stock CPython.
     """
@@ -993,12 +1082,21 @@ def dispatch(func):
     if key not in _dispatch_registry:
         _dispatch_registry[key] = []
     _dispatch_registry[key].append(func)
-    variants = _dispatch_registry[key]
+    _dispatch_order.pop(key, None)
 
     def dispatcher(*args, **kwargs):
         n = len(args) + len(kwargs)
+        # A lending variant before a consuming one: this stub never gives
+        # the receiver up, as TPy does only where the receiver dies. Sorted
+        # at the first call after the set's last registration, not at
+        # registration: inside the class body an annotation naming the
+        # class may not resolve yet.
+        ordered = _dispatch_order.get(key)
+        if ordered is None:
+            ordered = sorted(_dispatch_registry[key], key=_consumes_receiver)
+            _dispatch_order[key] = ordered
         # Pass 1: the first variant the call binds to whose types match.
-        for variant in variants:
+        for variant in ordered:
             if _binds(variant, args, kwargs):
                 hints = _bind_forward_refs(variant, _param_hints(variant), args)
                 if _type_matches(variant, args, hints, kwargs):
@@ -1006,7 +1104,7 @@ def dispatch(func):
                         variant, args, hints, kwargs)
                     return variant(*conv_args, **conv_kwargs)
         # Pass 2: binding only (fallback for complex annotations)
-        for variant in variants:
+        for variant in ordered:
             if _binds(variant, args, kwargs):
                 return variant(*args, **kwargs)
         raise TypeError(

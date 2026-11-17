@@ -262,9 +262,10 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T, T_items>, ::tpy:
     ::tpy::frame_state __state;
     T_items items;
     using __for_src_0_t = decltype((items));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> it;
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
+    ::tpy::frame_slot<::tpy::next_elem_t<__for_itr_0_t>> it;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -326,9 +327,10 @@ struct __gen_each_ro : public ::tpy::next_iter_mixin<__gen_each_ro<T, T_items>, 
     ::tpy::frame_state __state;
     T_items items;
     using __for_src_0_t = decltype((items));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> it;
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
+    ::tpy::frame_slot<::tpy::next_elem_t<__for_itr_0_t>> it;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -1233,9 +1235,10 @@ struct __gen_mapped : public ::tpy::next_iter_mixin<__gen_mapped<T, U, T_it, F_f
     F_fn fn;
     T_it it;
     using __for_src_0_t = decltype((it));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
+    ::tpy::frame_slot<::tpy::next_elem_t<__for_itr_0_t>> x;
     ::tpy::frame_slot<U> y;
 
     enum : int32_t {

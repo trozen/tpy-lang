@@ -16,7 +16,8 @@ Slot rules (positive cases only; everything else is non-Send):
 - hoisted non-value locals: tpy::frame_slot<T> owned storage -> T's traits,
   except loop vars / unpack targets (may lower to raw-pointer slots) and
   pointer-repr Optionals / unions (pointer variants) -> non-Send
-- async methods capture the receiver as <Class>& -> non-Send
+- methods capture the receiver as <Class>& -> non-Send, except a consuming
+  method's frame, which owns it -> the record's traits
 
 Sub-frames (awaited coroutines) are FunctionInfo references resolved
 recursively at query time with a greatest-fixed-point cycle guard,
@@ -30,6 +31,7 @@ from typing import TYPE_CHECKING, Optional
 from ..typesys import (
     FrameSlot, FrameType, OwnType, OptionalType, UnionType, ReadonlyType,
     TypeParamRef, TupleType, STRVIEW, unwrap_ref_type, unwrap_readonly,
+    contains_type_kind_param,
     PendingListType, PendingDictType, PendingSetType, PendingStrType,
     PendingBytesType, IntLiteralType, FloatLiteralType,
 )
@@ -46,7 +48,14 @@ def _owned_traits(t: 'TpyType') -> tuple[bool, bool]:
     Pending* forms, so the common pending shapes are answered directly
     (the resolved container would be Send-iff-elements, never Sync; the
     resolved literal types are value types).
+
+    A type naming an open TYPE parameter (`Box[T]`) is non-Send/non-Sync:
+    the verdict is one per function, not per instantiation, and
+    `NominalType.is_send` would count the `T` field as conforming even
+    where an instantiation stores `Ptr[Local]` or `Rc[...]`.
     """
+    if contains_type_kind_param(t):
+        return (False, False)
     if isinstance(t, PendingListType):
         return (_owned_traits(t.element_type)[0], False)
     if isinstance(t, PendingDictType):
@@ -175,7 +184,11 @@ def _own_frame_type(fi: 'FunctionInfo') -> Optional[FrameType]:
         if fi.frame_locals is None:
             return None  # body not analyzed; unclassifiable
         slots: list[FrameSlot] = []
-        if fi.is_method:
+        if fi.frame_receiver_type is not None:
+            # A consuming method's frame owns its receiver (moved in)
+            send, sync = _owned_traits(fi.frame_receiver_type)
+            slots.append(FrameSlot("self", send, sync, fi.frame_receiver_type))
+        elif fi.is_method:
             # Receiver captured as <Class>& across suspensions
             slots.append(FrameSlot("self", False, False, None))
         for p in fi.params:

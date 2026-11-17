@@ -321,8 +321,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # bare brace, members wrap themselves
     "method.no_fi_member",          # post-sema macro member call, no fi:
                                     # plain `.` member tail (`c.bump()`)
-    "foreach.own_iter_name",        # OwnIter-typed NAME iterable: lvalue
-                                    # capture + consuming auto&& elem
     "foreach.proto_own_elem_val",   # protocol-param loop, Own[value-T] elem:
                                     # typed copy bind + movable seed
     "foreach.proto_own_elem_ref",   # protocol-param loop, Own[ref-T] elem:
@@ -336,7 +334,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # pointer-slot global: bare in the walk
     "top_level.global_slot_proto",  # structural-protocol global: static auto
                                     # slot + addr assign / slot-reuse rebind
-    "decl.own_copy_iter_slot",      # OwnIter/CopyIter decl slot: `auto`
+    "decl.own_copy_iter_slot",      # CopyIter decl slot: `auto`
                                     # spelling, the init render carries type
     "er.discard",                   # expr-stmt `__try_tmp_N` block
     "er.unwrap",                    # `({ ... unwrap_ref_move(*__er_N); })`
@@ -448,8 +446,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.expr_callee",             # computed callable: (callee)(args)
     "call.literal_overload_pin",    # literal pinned to its overloaded slot's type
     "call.native_c_free",           # C-linkage @native free callee -> raw `sym(args)`
-    "call.own_iter_arg",            # movable last-use container into an Iterable slot -> ::tpy::own_iter(std::move(x))
-    "call.own_iter_rvalue_arg",     # fresh container temporary into an Iterable[Own[T]] slot (reference T) -> ::tpy::own_iter(<temp>)
+    "arg.owning_handover",          # a container handed over to an owning element slot -> `take(std::move(xs))` / `take(mk())`
+    "arg.owning_iterator",          # an iterator object at an owning element slot, passed as itself -> `take(::tpy::own_iter(std::move(xs)))`
+    "arg.owning_forward",           # an owning parameter passed on to an iterating slot -> `std::forward<decltype(xs)>(xs)`
     "call.own_iter_explicit",       # explicit own_iter(x) -> ::tpy::own_iter(std::move(x))
     "call.copy_iter_explicit",      # copy_iter(it) -> ::tpy::copy_iter<Elem>(<it>)
     "call.try_parse",               # try_parse(Enum, s) -> EnumUtil<E>::
@@ -1288,6 +1287,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # Iterable/Iterator param): the for statement's `__iter__`/`__next__`
     # loop (THIRForIterProto).
     "comp.iter_protocol_source",
+    "comp.consuming_source",
     # A container-type ctor call at a VALUE sink (`print(asdict(p))` --
     # the expansion's `dict(...)` prvalue under the printer wrap).
     "call.container_ctor_value",
@@ -1637,6 +1637,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # __iter__/__next__ loop; single-assignment only.
     "decl.iterator_object",
     "decl.iterator_object_alias",
+    "decl.owning_alias",            # `b = xs` over an owning parameter -> `auto&& b = std::forward<decltype(xs)>(xs);`
     # REF_ALIAS from a borrow-record-returning call (lowering; the
     # `T& p = shared(x);` bind of the callee's returned reference).
     "decl.record_borrow_call",

@@ -2727,8 +2727,10 @@ moves only the adapter, while its elements still live in `cs`. The name's
 TYPE decides (an iterator or a dict view that does not declare its elements
 owned), so a second name for it (`w = z; list(w)`) and an unpack target
 (`y, n = reversed(cs), 1; list(y)`) warn too; a name bound once keeps its
-init's per-element provenance (`z = zip(ns, [C(5)]); list(z)` is quiet). `sorted()` does not take part yet
-(`BUGS.md#sorted-ref-element-copy-unwarned`).
+init's per-element provenance (`z = zip(ns, [C(5)]); list(z)` is quiet). `sorted()` takes
+part as `list()` does: its parameter is `Iterable[Own[T]]`, so `sorted(xs)` over a
+live list of records warns *copies R elements* (`sorted(copy_iter(xs))` says so),
+and a dead or fresh source is handed over and moved.
 
 For generic type parameters the body states the contract at its own line,
 hedged, whatever the instantiations are (see "the copy contract of a generic
@@ -2753,32 +2755,100 @@ No warning is emitted for:
   owning element slot" below)
 - **`copy()` wrapped** -- intent already explicit
 - **`copy_iter()` wrapped** -- intent already explicit (element-by-element copy)
-- **Last use** of a container -- source is dead after this point, no observable
-  aliasing divergence (a dead iterator still lends its source's elements, above)
+- **Last use** of a container the name owns -- source is dead after this point,
+  no observable aliasing divergence (a dead iterator still lends its source's
+  elements, above). A name that only refers to the container -- a borrowed
+  parameter, a module-level name, an alias -- is lent and warned at its last
+  use too: the container outlives the call
 
-A user function's `Iterable[Own[T]]` parameter is the same owning element slot.
-Its loop variable (in a statement loop or a comprehension) always holds its own
-value, whatever the body does with it. Fed a live source (the call warns;
-`copy_iter()` acknowledges it), it holds a COPY of each element, so moving it
-(`out.append(x)`) never empties the caller's container, and a write through it
-(`x.value += 10`) changes the copy where CPython would change the source -- the
-divergence the warning names. A source at its last use, a fresh container
-temporary (`total(make_rows())`, `total([C(1), C(2)])` -- passed as
-`::tpy::own_iter(make_rows())`), or `own_iter(...)`, hands its elements over
-instead, and the loop variable then binds each one in
-place (`auto&& x = ::tpy::own_bind(*__r)`), with no copy and no move. A live source of `@nocopy` elements is an
-error (`cannot copy non-copyable type 'Cell' into owned storage ...`). The same
-holds for an iterable whose elements a callable argument takes as `Own[X]`:
-`map(take, keys, rows)` with `def take(k: int32, row: Own[list[int32]])` warns
-`copies list[int32] elements` for a live `rows`, moves a dead one, and copies
-what a dict view or a generator lends.
+A user function's `Iterable[Own[T]]` parameter is the same owning element slot,
+and so is any static iterating protocol whose step is `Own[...]`: a sub-protocol
+of `Iterable` (`class Counted[T](Iterable[T], Protocol)` adding `__len__`, used
+as `Counted[Own[R]]`) and `Iterator[Own[R]]`. One rule decides every argument
+there, whatever the callee (a free function, a method, a constructor, a
+generator, an `async def`, a builtin stub such as `sorted` or `list.extend`, a
+`list[R](...)` / `set[...]` / `dict[...]` instantiation, or the iterable a
+callable taking `Own[X]` is fed, `map(take, rows)`):
+
+- **Handed over**: a container the caller no longer has -- a name at its last
+  use (a narrowed Optional local over the container it owns included), a
+  fresh call result, a literal, a comprehension, a ternary or `or` over
+  fresh ones -- is passed as the
+  container itself, moved (`take(std::move(rows))`, `take(make_rows())`,
+  `take(std::array<C, 2>{C(1), C(2)})`); so is an `Array` and a class
+  declaring a consuming `__iter__(self: Own[Self])` (see "User classes with a
+  consuming `__iter__`"). The callee's traversal -- a `for`, a comprehension,
+  a builtin collector, each stepping the same iterator, so a list subclass's
+  own `__iter__` is honoured by all of them -- moves the
+  container into its own consuming iterator (`::tpy::own_iter`, the one a
+  `for` over a container at its last use takes) and steps each element out
+  of it, with no copy; a generator or coroutine frame holds the container as
+  its own, also when each pass of a loop hands it
+  one (`create_task(take(i, mk()))` in a loop body). A `@nocopy` element
+  works this way.
+- **Lent**: a live name, an element (`take(rows_by_day[0])`), a field
+  (`take(h.rows)`), a parameter the function borrows (`def f(rows: list[C])`
+  passing `gen(rows)` or `await atake(rows)` at its last use), a module-level
+  name, a narrowed Optional over storage it does not own (a
+  parameter, a walrus alias of a live local), or a container whose type has
+  no consuming iteration even at its last use (a user subclass of `list` that
+  declares no consuming `__iter__` of its own,
+  BUGS.md#dead-native-like-source-own-slot-copies) is passed as the
+  caller's object, and
+  the callee's loop variable holds a COPY of each element, so moving it
+  (`out.append(x)`) never empties the caller's container and a write through it
+  (`x.value += 10`) changes the copy where CPython would change the source --
+  the divergence the call's warning names (*copies C elements; use copy_iter()
+  to make this explicit*). A generator fed a lent list keeps the caller's list:
+  appending to it before the generator runs is seen, as in CPython. A lent
+  `@nocopy` element is an error (`cannot copy non-copyable type 'Cell' into
+  owned storage ...`).
+- **An iterator object** -- a generator, a generator expression, `iter(...)`,
+  `own_iter(xs)`, `copy_iter(xs)`, a dict view -- is passed as itself; what
+  it lends is copied, warned as above. An iteration adapter (a generator
+  expression, `copy_iter(xs)`, an `Iterator[T]` object such as
+  `own_iter(xs)`, typed by the consuming `__iter__` it calls,
+  `Iterator[Own[T]]` for a container) conforms to any protocol whose whole
+  contract it meets, owning slot or not: `copy_iter` offers `Iterable[T]`'s,
+  a generator
+  expression and an iterator `Iterator[T]`'s, so a sub-protocol that only
+  inherits `Iterable` takes them (generic or not, its type argument inferred
+  through the step: `class Pairs[T](Iterable[tuple[T, T]], Protocol)` takes
+  `T` from `copy_iter(ps)` over `ps = [(1, 2)]`), a sub-protocol of
+  `Iterator` takes a generator expression and an iterator, and a protocol
+  naming neither base takes whichever adapter meets its members
+  (`class Stepper[T](Protocol): def __next__(self) -> T` takes a generator
+  expression, `T` inferred, but not `copy_iter(xs)`); one that adds a
+  member, a field or a different `__iter__` signature refuses them (*does
+  not conform to protocol*), as it refuses `iter(xs)`. A constructor's
+  protocol parameter takes them as a function's does.
+  An iterator holding a fresh list (`iter(mk())`, `reversed(mk())`) owns its
+  elements, so a callable taking `Own[X]` fed one (`map(take, iter(mk()))`)
+  takes each element over with no copy.
+  A generator or coroutine callee keeps the iterator past the statement, so
+  one built over a temporary (`create_task(atake(iter(mk(i))))`, in a loop or
+  not) is refused rather than lent from storage the task outlives; pass the
+  container itself instead (`create_task(atake(mk(i)))`), which the frame owns.
+
+An owning parameter passed on to another iterating parameter keeps what it
+arrived as (`take(std::forward<decltype(xs)>(xs))`), the value of a slice
+store included (`out[0:2] = xs`, whose `__setitem__` takes `Iterable[Own[T]]`),
+and so does a second name for it (`b = xs`). At an owning slot whose protocol has members beyond
+iteration (`Counted[Own[R]]`) or a field, the warning's remedy is `copy(xs)`:
+`copy_iter()` does not meet that protocol's contract. A protocol that does not iterate
+(`Sequence[Own[R]]`) takes nothing over: its argument is lent as at any
+protocol parameter, with no warning. A member read after the one traversal is
+the error below; read it first (`n = len(xs)` before the loop). One program
+compiled before and behaves differently now: a body over an extra-member
+`Own` sub-protocol that reads the parameter after traversing it, which is now
+that error.
 
 **An owning iterable is traversed once.** A name of an owning iterable type
 (`Iterable[Own[T]]`, the parameter above) is consumed by its first
 traversal: a `for` or comprehension clause over it, an `in` test, an
 argument at an iterating parameter (`list(it)`, `out.extend(it)`,
-`out += it`, forwarding to another owning parameter -- consumed even when
-that callee ignores it) or a binding to another name (`b = it`, whose one
+`out += it`, a slice store `out[0:1] = it`, forwarding to another owning
+parameter -- consumed even when that callee ignores it) or a binding to another name (`b = it`, whose one
 traversal it then carries). Any later read is an error, *Cannot use 'it'
 after it was consumed: an owning iterable (Iterable[Own[T]]) is traversed
 once; copy it first: `xs = list(it)`* -- `xs = list(it)` is the spelling
@@ -3121,7 +3191,7 @@ def mixed(w: Box, c: bool) -> Own[Box]:
                 # C++: return (*b);
 ```
 
-`copy(b)` silences the warning. A consuming call copies its receiver the same way (`b.finish()` renders `Box((*b)).finish()`, `w.finish()` on a borrowed parameter `Box(w).finish()`), and a consuming `for` over a non-owning list becomes a borrowing loop whose elements are copied, warned. The warning can fire where the value on this path is a fresh object, because another binding of the name borrows (`b = w; print(b.xs); b = Box(2); return b` copies): give the fresh value a second name to move it (an assignment that dominates every later read starting a new owning variable is TODO.md "An unconditional rebind starts a new variable (owning again)"). For a `@nocopy` type the copy is the located error, with the same note (*@nocopy type 'Cell' cannot be returned as return type Own[Cell]. Only the original owner can be moved at its last use ('b' is bound to existing storage at line 17)*). The fact is the whole function's, so a read before a later borrowing binding of the name -- a loop's back edge -- copies too. A tuple element some binding borrows copies at the sink (`return p[0]` renders `return Box((*std::get<0>(p)));`), and so does a borrowed element passed to an `Own` argument (`take(Box((*std::get<0>(p))))`); a whole tuple converts element by element -- an owning element moves, a borrowed one copies (an `Optional` element null-checked, `::tpy::ptr_to_optional(std::get<0>(p))`), and a tuple no element of which moves copies each element (`std::tuple<Box, Box>{(*std::get<0>(p)), (*std::get<1>(p))}`) -- a generic one too, whose open `T` element its borrow form holds as `val_or_ptr_t<T>` (`def f[T](x: tuple[T, int32]) -> Own[tuple[T, int32]]: return x`, or a call handing back `tuple[T, int32]`, renders `std::tuple<T, int32_t>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(x))), std::get<1>(x)}` with the *may copy* warning). `own_iter(x)` takes the list itself, so a non-owning `x` is refused (*own_iter() takes ownership of 'b', which does not own its list (...); iterate it with a plain for-loop instead*; `BUGS.md#own-iter-non-owning-source`). An escaping closure capturing a rebound non-owning local is `BUGS.md#escaping-closure-pointer-local-capture`. Module-level code is outside the rule (TODO.md "Module scope is the body of __tpy_init").
+`copy(b)` silences the warning. A consuming call copies its receiver the same way (`b.finish()` renders `Box((*b)).finish()`, `w.finish()` on a borrowed parameter `Box(w).finish()`), and a consuming `for` over a non-owning list becomes a borrowing loop whose elements are copied, warned. The warning can fire where the value on this path is a fresh object, because another binding of the name borrows (`b = w; print(b.xs); b = Box(2); return b` copies): give the fresh value a second name to move it (an assignment that dominates every later read starting a new owning variable is TODO.md "An unconditional rebind starts a new variable (owning again)"). For a `@nocopy` type the copy is the located error, with the same note (*@nocopy type 'Cell' cannot be returned as return type Own[Cell]. Only the original owner can be moved at its last use ('b' is bound to existing storage at line 17)*). The fact is the whole function's, so a read before a later borrowing binding of the name -- a loop's back edge -- copies too. A tuple element some binding borrows copies at the sink (`return p[0]` renders `return Box((*std::get<0>(p)));`), and so does a borrowed element passed to an `Own` argument (`take(Box((*std::get<0>(p))))`); a whole tuple converts element by element -- an owning element moves, a borrowed one copies (an `Optional` element null-checked, `::tpy::ptr_to_optional(std::get<0>(p))`), and a tuple no element of which moves copies each element (`std::tuple<Box, Box>{(*std::get<0>(p)), (*std::get<1>(p))}`) -- a generic one too, whose open `T` element its borrow form holds as `val_or_ptr_t<T>` (`def f[T](x: tuple[T, int32]) -> Own[tuple[T, int32]]: return x`, or a call handing back `tuple[T, int32]`, renders `std::tuple<T, int32_t>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(x))), std::get<1>(x)}` with the *may copy* warning). `own_iter(x)` takes the object itself, so a non-owning `x` is refused (*own_iter() takes ownership of 'b', which does not own its list (...); iterate it with a plain for-loop instead*, the type's name in place of `list`; `BUGS.md#own-iter-non-owning-source`). An escaping closure capturing a rebound non-owning local is `BUGS.md#escaping-closure-pointer-local-capture`. Module-level code is outside the rule (TODO.md "Module scope is the body of __tpy_init").
 
 **Branch handling**: If a variable is used in both branches of an if/else and not used after, both branches get auto-move:
 
@@ -4137,7 +4207,7 @@ result = w.take()   # w is consumed, moves self
 - Calling through `Ptr[T]` is an error (pointers don't own pointees)
 - Use after consume is a compile error
 - Reassignment revives a consumed variable
-- A comprehension variable as the receiver (`[b.finish() for b in src]`) moves only where its clause owns its elements (`src: Iterable[Own[Box]]`), the clause is the innermost one with a plain-name target, the call is not inside a nested comprehension or lambda, and the call is the variable's only read in the element -- the key and value together for a dict comprehension, a read inside a nested comprehension or lambda included, a filter's not (it runs first). Otherwise -- a borrowed source (a parameter, a local, a call returning a borrow), an outer clause, a second read -- the receiver is copied (`Box(b).finish()`), warned *copies Box into owned storage*, and a `@nocopy` element is an error. A comprehension over a dead local or a fresh `Own[list[T]]` source copies too, where a move would be safe (TODO.md "A comprehension over a dead or fresh source consumes it"). A local of the enclosing body sharing the variable's name decides nothing about it and is not consumed by it. An owned variable passed to an `Own[T]` parameter (`[take(b) for b in src]`) moves, silently, a `@nocopy` element included
+- A comprehension variable as the receiver (`[b.finish() for b in src]`) moves only where its clause owns its elements (`src: Iterable[Own[Box]]`), the clause is the innermost one with a plain-name target, the call is not inside a nested comprehension or lambda, and the call is the variable's only read in the element -- the key and value together for a dict comprehension, a read inside a nested comprehension or lambda included, a filter's not (it runs first). Otherwise -- a borrowed source (a parameter, a local, a call returning a borrow), an outer clause, a second read -- the receiver is copied (`Box(b).finish()`), warned *copies Box into owned storage*, and a `@nocopy` element is an error. A source the clause gives up -- a dead local, a fresh `Own[list[T]]` -- is consumed instead, its elements moved (see "Auto-Consuming Iteration at Last Use"). A local of the enclosing body sharing the variable's name decides nothing about it and is not consumed by it. An owned variable passed to an `Own[T]` parameter (`[take(b) for b in src]`) moves, silently, a `@nocopy` element included
 - Branch-aware: consuming in one `if` branch makes the variable consumed after the `if`
 - A field path of `self` (`self.a`, `self.i.a`) MOVES out at an owning slot where the receiver dies at the read -- the place-path rule ("Borrow Form vs Storage Form") with the receiver as root: the read is the last use of `self` with no live borrower (a `super()` call, a method call or a property on `self` is a read of it, in the same statement, a later one or a `finally`; a closure capturing `self` keeps it live), or, in the method's own `return`, one of several distinct fields of `self` read once each, none of which can point at another by its declared type (a field read more than once must hold no pointer: a number, `bool`, `char`, enum, `str` or `bytes`; a moved field must not be or hold a `Ptr`, a view, a callable, a protocol, a type parameter or another value type); a moved record field whose own `Ptr` field aims at another moved field is not caught (`BUGS.md#self-aimed-ptr-field-borrow-unrecorded`). Every such read, one field or several, also needs the method's teardown proof: the method is not a generator or `async` method and the read is not a nested def's (which may run any number of times); the read sits in no `for` (the iterator's teardown, a generator's `finally`, runs after it), `try` (a handler, an `else`, a `finally`), `with` (an `__exit__`) or `match` (the teardown of a subject temporary that is not a value; a name or value subject is fine) -- a `while` is fine; and nothing the method destroys after the read may read a field: every name the method binds, in any block and by any binding form, and every parameter it owns or rebinds, is a number, `bool`, `char`, enum, `str` or `bytes` -- a local generator whose `finally` reads the field, or a `__del__` holding a `Ptr` into `self`, would otherwise observe the moved-from field (`g = self.gen(); next(g, 0); return take1(self.a)` copies). The proof reads the whole method rather than the scope at the read, and a borrowed parameter the method never rebinds is not destroyed by it. `return take((self.a, self.b))`, `return take1(self.a)`, `n = take1(self.a); return n`, `o.a = self.a` at the receiver's last use (`o.a = std::move(this->a);`), `return self.i.a` at `-> Own[N]` (a `@nocopy` leaf included) move, and `return self.n` renders `return std::move(this->n);`. Every other read of a field is a borrow, as in an ordinary method: an owning slot copies it and warns ``copies P into owned storage (argument 't' tuple element 0); use copy() to make this explicit, or move it at the last use of `self` `` (the last clause only where the read could move at the receiver's last use: outside any `return`, comprehension, lambda or nested def, outside every `for` / `try` / `with` and every `match` on a non-value temporary, and with the method's teardown proof), and a `@nocopy` field there is an error (``... a field of a consuming method's `self` moves only at the last use of `self`, where nothing can still read it``). A module-level function called after the read that reads the field through a module-level `Ptr` is not caught (`BUGS.md#consuming-global-receiver-field-read-after-move`), nor is a `__del__` a subclass of the method's class adds (`BUGS.md#consuming-base-method-subclass-del-reads-moved`); a consuming call on a module-variable receiver copies the receiver. A select over fields (`return self.a if c else self.b`) is still refused by the C++ lowering: `BUGS.md#consuming-field-last-use-sink-rejects`. (A stopgap: the precise rule -- no live reference still depends on the field -- is the MIR entry "Consuming-method field moves: the teardown stopgap" in TODO.md)
 - `self` itself is owned too, so `return self` at an `Own[Self]` return MOVES the receiver (`return std::move((*this));`) -- the builder-step idiom `def updated(self: Own[Self]) -> Own[Self]: ...; return self` needs no `copy()` and compiles for a `@nocopy` class. Reading `self` again on the same path after it has been moved into an owning slot is the ordinary use-after-move error
@@ -4197,7 +4267,9 @@ For-loops automatically use consuming iteration when the iterable is at its
 last use AND the loop variable is moved out of the loop -- an owning sink
 (`out.append(x)`, an `Own[T]` argument) at its last use in the body, with no
 other name still borrowing it (the move claim a plain local takes). This
-avoids element copies for `list`, `set`, and `dict` (keys):
+avoids element copies for `list`, `Array`, `set`, `dict` (keys) and a class
+declaring a consuming `__iter__` (below), and for a fresh value of any of them
+too (`for x in make_list(): out.append(x)` moves each element out):
 
 ```python
 items: list[Node] = [Node(1), Node(2)]
@@ -4218,13 +4290,76 @@ outlives the loop's block is a known gap
 (`BUGS.md#consuming-loop-outlived-by-loop-var-borrow`).
 
 When the container is still needed after the loop, borrowing iteration is used
-automatically. `own_iter(container)` forces consuming iteration (list only);
-the compiler warns if the container is not at its last use, since the
-underlying vector is moved and subsequent uses are undefined behavior, and
-refuses a container that is not its own to hand over -- a parameter that does
-not take ownership, a non-owning local (`BUGS.md#own-iter-non-owning-source`).
+automatically. `own_iter(x)` forces consuming iteration: it is the call of
+`x`'s consuming `__iter__(self: Own[Self])` on `x` given up, typed by that
+variant's declared return (`Iterator[Own[T]]` for `list`, `set`, `dict` and
+`Array`; a record's own, an owned iterator object such as `Own[BagIter]`
+kept as declared), and refuses a value whose type defines none
+(*own_iter() takes a value whose type defines a consuming __iter__ (self:
+Own[Self]); 'Bag' has none*). It renders `::tpy::own_iter(std::move(x))`, the
+runtime's one consuming entry (a container's consuming iterator, a record's
+`&&` member); every consuming loop, comprehension clause and frame renders the
+same call. The compiler warns if `x` is not at its last use, since it is
+moved and subsequent uses are undefined behavior, and refuses a value that is
+not its own to hand over -- a parameter that does not take ownership, a
+non-owning local (`BUGS.md#own-iter-non-owning-source`). A field read is
+given up where an owning sink's read of it would move it out: a consuming
+method's own field (`return own_iter(self.items)` inside `__iter__(self:
+Own[Self])`, `::tpy::own_iter(std::move(this->items))`) is; a borrowed
+parameter's field (`own_iter(b.items)`) is refused (*own_iter() takes
+ownership of 'b.items', which is not given up here*). A loop over the
+consuming iterator steps it through its own begin/end when it offers them (a
+container's moves each element straight out of its storage), else through
+its `__next__`, never asking the iterator's `__iter__` again
+(`::tpy::step_range`).
 
-User-defined types can opt in via `auto_own[Self]` on `__iter__`.
+**User classes with a consuming `__iter__`.** A class joins consuming
+iteration by declaring `__iter__(self: Own[Self])` -- beside a lending one as a
+`@dispatch` pair, or alone -- (or through `auto_own[Self]`, which derives the
+pair). The pair's C++ members are told apart by the receiver: the lending one
+is `const &` (or `&`), the consuming one `&&` (`auto __iter__() const &;`
+beside `BagIter __iter__() &&;`), and a consuming generator method's frame owns
+its receiver (`Bag __self`, moved in by `std::move(*this)`). Such a record
+then takes every consuming position a container takes: handed over at an
+owning element slot when fresh or dead (`total(Bag())`, `total(std::move(b))`,
+the callee stepping its consuming iterator through `handover_iter`), a
+consuming `for` over a fresh one or a dead one whose loop variable is moved
+out (`for c in Bag(): keep.append(c)` steps `::tpy::own_iter(Bag())`), the
+same loop in a generator or coroutine frame (the frame owns the iterator), a
+tuple head over owned tuple steps (`for a, b in Pairs()`), a comprehension
+over a fresh one, the builtin collectors (`list(...)`, `sorted(...)`,
+`extend`, a slice store) and the combinators holding a fresh one (`map(f,
+Bag())` hands each element on, none copied), and `own_iter(b)`. A builtin
+collector asks the record's `__iter__` once and steps what it returned, as
+CPython's `iter()` does; a slice store then asks that iterator's own
+`__iter__` once more, as CPython's slice assignment does. A live one is lent
+through its lending `__iter__`, its elements copied with the warning. A class
+whose ONLY `__iter__` consumes is iterated only by giving it up: a `for`, a
+comprehension, a generator expression, an owning-slot argument the settled
+body lends (another name still reads the object) or a slot that iterates
+without taking its argument over (`iter(o)`, an `Iterable[int32]` parameter,
+`map(f, Only())` today) is refused (*'Only' can only be iterated once it is
+given up: its only __iter__ consumes*), never consumed silently. A
+comprehension clause gives its source up by the `for` loop's rule, decided
+once its element is analyzed as a `for`'s is after its body: a dead or
+fresh source with a consuming `__iter__` (a record or a container) is
+consumed when the element moves the innermost clause's plain variable out
+(the element itself, a dict comprehension's key or value, an `Own[T]`
+argument or consuming receiver that is its only read) and its elements are
+no value type; otherwise it is lent (`[r.v for r in Bag()]` lends, a dead
+`list[int32]` keeps its plain loop). A local judged given up whose
+ownership the settled body denies after all (rebound later to a borrowed
+object) is lent as the `for` loop's is, each moved element copied and
+warned. Giving up an `Own[...]` parameter to a `for` or comprehension
+consumes it (no "never consumed" warning). A subclass does not
+inherit a consuming `__iter__` (`BUGS.md#consuming-iter-not-inherited`). **Dispatch contract:** the lending and the consuming variant must be
+observationally equivalent apart from the ownership transfer -- the same
+elements, side effects and exceptions, the consuming one moving the elements
+out -- as for the builtin containers. Under CPython the stub runs the
+lending variant, whatever the declaration order (it tells the consuming one
+by its `Own[Self]` receiver, `Own["Self"]` included); TPy runs the consuming one
+only where it gives the receiver up (a fresh or dead object), so the two must
+not differ in anything but that transfer.
 
 **Limitations**: Consuming `dict.items()` is not yet supported -- the
 `Own[Self]` overload changes the return type, breaking non-iteration callers.
@@ -5140,7 +5275,7 @@ def sum_generic[T: Iterable[int32]](items: T) -> int32:
 
 **Structural protocol-to-protocol conformance**: `Iterator[T]` structurally satisfies `Iterable[T]` because Iterator's method set is a superset of Iterable's. This enables passing iterators where iterables are expected (e.g. `list(some_iterator)` matches the `Iterable[Own[T]]` constructor) without explicit inheritance declarations.
 
-**For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (direct `for(;;)` loop calling `__next__()` and checking `has_value()`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator). All iterators use the direct `std::expected` loop path. **Reference semantics are preserved**: for non-value types (records, containers), the loop variable is a reference to the original container element, so mutations are visible in the container -- matching CPython behavior. This is implemented via `val_or_ref<T>` in `native_iterator.__next__()`, which stores non-value types by pointer and value types by value. Inside a resumable frame (a multi-yield generator or an `async def`) the loop variable becomes a frame field, and the guarantee holds there too -- including for a *generic* element (`Iterable[T]` on a generic generator), where whether `T` is a value or a reference type is settled only when the C++ template instantiates. How the field gets there depends on what the iteration source can promise. Over a container (`list`/`dict`/`set`, or a direct `Iterator[T]`) the source always lends a real element, so the field is simply a borrow (`T*`) -- except when the source is const-rooted (a `readonly` container), where that emit does not yet compile and the element falls back to a copy (see BUGS.md). Over an arbitrary `__iter__`/`__next__` source -- a protocol-typed parameter, a user-defined iterable -- it may equally lend an element or return a fresh one, and the two are indistinguishable in the compiler, so the field is spelled from the source (`tpy::frame_slot<tpy::for_elem_next_t<Src>>`) and C++ resolves it: a lent element aliases, a fresh one is owned. A concrete value element keeps a plain field, since copying it is the only correct storage. One case still diverges, and it is not the loop variable's storage: `async for` over a manual `__aiter__`/`__anext__` iterator copies the iterator *source* into the frame, so the loop cannot mutate the object it iterates (BUGS.md). The generic *yield* does not diverge that way: a generic generator lends what it yields wherever every yield source outlives a suspension; see the generic-generator entry below for the rule and what it leaves open.
+**For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (direct `for(;;)` loop calling `__next__()` and checking `has_value()`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator). All iterators use the direct `std::expected` loop path. **Reference semantics are preserved**: for non-value types (records, containers), the loop variable is a reference to the original container element, so mutations are visible in the container -- matching CPython behavior. This is implemented via `val_or_ref<T>` in `native_iterator.__next__()`, which stores non-value types by pointer and value types by value. Inside a resumable frame (a multi-yield generator or an `async def`) the loop variable becomes a frame field, and the guarantee holds there too -- including for a *generic* element (`Iterable[T]` on a generic generator), where whether `T` is a value or a reference type is settled only when the C++ template instantiates. How the field gets there depends on what the iteration source can promise. Over a container (`list`/`dict`/`set`, or a direct `Iterator[T]`) the source always lends a real element, so the field is simply a borrow (`T*`) -- except when the source is const-rooted (a `readonly` container), where that emit does not yet compile and the element falls back to a copy (see BUGS.md). Over an arbitrary `__iter__`/`__next__` source -- a protocol-typed parameter, a user-defined iterable -- it may equally lend an element or return a fresh one, and the two are indistinguishable in the compiler, so the field is spelled from the source (`tpy::frame_slot<tpy::next_elem_t<tpy::iter_type_t<Src>>>`) and C++ resolves it: a lent element aliases, a fresh one is owned. A concrete value element keeps a plain field, since copying it is the only correct storage. One case still diverges, and it is not the loop variable's storage: `async for` over a manual `__aiter__`/`__anext__` iterator copies the iterator *source* into the frame, so the loop cannot mutate the object it iterates (BUGS.md). The generic *yield* does not diverge that way: a generic generator lends what it yields wherever every yield source outlives a suspension; see the generic-generator entry below for the rule and what it leaves open.
 
 **Iterating a field**: a `for`, a comprehension, `list(...)` and an `in` haystack iterate a field in place through a record name or a `Ptr` parameter or local (`for x in p.c:` -> `auto& __src_0 = ::tpy::none_attr(p, "c").c;`, `p->c` once `p` is proven non-null; `list(p.xs)`, `2 in p.xs`). A `for` or a comprehension over a field no iteration loan can key -- two hops down (`o.h.items`) or through a `Ptr` held in a FIELD (`l.pk.c`) -- is refused (`foreach.iter_borrow_unplaceable` / `expr.list_comp`, `BUGS.md#iter-borrow-place-needs-hops`): the invalidation check could not see a mutation of what is iterated; bind the pointee first (`k: K = l.pk`).
 
@@ -5376,7 +5511,7 @@ tuple element `(cast(Item, it), 2)` holds `it` by reference, `return cast(Item, 
     - **Known limitation (C++ interop):** hand-written C++ should not call an overloaded TPy function. A free variant's C++ name (`describe__Dog`, `area__Box__v0`) is spelled from its parameter types and, on a collision, its declaration index, so it changes when a type is renamed or a variant is added or reordered; it is not an API. A stable, user-chosen C++ name per variant is future work (`docs/NATIVE_INTEROP.md` "Future ideas").
     - **Restriction:** a class may not declare a member (method, field, class constant, property or its `set_<prop>` setter) spelled like a variant name it inherits from a base's method set (`Child.m__int32` beside `Base`'s `@dispatch` `m(x: int32)`): it would hide the variant, so it is refused ("has the same name the compiler gives the inherited variant 'Base.m(x: int32)'; rename it").
     - `from typing import overload` / `from tpy import dispatch` import required
-    - CPython compatible: `@overload` is stock CPython (stubs are no-ops, the implementation runs with its `isinstance` checks), and is the only form type checkers accept. `@dispatch` under CPython is a real decorator in the `tpy` stub package that accumulates the variants and dispatches by arity, then `isinstance` on the annotated parameter types (a `Fn`-typed parameter is matched on the callable's arity; a plain `int` argument matches any fixed-int annotation it fits, as a literal does in the compiler, a fixed-int argument a wider fixed-int annotation it widens into, and an `int` a `float` / `float32` annotation, converted to it as the compiler converts it); a `Literal[...]` annotation is matched by value; a builtin container shape (`list[T]`, `dict[K, V]`) by the container class, its element types unchecked; a protocol that is not `@runtime_checkable` is matched structurally, by `hasattr` over its members (signatures are not checked, BUGS.md#stub-protocol-match-hasattr-only); the FIRST variant in declaration order the call binds to (its arity and keyword names, `inspect.signature().bind`) that matches by type -- keywords checked by name like positionals -- runs, and when none matches by type the first the call binds to -- the stub does not rank, so a test whose output CPython also produces declares the compiler's winner first, and that the compiler's pick does not depend on declaration order is pinned by compiler-only cases (`no_cpython.txt`, e.g. `calls/dispatch_rank_declared_shape_order`). Declaring the winner first is not enough when two calls to one set have different compiler winners the stub cannot tell apart -- a `Literal` value vs a plain variable of that value, `@readonly` receiver twins called on a readonly receiver, aliased classes (`StrView` / `String` are `str` there), element types, union members; such a case goes compiler-only (BUGS.md#stub-first-applicable-cannot-split-calls). `@readonly` twins declare the mutating twin first. mypy and pyright flag the same-name redefinitions, as they do for `multipledispatch`. Sets with `@native` variants skip the CPython phase since `@native` has no CPython implementation.
+    - CPython compatible: `@overload` is stock CPython (stubs are no-ops, the implementation runs with its `isinstance` checks), and is the only form type checkers accept. `@dispatch` under CPython is a real decorator in the `tpy` stub package that accumulates the variants and dispatches by arity, then `isinstance` on the annotated parameter types (a `Fn`-typed parameter is matched on the callable's arity; a plain `int` argument matches any fixed-int annotation it fits, as a literal does in the compiler, a fixed-int argument a wider fixed-int annotation it widens into, and an `int` a `float` / `float32` annotation, converted to it as the compiler converts it); a `Literal[...]` annotation is matched by value; a builtin container shape (`list[T]`, `dict[K, V]`) by the container class, its element types unchecked; a non-receiver `Self` / `Own[Self]` parameter (however spelled) as an instance of the class defining the method, where the compiler resolves `Self`; a protocol that is not `@runtime_checkable` is matched structurally, by `hasattr` over its members (signatures are not checked, BUGS.md#stub-protocol-match-hasattr-only); a lending variant runs before a consuming one (`self: Own[Self]`) whatever their order; among those, the FIRST variant in declaration order the call binds to (its arity and keyword names, `inspect.signature().bind`) that matches by type -- keywords checked by name like positionals -- runs, and when none matches by type the first the call binds to -- the stub does not rank, so a test whose output CPython also produces declares the compiler's winner first, and that the compiler's pick does not depend on declaration order is pinned by compiler-only cases (`no_cpython.txt`, e.g. `calls/dispatch_rank_declared_shape_order`). Declaring the winner first is not enough when two calls to one set have different compiler winners the stub cannot tell apart -- a `Literal` value vs a plain variable of that value, `@readonly` receiver twins called on a readonly receiver, aliased classes (`StrView` / `String` are `str` there), element types, union members; such a case goes compiler-only (BUGS.md#stub-first-applicable-cannot-split-calls). `@readonly` twins declare the mutating twin first. mypy and pyright flag the same-name redefinitions, as they do for `multipledispatch`. Sets with `@native` variants skip the CPython phase since `@native` has no CPython implementation.
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
   - Locals, parameters, returns: `T*` (nullable pointer)
   - Class fields and container elements: `std::optional<T>` (storage form). Boundary conversions emitted via `tpy::ptr_to_optional` / `tpy::optional_to_ptr`.

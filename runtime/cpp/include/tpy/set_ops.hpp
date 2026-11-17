@@ -15,6 +15,7 @@
 
 #include "core.hpp"
 #include "next_iter.hpp"
+#include "own_iter.hpp"
 #include "ordered_set.hpp"
 #include "printing.hpp"
 
@@ -52,10 +53,12 @@ ordered_set<T> set_collect(Iter&& iter) {
 // `__iter__()` returns.
 template<typename T, typename Arg>
 ordered_set<T> set_construct(Arg&& arg) {
-    if constexpr (::tpy::native_input_range<std::remove_cvref_t<Arg>>) {
-        return set_from_range<T>(std::forward<Arg>(arg));
+    auto&& src = ::tpy::handover_range<Arg>(arg);
+    using S = decltype(src);
+    if constexpr (::tpy::native_input_range<std::remove_cvref_t<S>>) {
+        return set_from_range<T>(std::forward<S>(src));
     } else {
-        return set_collect<T>(::tpy::iter_of(arg));
+        return set_collect<T>(::tpy::iter_of(src));
     }
 }
 

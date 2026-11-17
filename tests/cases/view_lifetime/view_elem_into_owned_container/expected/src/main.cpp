@@ -35,7 +35,7 @@ void str_param_sinks(std::string_view s) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(lit) << " " << ::tpy::ListPrinter(app) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(st)) << " " << ::tpy::__len__(d) << " " << ::tpy::ListPrinter(comp) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(set_comp)) << " " << ::tpy::__len__(dict_comp) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(lit) << " " << ::tpy::ListPrinter(app) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(std::move(st))) << " " << ::tpy::__len__(d) << " " << ::tpy::ListPrinter(comp) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(std::move(set_comp))) << " " << ::tpy::__len__(dict_comp) << "\n" << ::tpy::check_signals;
 }
 
 // def str_optional_deref(a: str | None) -> None:
@@ -50,7 +50,7 @@ void str_optional_deref(std::optional<std::string_view> a) {
     if ((a.has_value())) {
         out.push_back(std::string((*a)));
         std::vector<std::string> out2 = ::tpy::make_vector<std::string>(std::move(std::string((*a))));
-        ::tpy::list_extend(out, ::tpy::own_iter(std::move(out2)));
+        ::tpy::list_extend(out, std::move(out2));
     }
     std::cout << ::tpy::ListPrinter(out) << "\n" << ::tpy::check_signals;
 }

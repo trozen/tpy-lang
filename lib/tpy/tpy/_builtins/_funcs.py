@@ -594,26 +594,26 @@ def sum(iterable: Iterable[float], /, start: float) -> float: ...
 @readonly
 @type_param_default(T=DefaultInt)
 @cpp_template("::tpy::builtin_sorted<{T}>({0})")
-def sorted[T: Comparable](iterable: Iterable[T], /) -> Own[list[T]]: ...
+def sorted[T: Comparable](iterable: Iterable[Own[T]], /) -> Own[list[T]]: ...
 
 @dispatch
 @pure
 @readonly
 @cpp_template("::tpy::builtin_sorted_key<{T}>({0}, {1})")
-def sorted[T, K: Comparable](iterable: Iterable[T], /, *, key: Fn[[T], K]) -> Own[list[T]]: ...
+def sorted[T, K: Comparable](iterable: Iterable[Own[T]], /, *, key: Fn[[T], K]) -> Own[list[T]]: ...
 
 @dispatch
 @pure
 @readonly
 @type_param_default(T=DefaultInt)
 @cpp_template("::tpy::builtin_sorted<{T}>({0}, {1})")
-def sorted[T: Comparable](iterable: Iterable[T], /, *, reverse: bool) -> Own[list[T]]: ...
+def sorted[T: Comparable](iterable: Iterable[Own[T]], /, *, reverse: bool) -> Own[list[T]]: ...
 
 @dispatch
 @pure
 @readonly
 @cpp_template("::tpy::builtin_sorted_key<{T}>({0}, {1}, {2})")
-def sorted[T, K: Comparable](iterable: Iterable[T], /, *, key: Fn[[T], K], reverse: bool) -> Own[list[T]]: ...
+def sorted[T, K: Comparable](iterable: Iterable[Own[T]], /, *, key: Fn[[T], K], reverse: bool) -> Own[list[T]]: ...
 
 
 # -- bin / hex / oct --

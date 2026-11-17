@@ -68,7 +68,7 @@ template<::tpystd::typing::Iterable<Key> T_xs>
 std::vector<Key> keep_keys(T_xs&& xs) {
     std::vector<Key> out = std::vector<Key>{};
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

@@ -180,7 +180,7 @@ struct Holder {
     // def take(self: Own[Self]) -> Own[Self] | None:
     std::optional<Holder> take() &&;
 
-    __coro_Holder_take_async take_async();
+    __coro_Holder_take_async take_async() &&;
 
     __coro_Holder_inner inner();
 
@@ -270,17 +270,17 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
 struct __coro_Holder_take_async {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    Holder& __self;
+    Holder __self;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_DONE = 1,
     };
 
-    __coro_Holder_take_async(Holder& __self)
+    __coro_Holder_take_async(Holder&& __self_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          __self(__self) {}
+          __self(std::move(__self_)) {}
 
     ::tpystd::tpy::Poll<std::optional<Holder>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -290,8 +290,8 @@ struct __coro_Holder_take_async {
     }
 };
 
-inline __coro_Holder_take_async Holder::take_async() {
-    return __coro_Holder_take_async(*this);
+inline __coro_Holder_take_async Holder::take_async() && {
+    return __coro_Holder_take_async(std::move(*this));
 }
 
 // async def inner(self) -> Box:

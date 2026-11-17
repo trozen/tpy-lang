@@ -52,14 +52,14 @@ class Team:
 
     def ranked(self) -> None:
         # method: the key borrows the element parameter's field.
-        ys = sorted(self.members, key=lambda r: r.inner)  # tpyc: ok
+        ys = sorted(self.members, key=lambda r: r.inner)  # tpyc: warning(/copies Rec elements/)
         print("method", [y.n for y in ys])
 
 
 def main() -> None:
     rs = [Rec(2), Rec(1), Rec(3)]
     # free function: sorted/min key borrowing the parameter's field.
-    ys = sorted(rs, key=lambda r: r.inner)  # tpyc: ok
+    ys = sorted(rs, key=lambda r: r.inner)  # tpyc: warning(/copies Rec elements/)
     print("free", [y.n for y in ys])
     a = rs[0]
     b = rs[1]
@@ -80,12 +80,12 @@ def main() -> None:
     print("map_arg_rooted", h.inner.v)
 
     # a key that builds a fresh value returns it by value.
-    zs = sorted(rs, key=lambda r: Inner(-r.n))  # tpyc: ok
+    zs = sorted(rs, key=lambda r: Inner(-r.n))  # tpyc: warning(/copies Rec elements/)
     print("fresh_key", [z.n for z in zs])
 
     # a scalar field of a temporary, and a scalar read through a borrow of
     # one, are copied out before the temporary dies.
-    ws = sorted(rs, key=lambda r: mk(r).n)  # tpyc: ok
+    ws = sorted(rs, key=lambda r: mk(r).n)  # tpyc: warning(/copies Rec elements/)
     print("temp_scalar_field", [w.n for w in ws])
     vs = sorted(rs, key=lambda r: -mk(r).get_inner().v)  # tpyc: ok
     print("temp_scalar_via_borrow", [v.n for v in vs])

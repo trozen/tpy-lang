@@ -55,7 +55,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
     }
     case S_RESUME_0: {  // after: yield xs
         a.emplace(std::vector<int32_t>{0});
-        ::tpy::list_extend((*a), ::tpy::own_iter(std::move((*xs))));
+        ::tpy::list_extend((*a), std::move((*xs)));
         __state = S_RESUME_1;
         return (*a);
     }
@@ -87,7 +87,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<Cell>>, ::tpy::StopIteration>
             return (*xs);
         } else {
             a.emplace(std::vector<Cell>{});
-            ::tpy::list_extend((*a), ::tpy::own_iter(std::move((*xs))));
+            ::tpy::list_extend((*a), std::move((*xs)));
             __state = S_RESUME_1;
             return (*a);
         }
@@ -120,7 +120,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<Bump>>, ::tpy::StopIteration>
     }
     case S_RESUME_0: {  // after: yield bs
         out.emplace(std::vector<Bump>{});
-        ::tpy::list_extend((*out), ::tpy::own_iter(std::move((*bs))));
+        ::tpy::list_extend((*out), std::move((*bs)));
         __state = S_RESUME_1;
         return (*out);
     }

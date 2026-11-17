@@ -894,9 +894,10 @@ class MethodAnalyzer:
         if isinstance(obj_type, ReadonlyType):
             obj_type = obj_type.wrapped
 
-        # General method calls always prefer borrowing overloads.
-        # Consuming __iter__ overloads are selected at the call site by
-        # _consuming_iter_wrap in thir/lower/expressions.py.
+        # General method calls always prefer borrowing overloads. A
+        # consuming __iter__ is reached by a `for` over a container given
+        # up, or by the callee's traversal of a container handed over at an
+        # owning element slot (`_owning_slot_arg`, runtime own_iter.hpp).
         is_consuming_receiver = False
 
         if isinstance(obj_type, OwnType):
@@ -1113,10 +1114,13 @@ class MethodAnalyzer:
             return
         self.compat.register_sink(recv, OwnType(bare), None)
         if binding is not None:
+            # The copy is registered whatever the clause decides: its record
+            # says whether the receiver moved (`comp_moves`, the clause's
+            # ownership once the body settles).
             gen = binding.comp.generators[binding.clause]
-            if not self.compat.comp_elem_moves(gen, recv, is_last_sink=True,
-                                               binding=binding):
-                self.compat.declare_receiver_copy(recv)
+            self.compat.comp_elem_moves(gen, recv, is_last_sink=True,
+                                        binding=binding)
+            self.compat.declare_receiver_copy(recv)
             return
         # The receiver moves when the call runs, before an alias read later
         # in the statement: not a last use, so its record copies.

@@ -55,6 +55,7 @@ from ..typesys import (
     is_float_type, contains_pending_leaf,
     contains_pending_num, contains_type_param,
     is_integer_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
+    unwrap_value_own,
 )
 from ..type_def_registry import (
     is_fixed_int_type, is_big_int_type, is_float64_type, int_traits_of,
@@ -2896,7 +2897,8 @@ class PendingNums:
         open_cells = [(c, p) for c, p in zip(lc.cells, lc.paths)
                       if c.settled is None]
         if open_cells:
-            spelled = shown if shown is not None else container
+            spelled = _without_value_own(
+                shown if shown is not None else container)
             for cell, path in open_cells:
                 want = self.leaf_want(container, path)
                 cell.typed.append(want)
@@ -3557,6 +3559,14 @@ def _at_leaf(elements: list[TpyExpr], path: tuple) -> list[TpyExpr]:
 
 def _other_arm(cell: PendingNumCell) -> str:
     return "the other" if len(cell.arm_sites) == 2 else "another"
+
+
+
+def _without_value_own(t: TpyType) -> TpyType:
+    """`t` as a refusal spells the container that decided a number: an
+    `Own` around a value type transfers nothing, so `Iterable[Own[int32]]`
+    reads `Iterable[int32]`."""
+    return unwrap_value_own(t).map_inner_types(_without_value_own)
 
 
 def _line(node: TpyStmt | TpyExpr | None) -> int | None:

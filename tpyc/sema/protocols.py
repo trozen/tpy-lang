@@ -12,7 +12,7 @@ import re
 import dataclasses
 
 from ..typesys import (
-    same_class, record_owner,
+    same_class, record_owner, unwrap_value_own,
     TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
     ListRepeatType, GenExprType, make_list, TupleType, OptionalType, UnionType, RecursiveAliasInstanceType, PtrType, IntLiteralType, FloatLiteralType, AnyType, AliasRef, NoneType, PendingListType, PendingContainerType, UnknownElementType, BIGINT, FLOAT,
@@ -32,9 +32,10 @@ if TYPE_CHECKING:
 
 from tpyc import modules as builtin_modules
 from ..modules import get_dunder_cpp_template
+from ..modules.type_resolution import adapter_contract
 from .. import qnames
 from ..type_def_registry import (
-    is_copy_iter, is_own_iter, is_set, is_dict, is_array, is_span, is_list,
+    is_copy_iter, is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_char_type, is_str_category,
     is_enum_type, protocol_info_of, protocol_mro, protocol_ancestor_at,
     protocol_effective_methods, type_param_subst,
@@ -47,6 +48,7 @@ from .elem_paths import (
 )
 from .bound_check import find_method_class_param_bound_violation
 from .dyn_erasure import declares_dynamic_base, record_inherits_dynamic
+from ..value_category import consuming_only
 
 
 def dynamic_dispatch_type_conforms(
@@ -166,10 +168,7 @@ def _return_modulo_own(ret: TpyType) -> TpyType:
     type, or a type parameter not known to be a value type, `Own` selects
     the by-value virtual over the reference one, so it stays and the two
     declarations disagree."""
-    ret = unwrap_ref_type(ret)
-    if isinstance(ret, OwnType) and ret.wrapped.is_value_type():
-        return ret.wrapped
-    return ret
+    return unwrap_value_own(unwrap_ref_type(ret))
 
 
 def _plain_side(slots: list[VtableSlot]) -> VtableSlot:
@@ -487,7 +486,7 @@ class ProtocolConformanceKind(Enum):
     """How a type conforms to a protocol.
 
     EXPLICIT: declared ``extends`` / ``implemented_protocols``, protocol-to-protocol
-    inheritance, or a compiler-intrinsic short-circuit (GenExpr/CopyIter/OwnIter
+    inheritance, or a compiler-intrinsic short-circuit (GenExpr/CopyIter
     satisfying Iterable, Enum satisfying Hashable/Comparable/Equatable,
     ValueType, Default, etc.). All of these represent intentional conformance
     rather than an accidental method-set match.
@@ -718,28 +717,38 @@ class ProtocolChecker:
             return self.classify_protocol_conformance(
                 actual.spelled(actual.parts()), protocol)
 
-        # GenExprType: satisfies Iterable[T] and Iterator[T]
-        if isinstance(actual, GenExprType):
-            if protocol.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR):
-                if protocol.type_args and len(protocol.type_args) == 1:
-                    if self._adapter_step_fits(actual.element_type,
-                                               protocol.type_args[0]):
-                        return ProtocolConformanceKind.EXPLICIT
-                    return None
+        # An iteration adapter (a generator expression, CopyIter)
+        # conforms by the whole contract it offers (`adapter_contract`), its
+        # element meeting the step with an owning slot's `Own` peeled -- a
+        # protocol with no `Iterable` / `Iterator` ancestor is asked of the
+        # contract at the element; an `Iterator[T]` object the contract
+        # misses answers by its own members below.
+        adapter = isinstance(actual, GenExprType) or is_copy_iter(actual)
+        found = (adapter_contract(actual, protocol)
+                 if isinstance(protocol, NominalType) else None)
+        if found is not None:
+            elem, contract, _ = found
+            # The contract asks through the cycle guard unless it is the
+            # pair already being asked (an `Iterator[T]` object).
+            # An owned value-type step (`own_iter(xs)` over `list[int32]`)
+            # transfers nothing an element would not: it meets the element.
+            if isinstance(elem, OwnType) and elem.wrapped.is_value_type():
+                elem = elem.wrapped
+            # A compiler adapter's step meets modulo `Own` on both sides
+            # (`_adapter_step_fits`); an `Iterator[Own[T]]` object's owned
+            # step meets only an owning slot -- else the member walk below
+            # refuses it (`_hands_over_lent_step`).
+            step_fits = (
+                self._adapter_step_fits(elem, contract.type_args[0]) if adapter
+                else self.type_ops.types_match_for_inference(
+                    elem, unwrap_own(contract.type_args[0])))
+            if (step_fits
+                    and (self._conformance_by_members(contract, protocol)
+                         if contract == actual else
+                         self.classify_protocol_conformance(contract, protocol))
+                    is not None):
                 return ProtocolConformanceKind.EXPLICIT
-            return None
-
-        # CopyIter / OwnIter: satisfies Iterable[T] only (not Iterator).
-        # Both have C++ begin/end but are not exposed as Iterator to prevent
-        # passing to functions that call __next__() after a for-loop consumes them.
-        if is_copy_iter(actual) or is_own_iter(actual):
-            if protocol.qualified_name() == qnames.ITERABLE:
-                if protocol.type_args and len(protocol.type_args) == 1:
-                    if self._adapter_step_fits(actual.type_args[0],
-                                               protocol.type_args[0]):
-                        return ProtocolConformanceKind.EXPLICIT
-                    return None
-                return ProtocolConformanceKind.EXPLICIT
+        if adapter:
             return None
 
         # Enum/IntEnum: hashable, comparable, and equatable at C++ level, and
@@ -818,6 +827,13 @@ class ProtocolChecker:
                     or self._check_record_extends(actual, protocol)):
                 return ProtocolConformanceKind.EXPLICIT
 
+        return self._conformance_by_members(actual, protocol)
+
+    def _conformance_by_members(self, actual: TpyType, protocol: NominalType,
+                                ) -> ProtocolConformanceKind | None:
+        """How `actual` conforms to `protocol` by declaration or member by
+        member -- methods with their signatures and fields, inherited ones
+        included -- the tail of `classify_protocol_conformance`."""
         # Unified lookup - all protocols (builtin and user) are in the registry
         protocol_info = protocol_info_of(protocol)
         if protocol_info is None:
@@ -1064,7 +1080,7 @@ class ProtocolChecker:
             return protocol_name in self._LIST_REPEAT_PROTOCOLS
         if isinstance(actual, GenExprType):
             return protocol_name in self._GENEXPR_PROTOCOLS
-        if is_copy_iter(actual) or is_own_iter(actual):
+        if is_copy_iter(actual):
             return protocol_name in self._ITER_ADAPTER_PROTOCOLS
 
         record_info = self.ctx.registry.get_record_for_type(actual)
@@ -1287,7 +1303,10 @@ class ProtocolChecker:
         no such member answers through
         `get_iterable_element_type(keep_own=True)`. None when nothing
         declares it -- a type parameter's included: its bound may refuse
-        it at a lending slot, but never proves a handover."""
+        it at a lending slot, but never proves a handover -- and when the
+        type's only `__iter__` consumes (`consuming_only`): whether a step
+        hands over is then the object's hand-over verdict, which the caller
+        asks (`owning_arg`)."""
         return self._declared_steps(t, frozenset(), False)
 
     def _declared_steps(self, t: TpyType, active: frozenset[TpyType],
@@ -1305,6 +1324,11 @@ class ProtocolChecker:
             return None
         active = active | {bare}
         iters = self._iteration_members(bare, "__iter__", written)
+        if not iters and consuming_only(bare, self.ctx.registry):
+            # Its only `__iter__` consumes it: no step runs on a borrowed
+            # receiver, and whether one hands over is the hand-over
+            # verdict of the object (`owning_arg`), not a declaration.
+            return None
         if not iters:
             nexts = self._iteration_members(bare, "__next__", written)
             if nexts:
@@ -1439,12 +1463,11 @@ class ProtocolChecker:
         return bool(steps) and not any(declared_lent_paths(s) for s in steps)
 
     def _adapter_step_fits(self, elem: TpyType, required: TpyType) -> bool:
-        """A compiler adapter (a generator expression, `copy_iter` /
-        `own_iter`) yielding `elem` meets a step requirement `required`:
+        """A compiler adapter (a generator expression, `copy_iter`)
+        yielding `elem` meets a step requirement `required`:
         the element matches modulo the slot's `Own`."""
-        # An owning adapter at a lending slot is still accepted: the
-        # stdlib's `sorted(own_iter(...))` needs it until `sorted` takes
-        # `Iterable[Own[T]]` (BUGS.md#owning-adapter-at-lending-slot-dangles).
+        # An owning adapter (`copy_iter`) at a lending slot is still
+        # accepted (BUGS.md#owning-adapter-at-lending-slot-dangles).
         return self.type_ops.types_match_for_inference(unwrap_own(elem),
                                                        unwrap_own(required))
 

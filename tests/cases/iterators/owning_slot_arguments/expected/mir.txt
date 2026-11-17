@@ -1,0 +1,169 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@33:0: uncovered (unsupported parameter type)
+main::mk@40:0: covered (storage: no_proof_required), summary: known
+main::fwd@44:0: uncovered (unsupported parameter type)
+main::lend@49:0: uncovered (reference yield)
+main::shapes@54:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@101:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::<genexpr>@75:14: uncovered (generator expression)
+main::R.__init__@22:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@29:4: covered (storage: no_proof_required), summary: known
+part_adapters::__tpy_init: uncovered (module initialization)
+part_adapters::total@70:0: uncovered (unsupported parameter type)
+part_adapters::take@77:0: uncovered (unsupported parameter type)
+part_adapters::count_own@85:0: uncovered (generic body)
+part_adapters::count_pairs@92:0: uncovered (generic body)
+part_adapters::total_fixed@99:0: uncovered (unsupported parameter type)
+part_adapters::sum_steps@106:0: uncovered (unsupported parameter type)
+part_adapters::first@113:0: uncovered (generic body)
+part_adapters::count@120:0: uncovered (unsupported parameter type)
+part_adapters::walk@127:0: uncovered (unsupported parameter type)
+part_adapters::take_tagged@131:0: uncovered (unsupported parameter type)
+part_adapters::main@139:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_adapters::<genexpr>@142:40: uncovered (generator expression)
+part_adapters::<genexpr>@150:38: uncovered (generator expression)
+part_adapters::<genexpr>@159:53: uncovered (generator expression)
+part_adapters::<genexpr>@161:47: uncovered (generator expression)
+part_adapters::<genexpr>@163:45: uncovered (generator expression)
+part_adapters::<genexpr>@167:44: uncovered (generator expression)
+part_adapters::<genexpr>@170:38: uncovered (generator expression)
+part_adapters::Bag.__iter__@57:4: uncovered (unsupported return type)
+part_adapters::R.__init__@13:4: covered (storage: no_proof_required), summary: known
+part_adapters::Bag.__init__@53:4: covered (storage: no_proof_required), summary: known
+part_adapters::Acc.__init__@64:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_bindings::__tpy_init: uncovered (module initialization)
+part_bindings::take@14:0: uncovered (unsupported parameter type)
+part_bindings::relay@21:0: uncovered (unsupported parameter type)
+part_bindings::from_param@27:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_bindings::from_walrus@35:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+part_bindings::from_local@45:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+part_bindings::two_slices@56:0: uncovered (unsupported parameter type)
+part_bindings::pending_slice@64:0: uncovered (unsupported parameter type)
+part_bindings::self_slice@73:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_bindings::main@80:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_bindings::R.__init__@10:4: covered (storage: no_proof_required), summary: known
+part_builtins::__tpy_init: uncovered (module initialization)
+part_builtins::rkey@26:0: covered (storage: no_proof_required), summary: known
+part_builtins::mk@30:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_builtins::inst_rebound@34:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_builtins::mkpairs@44:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_builtins::inst_ternary@48:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_builtins::dict_rebound@57:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_builtins::mk_sevens@75:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+part_builtins::sorted_fwd@82:0: uncovered (unsupported native container element)
+part_builtins::main@86:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_builtins::R.__lt__@13:4: covered (storage: no_proof_required)
+part_builtins::Sevens.__iter__@70:4: uncovered (unmodeled record)
+part_builtins::R.__init__@10:4: covered (storage: no_proof_required), summary: known
+part_builtins::H.__init__@21:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_callees::__tpy_init: uncovered (module initialization)
+part_callees::mk@26:0: covered (storage: no_proof_required), summary: known
+part_callees::take@30:0: uncovered (unsupported parameter type)
+part_callees::mk_rows@38:0: covered (storage: no_proof_required), summary: known
+part_callees::make_rows@46:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+part_callees::keep_keys@69:0: uncovered (unsupported native container element)
+part_callees::gen_keys@76:0: uncovered (unsupported parameter type)
+part_callees::comp_keys@82:0: uncovered (unsupported native container element)
+part_callees::mk_dict@86:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_callees::set_dict_parts@90:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_callees::main@109:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_callees::Holder.add@21:4: uncovered (unsupported parameter type)
+part_callees::Key.__eq__@56:4: covered (storage: no_proof_required)
+part_callees::Key.__hash__@59:4: covered (storage: no_proof_required), summary: known
+part_callees::R.__init__@9:4: covered (storage: no_proof_required), summary: known
+part_callees::Holder.__init__@16:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_callees::Key.__init__@53:4: covered (storage: no_proof_required), summary: known
+part_callees::V.__init__@65:4: covered (storage: no_proof_required), summary: known
+part_frames::__tpy_init: uncovered (module initialization)
+part_frames::gen@14:0: uncovered (unsupported parameter type)
+part_frames::gen_alias@19:0: uncovered (unsupported parameter type)
+part_frames::atake@26:0: uncovered (async body)
+part_frames::gen_n@33:0: uncovered (unsupported parameter type)
+part_frames::atake_n@38:0: uncovered (async body)
+part_frames::gen_values@45:0: uncovered (unsupported parameter type)
+part_frames::gen_strs@51:0: uncovered (unsupported parameter type)
+part_frames::asum_values@56:0: uncovered (async body)
+part_frames::alen_strs@64:0: uncovered (async body)
+part_frames::mk@72:0: covered (storage: no_proof_required), summary: known
+part_frames::gen_caller@76:0: uncovered (argument held across a suspension)
+part_frames::gen_loop_caller@86:0: uncovered (argument held across a suspension)
+part_frames::gen_select_caller@94:0: uncovered (argument held across a suspension)
+part_frames::amain@102:0: uncovered (async body)
+part_frames::main@115:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_frames::R.__init__@10:4: covered (storage: no_proof_required), summary: known
+part_handover::__tpy_init: uncovered (module initialization)
+part_handover::mk@27:0: covered (storage: no_proof_required), summary: known
+part_handover::take@31:0: uncovered (unsupported parameter type)
+part_handover::gen@38:0: uncovered (unsupported parameter type)
+part_handover::atake@43:0: uncovered (async body)
+part_handover::atake_slow@50:0: uncovered (async body)
+part_handover::gen_param@59:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+part_handover::aparam@64:0: uncovered (async body)
+part_handover::take_param@69:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_handover::rebound_later@74:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_handover::rebound_later_gen@83:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_handover::gen_narrow@92:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+part_handover::anarrow@102:0: uncovered (async body)
+part_handover::step_free@111:0: uncovered (unsupported parameter type)
+part_handover::step_comp@119:0: uncovered (unsupported parameter type)
+part_handover::step_gen@123:0: uncovered (unsupported parameter type)
+part_handover::inst_dead@129:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+part_handover::gen_bytes@135:0: uncovered (unsupported parameter type)
+part_handover::akept@140:0: uncovered (async body)
+part_handover::main@156:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_handover::R.__init__@16:4: covered (storage: no_proof_required), summary: known
+part_handover::H.__init__@23:4: covered (storage: no_proof_required), summary: known
+part_nocopy::__tpy_init: uncovered (module initialization)
+part_nocopy::take_rows@22:0: uncovered (unsupported parameter type)
+part_nocopy::take@43:0: uncovered (unsupported parameter type)
+part_nocopy::take_counted@50:0: uncovered (unsupported parameter type)
+part_nocopy::relay@58:0: uncovered (unsupported parameter type)
+part_nocopy::gen@64:0: uncovered (unsupported parameter type)
+part_nocopy::atake@69:0: uncovered (async body)
+part_nocopy::slice_in@77:0: uncovered (unsupported parameter type)
+part_nocopy::stepped_in@84:0: uncovered (unsupported parameter type)
+part_nocopy::gen_slice_in@90:0: uncovered (unsupported parameter type)
+part_nocopy::keep@98:0: covered (storage: no_proof_required), summary: known
+part_nocopy::nkey@102:0: covered (storage: no_proof_required), summary: known
+part_nocopy::mk@106:0: covered (storage: no_proof_required), summary: known
+part_nocopy::gen_caller@110:0: uncovered (argument held across a suspension)
+part_nocopy::amain@118:0: uncovered (async body)
+part_nocopy::main@125:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_nocopy::Bin.add@38:4: uncovered (unsupported parameter type)
+part_nocopy::N.__init__@10:4: covered (storage: no_proof_required), summary: known
+part_nocopy::Bin.__init__@33:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_slots::__tpy_init: uncovered (module initialization)
+part_slots::take_bag@44:0: uncovered (unsupported parameter type)
+part_slots::take_it@53:0: uncovered (unsupported parameter type)
+part_slots::take_counted@61:0: uncovered (unsupported parameter type)
+part_slots::take_rows@71:0: uncovered (unsupported parameter type)
+part_slots::take_pairs@80:0: uncovered (unsupported parameter type)
+part_slots::count@88:0: uncovered (generic body)
+part_slots::take_iter@95:0: uncovered (unsupported parameter type)
+part_slots::take_seq@102:0: uncovered (unsupported parameter type)
+part_slots::alias@106:0: uncovered (unsupported parameter type)
+part_slots::relist@115:0: uncovered (unsupported parameter type)
+part_slots::keep@121:0: uncovered (unsupported container element), summary: opaque (unsupported container element)
+part_slots::keep_s@126:0: covered (storage: no_proof_required), summary: known
+part_slots::mk_s@130:0: covered (storage: no_proof_required), summary: known
+part_slots::gen_r@134:0: uncovered (reference yield)
+part_slots::mk@139:0: covered (storage: no_proof_required), summary: known
+part_slots::main@143:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_slots::OneBag.get@37:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_slots::OneBag.size@40:4: covered (storage: no_proof_required), summary: known
+part_slots::R.__init__@10:4: covered (storage: no_proof_required), summary: known
+part_slots::S.__init__@15:4: covered (storage: no_proof_required), summary: known
+part_slots::OneBag.__init__@34:4: covered (storage: no_proof_required), summary: known
+part_walrus::__tpy_init: uncovered (module initialization)
+part_walrus::mk@15:0: covered (storage: no_proof_required), summary: known
+part_walrus::take@19:0: uncovered (unsupported parameter type)
+part_walrus::gen@27:0: uncovered (unsupported parameter type)
+part_walrus::atake@45:0: uncovered (async body)
+part_walrus::free_walrus@53:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_walrus::gen_walrus@60:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_walrus::method_gen_walrus@67:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_walrus::async_walrus@75:0: uncovered (async body)
+part_walrus::main@82:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_walrus::G.mgen@39:4: uncovered (unsupported parameter type)
+part_walrus::R.__init__@11:4: covered (storage: no_proof_required), summary: known
+part_walrus::G.__init__@36:4: covered (storage: no_proof_required), summary: known

@@ -23,11 +23,11 @@ namespace tpyapp::main {
 //
 //     inner()
 //     step = ident(4)
-//     yield double(step)                                                     # -> S_RESUME_0
+//     yield double(step)                                                               # -> S_RESUME_0
 //     # a lambda param named like the frame's loop variable `r`
-//     out = sorted(rs, key=lambda r: -r.v)  # tpyc: ok
+//     out = sorted(rs, key=lambda r: -r.v)  # tpyc: warning(/copies Holder elements/)
 //     for r in out:
-//         yield r.v                                                          # -> S_RESUME_1
+//         yield r.v                                                                    # -> S_RESUME_1
 //     print("gen after:", step)
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {

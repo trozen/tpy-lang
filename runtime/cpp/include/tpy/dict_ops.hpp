@@ -26,6 +26,7 @@
 #include "container_ops.hpp"
 #include "core.hpp"
 #include "next_iter.hpp"
+#include "own_iter.hpp"
 #include "ordered_map.hpp"
 
 namespace tpy {
@@ -67,10 +68,12 @@ ordered_map<K, V> dict_collect_pairs(Iter&& iter) {
 // `__iter__()` returns.
 template<typename K, typename V, typename Arg>
 ordered_map<K, V> dict_construct(Arg&& arg) {
-    if constexpr (::tpy::native_input_range<std::remove_cvref_t<Arg>>) {
-        return dict_from_pairs<K, V>(std::forward<Arg>(arg));
+    auto&& src = ::tpy::handover_range<Arg>(arg);
+    using S = decltype(src);
+    if constexpr (::tpy::native_input_range<std::remove_cvref_t<S>>) {
+        return dict_from_pairs<K, V>(std::forward<S>(src));
     } else {
-        return dict_collect_pairs<K, V>(::tpy::iter_of(arg));
+        return dict_collect_pairs<K, V>(::tpy::iter_of(src));
     }
 }
 

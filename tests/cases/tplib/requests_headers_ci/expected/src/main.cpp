@@ -115,7 +115,7 @@ void main() {
         std::string_view k = ::tpy::unwrap_ref(*__r_1);
         names.push_back(std::string(k));
     }
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(names)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(std::move(names))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(r.headers.keys())) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(r.headers.values())) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::requests::CaseInsensitiveDict other = ::tpystd::tplib::requests::CaseInsensitiveDict();

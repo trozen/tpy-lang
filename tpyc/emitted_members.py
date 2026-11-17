@@ -11,15 +11,19 @@ from __future__ import annotations
 from collections import namedtuple
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import Callable, Sequence, TypeVar
 
 from .typesys import (
     TpyType, NominalType, OwnType, NONE,
     is_protocol_type, is_dyn_protocol, is_fn_type,
     unwrap_readonly, unwrap_ref_type, protocol_param_alternatives,
+    without_readonly,
 )
 from .parse import TpyFunction, TpyRecord
 from .parse.nodes import DEL_HOOK, INIT_METHOD, MOVE_HOOK
 from .type_def_registry import protocol_info_of
+
+_M = TypeVar("_M")
 
 # Unified protocol parameter info: name, list of protocol types (1+), nullable flag
 ProtocolParamInfo = namedtuple('ProtocolParamInfo', ['name', 'protocols', 'has_none'])
@@ -134,7 +138,9 @@ class MemberKind(Enum):
 class RefQualifier(Enum):
     """The ref-qualifier of a member's receiver."""
     NONE = ""
-    # The borrowing half of a `self: auto_own[Self]` pair.
+    # A lending member of a clone family with a consuming member (the
+    # borrowing half of a `self: auto_own[Self]` pair, the lending variant of
+    # a `@dispatch` pair beside `self: Own[Self]`).
     LVALUE = "&"
     # A consuming member (`self: Own[Self]`, `auto_own`'s consuming half).
     RVALUE = "&&"
@@ -162,21 +168,60 @@ class EmittedMember:
         built the members."""
         return self.func.is_readonly and not self.func.is_staticmethod
 
+    @property
+    def receiver_suffix(self) -> str:
+        """The receiver qualifiers a member's declaration and its
+        out-of-class definition both spell (` const &`)."""
+        return ((" const" if self.readonly else "")
+                + (f" {self.ref.value}" if self.ref is not RefQualifier.NONE
+                   else ""))
 
-def _ref_qualifier(kind: MemberKind, func: TpyFunction) -> RefQualifier:
-    # A resumable member's factory takes no ref-qualifier.
-    if kind is MemberKind.RESUMABLE:
-        return RefQualifier.NONE
-    if func.is_auto_own_borrowing_clone:
-        return RefQualifier.LVALUE
+
+def clone_families(items: Sequence[_M],
+                   params_key: Callable[[_M], tuple]) -> list[list[_M]]:
+    """The variants of one method set grouped into clone families: members
+    with the same parameters (`params_key`, `readonly` aside) that differ by
+    receiver const-ness or consumption -- an `@auto_readonly` / `auto_own`
+    pair, a lending / consuming `@dispatch` pair, the C++ overloads one name
+    keeps apart by the receiver. In source order. Asked of the registered
+    variants (frame names) and of a record's defs (receiver qualifiers)."""
+    families: list[list[_M]] = []
+    keys: list[tuple] = []
+    for item in items:
+        key = params_key(item)
+        for i, k in enumerate(keys):
+            if k == key and all(m.is_readonly != item.is_readonly
+                                or m.is_consuming != item.is_consuming
+                                for m in families[i]):
+                families[i].append(item)
+                break
+        else:
+            keys.append(key)
+            families.append([item])
+    return families
+
+
+def _def_params_key(func: TpyFunction) -> tuple:
+    kw = func.keyword_only_start
+    return tuple((without_readonly(t), kw is not None and i >= kw)
+                 for i, (_n, t) in enumerate(func.params))
+
+
+def _ref_qualifier(func: TpyFunction,
+                   family: list[TpyFunction]) -> RefQualifier:
+    # A consuming member and the lending members of its clone family are
+    # told apart by the receiver, a resumable member's factory included.
     if func.is_consuming:
         return RefQualifier.RVALUE
+    if any(m.is_consuming for m in family):
+        return RefQualifier.LVALUE
     return RefQualifier.NONE
 
 
-def _member(func: TpyFunction, kind: MemberKind,
-            sig: MemberSignature) -> EmittedMember:
-    return EmittedMember(func, kind, sig, _ref_qualifier(kind, func))
+def _member(func: TpyFunction, kind: MemberKind, sig: MemberSignature,
+            family: 'list[TpyFunction] | None' = None) -> EmittedMember:
+    return EmittedMember(func, kind, sig,
+                         _ref_qualifier(func, family or [func]))
 
 
 def record_emitted_members(record: TpyRecord) -> list[EmittedMember]:
@@ -185,6 +230,12 @@ def record_emitted_members(record: TpyRecord) -> list[EmittedMember]:
     ``small`` is the caller's to apply."""
     generic = bool(record.type_params)
     out: list[EmittedMember] = []
+    by_name: dict[str, list[TpyFunction]] = {}
+    for method in record.methods:
+        by_name.setdefault(method.name, []).append(method)
+    family_of: dict[int, list[TpyFunction]] = {
+        id(m): fam for defs in by_name.values()
+        for fam in clone_families(defs, _def_params_key) for m in fam}
     for method in record.methods:
         # The ctor and destructor family are entered once, below.
         if (method.name in _CTOR_DTOR_NAMES
@@ -197,7 +248,8 @@ def record_emitted_members(record: TpyRecord) -> list[EmittedMember]:
         else:
             kind = MemberKind.METHOD
         out.append(_member(method, kind,
-                           member_signature(method, class_generic=generic)))
+                           member_signature(method, class_generic=generic),
+                           family_of.get(id(method))))
     init, del_, move = record.init_method, record.del_method, record.move_method
     if init is not None:
         out.append(_member(init, MemberKind.CTOR,

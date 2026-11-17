@@ -570,7 +570,8 @@ class CFGBuilder:
             THIRForIterSetup(
                 uid=uid, source=stmt.iterable, iterable=iterable,
                 bounds=bounds, elem_type=stmt.elem_type,
-                iter_borrow_unplaceable=stmt.iter_borrow_unplaceable))
+                iter_borrow_unplaceable=stmt.iter_borrow_unplaceable,
+                consuming=stmt.consuming_iter_fi is not None))
         self._finish(iter_init_bb, THIRFall(next_bb=cond_bb))
         # cond_bb: THIRForAdvance terminator (advance + branch).
         self._finish(cond_bb, THIRForAdvance(

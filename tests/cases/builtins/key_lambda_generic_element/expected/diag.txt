@@ -1,3 +1,5 @@
+main.py:7: warning: may copy tuple[T, int32] elements if not a value type; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:13: warning: may copy tuple[T, str] elements if not a value type; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:19: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
 main.py:23: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
 main.py:31: warning: may copy tuple[T, int32] into local 't' if not a value type; use copy() to make this explicit

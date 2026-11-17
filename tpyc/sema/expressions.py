@@ -13,7 +13,7 @@ from typing import Callable, Iterable, Iterator, Literal, NamedTuple, Sequence, 
 
 from ..holders import IterHolder
 from ..identity_map import IdentityMap, IdentitySet
-from ..typesys import canonical_readonly, make_readonly
+from ..typesys import canonical_readonly, make_iterable, make_readonly
 from ..typesys import none_identity_of, pointer_repr_optional, readonly_access, repr_shape
 from ..typesys import own_tuple_target, strip_own_type_args
 from ..typesys import binds_runtime_symbol, body_function_info
@@ -85,13 +85,15 @@ from ..prescan import (
     walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING, not_assigned_message
 from .. import qnames
-from .context import AnalysisRecord, ConsumeCause, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, contains_pending_leaf, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands, binding_source, LambdaResultCheck
+from .context import AnalysisRecord, ConsumeCause, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, CompCandidate, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, contains_pending_leaf, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands, binding_source, LambdaResultCheck
 from .arg_binding import peel_coercions, source_view
 from ..value_category import (frame_factory_callee, peel_coerce, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
-                             lent_operands, origin_shared, call_operands)
+                             lent_operands, origin_shared, call_operands,
+                             consuming_only)
 from .alias_rebind import stamp_bind_kind, unpack_target_records
-from .binding_ownership import step_handover_paths
+from .binding_ownership import CompMove, step_handover_paths
+from .elem_paths import leaf_paths
 from .compatibility import TupleSink
 from .narrowing import NarrowingTracker
 from .flow_facts import Branch, FlowFacts
@@ -553,6 +555,38 @@ class ImplicitDunderPick:
     type_subst: dict
     matched: FunctionInfo | None
     original: FunctionInfo | None
+
+
+class _CompClauseFinish:
+    """The bookkeeping of comprehension clause `k` of `expr` that reads what
+    its step hands over (`step_handover`), run once its consumption is
+    decided (`_settle_comp_consumption`)."""
+
+    def __init__(self, ctx: SemanticContext, expr: TpyExpr, k: int,
+                 elem_type: TpyType) -> None:
+        self.ctx, self.expr, self.k, self.elem_type = ctx, expr, k, elem_type
+
+    def __call__(self) -> None:
+        gen = self.expr.generators[self.k]
+        # Whether the targets bind const-ref is decided once every write
+        # through them is known (`resolve_loop_bindings`). A source handing
+        # any of its step over binds the element non-const (`auto&&`) so a
+        # last-use sink can move it -- mirrors the consuming for-loop, which
+        # excludes consumed vars from the const-ref binding.
+        self.ctx.loop_binders.append(
+            (gen, worth_const_ref(self.elem_type) and not gen.step_handover))
+        self.decide_copies()
+
+    def decide_copies(self) -> None:
+        """The variable's copy verdict, over its conditions, every later
+        clause and the element(s) -- asked again by a clause the settled
+        body turns back to lending, as a `for`'s revert asks it."""
+        gen = self.expr.generators[self.k]
+        decide_copies_var(
+            self.ctx, gen, gen.iterable,
+            self.ctx.get_expr_type(gen.iterable),
+            lambda: comp_live_region(_comp_clause_body(self.expr, self.k)),
+            self.elem_type, handed_over=bool(gen.step_handover))
 
 
 @dataclass
@@ -4585,18 +4619,6 @@ class ExpressionAnalyzer:
             bare, OwnType(bare), "container literal element",
             elem.loc, source_expr=elem)
 
-    def _register_moved_element(self, elem: TpyExpr,
-                                elem_type: TpyType) -> None:
-        """A comprehension element its clause moves warns nothing, but its
-        owning sink still has its record, written at the comprehension's
-        committed slot (`SemanticContext.slot_step_commits`)."""
-        if not self.ctx.slot_step_commits():
-            return
-        self.compat.register_sink(
-            elem, OwnType(unwrap_ref_type(unwrap_own(unwrap_readonly(
-                elem_type)))),
-            TupleSink.CONTAINER, per_leaf=True)
-
     def _analyze_array_literal(
         self, expr: TpyArrayLiteral, expected: SlotHint | None = None
     ) -> TpyType:
@@ -5856,8 +5878,9 @@ class ExpressionAnalyzer:
         clause's owned element stays in its iterator's step slot while the
         inner clauses borrow it."""
         gen = expr.generators[k]
-        gen.step_handover = step_handover_paths(
-            self.ctx, gen.iterable, unwrap_ref_type(elem_type))
+        self.ctx.comp_candidates.pop(gen, None)
+        self._set_comp_consumption(
+            gen, self._comp_consuming_iter(expr, gen, elem_type), elem_type)
         if (gen.step_handover and isinstance(expr, TpyGeneratorExpression)
                 and len(expr.generators) > 1):
             # No generator-expression frame takes over its source's elements;
@@ -5866,6 +5889,95 @@ class ExpressionAnalyzer:
                 "a generator expression cannot iterate a source that yields "
                 "owned values; use a list comprehension or a `for` loop",
                 gen.iterable)
+
+    def _set_comp_consumption(self, gen: TpyComprehensionGenerator,
+                              fi: 'FunctionInfo | None',
+                              step: TpyType) -> None:
+        """Stamp clause `gen`'s consumption: given up to its consuming
+        `__iter__` (`fi`), every step it yields (of type `step`) is the
+        clause's own; else it hands over what its source's steps do
+        (`step_handover_paths`)."""
+        gen.consuming_iter_fi = fi
+        gen.step_handover = (
+            leaf_paths(unwrap_own(unwrap_ref_type(step))) if fi is not None
+            else step_handover_paths(self.ctx, gen.iterable,
+                                     unwrap_ref_type(step)))
+
+    def _comp_consuming_iter(self, expr: TpyExpr,
+                             gen: TpyComprehensionGenerator,
+                             elem_type: TpyType) -> 'FunctionInfo | None':
+        """The consuming `__iter__` a comprehension clause gives its source
+        up to before its body, by the consumption rule a `for` takes
+        (`consuming_iteration`): a source whose type is iterated only by
+        consuming it. The innermost clause of any other source waits for
+        its element (`CompCandidate`, `_settle_comp_consumption`), as a
+        `for` waits for its body: only its variable reaches a sink. A
+        generator expression's frame takes over no source: it lends
+        (`lent_iteration`)."""
+        t = self.ctx.get_expr_type(gen.iterable)
+        if not isinstance(t, TpyType):
+            return None
+        t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(unwrap_own(t))))
+        if isinstance(expr, TpyGeneratorExpression):
+            self.compat.lent_iteration(t, gen.iterable)
+            return None
+        if not consuming_only(t, self.ctx.registry):
+            if (gen is expr.generators[-1] and gen.head is None
+                    and gen.unpack_vars is None):
+                self.ctx.comp_candidates[gen] = CompCandidate(elem_type)
+            return None
+        return self.compat.consuming_iteration(
+            gen.iterable, t, gen,
+            lambda: self._set_comp_consumption(gen, None, elem_type),
+            moved_out=False, elem_type=elem_type).fi
+
+    def _settle_comp_consumption(
+        self,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension,
+        sinks: 'list[tuple[TpyExpr, bool]]',
+    ) -> list[bool]:
+        """Decide each sink's move and a waiting clause's consumption
+        (`CompCandidate`) once its element(s) are analyzed and its scope
+        left, as a `for` decides after its body (`consuming_iteration`): it
+        moves its variable out where a read holds it -- an owning slot
+        inside the sinks, or a sink (`sinks`: each with whether it is the
+        last-evaluated one) that is the variable itself (`comp_elem_moves`).
+        Consumed, the reads it held make their moves; lent -- now, or once
+        the body settles its source's ownership (the revert) -- the clause
+        takes the one lending path (`lend`), whose copies the reads'
+        records declare. Returns whether each sink moves, as decided now."""
+        gen = expr.generators[-1]
+        verdicts = [self.compat.comp_elem_moves(gen, e, is_last_sink=last)
+                    for e, last in sinks]
+        cand = self.ctx.comp_candidates.get(gen)
+        if cand is None:
+            return verdicts
+        del self.ctx.comp_candidates[gen]
+        t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(unwrap_own(
+            self.ctx.get_expr_type(gen.iterable)))))
+        finish = cand.finish
+
+        def lend() -> None:
+            self._set_comp_consumption(gen, None, cand.step)
+            for read, _move in cand.moves:
+                self.ctx.comp_moves.pop(read, None)
+            if finish is not None:
+                finish.decide_copies()
+
+        fi = self.compat.consuming_iteration(
+            gen.iterable, t, gen, lend, moved_out=bool(cand.moves),
+            elem_type=cand.step).fi
+        if fi is not None:
+            self._set_comp_consumption(gen, fi, cand.step)
+            for read, move in cand.moves:
+                self.ctx.comp_moves[read] = move
+        else:
+            held = [read for read, _move in cand.moves]
+            verdicts = [v and not any(peel_coerce(e) is r for r in held)
+                        for v, (e, _last) in zip(verdicts, sinks)]
+        if finish is not None:
+            finish()
+        return verdicts
 
     def _analyze_genexpr_function(self, expr: TpyGeneratorExpression,
                                   elem_type: TpyType) -> TpyType:
@@ -5961,8 +6073,7 @@ class ExpressionAnalyzer:
         # statement peels it the same way.
         src_elem = canonical_readonly(
             resolve_int_literals(elem_type, self.ctx.default_int_for_literal))
-        src_type: TpyType = NominalType("Iterable", (src_elem,), is_protocol=True,
-                                        _module_qname=qnames.ITERABLE)
+        src_type: TpyType = make_iterable(src_elem)
         # A borrowed container keeps its own type: the frame walks it by
         # begin/end, and a reference element (or a tuple member) aliases the
         # source instead of riding a copied step result.
@@ -6258,6 +6369,8 @@ class ExpressionAnalyzer:
         their loans are its body."""
         if self._stepping is expr:
             result_elem_type = self._step_comp_elements(expr, expected)
+            moves, = self._settle_comp_consumption(
+                expr, [(expr.element_expr, True)])
         else:
             self._check_comp_clause_names(expr)
             elem_type = self._resolve_comp_iterable(expr.generators[0], expr)
@@ -6270,6 +6383,8 @@ class ExpressionAnalyzer:
             if self.scopes is None:
                 raise RuntimeError(f"{kind} comprehension requires ScopeTracker")
             result_elem_type = self._enter_comp_scope(expr, elem_type, expected)
+            moves, = self._settle_comp_consumption(
+                expr, [(expr.element_expr, True)])
         expected_elem = expected.type if expected is not None else None
         if self._converting_element([result_elem_type], expected) is not None:
             expected_elem = None
@@ -6284,22 +6399,14 @@ class ExpressionAnalyzer:
             result_elem_type = expected_elem if is_float_type(expected_elem) else FLOAT
 
         # Placed after the comp scope exits so the loop var is no longer in
-        # `loop_vars`: the warning fires immediately rather than being deferred
-        # for a consuming-iteration decision. Suppressed for an owned-source
-        # bare-loop-var sink (the only shape codegen moves): the element
-        # transfers ownership, so there is no copy to warn about. A derived sink
-        # (`x.field`, `f(x)`) is not the move, so it still warns/copies. The
-        # clause decides every sink, warned or not: the lowering reads it.
-        moves = self.compat.comp_elem_moves(expr.generators[-1],
-                                            expr.element_expr,
-                                            is_last_sink=True)
-        if (expr.element_expr.loc is not None and not isinstance(expected_elem, AnyType)
-                and not moves):
+        # `loop_vars`. One owned-sink check for every element: it registers
+        # the copy, and the read's record drops it where the clause moves the
+        # variable out (`moves`, settled above) -- a clause the settled body
+        # turns back to lending keeps it.
+        if moves or (expr.element_expr.loc is not None
+                     and not isinstance(expected_elem, AnyType)):
             self._warn_storage_element_copy(expr.element_expr,
                                             result_elem_type)
-        elif moves:
-            self._register_moved_element(expr.element_expr,
-                                         result_elem_type)
 
         if expected_elem is not None and result_elem_type != expected_elem:
             # Subclass coercion excluded: storing Child in list/set[Base] silently
@@ -6419,10 +6526,12 @@ class ExpressionAnalyzer:
         """Analyze a dict comprehension: {key: value for var in iterable if
         cond}. Its slot step runs only the key's and value's (as a list
         comprehension's)."""
-        innermost = expr.generators[-1]
+        sinks = [(expr.key_expr, False), (expr.value_expr, True)]
         if self._stepping is expr:
             key_type, value_type = self._step_comp_elements(
                 expr, (key_hint, value_hint))
+            key_moves, value_moves = self._settle_comp_consumption(
+                expr, sinks)
         else:
             self._check_comp_clause_names(expr)
             elem_type = self._resolve_comp_iterable(expr.generators[0], expr)
@@ -6432,6 +6541,8 @@ class ExpressionAnalyzer:
                 raise RuntimeError("dict comprehension requires ScopeTracker")
             key_type, value_type = self._enter_comp_scope(
                 expr, elem_type, (key_hint, value_hint))
+            key_moves, value_moves = self._settle_comp_consumption(
+                expr, sinks)
         expected_key = key_hint.type if key_hint is not None else None
         expected_value = value_hint.type if value_hint is not None else None
         if self._converting_element([key_type], key_hint) is not None:
@@ -6450,24 +6561,15 @@ class ExpressionAnalyzer:
         if isinstance(value_type, FloatLiteralType):
             value_type = expected_value if is_float_type(expected_value) else FLOAT
 
-        # See the list/set comprehension path for the loop-var-scope timing
-        # rationale (placed after scope exit so the warning is not deferred).
-        # Key and value are suppressed independently for an owned bare-loop-var
-        # sink (the one shape codegen moves) -- `{node.id: node}` moves the value
-        # but still copies/warns the key.
-        key_moves = self.compat.comp_elem_moves(innermost, expr.key_expr)
-        value_moves = self.compat.comp_elem_moves(innermost, expr.value_expr,
-                                                  is_last_sink=True)
-        if (expr.key_expr.loc is not None and not isinstance(expected_key, AnyType)
-                and not key_moves):
+        # As the list/set element's check; key and value are decided
+        # independently -- `{node.id: node}` moves the value but still
+        # copies/warns the key.
+        if key_moves or (expr.key_expr.loc is not None
+                         and not isinstance(expected_key, AnyType)):
             self._warn_storage_element_copy(expr.key_expr, key_type)
-        elif key_moves:
-            self._register_moved_element(expr.key_expr, key_type)
-        if (expr.value_expr.loc is not None and not isinstance(expected_value, AnyType)
-                and not value_moves):
+        if value_moves or (expr.value_expr.loc is not None
+                           and not isinstance(expected_value, AnyType)):
             self._warn_storage_element_copy(expr.value_expr, value_type)
-        elif value_moves:
-            self._register_moved_element(expr.value_expr, value_type)
 
         if expected_key is not None and key_type != expected_key:
             expr.key_expr = self.compat.coerce_expr(
@@ -6626,19 +6728,14 @@ class ExpressionAnalyzer:
                 del comp_targets[len(comp_targets) - len(names):]
         if step:
             return result
-        # Whether the targets bind const-ref is decided once every write
-        # through them is known (`resolve_loop_bindings`). A source handing
-        # any of its step over binds the element non-const (`auto&&`) so a
-        # last-use sink can move it -- mirrors the consuming for-loop, which
-        # excludes consumed vars from the const-ref binding.
-        self.ctx.loop_binders.append(
-            (gen, worth_const_ref(elem_type) and not gen.step_handover))
-        # The clause variable is live over its conditions, every later
-        # clause and the element(s).
-        decide_copies_var(
-            self.ctx, gen, gen.iterable, self.ctx.get_expr_type(gen.iterable),
-            lambda: comp_live_region(_comp_clause_body(expr, k)), elem_type,
-            handed_over=bool(gen.step_handover))
+        finish = _CompClauseFinish(self.ctx, expr, k, elem_type)
+        cand = self.ctx.comp_candidates.get(gen)
+        if cand is not None:
+            # Both read what the step hands over, which waits for the
+            # clause's consumption (`_settle_comp_consumption`).
+            cand.finish = finish
+        else:
+            finish()
         return result
 
     def _comp_clause_head(
@@ -7204,16 +7301,22 @@ class ExpressionAnalyzer:
             self, expr: TpySubscript, sv: SubscriptViews, readonly: bool,
             arg_types: list[TpyType],
             args: 'list[TpyExpr] | None' = None,
-            stored: TpyExpr | None = None) -> 'FunctionInfo':
+            stored: 'list[TpyExpr] | None' = None,
+            value_hint: 'TpyType | None' = None) -> 'FunctionInfo':
         """Resolve the dunder set `sv` of subscript `expr` exactly as the
         explicit `t.__getitem__(k)` / `__setitem__(k, v)` / `__delitem__(k)`
         call resolves it (`CallAnalyzer.rank_method_call`), so both stamp
         one winner. The key is received at the winner's parameter in place
         on the node -- a written slice builds the slice the variant takes
-        instead -- and the further `args` with it (a plain store's value is
-        received by the store, `stored`, which passes it all the same). A
-        read is credited on a record receiver here, a store or `del` by
-        its statement."""
+        instead -- and the further `args` with it. A plain store's value,
+        `stored` (one expression, written back in place), is received here
+        too where the winner's value parameter takes its elements (a slice
+        store's `Iterable[Own[T]]`); any other is received by the store,
+        which passes it all the same; a value its context typed with
+        `value_hint` ranks at it, as an argument hinted by its call's
+        survivors does, and is received at its own type. A read is
+        credited on a record receiver here, a store or `del` by its
+        statement."""
         kind, receiver = sv.kind, sv.receiver
         name = kind.value
         overloads, views, type_subst = sv.overloads, sv.views, sv.subst
@@ -7228,6 +7331,8 @@ class ExpressionAnalyzer:
             hint = self._shared_key_param(sv)
             if hint is not None:
                 ranked[0] = self.calls.ranked_at_slot(ranked[0], hint)
+        if value_hint is not None:
+            ranked[1] = self.calls.ranked_at_slot(ranked[1], value_hint)
         admitted = self.calls.admitted_overloads(
             views, sv.shape, {0: ranked[0]}, twins_as_one=False)
         keyed = [m for m, v in zip(overloads, views)
@@ -7276,6 +7381,10 @@ class ExpressionAnalyzer:
         fi = self._bound_variant(method, subst)
         expr.written_index = expr.index
         received = [expr.index, *(args or [])]
+        value_received = stored is not None and store_takes_elements(fi)
+        if value_received:
+            assert stored is not None
+            received.append(stored[0])
         types = list(arg_types[:len(received)])
         params = list(fi.params[:len(received)])
         labels: list[str | None] = [
@@ -7292,6 +7401,9 @@ class ExpressionAnalyzer:
             expr.index = received.pop(0)
             if self.ctx.slot_step_commits():
                 self._warn_narrowed_lookup(fi, expr.index)
+        if value_received:
+            assert stored is not None
+            stored[0] = received.pop()
         if args:
             args[:] = received
         expr.dunders = expr.dunders.stamped(kind, fi)
@@ -7304,7 +7416,7 @@ class ExpressionAnalyzer:
             self.calls.commit_facts(
                 expr, fi, CallOperands(
                     fi, None, [expr.index, *(args or [])]
-                    + ([stored] if stored is not None else [])))
+                    + (stored if stored is not None else [])))
             if kind is SubscriptDunder.GET:
                 credit_implicit_receiver_call(
                     self.ctx, expr.obj, receiver, method, name, expr)

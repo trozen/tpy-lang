@@ -48,7 +48,7 @@ _FRESH_COLLECTION_NODES = (
 from ..typesys import (ResultPosition, ResultRepresentation,
                        classify_result_representation, pointer_repr_optional,
                        yield_borrow_slot_cpp)
-from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, ReadonlyType, TupleType, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, ConcreteFrameType
+from ..typesys import IntLiteralType, NominalType, OwnType, TpyType, OptionalType, ReadonlyType, TupleType, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, ConcreteFrameType
 from ..value_category import for_source_is_rvalue
 from ..type_def_registry import (is_str_type, is_big_int_type,
                                   view_owned_copy_init)
@@ -400,7 +400,8 @@ class AsyncCoroCodegen:
                 cpp_name="__self",
                 field_type=recv_type,
                 ctor_param_type=recv_type,
-                kind=FrameCaptureKind.REF,
+                kind=(FrameCaptureKind.OWNED_VALUE if frame.owns_receiver
+                      else FrameCaptureKind.REF),
             ))
         for param, kind in zip(frame.params, frame.captures):
             pname, ptype = param.name, param.type
@@ -861,8 +862,11 @@ class AsyncCoroCodegen:
             names = list(info.pointer_payloads)
             if info.loop_var_field is not None:
                 names.append(info.loop_var_field[0])
+            spelled = {info.src_alias}
+            if info.itr_alias is not None:
+                spelled.add(info.itr_alias[0])
             for name in names:
-                aliases_of_local.setdefault(name, set()).add(info.src_alias)
+                aliases_of_local.setdefault(name, set()).update(spelled)
         borrows, untraced = self._frame_local_borrows(func)
 
         def render(emit: 'Callable[[TextIO], None]') -> str:
@@ -896,6 +900,16 @@ class AsyncCoroCodegen:
                        decl=f"{INDENT}using {a.name} = {a.definition};\n",
                        spelled_from=a.reads, is_alias=True, loc=a.loc)
             for a in aliases]
+        # Each loop's iterator-type alias follows the source alias it is
+        # spelled off.
+        alias_fields += [
+            FrameField(name=info.itr_alias[0],
+                       decl=f"{INDENT}using {info.itr_alias[0]} = "
+                            f"{info.itr_alias[1]};\n",
+                       spelled_from=frozenset([info.src_alias]),
+                       is_alias=True, loc=s.loc)
+            for s, info in state.for_loop_info.items()
+            if info.itr_alias is not None and info.src_alias is not None]
 
         # Synthetic fields for for-loops: iterator, sentinel and step result
         # for a CFG-decomposed one, plus the source holder, which a loop that
@@ -912,9 +926,7 @@ class AsyncCoroCodegen:
                 decl=f"{INDENT}::tpy::frame_loop_slot<{ftype}> {fname};\n",
                 borrows=(self._loop_field_borrows(fname, owner)
                          if owner is not None else frozenset()),
-                spelled_from=(frozenset([owner.alias])
-                              if owner is not None and owner.alias is not None
-                              else frozenset()),
+                spelled_from=self._loop_field_aliases(owner),
                 drop_runs_user_code=drops))
 
         # Per-write-site materialization slots for rvalue writes into
@@ -994,6 +1006,15 @@ class AsyncCoroCodegen:
                    + frame_objects + sub_futures)
         printed.frame_fields = order_frame_fields(fields_)
         return printed.frame_fields
+
+    @staticmethod
+    def _loop_field_aliases(owner: 'FrameLoopOwner | None') -> 'frozenset[str]':
+        """The aliases a loop field may be spelled off: its loop's source
+        alias and, for an `iter_next` loop, the iterator-type alias."""
+        if owner is None or owner.alias is None:
+            return frozenset()
+        itr = owner.info.itr_alias if owner.info is not None else None
+        return frozenset([owner.alias] + ([itr[0]] if itr is not None else []))
 
     def _loop_field_borrows(self, fname: str,
                             owner: FrameLoopOwner) -> 'frozenset[str]':
@@ -1413,6 +1434,8 @@ class AsyncCoroCodegen:
         record_name, recv_expr = receiver if receiver is not None else (None, None)
         parts: list[str] = []
         if recv_expr is not None:
+            if self.resumable_frame(func, record_name).owns_receiver:
+                recv_expr = f"std::move({recv_expr})"
             parts.append(recv_expr)
         for cparam in self._classify_params(func, record_name):
             if cparam.cpp_name == "__self":
@@ -3998,7 +4021,11 @@ class AsyncCoroCodegen:
             # evaluation.
             slot, src_cpp = self._for_src_store(out, indent, stmt, uid, info)
             src = slot if slot is not None else src_cpp
-            out.write(f"{indent}::tpy::resumable_iter_init(__for_itr_{uid}, {src});\n")
+            if info is not None and info.owning_param is not None:
+                out.write(f"{indent}::tpy::resumable_handover_iter_init<decltype("
+                          f"{info.owning_param})>(__for_itr_{uid}, {src});\n")
+            else:
+                out.write(f"{indent}::tpy::resumable_iter_init(__for_itr_{uid}, {src});\n")
 
     def _emit_for_range_setup(self, out: "TextIO", indent: str,
                               stmt: 'THIRForIterSetup', uid: int) -> None:
@@ -4086,8 +4113,12 @@ class AsyncCoroCodegen:
             # resumable_iter_next drives the owned iterator, or the self-iterator
             # source in place -- both re-read `src` so a frame move never dangles.
             src = self._for_src_expr(t, info)
-            pre = (f"__for_r_{uid}.emplace("
-                   f"::tpy::resumable_iter_next(__for_itr_{uid}, {src}));")
+            if info is not None and info.owning_param is not None:
+                step = (f"::tpy::resumable_handover_iter_next<decltype("
+                        f"{info.owning_param})>(__for_itr_{uid}, {src})")
+            else:
+                step = f"::tpy::resumable_iter_next(__for_itr_{uid}, {src})"
+            pre = f"__for_r_{uid}.emplace({step});"
         # A source-derived field takes one spelling whichever form the trait
         # picked: `unwrap_ref_move` hands `frame_slot` either a reference to bind
         # or a value to move in, and `emplace` resolves to the right one.
@@ -4102,6 +4133,13 @@ class AsyncCoroCodegen:
             bind_post = [f"{cpp_var} = &({elem});"]
         elif info is not None and info.opt_ptr_loop_var == stmt.var:
             bind_post = [f"{cpp_var} = ::tpy::optional_to_ptr({elem});"]
+        elif isinstance(unwrap_ref_type(stmt.elem_type), OwnType):
+            # An `Own[T]` loop variable: an owned step moves in, a lent one
+            # is copied (own_bind), as the sync loop binds it.
+            owned = f"::tpy::own_bind(*{r})"
+            bind_post = ([f"{cpp_var}.emplace({owned});"]
+                         if self._frame_of(func).slot_backed(stmt.var)
+                         else [f"{cpp_var} = {owned};"])
         elif self._frame_of(func).slot_backed(stmt.var):
             bind_post = [f"{cpp_var}.emplace({elem});"]
         else:

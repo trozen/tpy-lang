@@ -70,7 +70,7 @@ void collisions() {
     std::array<P, 3> ps = {P("b"), P("a"), P("c")};
     std::cout << "value:" << " " << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
-        auto __obj_0 = ::tpy::builtin_sorted<P>(ps);
+        auto __obj_0 = ::tpy::builtin_sorted<P>(std::move(ps));
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();

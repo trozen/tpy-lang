@@ -253,7 +253,6 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_head_own_iter::__n
         (*xs).push_back(std::tuple<N, int32_t>{N(1), 10});
         (*xs).push_back(std::tuple<N, int32_t>{N(2), 20});
         __for_src_0.emplace(::tpy::own_iter(std::move((*xs))));
-        ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
         __state = S_JOIN_0;
         continue;
     }
@@ -264,7 +263,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_head_own_iter::__n
     }
     case S_RESUME_1:  // after: yield x.v
     case S_JOIN_0: {
-        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, (*__for_src_0)));
+        __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});

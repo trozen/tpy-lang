@@ -555,7 +555,7 @@ void row_rebind_pos() {
 //     print("row_iadd:", g)
 void row_iadd_pos() {
     std::vector<std::array<int64_t, 1>> g = {{1}};
-    ::tpy::list_extend(g, ::tpy::own_iter(std::array<std::array<int64_t, 1>, 1>{{{::tpyapp::main::wide()}}}));
+    ::tpy::list_extend(g, std::array<std::array<int64_t, 1>, 1>{{{::tpyapp::main::wide()}}});
     std::cout << "row_iadd:" << " " << ::tpy::ListPrinter(g) << "\n" << ::tpy::check_signals;
 }
 

@@ -86,7 +86,7 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     def __iter__(self) -> Iterator[K]: ...
 
     @dispatch
-    @native("tpy::own_iter_dict", function=True)
+    @native("tpy::own_iter", function=True)
     def __iter__(self: Own[Self]) -> Iterator[Own[K]]: ...
 
     @native("tpy::__len__", function=True)

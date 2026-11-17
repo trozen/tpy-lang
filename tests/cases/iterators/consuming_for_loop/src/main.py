@@ -10,7 +10,7 @@ class Node:
 
 def test_own_iter_explicit() -> None:
     src: list[Node] = [Node(1), Node(2), Node(3)]
-    oi = own_iter(src)  # tpyc: type(/OwnIter\[Node\]/)
+    oi = own_iter(src)  # tpyc: type(/Iterator\[Own\[Node\]\]/)
     total: int32 = 0
     for x in oi:
         total += x.val

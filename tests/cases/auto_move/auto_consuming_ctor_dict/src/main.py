@@ -1,5 +1,5 @@
 # Consuming dict keys via Iterable[Own[T]] constructor at last use.
-# list(dict) uses own_iter_dict when dict is at last use.
+# list(dict) hands the dict over (moved into its consuming iterator) when it is at last use.
 from tpy import int32
 
 def main() -> None:

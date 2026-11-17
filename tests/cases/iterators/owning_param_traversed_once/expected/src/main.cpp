@@ -51,36 +51,31 @@ __gen_pairs pairs() {
 //     print("tuple", tuple_steps(pairs()))
 //     print("protocol", count(Sized3(3)))
 void main() {
-    std::cout << "free" << " " << ::tpyapp::main::total(::tpy::own_iter(::tpyapp::main::mk())) << "\n" << ::tpy::check_signals;
+    std::cout << "free" << " " << ::tpyapp::main::total(::tpyapp::main::mk()) << "\n" << ::tpy::check_signals;
     Acc acc = Acc();
-    std::cout << "method" << " " << acc.take_all(::tpy::own_iter(::tpyapp::main::mk())) << " " << ::tpy::__getitem__(acc.rows, 2).n << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << acc.take_all(::tpyapp::main::mk()) << " " << ::tpy::__getitem__(acc.rows, 2).n << "\n" << ::tpy::check_signals;
     std::vector<R> rows = ::tpyapp::main::mk();
-    Bag bag = Bag(::tpy::own_iter(std::move(rows)));
+    Bag bag = Bag(std::move(rows));
     std::cout << "ctor" << " " << ::tpy::__len__(bag.rows) << " " << ::tpy::__getitem__(bag.rows, 0).n << "\n" << ::tpy::check_signals;
-    std::vector<R> __tmp_1 = ::tpyapp::main::mk();
-    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_ns(__tmp_1))) << "\n" << ::tpy::check_signals;
-    std::vector<R> __tmp_2 = ::tpyapp::main::mk();
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_total(__tmp_2))) << "\n" << ::tpy::check_signals;
-    std::cout << "guard" << " " << ::tpyapp::main::guarded(::tpy::own_iter(::tpyapp::main::mk()), true) << " " << ::tpyapp::main::guarded(::tpy::own_iter(::tpyapp::main::mk()), false) << "\n" << ::tpy::check_signals;
+    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_ns(::tpyapp::main::mk()))) << "\n" << ::tpy::check_signals;
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_total(::tpyapp::main::mk()))) << "\n" << ::tpy::check_signals;
+    std::cout << "guard" << " " << ::tpyapp::main::guarded(::tpyapp::main::mk(), true) << " " << ::tpyapp::main::guarded(::tpyapp::main::mk(), false) << "\n" << ::tpy::check_signals;
     __gen_make_steps steps = ::tpyapp::main::make_steps();
     std::cout << "union" << " " << ::tpyapp::main::union_arm(steps) << "\n" << ::tpy::check_signals;
-    std::cout << "twice" << " " << ::tpyapp::main::twice(::tpy::own_iter(::tpyapp::main::mk())) << "\n" << ::tpy::check_signals;
-    std::cout << "forward" << " " << ::tpyapp::main::forward(::tpy::own_iter(::tpyapp::main::mk())) << "\n" << ::tpy::check_signals;
-    std::cout << "alias" << " " << ::tpyapp::main::via_alias(::tpy::own_iter(::tpyapp::main::mk())) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = std::array<int32_t, 2>{1, 2};
-    std::cout << "hooks" << " " << ::tpy::print_bool(::tpyapp::main::in_once(__tmp_3)) << " " << ::tpyapp::main::iadd_once(::tpy::own_iter(::tpyapp::main::mk())) << " " << ::tpyapp::main::comp_once(::tpy::own_iter(::tpyapp::main::mk())) << "\n" << ::tpy::check_signals;
-    auto __tmp_4 = std::array<int32_t, 3>{1, 2, 3};
-    std::cout << "ints" << " " << ::tpyapp::main::ints(__tmp_4) << "\n" << ::tpy::check_signals;
-    std::cout << "match" << " " << ::tpyapp::main::by_mode(::tpy::own_iter(::tpyapp::main::mk()), 0) << " " << ::tpyapp::main::by_mode(::tpy::own_iter(::tpyapp::main::mk()), 1) << "\n" << ::tpy::check_signals;
-    std::cout << "finally" << " " << ::tpyapp::main::finally_guard(::tpy::own_iter(::tpyapp::main::mk()), true) << " " << ::tpyapp::main::finally_guard(::tpy::own_iter(::tpyapp::main::mk()), false) << "\n" << ::tpy::check_signals;
-    std::cout << "loop_return" << " " << ::tpyapp::main::loop_return(::tpy::own_iter(::tpyapp::main::mk())) << "\n" << ::tpy::check_signals;
-    std::cout << "break" << " " << ::tpyapp::main::traverse_then_break(::tpy::own_iter(::tpyapp::main::mk()), 3) << " " << ::tpyapp::main::traverse_then_break(::tpy::own_iter(::tpyapp::main::mk()), 1) << "\n" << ::tpy::check_signals;
-    std::cout << "finally_break" << " " << ::tpyapp::main::finally_may_break(::tpy::own_iter(::tpyapp::main::mk()), true) << " " << ::tpyapp::main::finally_may_break(::tpy::own_iter(::tpyapp::main::mk()), false) << "\n" << ::tpy::check_signals;
-    std::cout << "with" << " " << ::tpyapp::main::with_once(::tpy::own_iter(::tpyapp::main::mk())) << "\n" << ::tpy::check_signals;
-    auto __tmp_5 = ::tpyapp::main::pairs();
-    std::cout << "tuple" << " " << ::tpyapp::main::tuple_steps(__tmp_5) << "\n" << ::tpy::check_signals;
-    auto __tmp_6 = Sized3(3);
-    std::cout << "protocol" << " " << ::tpyapp::main::count(__tmp_6) << "\n" << ::tpy::check_signals;
+    std::cout << "twice" << " " << ::tpyapp::main::twice(::tpyapp::main::mk()) << "\n" << ::tpy::check_signals;
+    std::cout << "forward" << " " << ::tpyapp::main::forward(::tpyapp::main::mk()) << "\n" << ::tpy::check_signals;
+    std::cout << "alias" << " " << ::tpyapp::main::via_alias(::tpyapp::main::mk()) << "\n" << ::tpy::check_signals;
+    std::cout << "hooks" << " " << ::tpy::print_bool(::tpyapp::main::in_once(std::array<int32_t, 2>{1, 2})) << " " << ::tpyapp::main::iadd_once(::tpyapp::main::mk()) << " " << ::tpyapp::main::comp_once(::tpyapp::main::mk()) << "\n" << ::tpy::check_signals;
+    std::cout << "ints" << " " << ::tpyapp::main::ints(std::array<int32_t, 3>{1, 2, 3}) << "\n" << ::tpy::check_signals;
+    std::cout << "match" << " " << ::tpyapp::main::by_mode(::tpyapp::main::mk(), 0) << " " << ::tpyapp::main::by_mode(::tpyapp::main::mk(), 1) << "\n" << ::tpy::check_signals;
+    std::cout << "finally" << " " << ::tpyapp::main::finally_guard(::tpyapp::main::mk(), true) << " " << ::tpyapp::main::finally_guard(::tpyapp::main::mk(), false) << "\n" << ::tpy::check_signals;
+    std::cout << "loop_return" << " " << ::tpyapp::main::loop_return(::tpyapp::main::mk()) << "\n" << ::tpy::check_signals;
+    std::cout << "break" << " " << ::tpyapp::main::traverse_then_break(::tpyapp::main::mk(), 3) << " " << ::tpyapp::main::traverse_then_break(::tpyapp::main::mk(), 1) << "\n" << ::tpy::check_signals;
+    std::cout << "finally_break" << " " << ::tpyapp::main::finally_may_break(::tpyapp::main::mk(), true) << " " << ::tpyapp::main::finally_may_break(::tpyapp::main::mk(), false) << "\n" << ::tpy::check_signals;
+    std::cout << "with" << " " << ::tpyapp::main::with_once(::tpyapp::main::mk()) << "\n" << ::tpy::check_signals;
+    std::cout << "tuple" << " " << ::tpyapp::main::tuple_steps(::tpyapp::main::pairs()) << "\n" << ::tpy::check_signals;
+    auto __tmp_1 = Sized3(3);
+    std::cout << "protocol" << " " << ::tpyapp::main::count(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // # An `Iterable[Own[T]]` parameter is consumed by its first traversal: every shape

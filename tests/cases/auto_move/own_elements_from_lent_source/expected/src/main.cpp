@@ -178,8 +178,7 @@ void main() {
     std::vector<std::vector<int32_t>> ll = {{1, 2}};
     std::vector<std::vector<int32_t>> got = ::tpyapp::main::collect(ll);
     std::cout << "free" << " " << ::tpy::__len__(::tpy::__getitem__(got, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << "\n" << ::tpy::check_signals;
-    auto __tmp_1 = ::tpy::copy_iter<std::vector<int32_t>>(ll);
-    std::vector<std::vector<int32_t>> got2 = ::tpyapp::main::collect(__tmp_1);
+    std::vector<std::vector<int32_t>> got2 = ::tpyapp::main::collect(::tpy::copy_iter<std::vector<int32_t>>(ll));
     std::cout << "free explicit" << " " << ::tpy::__len__(::tpy::__getitem__(got2, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << "\n" << ::tpy::check_signals;
     std::cout << "method" << " " << Sink().absorb(ll) << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << "\n" << ::tpy::check_signals;
     std::cout << "closure" << " " << ::tpyapp::main::via_closure(ll) << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << "\n" << ::tpy::check_signals;
@@ -214,30 +213,25 @@ void main() {
     std::cout << "optional elements" << " " << ::tpyapp::main::keep_opts(opts) << " " << ::tpy::ListPrinter(opts) << "\n" << ::tpy::check_signals;
     std::cout << "return" << " " << ::tpy::ListPrinter(::tpyapp::main::first(ll)) << " " << ::tpy::ListPrinter(ll) << "\n" << ::tpy::check_signals;
     std::vector<Cell> cells = ::tpy::make_vector<Cell>(Cell(1), Cell(2));
-    std::cout << "dead" << " " << ::tpyapp::main::sum_cells(::tpy::own_iter(std::move(cells))) << "\n" << ::tpy::check_signals;
+    std::cout << "dead" << " " << ::tpyapp::main::sum_cells(std::move(cells)) << "\n" << ::tpy::check_signals;
     std::vector<Cell> more = ::tpy::make_vector<Cell>(Cell(3));
-    auto __tmp_2 = ::tpy::own_iter(std::move(more));
-    std::cout << "own_iter" << " " << ::tpyapp::main::sum_cells(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "own_iter" << " " << ::tpyapp::main::sum_cells(::tpy::own_iter(std::move(more))) << "\n" << ::tpy::check_signals;
     std::array<Cell, 2> literal = {Cell(4), Cell(5)};
-    std::cout << "literal" << " " << ::tpyapp::main::sum_cells(::tpy::own_iter(std::move(literal))) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = std::array<Cell, 2>{Cell(1), Cell(2)};
-    std::cout << "rvalue literal" << " " << ::tpyapp::main::sum_cells(::tpy::own_iter(std::move(__tmp_3))) << "\n" << ::tpy::check_signals;
-    std::cout << "rvalue call" << " " << ::tpyapp::main::sum_cells(::tpy::own_iter(::tpyapp::main::make_cells())) << "\n" << ::tpy::check_signals;
-    auto __tmp_4 = std::array<C, 2>{C(1), C(2)};
-    std::cout << "rvalue hook literal" << " " << ::tpyapp::main::total_c(::tpy::own_iter(std::move(__tmp_4))) << "\n" << ::tpy::check_signals;
-    std::cout << "rvalue hook call" << " " << ::tpyapp::main::total_c(::tpy::own_iter(::tpyapp::main::make_cs())) << "\n" << ::tpy::check_signals;
+    std::cout << "literal" << " " << ::tpyapp::main::sum_cells(std::move(literal)) << "\n" << ::tpy::check_signals;
+    std::cout << "rvalue literal" << " " << ::tpyapp::main::sum_cells(std::array<Cell, 2>{Cell(1), Cell(2)}) << "\n" << ::tpy::check_signals;
+    std::cout << "rvalue call" << " " << ::tpyapp::main::sum_cells(::tpyapp::main::make_cells()) << "\n" << ::tpy::check_signals;
+    std::cout << "rvalue hook literal" << " " << ::tpyapp::main::total_c(std::array<C, 2>{C(1), C(2)}) << "\n" << ::tpy::check_signals;
+    std::cout << "rvalue hook call" << " " << ::tpyapp::main::total_c(::tpyapp::main::make_cs()) << "\n" << ::tpy::check_signals;
     std::vector<C> hooked = std::vector<C>{};
     hooked.push_back(C(1));
     hooked.push_back(C(2));
-    auto __tmp_5 = ::tpy::copy_iter<C>(hooked);
-    std::vector<C> kept = ::tpyapp::main::keep_c(__tmp_5);
+    std::vector<C> kept = ::tpyapp::main::keep_c(::tpy::copy_iter<C>(hooked));
     ::tpy::__getitem__(kept, 0).n = 50;
     std::cout << "copy_iter" << " " << ::tpy::__len__(kept) << " " << ::tpy::__getitem__(kept, 0).n << " " << ::tpy::__getitem__(hooked, 0).n << "\n" << ::tpy::check_signals;
     std::vector<Cell> cs = ::tpy::make_vector<Cell>(Cell(1), Cell(2));
-    auto __tmp_6 = ::tpy::own_iter(std::move(cs));
-    std::cout << "comp own_iter" << " " << ::tpy::ListPrinter(::tpyapp::main::cell_ns(__tmp_6)) << "\n" << ::tpy::check_signals;
+    std::cout << "comp own_iter" << " " << ::tpy::ListPrinter(::tpyapp::main::cell_ns(::tpy::own_iter(std::move(cs)))) << "\n" << ::tpy::check_signals;
     std::vector<Cell> dead_for_comp = ::tpy::make_vector<Cell>(Cell(3));
-    std::cout << "comp dead" << " " << ::tpy::ListPrinter(::tpyapp::main::cell_ns(::tpy::own_iter(std::move(dead_for_comp)))) << "\n" << ::tpy::check_signals;
+    std::cout << "comp dead" << " " << ::tpy::ListPrinter(::tpyapp::main::cell_ns(std::move(dead_for_comp))) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> rows = {{7}};
     {
         auto __src_2 = ::tpy::builtin_map_n<std::vector<int32_t>>(take, std::array<int32_t, 1>{0}, rows);
@@ -261,7 +255,7 @@ void main() {
         }
     }
     {
-        auto __src_6 = ::tpy::builtin_map_n<int32_t>(take_cell, std::array<int32_t, 1>{1}, ::tpy::own_iter(std::array<Cell, 1>{Cell(4)}));
+        auto __src_6 = ::tpy::builtin_map_n<int32_t>(take_cell, std::array<int32_t, 1>{1}, std::array<Cell, 1>{Cell(4)});
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -272,7 +266,7 @@ void main() {
     }
     std::vector<Cell> dead_cells = ::tpy::make_vector<Cell>(Cell(5));
     {
-        auto __src_8 = ::tpy::builtin_map_n<int32_t>(take_cell, std::array<int32_t, 1>{1}, ::tpy::own_iter(std::move(dead_cells)));
+        auto __src_8 = ::tpy::builtin_map_n<int32_t>(take_cell, std::array<int32_t, 1>{1}, std::move(dead_cells));
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -305,10 +299,9 @@ void main() {
         }
     }
     std::cout << "map gen after" << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
-    auto __tmp_7 = ::tpyapp::main::repeat(xs);
-    std::vector<std::vector<int32_t>> built2 = ::tpyapp::main::via_comp(__tmp_7);
+    std::vector<std::vector<int32_t>> built2 = ::tpyapp::main::via_comp(::tpyapp::main::repeat(xs));
     std::cout << "comp gen" << " " << ::tpy::ListPrinter(built2) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, C> by_name = ::tpy::dict_construct<std::string, C>(::tpy::own_iter(::tpyapp::main::make_pairs()));
+    ::tpy::ordered_map<std::string, C> by_name = ::tpy::dict_construct<std::string, C>(::tpyapp::main::make_pairs());
     std::cout << "collect dict" << " " << ::tpy::__len__(by_name) << " " << ::tpy::__getitem__(by_name, "a").n << "\n" << ::tpy::check_signals;
     std::vector<C> grown = std::vector<C>{};
     __gen_fresh_cs gen3 = ::tpyapp::main::fresh_cs(3);

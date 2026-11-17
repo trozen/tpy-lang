@@ -70,6 +70,14 @@ NOCOPY_NO_AUTO_MOVE_HINT = (
     "intended)"
 )
 
+# The same remedies at an owning element slot for a container whose type
+# has no consuming `__iter__`: it is never handed over, last use or not.
+def nocopy_never_handed_over_hint(container: object) -> str:
+    return (" (use Own[...] to transfer ownership, or copy() if a copy is "
+            f"truly intended; '{container}' has no consuming __iter__ to "
+            "hand its elements over)")
+
+
 # A consuming method's field read that does not move is a borrow: it moves
 # only at the receiver's own last use, not at a last use of the field.
 CONSUMING_FIELD_MOVE_NOTE = (
@@ -81,6 +89,10 @@ CONSUMING_FIELD_COPY_CLAUSE = ", or move it at the last use of `self`"
 # The remedy of an element copy out of a named container.
 ITERABLE_LVALUE_COPY_HINT = ("use copy_iter() to make this explicit "
                              "(or copy() to copy the entire container)")
+# The same remedy at an owning slot whose protocol has members beyond
+# iteration (`__len__`): an iteration adapter answers none of them, so only a
+# copy of the whole container is handed over.
+CONTAINER_COPY_HINT = "use copy() to make this explicit"
 
 
 def nocopy_container_elem_error(typ: object, kind: str) -> str:

@@ -4,7 +4,7 @@
  * Pins the two guarantees codegen relies on when it spells a resumable frame's
  * for-loop variable from the SOURCE type rather than from the TPy element type:
  *
- *   1. `for_elem_deref_t` / `for_elem_next_t` pick alias-vs-own correctly for
+ *   1. `for_elem_deref_t` / `next_elem_t` pick alias-vs-own correctly for
  *      every source shape, including the ones TPy cannot classify (a fresh
  *      value from `__next__` looks exactly like a borrow after unwrap_ref).
  *   2. One spelling drives both forms -- `emplace` binds, `(*f)` reads -- so a
@@ -14,6 +14,12 @@
  *   3. `emplace` builds the new value before destroying the old one, so a
  *      rebind whose argument reads the payload being replaced sees a live
  *      payload.
+ *   4. `emplace_from(make)` constructs a prvalue `make()` returns in place:
+ *      no move on a first init, one on a rebind (still built before the old
+ *      payload is destroyed); an immovable payload, which a rebind could not
+ *      build beside the old one, is refused at compile time and constructs
+ *      through `emplace`; a trivial payload whose `make()` hands back a
+ *      reference copies it as `emplace` does.
  *
  * Exits non-zero on failure; the harness treats output as the assertion.
  */
@@ -87,11 +93,11 @@ struct ValIter {
 
 // --- 1. the traits pick the right form ---
 
-static_assert(std::is_same_v<tpy::for_elem_next_t<BorrowIter>, Point&>,
+static_assert(std::is_same_v<tpy::next_elem_t<tpy::iter_type_t<BorrowIter>>, Point&>,
               "a lent non-value element must alias its source");
-static_assert(std::is_same_v<tpy::for_elem_next_t<FreshIter>, Node>,
+static_assert(std::is_same_v<tpy::next_elem_t<tpy::iter_type_t<FreshIter>>, Node>,
               "a fresh non-value element must be owned, not aliased");
-static_assert(std::is_same_v<tpy::for_elem_next_t<ValIter>, int>,
+static_assert(std::is_same_v<tpy::next_elem_t<tpy::iter_type_t<ValIter>>, int>,
               "a value element must be owned MUTABLY, not bound as const T*");
 
 static_assert(std::is_same_v<tpy::for_elem_deref_t<std::vector<Point>::iterator>,
@@ -239,8 +245,8 @@ int peek(int n) { return n; }
 // no form-dependent branch, which is exactly what codegen emits.
 template <typename Src>
 void drive(Src src, int* observed_last) {
-    using slot_t = tpy::frame_slot<tpy::for_elem_next_t<Src>>;
-    tpy::frame_loop_slot<tpy::iter_result_t<Src>> r;
+    using slot_t = tpy::frame_slot<tpy::next_elem_t<tpy::iter_type_t<Src>>>;
+    tpy::frame_loop_slot<tpy::iter_next_t<tpy::iter_type_t<Src>>> r;
     slot_t p;
     auto it = ::tpy::__iter__(src);
     while (true) {
@@ -296,7 +302,7 @@ void loop_slot_forms() {
     }
 
     // A const payload reaches the primary form through slot types that keep
-    // cv (iter_result_t, begin_iter_t). It must still construct, re-emplace
+    // cv (iter_next_t, begin_iter_t). It must still construct, re-emplace
     // and move -- the slot's storage drops the const, its readers do not.
     {
         tpy::frame_loop_slot<const std::string> c;
@@ -340,6 +346,99 @@ void slot_build_before_destroy() {
     check(*slot == first.substr(4, 7), "frame_slot: emplace(ptr into payload, n)");
 }
 
+struct Counted {
+    static inline int moves = 0;
+    int v;
+    explicit Counted(int x) : v(x) {}
+    Counted(const Counted&) = delete;
+    Counted(Counted&& o) noexcept : v(o.v) { ++moves; }
+};
+
+struct Pinned {
+    int v;
+    explicit Pinned(int x) : v(x) {}
+    Pinned(Pinned&&) = delete;
+};
+
+struct MakePinned {
+    Pinned operator()() const { return Pinned(1); }
+};
+
+struct MakeCounted {
+    Counted operator()() const { return Counted(1); }
+};
+
+// A template, so an unsatisfied call is a false answer, not a hard error.
+template <typename P, typename F>
+constexpr bool emplaces_from = requires(tpy::frame_slot<P> s, F make) {
+    s.emplace_from(make);
+};
+
+static_assert(!emplaces_from<Pinned, MakePinned>,
+              "emplace_from refuses an immovable payload: its rebind cannot build aside");
+static_assert(emplaces_from<Counted, MakeCounted>,
+              "emplace_from takes a movable payload");
+
+// Trivial moves, a user copy constructor and a deleted copy assignment: the
+// trivial form takes it, and a `__iter__` handing back a stored iterator by
+// reference reaches `emplace_from` with an lvalue.
+struct CopiedIter {
+    static inline int copies = 0;
+    int n;
+    CopiedIter() = default;
+    explicit CopiedIter(int v) : n(v) {}
+    CopiedIter(CopiedIter&&) = default;
+    CopiedIter& operator=(CopiedIter&&) = default;
+    CopiedIter(const CopiedIter& o) : n(o.n) { ++copies; }
+    CopiedIter& operator=(const CopiedIter&) = delete;
+    CopiedIter& __iter__() { return *this; }
+    std::expected<int, tpy::StopIteration> __next__() { return n++; }
+};
+
+struct HoldsIter {
+    CopiedIter it{7};
+    CopiedIter& __iter__() { return it; }
+};
+
+void slot_emplace_from() {
+    tpy::frame_slot<Counted> slot;
+    Counted::moves = 0;
+    slot.emplace_from([] { return Counted(1); });
+    check((*slot).v == 1 && Counted::moves == 0, "emplace_from: a first init moves nothing");
+    slot.emplace_from([&] { return Counted((*slot).v + 1); });
+    check((*slot).v == 2 && Counted::moves == 1,
+          "emplace_from: a rebind reads the live payload and moves once");
+
+    tpy::frame_loop_slot<Counted> loop;
+    Counted::moves = 0;
+    loop.emplace_from([] { return Counted(3); });
+    check((*loop).v == 3 && Counted::moves == 0, "emplace_from: a loop slot moves nothing");
+
+    tpy::frame_slot<Pinned> pinned;
+    pinned.emplace(4);
+    check((*pinned).v == 4, "emplace: an immovable payload constructs in place");
+
+    tpy::frame_slot<int> trivial;
+    trivial.emplace_from([] { return 6; });
+    check(*trivial == 6, "emplace_from: a trivial payload assigns");
+
+    // A reference `make()` result copies, as `emplace` of an lvalue does.
+    const std::string held = "kept";
+    tpy::frame_slot<std::string> copied;
+    copied.emplace_from([&]() -> const std::string& { return held; });
+    check(*copied == "kept" && held == "kept", "emplace_from: a reference result copies");
+
+    // The trivial form copy-constructs a reference result (its copy
+    // assignment is deleted), and the loop steps the copy, not the member.
+    HoldsIter src;
+    tpy::frame_loop_slot<tpy::iter_type_t<HoldsIter>> it;
+    CopiedIter::copies = 0;
+    tpy::resumable_iter_init(it, src);
+    auto first = tpy::resumable_iter_next(it, src);
+    check(first.has_value() && *first == 7 && CopiedIter::copies == 1 && src.it.n == 7,
+          "emplace_from: a trivial payload copies a reference result once");
+}
+
 } // namespace
 
 int main() {
@@ -348,6 +447,7 @@ int main() {
     iteration_forms();
     loop_slot_forms();
     slot_build_before_destroy();
+    slot_emplace_from();
     if (failures != 0) {
         std::printf("%d frame_slot form check(s) failed\n", failures);
         return 1;

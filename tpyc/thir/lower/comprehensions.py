@@ -44,15 +44,16 @@ from ...type_def_registry import (
     is_set,
     is_span_iter,
 )
-from ...modules.type_resolution import get_iterable_element_type, is_native_iterable
+from ...modules.type_resolution import (get_iterable_element_type,
+                                       is_native_iterable, traverses_owning)
 from ...codegen_cpp.context import (
     contains_named_expr, free_callee_cpp, is_lvalue_iterable)
 from ...codegen_cpp.types import resolve_pending_container
 from ..reject import ThirUnsupported
 from ..faces import witness as _witness
 from ..nodes import (THIRArrayComprehension, THIRComprehensionBlock,
-    THIRCompInsert, THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRIf,
-    THIRMove, THIRName, THIRStmt)
+    THIRCompInsert, THIRConsumingIter, THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRIf,
+    THIRMove, THIRName, THIRStmt, Form)
 from .checks import (_combinator_pins_source, _container_storage_call_rvalue,
                      _user_iterator_iterable,
                      _native_iter_combinator,
@@ -100,6 +101,7 @@ from .expressions import (
     _lower_field_source,
     _lower_range_object,
     _lower_truthy,
+    consuming_iter,
 )
 from . import statements as _statements
 
@@ -257,12 +259,6 @@ def _user_iterable_source(gen, declared: dict[str, TpyType], analyzer,
     else:
         if _comp_synth_begin_end(u, analyzer):
             return None
-        rec = analyzer.registry.get_record_for_type(u)
-        if rec is not None and any(
-                fi.is_consuming for fi in
-                analyzer.registry.get_method_overloads_with_parents(
-                    rec, "__iter__")):
-            return None
     et = get_iterable_element_type(u, registry=analyzer.registry)
     if et is None:
         return None
@@ -277,6 +273,26 @@ def _user_iterable_source(gen, declared: dict[str, TpyType], analyzer,
         unwrap_ref_type(et), analyzer.ctx.default_int_for_literal)
     return _SourceRoute(loop="begin_end", counter_type=None, it_type=u,
                         et=et, iterable_lvalue=lvalue, iter_protocol=True)
+
+
+def _consuming_source(gen, analyzer) -> '_SourceRoute | None':
+    """A source sema gives up to its consuming `__iter__`
+    (`consuming_iter_fi`), as the for statement's `_for_consuming_route`:
+    the clause loops over the fresh iterator `::tpy::own_iter(...)` returns
+    (`_comprehension_loop`), each step the clause's own (`step_handover`),
+    the variable binding its element."""
+    t = analyzer.get_expr_type(gen.iterable)
+    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_unwrap_own(t))))
+         if isinstance(t, TpyType) else None)
+    et = (get_iterable_element_type(u, registry=analyzer.registry)
+          if u is not None else None)
+    if et is None:
+        return None
+    et = resolve_int_literals(unwrap_ref_type(_unwrap_own(et)),
+                              analyzer.ctx.default_int_for_literal)
+    return _SourceRoute(loop="begin_end", counter_type=None, it_type=u,
+                        et=et, iterable_lvalue=False,
+                        handover=gen.step_handover)
 
 
 def _source_route(gen, declared: dict[str, TpyType],
@@ -316,6 +332,8 @@ def _source_route(gen, declared: dict[str, TpyType],
                                 et=counter, iterable_lvalue=False)
         return _SourceRoute(loop="range", counter_type=counter,
                             it_type=None, et=counter, iterable_lvalue=True)
+    if gen.consuming_iter_fi is not None:
+        return _consuming_source(gen, analyzer)
     user = _user_iterable_source(gen, declared, analyzer, lc)
     if user is not None:
         return user
@@ -513,10 +531,18 @@ def _source_route(gen, declared: dict[str, TpyType],
             return None
     et = resolve_int_literals(
         unwrap_ref_type(et), analyzer.ctx.default_int_for_literal)
+    # An owning element parameter is traversed as the for statement
+    # traverses it: through the iterator its hand-over gives
+    # (`handover_iter`), which honours the argument's own `__iter__`.
+    owning = (isinstance(it, TpyName) and lc is not None
+              and lc.binding(it.name) is not None
+              and traverses_owning(lc.binding(it.name).owning_traversal,
+                                   declared.get(it.name)))
     return _SourceRoute(loop="begin_end", counter_type=None, it_type=it_type,
                         et=et, iterable_lvalue=lvalue,
                         handover=gen.step_handover,
-                        gen_factory=genfac, native_combinator=combinator)
+                        gen_factory=genfac, native_combinator=combinator,
+                        iter_protocol=owning)
 
 
 def _clause_bindings(gen, route: _CompRoute) -> list[tuple[str, TpyType]]:
@@ -604,8 +630,10 @@ def _clause_route(kind: str, gen, declared: dict[str, TpyType],
             types.append(tt)
         return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                           it_type=it_type, et=et, iterable_lvalue=lvalue,
-                          sized_reserve=sized, unpack_types=tuple(types),
+                          sized_reserve=sized and not src.iter_protocol,
+                          unpack_types=tuple(types),
                           handover=src.handover,
+                          iter_protocol=src.iter_protocol,
                           native_combinator=combinator)
     str_et = _resolved_str_value(et, analyzer)
     if str_et is not None:
@@ -623,7 +651,8 @@ def _clause_route(kind: str, gen, declared: dict[str, TpyType],
         return None
     return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                       it_type=it_type, et=et, iterable_lvalue=lvalue,
-                      sized_reserve=sized, unpack_types=None,
+                      sized_reserve=sized and not src.iter_protocol,
+                      unpack_types=None,
                       handover=src.handover, gen_factory=genfac,
                       iter_protocol=src.iter_protocol,
                       native_combinator=combinator)
@@ -1358,6 +1387,18 @@ def _comprehension_loop(route: _CompRoute, gen, lc: '_LowerCtx',
             step_kind=route.step_kind,
             presize=presize if route.step_kind == "plus_one" else None,
             source_in_enclosing=outermost, loc=loc)
+    if gen.consuming_iter_fi is not None:
+        # The source given up to its consuming `__iter__`: the clause loops
+        # over the iterator it returns, as the for statement does
+        # (`_for_consuming_route`).
+        _witness("comp.consuming_source")
+        return _statements.build_loop_node(
+            "each", gen.var, route.et, body, lc, declared,
+            iterable=consuming_iter(it, None, lc, declared, loc),
+            const_loop_var=gen.const_loop_var,
+            binding=_statements._loop_var_record(gen.var, gen, lc),
+            iterable_lvalue=False, presize=presize, presize_if_sized=True,
+            source_in_enclosing=outermost, loc=loc)
     if _is_range_call(it):
         iterable = _lower_range_object(it, lc, declared)
     elif isinstance(it, TpyFieldAccess):
@@ -1386,17 +1427,20 @@ def _comprehension_loop(route: _CompRoute, gen, lc: '_LowerCtx',
         assert not route.sized_reserve
         return _statements.build_loop_node(
             "iter_proto", gen.var, route.et, body, lc, declared,
-            iterable=iterable, const_loop_var=gen.const_loop_var,
+            iterable=iterable, source=it, const_loop_var=gen.const_loop_var,
             binding=_statements._loop_var_record(gen.var, gen, lc),
             iterable_lvalue=route.iterable_lvalue,
             source_in_enclosing=outermost, loc=loc)
+    # A consuming iterator (`own_iter(xs)`) reserves when it can tell what
+    # it has left.
+    consuming = isinstance(iterable, THIRConsumingIter)
     return _statements.build_loop_node(
         "each", gen.var, route.et, body, lc, declared, iterable=iterable,
-        const_loop_var=gen.const_loop_var,
+        source=it, const_loop_var=gen.const_loop_var,
         binding=_statements._loop_var_record(gen.var, gen, lc),
         iterable_lvalue=route.iterable_lvalue,
-        presize=presize if route.sized_reserve else None,
-        source_in_enclosing=outermost, loc=loc)
+        presize=(presize if route.sized_reserve or consuming else None),
+        presize_if_sized=consuming, source_in_enclosing=outermost, loc=loc)
 
 
 def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',

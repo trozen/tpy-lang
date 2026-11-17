@@ -361,8 +361,9 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_it>, int32_t> {
     T_it it;
     int32_t v;
     using __for_src_0_t = decltype((it));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

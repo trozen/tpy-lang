@@ -17,13 +17,13 @@ using ::tpyapp::fixtures::Counter;
 // class OwnCells(Iterable[Own[Cell]], Protocol):
 template<typename T>
 concept OwnCells = requires(T& t) {
-    ::tpy::__iter__(t);
+    ::tpy::handover_iter<T>(t);
 };
 
 // class Cells[T](Iterable[T], Protocol):
 template<typename T, typename _T0>
 concept Cells = requires(T& t) {
-    ::tpy::__iter__(t);
+    ::tpy::handover_iter<T>(t);
 };
 
 // class OwnedCursor(Iterator[Own[Cell]], Protocol):
@@ -36,13 +36,13 @@ concept OwnedCursor = requires(T& t) {
 // class OwnedSource(Iterable[Own[Cell]], Protocol):
 template<typename T>
 concept OwnedSource = requires(T& t) {
-    ::tpy::__iter__(t);
+    ::tpy::handover_iter<T>(t);
 };
 
 // class OwnedChild(OwnedSource, Protocol):
 template<typename T>
 concept OwnedChild = requires(T& t) {
-    ::tpy::__iter__(t);
+    ::tpy::handover_iter<T>(t);
 };
 
 // class Counted(Iterable[int32], Protocol):
@@ -144,12 +144,12 @@ inline __gen_Values___iter__ Values::__iter__() const {
 //     self.count = 7
 inline Values::Values() : count(7) {}
 // def take_sub(xs: OwnCells) -> int32:
-//     # the sub-protocol is an `Iterable[Own[Cell]]` at its declared args; a
-//     # protocol value may hold a live list, so its forward copies (warned)
-//     return take(xs)  # tpyc: warning(/copies Cell elements/)
+//     # the sub-protocol is an `Iterable[Own[Cell]]` at its declared args; the
+//     # forward passes the argument on, so any copy is the caller's (warned there)
+//     return take(xs)  # tpyc: ok
 template<::tpyapp::part_protocol_forward::OwnCells T_xs>
 int32_t take_sub(T_xs&& xs) {
-    return ::tpyapp::fixtures::take(xs);
+    return ::tpyapp::fixtures::take(std::forward<decltype(xs)>(xs));
 }
 // def sum_own(xs: Iterable[Own[Cell]]) -> int32:
 //     s = 0
@@ -160,7 +160,7 @@ template<::tpystd::typing::Iterable<::tpyapp::fixtures::Cell> T_xs>
 int32_t sum_own(T_xs&& xs) {
     int32_t s = 0;
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -170,10 +170,10 @@ int32_t sum_own(T_xs&& xs) {
     return s;
 }
 // def sum_sub(xs: OwnCells) -> int32:
-//     return sum_own(xs)  # tpyc: warning(/copies Cell elements/)
+//     return sum_own(xs)  # tpyc: ok
 template<::tpyapp::part_protocol_forward::OwnCells T_xs>
 int32_t sum_sub(T_xs&& xs) {
-    return ::tpyapp::part_protocol_forward::sum_own(xs);
+    return ::tpyapp::part_protocol_forward::sum_own(std::forward<decltype(xs)>(xs));
 }
 // def sum_cells(xs: Cells[Own[Cell]]) -> int32:
 //     s = 0
@@ -184,7 +184,7 @@ template<::tpyapp::part_protocol_forward::Cells<::tpyapp::fixtures::Cell> T_xs>
 int32_t sum_cells(T_xs&& xs) {
     int32_t s = 0;
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -210,7 +210,7 @@ template<::tpyapp::part_protocol_forward::OwnedSource T_xs>
 int32_t take_owned(T_xs&& xs) {
     int32_t s = 0;
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -225,7 +225,7 @@ int32_t take_owned(T_xs&& xs) {
 //     return take_owned(xs)  # tpyc: ok
 template<::tpyapp::part_protocol_forward::OwnedChild T_xs>
 int32_t forward_owned(T_xs&& xs) {
-    return ::tpyapp::part_protocol_forward::take_owned(xs);
+    return ::tpyapp::part_protocol_forward::take_owned(std::forward<decltype(xs)>(xs));
 }
 // def count_of(xs: Counted) -> int32:
 //     s = 0

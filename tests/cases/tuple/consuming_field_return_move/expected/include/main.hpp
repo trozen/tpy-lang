@@ -325,7 +325,7 @@ struct H {
     // def with_self_exit_single(self: Own[Self]) -> int32:
     int32_t with_self_exit_single() &&;
 
-    __coro_H_async_return async_return();
+    __coro_H_async_return async_return() &&;
 
     // def single_last_use(self: Own[Self]) -> int32:
     int32_t single_last_use() &&;
@@ -522,17 +522,17 @@ inline std::ostream& operator<<(std::ostream& os, const SubBox& obj) {
 struct __coro_H_async_return {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    H& __self;
+    H __self;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_DONE = 1,
     };
 
-    __coro_H_async_return(H& __self)
+    __coro_H_async_return(H&& __self_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          __self(__self) {}
+          __self(std::move(__self_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -542,8 +542,8 @@ struct __coro_H_async_return {
     }
 };
 
-inline __coro_H_async_return H::async_return() {
-    return __coro_H_async_return(*this);
+inline __coro_H_async_return H::async_return() && {
+    return __coro_H_async_return(std::move(*this));
 }
 
 // async def run_async() -> None:

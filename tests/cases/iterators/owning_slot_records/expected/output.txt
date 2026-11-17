@@ -1,0 +1,106 @@
+records fresh [R(1), R(2)]
+records dead [R(1), R(2)]
+records live 9 2
+records mutate [R(1), R(20)]
+records gen [1, 2]
+records async 3
+records iter class fresh [R(3), R(4)]
+records iter class dead [R(3), R(4)]
+records iter class lend [3, 4]
+records only fresh [R(5), R(6)]
+records only dead [R(5), R(6)]
+records only for R(5)
+records only for R(6)
+records only for dead R(5)
+records only for dead R(6)
+records nocopy fresh 3
+records nocopy dead 3
+records for fresh [R(1), R(2)]
+records comp fresh [R(1), R(2)]
+records for lent [1, 2] 2
+consuming array [R(10), R(2)]
+consuming array for [R(3), R(4)]
+consuming subclass [R(7), R(7)]
+consuming own_iter set [1, 2]
+consuming own_iter dict R(3)
+consuming own_iter record [R(5), R(6)]
+consuming own_iter ints 3
+consuming own_iter literal local [R(8), R(9)]
+consuming own_iter rows [[R(1), R(2)], [R(3)]]
+record frames send frame [1, 2]
+record frames generic frame [3, 4]
+record frames generic param frame ['a', 'b']
+record frames gen fresh [R(50), R(6)]
+record frames gen dead [1, 2] [R(1), R(2)]
+record frames async dead 11
+record frames gen comp [0, 2] [R(1), R(2)]
+record frames async comp [R(1), R(2)]
+record frames unpack for [R(1), R(2), R(3), R(4)]
+record frames unpack comp [R(1), R(3)]
+record frames own_iter iterator class R(3)
+record frames own_iter iterator class R(4)
+record frames comp dead [5, 6]
+record frames comp user iterator [R(5), R(6)]
+record consumers source __iter__
+record consumers extend [1, 2]
+record consumers source __iter__
+record consumers list [1, 2]
+record consumers source __iter__
+record consumers sorted [1, 2]
+record consumers source __iter__
+record consumers iterator __iter__
+record consumers slice store [9, 1, 2, 9]
+record consumers named source __iter__
+record consumers named extend [1, 2]
+record consumers named source __iter__
+record consumers named list [1, 2]
+record consumers named source __iter__
+record consumers named sorted [1, 2]
+record consumers named source __iter__
+record consumers iterator __iter__
+record consumers named slice store [9, 1, 2, 9]
+record consumers list dead [R(50), R(6)]
+record consumers sorted fresh [R(6), R(5)]
+record consumers extend fresh [R(1), R(2)]
+record consumers map [1, 2]
+record consumers ctor and method [R(1), R(2), R(5), R(6)]
+record consumers copy [R(1), R(2)] 2
+record consumers nocopy array 3
+record consumers walk comp 2
+record consumers walk left 0
+order live iter 3 2
+order live method 3 3
+order quoted self 3 3
+order fresh iter lent 3
+order fresh iter consuming [R(1), R(2)]
+order fresh method 3
+order alias self 3 3
+order qualified self 3 3
+order own self param 7 6
+order own self first 6 7
+order own self spelled 6 7 8 8
+order self first 8 1
+order own self subclass 6 4
+order alias self fresh 3 3
+order classmethod self 10 20
+comp_consuming arg [10, 2]
+comp_consuming sink [1, 2]
+comp_consuming dict [1, 2]
+comp_consuming for [1, 2]
+comp_consuming read dead [1, 2]
+comp_consuming read fresh [2, 4]
+comp_consuming read for 3
+comp_consuming own param 1 1 1
+comp_consuming own_iter [1, 0, 9] [2, 0]
+comp_lent arg 2 2
+comp_lent sink 2 2
+comp_lent receiver 2 2
+comp_lent dict 2 2
+comp_lent for 2 2
+comp_lent in loop 0 2 2
+comp_lent in loop 1 2 2
+comp_lent dict keys [1, 2]
+own param copy 91 91 91
+own param gen [5, 2] [3]
+own param body credit 91
+own param async [7, 2]

@@ -23,8 +23,7 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> nums = {3, 1, 2};
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::each<int32_t>(nums))) << "\n" << ::tpy::check_signals;
-    auto __tmp_1 = ::tpyapp::main::each<int32_t>(nums);
-    std::cout << ::tpyapp::main::total(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::total(::tpyapp::main::each<int32_t>(nums)) << "\n" << ::tpy::check_signals;
     std::vector<Item> items = {Item(3, 30), Item(1, 10)};
     auto __obj_0 = ::tpy::construct<std::vector<Item>>(::tpyapp::main::each<Item>(items));
     auto __beg_0 = __obj_0.begin();
@@ -48,8 +47,7 @@ void main() {
         }
         std::move(__result);
     })) << " " << ::tpy::__getitem__(src, 0).tag << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = ::tpyapp::main::each_twice<int32_t>(nums);
-    std::cout << "frame_scalar" << " " << ::tpyapp::main::total(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "frame_scalar" << " " << ::tpyapp::main::total(::tpyapp::main::each_twice<int32_t>(nums)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

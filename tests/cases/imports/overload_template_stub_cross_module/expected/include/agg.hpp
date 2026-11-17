@@ -25,7 +25,7 @@ int32_t total__Iterable_Own_int32(T_xs&& xs) {
     }
     int32_t s = 0;
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

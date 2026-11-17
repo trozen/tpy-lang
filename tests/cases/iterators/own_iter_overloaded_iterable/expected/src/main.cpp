@@ -32,15 +32,11 @@ int32_t keysum__int32(int32_t xs) {
 //     print(keysum(each_twice(items)))   # tpyc: ok
 void main() {
     std::vector<int32_t> nums = {3, 1, 2};
-    auto __tmp_1 = ::tpyapp::main::each<int32_t>(nums);
-    std::cout << ::tpyapp::main::total__Iterable_Own_int32(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::total__Iterable_Own_int32(::tpyapp::main::each<int32_t>(nums)) << "\n" << ::tpy::check_signals;
     std::vector<Item> items = {Item(3), Item(1), Item(2)};
-    auto __tmp_2 = ::tpyapp::main::each<Item>(items);
-    std::cout << ::tpyapp::main::keysum__Iterable_Own_Item(__tmp_2) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = ::tpyapp::main::each_twice<int32_t>(nums);
-    std::cout << ::tpyapp::main::total__Iterable_Own_int32(__tmp_3) << "\n" << ::tpy::check_signals;
-    auto __tmp_4 = ::tpyapp::main::each_twice<Item>(items);
-    std::cout << ::tpyapp::main::keysum__Iterable_Own_Item(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::keysum__Iterable_Own_Item(::tpyapp::main::each<Item>(items)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::total__Iterable_Own_int32(::tpyapp::main::each_twice<int32_t>(nums)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::keysum__Iterable_Own_Item(::tpyapp::main::each_twice<Item>(items)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

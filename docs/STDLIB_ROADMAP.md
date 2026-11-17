@@ -262,7 +262,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 | Item | Status | Notes |
 |---|---|---|
 | `iter`, `next` | Partial | `next(it)` (value-type elements) and `next(it, default)` (any element type -- over class instances an in-place use acts on the element or the default itself, a binding holds a warned copy; the default has the element's type, so `next(it, None)` is missing). `iter(<temporary>)` owns the temporary, as a Python iterator keeps its container alive; `iter(s + t)` / `iter(xs + ys)` over a concatenation and `iter({"k": 1})` over a dict literal are refused (BUGS.md#iter-of-concat-or-dict-literal-rejects); `next(iter(xs))` in one expression is refused (BUGS.md#sorted-of-iter-call) |
-| `all`, `any`, `sorted` | Partial | `sorted(xs)`, `key=`, `reverse=` (stable, in either keyword order); a builtin function as `key=` (`key=len`) is TODO.md "Builtins as first-class function values"; `key=` over an unannotated list of tuple literals finds no overload (BUGS.md#key-over-pending-tuple-list) |
+| `all`, `any`, `sorted` | Partial | `sorted(xs)`, `key=`, `reverse=` (stable, in either keyword order); `sorted` takes its elements over as `list()` does (a dead or fresh source moved, a live list of class instances a warned copy); a builtin function as `key=` (`key=len`) is TODO.md "Builtins as first-class function values"; `key=` over an unannotated list of tuple literals finds no overload (BUGS.md#key-over-pending-tuple-list) |
 | `enumerate`, `filter`, `map`, `reversed`, `zip` | Done | |
 
 **Functions -- introspection / attribute access**

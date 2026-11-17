@@ -1748,7 +1748,7 @@ void lc_free(const std::vector<std::vector<::tpy::BigInt>>& grid, const std::vec
         }
         std::move(__result);
     });
-    std::cout << "lc set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<::tpy::BigInt>(rems)) << "\n" << ::tpy::check_signals;
+    std::cout << "lc set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<::tpy::BigInt>(std::move(rems))) << "\n" << ::tpy::check_signals;
     std::cout << "lc dict unpack" << " " << ::tpy::DictPrinter(({
         ::tpy::ordered_map<std::string, ::tpy::BigInt> __result;
         for (int32_t k = 1; k < 3; ++k) {
@@ -2802,7 +2802,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __genexpr_lc_owned_23_frame::
             __state = S_JOIN_0;
             continue;
         }
-        c.emplace(::tpy::unwrap_ref(*(*__for_r_1)));
+        c.emplace(::tpy::own_bind(*(*__for_r_1)));
         __state = S_RESUME_0;
         return (*c).n;
     }
@@ -3164,7 +3164,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_own_gen::__next__() {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        ds.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
+        ds.emplace(::tpy::own_bind(*(*__for_r_0)));
         auto& __for_obj_1 = (*ds);
         __for_it_1.emplace((__for_obj_1).begin());
         __for_end_1.emplace((__for_obj_1).end());

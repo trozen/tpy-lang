@@ -1,0 +1,1 @@
+main.py:26: error: Type int does not conform to protocol Bag[Own[R]] in argument 'b'

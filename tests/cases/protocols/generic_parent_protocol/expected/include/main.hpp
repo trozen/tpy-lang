@@ -11,7 +11,7 @@ namespace tpyapp::main {
 template<typename T, typename _T0>
 concept Counted = requires(T& t) {
     { t.length() } -> std::convertible_to<int32_t>;
-    ::tpy::__iter__(t);
+    ::tpy::handover_iter<T>(t);
 };
 
 struct IntListIter;

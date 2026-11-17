@@ -9,7 +9,7 @@ from dataclasses import replace as dc_replace
 from contextlib import AbstractContextManager, nullcontext
 from typing import Callable, Iterator, Optional, Sequence
 
-from ..typesys import resolve_int_literals
+from ..typesys import make_iterator, resolve_int_literals
 from ..typesys import (
     make_readonly,
     TpyType, TypeRegistry, NominalType, AliasRef, UnionType, FinalType, STR, VoidType, VOID,
@@ -302,8 +302,7 @@ def _genexpr_yield_slot(func: TpyFunction,
     # The return type, on the AST and in the registered signature, follows.
     def put(resolved: TpyType) -> None:
         func.generator_yield_type = resolved
-        returned = NominalType("Iterator", (resolved,), is_protocol=True,
-                               _module_qname=qnames.ITERATOR)
+        returned = make_iterator(resolved)
         func.return_type = make_ref(returned)
         if fi is not None:
             fi.return_type = returned
@@ -375,6 +374,7 @@ class SemanticAnalyzer:
         # Layer 1: No dependencies on other analyzers
         self.type_ops = TypeOperations(self.ctx)
         self.compat = TypeCompatibility(self.ctx)
+        self.ctx.read_owns_storage = self.compat.read_owns_storage
         self.iterable = IterableHelper(self.ctx)
         self.deduction = LocalTypeDeduction(self.ctx, self.compat)
 
@@ -1632,7 +1632,8 @@ class SemanticAnalyzer:
         ptype = canonical_readonly(ptype)
         return make_readonly(ptype) if is_readonly_ctx else ptype
 
-    def _stamp_frame_materials(self, func: TpyFunction, fi: 'FunctionInfo') -> None:
+    def _stamp_frame_materials(self, func: TpyFunction, fi: 'FunctionInfo',
+                               receiver_type: 'TpyType | None' = None) -> None:
         """Copy Send/Sync frame-classification materials onto the
         FunctionInfo at body-analysis end (sema/frame_traits.py resolves them
         lazily -- awaited sub-frames may belong to later-analyzed bodies).
@@ -1647,6 +1648,7 @@ class SemanticAnalyzer:
             if name in local_names
         )
         fi.frame_subframes = list(self.ctx.func.current_awaited_subframes)
+        fi.frame_receiver_type = receiver_type
         stamp_close_materials(self.ctx, func, fi)
         if func.loc is not None:
             self.ctx.frame_fact_fns[(func.loc.line, func.name)] = fi
@@ -2126,9 +2128,7 @@ class SemanticAnalyzer:
             return verdict if verdict is not None else t.map_inner_types(settled)
         func.generator_yield_type = self.deduction._deep_resolve_pending(
             settled(func.generator_yield_type))
-        func.return_type = NominalType(
-            "Iterator", (func.generator_yield_type,), is_protocol=True,
-            _module_qname=qnames.ITERATOR)
+        func.return_type = make_iterator(func.generator_yield_type)
         body_params = func.params
         func.params = list(resolved_params)
         try:
@@ -3294,7 +3294,10 @@ class SemanticAnalyzer:
                 if (method_fi is not None
                         and method_fi.direct_mutated_params is None
                         and method_fi.originating_module == self.ctx.module_name):
-                    self._stamp_frame_materials(method, method_fi)
+                    self._stamp_frame_materials(
+                        method, method_fi,
+                        receiver_self_type(record, self.ctx.registry)
+                        if method.is_consuming else None)
                     stamp_may_interrupt(self.ctx, method, method_fi)
                     param_list = [pname for pname, _ in method.params]
                     slot_written = method_fi.root.slot_written_params
@@ -3712,6 +3715,15 @@ class SemanticAnalyzer:
     def get_expr_type(self, expr: TpyExpr) -> Optional[TpyType]:
         """Get the cached type of an expression."""
         return self.ctx.get_expr_type(expr)
+
+    def is_last_use(self, expr: 'TpyExpr | None') -> bool:
+        """Sema's last-use verdict for one name read (`SemanticContext.is_last_use`)."""
+        return self.ctx.is_last_use(expr)
+
+    def read_owns_storage(self, read: TpyName) -> bool:
+        """Whether name read `read`'s binding owns its storage
+        (`TypeCompatibility.read_owns_storage`)."""
+        return self.compat.read_owns_storage(read)
 
     def _register_implicit_module_variable(self, module_name: str,
                                             original_name: str,

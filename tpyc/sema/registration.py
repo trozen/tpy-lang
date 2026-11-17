@@ -28,6 +28,7 @@ def _adopt_skeleton(skeleton, full):
     return skeleton
 
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
+from ..emitted_members import clone_families
 from ..typesys import (
     ReadonlyCause, READONLY_RESULT_CAUSE_RANK, strongest_readonly_cause, readonly_result, readonly_protects, RESULT_ROOT,
     mark_overload_group, name_overload_variants,
@@ -269,25 +270,9 @@ def _emits_own_variant(variant: TpyFunction) -> bool:
 
 
 def _clone_families(infos: list[FunctionInfo]) -> list[list[FunctionInfo]]:
-    """The variants of one method set grouped into clone families: members
-    with the same parameters (`readonly` aside) that differ by receiver
-    const-ness or consumption -- an `@auto_readonly` / `auto_own` pair, the
-    C++ overloads one name keeps apart by the receiver. In source order."""
-    families: list[list[FunctionInfo]] = []
-    keys: list[tuple] = []
-    for fi in infos:
-        key = tuple((without_readonly(p.type), p.keyword_only)
-                    for p in fi.params)
-        for i, k in enumerate(keys):
-            if k == key and all(m.is_readonly != fi.is_readonly
-                                or m.is_consuming != fi.is_consuming
-                                for m in families[i]):
-                families[i].append(fi)
-                break
-        else:
-            keys.append(key)
-            families.append([fi])
-    return families
+    """`clone_families` of one method set's registered variants."""
+    return clone_families(infos, lambda fi: tuple(
+        (without_readonly(p.type), p.keyword_only) for p in fi.params))
 
 
 def _cpp_param_key(t: TpyType) -> object:
@@ -3825,13 +3810,19 @@ class TypeRegistrar:
                   *(prop.accessors for prop in ri.properties.values())]
         for infos in groups:
             for family in _clone_families(infos):
-                if not any(fi.is_readonly for fi in family):
+                if len(family) < 2:
                     continue
+                # The member that keeps the plain frame name: the readonly
+                # one, else the lending one of a consuming pair.
+                head = next((fi for fi in family if fi.is_readonly),
+                            next((fi for fi in family if not fi.is_consuming),
+                                 family[0]))
                 for fi in family:
-                    if fi.is_readonly or fi.root._twin_frame_cpp_name:
+                    if fi is head or fi.root._twin_frame_cpp_name:
                         continue
+                    suffix = "__own" if fi.is_consuming else "__mut"
                     fi.root._twin_frame_cpp_name = unique_cpp_name(
-                        f"{fi.variant_cpp_name or fi.name}__mut", taken)
+                        f"{fi.variant_cpp_name or fi.name}{suffix}", taken)
                 frames = tuple(fi.frame_cpp_name for fi in family)
                 for fi in family:
                     fi.root._family_frame_names = frames

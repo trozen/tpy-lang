@@ -17,7 +17,7 @@ from ..typesys import (
     substitute_cpp_ret, bound_as_spelled,
     declares_no_writes, param_may_be_written, is_dyn_protocol,
     default_emittable_at,
-    TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, PendingNumType, make_copy_iter, make_own_iter,
+    TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, PendingNumType, make_copy_iter,
     is_polymorphic_class_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
     IntLiteralType, resolve_int_literals,
     ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
@@ -51,6 +51,7 @@ from ..parse import (
 )
 from ..prescan import fact_key_root, isinstance_narrowing_key
 from ..modules import extract_type_params
+from ..modules.type_resolution import iteration_shape, owning_element_slot
 from ..namespace import BindingKind, Blocked, NameBinding
 from ..coercions import CoercionContext, VALUE_TO_PTR, owning_param
 from ..symbol_binding import (SymbolKind, is_kind, lookup_imported,
@@ -71,7 +72,8 @@ from ..parse.nodes import bound_callee, name_path
 from .literal_utils import (enriched_literal, is_char_literal_init,
                             ranks_literals)
 from ..diagnostics import SemanticError
-from ..value_category import (declared_result_is_value, frame_factory_callee,
+from ..value_category import (declared_result_is_value, frame_factory_callee, is_rvalue_source,
+                              consuming_iter_of,
                               is_iterator_protocol,
                               protocol_slot, protocol_twin_slot,
                               peel_coerce, origin_shared)
@@ -871,6 +873,14 @@ def _held_instance_copy_text(payload: TpyType, call: str) -> str:
 _CONTEXT_TYPED = (TpyLambda, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral,
                   TpySetLiteral, TpyListRepeat, TpyListComprehension,
                   TpyDictComprehension, TpySetComprehension)
+
+
+def _iterating_param(t: TpyType) -> bool:
+    """A parameter of type `t` iterates its argument: a protocol with an
+    iteration shape (`Iterable[T]`, `Iterator[T]`, ...)."""
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_own(t)))
+    shape = iteration_shape(bare) if is_protocol_type(bare) else None
+    return shape is not None and shape.iterates
 
 
 class CallAnalyzer:
@@ -1738,6 +1748,14 @@ class CallAnalyzer:
                 picked = (self._validate_generic_constructor(expr, written, typed)
                           if written.addresses or written.double_star is not None
                           else None)
+                if picked is not None:
+                    # `_validate_generic_constructor` matched the owning
+                    # element slots only structurally: the full check
+                    # registers what each takes.
+                    self._check_ctor_arg_compatibility(
+                        expr, picked, written, typed,
+                        extract_type_params(expr.call_type),
+                        owning_slots_only=True)
                 if isinstance(expr.call_type, PtrType) and expr.args:
                     self._validate_ptr_constructor(expr)
                     # The ranked constructor renders it (the &{0} template).
@@ -2586,10 +2604,11 @@ class CallAnalyzer:
     def _analyze_tpy_own_iter(self, expr: TpyCall) -> TpyType:
         """Analyze a call to tpy.own_iter() - consuming iteration.
 
-        own_iter(container) moves the container into an OwnIter that
-        iterates with move semantics. Returns OwnIter[T].
-        The argument must be at its last use (movable), since own_iter
-        takes ownership of the container via std::move.
+        own_iter(x) is the call of x's consuming `__iter__(self: Own[Self])`
+        (`consuming_iter_of`) on x given up, typed by that variant's
+        declared return (`Iterator[Own[T]]` for a container). A source
+        whose type has none is refused. The argument must be at its last
+        use (movable), since own_iter takes the object over via std::move.
         """
         self.reject_keywords(expr, "own_iter")
         if len(expr.args) != 1:
@@ -2597,11 +2616,20 @@ class CallAnalyzer:
         arg_type = self.expr.analyze_expr(expr.args[0])
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
-        if not is_list(arg_type):
+        source_type = unwrap_readonly(unwrap_ref_type(arg_type))
+        consuming = consuming_iter_of(source_type, self.ctx.registry)
+        if consuming is None:
             raise self.ctx.error(
-                f"own_iter() currently only supports list, got {arg_type}", expr)
+                f"own_iter() takes a value whose type defines a consuming "
+                f"__iter__ (self: Own[Self]); '{source_type}' has none",
+                expr)
+        type_subst = self.type_ops.build_type_substitution(
+            bound_as_spelled(source_type, lists=True))
+        if type_subst:
+            consuming = self.type_ops.substitute_method_type_params(
+                consuming, type_subst)
         # Validate that the argument is at last use -- own_iter moves
-        # the container, so using it afterwards is use-after-move.
+        # the object, so using it afterwards is use-after-move.
         arg = expr.args[0]
         if isinstance(arg, TpyName):
             self.compat.check_own_iter_source(arg, expr)
@@ -2617,9 +2645,12 @@ class CallAnalyzer:
                 )
             elif moved:
                 self.compat.check_own_consumption(arg)
-        elem_type = builtin_modules.get_iterable_element_type(arg_type, registry=self.ctx.registry)
-        assert elem_type is not None
-        result_type = make_own_iter(elem_type)
+        elif not is_rvalue_source(self.ctx, peel_coerce(arg)):
+            self.compat.check_own_iter_place(peel_coerce(arg), expr)
+        # The variant's declared return as written: an owned iterator object
+        # (`Own[BagIter]`) stays the caller's fresh value.
+        result_type = consuming.return_type
+        expr.consuming_iter_fi = consuming
         expr.resolved_function_info = FunctionInfo(
             name="own_iter",
             params=[ParamInfo("x", arg_type)],
@@ -4058,17 +4089,25 @@ class CallAnalyzer:
         written: CallSource,
         typed: CallSource,
         inferred: dict[str, TpyType],
+        *, owning_slots_only: bool = False,
     ) -> None:
-        """Check copy/ownership warnings for constructor args (e.g., Own[T] in Iterable[Own[T]])."""
+        """Check copy/ownership warnings for constructor args (e.g., Own[T]
+        in Iterable[Own[T]]); `owning_slots_only`: only the arguments at an
+        owning element slot (`owning_element_slot`). A decided ternary
+        argument is checked as the live part its slot holds (`live_part`)."""
         for i, at in _ctor_placement(ctor, written, expr.func_name) or ():
             param = ctor.params[i]
             param_type = self.type_ops.substitute_param_type(
                 operand_param_type(param), inferred)
+            if owning_slots_only and not owning_element_slot(
+                    param_type, self.ctx.registry):
+                continue
+            source = self.expr.live_part(written.at(at))
             self.compat.check_type_compatible(
                 typed.at(at), param_type, f"{expr.func_name}() argument",
-                source_expr=written.at(at),
+                source_expr=source,
             )
-            self.consume_at_iterating_slot(written.at(at), param_type, expr)
+            self.consume_at_iterating_slot(source, param_type, expr)
 
     def _refuse_unbound_ctor(self, expr: TpyCall, record: RecordInfo,
                              written: CallSource, typed: CallSource) -> None:
@@ -5925,6 +5964,14 @@ class CallAnalyzer:
         variants refuse (`no_match_hint`). `constructed`: the type the call
         constructs, whose constructor may read keywords as entries."""
         typed = typed_source(arg_types)
+        for i, t in enumerate(typed.positional):
+            # A value no variant can lend its elements (its only
+            # `__iter__` consumes) at a position a variant iterates.
+            refusal = self.compat.lent_iteration_refusal(t)
+            if refusal is not None and any(
+                    i < len(f.params) and _iterating_param(f.params[i].type)
+                    for f in views):
+                raise self.ctx.error(refusal, loc)
         src = (args if isinstance(args, CallSource) else CallSource(
             tuple(args) + (None,) * (len(typed.positional) - len(args)),
             tuple((k, None) for k, _ in typed.keywords)))

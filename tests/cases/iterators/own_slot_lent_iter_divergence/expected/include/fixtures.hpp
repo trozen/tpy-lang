@@ -76,9 +76,10 @@ struct __gen_passthru : public ::tpy::next_iter_mixin<__gen_passthru<T, T_src>, 
     ::tpy::frame_state __state;
     T_src src;
     using __for_src_0_t = decltype((src));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
+    ::tpy::frame_slot<::tpy::next_elem_t<__for_itr_0_t>> x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -147,7 +148,7 @@ inline Pt::Pt(int32_t v) : v(v) {}
 template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 void bump(T_source&& source) {
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -161,7 +162,7 @@ void bump(T_source&& source) {
 template<::tpystd::typing::Iterable<Pt> T_source>
 void bump_pt(T_source&& source) {
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -175,7 +176,7 @@ void bump_pt(T_source&& source) {
 template<::tpystd::typing::Iterable<std::tuple<int32_t, std::vector<int32_t>>> T_source>
 void bump_pairs(T_source&& source) {
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

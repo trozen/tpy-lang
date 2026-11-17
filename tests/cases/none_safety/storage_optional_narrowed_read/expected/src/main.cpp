@@ -107,8 +107,8 @@ void free_loop() {
 //     xs: list[R | None] = [R(3), None, R(4)]
 //     print("comp plain", [plain(x) for x in xs if x is not None])  # tpyc: ok
 //     print("comp twin", [twin_r(x) for x in xs if x is not None])  # tpyc: ok
-//     # Warned copy, a missed move: xs is dead here (TODO.md consuming comprehension).
-//     kept = [x for x in xs if x is not None]  # tpyc: warning(/copies/)
+//     # xs is dead here: the comprehension consumes it, moving each payload.
+//     kept = [x for x in xs if x is not None]  # tpyc: ok
 //     kept[0].n = 30
 //     print("comp kept copy", kept[0].n, len(kept))
 void comprehension() {
@@ -143,14 +143,15 @@ void comprehension() {
     })) << "\n" << ::tpy::check_signals;
     std::vector<R> kept = ({
         std::vector<R> __result;
-        auto& __obj_2 = xs;
-        __result.reserve(static_cast<std::size_t>(__obj_2.size()));
-        auto __beg_2 = __obj_2.begin();
-        auto __end_2 = __obj_2.end();
+        auto __obj_2 = ::tpy::own_iter(std::move(xs));
+        ::tpy::reserve_if_sized(__result, __obj_2);
+        auto&& __rng_2 = ::tpy::step_range(__obj_2);
+        auto __beg_2 = __rng_2.begin();
+        auto __end_2 = __rng_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            const auto& x = *__beg_2;
+            auto&& x = *__beg_2;
             if ((x.has_value())) {
-                __result.push_back((*x));
+                __result.push_back(std::move((*x)));
             }
         }
         std::move(__result);
@@ -423,7 +424,7 @@ void main() {
     Holder().walk();
     ::tpyapp::main::comprehension();
     std::vector<std::optional<R>> oxs = {R(8), std::nullopt};
-    ::tpyapp::main::owned_step(::tpy::own_iter(std::move(oxs)));
+    ::tpyapp::main::owned_step(std::move(oxs));
     std::vector<std::optional<R>> axs = {R(10), std::nullopt};
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_body(axs)));
     ::tpyapp::main::try_body();

@@ -128,7 +128,6 @@ from ...type_def_registry import (
     is_copy_iter,
     is_dict,
     is_dict_view,
-    is_own_iter,
     is_fixed_int_type,
     is_list,
     is_set,
@@ -199,7 +198,7 @@ from ..reject import (
     stmt_reject_reason,
 )
 from ..scalar_leaves import record_owner, storage_leaf
-from ..nodes import (HoistDecl, THIRStubCallee, THIRStoragePlacement, THIRHoistedBinding,
+from ..nodes import (HoistDecl, THIRCall, THIRStubCallee, THIRStoragePlacement, THIRHoistedBinding,
     builds_assigned_record,
     THIRCtorCall, THIRBorrowTupleLiteral, Form, OpenTSink, PrintForm,
     PtrSlotKind, THIRArgTemp, THIRAssert, THIRAssign, THIRBinOp, THIRBreak,
@@ -207,7 +206,7 @@ from ..nodes import (HoistDecl, THIRStubCallee, THIRStoragePlacement, THIRHoiste
     THIRContainerLiteral, THIRContinue,
     THIRCloseLocal, THIRStmtSeq, THIRDelVar, THIRDelItem, THIRErrorReturnBind,
     THIRErrorReturnDiscard, THIRExpr, THIRExprStmt, THIRFieldAccess,
-    THIRConsumingIter, THIRForEach,
+    THIRForEach,
     THIRForIterProto, THIRForRange, THIRFormConvert, THIRIf, THIRIfExpr,
     THIRIsinstance, THIRDynIsinstance, THIRAnyNarrowAlias, THIRLiteral, THIRMethodCall,
     THIRModuleVar, THIRMove, THIRName, THIRDynNarrowAlias,
@@ -358,7 +357,7 @@ from .convert import (
     ElemRead, Plan, Refuse, borrowed_path_element_message, convert,
     layout_tuple, open_param_convert, spelled, to_local)
 from .expressions import (
-    _lower_into_dyn, as_base_of_read,
+    _lower_into_dyn, forwarded, as_base_of_read,
     _dunder_arg, _spell_brace, stamped, slot_payload_lent, lent_holder, _hoisted,
     _select_result, _operand_use_of,
     _self_capture_cpp, _whole_optional_bare, _is_own_param, _lower_module_var,
@@ -383,6 +382,7 @@ from .expressions import (
     _value_opt_binding_kind, _value_opt_view_binding,
     _record_key, _lower_call_receiver,
     _record_receiver, _operator_receiver_pinned, _const_receiver,
+    _owning_slot_arg, owning_param_read, consuming_iter,
 )
 from . import bindings as _bindings
 from . import comprehensions as _comprehensions
@@ -783,12 +783,15 @@ def build_loop_node(shape: str, var: str, et: TpyType,
                     consuming: bool = False,
                     hoist_loop_var: bool = False,
                     binding: 'BindingRepr | None' = None,
+                    source: 'TpyExpr | None' = None,
                     **position_facts: object) -> THIRStmt:
     """The one loop assembly the for statement and a comprehension clause
     share, so a source renders the same loop wherever it is written;
     `position_facts` are node fields only one of the two positions sets.
     `binding` is the loop variable's record (an unpack's holder), whose
-    `loop_binding` is how the loop binds each element."""
+    `loop_binding` is how the loop binds each element. `source` is the
+    iterable as written: an owning element parameter (`owning_param_read`)
+    is traversed through its hand-over."""
     if shape == "range":
         assert range_call is not None
         args = range_call.args
@@ -815,12 +818,16 @@ def build_loop_node(shape: str, var: str, et: TpyType,
     if binding is None or binding.loop_binding is None:
         raise BindingTableError(
             f"loop variable {var!r} has no planned loop binding")
+    owning = (source is not None
+              and owning_param_read(_peel_coerce(source), lc, declared))
     if shape == "iter_proto":
         return THIRForIterProto(
             var=var, elem_type=et, iterable=iterable, body=body,
             const_loop_var=const_loop_var, iterable_lvalue=iterable_lvalue,
-            binding=binding, **position_facts)
+            binding=binding, owning_source=owning, **position_facts)
     assert shape == "each", shape
+    # Every route over an owning parameter steps the iterator protocol.
+    assert not owning, "a begin/end loop over an owning parameter"
     return THIRForEach(
         var=var, elem_type=et, iterable=iterable, body=body,
         const_loop_var=const_loop_var, iterable_lvalue=iterable_lvalue,
@@ -936,15 +943,11 @@ class _ForEachRoute:
     value_tuple_elem: bool = False
     bigint_counter: bool = False
     str_literal_iterable: bool = False
-    # Native auto-consuming iterable (`::tpy::own_iter(std::move(name))`): the
-    # consuming `__iter__`'s C++ symbol. Set only by `_for_consuming_route`; the
-    # iterable is wrapped in THIRConsumingIter (rvalue capture) and the loop var
-    # joins movable_locals for the body.
-    consuming_native_name: 'str | None' = None
-    # An OwnIter-typed NAME iterable (`for x in oi:` off `oi = own_iter(src)`):
-    # plain lvalue capture (`auto& __obj_N = oi;`), consuming `auto&&` elem
-    # binding, no wrap.
-    consuming_name: bool = False
+    # The source is given up to its consuming `__iter__`
+    # (`_for_consuming_route`): the loop iterates the THIRConsumingIter it
+    # becomes (rvalue capture) and the loop var joins movable_locals for the
+    # body.
+    consuming: bool = False
     # A 3-arg range whose `variable` step is a computed expression rather than
     # a bare name -- witnessed apart so the name leg cannot stand in for it.
     step_expr_computed: bool = False
@@ -1349,73 +1352,31 @@ def _aliasing_loop_elem(et: 'TpyType | None') -> bool:
 
 def _for_consuming_route(stmt: TpyForEach, analyzer,
                          declared: dict[str, TpyType]) -> '_ForEachRoute | None':
-    """`for x in items:` where sema flagged the iterable for native auto-
-    consuming iteration (`stmt.consuming_iter_fi`, a movable container name at
-    last use with a native consuming `__iter__`): the iterable becomes
-    `::tpy::own_iter(std::move(items))` (rvalue, owning `auto __obj_N =`
-    capture) and the loop var binds `auto&&` and joins `movable_locals` for the
-    body, so a consuming element use (`result.append(x)`) moves. Only the
-    NATIVE arm -- a user-defined consuming `__iter__` takes the `__next__`
-    loop shape (a later cell). The other richer for-shapes are excluded."""
-    fi = stmt.consuming_iter_fi
-    it = stmt.iterable
-    own_iter_name = False
-    if fi is None:
-        # The EXPLICIT `own_iter(items)` call (the not-at-last-use warn
-        # case): sema sets no consuming_iter_fi, but the render is the
-        # same `::tpy::own_iter(std::move(items))` + consuming begin/end
-        # loop -- reuse the wrap with the call's ARG as the value.
-        if (isinstance(it, TpyCall)
-                and is_own_iter(unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(analyzer.get_expr_type(it)))))
-                and len(it.args) == 1 and not it.kwargs
-                and isinstance(it.args[0], TpyName)):
-            native_symbol = "tpy::own_iter"
-            it = it.args[0]
-        elif (isinstance(it, TpyName) and it.name in declared
-              and is_own_iter(unwrap_readonly(unwrap_ref_type(
-                  unwrap_send_sync(declared[it.name]))))):
-            # An OwnIter-typed NAME (`for x in oi:`): the name captures as a
-            # plain lvalue and the elem binds consuming `auto&&`; no wrap.
-            # The CopyIter sibling declines -- its elem binds
-            # non-consuming.
-            native_symbol = None
-            own_iter_name = True
-            _witness("foreach.own_iter_name")
-        else:
-            return None
-    elif not fi.native_name:
+    """`for x in s:` over an object given up to its consuming `__iter__`:
+    sema hands the source over (`stmt.consuming_iter_fi`: a name at its
+    last use, a fresh record), or the source is an explicit `own_iter(x)`
+    call (`TpyCall.consuming_iter_fi`). The loop iterates the fresh
+    iterator `::tpy::own_iter(...)` returns (THIRConsumingIter, an owning
+    `auto __obj_N =` capture) through its begin/end face
+    (`::tpy::step_range`: the iterator's own when it has one, else its
+    `__next__`), and the loop var binds the element each step hands over.
+    The other richer for-shapes are excluded."""
+    src = _peel_coerce(stmt.iterable)
+    if stmt.consuming_iter_fi is None and not (
+            isinstance(src, TpyCall) and src.consuming_iter_fi is not None):
         return None
-    else:
-        native_symbol = fi.native_name
     if (stmt.is_async or stmt.enum_iterable is not None
-            or stmt.hoist_loop_var
-            # A read-only body marks const_loop_var, but the shared
-            # loop_var_binding's consuming arm wins over const (`auto&&`),
-            # so the OwnIter-NAME flavor admits it; the sema-flagged
-            # flavors never co-occur with const (sema only flags a
-            # mutated loop var).
-            or (stmt.const_loop_var and not own_iter_name)):
+            or stmt.hoist_loop_var):
         return None
     if analyzer.if_branch_decls.get(stmt):
         return None
     if stmt.var in declared:
         return None
-    if not isinstance(it, TpyName) or it.name not in declared:
-        return None
-    it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[it.name])))
-    if own_iter_name:
-        if not is_own_iter(it_type):
-            return None
-    elif not is_native_iterable(it_type, analyzer.registry):
-        return None
     et = _resolved_loop_elem_type(stmt, analyzer)
     if not _for_each_elem_binding_ok(et):
         return None
     return _ForEachRoute(route="container", elem_type=et,
-                         iterable_lvalue=own_iter_name,
-                         consuming_native_name=native_symbol,
-                         consuming_name=own_iter_name)
+                         iterable_lvalue=False, consuming=True)
 
 def _for_enum_route(stmt: TpyForEach, analyzer,
                     declared: dict[str, TpyType]) -> '_ForEachRoute | None':
@@ -1890,7 +1851,7 @@ def _select_for_each_route(
     if route is None:
         note_detail(_for_each_reject_detail(stmt, analyzer, declared, narrowed))
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    if route.consuming_native_name is not None:
+    if route.consuming:
         # The one arm whose capture is NOT about the source as written: it
         # WRAPS the source (`::tpy::own_iter(std::move(xs))`), and the
         # `iterable_lvalue=False` it set describes that wrapper -- a fresh
@@ -6341,12 +6302,21 @@ def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
                if isinstance(stmt.value, TpyCall) and v_fi is not None
                and v_fi.is_generator
                else _ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True))
-    value = _lower_expr(
-        stmt.value, lc, declared,
-        use=replace(rhs_use, slot_target=target_type))
-    if _node_moves(value):
-        value = THIRMove(result_type=value.result_type, value=value,
-                         form=value.form, loc=loc)
+    # The value is an argument at the variant's value parameter: an owning
+    # element slot (`Iterable[Own[T]]`) converts it as any call's argument
+    # there is.
+    owning = (_owning_slot_arg(stmt.value, fi.params[-1].type, lc, declared,
+                               temps=True, callee_fi=fi,
+                               reason="stmt.assign")
+              if store_takes_elements(fi) else None)
+    value = owning
+    if value is None:
+        value = _lower_expr(
+            stmt.value, lc, declared,
+            use=replace(rhs_use, slot_target=target_type))
+        if _node_moves(value):
+            value = THIRMove(result_type=value.result_type, value=value,
+                             form=value.form, loc=loc)
     # A non-empty array-literal RHS renders `{...}`; the checked helper cannot
     # deduce its Range from a bare brace, so it takes the std::vector<E>
     # prefix, E the element the variant's value parameter iterates. Empty
@@ -6354,7 +6324,8 @@ def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
     # land bare.
     value_vector_cpp = None
     value_param = unwrap_qualifiers(fi.params[-1].type)
-    if (isinstance(stmt.value, TpyArrayLiteral) and stmt.value.elements
+    if (owning is None
+            and isinstance(stmt.value, TpyArrayLiteral) and stmt.value.elements
             and store_takes_elements(fi) and value_param.type_args):
         value_vector_cpp = lc.render_type(
             unwrap_own(unwrap_qualifiers(value_param.type_args[0])))
@@ -10793,11 +10764,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         and stmt.name not in lc.prescan.hoisted
                         and stmt.name not in lc.prescan.move_through
                         and _witness("decl.list_repeat_slot"))
-                    # An OwnIter/CopyIter slot (`oi = own_iter(src)`):
-                    # the TypeDef spells `auto`, the special-builtin init
-                    # render carries the concrete type.
+                    # A CopyIter slot (`ci = copy_iter(src)`): the TypeDef
+                    # spells `auto`, the special-builtin init render carries
+                    # the concrete type.
                     or (isinstance(vtype, NominalType)
-                        and (is_own_iter(vtype) or is_copy_iter(vtype))
+                        and is_copy_iter(vtype)
                         and _witness("decl.own_copy_iter_slot"))
                     # A per-element-Own record tuple slot
                     # (`t = make_pair()` -> `std::tuple<Counter, Counter>`)
@@ -11095,6 +11066,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # the same object, as a record alias is; a frame is not copyable.
             cpp_type = "auto&"
             _witness("decl.iterator_object_alias")
+        elif not is_reassign and rec.owning_alias:
+            # A second name for an owning element parameter carries its one
+            # traversal in the category the parameter arrived in, so a
+            # container handed over is consumed through it (own_iter.hpp).
+            cpp_type = "auto&&"
+            init = forwarded(init, loc)
+            _witness("decl.owning_alias")
         elif _dyn_proto_ptr(vtype) or _protocol_auto_slot(vtype):
             cpp_type = "auto"
         elif (_eligible_enum(vtype, analyzer) is not None
@@ -11103,10 +11081,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
               # The native-iterator slot spells its generic instantiation
               # (`::tpy::SpanIter<const int32_t>`) via render_type.
               or _native_iter_value_slot(vtype, analyzer)
-              # OwnIter/CopyIter: render_type spells `auto` (the TypeDef's
+              # CopyIter: render_type spells `auto` (the TypeDef's
               # formatter), the init render carries the concrete type.
-              or (isinstance(vtype, NominalType)
-                  and (is_own_iter(vtype) or is_copy_iter(vtype)))
+              or (isinstance(vtype, NominalType) and is_copy_iter(vtype))
               # The owned-optional record slot spells via render_type
               # (generic instantiation + cross-module qualification --
               # `std::optional<::tpystd::tplib::rc::Rc<Cell>>`).
@@ -13020,7 +12997,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 proto_iterable = self_typed_frame_source(proto_iterable, lc)
             return build_loop_node(
                 "iter_proto", stmt.var, et, body, lc, declared,
-                iterable=proto_iterable,
+                iterable=proto_iterable, source=it,
                 const_loop_var=stmt.const_loop_var,
                 binding=_loop_var_record(stmt.var, stmt, lc),
                 iterable_lvalue=route.iterable_lvalue,
@@ -13058,23 +13035,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             _witness("foreach.iter_literal")
         if route.str_literal_iterable:
             _witness("foreach.str_literal")
-        consuming_src = it
-        if (route.consuming_native_name is not None
-                and stmt.consuming_iter_fi is None
-                and isinstance(it, TpyCall) and it.args):
-            # The EXPLICIT `own_iter(items)` call: the ConsumingIter wrap
-            # re-spells the call, so the wrapped value is the ARG name.
-            consuming_src = it.args[0]
-        iterable = _lower_expr(
-            consuming_src, lc, declared,
-            use=_ExprUse(result=_ExprResultUse.ITERABLE,
-                         pos=SinkPos.ITER_SOURCE),
-            field_prechecked=isinstance(it, TpyFieldAccess),
-            # A literal iterable renders target-less (no container target is
-            # threaded here).
-            container_threaded=not isinstance(
-                it, (TpyArrayLiteral, TpyStrLiteral)))
-        iterable = _deref_loop_source(iterable, lc)
+        if route.consuming:
+            _witness("foreach.consuming_iter")
+            # A source sema hands over is given up here; an explicit
+            # `own_iter(x)` lowers to that same consuming call.
+            iterable = (consuming_iter(it, None, lc, declared, loc)
+                        if stmt.consuming_iter_fi is not None
+                        else _lower_expr(
+                            it, lc, declared,
+                            use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                         pos=SinkPos.ITER_SOURCE)))
+        else:
+            iterable = _lower_expr(
+                it, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                             pos=SinkPos.ITER_SOURCE),
+                field_prechecked=isinstance(it, TpyFieldAccess),
+                # A literal iterable renders target-less (no container
+                # target is threaded here).
+                container_threaded=not isinstance(
+                    it, (TpyArrayLiteral, TpyStrLiteral)))
+            iterable = _deref_loop_source(iterable, lc)
         if (route.literal_src_type is not None
                 and isinstance(iterable, THIRContainerLiteral)):
             # Self-describe the brace-init with the route's resolved container
@@ -13083,12 +13064,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # elements the aliasing loop var can mutate.
             iterable = replace(
                 iterable, typed_brace_cpp=lc.render_type(route.literal_src_type))
-        if route.consuming_native_name is not None:
-            _witness("foreach.consuming_iter")
-            iterable = THIRConsumingIter(
-                result_type=iterable.result_type, value=iterable,
-                native_name=route.consuming_native_name, form=Form.VALUE,
-                loc=loc)
         hoisted_bt = (_borrow_tuple_local_type(stmt.var, declared,
                                              lc.names_with("storage_tuple"))
                       if stmt.hoist_loop_var else None)
@@ -13100,18 +13075,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         # (`own_iter(std::move(xs))`); what it iterates is that wrapper, which
         # the frame does not place -- so it asks nothing here, exactly as it
         # sets its own `iterable_lvalue`.
-        src_field = (None if route.consuming_native_name is not None
+        src_field = (None if route.consuming
                      else _frame_src_slot(stmt, lc))
         if src_field is not None:
             iterable = self_typed_frame_source(iterable, lc)
         return build_loop_node(
             "each", stmt.var, et, body, lc, declared,
-            iterable=iterable,
+            iterable=iterable, source=None if route.consuming else it,
             const_loop_var=stmt.const_loop_var,
             binding=_loop_var_record(stmt.var, stmt, lc),
             iterable_lvalue=route.iterable_lvalue,
-            consuming=(route.consuming_native_name is not None
-                       or route.consuming_name),
+            consuming=route.consuming,
             hoist_loop_var=stmt.hoist_loop_var,
             str_literal_iterable=route.str_literal_iterable,
             hoisted_step=hoisted_step,

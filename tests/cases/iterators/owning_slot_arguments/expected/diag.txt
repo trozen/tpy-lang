@@ -1,0 +1,43 @@
+part_adapters.py:150: warning: copies R elements; use copy_iter() to make this explicit
+part_adapters.py:175: warning: copies R elements; use copy() to make this explicit
+part_adapters.py:177: warning: copies R elements; use copy() to make this explicit
+part_bindings.py:29: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_bindings.py:40: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_bindings.py:76: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_bindings.py:92: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_builtins.py:69: warning: Method 'Sevens.__iter__' hides 'list.__iter__' -- any 'list' reference will call 'list.__iter__', not 'Sevens.__iter__' (differs from Python's dynamic dispatch)
+part_builtins.py:38: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container) ('xs' is bound to existing storage at line 39)
+part_builtins.py:60: warning: copies tuple[str, R] elements; use copy_iter() to make this explicit (or copy() to copy the entire container) ('pairs' is bound to existing storage at line 61)
+part_builtins.py:88: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_builtins.py:94: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_builtins.py:106: warning: copies R elements; use copy_iter() to make this explicit
+part_builtins.py:118: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_callees.py:112: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_callees.py:124: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_callees.py:135: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_callees.py:139: warning: copies R elements; use copy_iter() to make this explicit
+part_frames.py:122: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_frames.py:123: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+part_handover.py:61: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_handover.py:66: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_handover.py:71: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_handover.py:77: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container) ('xs' is bound to existing storage at line 78)
+part_handover.py:86: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container) ('xs' is bound to existing storage at line 87)
+part_slots.py:147: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_slots.py:154: warning: copies R elements; use copy() to make this explicit
+part_slots.py:166: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_slots.py:170: warning: copies R elements; use copy_iter() to make this explicit
+part_slots.py:180: warning: copies tuple[R, int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_slots.py:187: warning: copies S elements; use copy_iter() to make this explicit
+part_slots.py:190: warning: copies S elements; use copy_iter() to make this explicit
+part_walrus.py:56: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_walrus.py:63: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_walrus.py:71: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_walrus.py:78: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:60: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:64: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:68: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:75: warning: copies R elements; use copy_iter() to make this explicit
+main.py:79: warning: copies R elements; use copy_iter() to make this explicit
+main.py:91: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:96: warning: copies R elements; use copy_iter() to make this explicit

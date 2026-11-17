@@ -1384,7 +1384,7 @@ template<::tpystd::typing::Iterator<Cell> T_xs>
 int32_t sum_owned(T_xs&& xs) {
     int32_t total = 0;
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -1452,7 +1452,7 @@ template<Owning T_xs>
 std::vector<Token> keep_tokens(T_xs&& xs) {
     std::vector<Token> out = std::vector<Token>{};
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

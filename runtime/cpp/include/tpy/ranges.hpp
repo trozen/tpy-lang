@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "next_iter.hpp"
+#include "own_iter.hpp"
 
 namespace tpy {
 
@@ -201,10 +202,14 @@ Container collect(Iter&& iter) {
  */
 template<typename Container, typename Arg>
 Container construct(Arg&& arg) {
-    if constexpr (::tpy::native_input_range<std::remove_cvref_t<Arg>>) {
-        return from_range<Container>(std::forward<Arg>(arg));
+    // A container handed over (`Arg` not an lvalue reference) is moved into
+    // its consuming iterator (`handover_range`).
+    auto&& src = ::tpy::handover_range<Arg>(arg);
+    using S = decltype(src);
+    if constexpr (::tpy::native_input_range<std::remove_cvref_t<S>>) {
+        return from_range<Container>(std::forward<S>(src));
     } else {
-        return collect<Container>(::tpy::iter_of(arg));
+        return collect<Container>(::tpy::iter_of(src));
     }
 }
 
@@ -216,8 +221,9 @@ Container construct(Arg&& arg) {
  * trivially-copyable payloads).
  */
 template<typename Container, typename Arg>
-void extend(Container& c, Arg&& arg) {
-    if constexpr (::tpy::native_input_range<std::remove_cvref_t<Arg>>) {
+void extend(Container& c, Arg&& arg0) {
+    auto&& arg = ::tpy::handover_range<Arg>(arg0);
+    if constexpr (::tpy::native_input_range<std::remove_cvref_t<decltype(arg)>>) {
         c.insert(c.end(), std::ranges::begin(arg), std::ranges::end(arg));
     } else {
         auto&& __iter = ::tpy::iter_of(arg);

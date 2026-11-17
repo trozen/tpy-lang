@@ -16402,42 +16402,42 @@
  "list_i_own__mut__loop_var__ctor": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [move(%s0)]) print(%k0.tag [raw])"
  ],
  "list_i_own__mut__loop_var__fn": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
+  "call(CALLEE, [move(%s0)])"
  ],
  "list_i_own__mut__loop_var__gen": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t> move){%s0}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), move(%s0)])"
  ],
  "list_i_own__mut__loop_var__genrec": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%g, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
+  "method_call(%g, CALLEE, [move(%s0)])"
  ],
  "list_i_own__mut__loop_var__meth": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%t, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
+  "method_call(%t, CALLEE, [move(%s0)])"
  ],
  "list_i_own__mut__loop_var__nested": [
-  "reject:expr.call:call.ctor_arg.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [move(%s0)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []),"
  ],
  "list_i_own__mut__loop_var__proto": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
+  "method_call(%pp, CALLEE, [move(%s0)])"
  ],
  "list_i_own__mut__loop_var__static": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
+  "call(CALLEE, [move(%s0)])"
  ],
  "list_i_own__mut__narrowed_opt__ctor": [
   "ok",
@@ -17402,42 +17402,42 @@
  "list_i_own__ro__loop_var__ctor": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [move(%s0)]) print(%k0.tag [raw])"
  ],
  "list_i_own__ro__loop_var__fn": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
+  "call(CALLEE, [move(%s0)])"
  ],
  "list_i_own__ro__loop_var__gen": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t> move){%s0}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), move(%s0)])"
  ],
  "list_i_own__ro__loop_var__genrec": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%g, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
+  "method_call(%g, CALLEE, [move(%s0)])"
  ],
  "list_i_own__ro__loop_var__meth": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%t, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
+  "method_call(%t, CALLEE, [move(%s0)])"
  ],
  "list_i_own__ro__loop_var__nested": [
-  "reject:expr.call:call.ctor_arg.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [move(%s0)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []),"
  ],
  "list_i_own__ro__loop_var__proto": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
+  "method_call(%pp, CALLEE, [move(%s0)])"
  ],
  "list_i_own__ro__loop_var__static": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
+  "call(CALLEE, [move(%s0)])"
  ],
  "list_i_own__ro__narrowed_opt__ctor": [
   "ok",
@@ -24972,42 +24972,42 @@
  "rec_own__mut__loop_var__ctor": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(R move){%s0}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [move(%s0)]) print(%k0.tag [raw])"
  ],
  "rec_own__mut__loop_var__fn": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [%argtmp(R move){%s0}])"
+  "call(CALLEE, [move(%s0)])"
  ],
  "rec_own__mut__loop_var__gen": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(R move){%s0}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), move(%s0)])"
  ],
  "rec_own__mut__loop_var__genrec": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%g, CALLEE, [%argtmp(R move){%s0}])"
+  "method_call(%g, CALLEE, [move(%s0)])"
  ],
  "rec_own__mut__loop_var__meth": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%t, CALLEE, [%argtmp(R move){%s0}])"
+  "method_call(%t, CALLEE, [move(%s0)])"
  ],
  "rec_own__mut__loop_var__nested": [
-  "reject:expr.call:call.ctor_arg.own_record_f1",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [move(%s0)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []),"
  ],
  "rec_own__mut__loop_var__proto": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%pp, CALLEE, [%argtmp(R move){%s0}])"
+  "method_call(%pp, CALLEE, [move(%s0)])"
  ],
  "rec_own__mut__loop_var__static": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [%argtmp(R move){%s0}])"
+  "call(CALLEE, [move(%s0)])"
  ],
  "rec_own__mut__narrowed_opt__ctor": [
   "ok",
@@ -25932,42 +25932,42 @@
  "rec_own__ro__loop_var__ctor": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(R move){%s0}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [move(%s0)]) print(%k0.tag [raw])"
  ],
  "rec_own__ro__loop_var__fn": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [%argtmp(R move){%s0}])"
+  "call(CALLEE, [move(%s0)])"
  ],
  "rec_own__ro__loop_var__gen": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(R move){%s0}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), move(%s0)])"
  ],
  "rec_own__ro__loop_var__genrec": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%g, CALLEE, [%argtmp(R move){%s0}])"
+  "method_call(%g, CALLEE, [move(%s0)])"
  ],
  "rec_own__ro__loop_var__meth": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%t, CALLEE, [%argtmp(R move){%s0}])"
+  "method_call(%t, CALLEE, [move(%s0)])"
  ],
  "rec_own__ro__loop_var__nested": [
-  "reject:expr.call:call.ctor_arg.own_record_f1",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [move(%s0)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []),"
  ],
  "rec_own__ro__loop_var__proto": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%pp, CALLEE, [%argtmp(R move){%s0}])"
+  "method_call(%pp, CALLEE, [move(%s0)])"
  ],
  "rec_own__ro__loop_var__static": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [%argtmp(R move){%s0}])"
+  "call(CALLEE, [move(%s0)])"
  ],
  "rec_own__ro__narrowed_opt__ctor": [
   "ok",

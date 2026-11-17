@@ -95,7 +95,7 @@ void free_fn() {
     ::tpy::__setitem__(d, "b", ::tpyapp::main::wide());
     ::tpy::ordered_set<int64_t> s = ::tpy::ordered_set<int64_t>({1});
     s.insert(::tpyapp::main::wide());
-    std::cout << "free:" << " " << ::tpy::__getitem__(d, "b") << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(s)) << "\n" << ::tpy::check_signals;
+    std::cout << "free:" << " " << ::tpy::__getitem__(d, "b") << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move(s))) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -222,7 +222,7 @@ void with_pos() {
         s = ::tpy::ordered_set<int64_t>({1});
         s->insert(::tpyapp::main::wide());
         s->insert(static_cast<int64_t>(tag));
-        std::cout << "with:" << " " << ::tpy::DictPrinter((*d)) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>((*s))) << "\n" << ::tpy::check_signals;
+        std::cout << "with:" << " " << ::tpy::DictPrinter((*d)) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move((*s)))) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -252,10 +252,10 @@ void try_pos() {
             ::tpy::__setitem__(d, "b", ::tpyapp::main::wide());
             s.insert(::tpyapp::main::wide());
         } catch (...) {
-            std::cout << "try:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(s)) << "\n" << ::tpy::check_signals;
+            std::cout << "try:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move(s))) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "try:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(s)) << "\n" << ::tpy::check_signals;
+        std::cout << "try:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move(s))) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -299,7 +299,7 @@ void match_pos(Color c) {
         ::tpy::__setitem__(d, "b", ::tpyapp::main::wide());
         ::tpy::ordered_set<int64_t> s = ::tpy::ordered_set<int64_t>({12});
         s.insert(::tpyapp::main::wide());
-        std::cout << "match:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(s)) << "\n" << ::tpy::check_signals;
+        std::cout << "match:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move(s))) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -346,7 +346,7 @@ void empty_seed_pos() {
     ::tpy::ordered_set<int64_t> s = ::tpy::ordered_set<int64_t>();
     s.insert(1);
     s.insert(::tpyapp::main::wide());
-    std::cout << "empty_seed:" << " " << ::tpy::DictPrinter(f) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(s)) << "\n" << ::tpy::check_signals;
+    std::cout << "empty_seed:" << " " << ::tpy::DictPrinter(f) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move(s))) << "\n" << ::tpy::check_signals;
 }
 
 // # two empty literals are independent
@@ -395,7 +395,7 @@ void set_pos() {
     s.insert(::tpyapp::main::wide());
     ::tpy::set_update(s, ::tpy::ordered_set<int64_t>({7}));
     ::tpyapp::main::takeset64(s);
-    std::cout << "set:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(s)) << "\n" << ::tpy::check_signals;
+    std::cout << "set:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move(s))) << "\n" << ::tpy::check_signals;
 }
 
 // # an inserting key widens the key; a literal looked up adapts
@@ -549,7 +549,7 @@ void sinks_pos() {
     }
     ::tpy::__setitem__(d, "b", ::tpyapp::main::wide());
     s.insert(::tpyapp::main::wide());
-    std::cout << "sinks:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(s)) << "\n" << ::tpy::check_signals;
+    std::cout << "sinks:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move(s))) << "\n" << ::tpy::check_signals;
 }
 
 // # setdefault stores its key and value; pop hands back the value
@@ -612,7 +612,7 @@ void set_update_narrower_pos() {
     ::tpy::ordered_set<int32_t> o = ::tpy::ordered_set<int32_t>({2});
     ::tpy::set_update(s, o);
     s.insert(::tpyapp::main::wide());
-    std::cout << "set_update_narrower:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(s)) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(o)) << "\n" << ::tpy::check_signals;
+    std::cout << "set_update_narrower:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move(s))) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::move(o))) << "\n" << ::tpy::check_signals;
 }
 
 // # tuple keys looked up with `in`: a literal tuple adapts to the key
@@ -677,7 +677,7 @@ void optional_param_pos() {
     ::tpy::ordered_set<int64_t> es = ::tpy::ordered_set<int64_t>();
     es.insert(2);
     ::tpyapp::main::take_opt(&(e), &(es));
-    std::cout << "optional_param:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(s)) << " " << ::tpy::DictPrinter(e) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(es)) << "\n" << ::tpy::check_signals;
+    std::cout << "optional_param:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move(s))) << " " << ::tpy::DictPrinter(e) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move(es))) << "\n" << ::tpy::check_signals;
 }
 
 // # a name bound to the dict after its widening is the same dict
@@ -753,7 +753,7 @@ void first_evidence_pos() {
     ::tpy::ordered_set<int64_t> s = ::tpy::ordered_set<int64_t>();
     ::tpy::set_update(s, ::tpy::ordered_set<int64_t>({1, 2}));
     s.insert(::tpyapp::main::wide());
-    std::cout << "first_evidence:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(s)) << "\n" << ::tpy::check_signals;
+    std::cout << "first_evidence:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move(s))) << "\n" << ::tpy::check_signals;
 }
 
 // # `del d[k]` looks its key up: a fitting key leaves the cells open, and a

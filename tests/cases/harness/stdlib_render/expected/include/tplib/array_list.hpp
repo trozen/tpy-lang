@@ -621,7 +621,7 @@ inline void ArrayList<T, N>::extend(T_items&& items) {
         this->_size = ::tpy::add_check<uint32_t>(this->_size, u_size);
     } else if constexpr (::tpystd::typing::Iterable<std::remove_cvref_t<T_items>, T>) {
         auto& __src_0 = items;
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(items)>(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;

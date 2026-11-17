@@ -18,17 +18,17 @@ from enum import Enum, auto
 from typing import Any, Callable, Iterator, NamedTuple, Protocol
 
 from .typesys import element_access, pointer_repr_optional, pointer_variant_union
-from .modules.type_resolution import is_owning_iterable
+from .modules.type_resolution import owning_element_slot
 from .typesys import (
     AnyType, FunctionInfo, NominalType, PtrType, ReadonlyType, TpyType, TupleType,
-    TypeParamRef, OwnType, UnionType,
+    TypeParamRef, OwnType, UnionType, GenExprType,
     OptionalType, ResultPosition, ResultRepresentation, classify_result_representation,
     is_bodyless_binding, is_open_type_param_return, is_primitive_type, is_protocol_type,
     indirection_referent_readonly, declared_result_readonly, result_follows_receiver_root,
     declares_whole_result_following,
     property_getter_returns_storage_ref, returns_cpp_reference_shape,
     unwrap_optional_own, unwrap_own, unwrap_readonly, unwrap_ref_type,
-    unwrap_send_sync, bound_as_spelled, make_list, PendingListType,
+    unwrap_send_sync, bound_as_spelled,
     param_takes_ownership, answers_as_call,
     ConcreteFrameType, PendingNumType, RecordInfo, is_bufferless_scalar,
     is_dyn_protocol, is_owned_leaf, substitute_type_params_structural,
@@ -48,7 +48,7 @@ from .parse import (
     SubscriptDunder, is_property_getter_read, const_tuple_index, past_cast,
 )
 from .parse.nodes import as_name_read
-from .type_def_registry import (is_array, is_bool_type, is_borrowing_view_type,
+from .type_def_registry import (is_bool_type, is_borrowing_view_type,
                                 is_bytes_type, is_bytes_view_type,
                                 is_owned_in_coro_frame, is_str_type,
                                 is_str_view_type, is_varargs, type_def_of,
@@ -485,6 +485,10 @@ class ValueCategoryAnalyzer(Protocol):
     registry: Any
 
     def get_expr_type(self, expr: TpyExpr) -> 'TpyType | None': ...
+
+    def is_last_use(self, expr: TpyExpr | None) -> bool: ...
+
+    def read_owns_storage(self, read: TpyName) -> bool: ...
 
 
 # Container/generator-shaped expressions whose gen_expr emits a value
@@ -1242,20 +1246,52 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     return True  # Default: rvalue
 
 
+def _iter_overloads(t: 'TpyType | None',
+                    registry: Any) -> 'list[FunctionInfo]':
+    """The `__iter__` overloads `t`'s class declares; a container literal
+    not decided yet asks the container it spells."""
+    if not isinstance(t, TpyType):
+        return []
+    if isinstance(t, OwnType):
+        t = t.wrapped
+    record = registry.get_record_for_type(bound_as_spelled(t, lists=True))
+    if record is None:
+        return []
+    return record.get_method_overloads("__iter__")
+
+
 def consuming_iter_of(t: 'TpyType | None', registry: Any) -> 'FunctionInfo | None':
     """The `__iter__(self: Own[Self])` overload of `t`'s class: iterating a
     value of `t` the caller gives up hands over the elements it owns. A
     container literal not decided yet asks the container it spells; a
     readonly value has none (its storage is not the caller's to give up)."""
-    if not isinstance(t, TpyType):
-        return None
-    if isinstance(t, OwnType):
-        t = t.wrapped
-    record = registry.get_record_for_type(bound_as_spelled(t, lists=True))
-    if record is None:
-        return None
-    return next((fi for fi in record.get_method_overloads("__iter__")
+    return next((fi for fi in _iter_overloads(t, registry)
                  if fi.is_consuming), None)
+
+
+def own_iter_source(expr: TpyExpr) -> 'TpyName | None':
+    """The name an explicit `own_iter(name)` call (`TpyCall.
+    consuming_iter_fi`) gives up to its consuming `__iter__`, or None for
+    any other expression: iterating the call is a consuming iteration of
+    that name."""
+    if (not isinstance(expr, TpyCall) or expr.consuming_iter_fi is None
+            or not isinstance(expr.args[0], TpyName)):
+        return None
+    return expr.args[0]
+
+
+def consuming_only(t: 'TpyType | None', registry: Any) -> bool:
+    """`t`'s class has a consuming `__iter__` (`consuming_iter_of`) and no
+    lending one: a value of `t` is iterated only by giving it up."""
+    overloads = _iter_overloads(t, registry)
+    return bool(overloads) and all(fi.is_consuming for fi in overloads)
+
+
+def consuming_only_message(display: str) -> str:
+    """The diagnostic for a value of a consuming-only type (`consuming_only`)
+    iterated or lent while the caller keeps it."""
+    return (f"'{display}' can only be iterated once it is given up: its only "
+            f"__iter__ consumes")
 
 
 def handed_over_iter(analyzer: ValueCategoryAnalyzer, source: TpyExpr, *,
@@ -1267,12 +1303,8 @@ def handed_over_iter(analyzer: ValueCategoryAnalyzer, source: TpyExpr, *,
     if not (dead or (not isinstance(source, TpyName)
                      and is_rvalue_source(analyzer, source))):
         return None
-    t = analyzer.get_expr_type(source)
-    if (isinstance(source, PendingListType.written_as())
-            and isinstance(t, NominalType) and is_array(t)):
-        # A list literal kept as an Array is still the list it spells.
-        t = make_list(t.type_args[0])
-    return consuming_iter_of(t, analyzer.registry)
+    return consuming_iter_of(analyzer.get_expr_type(source),
+                             analyzer.registry)
 
 
 def for_source_is_rvalue(stmt: TpyForEach,
@@ -1663,11 +1695,10 @@ def protocol_slot(ptype: TpyType | None) -> NominalType | None:
     are the borrow pointer's.
 
     An `Own[...]` TYPE ARG (`Iterable[Own[T]]`, a `T_p&&` forwarding-ref
-    slot) is a structural slot like any other: the call-argument render --
-    not a protocol pre-arm -- rewrites a movable last-use arg into the consuming
-    `::tpy::own_iter(std::move(x))`, and `_lower_call_arg`'s Iterable arm
-    carries that wrap position-blind; every other arg takes the same
-    bare/temp verdicts as a plain structural slot.
+    slot) is a structural slot like any other: whether its argument is
+    handed over (the container itself, moved) or lent is the argument's
+    record, read by the one argument conversion at an owning element slot
+    (`owning_element_slot`), not by a protocol pre-arm.
     """
     if not isinstance(ptype, TpyType):
         return None
@@ -1786,13 +1817,60 @@ def _twin_in_place(proto: NominalType, arg: TpyExpr, t: TpyType,
     its twin's reference parameter binds it: a reference-type object
     (`_reference_object`) the argument does not build (`is_rvalue_source`),
     whatever the callee (a runtime binding's parameter binds the lvalue as
-    a TPy body's twin does). Not at a protocol whose elements the callee
-    takes over
-    (`Iterable[Own[T]]`): its consuming rows hand them over."""
-    if is_owning_iterable(proto, analyzer.registry):
+    a TPy body's twin does). At an owning element slot
+    (`owning_element_slot`) a container handed over (`owning_arg`) is moved
+    in itself; a lent one binds in place as anywhere else."""
+    if (owning_element_slot(proto, analyzer.registry)
+            and owning_arg(analyzer, arg) is OwningArg.HANDED_OVER):
         return False
     return (_reference_object(t, records=True)
             and not is_rvalue_source(analyzer, arg))
+
+
+class OwningArg(Enum):
+    """What an argument at an owning element slot is (`owning_arg`)."""
+    # A container the caller gives up, moved in whole: the callee consumes it.
+    HANDED_OVER = "handed_over"
+    # An iterator object written as the argument, passed as itself.
+    ITERATOR = "iterator"
+    # Storage the caller keeps: its elements are copied (warned).
+    LENT = "lent"
+
+
+def owning_arg(analyzer: 'ValueCategoryAnalyzer',
+               arg: TpyExpr) -> OwningArg:
+    """THE verdict on argument `arg` of an owning element slot: handed over
+    where the caller gives the container up -- a name whose binding owns
+    its storage (`read_owns_storage`, the one ownership input) read at its
+    last use, or a fresh temporary -- and its type has a consuming
+    `__iter__` (`handed_over_iter`); an iterator object written as the
+    argument, or a binding of one, is passed as itself
+    (`iteration_object`); anything else is lent. Settlement stores the
+    answer on the argument's record (`SourceRecord.handover`), which the
+    lowering reads; a reader during the walk asks it here
+    (`read_owns_storage` says which ownership fact the walk has)."""
+    src = peel_coerce(arg)
+    dead = (isinstance(src, TpyName) and analyzer.read_owns_storage(src)
+            and analyzer.is_last_use(src))
+    if handed_over_iter(analyzer, src, dead=dead) is not None:
+        return OwningArg.HANDED_OVER
+    if iteration_object(analyzer, src):
+        return OwningArg.ITERATOR
+    return OwningArg.LENT
+
+
+def iteration_object(analyzer: 'ValueCategoryAnalyzer', arg: TpyExpr) -> bool:
+    """Argument `arg` is an iterator object rather than a container: its
+    type is no reference-type object (`_reference_object`) nor a protocol
+    other than an iterator one, so an iterating slot takes it as it is (a
+    generator, a generator expression, an iteration adapter, a view)."""
+    t = analyzer.get_expr_type(peel_coerce(arg))
+    if not isinstance(t, TpyType):
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(unwrap_own(t))))
+    if is_protocol_type(t) and not is_iterator_protocol(t):
+        return False
+    return not _reference_object(t, records=True)
 
 
 def _reference_object(t: TpyType, *, records: bool) -> bool:
@@ -1843,11 +1921,11 @@ def _bound_by_iteration(t: TpyType, frame: bool) -> bool:
     than as a held value of a type of its own (generic protocols and
     iterables are their own step): a reference-type iterable -- a builtin
     container (a container literal still pending its element type, a lazy
-    repeat), `bytearray`, a generator object -- which its twin would bind
-    in place too. A value-type iterable (a range, a span) is held as its
-    twin holds it, a copy."""
+    repeat), `bytearray`, a generator object or expression -- which its
+    twin would bind in place too. A value-type iterable (a range, a span)
+    is held as its twin holds it, a copy."""
     if isinstance(t, (PendingContainerType, ListRepeatType,
-                      ConcreteFrameType)):
+                      ConcreteFrameType, GenExprType)):
         return True
     td = type_def_of(t) if isinstance(t, NominalType) else None
     if td is None:
@@ -1900,7 +1978,9 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
 
     A structural protocol parameter holds its concrete twin
     (`protocol_twin_slot`): the twin's slot answers, and a twin the frame
-    holds by value (`frame_param_lends`) takes the prvalue itself."""
+    holds by value (`frame_param_lends`) takes the prvalue itself. A fresh
+    container an owning element slot takes over hoists too: the call moves
+    it from the local (its record moves it)."""
     ptype = _frame_twin(a, ptype, analyzer)
     pt = unwrap_ref_type(ptype) if isinstance(ptype, TpyType) else None
     if pt is None:

@@ -407,7 +407,7 @@ template<::tpystd::typing::Iterable<Item> T_source>
 std::vector<Item> bump_all(T_source&& source) {
     std::vector<Item> out = std::vector<Item>{};
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -427,7 +427,7 @@ template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 int32_t append_only(T_source&& source) {
     int32_t n = 0;
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -447,7 +447,7 @@ template<::tpystd::typing::Iterable<Item> T_source>
 int32_t bump_only(T_source&& source) {
     int32_t t = 0;
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -469,7 +469,7 @@ template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 int32_t closure_write(T_source&& source) {
     int32_t n = 0;
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

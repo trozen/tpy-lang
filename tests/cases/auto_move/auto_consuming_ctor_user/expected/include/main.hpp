@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 // def __init__(self, src: Iterable[Own[int32]]) -> None:
 //     self.items = list(src)
 template<::tpystd::typing::Iterable<int32_t> T_src>
-inline Bag::Bag(T_src&& src) : items(::tpy::construct<std::vector<int32_t>>(src)) {}
+inline Bag::Bag(T_src&& src) : items(::tpy::construct<std::vector<int32_t>>(std::forward<decltype(src)>(src))) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

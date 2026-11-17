@@ -304,7 +304,7 @@ def own_iter_first(xs: Iterator[Own[A]]) -> Iterator[int32]:
     first = frame_field_ownership(ctx, f["element_first"], "a")
     second = frame_field_ownership(ctx, f["own_iter_first"], "a")
     assert first == second
-    assert first.acquired is Acquired.OWN_ITER_LOOP
+    assert first.acquired is Acquired.CONSUMING_LOOP
 
 
 def test_the_consuming_receiver_is_handed_over() -> None:

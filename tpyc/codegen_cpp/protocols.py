@@ -10,7 +10,7 @@ from enum import Enum, auto
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NominalType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, SelfType,
+    TpyType, NominalType, OwnType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, SelfType,
     MethodSignature, is_protocol_type,
     unwrap_readonly, unwrap_ref_type, shadowed_local_cpp_name,
     ConcreteCoroType, unwrap_send_sync,
@@ -35,6 +35,7 @@ from ..sema.dyn_erasure import (DynEntry, DynSlotEntry, dyn_forward_ok,
 from ..symbol_binding import lookup_imported, SymbolKind
 from ..identity_map import IdentityMap
 from ..modules.defs import UNARYOP_TO_METHOD
+from ..modules.type_resolution import get_iterable_element_type
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -729,6 +730,17 @@ class ProtocolGenerator:
             result += f"  requires {' && '.join(requires_parts)}\n"
         return result
 
+    def _step_may_own(self, ret: TpyType) -> bool:
+        """An `__iter__` requirement returning `ret` hands out owned steps
+        at some conforming use: its step is `Own[...]`, or a type parameter
+        of the protocol (bound per use, `Own[R]` at an owning element
+        slot). A `Self` or concrete non-owned step never does."""
+        if not is_protocol_type(ret):
+            return False
+        step = get_iterable_element_type(ret, self.ctx.analyzer.registry,
+                                         keep_own=True)
+        return isinstance(step, (OwnType, TypeParamRef))
+
     def collect_concept_methods(self, pi: 'ProtocolInfo | None') -> list[MethodSignature]:
         return self.ctx.analyzer.protocols.collect_protocol_methods(pi)
 
@@ -853,7 +865,16 @@ class ProtocolGenerator:
             # operator map, or direct member call (in that priority order).
             from ..modules import get_dunder_cpp_template
             cpp_tmpl = get_dunder_cpp_template(method_sig.name)
-            if cpp_tmpl is not None:
+            if (method_sig.name == "__iter__" and not method_sig.params
+                    and self._step_may_own(method_sig.return_type)):
+                # An iteration whose step is owned, or a protocol parameter
+                # an owning element slot instantiates at `Own[...]`
+                # (`Iterable[Own[R]]`): the traversal itself, as an owning
+                # element parameter runs it (`handover_iter`), so a type
+                # passed by value whose only `__iter__` consumes it (`&&`)
+                # meets it; a lent argument answers as its `__iter__` does.
+                call_expr = "::tpy::handover_iter<T>(t)"
+            elif cpp_tmpl is not None:
                 # {self} -> t, {0}/{1}/... -> std::declval<ParamCpp>()
                 call_expr = expand_cpp_template(
                     cpp_tmpl, "t",

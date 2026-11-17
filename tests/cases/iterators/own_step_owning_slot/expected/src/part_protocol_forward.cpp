@@ -9,10 +9,19 @@ namespace tpyapp::part_protocol_forward {
 // def main() -> None:
 //     # sub-protocol of `Iterable[Own[Cell]]`
 //     print("sub-protocol", take_sub(Bag()))  # tpyc: ok
-//     # a live list through an owning sub-protocol is copied at the forward
-//     # and stays the caller's
+//     # a dead list through an owning sub-protocol is handed over: no copy
+//     dead: list[Cell] = [Cell(1), Cell(2)]
+//     print("dead list sub-protocol", sum_sub(dead))  # tpyc: ok
+//     dead2: list[Cell] = [Cell(3)]
+//     print("dead list sub-protocol take", take_sub(dead2))  # tpyc: ok
+//     # a dead Array (an unannotated literal never grown) likewise
+//     dead_arr = [Cell(1), Cell(2)]  # tpyc: type(/Array/)
+//     print("dead array sub-protocol", sum_sub(dead_arr))  # tpyc: ok
+//     dead_arr2 = [Cell(3)]
+//     print("dead array sub-protocol take", take_sub(dead_arr2))  # tpyc: ok
 //     held = [Cell(1), Cell(2)]
-//     print("live list sub-protocol", sum_sub(held))  # tpyc: ok
+//     # the live `held` is where the copy is caused, so the warning is here
+//     print("live list sub-protocol", sum_sub(held))  # tpyc: warning(/copies Cell elements/)
 //     held[0].v += 1
 //     print("live list sub-protocol after", held[0].v, len(held))
 //     # likewise through a generic protocol's lending instance
@@ -28,6 +37,14 @@ namespace tpyapp::part_protocol_forward {
 void main() {
     ::tpyapp::fixtures::Bag __tmp_1 = ::tpyapp::fixtures::Bag();
     std::cout << "sub-protocol" << " " << ::tpyapp::part_protocol_forward::take_sub(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::vector<::tpyapp::fixtures::Cell> dead = {::tpyapp::fixtures::Cell(1), ::tpyapp::fixtures::Cell(2)};
+    std::cout << "dead list sub-protocol" << " " << ::tpyapp::part_protocol_forward::sum_sub(std::move(dead)) << "\n" << ::tpy::check_signals;
+    std::vector<::tpyapp::fixtures::Cell> dead2 = {::tpyapp::fixtures::Cell(3)};
+    std::cout << "dead list sub-protocol take" << " " << ::tpyapp::part_protocol_forward::take_sub(std::move(dead2)) << "\n" << ::tpy::check_signals;
+    std::array<::tpyapp::fixtures::Cell, 2> dead_arr = {::tpyapp::fixtures::Cell(1), ::tpyapp::fixtures::Cell(2)};
+    std::cout << "dead array sub-protocol" << " " << ::tpyapp::part_protocol_forward::sum_sub(std::move(dead_arr)) << "\n" << ::tpy::check_signals;
+    std::array<::tpyapp::fixtures::Cell, 1> dead_arr2 = {::tpyapp::fixtures::Cell(3)};
+    std::cout << "dead array sub-protocol take" << " " << ::tpyapp::part_protocol_forward::take_sub(std::move(dead_arr2)) << "\n" << ::tpy::check_signals;
     std::array<::tpyapp::fixtures::Cell, 2> held = {::tpyapp::fixtures::Cell(1), ::tpyapp::fixtures::Cell(2)};
     std::cout << "live list sub-protocol" << " " << ::tpyapp::part_protocol_forward::sum_sub(held) << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(held, 0).v = ::tpy::add_check<int32_t>(::tpy::__getitem__(held, 0).v, 1);

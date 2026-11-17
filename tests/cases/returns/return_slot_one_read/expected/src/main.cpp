@@ -869,7 +869,7 @@ void main() {
     std::array<N, 2> nodes = {N("pear"), N("apple")};
     std::cout << "sorted_key" << " " << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
-        auto __obj_0 = ::tpy::builtin_sorted_key<N>(nodes, [](const N& n) -> std::string { return n.name; });
+        auto __obj_0 = ::tpy::builtin_sorted_key<N>(std::move(nodes), [](const N& n) -> std::string { return n.name; });
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();

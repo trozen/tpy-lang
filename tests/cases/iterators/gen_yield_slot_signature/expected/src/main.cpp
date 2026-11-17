@@ -522,12 +522,11 @@ void main() {
     std::cout << "next" << " " << first.n << "\n" << ::tpy::check_signals;
     std::array<P, 2> bo = {P(1), P(2)};
     auto __tmp_15 = ::tpy::__iter__(bo);
-    auto __tmp_16 = ::tpyapp::main::relay<P>(__tmp_15);
-    std::cout << "own-slot" << " " << ::tpyapp::main::bump_all(__tmp_16) << "\n" << ::tpy::check_signals;
+    std::cout << "own-slot" << " " << ::tpyapp::main::bump_all(::tpyapp::main::relay<P>(__tmp_15)) << "\n" << ::tpy::check_signals;
     std::array<P, 2> cr = {P(1), P(2)};
     {
-        auto __tmp_17 = ::tpy::__iter__(cr);
-        auto __src_40 = ::tpyapp::main::copy_relay<P>(__tmp_17);
+        auto __tmp_16 = ::tpy::__iter__(cr);
+        auto __src_40 = ::tpyapp::main::copy_relay<P>(__tmp_16);
         auto&& __itr_40 = ::tpy::__iter__(__src_40);
         for (;;) {
             auto __r_41 = __itr_40.__next__();
@@ -540,8 +539,8 @@ void main() {
     std::cout << "apply" << " " << ::tpyapp::main::apply<int32_t, int32_t>(double_, 21) << "\n" << ::tpy::check_signals;
     std::vector<H> hs = {H(1), H(2)};
     {
-        auto __tmp_18 = ::tpyapp::main::each<H>(hs);
-        auto __src_42 = ::tpyapp::main::part_relay(__tmp_18);
+        auto __tmp_17 = ::tpyapp::main::each<H>(hs);
+        auto __src_42 = ::tpyapp::main::part_relay(__tmp_17);
         auto&& __itr_42 = ::tpy::__iter__(__src_42);
         for (;;) {
             auto __r_43 = __itr_42.__next__();
@@ -552,8 +551,8 @@ void main() {
     }
     std::cout << "part" << " " << ::tpy::__getitem__(hs, 0).p.n << " " << ::tpy::__getitem__(hs, 1).p.n << "\n" << ::tpy::check_signals;
     {
-        auto __tmp_19 = ::tpyapp::main::each<H>(hs);
-        auto __src_44 = ::tpyapp::main::part_alias_relay(__tmp_19);
+        auto __tmp_18 = ::tpyapp::main::each<H>(hs);
+        auto __src_44 = ::tpyapp::main::part_alias_relay(__tmp_18);
         auto&& __itr_44 = ::tpy::__iter__(__src_44);
         for (;;) {
             auto __r_45 = __itr_44.__next__();
@@ -565,8 +564,8 @@ void main() {
     std::cout << "part-alias" << " " << ::tpy::__getitem__(hs, 0).p.n << " " << ::tpy::__getitem__(hs, 1).p.n << "\n" << ::tpy::check_signals;
     std::vector<P> cs = {P(1), P(2)};
     {
-        auto __tmp_20 = ::tpyapp::main::each<P>(cs);
-        auto __src_46 = ::tpyapp::main::call_relay(__tmp_20);
+        auto __tmp_19 = ::tpyapp::main::each<P>(cs);
+        auto __src_46 = ::tpyapp::main::call_relay(__tmp_19);
         auto&& __itr_46 = ::tpy::__iter__(__src_46);
         for (;;) {
             auto __r_47 = __itr_46.__next__();
@@ -577,8 +576,8 @@ void main() {
     }
     std::cout << "call" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(cs, 1).n << "\n" << ::tpy::check_signals;
     {
-        auto __tmp_21 = ::tpyapp::main::each<P>(cs);
-        auto __src_48 = ::tpyapp::main::call_alias_relay(__tmp_21);
+        auto __tmp_20 = ::tpyapp::main::each<P>(cs);
+        auto __src_48 = ::tpyapp::main::call_alias_relay(__tmp_20);
         auto&& __itr_48 = ::tpy::__iter__(__src_48);
         for (;;) {
             auto __r_49 = __itr_48.__next__();
@@ -590,8 +589,8 @@ void main() {
     std::cout << "call-alias" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(cs, 1).n << "\n" << ::tpy::check_signals;
     std::vector<P> up = {P(1), P(2)};
     {
-        auto __tmp_22 = ::tpyapp::main::pairs_of(up);
-        auto __src_50 = ::tpyapp::main::unpack_alias_relay(__tmp_22);
+        auto __tmp_21 = ::tpyapp::main::pairs_of(up);
+        auto __src_50 = ::tpyapp::main::unpack_alias_relay(__tmp_21);
         auto&& __itr_50 = ::tpy::__iter__(__src_50);
         for (;;) {
             auto __r_51 = __itr_50.__next__();
@@ -602,8 +601,8 @@ void main() {
     }
     std::cout << "unpack-alias" << " " << ::tpy::__getitem__(up, 0).n << " " << ::tpy::__getitem__(up, 1).n << "\n" << ::tpy::check_signals;
     {
-        auto __tmp_23 = ::tpyapp::main::each<P>(cs);
-        auto __src_52 = ::tpyapp::main::tuple_relay(__tmp_23);
+        auto __tmp_22 = ::tpyapp::main::each<P>(cs);
+        auto __src_52 = ::tpyapp::main::tuple_relay(__tmp_22);
         auto&& __itr_52 = ::tpy::__iter__(__src_52);
         for (;;) {
             auto __r_53 = __itr_52.__next__();
@@ -615,8 +614,8 @@ void main() {
     std::cout << "tuple-step" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(cs, 1).n << "\n" << ::tpy::check_signals;
     std::vector<Cell<P>> gc = {Cell<P>(P(1)), Cell<P>(P(2))};
     {
-        auto __tmp_24 = ::tpyapp::main::each<Cell<P>>(gc);
-        auto __src_54 = ::tpyapp::main::gpart_relay<P>(__tmp_24);
+        auto __tmp_23 = ::tpyapp::main::each<Cell<P>>(gc);
+        auto __src_54 = ::tpyapp::main::gpart_relay<P>(__tmp_23);
         auto&& __itr_54 = ::tpy::__iter__(__src_54);
         for (;;) {
             auto __r_55 = __itr_54.__next__();
@@ -627,8 +626,8 @@ void main() {
     }
     std::cout << "generic-part" << " " << ::tpy::__getitem__(gc, 0).v.n << " " << ::tpy::__getitem__(gc, 1).v.n << "\n" << ::tpy::check_signals;
     {
-        auto __tmp_25 = ::tpyapp::main::each<P>(cs);
-        auto __src_56 = ::tpyapp::main::gcall_relay<P>(__tmp_25);
+        auto __tmp_24 = ::tpyapp::main::each<P>(cs);
+        auto __src_56 = ::tpyapp::main::gcall_relay<P>(__tmp_24);
         auto&& __itr_56 = ::tpy::__iter__(__src_56);
         for (;;) {
             auto __r_57 = __itr_56.__next__();
@@ -649,11 +648,11 @@ void main() {
             std::cout << "own-part" << " " << p.n << " " << ::tpy::__len__(later) << "\n" << ::tpy::check_signals;
         }
     }
-    auto __tmp_26 = ::tpyapp::main::each<P>(cs);
-    std::tuple<int32_t, int32_t> fr = ::tpyapp::main::first_n(__tmp_26);
+    auto __tmp_25 = ::tpyapp::main::each<P>(cs);
+    std::tuple<int32_t, int32_t> fr = ::tpyapp::main::first_n(__tmp_25);
     std::cout << "tuple-return" << " " << std::get<0>(fr) << "\n" << ::tpy::check_signals;
-    auto __tmp_27 = ::tpyapp::main::each<P>(cs);
-    std::tuple<std::tuple<int32_t, int32_t>, int32_t> fnest = ::tpyapp::main::first_nested(__tmp_27);
+    auto __tmp_26 = ::tpyapp::main::each<P>(cs);
+    std::tuple<std::tuple<int32_t, int32_t>, int32_t> fnest = ::tpyapp::main::first_nested(__tmp_26);
     std::cout << "tuple-return-nested" << " " << std::get<0>(std::get<0>(fnest)) << "\n" << ::tpy::check_signals;
     std::vector<P> pl = {P(1), P(2)};
     {
@@ -667,8 +666,8 @@ void main() {
         }
     }
     {
-        std::vector<std::string> __tmp_28 = {"a", "b"};
-        auto __src_62 = ::tpyapp::main::pop_local<std::string>(__tmp_28);
+        std::vector<std::string> __tmp_27 = {"a", "b"};
+        auto __src_62 = ::tpyapp::main::pop_local<std::string>(__tmp_27);
         auto&& __itr_62 = ::tpy::__iter__(__src_62);
         for (;;) {
             auto __r_63 = __itr_62.__next__();

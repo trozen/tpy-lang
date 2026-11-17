@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     print(len(s))
 void main() {
     std::vector<int32_t> items = {10, 20, 30, 20, 10};
-    ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(::tpy::own_iter(std::move(items)));
+    ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(std::move(items));
     std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }

@@ -588,6 +588,10 @@ class TpyCall(TpyCallLike):
     # @call_macro's replacement or a getattr/hasattr synth.
     macro_expansion: 'TpyExpr | None' = None
     dunder_call: 'TpyMethodCall | None' = None  # Set by sema: obj(args) -> obj.__call__(args)
+    # Set by sema on `own_iter(x)`: the consuming `__iter__(self: Own[Self])`
+    # of x's type the call is (`consuming_iter_of`), under x's type
+    # arguments; x is given up to it.
+    consuming_iter_fi: 'FunctionInfo | None' = None
     # D16 v1.5: try/catch lambda forms. Inner __getattr__ call is stored here;
     # codegen wraps it in a lambda that catches AttributeError.
     dyn_hasattr_call: 'TpyMethodCall | None' = None       # hasattr(obj, "name") -> bool
@@ -938,6 +942,10 @@ class TpyComprehensionGenerator:
     # iteration hands over (`step_handover_paths`), as `TpyForEach` stamps
     # them; a sink moves a bare last-use target that owns its element.
     step_handover: frozenset[tuple[int, ...]] = frozenset()
+    # Set by sema before the clause's body: the consuming `__iter__` a
+    # source record is given up to (a fresh one, or a consuming-only name at
+    # its last use); the clause steps the iterator it returns.
+    consuming_iter_fi: 'FunctionInfo | None' = None
     # Set by sema at the ITER registration, as `TpyForEach` stamps it: the
     # source names storage no loan key can spell.
     iter_borrow_unplaceable: bool = False

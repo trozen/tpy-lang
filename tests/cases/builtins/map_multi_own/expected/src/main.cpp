@@ -56,7 +56,7 @@ void main() {
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
     std::array<Point, 2> extras = {Point(10, 0), Point(20, 0)};
     {
-        auto __src_0 = ::tpy::builtin_map_n<::tpy::val_or_ref<Point>>(combine, pts, ::tpy::own_iter(std::move(extras)));
+        auto __src_0 = ::tpy::builtin_map_n<::tpy::val_or_ref<Point>>(combine, pts, std::move(extras));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -69,7 +69,7 @@ void main() {
     std::vector<Point> kept = ::tpyapp::main::make();
     std::cout << "live" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, std::array<int32_t, 2>{10, 20}, kept))) << "\n" << ::tpy::check_signals;
     std::cout << "live" << " " << ::tpy::__getitem__(kept, 0).x << " " << ::tpy::__len__(kept) << "\n" << ::tpy::check_signals;
-    std::cout << "fresh" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, std::array<int32_t, 2>{10, 20}, ::tpy::own_iter(::tpyapp::main::make())))) << "\n" << ::tpy::check_signals;
+    std::cout << "fresh" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, std::array<int32_t, 2>{10, 20}, ::tpyapp::main::make()))) << "\n" << ::tpy::check_signals;
     std::function<int32_t(int32_t, Point&&)> fn = add;
     std::vector<Point> xs = std::vector<Point>{};
     std::cout << "empty" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(fn, std::array<int32_t, 1>{1}, xs))) << "\n" << ::tpy::check_signals;

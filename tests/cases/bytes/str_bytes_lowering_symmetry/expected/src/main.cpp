@@ -83,7 +83,7 @@ void set_methods(std::string_view s, ::tpy::BytesView b) {
     ::tpy::set_remove(sb, ::tpy::bytes_literal("t", 1));
     ::tpy::ordered_set<std::string> us = ::tpy::set_union(ss, ::tpy::ordered_set<std::string>({"z"}));
     ::tpy::ordered_set<::tpy::Bytes> ub = ::tpy::set_union(sb, ::tpy::ordered_set<::tpy::Bytes>({::tpy::bytes_literal_owned("z", 1)}));
-    std::cout << "set_methods:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(ss)) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<::tpy::Bytes>(sb)) << " " << ::tpy::__len__(us) << " " << ::tpy::__len__(ub) << " " << ::tpy::print_bool((us.contains("z"))) << " " << ::tpy::print_bool((ub.contains(::tpy::bytes_literal("z", 1)))) << "\n" << ::tpy::check_signals;
+    std::cout << "set_methods:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(std::move(ss))) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<::tpy::Bytes>(std::move(sb))) << " " << ::tpy::__len__(us) << " " << ::tpy::__len__(ub) << " " << ::tpy::print_bool((us.contains("z"))) << " " << ::tpy::print_bool((ub.contains(::tpy::bytes_literal("z", 1)))) << "\n" << ::tpy::check_signals;
 }
 
 // def union_elem() -> None:

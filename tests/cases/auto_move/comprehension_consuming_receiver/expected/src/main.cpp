@@ -260,7 +260,7 @@ std::vector<Box> fresh() {
 // def loop_owned_arg() -> None:
 //     ws = [Box(1), Box(2)]
 //     for b in ws:
-//         rs = [take(b) for b in fresh()]  # tpyc: warning(/copies Box into owned storage/)
+//         rs = [take(b) for b in fresh()]  # tpyc: ok
 //         rs[0].xs.append(8)
 //         print("loop_owned_arg", len(b.xs), heads(rs), lens(rs))
 void loop_owned_arg() {
@@ -272,14 +272,14 @@ void loop_owned_arg() {
         const auto& b = *__beg_0;
         std::vector<Box> rs = ({
             std::vector<Box> __result;
-            auto __obj_1 = ::tpyapp::main::fresh();
-            __result.reserve(static_cast<std::size_t>(__obj_1.size()));
-            auto __beg_1 = __obj_1.begin();
-            auto __end_1 = __obj_1.end();
+            auto __obj_1 = ::tpy::own_iter(::tpyapp::main::fresh());
+            ::tpy::reserve_if_sized(__result, __obj_1);
+            auto&& __rng_1 = ::tpy::step_range(__obj_1);
+            auto __beg_1 = __rng_1.begin();
+            auto __end_1 = __rng_1.end();
             for (; __beg_1 != __end_1; ++__beg_1) {
-                const auto& b = *__beg_1;
-                Box __tmp_1 = b;
-                __result.push_back(::tpyapp::main::take(std::move(__tmp_1)));
+                auto&& b = *__beg_1;
+                __result.push_back(::tpyapp::main::take(std::move(b)));
             }
             std::move(__result);
         });
@@ -427,59 +427,49 @@ void main() {
     std::vector<Box>& inner = ::tpy::__getitem__(wss, 0);
     std::cout << "nested_clauses" << " " << ::tpy::ListPrinter(::tpyapp::main::heads((*r))) << " " << ::tpy::ListPrinter(::tpyapp::main::lens(inner)) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<Box>> __slot_7;
-    auto __tmp_1 = std::array<Box, 2>{Box(1), Box(2)};
-    r = &*(__slot_7 = ::tpyapp::main::owned_outer(::tpy::own_iter(std::move(__tmp_1))));
+    r = &*(__slot_7 = ::tpyapp::main::owned_outer(std::array<Box, 2>{Box(1), Box(2)}));
     std::cout << "owned_outer" << " " << ::tpy::ListPrinter(::tpyapp::main::heads((*r))) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = std::array<Box, 1>{Box(1)};
-    std::vector<std::vector<Box>> rows = ::tpyapp::main::nested_elem(::tpy::own_iter(std::move(__tmp_2)));
+    std::vector<std::vector<Box>> rows = ::tpyapp::main::nested_elem(std::array<Box, 1>{Box(1)});
     std::cout << "nested_elem" << " " << ::tpy::ListPrinter(::tpyapp::main::heads(::tpy::__getitem__(rows, 0))) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<Box>> __slot_8;
-    auto __tmp_3 = std::array<Box, 2>{Box(1), Box(2)};
-    r = &*(__slot_8 = ::tpyapp::main::owned_inner(::tpy::own_iter(std::move(__tmp_3))));
+    r = &*(__slot_8 = ::tpyapp::main::owned_inner(std::array<Box, 2>{Box(1), Box(2)}));
     std::cout << "owned_inner" << " " << ::tpy::ListPrinter(::tpyapp::main::heads((*r))) << "\n" << ::tpy::check_signals;
     std::vector<Cell> cs = std::vector<Cell>{};
     cs.push_back(Cell(3));
     cs.push_back(Cell(0));
-    std::vector<Cell> kept = ::tpyapp::main::owned_filter(::tpy::own_iter(std::move(cs)));
+    std::vector<Cell> kept = ::tpyapp::main::owned_filter(std::move(cs));
     std::cout << "owned_filter" << " " << ::tpy::__len__(kept) << " " << ::tpy::__getitem__(kept, 0).n << "\n" << ::tpy::check_signals;
     std::optional<::tpy::ordered_map<int32_t, Box>> __slot_9;
-    auto __tmp_4 = std::array<Box, 1>{Box(1)};
-    d = &*(__slot_9 = ::tpyapp::main::owned_dict_key(::tpy::own_iter(std::move(__tmp_4))));
+    d = &*(__slot_9 = ::tpyapp::main::owned_dict_key(std::array<Box, 1>{Box(1)}));
     std::cout << "owned_dict_key" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>((*d))) << " " << ::tpy::ListPrinter(::tpyapp::main::dict_heads((*d))) << "\n" << ::tpy::check_signals;
     std::optional<::tpy::ordered_map<int32_t, Box>> __slot_10;
-    auto __tmp_5 = std::array<Box, 1>{Box(1)};
-    d = &*(__slot_10 = ::tpyapp::main::nested_key(::tpy::own_iter(std::move(__tmp_5))));
+    d = &*(__slot_10 = ::tpyapp::main::nested_key(std::array<Box, 1>{Box(1)}));
     std::cout << "nested_key" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>((*d))) << " " << ::tpy::ListPrinter(::tpyapp::main::dict_heads((*d))) << "\n" << ::tpy::check_signals;
-    auto __tmp_6 = std::array<Box, 1>{Box(1)};
-    std::vector<std::tuple<Box, Box>> pairs = ::tpyapp::main::double_(::tpy::own_iter(std::move(__tmp_6)));
+    std::vector<std::tuple<Box, Box>> pairs = ::tpyapp::main::double_(std::array<Box, 1>{Box(1)});
     auto&& __tup_1 = ::tpy::__getitem__(pairs, 0);
     Box& one = std::get<0>(__tup_1);
     Box& two = std::get<1>(__tup_1);
     std::cout << "double" << " " << ::tpy::__getitem__(one.xs, 0) << " " << ::tpy::__getitem__(two.xs, 0) << "\n" << ::tpy::check_signals;
-    std::vector<Box> __tmp_7 = {Box(1)};
-    ::tpyapp::main::shadow_local(__tmp_7);
+    std::vector<Box> __tmp_1 = {Box(1)};
+    ::tpyapp::main::shadow_local(__tmp_1);
     std::optional<std::vector<Box>> __slot_11;
     ws = &*(__slot_11 = std::vector<Box>{Box(1)});
     std::optional<std::vector<Box>> __slot_12;
     r = &*(__slot_12 = ::tpyapp::main::consumed_outer((*ws)));
     std::cout << "consumed_outer" << " " << ::tpy::ListPrinter(::tpyapp::main::heads((*r))) << " " << ::tpy::ListPrinter(::tpyapp::main::lens((*ws))) << "\n" << ::tpy::check_signals;
-    std::vector<Box> __tmp_8 = {Box(1)};
-    ::tpyapp::main::shadow_for(__tmp_8);
+    std::vector<Box> __tmp_2 = {Box(1)};
+    ::tpyapp::main::shadow_for(__tmp_2);
     std::optional<std::vector<Box>> __slot_13;
-    auto __tmp_9 = std::array<Box, 2>{Box(1), Box(2)};
-    r = &*(__slot_13 = ::tpyapp::main::owned_arg(::tpy::own_iter(std::move(__tmp_9))));
+    r = &*(__slot_13 = ::tpyapp::main::owned_arg(std::array<Box, 2>{Box(1), Box(2)}));
     std::cout << "owned_arg" << " " << ::tpy::ListPrinter(::tpyapp::main::heads((*r))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::loop_owned_arg();
-    auto __tmp_10 = std::array<Box, 1>{Box(1)};
-    ::tpyapp::main::in_loop(::tpy::own_iter(std::move(__tmp_10)));
+    ::tpyapp::main::in_loop(std::array<Box, 1>{Box(1)});
     std::vector<Box> other = {Box(3), Box(4)};
     std::optional<std::vector<Box>> __slot_14;
-    auto __tmp_11 = std::array<Box, 1>{Box(1)};
-    r = &*(__slot_14 = ::tpyapp::main::shadowing(::tpy::own_iter(std::move(__tmp_11)), other));
+    r = &*(__slot_14 = ::tpyapp::main::shadowing(std::array<Box, 1>{Box(1)}, other));
     std::cout << "shadowing" << " " << ::tpy::ListPrinter(::tpyapp::main::heads((*r))) << " " << ::tpy::ListPrinter(::tpyapp::main::lens((*r))) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<Box>> __slot_15;
-    auto __tmp_12 = std::array<Box, 1>{Box(1)};
-    r = &*(__slot_15 = ::tpyapp::main::lambda_capture(::tpy::own_iter(std::move(__tmp_12))));
+    r = &*(__slot_15 = ::tpyapp::main::lambda_capture(std::array<Box, 1>{Box(1)}));
     std::cout << "lambda_capture" << " " << ::tpy::ListPrinter(::tpyapp::main::heads((*r))) << " " << ::tpy::ListPrinter(::tpyapp::main::lens((*r))) << "\n" << ::tpy::check_signals;
     Holder h = Holder();
     std::optional<std::vector<Box>> __slot_16;

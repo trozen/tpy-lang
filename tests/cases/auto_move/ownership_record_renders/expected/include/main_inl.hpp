@@ -55,9 +55,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_consume::__next__(
         xs.emplace(std::vector<A>{});
         (*xs).push_back(A(1));
         (*xs).push_back(A(2));
-        auto& __for_obj_0 = (*xs);
-        __for_it_0.emplace((__for_obj_0).begin());
-        __for_end_0.emplace((__for_obj_0).end());
+        __for_src_0.emplace(::tpy::own_iter(std::move((*xs))));
         __state = S_JOIN_0;
         continue;
     }
@@ -71,11 +69,12 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_consume::__next__(
         continue;
     }
     case S_JOIN_0: {
-        if ((*__for_it_0) == (*__for_end_0)) {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        a = &(*((*__for_it_0))++);
+        a = &(::tpy::unwrap_ref(*(*__for_r_0)));
         __state = S_RESUME_0;
         return ::tpy::__getitem__(a->items, 0);
     }
@@ -161,7 +160,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_own_elem::__next__
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        a.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
+        a.emplace(::tpy::own_bind(*(*__for_r_0)));
         __state = S_RESUME_0;
         return ::tpy::__getitem__((*a).items, 0);
     }
@@ -185,12 +184,11 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_own_iter::__next__
         __state = S_DONE;  // until a yield sets where to resume
         src.emplace(std::vector<F>{F(5), F(6)});
         __for_src_0.emplace(::tpy::own_iter(std::move((*src))));
-        ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {  // after: yield a.items[0]
-        if ((::tpy::__getitem__((*a).items, 0) > 5)) {
+        if ((::tpy::__getitem__(a->items, 0) > 5)) {
             fs.push_back(std::move((*a)));
         } else {
             h.f = std::move((*a));
@@ -199,14 +197,14 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_own_iter::__next__
         continue;
     }
     case S_JOIN_0: {
-        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, (*__for_src_0)));
+        __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        a.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
+        a = &(::tpy::unwrap_ref(*(*__for_r_0)));
         __state = S_RESUME_0;
-        return ::tpy::__getitem__((*a).items, 0);
+        return ::tpy::__getitem__(a->items, 0);
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -1,0 +1,1 @@
+main.py:23: error: Cannot use 'xs' after it was consumed: an owning iterable (Counted[Own[R]]) is traversed once; copy it first: `xs = list(xs)`

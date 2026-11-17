@@ -58,7 +58,7 @@ void main() {
     int32_t np = std::get<1>(__tup_2);
     std::cout << np << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> ports_set = ::tpy::ordered_set<int32_t>({(::tpyapp::main::port()).to_fixed_check<int32_t>(), (((::tpyapp::main::port()) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>()});
-    std::cout << "set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(ports_set)) << "\n" << ::tpy::check_signals;
+    std::cout << "set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::move(ports_set))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> by_name = ::tpy::ordered_map<std::string, int32_t>({{"http", (::tpyapp::main::port()).to_fixed_check<int32_t>()}});
     std::cout << "dict_value" << " " << ::tpy::__getitem__(by_name, "http") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::string> by_port = ::tpy::ordered_map<int32_t, std::string>({{(::tpyapp::main::port()).to_fixed_check<int32_t>(), "http"}});

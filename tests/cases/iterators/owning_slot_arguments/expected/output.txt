@@ -1,0 +1,165 @@
+dead 9
+live 9 2
+element 9 1
+field 9 2
+literal 2
+fresh 2
+comprehension 3
+genexpr 9 2
+iter 9 2
+copy_iter 1
+own_iter 2
+narrowed 9 1
+forwarded 2
+generator 9 2
+set plain [50, 2]
+set gen [103, 104]
+set comprehension [5, 60]
+dict plain [1, 2]
+dict gen [101, 102]
+ctor element 9 1
+ctor fresh 2
+ctor literal 1
+method dead 7
+method live 7 1
+method comprehension 5
+array last use 203
+clause [101, 102]
+fresh subclass 101
+gen fresh [1, 2]
+gen literal [1, 2]
+gen dead [1, 2]
+gen lent [9, 2, 3]
+gen caller [1, 2, 0, 1, 2]
+gen alias [1, 2]
+gen loop caller [10, 21, 20, 31]
+gen select caller [1, 2, 1, 2] [9, 1, 2]
+gen kept [1, 2] [2, 3] 50
+gen values [4, 5] [6] [4, 5]
+gen strs ['x', 'y'] ['z'] ['x', 'y']
+async loop task 3
+async loop task 4
+async values 6 3
+async fresh 3
+async dead 7
+async literal 5
+async comprehension 6
+sorted live 100 2
+sorted dead [1, 2]
+sorted field 100 2
+sorted fresh [1, 2]
+sorted literal [3, 1]
+sorted comprehension [2, 1, 0]
+sorted copy_iter 1
+sorted forwarded [1, 2]
+sorted iter 100 2
+sorted dead set [1, 2, 3]
+sorted dead dict ['a', 'b']
+extend 4 70 1
+list dead 1
+set dead 2
+inst rebound 2 6
+inst ternary 50 2
+dict rebound 7 9
+subclass list [7, 7]
+subclass sorted [7, 7]
+subprotocol dead 23
+subprotocol live 23 2
+subprotocol copy_iter 23 1
+counted fresh 232
+counted dead 131
+counted live 131 1
+iterator 3
+sequence 2 2
+map dead [1, 2]
+map fresh [1, 2]
+alias 3
+relist 2
+rows dead 23
+rows live 23 2
+rows iter 23 2
+rows iter fresh 23
+dynamic bag 4
+counted copy 131 3
+tuple dead 26
+tuple live 26 2
+generic counted 3
+map lent b a b 2
+map reversed lent d c 2
+map iter fresh ['p', 'q']
+map reversed fresh ['q', 'p']
+map fresh moved ['p', 'q']
+comprehension caller [23, 23]
+nocopy dead 3
+nocopy fresh 3
+nocopy literal 3
+nocopy comprehension 3
+nocopy counted 5
+nocopy gen dead [5, 6]
+nocopy gen fresh [1, 2]
+nocopy gen caller [0, 1, 2, 7]
+nocopy alias 3
+nocopy ctor method [1, 2, 3, 0, 1]
+nocopy sorted [1, 2]
+nocopy extend [5, 1, 2]
+nocopy map dead [8, 9]
+nocopy map fresh [1, 2]
+nocopy map iter [1, 2]
+nocopy map reversed [2, 1]
+nocopy rows dead 3
+nocopy rows fresh 3
+nocopy slice store [1, 2]
+nocopy stepped slice store [1, 8, 2]
+nocopy gen slice store [1, 2]
+nocopy async dead 3
+nocopy async fresh 3
+nocopy async comprehension 6
+two slices [1, 3, 8]
+pending slice [1, 2, 8]
+self slice [1, 2, 2] 3
+narrowed param 92 2
+narrowed walrus 1
+narrowed local 6 0
+relay lent 9 2 3
+relay fresh 1
+gen bytes [b'p', b'q'] [b'r'] [b'p', b'q']
+gen param [1, 2] 2
+gen param after 7 2
+gen narrow [1, 2] []
+free param 7 2
+free param after 9 4
+rebound later 4 6
+rebound later gen [1, 2] 7
+step free 6
+step comp [1, 4]
+step gen [5, 6, 7]
+inst dead 9 2 2
+kept task 12
+kept task 24
+kept task 36
+kept task 103
+kept task 203
+async param 3 1 2
+async param after 8
+async narrow 3 -1
+walrus free 203 2
+walrus gen [101, 102] 2
+walrus method gen [101, 102] 2
+walrus async 203 2
+adapters rows genexpr 12
+adapters rows copy_iter 6
+adapters rows own_iter 9
+adapters own genexpr 203
+adapters own copy_iter 203 1
+adapters own own_iter 105
+adapters infer own 3
+adapters infer tuple 2
+adapters infer tuple genexpr 3
+adapters fixed genexpr 12
+adapters steps genexpr 12
+adapters steps iter 6
+adapters stepper genexpr 3
+adapters walk copy_iter 3
+adapters ctor genexpr 6
+adapters tagged live 23 7
+adapters tagged dead 23

@@ -535,7 +535,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_call_src::__ne
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        c.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
+        c.emplace(::tpy::own_bind(*(*__for_r_0)));
         __state = S_RESUME_0;
         return (::tpy::str_concat("gen_call ", ::tpy::fixed_to_str<int32_t>((*c).v)));
     }

@@ -2289,6 +2289,15 @@ def unwrap_own(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def unwrap_value_own(typ: 'TpyType') -> 'TpyType':
+    """`typ` without an `Own[...]` around a value type, on which it
+    transfers nothing; around a reference type (or a type parameter not
+    known to be a value type) `Own` selects the owned form, so it stays."""
+    if isinstance(typ, OwnType) and typ.wrapped.is_value_type():
+        return typ.wrapped
+    return typ
+
+
 def without_own(t: 'TpyType') -> 'TpyType':
     """`t` with every `Own` marker dropped at every depth."""
     return unwrap_own(t).map_inner_types(without_own)
@@ -4278,12 +4287,9 @@ C_ABI_TYPE_ERROR = "is not representable in the C ABI"
 def _c_abi_subject(typ: 'TpyType') -> 'TpyType':
     """The type a C-linkage gate judges: `typ` without the wrappers that do
     not change its C spelling."""
-    t = unwrap_readonly(typ)
-    if isinstance(t, OwnType) and t.wrapped.is_value_type():
-        # On a value type every admitted form has one C spelling; over a
-        # reference type `Own` is `T&&`, so the unwrap stops there.
-        t = unwrap_readonly(t.wrapped)
-    return t
+    # On a value type every admitted form has one C spelling; over a
+    # reference type `Own` is `T&&`, so the unwrap stops there.
+    return unwrap_readonly(unwrap_value_own(unwrap_readonly(typ)))
 
 
 def is_c_abi_allowed(typ: 'TpyType', *, is_return: bool = False) -> bool:
@@ -6209,9 +6215,14 @@ def make_copy_iter(element_type: 'TpyType') -> 'NominalType':
                        _module_qname="tpy.CopyIter")
 
 
-def make_own_iter(element_type: 'TpyType') -> 'NominalType':
-    return NominalType(name="OwnIter", type_args=(element_type,),
-                       _module_qname="tpy.OwnIter")
+def make_iterator(element_type: 'TpyType') -> 'NominalType':
+    return NominalType(name="Iterator", type_args=(element_type,),
+                       is_protocol=True, _module_qname="typing.Iterator")
+
+
+def make_iterable(element_type: 'TpyType') -> 'NominalType':
+    return NominalType(name="Iterable", type_args=(element_type,),
+                       is_protocol=True, _module_qname="typing.Iterable")
 
 
 def make_awaitable(awaited_type: 'TpyType') -> 'NominalType':
@@ -9090,11 +9101,14 @@ class FunctionInfo:
     # - frame_subframes: FunctionInfos of awaited/delegated coroutines;
     #   a None entry is an unclassifiable await (forces non-Send)
     # - frame_captures: (name, type, by_ref) capture list for nested defs
+    # - frame_receiver_type: the receiver a consuming method's frame owns
+    #   (moved in, by value); None when the frame borrows it
     frame_type: Optional['FrameType'] = None
     frame_locals: Optional[list[tuple[str, 'TpyType']]] = None
     frame_loop_var_names: frozenset = frozenset()
     frame_subframes: Optional[list] = None
     frame_captures: Optional[list[tuple[str, 'TpyType', bool]]] = None
+    frame_receiver_type: Optional['TpyType'] = None
     # Decorator overrides for the frame answer: True from @unsafe_send /
     # @unsafe_sync, False from @nosend/@nosync, None = structural
     send_override: bool | None = None

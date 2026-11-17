@@ -79,7 +79,7 @@ from ...parse.nodes import (
 )
 from ...typesys import pointer_variant_union
 from ...typesys import (
-    AnyType,
+    AnyType, unwrap_value_own,
     CallableType,
     ResultPosition,
     ResultRepresentation,
@@ -164,6 +164,7 @@ from .expressions import (
     _cond_mixed_walrus_temps,
     _lower_truthy,
     _strip_slot_leaf_deref,
+    consuming_receiver, consuming_iter,
 )
 from .functions import (
     _check_callable_structure,
@@ -538,7 +539,11 @@ def _res_local_ok(t: 'TpyType | None', analyzer) -> bool:
     `std::function<...>` value itself (`factory = pick();` writes the plain
     frame assign, `factory(7)` reads through the ordinary callable-value
     call arm). A value-form record local is a bare `Coord c;` field read
-    and written like a scalar's."""
+    and written like a scalar's. `Own` on a value type transfers nothing
+    (an owned value step, `for r in xs` over `Iterable[Own[int32]]`): the
+    local is the value."""
+    if t is not None:
+        t = unwrap_value_own(t)
     return bool(_res_value_ok(t, analyzer)
                 or _resolved_str_value(t, analyzer) is not None
                 or _resolved_bytes_value(t, analyzer) is not None
@@ -1119,6 +1124,12 @@ def _lower_for_iter_setup(stmt: 'THIRForIterSetup', func, lc,
     # position -- arg temps (`int32_t __tmp_N = 7;` ref-slot literals of a
     # generic factory call) flush before the source capture.
     # The frame spells the loop's fields off the source (`decltype`).
+    if stmt.consuming:
+        # The source given up to its consuming `__iter__`, as the sync loop
+        # renders it: the frame owns the iterator the call returns.
+        leaves[stmt.iterable] = consuming_iter(it, None, lc, declared,
+                                               getattr(it, "loc", None))
+        return False
     lowered_it = _lower_expr(
         it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE,
                                        pos=SinkPos.ITER_SOURCE,
@@ -2560,8 +2571,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 if (isinstance(operand, TpyMethodCall)
                         and operand.user_module_call is None
                         and operand.builtin_module_call is None):
-                    leaves[payload.receiver] = _lower_expr(operand.obj, lc,
-                                                           declared)
+                    leaves[payload.receiver] = consuming_receiver(
+                        operand, fi, _lower_expr(operand.obj, lc, declared),
+                        lc, declared)
                     _witness("res.suspend_expr")
                 lowered_args = []
                 for i, a in enumerate(operand.args):

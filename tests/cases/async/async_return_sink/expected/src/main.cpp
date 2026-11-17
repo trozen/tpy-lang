@@ -1564,7 +1564,7 @@ __coro_by_match by_match(Holder& h, std::vector<Box>& xs, int32_t k) {
         std::cout << "local_opt_finally" << " " << (((lo.has_value())) ? ((*lo).v) : (-1)) << "\n" << ::tpy::check_signals;
         ::tpyapp::main::show_sync_finally();
         ht.emplace(Holder(17));
-        __sub_32.emplace((*ht));
+        __sub_32.emplace(std::move((*ht)));
         __state = S_RESUME_32;
         continue;
     }

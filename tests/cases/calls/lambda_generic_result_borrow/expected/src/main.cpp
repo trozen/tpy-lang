@@ -13,7 +13,7 @@ Rec mk(const Rec& r) {
 // def main() -> None:
 //     rs = [Rec(2), Rec(1), Rec(3)]
 //     # free function: sorted/min key borrowing the parameter's field.
-//     ys = sorted(rs, key=lambda r: r.inner)  # tpyc: ok
+//     ys = sorted(rs, key=lambda r: r.inner)  # tpyc: warning(/copies Rec elements/)
 //     print("free", [y.n for y in ys])
 //     a = rs[0]
 //     b = rs[1]
@@ -34,12 +34,12 @@ Rec mk(const Rec& r) {
 //     print("map_arg_rooted", h.inner.v)
 //
 //     # a key that builds a fresh value returns it by value.
-//     zs = sorted(rs, key=lambda r: Inner(-r.n))  # tpyc: ok
+//     zs = sorted(rs, key=lambda r: Inner(-r.n))  # tpyc: warning(/copies Rec elements/)
 //     print("fresh_key", [z.n for z in zs])
 //
 //     # a scalar field of a temporary, and a scalar read through a borrow of
 //     # one, are copied out before the temporary dies.
-//     ws = sorted(rs, key=lambda r: mk(r).n)  # tpyc: ok
+//     ws = sorted(rs, key=lambda r: mk(r).n)  # tpyc: warning(/copies Rec elements/)
 //     print("temp_scalar_field", [w.n for w in ws])
 //     vs = sorted(rs, key=lambda r: -mk(r).get_inner().v)  # tpyc: ok
 //     print("temp_scalar_via_borrow", [v.n for v in vs])
@@ -122,7 +122,7 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    std::vector<Rec> vs = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> int32_t { return ::tpy::neg_check<int32_t>(::tpyapp::main::mk(r).get_inner().v); });
+    std::vector<Rec> vs = ::tpy::builtin_sorted_key<Rec>(std::move(rs), [](const Rec& r) -> int32_t { return ::tpy::neg_check<int32_t>(::tpyapp::main::mk(r).get_inner().v); });
     std::cout << "temp_scalar_via_borrow" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_8 = vs;

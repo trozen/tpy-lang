@@ -78,7 +78,7 @@ void main() {
     std::cout << ::tpy::TuplePrinter(::tpy::__getitem__(pairs, 0)) << " " << ::tpy::TuplePrinter(::tpy::__getitem__(pairs, 1)) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<double, double>> points = {std::tuple<double, double>{1.0, 2.0}, std::tuple<double, double>{3.0, 4.0}};
     std::cout << ::tpy::TuplePrinter(::tpy::__getitem__(points, 0)) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(std::move(pairs));
     std::cout << ::tpy::__getitem__(d, "a") << " " << ::tpy::__getitem__(d, "c") << "\n" << ::tpy::check_signals;
     std::array<std::tuple<std::string, int32_t>, 2> raw = {std::tuple<std::string, int32_t>{"x", 10}, std::tuple<std::string, int32_t>{"y", 20}};
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>(::tpyapp::main::__genexpr_main_1(raw));

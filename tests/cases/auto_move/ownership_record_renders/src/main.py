@@ -17,9 +17,7 @@ class A:
 
 
 class F:
-    # No printing copy hook: a generator frame binds an `Own` step by copy
-    # (BUGS.md#frame-own-loop-var-copies-owned-step); the sink's move is
-    # the subject.
+    # No printing copy hook: the sink's move is the subject.
     items: list[int32]
 
     def __init__(self, n: int32) -> None:

@@ -139,7 +139,7 @@ inline Team::Team() : members(std::vector<Rec>{Rec(5), Rec(4), Rec(6)}) {}
 
 // def ranked(self) -> None:
 //     # method: the key borrows the element parameter's field.
-//     ys = sorted(self.members, key=lambda r: r.inner)  # tpyc: ok
+//     ys = sorted(self.members, key=lambda r: r.inner)  # tpyc: warning(/copies Rec elements/)
 //     print("method", [y.n for y in ys])
 inline void Team::ranked() const {
     std::vector<Rec> ys = ::tpy::builtin_sorted_key<Rec>(this->members, [](const Rec& r) -> const Inner& { return r.inner; });

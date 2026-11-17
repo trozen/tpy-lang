@@ -376,7 +376,7 @@ template<::tpystd::typing::Iterable<::tpyapp::fixtures::Cell> T_xs>
 int32_t pick__Iterable_Own_Cell(T_xs&& xs) {
     int32_t n = 0;
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

@@ -580,7 +580,7 @@ void main() {
     std::cout << "bytes" << " " << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(ib)) << " " << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     std::vector<std::string> xs = {"x", "y"};
     xs.push_back("z");
-    ::tpy::list_set_slice(xs, ::tpy::BasicSlice{0, 1}, b);
+    ::tpy::list_set_slice(xs, ::tpy::BasicSlice{0, 1}, std::move(b));
     std::cout << "slice" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     ::tpy::list_set_stepped_slice(xs, ::tpy::Slice{std::nullopt, std::nullopt, 2}, Bag());
     std::cout << "stepped_slice" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;

@@ -19,7 +19,7 @@ namespace tpyapp::main {
 //         print(r.name)
 void main() {
     std::array<Item, 3> items = {Item("c", Score(3)), Item("a", Score(1)), Item("b", Score(2))};
-    std::vector<Item> result = ::tpy::builtin_sorted_key<Item>(items, [](const Item& it) -> const Score& { return it.score; });
+    std::vector<Item> result = ::tpy::builtin_sorted_key<Item>(std::move(items), [](const Item& it) -> const Score& { return it.score; });
     auto& __obj_0 = result;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -28,7 +28,7 @@ void main() {
         std::cout << r.name << "\n" << ::tpy::check_signals;
     }
     std::array<Item, 3> items2 = {Item("x", Score(1)), Item("y", Score(1)), Item("z", Score(1))};
-    std::vector<Item> result2 = ::tpy::builtin_sorted_key<Item>(items2, [](const Item& it) -> const Score& { return it.score; });
+    std::vector<Item> result2 = ::tpy::builtin_sorted_key<Item>(std::move(items2), [](const Item& it) -> const Score& { return it.score; });
     auto& __obj_1 = result2;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();

@@ -920,12 +920,11 @@ struct __gen_gen_head_own_iter : public ::tpy::next_iter_mixin<__gen_gen_head_ow
     ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<std::tuple<N, int32_t>>> xs;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::own_iter(std::move((*xs)))))>;
-    ::tpy::for_step_elem_t<__for_src_0_t>* __for_tup_15 = nullptr;
-    ::tpy::step_elem_member_t<0, ::tpy::for_step_elem_t<__for_src_0_t>>* x = nullptr;
+    ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* __for_tup_15 = nullptr;
+    ::tpy::step_elem_member_t<0, ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>>* x = nullptr;
     int32_t n;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -1197,8 +1196,9 @@ struct __gen_gen_head_cells : public ::tpy::next_iter_mixin<__gen_gen_head_cells
     A* o = nullptr;
     int32_t n;
     using __for_src_2_t = ::tpy::for_source_t<decltype((::tpy::copy_iter<std::tuple<A, int32_t>>(qs)))>;
-    ::tpy::for_step_elem_t<__for_src_2_t>* __for_tup_59 = nullptr;
-    ::tpy::step_elem_member_t<0, ::tpy::for_step_elem_t<__for_src_2_t>>* c = nullptr;
+    using __for_itr_2_t = ::tpy::iter_type_t<__for_src_2_t>;
+    ::tpy::step_elem_t<::tpy::iter_next_t<__for_itr_2_t>>* __for_tup_59 = nullptr;
+    ::tpy::step_elem_member_t<0, ::tpy::step_elem_t<::tpy::iter_next_t<__for_itr_2_t>>>* c = nullptr;
     int32_t j;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_items(d)))>;
     using __for_src_1_t = decltype((opts));
@@ -1208,8 +1208,8 @@ struct __gen_gen_head_cells : public ::tpy::next_iter_mixin<__gen_gen_head_cells
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_1_t>> __for_it_1;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_1_t>> __for_end_1;
     ::tpy::frame_loop_slot<__for_src_2_t> __for_src_2;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_2_t>> __for_itr_2;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_2_t>> __for_r_2;
+    ::tpy::frame_loop_slot<__for_itr_2_t> __for_itr_2;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_2_t>> __for_r_2;
 
     enum : int32_t {
         S_INITIAL = 0,

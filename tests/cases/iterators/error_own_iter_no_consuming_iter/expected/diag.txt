@@ -1,0 +1,1 @@
+main.py:21: error: own_iter() takes a value whose type defines a consuming __iter__ (self: Own[Self]); 'Bag' has none

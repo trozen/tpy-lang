@@ -10,7 +10,7 @@ generic-type-factory table that used to live here now lives on
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from tpyc.typesys import TypeRegistry, RecordInfo, FunctionInfo
@@ -21,13 +21,14 @@ from tpyc.typesys import (
     TpyType, CHAR, OwnType, GenExprType, ReadonlyType,
     bound_as_spelled, is_any_str_type, is_protocol_type, substitute_type_params_structural,
     unwrap_ref_type, unwrap_qualifiers, unwrap_readonly, unwrap_send_sync,
+    make_iterable, make_iterator, protocol_param_alternatives,
 )
 from tpyc import qnames
-from tpyc.type_def_registry import (is_span, is_span_iter, is_copy_iter, is_own_iter,
+from tpyc.type_def_registry import (is_span, is_span_iter, is_copy_iter,
                                    is_iterator_adapter, iter_yields_owned_elements,
                                    protocol_info_of, protocol_mro,
                                    protocol_effective_methods, type_param_subst,
-                                   methods_at_reference)
+                                   methods_at_reference, protocol_ancestor_at)
 from tpyc.modules.defs import ParamDef, MethodDef
 
 
@@ -412,7 +413,7 @@ def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry", *,
 
     Single source of truth for "what element type does iterating this produce?"
     Covers all iterable categories:
-    - Compiler-internal adapters (CopyIter, OwnIter, GenExpr, SpanIter)
+    - Compiler-internal adapters (CopyIter, GenExpr, SpanIter)
     - Protocol-typed params (Iterator[T], Iterable[T], NativeIterable[T], Spannable[T])
     - String types -> char
     - error_return __next__ iterators
@@ -437,22 +438,123 @@ def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry", *,
     return canonical_readonly(elem) if elem is not None else None
 
 
-def is_owning_iterable(tpy_type: "TpyType", registry: "TypeRegistry") -> bool:
-    """`tpy_type` is an owning iterable: a structural protocol whose members
-    are iteration only and whose step owns what it yields (an `Own` marker
-    in the step `get_iterable_element_type` computes). A binding of one is
-    traversed once, and a slot of one takes the elements over.
+class IterationShape(NamedTuple):
+    """The iteration members of a static protocol (`iteration_shape`):
+    `iterates` -- it has an effective `__iter__` or `__next__`; `steps` --
+    it has `__next__` (an iterator, stepped rather than traversed)."""
+    iterates: bool
+    steps: bool
 
-    Narrowed to `Iterable[Own[T]]` with the `Own` on the step itself, the
-    one shape every reader agrees on: a protocol with members beyond
-    `__iter__` is no owning iterable, and an `Iterator[Own[T]]` is stepped,
-    not traversed."""
+
+def iteration_shape(tpy_type: "TpyType") -> "IterationShape | None":
+    """The one answer to the member questions an owning element slot asks
+    of its protocol, read off its effective members
+    (`protocol_effective_methods`, ancestors included); None for a type
+    that is no static protocol (a `@dynamic` one adapts its argument)."""
     bare = unwrap_send_sync(unwrap_readonly(unwrap_ref_type(tpy_type)))
-    if not (isinstance(bare, NominalType) and is_protocol_type(bare)
-            and bare.qualified_name() == qnames.ITERABLE):
+    if not (isinstance(bare, NominalType) and is_protocol_type(bare)):
+        return None
+    info = protocol_info_of(bare)
+    if info is None or info.is_dynamic:
+        return None
+    names = {m.name for m in protocol_effective_methods(info)}
+    return IterationShape(
+        iterates=bool(names & {"__iter__", "__next__"}),
+        steps="__next__" in names)
+
+
+def owning_element_slot(tpy_type: "TpyType", registry: "TypeRegistry") -> bool:
+    """`tpy_type` is an owning element slot: a static, non-nullable
+    protocol that iterates (`iteration_shape`) and whose step owns what it
+    yields (an `Own` marker on the step `get_iterable_element_type`
+    computes, an ancestor's included). A parameter of one takes its
+    argument's elements over -- the argument handed over or lent, one
+    record of the argument -- whatever other members the protocol has
+    (`Counted[Own[T]]` adding `__len__`): the argument is the container
+    itself. A protocol that does not iterate (`Sequence[Own[T]]`) is none.
+    Ask it of the RESOLVED slot type."""
+    shape = iteration_shape(tpy_type)
+    if shape is None or not shape.iterates:
         return False
+    bare = unwrap_send_sync(unwrap_readonly(unwrap_ref_type(tpy_type)))
     step = get_iterable_element_type(bare, registry, keep_own=True)
     return isinstance(step, OwnType)
+
+
+def owning_traversal(tpy_type: "TpyType",
+                     registry: "TypeRegistry") -> "frozenset[TpyType]":
+    """The types at which a read of a parameter declared `tpy_type`
+    traverses it in the category its argument arrived in (handed over or
+    lent): itself when it is an owning element slot
+    (`owning_element_slot`), the alternatives of a static-protocol union
+    that are (a narrowing iterates it as one of them). Empty: none. THE
+    rule the binding plan (`BindingRepr.owning_traversal`) and the
+    resumable frame's loop layout both ask; a read at any other type (a
+    union's other arm) is an ordinary one."""
+    return frozenset(
+        unwrap_qualifiers(alt)
+        for alt in (protocol_param_alternatives(tpy_type) or (tpy_type,))
+        if isinstance(alt, TpyType) and owning_element_slot(alt, registry))
+
+
+def traverses_owning(alternatives: "frozenset[TpyType]",
+                     read_type: "TpyType | None") -> bool:
+    """A read at `read_type` of a binding whose owning traversal
+    (`owning_traversal`) is `alternatives` traverses it."""
+    return (isinstance(read_type, TpyType)
+            and unwrap_qualifiers(read_type) in alternatives)
+
+
+def traversed_once(tpy_type: "TpyType", registry: "TypeRegistry") -> bool:
+    """A binding of `tpy_type` is traversed once: an owning element slot
+    (`owning_element_slot`) that is no iterator -- an `Iterator[Own[T]]`
+    is stepped, each step owned, not traversed."""
+    shape = iteration_shape(tpy_type)
+    return (shape is not None and not shape.steps
+            and owning_element_slot(tpy_type, registry))
+
+
+class AdapterContract(NamedTuple):
+    """`adapter_contract`'s answer: the adapter's `element` and the
+    `contract` it offers, at the step of the protocol's `Iterator` /
+    `Iterable` ancestor, or at `element` when the protocol has no ancestor
+    the contract aligns with (`standalone`)."""
+    element: "TpyType"
+    contract: "NominalType"
+    standalone: bool
+
+
+def adapter_contract(actual: "TpyType", protocol: "NominalType",
+                     ) -> "AdapterContract | None":
+    """The contract iteration adapter `actual` offers at static protocol
+    `protocol`: `Iterable` for `CopyIter[T]`, `Iterator` for
+    a generator expression and an `Iterator[T]` object. None when `actual`
+    is no adapter or `protocol` is `@dynamic`."""
+    if isinstance(actual, GenExprType):
+        elem = actual.element_type
+        offered = qnames.ITERATOR
+    elif is_copy_iter(actual):
+        elem = actual.type_args[0]
+        offered = qnames.ITERABLE
+    elif (isinstance(actual, NominalType) and is_protocol_type(actual)
+          and actual.qualified_name() == qnames.ITERATOR and actual.type_args):
+        elem = actual.type_args[0]
+        offered = qnames.ITERATOR
+    else:
+        return None
+    info = protocol_info_of(protocol)
+    if info is None or info.is_dynamic:
+        return None
+    make = make_iterator if offered == qnames.ITERATOR else make_iterable
+    lineage = [protocol, *protocol_mro(info)]
+    aligned = ((qnames.ITERATOR, qnames.ITERABLE) if offered == qnames.ITERATOR
+               else (qnames.ITERABLE,))
+    for qname in aligned:
+        entry = next((a for a in lineage if a.qualified_name() == qname), None)
+        at = protocol_ancestor_at(protocol, entry) if entry is not None else None
+        if at is not None and len(at.type_args) == 1:
+            return AdapterContract(elem, make(at.type_args[0]), False)
+    return AdapterContract(elem, make(elem), True)
 
 
 def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry",
@@ -466,8 +568,7 @@ def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry",
         if isinstance(tpy_type, GenExprType):
             return tpy_type.element_type
         elem = tpy_type.type_args[0]
-        # `own_iter` moves each element out and `copy_iter` hands over a
-        # copy: either way the step is owned.
+        # `copy_iter` hands over a copy of each element: the step is owned.
         if keep_own and iter_yields_owned_elements(tpy_type):
             return OwnType(elem)
         return elem

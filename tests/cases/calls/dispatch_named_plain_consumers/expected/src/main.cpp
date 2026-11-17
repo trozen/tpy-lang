@@ -19,7 +19,7 @@ int32_t apply(const std::function<int32_t(int32_t)>& f) {
 // def main() -> None:
 //     ks = [Key(3), Key(1), Key(2)]
 //     # sorted: the friend `<` shim calls the plain-name forwarder.
-//     print("sorted:", [str(k) for k in sorted(ks)])  # tpyc: ok
+//     print("sorted:", [str(k) for k in sorted(ks)])  # tpyc: warning(/copies Key elements/)
 //     print("print:", ks[0])  # tpyc: ok
 //     b = Box()
 //     # protocol bound: the template body reaches the plain name.

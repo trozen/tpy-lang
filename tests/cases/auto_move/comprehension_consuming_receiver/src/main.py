@@ -157,7 +157,7 @@ def fresh() -> Own[list[Box]]:
 def loop_owned_arg() -> None:
     ws = [Box(1), Box(2)]
     for b in ws:
-        rs = [take(b) for b in fresh()]  # tpyc: warning(/copies Box into owned storage/)
+        rs = [take(b) for b in fresh()]  # tpyc: ok
         rs[0].xs.append(8)
         print("loop_owned_arg", len(b.xs), heads(rs), lens(rs))
 

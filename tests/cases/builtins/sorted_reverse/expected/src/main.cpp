@@ -38,9 +38,9 @@ void main() {
     std::cout << "types:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(std::array<std::string, 3>{"b", "a", "c"}, true)) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<double>(std::array<double, 3>{1.5, 0.5, 2.5}, true)) << "\n" << ::tpy::check_signals;
     std::array<std::string, 3> words = {"bb", "a", "ccc"};
     std::cout << "key:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<std::string>(words, [](std::string_view s) -> int32_t { return ::tpy::__len__(s); }, true)) << "\n" << ::tpy::check_signals;
-    std::cout << "key_order:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<std::string>(words, [](std::string_view s) -> int32_t { return ::tpy::__len__(s); }, true)) << "\n" << ::tpy::check_signals;
+    std::cout << "key_order:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<std::string>(std::move(words), [](std::string_view s) -> int32_t { return ::tpy::__len__(s); }, true)) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>> pairs = {std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(20)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(10)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(0), ::tpy::BigInt(99)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(30)}};
-    std::cout << "stable:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<std::tuple<::tpy::BigInt, ::tpy::BigInt>>(pairs, [](const std::tuple<::tpy::BigInt, ::tpy::BigInt>& t) -> ::tpy::BigInt { return std::get<0>(t); }, true)) << "\n" << ::tpy::check_signals;
+    std::cout << "stable:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<std::tuple<::tpy::BigInt, ::tpy::BigInt>>(std::move(pairs), [](const std::tuple<::tpy::BigInt, ::tpy::BigInt>& t) -> ::tpy::BigInt { return std::get<0>(t); }, true)) << "\n" << ::tpy::check_signals;
     std::cout << "generator:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<::tpy::BigInt>(::tpyapp::main::evens(::tpy::BigInt(4)), true)) << "\n" << ::tpy::check_signals;
     std::cout << "source:" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     Board b = Board();

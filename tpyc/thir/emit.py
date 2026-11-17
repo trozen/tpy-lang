@@ -2077,8 +2077,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRCopy):
         return f"{e.cpp_type}({_emit_expr(e.value, state)})"
     if isinstance(e, THIRConsumingIter):
-        return (f"{qualify_native_name(e.native_name)}"
-                f"(std::move({_emit_expr(e.value, state)}))")
+        return f"::tpy::own_iter({_emit_expr(e.value, state)})"
     if isinstance(e, THIRMove):
         return f"std::move({_emit_expr(e.value, state)})"
     if isinstance(e, THIRDecayCopy):
@@ -2651,8 +2650,18 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     else:
         out.write(f"{indent}{binding_kw} {obj} = {iterable_cpp};\n")
     if stmt.presize is not None:
-        out.write(f"{indent}{stmt.presize}.reserve(static_cast<std::size_t>"
-                  f"({obj}.size()));\n")
+        if stmt.presize_if_sized:
+            out.write(f"{indent}::tpy::reserve_if_sized({stmt.presize}, "
+                      f"{obj});\n")
+        else:
+            out.write(f"{indent}{stmt.presize}.reserve("
+                      f"static_cast<std::size_t>({obj}.size()));\n")
+    if isinstance(stmt.iterable, THIRConsumingIter):
+        # A consuming iterator is stepped through its own begin/end when it
+        # offers them, else through its `__next__`.
+        rng = f"__rng_{n}"
+        out.write(f"{indent}auto&& {rng} = ::tpy::step_range({obj});\n")
+        obj = rng
     out.write(f"{indent}auto {beg} = {obj}.begin();\n")
     out.write(f"{indent}auto {end} = {obj}.end();\n")
     out.write(f"{indent}for (; {beg} != {end}; ++{beg}) {{\n")
@@ -2703,7 +2712,10 @@ def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
         out.write(f"{indent}auto& {src} = (*{held});\n")
     else:
         out.write(f"{indent}{binding_kw} {src} = {it_cpp};\n")
-    out.write(f"{indent}auto&& {itr} = ::tpy::__iter__({src});\n")
+    if stmt.owning_source:
+        out.write(f"{indent}auto&& {itr} = ::tpy::handover_iter<decltype({it_cpp})>({src});\n")
+    else:
+        out.write(f"{indent}auto&& {itr} = ::tpy::__iter__({src});\n")
     r_n = state.next_loop_index()
     r = f"__r_{r_n}"
     out.write(f"{indent}for (;;) {{\n")

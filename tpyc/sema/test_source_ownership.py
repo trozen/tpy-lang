@@ -61,10 +61,11 @@ _WHOLE_IN_WARNING = re.compile(r"^(?:copies|may copy) tuple\[")
 # A scalar source's copy into an owning slot: it speaks for its one leaf.
 _SCALAR_IN_WARNING = re.compile(r"^(?:copies|may copy) (?!tuple\[)"
                                 r"(?!.*tuple element).* into ")
-# An iterator's per-element copy (`copy_iter()` names its remedy): a copy
-# no sink's record covers.
+# An owning element slot's per-element copy (`copy_iter()` or, at a slot
+# with members beyond iteration, `copy()` names its remedy): it speaks for
+# the one leaf of the source's record, the elements'.
 _ELEMENT_COPY_WARNING = re.compile(r" elements(?: if not a value type)?; "
-                                   r"use copy_iter\(\)")
+                                   r"use copy(?:_iter)?\(\)")
 # A copy into a call's temporary argument (the deferred argument check,
 # `CallAnalyzer.defer_argument_copies`): a sink that keeps no record, even
 # where its operand lies inside a source's span.
@@ -275,11 +276,11 @@ def _assert_records_agree_with_warnings(
         if not (d.level.value == "warning" and d.loc is not None):
             continue
         m = _LEAF_IN_WARNING.search(d.message)
-        scalar = _SCALAR_IN_WARNING.search(d.message)
+        scalar = (_SCALAR_IN_WARNING.search(d.message)
+                  or _ELEMENT_COPY_WARNING.search(d.message))
         if not (m or scalar or _WHOLE_IN_WARNING.search(d.message)):
             continue
-        if (_TEMP_ARG_WARNING.search(d.message)
-                or _ELEMENT_COPY_WARNING.search(d.message)):
+        if _TEMP_ARG_WARNING.search(d.message):
             continue
         if excluded(d.loc.line):
             continue
@@ -4124,8 +4125,8 @@ def use(xs: list[A]) -> int32:
 def test_late_element_copy_is_emitted_after_settlement() -> None:
     # An element copy deferred on a lending callee analyzed later is
     # emitted after every body is settled, outside any walk: it stands as
-    # emitted. Its source fills an `Iterable[Own[A]]` argument, which is no
-    # owning slot of the source itself, so no record reads it.
+    # emitted. Its source fills an `Iterable[Own[A]]` argument, whose
+    # record's one leaf is the elements': copied.
     records, warnings, entry = _copy_probe("""\
 from typing import Iterable, Iterator
 def sink(xs: Iterable[Own[A]]) -> int32:
@@ -4139,7 +4140,9 @@ def gen(xs: list[A]) -> Iterator[A]:
     for x in xs:
         yield x
 """)
-    assert not [k for k in records if k[0] == 8]
+    assert [{p: leaf.permission for p, leaf in r.leaves.items()}
+            for k, r in records.items() if k[0] == 8] == [
+        {(): LeafPermission.WARNED}]
     assert warnings == ["copies A elements; use copy_iter() to make this "
                         "explicit"]
 

@@ -53,7 +53,7 @@ int32_t from_span(std::span<int32_t> sp) {
 //     return len(xs)
 int32_t from_array() {
     std::array<int32_t, 3> arr = {1, 2, 3};
-    std::vector<int32_t> xs = ::tpy::construct<std::vector<int32_t>>(arr);
+    std::vector<int32_t> xs = ::tpy::construct<std::vector<int32_t>>(std::move(arr));
     return ::tpy::__len__(xs);
 }
 

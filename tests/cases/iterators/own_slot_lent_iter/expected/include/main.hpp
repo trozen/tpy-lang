@@ -464,9 +464,10 @@ struct __gen_clones_own : public ::tpy::next_iter_mixin<__gen_clones_own<T, T_sr
     ::tpy::frame_state __state;
     T_src src;
     using __for_src_0_t = decltype((src));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
+    ::tpy::frame_slot<::tpy::next_elem_t<__for_itr_0_t>> x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -886,10 +887,8 @@ inline std::expected<Tok, ::tpy::StopIteration> TokCursor::__next__() {
 //     bump("method Own generator", fresh())  # tpyc: ok
 //     print("method G", G)
 inline void Driver::run() const {
-    auto __tmp_1 = ::tpy::copy_iter<std::vector<int32_t>>(View());
-    ::tpyapp::main::bump("method copy_iter", __tmp_1);
-    auto __tmp_2 = ::tpyapp::main::fresh();
-    ::tpyapp::main::bump("method Own generator", __tmp_2);
+    ::tpyapp::main::bump("method copy_iter", ::tpy::copy_iter<std::vector<int32_t>>(View()));
+    ::tpyapp::main::bump("method Own generator", ::tpyapp::main::fresh());
     std::cout << "method G" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
 }
 
@@ -912,7 +911,7 @@ inline void Bag<T>::push(::tpy::own_param_t<T> x) {
 template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 void bump(std::string_view tag, T_source&& source) {
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -930,7 +929,7 @@ template<::tpystd::typing::Iterable<int32_t> T_source>
 int32_t total(T_source&& source) {
     int32_t n = 0;
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -945,7 +944,7 @@ int32_t total(T_source&& source) {
 template<::tpystd::typing::Iterable<Rows*> T_source>
 void take_ptrs(T_source&& source) {
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -960,7 +959,7 @@ void take_ptrs(T_source&& source) {
 template<::tpystd::typing::Iterable<Tok> T_source>
 void bump_toks(std::string_view tag, T_source&& source) {
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

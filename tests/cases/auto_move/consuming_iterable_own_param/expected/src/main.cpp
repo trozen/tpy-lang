@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //         print(r.value)
 void main() {
     std::vector<Item> items = {Item(1), Item(2), Item(3)};
-    std::vector<Item> out = ::tpyapp::main::collect(::tpy::own_iter(std::move(items)));
+    std::vector<Item> out = ::tpyapp::main::collect(std::move(items));
     auto& __obj_0 = out;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

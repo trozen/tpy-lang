@@ -41,8 +41,9 @@ from ..typesys import (
 )
 from ..value_category import (
     call_operands, frame_factory_callee, frame_temp_arg_source,
-    iterator_source_callee, origin_shared,
+    iterator_source_callee, origin_shared, owning_arg, OwningArg,
 )
+from ..modules.type_resolution import owning_element_slot
 from .call_lends import (
     CalleeFact, MayLend, borrowing_ctor_arg, call_callee, call_lend_sources,
     callee_lend_fact, frame_operand_keys,
@@ -583,8 +584,10 @@ def temp_arg_kept_alive(fi: FunctionInfo, idx: int, arg: TpyExpr,
     """Whether a temporary argument outlives the statement although the
     callee's result borrows it, so the dangle warnings below must stay
     silent: the compiler hoists a frame factory's argument into a named
-    local, and a body-less lazy combinator (`zip`, `enumerate`, ...) OWNS a
-    temporary -- its rvalue flavor moves the argument in.
+    local, a container handed over at an owning element slot moves into
+    the callee's frame, and a body-less lazy combinator (`zip`,
+    `enumerate`, ...) OWNS a temporary -- its rvalue flavor moves the
+    argument in.
 
     The hoist asks the lowering row's own shape predicate rather than a
     second copy of it: a warning that disagreed with the hoist would either
@@ -594,6 +597,11 @@ def temp_arg_kept_alive(fi: FunctionInfo, idx: int, arg: TpyExpr,
         return False
     if not frame_factory_callee(fi):
         return iterator_source_callee(fi)
+    # A container handed over at an owning element slot moves into the
+    # frame, which then owns it by value, whatever spells the argument.
+    if (owning_element_slot(fi.params[idx].type, ctx.registry)
+            and owning_arg(ctx, arg) is OwningArg.HANDED_OVER):
+        return True
     return frame_temp_arg_source(arg, slot, ctx) is not None
 
 

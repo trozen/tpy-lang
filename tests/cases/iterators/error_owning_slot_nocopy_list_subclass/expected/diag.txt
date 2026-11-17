@@ -1,0 +1,1 @@
+main.py:29: error: cannot copy non-copyable type 'N' into owned storage (use Own[...] to transfer ownership, or copy() if a copy is truly intended; 'NList' has no consuming __iter__ to hand its elements over)

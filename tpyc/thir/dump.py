@@ -297,7 +297,7 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRCopy):
         return f"copy[{e.cpp_type}]({_expr(e.value)})"
     if isinstance(e, THIRConsumingIter):
-        return f"consuming_iter[{e.native_name}]({_expr(e.value)})"
+        return f"consuming_iter({_expr(e.value)})"
     if isinstance(e, THIRMove):
         return f"move({_expr(e.value)})"
     if isinstance(e, THIRDecayCopy):
@@ -567,7 +567,9 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
         # `[frame_src=N]`: the resumable frame owns the source in that field.
         fsrc = ("" if stmt.frame_src_field is None
                 else f" [frame_src={stmt.frame_src_field.name}]")
-        presize = "" if stmt.presize is None else f" [presize {stmt.presize}]"
+        presize = ("" if stmt.presize is None
+                   else f" [presize {stmt.presize}"
+                   f"{' if sized' if stmt.presize_if_sized else ''}]")
         lines = [f"{pad}for %{stmt.var}{const}{rval}{fsrc}{presize} "
                  f"in {_expr(stmt.iterable)}:"]
         for s in stmt.body:

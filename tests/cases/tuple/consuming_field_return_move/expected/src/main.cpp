@@ -150,7 +150,7 @@ int32_t keep_sub(Sub&& s) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         h.emplace(H());
-        __sub_0.emplace((*h));
+        __sub_0.emplace(std::move((*h)));
         __state = S_RESUME_0;
         continue;
     }

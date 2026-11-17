@@ -125,6 +125,31 @@ public:
         return *ptr();
     }
 
+    // `emplace(make())` without its move: a prvalue `make()` returns IS the
+    // payload (guaranteed elision), where `emplace` binds it to a parameter
+    // and moves it in -- for an inline payload (an iterator owning a
+    // `std::array`) that move is one per element. A rebind builds the new
+    // value before destroying the old one, as `emplace` does, which takes a
+    // move-constructible payload: whether a call is a first init or a rebind
+    // is known only at run time, so an immovable payload is refused here
+    // outright (it constructs through `emplace(args...)`).
+    template <typename F>
+        requires std::is_move_constructible_v<std::remove_const_t<T>>
+    T& emplace_from(F&& make) {
+        using U = std::remove_const_t<T>;
+        if (alive_) {
+            U next(std::forward<F>(make)());
+            ptr()->~T();
+            alive_ = false;
+            ::new (static_cast<void*>(raw())) U(std::move(next));
+            alive_ = true;
+            return *ptr();
+        }
+        ::new (static_cast<void*>(raw())) U(std::forward<F>(make)());
+        alive_ = true;
+        return *ptr();
+    }
+
     // No operator= for arbitrary T values. Codegen emits explicit
     // `name.emplace(expr)` for every assignment to a frame slot --
     // makes the first-init vs rebind invariant visible in the source,
@@ -251,6 +276,15 @@ public:
         return v_;
     }
 
+    // Built as `emplace` builds it: a `make()` returning a reference copies
+    // through `T`'s copy constructor, not its copy assignment.
+    template <typename F>
+    T& emplace_from(F&& make) {
+        v_ = T(std::forward<F>(make)());
+        alive_ = true;
+        return v_;
+    }
+
     void reset() noexcept { alive_ = false; }
 
     bool has_value() const noexcept { return alive_; }
@@ -293,7 +327,7 @@ private:
  * Same surface as the primary template, so codegen has one spelling for a frame
  * field whether it owns or aliases: `emplace(x)` binds, `(*f)` reads. That is
  * the point -- whether a for-loop element is a borrow of the source or a fresh
- * value is often only decidable at instantiation (see for_elem_next_t), so the
+ * value is often only decidable at instantiation (see next_elem_t), so the
  * choice cannot be spelled at the declaration site.
  *
  * `emplace` takes `T&`, so binding a prvalue is ill-formed rather than a

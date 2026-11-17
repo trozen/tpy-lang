@@ -1,0 +1,10 @@
+part_comp_lent.py:45: warning: copies R into owned storage; use copy() to make this explicit
+part_comp_lent.py:53: warning: copies R into owned storage; use copy() to make this explicit
+part_comp_lent.py:61: warning: copies R into owned storage; use copy() to make this explicit
+part_comp_lent.py:69: warning: copies R into owned storage; use copy() to make this explicit
+part_comp_lent.py:79: warning: copies R into owned storage; use copy() to make this explicit
+part_comp_lent.py:88: warning: copies R into owned storage; use copy() to make this explicit
+part_consuming.py:26: warning: Method 'Sevens.__iter__' hides 'list.__iter__' -- any 'list' reference will call 'list.__iter__', not 'Sevens.__iter__' (differs from Python's dynamic dispatch)
+part_consuming.py:76: warning: copies R elements; use copy_iter() to make this explicit
+part_records.py:140: warning: copies R elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_own_param.py:67: warning: Own[list[R]] param 'xs' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

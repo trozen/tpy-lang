@@ -272,11 +272,12 @@ template<::tpystd::typing::Iterable<Box> T_src>
 std::vector<Box> owned_outer(T_src&& src) {
     return ({
         std::vector<Box> __result;
-        auto& __obj_0 = src;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& b = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = src;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(src)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& b = ::tpy::own_bind(*__r_1);
             for (int32_t _ = 0; _ < 2; ++_) {
                 __result.push_back(Box(b).finish());
             }
@@ -291,11 +292,12 @@ template<::tpystd::typing::Iterable<Box> T_src>
 std::vector<std::vector<Box>> nested_elem(T_src&& src) {
     return ({
         std::vector<std::vector<Box>> __result;
-        auto& __obj_0 = src;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& b = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = src;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(src)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& b = ::tpy::own_bind(*__r_1);
             __result.push_back(({
                 std::vector<Box> __result;
                 if (2 > 0) __result.reserve(static_cast<size_t>(2));
@@ -315,11 +317,12 @@ template<::tpystd::typing::Iterable<Box> T_src>
 std::vector<Box> owned_inner(T_src&& src) {
     return ({
         std::vector<Box> __result;
-        auto& __obj_0 = src;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& b = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = src;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(src)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& b = ::tpy::own_bind(*__r_1);
             __result.push_back(std::move(b).finish());
         }
         std::move(__result);
@@ -332,11 +335,12 @@ template<::tpystd::typing::Iterable<Cell> T_src>
 std::vector<Cell> owned_filter(T_src&& src) {
     return ({
         std::vector<Cell> __result;
-        auto& __obj_0 = src;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& c = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = src;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(src)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& c = ::tpy::own_bind(*__r_1);
             if ((c.n > 0)) {
                 __result.push_back(std::move(c).finish());
             }
@@ -351,11 +355,12 @@ template<::tpystd::typing::Iterable<Box> T_src>
 ::tpy::ordered_map<int32_t, Box> owned_dict_key(T_src&& src) {
     return ({
         ::tpy::ordered_map<int32_t, Box> __result;
-        auto& __obj_0 = src;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& b = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = src;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(src)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& b = ::tpy::own_bind(*__r_1);
             __result.insert_or_assign(::tpy::__len__(b.xs), Box(b).finish());
         }
         std::move(__result);
@@ -368,11 +373,12 @@ template<::tpystd::typing::Iterable<Box> T_src>
 ::tpy::ordered_map<int32_t, Box> nested_key(T_src&& src) {
     return ({
         ::tpy::ordered_map<int32_t, Box> __result;
-        auto& __obj_0 = src;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& b = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = src;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(src)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& b = ::tpy::own_bind(*__r_1);
             __result.insert_or_assign(::tpy::builtin_sum<int32_t>(({
                 std::vector<int32_t> __result;
                 if (1 > 0) __result.reserve(static_cast<size_t>(1));
@@ -392,11 +398,12 @@ template<::tpystd::typing::Iterable<Box> T_src>
 std::vector<std::tuple<Box, Box>> double_(T_src&& src) {
     return ({
         std::vector<std::tuple<Box, Box>> __result;
-        auto& __obj_0 = src;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& b = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = src;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(src)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& b = ::tpy::own_bind(*__r_1);
             __result.push_back(std::tuple<Box, Box>{Box(b).finish(), Box(b).finish()});
         }
         std::move(__result);
@@ -409,11 +416,12 @@ template<::tpystd::typing::Iterable<Box> T_src>
 std::vector<Box> owned_arg(T_src&& src) {
     return ({
         std::vector<Box> __result;
-        auto& __obj_0 = src;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& b = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = src;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(src)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& b = ::tpy::own_bind(*__r_1);
             __result.push_back(::tpyapp::main::take(std::move(b)));
         }
         std::move(__result);
@@ -429,7 +437,7 @@ std::vector<Box> owned_arg(T_src&& src) {
 //         print("in_loop", i, row[0].xs[0], row[1].xs[0])
 template<::tpystd::typing::Iterable<Box> T_src>
 void in_loop(T_src&& src) {
-    std::vector<Box> boxes = ::tpy::construct<std::vector<Box>>(src);
+    std::vector<Box> boxes = ::tpy::construct<std::vector<Box>>(std::forward<decltype(src)>(src));
     for (int32_t i = 0; i < 1; ++i) {
         std::vector<std::array<Box, 2>> rows = ({
             std::vector<std::array<Box, 2>> __result;
@@ -457,19 +465,20 @@ template<::tpystd::typing::Iterable<Box> T_src>
 std::vector<Box> shadowing(T_src&& src, const std::vector<Box>& other) {
     return ({
         std::vector<Box> __result;
-        auto& __obj_0 = src;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& b = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = src;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(src)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& b = ::tpy::own_bind(*__r_1);
             __result.push_back(::tpyapp::main::tag(std::move(b).finish(), ::tpy::builtin_sum<int32_t>(({
                 std::vector<int32_t> __result;
-                auto& __obj_1 = other;
-                __result.reserve(static_cast<std::size_t>(__obj_1.size()));
-                auto __beg_1 = __obj_1.begin();
-                auto __end_1 = __obj_1.end();
-                for (; __beg_1 != __end_1; ++__beg_1) {
-                    const auto& b = *__beg_1;
+                auto& __obj_2 = other;
+                __result.reserve(static_cast<std::size_t>(__obj_2.size()));
+                auto __beg_2 = __obj_2.begin();
+                auto __end_2 = __obj_2.end();
+                for (; __beg_2 != __end_2; ++__beg_2) {
+                    const auto& b = *__beg_2;
                     __result.push_back(::tpy::__len__(b.xs));
                 }
                 std::move(__result);
@@ -485,11 +494,12 @@ template<::tpystd::typing::Iterable<Box> T_src>
 std::vector<Box> lambda_capture(T_src&& src) {
     return ({
         std::vector<Box> __result;
-        auto& __obj_0 = src;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& b = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = src;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(src)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& b = ::tpy::own_bind(*__r_1);
             __result.push_back(::tpyapp::main::tag(Box(b).finish(), ::tpyapp::main::call([&b]() -> int32_t { return ::tpy::__len__(b.xs); })));
         }
         std::move(__result);

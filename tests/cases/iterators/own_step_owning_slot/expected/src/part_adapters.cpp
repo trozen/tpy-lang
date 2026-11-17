@@ -32,8 +32,7 @@ void main() {
     std::vector<Key> ka = {Key(1), Key(3)};
     std::vector<Key> kb = {Key(2)};
     std::array<const std::vector<Key>*, 2> __tmp_1{&ka, &kb};
-    auto __tmp_2 = ::tpystd::heapq::merge<Key>(::tpy::varargs<const std::vector<Key>>(__tmp_1));
-    std::vector<Key> merged = ::tpyapp::part_adapters::keep_keys(__tmp_2);
+    std::vector<Key> merged = ::tpyapp::part_adapters::keep_keys(::tpystd::heapq::merge<Key>(::tpy::varargs<const std::vector<Key>>(__tmp_1)));
     std::cout << "merge owning" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_0 = merged;

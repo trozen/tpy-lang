@@ -726,8 +726,9 @@ void head_own_iter() {
     xs.push_back(std::tuple<N, int32_t>{N(2), 20});
     std::vector<N> keep = std::vector<N>{};
     auto __obj_0 = ::tpy::own_iter(std::move(xs));
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
+    auto&& __rng_0 = ::tpy::step_range(__obj_0);
+    auto __beg_0 = __rng_0.begin();
+    auto __end_0 = __rng_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_3 = *__beg_0;
         auto&& x = std::move(std::get<0>(__for_tup_3));
@@ -1139,11 +1140,12 @@ struct __genexpr_genexpr_heads_1_frame : public ::tpy::next_iter_mixin<__genexpr
     ::tpy::frame_state __state;
     T___src __src;
     using __for_src_0_t = decltype((__src));
-    ::tpy::for_step_elem_t<__for_src_0_t>* __for_tup_gx = nullptr;
-    ::tpy::step_elem_member_t<0, ::tpy::for_step_elem_t<__for_src_0_t>>* x = nullptr;
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
+    ::tpy::step_elem_t<::tpy::iter_next_t<__for_itr_0_t>>* __for_tup_gx = nullptr;
+    ::tpy::step_elem_member_t<0, ::tpy::step_elem_t<::tpy::iter_next_t<__for_itr_0_t>>>* x = nullptr;
     int32_t n;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -1525,10 +1527,12 @@ void comp_own_iter() {
     std::vector<N> keep = ({
         std::vector<N> __result;
         auto __obj_0 = ::tpy::own_iter(std::move(xs));
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
+        ::tpy::reserve_if_sized(__result, __obj_0);
+        auto&& __rng_0 = ::tpy::step_range(__obj_0);
+        auto __beg_0 = __rng_0.begin();
+        auto __end_0 = __rng_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& __for_tup_33 = *__beg_0;
+            std::tuple<N, int32_t> __for_tup_33(::tpy::take_elem(__beg_0));
             auto&& x = std::move(std::get<0>(__for_tup_33));
             int32_t n = std::get<1>(__for_tup_33);
             __result.push_back(std::move(x));
@@ -2117,11 +2121,12 @@ struct __genexpr_genexpr_cells_3_frame : public ::tpy::next_iter_mixin<__genexpr
     ::tpy::frame_state __state;
     T___src __src;
     using __for_src_0_t = decltype((__src));
-    ::tpy::for_step_elem_t<__for_src_0_t>* __for_tup_gx = nullptr;
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
+    ::tpy::step_elem_t<::tpy::iter_next_t<__for_itr_0_t>>* __for_tup_gx = nullptr;
     std::string k;
-    ::tpy::step_elem_member_t<1, ::tpy::for_step_elem_t<__for_src_0_t>>* v = nullptr;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    ::tpy::step_elem_member_t<1, ::tpy::step_elem_t<::tpy::iter_next_t<__for_itr_0_t>>>* v = nullptr;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

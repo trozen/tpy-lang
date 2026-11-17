@@ -97,7 +97,7 @@ template<::tpystd::typing::Iterable<std::tuple<R, int32_t>> T_it>
 int32_t tuple_steps(T_it&& it);
 // def count(b: Sizes[Own[R]]) -> int32:
 template<Sizes<R> T_b>
-int32_t count(T_b&& b);
+int32_t count(const T_b& b);
 // def main() -> None:
 void main();
 
@@ -199,8 +199,9 @@ struct __coro_async_total {
     int32_t n;
     ::tpy::frame_slot<R> r;
     using __for_src_0_t = decltype((it));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    using __for_itr_0_t = ::tpy::handover_iter_type_t<decltype(it), __for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -235,7 +236,7 @@ template <::tpystd::typing::Iterable<R> T_it>
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         n = 0;
-        ::tpy::resumable_iter_init(__for_itr_0, it);
+        ::tpy::resumable_handover_iter_init<decltype(it)>(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
@@ -249,13 +250,13 @@ template <::tpystd::typing::Iterable<R> T_it>
         continue;
     }
     case S_JOIN_0: {
-        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, it));
+        __for_r_0.emplace(::tpy::resumable_handover_iter_next<decltype(it)>(__for_itr_0, it));
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
             int32_t __tpy_async_ret = std::move(n);
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
-        r.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
+        r.emplace(::tpy::own_bind(*(*__for_r_0)));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -303,8 +304,9 @@ struct __gen_gen_ns : public ::tpy::next_iter_mixin<__gen_gen_ns<T_it>, int32_t>
     T_it it;
     ::tpy::frame_slot<R> r;
     using __for_src_0_t = decltype((it));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    using __for_itr_0_t = ::tpy::handover_iter_type_t<decltype(it), __for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -333,18 +335,18 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_ns<T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpy::resumable_iter_init(__for_itr_0, it);
+        ::tpy::resumable_handover_iter_init<decltype(it)>(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0:  // after: yield r.n
     case S_JOIN_0: {
-        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, it));
+        __for_r_0.emplace(::tpy::resumable_handover_iter_next<decltype(it)>(__for_itr_0, it));
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        r.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
+        r.emplace(::tpy::own_bind(*(*__for_r_0)));
         __state = S_RESUME_0;
         return (*r).n;
     }
@@ -419,7 +421,7 @@ inline int32_t Sized3::size() const {
 template<::tpystd::typing::Iterable<R> T_it>
 inline int32_t Acc::take_all(T_it&& it) {
     auto& __src_0 = it;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(it)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -434,7 +436,7 @@ inline int32_t Acc::take_all(T_it&& it) {
 //     self.rows.extend(it)  # tpyc: ok
 template<::tpystd::typing::Iterable<R> T_it>
 inline Bag::Bag(T_it&& it) : rows(std::vector<R>{}) {
-    ::tpy::list_extend(this->rows, it);
+    ::tpy::list_extend(this->rows, std::forward<decltype(it)>(it));
 }
 
 // # free function: one `for` over the parameter
@@ -447,7 +449,7 @@ template<::tpystd::typing::Iterable<R> T_it>
 int32_t total(T_it&& it) {
     int32_t n = 0;
     auto& __src_0 = it;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(it)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -467,11 +469,11 @@ int32_t total(T_it&& it) {
 template<::tpystd::typing::Iterable<R> T_it>
 int32_t guarded(T_it&& it, bool fast) {
     if (fast) {
-        return ::tpyapp::main::total(::tpy::own_iter(::tpy::construct<std::vector<R>>(it)));
+        return ::tpyapp::main::total(::tpy::construct<std::vector<R>>(std::forward<decltype(it)>(it)));
     }
     int32_t n = 0;
     auto& __src_0 = it;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(it)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -497,7 +499,7 @@ int32_t union_arm(T_items&& items) {
     if constexpr (::tpystd::typing::Iterable<std::remove_cvref_t<T_items>, R>) {
         int32_t n = 0;
         auto& __src_0 = items;
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(items)>(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
@@ -518,7 +520,7 @@ int32_t union_arm(T_items&& items) {
 //     return n
 template<::tpystd::typing::Iterable<R> T_it>
 int32_t twice(T_it&& it) {
-    std::vector<R> xs = ::tpy::construct<std::vector<R>>(it);
+    std::vector<R> xs = ::tpy::construct<std::vector<R>>(std::forward<decltype(it)>(it));
     int32_t n = 0;
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
@@ -541,7 +543,7 @@ int32_t twice(T_it&& it) {
 //     return total(it)  # tpyc: ok
 template<::tpystd::typing::Iterable<R> T_it>
 int32_t forward(T_it&& it) {
-    return ::tpyapp::main::total(it);
+    return ::tpyapp::main::total(std::forward<decltype(it)>(it));
 }
 // # an alias carries the one traversal
 // def via_alias(it: Iterable[Own[R]]) -> int32:
@@ -549,8 +551,8 @@ int32_t forward(T_it&& it) {
 //     return total(b)
 template<::tpystd::typing::Iterable<R> T_it>
 int32_t via_alias(T_it&& it) {
-    auto b = it;
-    return ::tpyapp::main::total(b);
+    auto&& b = std::forward<decltype(it)>(it);
+    return ::tpyapp::main::total(std::forward<decltype(b)>(b));
 }
 // # each traversal hook once: an `in` test, `+=`, a comprehension source (a genexpr
 // # over an owning source does not lower yet: BUGS.md#genexpr-owned-source-rejects)
@@ -567,7 +569,7 @@ bool in_once(T_it&& it) {
 template<::tpystd::typing::Iterable<R> T_it>
 int32_t iadd_once(T_it&& it) {
     std::vector<R> out = std::vector<R>{};
-    ::tpy::list_extend(out, it);
+    ::tpy::list_extend(out, std::forward<decltype(it)>(it));
     return ::tpy::__len__(out);
 }
 // def comp_once(it: Iterable[Own[R]]) -> int32:
@@ -576,11 +578,12 @@ template<::tpystd::typing::Iterable<R> T_it>
 int32_t comp_once(T_it&& it) {
     return ::tpy::__len__(({
         std::vector<int32_t> __result;
-        auto& __obj_0 = it;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& r = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = it;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(it)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& r = ::tpy::own_bind(*__r_1);
             __result.push_back(r.n);
         }
         std::move(__result);
@@ -596,7 +599,7 @@ template<::tpystd::typing::Iterable<int32_t> T_it>
 int32_t ints(T_it&& it) {
     int32_t n = 0;
     auto& __src_0 = it;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(it)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -617,10 +620,10 @@ int32_t by_mode(T_it&& it, int32_t mode) {
     auto& __match_subject_1 = mode;
     switch (__match_subject_1) {
     case 0: {
-        return ::tpyapp::main::total(it);
+        return ::tpyapp::main::total(std::forward<decltype(it)>(it));
     }
     default: {
-        return ::tpy::__len__(::tpy::construct<std::vector<R>>(it));
+        return ::tpy::__len__(::tpy::construct<std::vector<R>>(std::forward<decltype(it)>(it)));
     }
     }
     ::std::unreachable();
@@ -642,7 +645,7 @@ int32_t finally_guard(T_it&& it, bool fast) {
         bool __fin_ran_1 = false;
         try {
             if (fast) {
-                int32_t __tpy_ret_0 = ::tpy::__len__(::tpy::construct<std::vector<R>>(it));
+                int32_t __tpy_ret_0 = ::tpy::__len__(::tpy::construct<std::vector<R>>(std::forward<decltype(it)>(it)));
                 __fin_ran_1 = true;
                 return __tpy_ret_0;
             }
@@ -654,7 +657,7 @@ int32_t finally_guard(T_it&& it, bool fast) {
     }
     int32_t n = 0;
     auto& __src_1 = it;
-    auto&& __itr_1 = ::tpy::__iter__(__src_1);
+    auto&& __itr_1 = ::tpy::handover_iter<decltype(it)>(__src_1);
     for (;;) {
         auto __r_2 = __itr_1.__next__();
         if (!__r_2.has_value()) break;
@@ -682,7 +685,7 @@ int32_t loop_return(T_it&& it) {
             bool __fin_ran_2 = false;
             try {
                 auto& __src_1 = it;
-                auto&& __itr_1 = ::tpy::__iter__(__src_1);
+                auto&& __itr_1 = ::tpy::handover_iter<decltype(it)>(__src_1);
                 for (;;) {
                     auto __r_2 = __itr_1.__next__();
                     if (!__r_2.has_value()) break;
@@ -717,7 +720,7 @@ int32_t traverse_then_break(T_it&& it, int32_t k) {
     int32_t __stop_0 = k;
     for (int32_t i = 0; i < __stop_0; ++i) {
         if ((i == 1)) {
-            n = ::tpy::add_check<int32_t>(n, ::tpyapp::main::total(it));
+            n = ::tpy::add_check<int32_t>(n, ::tpyapp::main::total(std::forward<decltype(it)>(it)));
             break;
         }
     }
@@ -741,7 +744,7 @@ int32_t finally_may_break(T_it&& it, bool stop) {
         {
             bool __fin_ran_3 = false;
             try {
-                n = ::tpy::add_check<int32_t>(n, ::tpy::__len__(::tpy::construct<std::vector<R>>(it)));
+                n = ::tpy::add_check<int32_t>(n, ::tpy::__len__(::tpy::construct<std::vector<R>>(std::forward<decltype(it)>(it))));
                 int32_t __tpy_ret_1 = n;
                 __fin_ran_3 = true;
                 if (stop) {
@@ -774,7 +777,7 @@ int32_t with_once(T_it&& it) {
     __ctx_1.__enter__();
     try {
         auto& __src_0 = it;
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(it)>(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
@@ -806,7 +809,7 @@ template<::tpystd::typing::Iterable<std::tuple<R, int32_t>> T_it>
 int32_t tuple_steps(T_it&& it) {
     int32_t n = 0;
     auto& __src_0 = it;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(it)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -819,7 +822,7 @@ int32_t tuple_steps(T_it&& it) {
 // def count(b: Sizes[Own[R]]) -> int32:
 //     return b.size()  # tpyc: ok
 template<Sizes<R> T_b>
-int32_t count(T_b&& b) {
+int32_t count(const T_b& b) {
     return b.size();
 }
 

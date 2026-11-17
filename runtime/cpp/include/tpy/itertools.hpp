@@ -40,6 +40,14 @@ concept separate_user_iterator =
     is_tpy_record_v<C> && requires(C& c) { c.__iter__(); }
     && !is_self_iterator_v<C>;
 
+// A compiled record with a consuming `__iter__` (its `&&` member, own_iter.hpp):
+// held by value, the combinator owns it, so it is given up to that iteration
+// and its elements are handed on rather than lent and copied. The call is
+// user code as above, so such a record is held as a separate user iterator.
+template<typename C>
+concept consumed_user_iterable =
+    is_tpy_record_v<C> && !std::is_reference_v<C> && hands_over_v<C, C>;
+
 // Storage a value is built INTO, straight from the prvalue that makes it, so a
 // move-only or immovable T works. `std::optional::emplace` cannot do that (it
 // constructs from its arguments, and an argument wrapper with a conversion
@@ -76,9 +84,14 @@ public:
 // or beyond it (a member the record delegates to, `*this` typed as a base),
 // and CPython advances that very object. A value is built in place. A const
 // reference is copied -- no pull can go through it.
-template<typename C>
+template<typename C, bool Consume = false>
 class iter_cursor {
-    using R = decltype(tpy::iter_dunder(std::declval<C&>()));
+    // The iterator `c` is given up to (Consume) or the one it lends.
+    static decltype(auto) acquire(C& c) {
+        if constexpr (Consume) return ::tpy::own_iter(std::move(c));
+        else return tpy::iter_dunder(c);
+    }
+    using R = decltype(acquire(std::declval<C&>()));
     static constexpr bool aliased =
         std::is_lvalue_reference_v<R> && !std::is_const_v<std::remove_reference_t<R>>;
     using held_t = std::conditional_t<aliased, std::remove_reference_t<R>*,
@@ -90,8 +103,8 @@ public:
         else return held_.has();
     }
     void seed(C& c) {
-        if constexpr (aliased) held_ = std::addressof(tpy::iter_dunder(c));
-        else held_.fill([&]() -> R { return tpy::iter_dunder(c); });
+        if constexpr (aliased) held_ = std::addressof(acquire(c));
+        else held_.fill([&]() -> R { return acquire(c); });
     }
     decltype(auto) next() { return held_->__next__(); }
 };
@@ -105,7 +118,11 @@ public:
 template<typename C>
 class owned_iter_source {
     struct no_cursor {};
-    using cursor_t = std::conditional_t<is_self_iterator_v<C>, no_cursor, iter_cursor<C>>;
+    using cursor_t = std::conditional_t<
+        is_self_iterator_v<C>, no_cursor,
+        iter_cursor<C, consumed_user_iterable<C>>>;
+    static constexpr bool pinned =
+        separate_user_iterator<C> || consumed_user_iterable<C>;
     C src_;
     [[no_unique_address]] cursor_t cur_;
 public:
@@ -113,7 +130,7 @@ public:
 
     owned_iter_source(owned_iter_source&& o)
         noexcept(std::is_nothrow_move_constructible_v<C>)
-        requires (!separate_user_iterator<C>)
+        requires (!pinned)
         : src_(std::move(o.src_)) {
         // The cursor may point into the moved-from container; restarting the
         // walk would replay its elements.
@@ -128,7 +145,7 @@ public:
     // bitwise relocation that leaves the cursor pointing into the callee's
     // dead frame. A non-trivial destructor forces the return through memory,
     // where guaranteed elision builds it in its final place.
-    ~owned_iter_source() requires separate_user_iterator<C> {}
+    ~owned_iter_source() requires pinned {}
     ~owned_iter_source() = default;
 
     // The observable half of iter(): a self-iterator's __iter__ is user code
@@ -136,7 +153,7 @@ public:
     // on its sources in argument order.
     void start() {
         if constexpr (is_self_iterator_v<C>) (void)tpy::iter_dunder(src_);
-        else if constexpr (separate_user_iterator<C>) cur_.seed(src_);
+        else if constexpr (pinned) cur_.seed(src_);
     }
 
     // start() for `iter()` itself, a function: CPython runs every source's
@@ -523,12 +540,13 @@ template<typename F, size_t N>
 using fn_param_t = std::tuple_element_t<N, typename fn_params<std::remove_cvref_t<F>>::types>;
 
 // Whether the source a combinator holds as argument form X (`C&` borrowed, `C`
-// owned) hands out elements it OWNS: only a container the combinator holds
-// (see owned_source_member_t). `void` is a source held by no one but the
-// caller.
+// owned) hands out elements it OWNS: a container the combinator holds (see
+// owned_source_member_t), or an iterator holding its sequence by value.
+// `void` is a source held by no one but the caller.
 template<typename X>
 constexpr bool source_owns_elements() {
     if constexpr (std::is_void_v<X> || std::is_lvalue_reference_v<X>) return false;
+    else if constexpr (holds_sequence_by_value<std::remove_cv_t<X>>::value) return true;
     else return std::is_rvalue_reference_v<owned_source_member_t<X>>;
 }
 
@@ -804,6 +822,9 @@ public:
     }
 };
 
+template<typename Seq> requires detail::vector_or_array_based<Seq>
+struct detail::holds_sequence_by_value<owning_reversed_iter<Seq>> : std::true_type {};
+
 // lvalue: store reference (container outlives the loop); `Seq` deduces the
 // argument's const, so a const sequence lends const elements.
 template<typename Seq>
@@ -863,7 +884,14 @@ public:
     std::expected<U, StopIteration> __next__() {
         auto r = src_.__next__();
         if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
-        return fn_(unwrap_ref(*r));
+        // A callable taking its element over (an `Own[X]` parameter, `X&&`)
+        // is moved an element only this combinator holds; one an iterator
+        // lends from the caller's container is copied, so that container
+        // keeps it.
+        if constexpr (!std::is_invocable_v<Fn&, decltype(unwrap_ref(*r))>)
+            return fn_(callback_arg<detail::fn_param_t<Fn, 0>, Container>(*r));
+        else
+            return fn_(unwrap_ref(*r));
     }
 
     owning_map_iter& __iter__() { return *this; }

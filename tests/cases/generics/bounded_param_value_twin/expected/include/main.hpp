@@ -194,9 +194,10 @@ struct __coro_adrain {
     T_xs xs;
     int32_t n;
     using __for_src_0_t = decltype((xs));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
+    using __for_itr_0_t = ::tpy::handover_iter_type_t<decltype(xs), __for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
+    ::tpy::frame_slot<::tpy::next_elem_t<__for_itr_0_t>> x;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -232,7 +233,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_xs>
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         n = 0;
-        ::tpy::resumable_iter_init(__for_itr_0, xs);
+        ::tpy::resumable_handover_iter_init<decltype(xs)>(__for_itr_0, xs);
         __state = S_JOIN_0;
         continue;
     }
@@ -247,7 +248,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_xs>
         continue;
     }
     case S_JOIN_0: {
-        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, xs));
+        __for_r_0.emplace(::tpy::resumable_handover_iter_next<decltype(xs)>(__for_itr_0, xs));
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
             int32_t __tpy_async_ret = std::move(n);
@@ -282,8 +283,8 @@ struct __coro_amain {
     int32_t __await_lift_3;
     std::optional<__coro_aw<int32_t>> __sub_0;
     std::optional<__coro_aw<std::string>> __sub_1;
-    std::optional<__coro_adrain<int32_t, ::tpy::await_arg_capture_t<decltype(((*__coro_arg_0)))>>> __sub_2;
-    std::optional<__coro_adrain<std::string, ::tpy::await_arg_capture_t<decltype(((*__coro_arg_1)))>>> __sub_3;
+    std::optional<__coro_adrain<int32_t, ::tpy::await_arg_capture_t<decltype((std::move((*__coro_arg_0))))>>> __sub_2;
+    std::optional<__coro_adrain<std::string, ::tpy::await_arg_capture_t<decltype((std::move((*__coro_arg_1))))>>> __sub_3;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -368,9 +369,10 @@ struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain<T, T_xs>, T> {
     ::tpy::frame_state __state;
     T_xs xs;
     using __for_src_0_t = decltype((xs));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
+    using __for_itr_0_t = ::tpy::handover_iter_type_t<decltype(xs), __for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
+    ::tpy::frame_slot<::tpy::next_elem_t<__for_itr_0_t>> x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -399,13 +401,13 @@ std::expected<T, ::tpy::StopIteration> __gen_drain<T, T_xs>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpy::resumable_iter_init(__for_itr_0, xs);
+        ::tpy::resumable_handover_iter_init<decltype(xs)>(__for_itr_0, xs);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0:  // after: yield x
     case S_JOIN_0: {
-        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, xs));
+        __for_r_0.emplace(::tpy::resumable_handover_iter_next<decltype(xs)>(__for_itr_0, xs));
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});

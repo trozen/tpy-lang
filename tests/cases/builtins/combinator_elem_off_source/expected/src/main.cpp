@@ -405,11 +405,12 @@ struct __genexpr_genexpr_ro_1_frame : public ::tpy::next_iter_mixin<__genexpr_ge
     ::tpy::frame_state __state;
     T___src __src;
     using __for_src_0_t = decltype((__src));
-    ::tpy::for_step_elem_t<__for_src_0_t>* __for_tup_gx = nullptr;
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
+    ::tpy::step_elem_t<::tpy::iter_next_t<__for_itr_0_t>>* __for_tup_gx = nullptr;
     int32_t i;
-    ::tpy::step_elem_member_t<1, ::tpy::for_step_elem_t<__for_src_0_t>>* c = nullptr;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    ::tpy::step_elem_member_t<1, ::tpy::step_elem_t<::tpy::iter_next_t<__for_itr_0_t>>>* c = nullptr;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -487,11 +488,12 @@ struct __genexpr_genexpr_mut_2_frame : public ::tpy::next_iter_mixin<__genexpr_g
     ::tpy::frame_state __state;
     T___src __src;
     using __for_src_0_t = decltype((__src));
-    ::tpy::for_step_elem_t<__for_src_0_t>* __for_tup_gx = nullptr;
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
+    ::tpy::step_elem_t<::tpy::iter_next_t<__for_itr_0_t>>* __for_tup_gx = nullptr;
     int32_t i;
-    ::tpy::step_elem_member_t<1, ::tpy::for_step_elem_t<__for_src_0_t>>* c = nullptr;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    ::tpy::step_elem_member_t<1, ::tpy::step_elem_t<::tpy::iter_next_t<__for_itr_0_t>>>* c = nullptr;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

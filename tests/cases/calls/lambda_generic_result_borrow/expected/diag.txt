@@ -1,0 +1,4 @@
+main.py:55: warning: copies Rec elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:62: warning: copies Rec elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:83: warning: copies Rec elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:88: warning: copies Rec elements; use copy_iter() to make this explicit (or copy() to copy the entire container)

@@ -44,10 +44,10 @@ std::vector<int32_t> ns(const std::vector<Rec>& rs) {
 //     b = rs[1]
 //     c = rs[2]
 //     # the constructor lambda returns the fresh Key by value
-//     print("free sorted_lam", ns(sorted(rs, key=lambda r: Key(r))))  # tpyc: ok
+//     print("free sorted_lam", ns(sorted(rs, key=lambda r: Key(r))))  # tpyc: warning(/copies Rec elements/)
 //     # the class name is the same lambda, with const params
-//     print("free sorted_cls", ns(sorted(rs, key=Key)))  # tpyc: ok
-//     print("free sorted_own", ns(sorted(rs, key=lambda r: make_key(r))))  # tpyc: ok
+//     print("free sorted_cls", ns(sorted(rs, key=Key)))  # tpyc: warning(/copies Rec elements/)
+//     print("free sorted_own", ns(sorted(rs, key=lambda r: make_key(r))))  # tpyc: warning(/copies Rec elements/)
 //     print("free min_lam", min(a, b, key=lambda r: Key(r)).n)  # tpyc: ok
 //     print("free min_cls", min(a, b, key=Key).n)  # tpyc: ok
 //     print("free max_lam", max(a, b, key=lambda r: Key(r)).n)  # tpyc: ok
@@ -97,8 +97,8 @@ __gen_gen gen(const std::vector<Rec>& rs) {
 //     a = rs[0]
 //     b = rs[1]
 //     # async: the class-name key and the ctor lambda in a coroutine body
-//     s = sorted(rs, key=Key)  # tpyc: ok
-//     t = sorted(rs, key=lambda r: Key(r))  # tpyc: ok
+//     s = sorted(rs, key=Key)  # tpyc: warning(/copies Rec elements/)
+//     t = sorted(rs, key=lambda r: Key(r))  # tpyc: warning(/copies Rec elements/)
 //     m = min(a, b, key=Key)  # tpyc: ok
 //     return s[0].n * 100 + t[1].n * 10 + m.n
 ::tpystd::tpy::Poll<int32_t> __coro_co::__poll__(::tpystd::coro::Waker waker) {
@@ -128,8 +128,8 @@ __coro_co co(std::vector<Rec>& rs) {
 
 // def comp(rss: list[list[Rec]]) -> None:
 //     # comprehension: the key lambda inside the element expression
-//     print("comp lam", [sorted(rs, key=lambda r: Key(r))[0].n for rs in rss])  # tpyc: ok
-//     print("comp cls", [sorted(rs, key=Key)[0].n for rs in rss])  # tpyc: ok
+//     print("comp lam", [sorted(rs, key=lambda r: Key(r))[0].n for rs in rss])  # tpyc: warning(/copies Rec elements/)
+//     print("comp cls", [sorted(rs, key=Key)[0].n for rs in rss])  # tpyc: warning(/copies Rec elements/)
 void comp(const std::vector<std::vector<Rec>>& rss) {
     std::cout << "comp lam" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -193,8 +193,8 @@ void main() {
 //
 // # module level: sorted into globals
 // g_rs = [Rec(1), Rec(3), Rec(2)]
-// g_lam = sorted(g_rs, key=lambda r: Key(r))  # tpyc: ok
-// g_cls = sorted(g_rs, key=Key)  # tpyc: ok
+// g_lam = sorted(g_rs, key=lambda r: Key(r))  # tpyc: warning(/copies Rec elements/)
+// g_cls = sorted(g_rs, key=Key)  # tpyc: warning(/copies Rec elements/)
 //
 // main()
 void __tpy_init() {

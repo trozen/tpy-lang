@@ -245,8 +245,9 @@ struct __coro_via_async {
     ::tpy::frame_slot<std::vector<std::vector<int32_t>>> out;
     ::tpy::frame_slot<std::vector<int32_t>> x;
     using __for_src_0_t = decltype((source));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    using __for_itr_0_t = ::tpy::handover_iter_type_t<decltype(source), __for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -280,7 +281,7 @@ template <::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         out.emplace(std::vector<std::vector<int32_t>>{});
-        ::tpy::resumable_iter_init(__for_itr_0, source);
+        ::tpy::resumable_handover_iter_init<decltype(source)>(__for_itr_0, source);
         __state = S_JOIN_0;
         continue;
     }
@@ -294,13 +295,13 @@ template <::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
         continue;
     }
     case S_JOIN_0: {
-        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, source));
+        __for_r_0.emplace(::tpy::resumable_handover_iter_next<decltype(source)>(__for_itr_0, source));
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
             int32_t __tpy_async_ret = ::tpy::__len__(::tpy::__getitem__((*out), 0));
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
-        x.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
+        x.emplace(::tpy::own_bind(*(*__for_r_0)));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -325,8 +326,9 @@ struct __gen_via_gen : public ::tpy::next_iter_mixin<__gen_via_gen<T_source>, in
     ::tpy::frame_slot<std::vector<std::vector<int32_t>>> out;
     ::tpy::frame_slot<std::vector<int32_t>> x;
     using __for_src_0_t = decltype((source));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    using __for_itr_0_t = ::tpy::handover_iter_type_t<decltype(source), __for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -357,18 +359,18 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_via_gen<T_source>::__next__()
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         out.emplace(std::vector<std::vector<int32_t>>{});
-        ::tpy::resumable_iter_init(__for_itr_0, source);
+        ::tpy::resumable_handover_iter_init<decltype(source)>(__for_itr_0, source);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0:  // after: yield len(out[-1])
     case S_JOIN_0: {
-        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, source));
+        __for_r_0.emplace(::tpy::resumable_handover_iter_next<decltype(source)>(__for_itr_0, source));
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        x.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
+        x.emplace(::tpy::own_bind(*(*__for_r_0)));
         (*out).push_back(std::move((*x)));
         __state = S_RESUME_0;
         return ::tpy::__len__(::tpy::__getitem__((*out), -1));
@@ -526,7 +528,7 @@ inline bool Key::__eq__(const Key& o) const {
 template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 inline int32_t Sink::absorb(T_source&& source) {
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -546,7 +548,7 @@ template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 std::vector<std::vector<int32_t>> collect(T_source&& source) {
     std::vector<std::vector<int32_t>> out = std::vector<std::vector<int32_t>>{};
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -571,7 +573,7 @@ std::vector<std::vector<int32_t>> collect(T_source&& source) {
 template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 int32_t via_closure(T_source&& source) {
     std::vector<std::vector<int32_t>> out = std::vector<std::vector<int32_t>>{};
-    std::vector<std::vector<int32_t>> xs = ::tpy::construct<std::vector<std::vector<int32_t>>>(source);
+    std::vector<std::vector<int32_t>> xs = ::tpy::construct<std::vector<std::vector<int32_t>>>(std::forward<decltype(source)>(source));
     auto inner = [&out, &xs]() {
         auto& __obj_0 = xs;
         auto __beg_0 = __obj_0.begin();
@@ -598,7 +600,7 @@ int32_t via_try(T_source&& source) {
     {
         try {
             auto& __src_0 = source;
-            auto&& __itr_0 = ::tpy::__iter__(__src_0);
+            auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
             for (;;) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
@@ -629,7 +631,7 @@ int32_t via_match(T_source&& source, int32_t k) {
     switch (__match_subject_1) {
     case 1: {
         auto& __src_0 = source;
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
@@ -650,11 +652,12 @@ template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 std::vector<std::vector<int32_t>> via_comp(T_source&& source) {
     return ({
         std::vector<std::vector<int32_t>> __result;
-        auto& __obj_0 = source;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& x = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = source;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& x = ::tpy::own_bind(*__r_1);
             __result.push_back(std::move(x));
         }
         std::move(__result);
@@ -671,7 +674,7 @@ template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 int32_t capture(T_source&& source) {
     int32_t total = 0;
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -699,7 +702,7 @@ template<::tpystd::typing::Iterable<std::tuple<int32_t, std::vector<int32_t>>> T
 int32_t unpack_pairs(T_source&& source) {
     std::vector<std::tuple<int32_t, std::vector<int32_t>>> out = std::vector<std::tuple<int32_t, std::vector<int32_t>>>{};
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -719,7 +722,7 @@ template<::tpystd::typing::Iterable<::tpy::Union<std::vector<int32_t>, std::stri
 int32_t collect_union(T_source&& source) {
     std::vector<::tpy::Union<std::vector<int32_t>, std::string>> out = std::vector<::tpy::Union<std::vector<int32_t>, std::string>>{};
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -737,7 +740,7 @@ template<::tpystd::typing::Iterable<Cell> T_source>
 int32_t sum_cells(T_source&& source) {
     int32_t total = 0;
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -755,7 +758,7 @@ template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 int32_t total(T_source&& source) {
     int32_t t = 0;
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -775,12 +778,12 @@ template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 std::vector<int32_t> flatten(T_source&& source) {
     std::vector<int32_t> flat = std::vector<int32_t>{};
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& x = ::tpy::own_bind(*__r_1);
-        ::tpy::list_extend(flat, ::tpy::own_iter(std::move(x)));
+        ::tpy::list_extend(flat, std::move(x));
     }
     return flat;
 }
@@ -794,7 +797,7 @@ template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 int32_t drop(T_source&& source) {
     int32_t n = 0;
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -813,7 +816,7 @@ template<::tpystd::typing::Iterable<Item> T_source>
 int32_t keep_items(T_source&& source) {
     std::vector<std::optional<Item>> out = std::vector<std::optional<Item>>{};
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -831,7 +834,7 @@ template<::tpystd::typing::Iterable<Item> T_source>
 int32_t finish_all(T_source&& source) {
     int32_t t = 0;
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -849,7 +852,7 @@ template<::tpystd::typing::Iterable<std::optional<std::vector<int32_t>>> T_sourc
 int32_t keep_opts(T_source&& source) {
     std::vector<std::optional<std::vector<int32_t>>> out = std::vector<std::optional<std::vector<int32_t>>>{};
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -864,11 +867,12 @@ template<::tpystd::typing::Iterable<Cell> T_source>
 std::vector<int32_t> cell_ns(T_source&& source) {
     return ({
         std::vector<int32_t> __result;
-        auto& __obj_0 = source;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& c = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = source;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& c = ::tpy::own_bind(*__r_1);
             __result.push_back(c.n);
         }
         std::move(__result);
@@ -883,7 +887,7 @@ template<::tpystd::typing::Iterable<C> T_source>
 int32_t total_c(T_source&& source) {
     int32_t t = 0;
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -898,11 +902,12 @@ template<::tpystd::typing::Iterable<C> T_source>
 std::vector<C> keep_c(T_source&& source) {
     return ({
         std::vector<C> __result;
-        auto& __obj_0 = source;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& c = ::tpy::take_elem(__beg_0);
+        auto& __src_0 = source;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& c = ::tpy::own_bind(*__r_1);
             __result.push_back(std::move(c));
         }
         std::move(__result);
@@ -915,7 +920,7 @@ std::vector<C> keep_c(T_source&& source) {
 template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 std::vector<int32_t> first(T_source&& source) {
     auto& __src_0 = source;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(source)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

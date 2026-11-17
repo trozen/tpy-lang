@@ -767,7 +767,6 @@ def _is_qn(t: "TpyType", qname: str) -> bool:
 
 def is_span_iter(t: "TpyType") -> bool: return _is_qn(t, "tpy.SpanIter")
 def is_copy_iter(t: "TpyType") -> bool: return _is_qn(t, "tpy.CopyIter")
-def is_own_iter(t: "TpyType") -> bool:  return _is_qn(t, "tpy.OwnIter")
 
 
 # Primitive predicates.  Prefer these over ad-hoc `isinstance` on the
@@ -1734,9 +1733,6 @@ def _populate() -> None:
                      cpp_formatter=_span_iter_cpp,
                      element_of=_readonly_view_elem))
     register(TypeDef("tpy.CopyIter", TC.ITERATOR, is_value_type=True,
-                     iter_yields_owned_elements=True,
-                     cpp_formatter=lambda args: "auto"))
-    register(TypeDef("tpy.OwnIter",  TC.ITERATOR, is_value_type=True,
                      iter_yields_owned_elements=True,
                      cpp_formatter=lambda args: "auto"))
 

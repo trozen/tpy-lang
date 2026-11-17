@@ -455,10 +455,10 @@ struct __gen_gen_consume : public ::tpy::next_iter_mixin<__gen_gen_consume, int3
     H& h;
     std::vector<A>& ys;
     ::tpy::frame_slot<std::vector<A>> xs;
-    using __for_src_0_t = decltype(((*xs)));
-    ::tpy::begin_elem_t<__for_src_0_t>* a = nullptr;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
-    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+    using __for_src_0_t = decltype((::tpy::own_iter(std::move((*xs)))));
+    ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* a = nullptr;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -559,10 +559,9 @@ struct __gen_gen_own_iter : public ::tpy::next_iter_mixin<__gen_gen_own_iter, in
     std::vector<F>& fs;
     ::tpy::frame_slot<std::vector<F>> src;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::own_iter(std::move((*src)))))>;
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> a;
+    ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* a = nullptr;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -715,7 +714,7 @@ template<::tpystd::typing::Iterator<A> T_xs>
 void loop_rebind(T_xs&& xs, A& b, std::vector<A>& out) {
     std::optional<A> __slot_1;
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -734,11 +733,12 @@ template<::tpystd::typing::Iterable<std::tuple<A, A>> T_csrc>
 std::vector<std::tuple<A, A>> comp_clause(T_csrc&& csrc) {
     return ({
         std::vector<std::tuple<A, A>> __result;
-        auto& __obj_0 = csrc;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            std::tuple<A, A> ct(::tpy::take_elem(__beg_0));
+        auto& __src_0 = csrc;
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(csrc)>(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::tuple<A, A> ct(::tpy::own_bind(*__r_1));
             __result.push_back(std::move(ct));
         }
         std::move(__result);

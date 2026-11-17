@@ -26,6 +26,7 @@
 
 #include "dunder.hpp"
 #include "next_iter.hpp"
+#include "own_iter.hpp"
 
 namespace tpy {
 
@@ -326,8 +327,9 @@ double builtin_sum_start_float(Iter&& iterable, double start) {
 // `reverse` keeps equal elements in their original order, as CPython's
 // reverse=True does: a stable sort under the flipped comparison.
 template<typename T, typename Iter>
-std::vector<T> builtin_sorted(Iter&& iterable, bool reverse = false) {
+std::vector<T> builtin_sorted(Iter&& iterable0, bool reverse = false) {
     std::vector<T> result;
+    auto&& iterable = ::tpy::handover_range<Iter>(iterable0);
     for (auto&& elem : ::tpy::iter_range(iterable)) {
         result.emplace_back(std::forward<decltype(elem)>(elem));
     }
@@ -341,8 +343,9 @@ std::vector<T> builtin_sorted(Iter&& iterable, bool reverse = false) {
 }
 
 template<typename T, typename Iter, typename KeyFn>
-std::vector<T> builtin_sorted_key(Iter&& iterable, KeyFn&& key, bool reverse = false) {
+std::vector<T> builtin_sorted_key(Iter&& iterable0, KeyFn&& key, bool reverse = false) {
     std::vector<T> items;
+    auto&& iterable = ::tpy::handover_range<Iter>(iterable0);
     for (auto&& elem : ::tpy::iter_range(iterable)) {
         items.emplace_back(std::forward<decltype(elem)>(elem));
     }

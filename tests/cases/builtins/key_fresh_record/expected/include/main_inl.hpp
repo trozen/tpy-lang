@@ -7,10 +7,10 @@ namespace tpyapp::main {
 
 // def gen(rs: list[Rec]) -> Iterator[int32]:
 //     # generator
-//     for x in sorted(rs, key=lambda q: Key(q)):  # tpyc: ok
-//         yield x.n                                           # -> S_RESUME_0
-//     for y in sorted(rs, key=Key):  # tpyc: ok
-//         yield y.n                                           # -> S_RESUME_1
+//     for x in sorted(rs, key=lambda q: Key(q)):  # tpyc: warning(/copies Rec elements/)
+//         yield x.n                                                                       # -> S_RESUME_0
+//     for y in sorted(rs, key=Key):  # tpyc: warning(/copies Rec elements/)
+//         yield y.n                                                                       # -> S_RESUME_1
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry

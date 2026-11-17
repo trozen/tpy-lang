@@ -66,7 +66,7 @@ void test_name_rhs() {
 void test_set_aug() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::set_update(s, ::tpy::ordered_set<int32_t>({3}));
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(s)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::move(s))) << "\n" << ::tpy::check_signals;
 }
 
 // def main():

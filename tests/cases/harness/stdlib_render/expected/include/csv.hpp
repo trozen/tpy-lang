@@ -735,7 +735,7 @@ std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        row.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
+        row.emplace(::tpy::own_bind(*(*__for_r_0)));
         if ((first && (::tpy::__len__(__self.fieldnames) == 0))) {
             h = 0;
             hn = ::tpy::__len__((*row));

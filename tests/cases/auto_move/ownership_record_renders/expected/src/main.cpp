@@ -524,8 +524,9 @@ int32_t consume_field(H& h) {
     xs.push_back(A(19));
     std::vector<A> ys = std::vector<A>{};
     auto __obj_0 = ::tpy::own_iter(std::move(xs));
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
+    auto&& __rng_0 = ::tpy::step_range(__obj_0);
+    auto __beg_0 = __rng_0.begin();
+    auto __end_0 = __rng_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& a = *__beg_0;
         if ((::tpy::__getitem__(a.items, 0) > 18)) {
@@ -917,9 +918,8 @@ void main() {
         }
     }
     std::cout << "own_iter" << " " << ::tpy::__getitem__(h.f.items, 0) << " " << ::tpy::__len__(fs) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = ::tpyapp::main::mk();
-    A __tmp_3 = A(11);
-    ::tpyapp::main::loop_rebind(__tmp_2, __tmp_3, ys);
+    A __tmp_2 = A(11);
+    ::tpyapp::main::loop_rebind(::tpyapp::main::mk(), __tmp_2, ys);
     ::tpyapp::main::show("loop_rebind", ::tpy::__getitem__(ys, -1));
     ::tpyapp::main::joined_fresh(h, true);
     A& m0 = std::get<0>(h.m);
@@ -932,10 +932,10 @@ void main() {
     Q& q1 = std::get<1>(h.q);
     ::tpyapp::main::show("hoisted_mixed 0", q0);
     std::cout << "hoisted_mixed 1" << " " << q1.v << "\n" << ::tpy::check_signals;
-    A __tmp_4 = ::tpyapp::main::hoisted_finally(14);
-    ::tpyapp::main::show("hoisted_finally", __tmp_4);
-    A __tmp_5 = ::tpystd::asyncio::run<A>(::tpy::make_adapter<::tpystd::coro::Cancellable<A>>(::tpyapp::main::hoisted_finally_async(15)));
-    ::tpyapp::main::show("hoisted_finally_async", __tmp_5);
+    A __tmp_3 = ::tpyapp::main::hoisted_finally(14);
+    ::tpyapp::main::show("hoisted_finally", __tmp_3);
+    A __tmp_4 = ::tpystd::asyncio::run<A>(::tpy::make_adapter<::tpystd::coro::Cancellable<A>>(::tpyapp::main::hoisted_finally_async(15)));
+    ::tpyapp::main::show("hoisted_finally_async", __tmp_4);
     std::tuple<std::tuple<A, int32_t>, int32_t> lifted = ::tpyapp::main::member_lift();
     std::cout << "member_lift" << " " << std::get<1>(lifted) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::tuple<A, int32_t>, int32_t>> nested = std::vector<std::tuple<std::tuple<A, int32_t>, int32_t>>{};
@@ -943,8 +943,7 @@ void main() {
     std::cout << "nested_member" << " " << ::tpy::__len__(nested) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<A, A>> pairs = std::vector<std::tuple<A, A>>{};
     pairs.push_back(std::tuple<A, A>{A(16), A(17)});
-    auto __tmp_6 = ::tpy::own_iter(std::move(pairs));
-    std::vector<std::tuple<A, A>> moved = ::tpyapp::main::comp_clause(__tmp_6);
+    std::vector<std::tuple<A, A>> moved = ::tpyapp::main::comp_clause(::tpy::own_iter(std::move(pairs)));
     auto&& __tup_1 = ::tpy::__getitem__(moved, 0);
     A& c0 = std::get<0>(__tup_1);
     A& c1 = std::get<1>(__tup_1);

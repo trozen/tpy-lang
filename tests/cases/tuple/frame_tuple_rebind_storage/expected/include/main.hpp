@@ -2276,9 +2276,10 @@ struct __gen_gen_genexpr_live : public ::tpy::next_iter_mixin<__gen_gen_genexpr_
     std::optional<Box> __ptr_slot_f1;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::__genexpr_gen_genexpr_live_1(2, p)))>;
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

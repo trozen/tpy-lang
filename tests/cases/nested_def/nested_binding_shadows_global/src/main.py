@@ -230,7 +230,7 @@ def gen(rs: list[Holder]) -> Iterator[int32]:
     step = ident(4)
     yield double(step)
     # a lambda param named like the frame's loop variable `r`
-    out = sorted(rs, key=lambda r: -r.v)  # tpyc: ok
+    out = sorted(rs, key=lambda r: -r.v)  # tpyc: warning(/copies Holder elements/)
     for r in out:
         yield r.v
     print("gen after:", step)

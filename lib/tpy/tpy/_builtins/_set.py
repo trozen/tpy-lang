@@ -28,7 +28,7 @@ class set[T](Iterable[T], NativeIterable[T]):
     def __iter__(self) -> Iterator[T]: ...
 
     @dispatch
-    @native("tpy::own_iter_set", function=True)
+    @native("tpy::own_iter", function=True)
     def __iter__(self: Own[Self]) -> Iterator[Own[T]]: ...
 
     @native("tpy::__len__", function=True)

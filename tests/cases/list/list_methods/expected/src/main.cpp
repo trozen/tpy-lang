@@ -140,13 +140,13 @@ void test_extend() {
     ::tpy::list_extend(nums, std::array<int32_t, 3>{4, 5, 6});
     ::tpyapp::main::print_list(nums);
     std::vector<int32_t> more = {7, 8};
-    ::tpy::list_extend(nums, ::tpy::own_iter(std::move(more)));
+    ::tpy::list_extend(nums, std::move(more));
     ::tpyapp::main::print_list(nums);
     std::array<int32_t, 2> arr = {9, 10};
-    ::tpy::list_extend(nums, arr);
+    ::tpy::list_extend(nums, std::move(arr));
     ::tpyapp::main::print_list(nums);
     std::vector<int32_t> extra = {11, 12};
-    ::tpy::list_extend(nums, ::tpy::own_iter(std::move(extra)));
+    ::tpy::list_extend(nums, std::move(extra));
     ::tpyapp::main::print_list(nums);
 }
 

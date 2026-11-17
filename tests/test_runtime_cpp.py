@@ -23,6 +23,8 @@ _CPP_TESTS = PROJECT_ROOT / "runtime" / "cpp" / "tests"
 # failure, so the C++ file owns its own assertions.
 _SELFCHECKS = [
     ("test_frame_slot_forms.cpp", "resumable-frame slot storage forms"),
+    ("test_handover_forms.cpp",
+     "an owning element slot hands over exact containers only, copying no element"),
     ("test_frame_state_pin.cpp",
      "a resumable frame is never copied and moves only before its first entry"),
     ("test_bigint_small_ops.cpp", "BigInt small-operation values and allocations"),

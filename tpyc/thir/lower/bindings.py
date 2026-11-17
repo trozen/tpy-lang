@@ -30,7 +30,7 @@ from ...codegen_cpp.forms import (LocalBinding, LoopBinding,
                                   is_storage_tuple_alias_decl,
                                   reads_storage_form_optional)
 from ...identity_map import IdentityMap, IdentitySet
-from ...modules.type_resolution import is_native_iterable
+from ...modules.type_resolution import is_native_iterable, owning_traversal
 from ...parse.nodes import (RebindStorage, TpyArrayLiteral,
                             TpyAsPattern,
                             TpyAssign, TpyAwait, TpyBinOp, TpyCall, TpyCapturePattern,
@@ -1014,6 +1014,11 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
     if isinstance(typ, TpyType) and unwrap_optional_own(
             unwrap_readonly(unwrap_send_sync(typ))) is not None:
         f["owned"] = True
+    # Its deduced type says whether the caller handed the argument over.
+    if isinstance(typ, TpyType):
+        alternatives = owning_traversal(typ, analyzer.registry)
+        if alternatives:
+            f["owning_traversal"] = alternatives
     own = unwrap_optional_own(u) if isinstance(typ, TpyType) else None
     if (not isinstance(u, TupleType) and own is not None
             and own.wrapped.is_value_type()
@@ -1146,8 +1151,7 @@ def _frame_row(site, name, typ, inp: PlanInputs, visible):
         if own.acquired is Acquired.COPIED_STEP:
             f["move_exception"] = _value_exception(typ)
         elif own.acquired not in (Acquired.OWN_ELEMENT,
-                                  Acquired.CONSUMING_LOOP,
-                                  Acquired.OWN_ITER_LOOP):
+                                  Acquired.CONSUMING_LOOP):
             f["move_exception"] = M.FRAME_LAYOUT
     elif name in ff.exceptions:
         f["move_exception"] = ff.exceptions[name]
@@ -1381,6 +1385,12 @@ def _decl_row(site, name, typ, inp: 'PlanInputs', visible):
         src = visible(init.name)
         if src is not None and src.iterator_object:
             rec = replace(rec, iterator_object=True)
+        init_t = inp.analyzer.get_expr_type(init)
+        alternatives = (owning_traversal(init_t, inp.analyzer.registry)
+                        if isinstance(init_t, TpyType) else frozenset())
+        if alternatives:
+            rec = replace(rec, owning_alias=True,
+                          owning_traversal=alternatives)
     return rec
 
 
@@ -2321,8 +2331,7 @@ def _ptr_null_hoist(stmt, name, vt, inp: 'PlanInputs', ctx) -> bool:
                                            ctx.names_with("pointer"))
     except ThirUnsupported:
         return False
-    return (route.route == "container"
-            and route.consuming_native_name is None)
+    return route.route == "container" and not route.consuming
 
 
 def capture_const(subject, ctx) -> bool:
@@ -2506,8 +2515,7 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     # pass slot the loop writes, unless a consuming loop hands it over; a
     # copied step that does not allocate moves as it copies.
     acq = site.ownership.acquired
-    if stmt.hoist_loop_var and acq not in (Acquired.CONSUMING_LOOP,
-                                           Acquired.OWN_ITER_LOOP):
+    if stmt.hoist_loop_var and acq is not Acquired.CONSUMING_LOOP:
         f["move_exception"] = M.PASS_SLOT
     elif (acq is Acquired.COPIED_STEP
           and not (elem is not None and elem.is_expensive_copy())):

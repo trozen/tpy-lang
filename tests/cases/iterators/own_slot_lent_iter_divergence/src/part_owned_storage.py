@@ -62,7 +62,8 @@ def main() -> None:
     pl = PList()
     # q is read below, so the append rightly copies it (warned)
     pl.append(q)
-    # a dead native-container subclass still copies silently
+    # a dead native-container subclass has no consuming __iter__, so it is
+    # lent and its elements copied -- warned
     # (BUGS.md#dead-native-like-source-own-slot-copies)
-    bump_pt(pl)  # tpyc: ok
+    bump_pt(pl)  # tpyc: warning(/copies Pt elements/)
     print("free PList", q.v)

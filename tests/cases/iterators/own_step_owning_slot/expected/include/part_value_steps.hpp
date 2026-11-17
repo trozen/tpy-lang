@@ -395,7 +395,7 @@ int32_t run_it(T_r&& r) {
 //     return sum_lent(xs)
 template<::tpyapp::part_value_steps::ValueSteps<int32_t> T_xs>
 int32_t sum_value_steps(T_xs&& xs) {
-    return ::tpyapp::fixtures::sum_lent(xs);
+    return ::tpyapp::fixtures::sum_lent(std::forward<decltype(xs)>(xs));
 }
 // def first(xs: Iterable[Cell]) -> Cell:
 //     for c in xs:

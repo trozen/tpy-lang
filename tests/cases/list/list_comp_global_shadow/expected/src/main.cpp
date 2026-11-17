@@ -265,7 +265,7 @@ void array_range() {
         return ::tpy::BigInt((::tpy::mul_check<int32_t>(ys, ys)));
     });
     ys->push_back(5);
-    std::cout << "array_range:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(m)) << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+    std::cout << "array_range:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(std::move(m))) << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def array_source(a: Array[int, 3]) -> None:
@@ -299,7 +299,7 @@ void array_source(const std::array<::tpy::BigInt, 3>& a) {
         });
     });
     ys->push_back(3);
-    std::cout << "array_source:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(m)) << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+    std::cout << "array_source:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(std::move(m))) << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def in_lambda(rows: list[int]) -> None:
@@ -625,8 +625,9 @@ struct __genexpr_module_1_frame : public ::tpy::next_iter_mixin<__genexpr_module
     T___src __src;
     std::string x;
     using __for_src_0_t = decltype((__src));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

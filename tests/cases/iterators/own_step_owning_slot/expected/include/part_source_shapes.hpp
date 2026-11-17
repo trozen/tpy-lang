@@ -327,7 +327,7 @@ template<::tpystd::typing::Iterable<std::tuple<::tpyapp::fixtures::Cell, int32_t
 int32_t take_whole(T_xs&& xs) {
     int32_t s = 0;
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

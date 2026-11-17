@@ -31,19 +31,19 @@ namespace tpyapp::main {
 //     print(sorted(names))
 void main() {
     std::array<int32_t, 8> a = {3, 1, 4, 1, 5, 9, 2, 6};
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::move(a))) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 5> b = {5, 4, 3, 2, 1};
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::move(b))) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> c = {1, 2, 3};
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::move(c))) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> empty = std::vector<::tpy::BigInt>{};
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<::tpy::BigInt>(empty)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<::tpy::BigInt>(std::move(empty))) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> d = {1, 1, 1};
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(d)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::move(d))) << "\n" << ::tpy::check_signals;
     std::array<std::string, 4> words = {"banana", "apple", "cherry", "date"};
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(words)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(std::move(words))) << "\n" << ::tpy::check_signals;
     std::array<std::string, 3> names = {"Charlie", "alice", "Bob"};
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(names)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(std::move(names))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

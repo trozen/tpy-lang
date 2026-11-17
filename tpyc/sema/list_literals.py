@@ -34,7 +34,7 @@ class IterableHelper:
         A type is iterable if it:
         - Is a NativeIterable[T], Iterator[T], Iterable[T], or
           Spannable[T] protocol type (used as parameter type)
-        - Is a compiler-internal iterator adapter (CopyIter[T], OwnIter[T],
+        - Is a compiler-internal iterator adapter (CopyIter[T],
           generator-expression type) or SpanIter[T] (stub-declared but its
           __iter__(self) -> Self currently bypasses the unified lookup --
           the parser doesn't resolve Self to SpanIter, so the adapter

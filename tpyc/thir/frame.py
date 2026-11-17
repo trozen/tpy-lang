@@ -97,7 +97,7 @@ class FrameLocalKind(Enum):
                             C++: `::tpy::frame_slot<payload>` where the
                             payload spelling comes from the iteration
                             source's protocol (`for_elem_deref_t` /
-                            `for_elem_next_t`) and frame_slot's
+                            `next_elem_t`) and frame_slot's
                             specializations supply either form at
                             instantiation.
       * PROTOCOL         -- a static-protocol-typed local: no concrete C++
@@ -665,6 +665,9 @@ class THIRForIterSetup:
     # file no ITER loan for this iterable, so the lowering refuses it here
     # exactly as the sync for-each route does.
     iter_borrow_unplaceable: bool = False
+    # The source loop gives its source up to its consuming `__iter__`
+    # (`TpyForEach.consuming_iter_fi`): the setup renders the consuming call.
+    consuming: bool = False
 
 
 @dataclass(frozen=True)
@@ -817,12 +820,16 @@ class GeneratorForInfo:
     # (`__for_src_<uid>_t`); every field above is spelled through it. None
     # for the `range` counters, which have no source object.
     src_alias: str | None = None
+    # (name, definition) of the `using` alias for this loop's iterator type,
+    # spelled off `src_alias` (`__for_itr_<uid>_t`); the `iter_next` fields
+    # spell through it. None for the other strategies.
+    itr_alias: tuple[str, str] | None = None
     # Pointee spelling per pointer-form field of this loop -- the loop var
     # and the tuple-unpack targets that alias a member -- derived from the
     # SOURCE through `src_alias`, so the pointer's const is the element's.
     pointer_payloads: dict[str, str] = field(default_factory=dict)
     # (loop var name, fully-spelled C++ payload for its frame field):
-    # `::tpy::for_elem_next_t<src_alias>`, so C++ decides at instantiation
+    # `::tpy::next_elem_t<iterator type>`, so C++ decides at instantiation
     # whether the element aliases the source or is owned, with `frame_slot`
     # supplying both forms behind one spelling. Set ONLY by `iter_next`, the
     # one strategy where the choice is open: its source may lend an element
@@ -830,6 +837,11 @@ class GeneratorForInfo:
     # lvalue, so their loop var is the pointer form above; `range`
     # synthesizes its element; a concrete value element is copy-only.
     loop_var_field: tuple[str, str] | None = None
+    # The C++ name of the owning element parameter this `iter_next` loop
+    # traverses: its iterator asks the parameter's declared type whether the
+    # container was handed over (its consuming iterator) or lent
+    # (`handover_iter_type_t`).
+    owning_param: str | None = None
     # For a tuple-unpack loop (`for a, b in items:`) whose element tuple
     # contains non-value, non-readonly members, the names of the unpack
     # targets bound to those members. They are stored as `T*` (alias into
@@ -1018,6 +1030,10 @@ class THIRResumableFrame:
     # its type parameters) at the body's access, read-only for a
     # `@readonly` method; None for a free function.
     receiver: 'THIRBorrowedRecord | None'
+    # A consuming method's frame (`self: Own[Self]`) holds its receiver by
+    # value, moved in by the factory: the caller gave the object up, and the
+    # frame outlives the `&&` call that built it.
+    owns_receiver: bool
     locals: tuple[THIRFrameLocal, ...]
     # -- the coarse CFG
     entry_block: int

@@ -449,7 +449,7 @@ class TypeResolver:
         # For plain NominalType (not subclasses like ListType/ArrayType) with
         # type_args, recursively resolve args to handle @dynamic protocols.
         # Skip this branch when the TypeDef registry provides a custom
-        # cpp_formatter (e.g. CopyIter/OwnIter -> "auto") -- fall through to
+        # cpp_formatter (e.g. CopyIter -> "auto") -- fall through to
         # typ.to_cpp() so the formatter wins.
         if type(typ) is NominalType and typ.type_args:
             from tpyc.type_def_registry import type_def_of

@@ -1,6 +1,6 @@
-# Protocol values forwarded to an owning slot: a protocol value may hold a
-# live list, so a forward copies (warned) unless the parent's own iterator
-# hands its steps over.
+# Protocol values forwarded to an owning slot: the forward passes the
+# argument on, so a live list's element copies are warned at the caller that
+# passes it, not at the forward.
 from typing import Iterable, Iterator, Protocol
 from tpy import Own, int32
 from fixtures import Bag, Cell, Counter, take
@@ -11,9 +11,9 @@ class OwnCells(Iterable[Own[Cell]], Protocol):
 
 
 def take_sub(xs: OwnCells) -> int32:
-    # the sub-protocol is an `Iterable[Own[Cell]]` at its declared args; a
-    # protocol value may hold a live list, so its forward copies (warned)
-    return take(xs)  # tpyc: warning(/copies Cell elements/)
+    # the sub-protocol is an `Iterable[Own[Cell]]` at its declared args; the
+    # forward passes the argument on, so any copy is the caller's (warned there)
+    return take(xs)  # tpyc: ok
 
 
 def sum_own(xs: Iterable[Own[Cell]]) -> int32:
@@ -24,7 +24,7 @@ def sum_own(xs: Iterable[Own[Cell]]) -> int32:
 
 
 def sum_sub(xs: OwnCells) -> int32:
-    return sum_own(xs)  # tpyc: warning(/copies Cell elements/)
+    return sum_own(xs)  # tpyc: ok
 
 
 class Cells[T](Iterable[T], Protocol):
@@ -101,10 +101,19 @@ def forward_counted(xs: CountedChild) -> int32:
 def main() -> None:
     # sub-protocol of `Iterable[Own[Cell]]`
     print("sub-protocol", take_sub(Bag()))  # tpyc: ok
-    # a live list through an owning sub-protocol is copied at the forward
-    # and stays the caller's
+    # a dead list through an owning sub-protocol is handed over: no copy
+    dead: list[Cell] = [Cell(1), Cell(2)]
+    print("dead list sub-protocol", sum_sub(dead))  # tpyc: ok
+    dead2: list[Cell] = [Cell(3)]
+    print("dead list sub-protocol take", take_sub(dead2))  # tpyc: ok
+    # a dead Array (an unannotated literal never grown) likewise
+    dead_arr = [Cell(1), Cell(2)]  # tpyc: type(/Array/)
+    print("dead array sub-protocol", sum_sub(dead_arr))  # tpyc: ok
+    dead_arr2 = [Cell(3)]
+    print("dead array sub-protocol take", take_sub(dead_arr2))  # tpyc: ok
     held = [Cell(1), Cell(2)]
-    print("live list sub-protocol", sum_sub(held))  # tpyc: ok
+    # the live `held` is where the copy is caused, so the warning is here
+    print("live list sub-protocol", sum_sub(held))  # tpyc: warning(/copies Cell elements/)
     held[0].v += 1
     print("live list sub-protocol after", held[0].v, len(held))
     # likewise through a generic protocol's lending instance

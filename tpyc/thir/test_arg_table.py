@@ -193,7 +193,7 @@ class TestMethodArgSinkShape:
 
     # Where the record-only rows start. Named once, so the split-point pins
     # below read as facts about the merge rather than magic offsets.
-    STUB_ROWS = 19
+    STUB_ROWS = 17
 
     def test_row_order_is_pinned(self):
         # Order is load-bearing: `_witness` fires during the walk, so a
@@ -203,7 +203,6 @@ class TestMethodArgSinkShape:
         # corpus.
         assert [r.row for r in _METHOD_ARG_SINK.rows] == [
             "protocol_bare_name",
-            "copy_iter_own_elem",
             "enum_pass_through",
             "own_record_rvalue",
             "native_iterable_literal",
@@ -211,7 +210,6 @@ class TestMethodArgSinkShape:
             "native_iterable_range",
             "native_iterable_iterator_call",
             "native_iterable_comp",
-            "own_iter_special",
             "own_container_comp",
             "none_value_opt",
             "callable_slot",
@@ -245,7 +243,7 @@ class TestMethodArgSinkShape:
         # callable, recursive-union and cycle-placeholder slots reach these
         # rows; the record half opens at `lambda`.
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len(rows) == 35
+        assert len(rows) == 33
         assert rows[self.STUB_ROWS] == "lambda"
 
     def test_the_view_rows_keep_their_relative_order(self):
@@ -333,9 +331,7 @@ class TestMethodArgSinkShape:
         assert len([r for r in rows if r in others]) == 22
         assert [r for r in rows if r not in others] == [
             "protocol_bare_name",
-            "copy_iter_own_elem",
             "enum_pass_through",
-            "own_iter_special",
             "own_container_comp",
             "callable_slot",
             "own_value_tuple_literal",
@@ -1093,7 +1089,7 @@ class TestRecordCtorSinkShape:
             "tuple_literal",
             "own_tuple_storage",
             "lambda",
-            "protocol_slot_ctor",
+            "protocol_slot",
             "dyn_own_conformer",
         ]
 
@@ -1201,8 +1197,7 @@ class TestRecordCtorNestedIsNotADirectPrefix:
                                    "own_move_source_slice",
                                    "record_elem_subscript",
                                    "record_borrow_call",
-                                   "wide_opt_deref_name",
-                                   "protocol_slot"}
+                                   "wide_opt_deref_name"}
 
     def test_the_direct_cells_absent_from_nested_are_named_and_counted(self):
         # The flush-less nested position admits only temp-FREE renders, so
@@ -1211,9 +1206,9 @@ class TestRecordCtorNestedIsNotADirectPrefix:
         # absences free to be filled silently later.
         direct = {r.row for r in _CTOR_ARG_SINK.rows}
         nested = {r.row for r in _CTOR_NESTED_ARG_SINK.rows}
-        assert len(direct - nested) == 24
+        assert len(direct - nested) == 23
         assert {"own_lvalue",
-                "protocol_slot_ctor", "tuple_literal",
+                "tuple_literal",
                 "lambda", "func_ref",
                 "protocol_union", "protocol_union_literal_temp",
                 "protocol_union_iter_temp",
@@ -1256,9 +1251,8 @@ class TestRecordCtorSharedAndNewRows:
             "protocol_union",
             "protocol_union_literal_temp",
             "protocol_union_iter_temp",
-            "protocol_slot_ctor",
         ]
-        assert len([r for r in rows if r in others]) == 14
+        assert len([r for r in rows if r in others]) == 15
 
     def test_the_shadow_rows_hold_a_different_predicate(self):
         # Each of these SHADOWS a shared row name and had to be given its
@@ -1275,9 +1269,7 @@ class TestRecordCtorSharedAndNewRows:
                   for r in s.rows}
         for ctor_row, shared_row in (
                 # passes `analyzer`, so the alias placeholder resolves
-                ("ru_wrapper_name_no_alias", "ru_wrapper_name"),
-                # admits a structural RVALUE, which is ctor-inline here
-                ("protocol_slot_ctor", "protocol_slot")):
+                ("ru_wrapper_name_no_alias", "ru_wrapper_name"),):
             assert cells[ctor_row] is not shared[shared_row], ctor_row
 
 

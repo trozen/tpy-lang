@@ -103,7 +103,7 @@ from ...typesys import (
     view_family_for_type,
 )
 from ...coercions import CoercionContext
-from ...modules.type_resolution import is_native_iterable
+from ...modules.type_resolution import is_native_iterable, owning_element_slot
 from ...sema.call_lends import Retention
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...sema.alias_rebind import bare_tuple
@@ -137,7 +137,6 @@ from ...type_def_registry import (
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp.types import resolve_pending_container
 from ...typesys import make_list, ptr_text_pointee
-from ...modules.type_resolution import is_owning_iterable
 from ...codegen_cpp.forms import (LocalBinding, is_plain_nonvalue,
                                   reads_storage_form_optional)
 from ...sema.dyn_erasure import (DynSlotEntry, classify_dyn_own_arg,
@@ -5428,8 +5427,11 @@ def _native_iterable_comp_arg(a: TpyExpr, ptype: 'TpyType | None',
     Returns the comprehension's container type, or None."""
     pb = _protocol_binding(ptype)
     # Sized joins the iterable pair: `len([...comp...])` renders the same
-    # inline stmt-expr into `::tpy::__len__` (the slot only sizes it).
-    if pb is None or pb.name not in ("Iterable", "Sequence", "Sized"):
+    # inline stmt-expr into `::tpy::__len__` (the slot only sizes it). An
+    # owning element slot's comprehension is handed over by
+    # `converted_arg`'s owning conversion.
+    if (pb is None or pb.name not in ("Iterable", "Sequence", "Sized")
+            or owning_element_slot(ptype, analyzer.registry)):
         return None
     return _comp_own_container(a, analyzer)
 
@@ -5526,20 +5528,6 @@ def _record_field_ref_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     return _bare_field_read_shape(a, locals_, analyzer, narrowed) is not None
 
-
-def _own_iter_special_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
-    """An explicit `own_iter(x)` call into a structural Iterable/Sequence
-    slot (`b.extend(own_iter(a))` ->
-    `::tpy::list_extend(b, ::tpy::own_iter(std::move(a)))`): the
-    special-builtin lowering arm renders it; the row only admits the
-    pairing."""
-    if not isinstance(a, TpyCall):
-        return False
-    pb = _protocol_binding(ptype)
-    if pb is None or pb.name not in ("Iterable", "Sequence"):
-        return False
-    fi = a.resolved_function_info
-    return fi is not None and fi.qualified_name == qnames.OWN_ITER
 
 def _native_container_call_arg(a: TpyExpr, ptype: 'TpyType | None',
                                analyzer) -> bool:
@@ -6006,8 +5994,8 @@ def _protocol_bare_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     loop (`cv.wait(g)` -- a structural slot deduces `T_p&` from the lvalue,
     an already-protocol / dyn inheritance-conformer name binds `Base&`):
     renders bare through the ordinary tail, so no ArgTemp arm is needed --
-    and for a movable container NAME at an `Iterable[Own[T]]` slot the tail
-    carries the consuming own_iter wrap (`_consuming_iter_wrap`).
+    a container NAME at an owning element slot is `_owning_slot_arg`'s
+    (moved at its last use, bound in place when lent).
     The temp-hoisting faces (adapters, concrete rvalues) reject at the
     method position -- their ArgTemp arms live in the free/ctor loops only."""
     proto = protocol_slot(ptype)
@@ -6020,28 +6008,6 @@ def _protocol_bare_name_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     return (_protocol_arg_temp(proto, at, None, analyzer, rvalue=False) is None
             and _witness("protoarg.bare"))
-
-def _copy_iter_own_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
-                            locals_: dict[str, TpyType], analyzer) -> bool:
-    """A `copy_iter(..)` RVALUE at the stub's `Iterable[Own[T]]` slot
-    (`a.extend(copy_iter(b))`): the copy-suppressing adapter conforms
-    structurally and binds the monomorphized template param inline (the
-    call renders through its special-builtin arm). A CopyIter NAME takes
-    `_protocol_bare_name_arg`'s ordinary bare row instead (a CopyIter
-    binding can never take the own_iter last-use rewrite -- only movable
-    container bindings do)."""
-    if not (isinstance(ptype, TpyType)
-            and is_owning_iterable(ptype, analyzer.registry)):
-        return False
-    if not isinstance(a, (TpyCall, TpyMethodCall)):
-        return False
-    at = analyzer.get_expr_type(a)
-    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-           if at is not None else None)
-    return (isinstance(atu, NominalType)
-            and atu._module_qname == "tpy.CopyIter"
-            and _witness("protoarg.copy_iter"))
-
 
 def _typed_dict_ctor_call(e: TpyExpr, analyzer) -> 'RecordInfo | None':
     """A TypedDict constructor call (`Options("localhost", 8080)` -- sema's
@@ -10640,11 +10606,6 @@ def _r_open_value_tuple_name(req: _ArgReq) -> bool:
 
 # --- the container family's own rows -----------------------------------
 
-def _r_copy_iter_own_elem(req: _ArgReq) -> bool:
-    return _copy_iter_own_elem_arg(req.a, req.ptype, req.locals_,
-                                   req.analyzer)
-
-
 def _r_str_owned_slot(req: _ArgReq) -> bool:
     return _str_owned_slot_arg(req.a, req.ptype, req.locals_,
                                req.param_names, req.analyzer, req.pointers)
@@ -10662,10 +10623,6 @@ def _r_own_record_rvalue(req: _ArgReq) -> bool:
 def _r_own_lvalue(req: _ArgReq) -> bool:
     return _own_lvalue_arg(req.a, req.ptype, req.locals_, req.narrowed,
                            req.analyzer, req.param_names)
-
-
-def _r_own_iter_special(req: _ArgReq) -> bool:
-    return _own_iter_special_arg(req.a, req.ptype)
 
 
 def _r_own_container_comp(req: _ArgReq) -> bool:
@@ -11533,7 +11490,6 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("protocol_bare_name", _r_protocol_bare_name),
         # ... and the CopyIter conformer at the Iterable[Own[T]] slot
         # (`a.extend(copy_iter(b))` / a CopyIter NAME): binds bare too.
-        _ArgRow("copy_iter_own_elem", _r_copy_iter_own_elem),
         # An enum member (`E.B`, a default filled into `Q().add(c=9)`) at a
         # parameter an import cycle still types as its reference
         # placeholder (`Ref[E]`): no parameter contract classifies that
@@ -11545,8 +11501,8 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("own_record_rvalue", _r_own_record_rvalue),
         # The structural Iterable/Sequence slot of a stub method
         # (`xs.extend([4, 5])` / `xs.extend(b)` -- the C++ template
-        # binds the container bare; a movable last-use name takes the
-        # consuming `::tpy::own_iter(std::move(b))` wrap at lowering).
+        # binds the container bare; at an owning element slot a
+        # last-use name is moved in, `xs.extend(std::move(b))`).
         _ArgRow("native_iterable_literal", _r_native_iterable_literal),
         _ArgRow("native_iterable_call", _r_native_iterable_call),
         _ArgRow("native_iterable_range", _r_native_iterable_range),
@@ -11558,7 +11514,6 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # own container -- the native family's row, and the same
         # `_lower_call_arg` arm renders it here.
         _ArgRow("native_iterable_comp", _r_native_iterable_comp),
-        _ArgRow("own_iter_special", _r_own_iter_special),
         # ... and the comprehension into the same Own[container] slot:
         # the stmt-expr prvalue moves in inline.
         _ArgRow("own_container_comp", _r_own_container_comp),

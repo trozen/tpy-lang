@@ -36,6 +36,7 @@
 #include "container_ops.hpp"
 #include "next_iter.hpp"
 #include "ordered_map.hpp"
+#include "own_iter.hpp"
 #include "span_iter.hpp"
 
 namespace tpy {
@@ -815,6 +816,15 @@ struct owning_native_iterator
     }
 };
 
+namespace detail {
+// An iterator that holds its sequence by value and indexes it
+// (`iter(mk())`, `reversed(mk())` over a list or an array): nothing but the
+// iterator reaches the elements, so they are its own.
+template<typename X> struct holds_sequence_by_value : std::false_type {};
+template<typename C>
+struct holds_sequence_by_value<owning_native_iterator<C>> : std::true_type {};
+} // namespace detail
+
 template<typename T>
 auto __iter__(std::vector<T>&& x) {
     return owning_native_iterator<std::vector<T>>(std::move(x));
@@ -934,18 +944,26 @@ struct iter_fn {
 
 inline constexpr dunder_detail::iter_fn iter_dunder{};
 
-// Iterator-protocol type helpers for spelling resumable for-loop frame fields
-// (the iterator slot and the per-step result slot) without the nested decltype
-// formulas inline, through `iter_dunder`.
+// The iterator of a traversal of an owning element parameter (own_iter.hpp):
+// `A` is the parameter's declared type, `src` the parameter. A container the
+// caller handed over is moved into its own consuming iterator; anything else
+// iterates as it lends. Constrained so a concept asking it of a type with no
+// iteration answers false rather than failing to instantiate.
+template<typename A, typename S>
+    requires (hands_over_v<A, S> || requires(S& s) { ::tpy::iter_dunder(s); })
+decltype(auto) handover_iter(S& src) {
+    if constexpr (hands_over_v<A, S>) return ::tpy::own_iter(std::move(src));
+    else return ::tpy::iter_dunder(src);
+}
+
+// The iterator type a resumable for-loop frame's iterator slot holds,
+// through `iter_dunder`; the frame names it once and spells the step result
+// and element off it.
 // The iterator slot is a decayed VALUE: a stored iterator an `__iter__()`
 // hands back by reference is copied into the frame
 // (BUGS.md#frame-stored-iter-copied).
 template<typename S>
 using iter_type_t = std::decay_t<decltype(::tpy::iter_dunder(std::declval<S&>()))>;
-template<typename It>
-using iter_next_t = decltype(std::declval<It&>().__next__());
-template<typename S>
-using iter_result_t = iter_next_t<iter_type_t<S>>;
 template<typename C>
 using begin_iter_t = decltype(std::declval<C&>().begin());
 template<typename S>
@@ -961,40 +979,10 @@ using iter_member_t = std::conditional_t<
     std::is_lvalue_reference_v<R> && !std::is_const_v<std::remove_reference_t<R>>,
     R, std::decay_t<R>>;
 
-// What a range-for takes as is: a begin()/end() pair that is a real iterator
-// and sentinel (a next_iter_mixin type, whose sentinel differs from its
-// iterator, included) or a standard range. A class that merely has methods
-// named begin/end is not one.
-template<typename X>
-concept range_for_iterable =
-    (requires(X& x) {
-        *x.begin();
-        x.begin() != x.end();
-        ++std::declval<decltype(x.begin())&>();
-    }
-    || std::ranges::range<X&>)
-    && !::tpy::iterates_by_dunder<X>;
-
 // A type that steps with __next__() and has no __iter__() is its own iterator.
 template<typename X>
 concept bare_next_iterator =
     requires(X& x) { x.__next__(); } && !requires(X& x) { ::tpy::iter_dunder(x); };
-
-// The begin()/end() face of the iterator an iterable's __iter__() returned,
-// held in the form it came in: any reference aliases the iterator (a const
-// one steps only through a const `__next__`, else the build fails -- a copy
-// would step a stale duplicate), a value is built in place. Never moved:
-// NextIterator points at `it`.
-template<typename It>
-struct iter_protocol_range {
-    It it;
-    using iter_t = std::remove_reference_t<It>;
-    using elem_t = typename iter_next_t<iter_t>::value_type;
-    NextIterator<iter_t, elem_t> begin() {
-        return NextIterator<iter_t, elem_t>(std::addressof(it));
-    }
-    NextSentinel end() { return {}; }
-};
 } // namespace detail
 
 template<typename X>
@@ -1064,11 +1052,12 @@ using const_join_t = typename detail::const_join<Ts...>::type;
 // cannot tell them apart -- so it is not self, and neither is a reference to
 // a member iterator (its __iter__ is not idempotent) or a fresh instance
 // returned by value.
+// A type with no lvalue iteration (a record whose only `__iter__` consumes it)
+// is no self-iterator.
 template<typename S>
-inline constexpr bool is_self_iterator_v =
-    std::is_lvalue_reference_v<decltype(::tpy::iter_dunder(std::declval<S&>()))>
-    && std::is_same_v<
-           std::remove_reference_t<decltype(::tpy::iter_dunder(std::declval<S&>()))>, S>;
+inline constexpr bool is_self_iterator_v = requires(S& s) {
+    { ::tpy::iter_dunder(s) } -> std::same_as<S&>;
+};
 
 // A record tpyc compiled, as opposed to a runtime or @native type.
 template<typename T>
@@ -1121,9 +1110,9 @@ using for_elem_deref_t =
 
 // __iter__()/__next__() sources (protocol params, user iterables, generators):
 // the element form of the step result's payload.
-template<typename S>
-using for_elem_next_t =
-    typename detail::next_elem_form<typename iter_result_t<S>::value_type>::type;
+template<typename It>
+using next_elem_t =
+    typename detail::next_elem_form<typename iter_next_t<It>::value_type>::type;
 
 // `with CM() as t` targets: the element form of `__enter__()`'s result. A
 // manager that lends (`return self`) yields `T&`, so the frame slot aliases it

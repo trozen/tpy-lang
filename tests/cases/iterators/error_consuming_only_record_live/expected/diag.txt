@@ -1,0 +1,1 @@
+main.py:23: error: 'Only' can only be iterated once it is given up: its only __iter__ consumes

@@ -15,8 +15,9 @@ void main() {
     std::vector<Item> items = {Item(1, "a"), Item(2, "b"), Item(3, "c")};
     std::vector<Item> result = std::vector<Item>{};
     auto __obj_0 = ::tpy::own_iter(std::move(items));
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
+    auto&& __rng_0 = ::tpy::step_range(__obj_0);
+    auto __beg_0 = __rng_0.begin();
+    auto __end_0 = __rng_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
         result.push_back(std::move(x));

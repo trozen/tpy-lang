@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
 from ..holders import Holder, IterHolder
 from ..typesys import pending_view_of, protocol_param_alternatives
-from ..typesys import (contains_reference_type, drop_own_marker, pointer_repr_optional, pointer_variant_union,
+from ..typesys import (unwrap_qualifiers, bound_as_spelled, contains_reference_type, drop_own_marker, pointer_repr_optional, pointer_variant_union,
                        holds_result_member,
                        ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
                        BASIC_SLICE, SLICE)
@@ -183,6 +183,7 @@ from ..value_category import (
     iterator_source_callee,
     peel_value_wrappers, tuple_literal_elems, peel_coerce,
     binds_fresh_call_value, binds_owned_value, consuming_iter_of, origin_shared,
+    own_iter_source,
 )
 from .dead_arms import hoist_scope_declarations, narrows_past_literal
 from .expressions import (_nested_def_free_names, _find_list_member,
@@ -392,7 +393,7 @@ def record_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
             not fresh or name in ctx.func.current_reassigned_vars):
         _mark_rebound_roots(an, var_type, source, rebind=not fresh)
     owns = _classify_name_binding(an, name, var_type, source, fresh=fresh,
-                                  init_type=init_type)
+                                  init_type=init_type, node=node)
     note_binding_loans(ctx, name, var_type, source)
     note_binding_provenance(an, name, var_type, source)
     # A handed-over element is the binding's own: it refers to no storage
@@ -406,7 +407,8 @@ def record_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
 def _classify_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
                            name: str, var_type: TpyType | None,
                            init: BindingSource, *, fresh: bool,
-                           init_type: TpyType | None) -> BindingOwns:
+                           init_type: TpyType | None,
+                           node: TpyExpr | TpyStmt) -> BindingOwns:
     """`record_name_binding`'s ownership half. An element source is a place
     unless its value hands the element over."""
     ctx = an.ctx
@@ -448,7 +450,8 @@ def _classify_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
         # A value moves through with no owning slot to record.
         an.compat.retract_hidden_borrowed_last_use(value)
     if (value is not None and hands_over
-            and an.compat.claim_name_move(value, OwnType(var_type))):
+            and an.compat.claim_name_move(value, OwnType(var_type),
+                                          binds=node)):
         ctx.func.rvalue_vars.add(name)
         note_owned_local(ctx, name, var_type)
         ctx.func.move_through_vars.add(name)
@@ -2467,29 +2470,6 @@ class StatementAnalyzer:
                                                 target,
                                             )
 
-    def _find_consuming_iter(self, iterable_type: TpyType) -> FunctionInfo | None:
-        """Find the consuming __iter__ overload for a type, if any.
-
-        Only matches concrete types (list, user records with auto_own __iter__).
-        Skips pending/unresolved types to avoid mismatched codegen.
-        """
-        # Only match concrete types, not pending/unresolved
-        if isinstance(iterable_type, (PendingListType, PendingGenericInstanceType)):
-            return None
-        # Value-type elements: moving is identical to copying, so consuming
-        # the container's internal structure is pure overhead.
-        elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.registry)
-        if elem is not None and elem.is_value_type():
-            return None
-        fi = consuming_iter_of(iterable_type, self.ctx.registry)
-        if fi is None:
-            return None
-        # Build type substitution for generic types
-        type_subst = self.type_ops.build_type_substitution(iterable_type)
-        if type_subst:
-            fi = self.type_ops.substitute_method_type_params(fi, type_subst)
-        return fi
-
     def _resolve_enum_iterable(self, stmt: TpyForEach) -> NominalType | None:
         """Check if for-each iterates over an enum type (e.g. `for c in Color`).
 
@@ -3078,6 +3058,11 @@ class StatementAnalyzer:
                     if bound is not None and is_protocol_type(bound):
                         resolved_for_iter = bound
                 elem_type = self.iterable.get_iterable_element_type(resolved_for_iter, loc=stmt.loc)
+                if own_iter_source(stmt.iterable) is not None:
+                    # A consuming loop over the name `own_iter` gives up
+                    # (`loop_step_acquisition`): the variable binds the
+                    # element its step owns, as over the name itself.
+                    elem_type = unwrap_own(elem_type)
                 note_pending_elem_read(self.ctx, inner_iterable_type,
                                        stmt.iterable)
                 # Elements from a readonly iterable inherit readonly status
@@ -3247,22 +3232,23 @@ class StatementAnalyzer:
                 loop_var_needs_ownership = (
                     stmt.var in self.ctx.func.consumed_loop_vars)
                 consuming_fi = None
-                if (loop_var_needs_ownership
-                        and not stmt.hoist_loop_var
-                        and not unwrapped.is_value_type()
-                        and isinstance(stmt.iterable, TpyName)):
-                    consuming_fi = self._find_consuming_iter(inner_iterable_type)
-                    loop_read = (ConsumingLoop(
-                        stmt.iterable.name, stmt,
+                if stmt.hoist_loop_var:
+                    # A loop variable read after the loop is no element the
+                    # consuming iterator hands over.
+                    self.compat.lent_iteration(inner_iterable_type,
+                                               stmt.iterable)
+                else:
+                    claim = self.compat.consuming_iteration(
+                        stmt.iterable, inner_iterable_type, stmt,
                         self._consuming_loop_revert(
-                            stmt, iterable_type, elem_type))
-                        if consuming_fi is not None else None)
-                    if loop_read is None:
-                        self.compat.retract_hidden_borrowed_last_use(
-                            stmt.iterable)
-                    elif not self.compat.claim_name_move(stmt.iterable,
-                                                         read=loop_read):
-                        consuming_fi = None
+                            stmt, iterable_type, elem_type),
+                        moved_out=loop_var_needs_ownership,
+                        elem_type=unwrapped)
+                    consuming_fi = claim.fi
+                    # The head gives its source up before the body runs: what
+                    # the claim consumed outlives the join that forgets the
+                    # body's.
+                    consumed_before_loop |= claim.consumed
                 if consuming_fi is not None:
                     stmt.consuming_iter_fi = consuming_fi
                 self._finish_loop_clauses(
@@ -7837,19 +7823,24 @@ class StatementAnalyzer:
     def _resolve_subscript_store(self, target: TpySubscript,
                                  key_type: TpyType,
                                  value_type: TpyType,
-                                 value: TpyExpr) -> TpyType:
+                                 stmt: TpyAssign,
+                                 value_hint: 'TpyType | None') -> TpyType:
         """`t[k] = v` is the explicit `t.__setitem__(k, v)` call: its
         variant resolved on the key and the value
         (`ExpressionAnalyzer.resolve_subscript_dunder`), the key received
-        at it; the value is the store's, coerced to the variant's value
+        at it, and the value where the variant takes its elements; any
+        other value is the store's, coerced to the variant's value
         parameter (`store_slot_type`), which this returns as the target's
         type."""
         recv = self._subscript_receiver(target)
         assert recv is not None
         receiver, readonly = recv
+        stored = [stmt.value]
         fi = self.expr.resolve_subscript_dunder(
             target, self.expr.subscript_views(receiver, SubscriptDunder.SET),
-            readonly, [key_type, value_type], stored=value)
+            readonly, [key_type, value_type], stored=stored,
+            value_hint=value_hint)
+        stmt.value = stored[0]
         slot = make_ref(store_slot_type(fi))
         self.ctx.set_expr_type(target, slot)
         return slot
@@ -7889,8 +7880,10 @@ class StatementAnalyzer:
                 CoercionContext.ASSIGN)
         else:
             value_type = pre[1]
+        received = [stmt.value]
         fi = self.expr.resolve_subscript_dunder(
-            sub, sv, False, [key_type, value_type], stored=stmt.value)
+            sub, sv, False, [key_type, value_type], stored=received)
+        stmt.value = received[0]
         stored = prepared.stored
         target = (make_ref(at_path(stored.tree, stored.tree.STEPS[-1:]))
                   if stored is not None else make_ref(store_slot_type(fi)))
@@ -8031,15 +8024,10 @@ class StatementAnalyzer:
                                                    CoercionContext.ASSIGN))
             if sub_recv is not None:
                 assert key_type is not None
-                # A value its context types ranks at the slot it was hinted
-                # with, as an argument hinted by its call's survivors does.
-                ranked_value = (self.expr.calls.ranked_at_slot(
-                                    value_type, value_hint)
-                                if value_hint is not None
-                                and self.expr.calls.context_typed(stmt.value)
-                                else value_type)
                 target_type = self._resolve_subscript_store(
-                    stmt.target, key_type, ranked_value, stmt.value)
+                    stmt.target, key_type, value_type, stmt,
+                    value_hint if self.expr.calls.context_typed(stmt.value)
+                    else None)
         if name_list is not None:
             value_type = self._bind_list_elem_cell(
                 stmt.target.name, stmt, stmt.value, value_type, target_type)
@@ -8156,7 +8144,7 @@ class StatementAnalyzer:
             # Whether the store moves the source name in at its last use,
             # asked once for both copy rules below; the copy a later
             # binding settles is the store's, in its words.
-            name_moved = (stores_reference
+            name_moved = (stores_reference and not takes_elements
                           and isinstance(stmt.value, TpyName)
                           and self.compat.claim_name_move(
                               stmt.value, OwnType(target_type),
@@ -8366,7 +8354,7 @@ class StatementAnalyzer:
         # the `T -> Optional[T]` address-take that fires for borrow-form
         # destinations doesn't apply here.
         target_is_storage = isinstance(stmt.target, (TpyFieldAccess, TpySubscript))
-        if sub_recv is not None and not cell_target:
+        if sub_recv is not None and not cell_target and not takes_elements:
             # The value is the `__setitem__` call's argument, received at its
             # parameter as the call receives one: a container literal resolves
             # against it, an empty one at a protocol takes its element.
@@ -8375,11 +8363,12 @@ class StatementAnalyzer:
                                                                  slot)
             self.expr.calls.mark_pending_slot_context(stmt.value, value_type,
                                                       slot)
-        stmt.value = self.compat.coerce_expr(
-            stmt.value, value_type, target_type, "assignment",
-            coercion_ctx=CoercionContext.ASSIGN,
-            target_is_storage_form=target_is_storage,
-            inferred_slot=inferred_field_slot(self.ctx, stmt.target))
+        if not takes_elements:
+            stmt.value = self.compat.coerce_expr(
+                stmt.value, value_type, target_type, "assignment",
+                coercion_ctx=CoercionContext.ASSIGN,
+                target_is_storage_form=target_is_storage,
+                inferred_slot=inferred_field_slot(self.ctx, stmt.target))
         if (isinstance(stmt.target, TpyFieldAccess)
                 and stmt.target.property_setter_call is not None):
             # The setter receives the converted value, as any argument does.

@@ -252,7 +252,7 @@ void set_comp() {
         }
         std::move(__result);
     }));
-    std::cout << "set_comp:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>((*s))) << "\n" << ::tpy::check_signals;
+    std::cout << "set_comp:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::move((*s)))) << "\n" << ::tpy::check_signals;
 }
 
 // def str_elems() -> None:

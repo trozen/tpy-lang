@@ -1,5 +1,5 @@
 # Consuming set via Iterable[Own[T]] constructor at last use.
-# list(set) and set(list) use own_iter_set/own_iter when source is at last use.
+# list(set) and set(list) hand the source over (moved into its consuming iterator) when it is at last use.
 from tpy import int32
 
 def main() -> None:

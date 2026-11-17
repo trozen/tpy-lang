@@ -298,7 +298,7 @@ inline void Holder::run() const {
     ::tpy::__setitem__(d, "b", ::tpyapp::main::wide());
     ::tpy::ordered_set<int64_t> s = ::tpy::ordered_set<int64_t>({3});
     s.insert(::tpyapp::main::wide());
-    std::cout << "method:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(s)) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(std::move(s))) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

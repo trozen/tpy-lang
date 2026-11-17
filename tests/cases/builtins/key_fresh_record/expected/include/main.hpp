@@ -205,8 +205,8 @@ inline Holder::Holder() : rs(std::vector<Rec>{Rec(1), Rec(3), Rec(2)}) {}
 //     a = self.rs[0]
 //     b = self.rs[1]
 //     # method: fresh key over a field and over locals
-//     print("method sorted_lam", ns(sorted(self.rs, key=lambda r: Key(r))))  # tpyc: ok
-//     print("method sorted_cls", ns(sorted(self.rs, key=Key)))  # tpyc: ok
+//     print("method sorted_lam", ns(sorted(self.rs, key=lambda r: Key(r))))  # tpyc: warning(/copies Rec elements/)
+//     print("method sorted_cls", ns(sorted(self.rs, key=Key)))  # tpyc: warning(/copies Rec elements/)
 //     print("method min_cls", min(a, b, key=Key).n)  # tpyc: ok
 inline void Holder::show() {
     Rec& a = ::tpy::__getitem__(this->rs, 0);

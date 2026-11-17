@@ -107,7 +107,7 @@ template <::tpystd::typing::Iterable<::tpyapp::fixtures::Cell> T_xs>
         __state = S_DONE;  // until a yield sets where to resume
         s = 0;
         auto& __src_0 = xs;
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
@@ -137,8 +137,9 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T_xs>, int32_
     T_xs xs;
     ::tpy::frame_slot<::tpyapp::fixtures::Cell> c;
     using __for_src_0_t = decltype((xs));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    using __for_itr_0_t = ::tpy::handover_iter_type_t<decltype(xs), __for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -166,18 +167,18 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled<T_xs>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpy::resumable_iter_init(__for_itr_0, xs);
+        ::tpy::resumable_handover_iter_init<decltype(xs)>(__for_itr_0, xs);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0:  // after: yield c.v * 2
     case S_JOIN_0: {
-        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, xs));
+        __for_r_0.emplace(::tpy::resumable_handover_iter_next<decltype(xs)>(__for_itr_0, xs));
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        c.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
+        c.emplace(::tpy::own_bind(*(*__for_r_0)));
         __state = S_RESUME_0;
         return (::tpy::mul_check<int32_t>((*c).v, 2));
     }
@@ -204,7 +205,7 @@ inline Summer::Summer() : total(0) {}
 template<::tpystd::typing::Iterable<::tpyapp::fixtures::Cell> T_xs>
 inline void Summer::add(T_xs&& xs) {
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -222,7 +223,7 @@ template<::tpystd::typing::Iterable<std::vector<int32_t>> T_xs>
 std::vector<std::vector<int32_t>> keep(T_xs&& xs) {
     std::vector<std::vector<int32_t>> out = std::vector<std::vector<int32_t>>{};
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -240,7 +241,7 @@ template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 int32_t take_g(T_xs&& xs) {
     int32_t n = 0;
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

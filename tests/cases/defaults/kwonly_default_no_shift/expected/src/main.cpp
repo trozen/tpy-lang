@@ -143,7 +143,7 @@ void builtin_keywords() {
     std::vector<int64_t> __tmp_1 = ::tpy::builtin_sorted<int64_t>(xs, true);
     int64_t r = ::tpyapp::main::outer_seq__list_int64(__tmp_1);
     std::cout << "builtin-reverse" << " " << r << "\n" << ::tpy::check_signals;
-    std::vector<int64_t> __tmp_2 = ::tpy::builtin_sorted_key<int64_t>(xs, neg);
+    std::vector<int64_t> __tmp_2 = ::tpy::builtin_sorted_key<int64_t>(std::move(xs), neg);
     int64_t k = ::tpyapp::main::outer_seq__list_int64(__tmp_2);
     std::cout << "builtin-key" << " " << k << "\n" << ::tpy::check_signals;
     int64_t m = ::tpyapp::main::outer__int64(::tpy::min_key(4, 7, neg));

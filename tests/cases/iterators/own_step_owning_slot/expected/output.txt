@@ -16,6 +16,10 @@ live list 23
 live list after 2
 live rows after [1, 5] [2] 2
 sub-protocol 31
+dead list sub-protocol 3
+dead list sub-protocol take 13
+dead array sub-protocol 3
+dead array sub-protocol take 13
 live list sub-protocol 3
 live list sub-protocol after 2 2
 generic protocol forward 4

@@ -124,10 +124,15 @@ class varargs[T](Iterable[T], NativeIterable[T]):
 @builtin_type("tpy.Array")
 @native("std::array", elements=True)
 class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):
+    @dispatch
     @native("tpy::__iter__", function=True)
     @pure
     @readonly
     def __iter__(self) -> Iterator[T]: ...
+
+    @dispatch
+    @native("tpy::own_iter", function=True)
+    def __iter__(self: Own[Self]) -> Iterator[Own[T]]: ...
 
     @native("tpy::__len__", function=True)
     @pure

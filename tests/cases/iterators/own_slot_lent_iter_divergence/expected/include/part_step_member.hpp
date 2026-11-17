@@ -314,7 +314,7 @@ inline ::tpy::SpanIter<std::tuple<Pt, int32_t>> TupleSpan::__iter__() {
 template<::tpystd::typing::Iterable<Cell> T_xs>
 int32_t take(T_xs&& xs) {
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
@@ -332,7 +332,7 @@ int32_t take(T_xs&& xs) {
 template<::tpystd::typing::Iterable<std::tuple<Pt, int32_t>> T_xs>
 int32_t take_rows(T_xs&& xs) {
     auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;

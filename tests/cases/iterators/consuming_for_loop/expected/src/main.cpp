@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_own_iter_explicit() -> None:
 //     src: list[Node] = [Node(1), Node(2), Node(3)]
-//     oi = own_iter(src)  # tpyc: type(/OwnIter\[Node\]/)
+//     oi = own_iter(src)  # tpyc: type(/Iterator\[Own\[Node\]\]/)
 //     total: int32 = 0
 //     for x in oi:
 //         total += x.val
@@ -15,11 +15,12 @@ void test_own_iter_explicit() {
     std::vector<Node> src = {Node(1), Node(2), Node(3)};
     auto oi = ::tpy::own_iter(std::move(src));
     int32_t total = 0;
-    auto& __obj_0 = oi;
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& x = *__beg_0;
+    auto& __src_0 = oi;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        auto&& x = ::tpy::own_bind(*__r_1);
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
     std::cout << total << "\n" << ::tpy::check_signals;
@@ -35,8 +36,9 @@ void test_own_iter_value_type() {
     std::vector<int32_t> src = {10, 20, 30};
     int32_t total = 0;
     auto __obj_0 = ::tpy::own_iter(std::move(src));
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
+    auto&& __rng_0 = ::tpy::step_range(__obj_0);
+    auto __beg_0 = __rng_0.begin();
+    auto __end_0 = __rng_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
         total = ::tpy::add_check<int32_t>(total, x);

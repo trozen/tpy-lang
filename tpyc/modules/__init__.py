@@ -31,7 +31,10 @@ _LAZY_EXPORTS = {
     "get_error_return_next_element_type": "type_resolution",
     "get_iter_element_type": "type_resolution",
     "get_iterable_element_type": "type_resolution",
-    "is_owning_iterable": "type_resolution",
+    "owning_element_slot": "type_resolution",
+    "owning_traversal": "type_resolution",
+    "traverses_owning": "type_resolution",
+    "traversed_once": "type_resolution",
     "get_span_element_type": "type_resolution",
     "get_span_return_type": "type_resolution",
 }

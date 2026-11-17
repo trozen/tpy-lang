@@ -1431,14 +1431,14 @@ class THIRCopy(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRConsumingIter(THIRExpr):
-    """A container consumed by a for-loop whose element type is owned at last
-    use (`::tpy::own_iter(std::move(<value>))`): the native auto-consuming
-    iterable. `native_name` is the consuming
-    `__iter__`'s C++ symbol (qualified at emit). The wrapped `value` is the
-    movable container name; the result is an rvalue range, so the for-each
-    captures it owning (`auto __obj_N =`, iterable_lvalue False)."""
+    """An object given up to its consuming `__iter__` (`self: Own[Self]`):
+    a `for` loop's source at its last use or fresh, an explicit
+    `own_iter(x)`. Every consuming variant has one C++ entry, the runtime's
+    `::tpy::own_iter` overload set (a container's consuming iterator, a
+    record's `&&` member): `::tpy::own_iter(<value>)`, `value` the object as
+    given up -- a moved name or place, or a prvalue. The result is a fresh
+    iterator, which a loop captures owning (`auto __obj_N =`)."""
     value: THIRExpr
-    native_name: str = ""
 
 
 @dataclass(frozen=True)
@@ -3660,6 +3660,10 @@ class THIRForEach(THIRStmt):
     # A container reserved to the source's size right after the capture
     # (a list comprehension over a sized source; see THIRForRange).
     presize: 'str | None' = None
+    # The reserve asks the source whether it can tell what it has left
+    # (`::tpy::reserve_if_sized`): a consuming iterator, which may be a
+    # user iterator class with no count to give.
+    presize_if_sized: bool = False
     # See THIRForRange.
     source_in_enclosing: bool = False
 
@@ -3701,6 +3705,11 @@ class THIRForIterProto(THIRStmt):
     frame_src_field: 'THIRFrameHolder | None' = None
     # See THIRForRange.
     source_in_enclosing: bool = False
+    # The source is an owning element parameter: the iterator is the one
+    # its declared type says the argument gives -- its consuming iterator
+    # when the caller handed it over, the one it lends otherwise
+    # (`::tpy::handover_iter<decltype(xs)>(xs)`).
+    owning_source: bool = False
 
 
 class WithTargetArm(Enum):

@@ -363,7 +363,7 @@ def user_iterable() -> None:
 
 # reference elements: each binding hands out the element itself, so a write
 # through the loop variable or the result lands in the list, as in CPython;
-# sorted() is left out, it copies (BUGS.md#sorted-ref-element-copy-unwarned)
+# sorted() is left out, it copies (a warned copy at its owning slot)
 class Row:
     n: int32
 

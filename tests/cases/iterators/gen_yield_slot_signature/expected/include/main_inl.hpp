@@ -80,7 +80,7 @@ inline std::expected<::tpy::val_or_ref<P>, ::tpy::StopIteration> __gen_own_part_
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        h.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
+        h.emplace(::tpy::own_bind(*(*__for_r_0)));
         __state = S_RESUME_0;
         return (*h).p;
     }

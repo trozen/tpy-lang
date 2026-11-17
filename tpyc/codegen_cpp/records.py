@@ -1183,7 +1183,7 @@ class RecordGenerator:
             struct_name = self.gen_async._struct_name_templated(method, record.name)
         params = self.gen_async._emit_method_params_decl(
             method, record.name, emit_defaults=True)
-        const_suffix = " const" if member.readonly else ""
+        receiver = member.receiver_suffix
         out.write("\n")
         # No record_name: the enclosing class template's `[T1, ...]` are in
         # scope here, so emit only the method's own type params /
@@ -1191,7 +1191,7 @@ class RecordGenerator:
         names = self.functions.method_cpp_names(method, record.name)
         for name in names:
             self.gen_async._emit_template_header(out, method, indent=INDENT)
-            out.write(f"{INDENT}{struct_name} {name}({params}){const_suffix};\n")
+            out.write(f"{INDENT}{struct_name} {name}({params}){receiver};\n")
 
     def _gen_record_methods(self, out: TextIO, record: TpyRecord,
                             want: MemberDef | None) -> None:

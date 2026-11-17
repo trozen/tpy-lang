@@ -23,6 +23,7 @@
 
 #include "core.hpp"
 #include "lookup_key.hpp"
+#include "own_iter.hpp"
 #include "slice.hpp"
 #include "type_traits.hpp"
 
@@ -134,7 +135,7 @@ auto list_slice(Container&& c, BasicSlice sl) {
  */
 template<typename T, typename Range>
     requires ::tpy::native_input_range<const Range>
-void list_set_slice(std::vector<T>& vec, int32_t start, int32_t stop, const Range& values) {
+void list_set_slice_from(std::vector<T>& vec, int32_t start, int32_t stop, const Range& values) {
     auto len = static_cast<std::ptrdiff_t>(vec.size());
     std::ptrdiff_t i = start, j = stop;
     if (i < 0) i += len;
@@ -197,18 +198,37 @@ void list_set_slice(std::vector<T>& vec, int32_t start, int32_t stop, const Rang
     if (aliases) {
         std::vector<T> copy(std::ranges::begin(values), std::ranges::end(values));
         vec.erase(vec.begin() + i, vec.begin() + j);
-        vec.insert(vec.begin() + i, copy.begin(), copy.end());
+        vec.insert(vec.begin() + i, std::make_move_iterator(copy.begin()),
+                   std::make_move_iterator(copy.end()));
         return;
     }
     vec.erase(vec.begin() + i, vec.begin() + j);
     vec.insert(vec.begin() + i, values.begin(), values.end());
 }
 
+// A container handed over (`Range` not an lvalue reference, own_iter.hpp)
+// moves its elements into the slice through its consuming iterator -- it is
+// no view of `vec`, which the caller still holds -- anything else is read as
+// it lends.
+template<typename T, typename Range>
+    requires ::tpy::native_input_range<const std::remove_cvref_t<Range>>
+void list_set_slice(std::vector<T>& vec, int32_t start, int32_t stop, Range&& values) {
+    // Not folded into `handover_range` alone: the lent path must pass
+    // `values` itself, unwrapped, for `_from`'s alias checks against `vec`.
+    if constexpr (hands_over_v<Range, std::remove_reference_t<Range>>) {
+        auto&& own = ::tpy::handover_range<Range>(values);
+        list_set_slice_from(vec, start, stop, std::ranges::subrange(own.begin(), own.end()));
+    } else {
+        list_set_slice_from(vec, start, stop, values);
+    }
+}
+
 /// BasicSlice overload: unpacks start/stop from the slice object.
 template<typename T, typename Range>
-    requires ::tpy::native_input_range<const Range>
-void list_set_slice(std::vector<T>& vec, BasicSlice sl, const Range& values) {
-    list_set_slice(vec, sl.start.value_or(0), sl.stop.value_or(SLICE_END), values);
+    requires ::tpy::native_input_range<const std::remove_cvref_t<Range>>
+void list_set_slice(std::vector<T>& vec, BasicSlice sl, Range&& values) {
+    list_set_slice(vec, sl.start.value_or(0), sl.stop.value_or(SLICE_END),
+                   std::forward<Range>(values));
 }
 
 // =============================================
@@ -358,24 +378,38 @@ void set_extended_slice(std::vector<T>& vec, int32_t start, int32_t stop, int32_
  */
 template<typename T, typename Range>
     requires ::tpy::native_input_range<const Range>
-void list_set_stepped_slice(std::vector<T>& vec, int32_t start, int32_t stop, int32_t step, const Range& values) {
+void list_set_stepped_slice_from(std::vector<T>& vec, int32_t start, int32_t stop, int32_t step, const Range& values) {
     // step==1 is equivalent to basic slice assignment (allows resize)
     if (step == 1) {
         auto resolved_start = (start == SLICE_NONE) ? 0 : start;
         auto resolved_stop = (stop == SLICE_NONE) ? SLICE_END : stop;
-        list_set_slice(vec, resolved_start, resolved_stop, values);
+        list_set_slice_from(vec, resolved_start, resolved_stop, values);
         return;
     }
     detail::set_extended_slice(vec, start, stop, step, values, false, "sequence");
 }
 
+// A container handed over moves its elements in, as in `list_set_slice`.
+template<typename T, typename Range>
+    requires ::tpy::native_input_range<const std::remove_cvref_t<Range>>
+void list_set_stepped_slice(std::vector<T>& vec, int32_t start, int32_t stop, int32_t step, Range&& values) {
+    // The lent path passes `values` unwrapped, as in `list_set_slice`.
+    if constexpr (hands_over_v<Range, std::remove_reference_t<Range>>) {
+        auto&& own = ::tpy::handover_range<Range>(values);
+        list_set_stepped_slice_from(vec, start, stop, step,
+                                    std::ranges::subrange(own.begin(), own.end()));
+    } else {
+        list_set_stepped_slice_from(vec, start, stop, step, values);
+    }
+}
+
 /// Slice overload: unpacks start/stop/step from the slice object.
 template<typename T, typename Range>
-    requires ::tpy::native_input_range<const Range>
-void list_set_stepped_slice(std::vector<T>& vec, Slice sl, const Range& values) {
+    requires ::tpy::native_input_range<const std::remove_cvref_t<Range>>
+void list_set_stepped_slice(std::vector<T>& vec, Slice sl, Range&& values) {
     list_set_stepped_slice(vec, sl.start.value_or(SLICE_NONE),
                            sl.stop.value_or(SLICE_NONE),
-                           sl.step.value_or(1), values);
+                           sl.step.value_or(1), std::forward<Range>(values));
 }
 
 // =============================================
@@ -432,7 +466,8 @@ void list_remove(std::vector<T>& v, const U& value) {
  */
 template<typename T, typename Container>
     requires ::tpy::native_input_range<std::remove_cvref_t<Container>>
-std::vector<T>& list_extend(std::vector<T>& v, Container&& other) {
+std::vector<T>& list_extend(std::vector<T>& v, Container&& other0) {
+    auto&& other = ::tpy::handover_range<Container>(other0);
     v.insert(v.end(), other.begin(), other.end());
     return v;
 }

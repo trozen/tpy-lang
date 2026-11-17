@@ -39,6 +39,7 @@ from ..typesys import (
     variant_cpp_name_of,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
+from ..modules.type_resolution import owning_element_slot
 from ..type_def_registry import ParamPassing, is_varargs, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
 from ..parse.nodes import (
     TpyExpr, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
@@ -519,14 +520,14 @@ class FunctionGenerator:
             if self.protocols.is_static_protocol_param(ptype):
                 # Unified static protocol handling (single, optional, or union)
                 info = self._find_protocol_param_info(pname, ptype)
-                # Own[Protocol] or Iterable[Own[T]] params use forwarding ref
-                # (T&&) to accept rvalue move-only / consuming types.
+                # Own[Protocol] and owning element slots (`Iterable[Own[T]]`)
+                # use a forwarding ref (T&&): the argument handed over arrives
+                # as a value, a lent one as an lvalue reference.
                 is_own_protocol = isinstance(unwrapped, OwnType)
-                has_own_arg = (isinstance(unwrapped, NominalType) and unwrapped.type_args
-                               and any(isinstance(a, OwnType) for a in unwrapped.type_args))
+                owning = owning_element_slot(unwrapped, self.ctx.analyzer.registry)
                 if info and info.has_none:
                     part = f"const T_{pname}* {cpp_pname}"
-                elif (is_own_protocol or has_own_arg
+                elif (is_own_protocol or owning
                       or not _const_ref(passings[pname])):
                     # A deduced parameter the callee writes binds what its
                     # concrete twin is handed -- the twin's own copy, or the

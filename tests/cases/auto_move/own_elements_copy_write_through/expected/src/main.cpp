@@ -156,13 +156,13 @@ void main() {
     std::cout << "bump only" << " " << ::tpyapp::main::bump_only(items) << " " << ::tpy::__getitem__(items, 0).value << "\n" << ::tpy::check_signals;
     std::cout << "closure write" << " " << ::tpyapp::main::closure_write(ll) << " " << ::tpy::ListPrinter(ll) << "\n" << ::tpy::check_signals;
     std::cout << "set of list" << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_set<H> hs = ::tpy::set_construct<H>(::tpy::own_iter(::tpyapp::main::make_hs()));
+    ::tpy::ordered_set<H> hs = ::tpy::set_construct<H>(::tpyapp::main::make_hs());
     std::cout << "set of gen" << "\n" << ::tpy::check_signals;
     __gen_fresh_hs gen = ::tpyapp::main::fresh_hs();
     ::tpy::ordered_set<H> hs2 = ::tpy::set_construct<H>(gen);
     std::cout << "extend of set" << "\n" << ::tpy::check_signals;
     std::vector<H> hl = std::vector<H>{};
-    ::tpy::list_extend(hl, ::tpy::own_iter_set(::tpyapp::main::make_h_set()));
+    ::tpy::list_extend(hl, ::tpyapp::main::make_h_set());
     std::cout << "sets" << " " << ::tpy::__len__(hs) << " " << ::tpy::__len__(hs2) << " " << ::tpy::__len__(hl) << "\n" << ::tpy::check_signals;
     std::vector<H> dup = std::vector<H>{};
     dup.push_back(H(4));

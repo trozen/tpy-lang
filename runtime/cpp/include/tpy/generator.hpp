@@ -29,8 +29,6 @@ namespace tpy {
 template<typename R>
 using step_elem_t = std::remove_reference_t<
     decltype(::tpy::unwrap_ref(*std::declval<R&>()))>;
-template<typename S>
-using for_step_elem_t = step_elem_t<iter_result_t<S>>;
 
 // Member I of a step element as an unpack target points at it: through the
 // normalizing deref the target's bind uses, so a member that is itself a
@@ -49,20 +47,49 @@ using step_elem_member_t = std::remove_reference_t<decltype(
 // __next__() directly each step, re-read through `src` rather than through a
 // stored pointer to it. Its __iter__ is never called here
 // (BUGS.md#frame-for-skips-self-iterator-iter). Any other source yields an
-// iterator that we own in the slot: a fresh one (a prvalue, e.g. a container's
-// native_iterator) is moved in, and a stored one handed back by reference (a
-// *member* iterator -- not self, its __iter__ is not idempotent) is COPIED, so
-// the loop advances the copy and not the member CPython would advance
-// (BUGS.md#frame-stored-iter-copied).
+// iterator that we own in the slot: a fresh one (a prvalue, e.g. a
+// container's native_iterator) is constructed in it (`emplace_from`), and a
+// stored one handed back by reference (a *member* iterator -- not self, its
+// __iter__ is not idempotent) is COPIED, so the loop advances the copy and
+// not the member CPython would advance (BUGS.md#frame-stored-iter-copied).
 template<typename Slot, typename S>
 void resumable_iter_init(Slot& slot, S& src) {
-    if constexpr (!is_self_iterator_v<S>) slot.emplace(::tpy::iter_dunder(src));
+    if constexpr (!is_self_iterator_v<S>) {
+        slot.emplace_from([&]() -> decltype(auto) { return ::tpy::iter_dunder(src); });
+    }
 }
 
 template<typename Slot, typename S>
 decltype(auto) resumable_iter_next(Slot& slot, S& src) {
     if constexpr (is_self_iterator_v<S>) return src.__next__();
     else return (*slot).__next__();
+}
+
+// The iterator slot of a loop over an owning element parameter: the type of
+// the iterator `handover_iter<A>` returns -- the container's own consuming
+// iterator when it was handed over, else the one it lends. The loop steps
+// and binds through `resumable_iter_next`, as every loop does.
+template<typename A, typename S>
+using handover_iter_type_t = std::decay_t<decltype(::tpy::handover_iter<A>(std::declval<S&>()))>;
+
+// `resumable_iter_init` / `resumable_iter_next` for that slot, classified by
+// the iterator the slot holds rather than by the source's lvalue face: an
+// object handed over is stepped through the consuming iterator it was moved
+// into (a record whose only `__iter__` consumes has no lvalue face at all),
+// and only a lent self-iterator is driven in place.
+template<typename A, typename Slot, typename S>
+void resumable_handover_iter_init(Slot& slot, S& src) {
+    if constexpr (hands_over_v<A, S>) {
+        slot.emplace_from([&]() -> decltype(auto) { return ::tpy::handover_iter<A>(src); });
+    } else {
+        ::tpy::resumable_iter_init(slot, src);
+    }
+}
+
+template<typename A, typename Slot, typename S>
+decltype(auto) resumable_handover_iter_next(Slot& slot, S& src) {
+    if constexpr (hands_over_v<A, S>) return (*slot).__next__();
+    else return ::tpy::resumable_iter_next(slot, src);
 }
 
 } // namespace tpy

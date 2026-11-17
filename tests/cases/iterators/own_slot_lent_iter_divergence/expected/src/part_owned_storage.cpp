@@ -30,21 +30,21 @@ PView view_of(Rows* rows) {
 //     pl = PList()
 //     # q is read below, so the append rightly copies it (warned)
 //     pl.append(q)
-//     # a dead native-container subclass still copies silently
+//     # a dead native-container subclass has no consuming __iter__, so it is
+//     # lent and its elements copied -- warned
 //     # (BUGS.md#dead-native-like-source-own-slot-copies)
-//     bump_pt(pl)  # tpyc: ok
+//     bump_pt(pl)  # tpyc: warning(/copies Pt elements/)
 //     print("free PList", q.v)
 void main() {
     std::vector<std::vector<int32_t>> cg = {{15}};
-    auto __tmp_1 = ::tpyapp::fixtures::passthru<std::vector<int32_t>>(cg);
-    ::tpyapp::fixtures::bump(__tmp_1);
+    ::tpyapp::fixtures::bump(::tpyapp::fixtures::passthru<std::vector<int32_t>>(cg));
     std::cout << "free copying generic" << " " << ::tpy::ListPrinter(cg) << "\n" << ::tpy::check_signals;
     Rows rows = Rows();
-    auto __tmp_2 = ::tpyapp::part_owned_storage::view_of(&rows);
-    ::tpyapp::fixtures::bump(__tmp_2);
+    auto __tmp_1 = ::tpyapp::part_owned_storage::view_of(&rows);
+    ::tpyapp::fixtures::bump(__tmp_1);
     std::cout << "free Own factory" << " " << ::tpy::ListPrinter(rows.items) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = Own2();
-    ::tpyapp::fixtures::bump(__tmp_3);
+    auto __tmp_2 = Own2();
+    ::tpyapp::fixtures::bump(__tmp_2);
     Own2 o = Own2();
     ::tpyapp::fixtures::bump(o);
     std::cout << "free own field" << "\n" << ::tpy::check_signals;

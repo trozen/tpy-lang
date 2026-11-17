@@ -32,13 +32,14 @@ from .dyn_erasure import inherits_in_cpp
 from ..diagnostics import SemanticError, nocopy_container_elem_error
 from .. import qnames
 from ..type_def_registry import (
-    is_copy_iter, is_own_iter, is_array, is_span, is_list, is_dict, is_set,
+    is_copy_iter, is_array, is_span, is_list, is_dict, is_set,
     is_enum_type, is_str_type, is_borrowing_view_type,
     get_type_def, find_factory_by_simple_name, protocol_info_of, is_subtype,
-    is_fixed_int_type,
+    is_fixed_int_type, protocol_ancestor_at,
 )
 from ..parse import TpyFunction
 from tpyc import modules as builtin_modules
+from ..modules.type_resolution import adapter_contract
 from .arg_binding import positional_param_index
 from .overloads import call_ranking, operand_param_type
 from .slot_hint import SlotHint, params_at_inferred
@@ -1414,12 +1415,29 @@ class TypeOperations:
         # Mirror classify_protocol_conformance: conformance is on the
         # underlying record, not its Ref/readonly/Own wrapper.
         arg_type = unwrap_qualifiers(arg_type)
-        # GenExprType satisfies Iterable[T] and Iterator[T];
-        # CopyIter/OwnIter satisfy Iterable[T] only.
-        if ((isinstance(arg_type, GenExprType) and protocol.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR))
-                or ((is_copy_iter(arg_type) or is_own_iter(arg_type)) and protocol.qualified_name() == qnames.ITERABLE)):
-            return [arg_type.element_type if isinstance(arg_type, GenExprType)
-                    else arg_type.type_args[0]]
+        # An iteration adapter pins what its element matches in the step
+        # of the contract it offers (`adapter_contract`), `Own` peeled:
+        # `Rows[T](Iterable[tuple[T, T]])` takes `T` from a
+        # `tuple[int32, int32]` element. At a protocol with no `Iterable` /
+        # `Iterator` ancestor the contract is inferred from as any
+        # protocol argument is.
+        found = (adapter_contract(arg_type, protocol)
+                 if isinstance(protocol, NominalType) else None)
+        if found is not None and found.standalone:
+            arg_type = found.contract
+        elif found is not None:
+            elem, contract, _ = found
+            if protocol.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR):
+                return [elem]
+            pinned: dict[str, TpyType] = {}
+            if self.match_type_with_inference(
+                    unwrap_own(contract.type_args[0]), elem, pinned):
+                return [self.substitute_types(a, pinned)
+                        if isinstance(a, TpyType)
+                        and type_param_names(a) <= pinned.keys() else None
+                        for a in protocol.type_args]
+            if not is_protocol_type(arg_type):
+                return None
         protocol_name = protocol.name
         # Resolve the protocol's OWN params positionally (aligned to the
         # protocol's type_params) from one of: the arg protocol's type_args,
@@ -1432,6 +1450,12 @@ class TypeOperations:
                                               else protocol.qualified_name()))
         if same_protocol:
             return list(arg_type.type_args)
+        if is_protocol_type(arg_type) and isinstance(arg_type, NominalType):
+            # A sub-protocol instantiates each protocol it names
+            # (`Counted[Own[R]]` is an `Iterable[Own[R]]`).
+            ancestor = protocol_ancestor_at(arg_type, protocol)
+            if ancestor is not None and ancestor.type_args:
+                return list(ancestor.type_args)
         ext = builtin_modules.get_extends_protocol_type_arg(
             arg_type, protocol_name, registry=self.ctx.registry)
         if ext is not None:

@@ -19,6 +19,7 @@
 
 #include "core.hpp"
 #include "lookup_key.hpp"
+#include "own_iter.hpp"
 
 namespace tpy {
 
@@ -339,9 +340,10 @@ template<typename T>
 struct OwnIterSet {
     ordered_set<T> data;
     typename ordered_set<T>::Node* pos;
-
+    // The elements not yet taken by __next__().
+    std::size_t left;
     explicit OwnIterSet(ordered_set<T>&& s)
-        : data(std::move(s)), pos(data.head_) {}
+        : data(std::move(s)), pos(data.head_), left(static_cast<std::size_t>(data.size())) {}
 
     OwnIterSet(const OwnIterSet&) = delete;
     OwnIterSet& operator=(const OwnIterSet&) = delete;
@@ -362,7 +364,7 @@ struct OwnIterSet {
         move_iter() : node_(nullptr) {}
         explicit move_iter(Node* n) : node_(n) {}
 
-        T&& operator*() { return std::move(node_->value); }
+        T&& operator*() const { return std::move(node_->value); }
         move_iter& operator++() { node_ = node_->next; return *this; }
         move_iter operator++(int) { auto tmp = *this; ++*this; return tmp; }
         bool operator==(const move_iter& o) const { return node_ == o.node_; }
@@ -375,12 +377,16 @@ struct OwnIterSet {
     move_iter begin() { return move_iter(pos); }
     move_iter end()   { return move_iter(nullptr); }
 
+    std::size_t size() const { return left; }
+
     // TPy Iterator protocol
     std::expected<T, StopIteration> __next__() {
         if (pos == nullptr) return tpy::make_unexpected(StopIteration{});
-        T value = std::move(pos->value);
+        // Moved straight into the result: a named local would move twice.
+        auto* node = pos;
         pos = pos->next;
-        return value;
+        --left;
+        return std::move(node->value);
     }
 
     OwnIterSet& __iter__() { return *this; }
@@ -390,9 +396,8 @@ struct OwnIterSet {
     }
 };
 
-template<typename T>
-OwnIterSet<T> own_iter_set(ordered_set<T>&& s) {
-    return OwnIterSet<T>{std::move(s)};
-}
+template<typename T> struct own_iter_of<ordered_set<T>> { using type = OwnIterSet<T>; };
+
+template<typename T> struct sized_consumer<OwnIterSet<T>> : std::true_type {};
 
 }  // namespace tpy

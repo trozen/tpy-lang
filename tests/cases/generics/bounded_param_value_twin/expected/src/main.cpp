@@ -39,7 +39,7 @@ std::string read_cell(const Cell<std::string>& c) {
         __sub_1.reset();
         std::cout << "async" << " " << __await_lift_0 << " " << __await_lift_1 << "\n" << ::tpy::check_signals;
         __coro_arg_0.emplace(std::array<int32_t, 2>{1, 2});
-        __sub_2.emplace((*__coro_arg_0));
+        __sub_2.emplace(std::move((*__coro_arg_0)));
         __state = S_RESUME_2;
         continue;
     }
@@ -49,7 +49,7 @@ std::string read_cell(const Cell<std::string>& c) {
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
         __coro_arg_1.emplace(std::array<std::string, 2>{"p", "q"});
-        __sub_3.emplace((*__coro_arg_1));
+        __sub_3.emplace(std::move((*__coro_arg_1)));
         __state = S_RESUME_3;
         continue;
     }
@@ -124,8 +124,7 @@ void main() {
         }
     }
     {
-        auto __tmp_2 = std::array<int32_t, 2>{10, 20};
-        auto __src_4 = ::tpyapp::main::drain<int32_t>(__tmp_2);
+        auto __src_4 = ::tpyapp::main::drain<int32_t>(std::array<int32_t, 2>{10, 20});
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -135,8 +134,7 @@ void main() {
         }
     }
     {
-        auto __tmp_3 = std::array<std::string, 2>{"e1", "e2"};
-        auto __src_6 = ::tpyapp::main::drain<std::string>(__tmp_3);
+        auto __src_6 = ::tpyapp::main::drain<std::string>(std::array<std::string, 2>{"e1", "e2"});
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();

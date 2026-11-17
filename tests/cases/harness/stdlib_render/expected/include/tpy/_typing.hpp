@@ -41,7 +41,7 @@ concept Iterator = requires(T& t) {
 // class Iterable[T](Protocol):
 template<typename T, typename _T0>
 concept Iterable = requires(T& t) {
-    ::tpy::__iter__(t);
+    ::tpy::handover_iter<T>(t);
 };
 
 

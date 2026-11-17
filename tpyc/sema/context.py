@@ -54,7 +54,7 @@ from ..typesys import (
     is_dyn_protocol, contains_pending_leaf, TypeParamRef,
     is_indirection_type, record_owner, is_protocol_type, contains_type_param,
 )
-from ..modules.type_resolution import is_owning_iterable
+from ..modules.type_resolution import traversed_once
 from ..compilation_context import get_current_compiler
 from ..namespace import BindingKind, Blocked, NameBinding, Namespace
 from ..symbol_binding import (SymbolBinding, SymbolKind, lookup_imported,
@@ -1799,7 +1799,7 @@ class ConsumeCause(Enum):
     CONSUMING_METHOD = auto()
     AWAIT = auto()
     CORO_BIND = auto()
-    # The first read of an owning iterable (`is_owning_iterable`): a
+    # The first read of an owning iterable (`traversed_once`): a
     # traversal, a hand-over to an iterating slot, or an alias binding.
     TRAVERSAL = auto()
 
@@ -1902,6 +1902,21 @@ class CompTarget:
     comp: TpyExpr
     clause: int
     depth: int
+
+
+@dataclass(eq=False)
+class CompCandidate:
+    """A comprehension clause whose source may be given up to its consuming
+    `__iter__`, decided once its element(s) are analyzed, as a `for` loop's
+    consumption is after its body: the reads of its variable that move it
+    out if it does (`moves`), each with the move it makes then
+    (`CompMove`), and the clause's own bookkeeping that waits for the
+    verdict (`finish`). `step` is the type of a step of the clause's
+    source."""
+
+    step: Any
+    moves: list[tuple[Any, Any]] = field(default_factory=list)
+    finish: Any = None
 
 
 class NameRead(NamedTuple):
@@ -3271,6 +3286,9 @@ class SemanticContext:
     # (`binding_ownership.CompMove`): the source record and the lowering
     # both read it.
     comp_moves: IdentityMap = field(default_factory=IdentityMap)
+    # The comprehension clauses whose consumption waits for their element
+    # (`CompCandidate`), by clause.
+    comp_candidates: IdentityMap = field(default_factory=IdentityMap)
     # Name reads that resolve to a comprehension's own variable, mapped to
     # the clause binding it (`CompTarget`): an owning sink's verdict on one
     # is its clause's, never the function's name-keyed ownership fact,
@@ -3361,6 +3379,10 @@ class SemanticContext:
     # loop (`ExpressionAnalyzer._promote_pending_loop_var`), True when it
     # did -- the one way `resolve_name` answers a `Blocked` read.
     promote_pending_loop_var: 'Callable[[str, object], bool] | None' = None
+    # Installed by the analyzer: whether a name read's binding owns its
+    # storage (`TypeCompatibility.read_owns_storage`), which the
+    # value-category verdicts asked of this context read.
+    read_owns_storage: 'Callable[[TpyName], bool] | None' = None
     # The analyzer's protocol checker: the declared-step fact lives there,
     # and the loan reader needs it without an analyzer in hand.
     protocols: 'ProtocolChecker | None' = None
@@ -5821,7 +5843,7 @@ class SemanticContext:
                           node: 'TpyExpr | TpyStmt') -> None:
         """`expr` lands in a slot that traverses it or binds it to another
         name: a name of an owning iterable is consumed there
-        (`is_owning_iterable`), once, at the committed analysis."""
+        (`traversed_once`), once, at the committed analysis."""
         read = peel_coerce(expr)
         if not isinstance(read, TpyName):
             return
@@ -5830,7 +5852,7 @@ class SemanticContext:
         if read in self.comp_var_reads:
             return
         t = self.get_expr_type(read)
-        if t is None or not is_owning_iterable(t, self.registry):
+        if t is None or not traversed_once(t, self.registry):
             return
         self.consume_name(read, ConsumeCause.TRAVERSAL, node)
 
@@ -5866,13 +5888,18 @@ class SemanticContext:
             if self.func.consume_causes.get(n, (None,))[0]
             is ConsumeCause.TRAVERSAL)
 
-    def mark_own_param_consumed(self, name: str) -> None:
-        """Mark an Own[T] param as consumed (stored, forwarded, or returned)."""
+    def mark_own_param_consumed(self, name: str) -> 'OwnSlot | None':
+        """Mark an Own[T] param as consumed (stored, forwarded, or
+        returned); the slot marked, if any."""
         self.assert_slot_effect("an Own parameter's consumption")
         if name in self.func.current_param_names:
-            self.func.current_consumed_own_params.add(OwnSlot(name))
+            slot = OwnSlot(name)
         elif name in self.func.own_consume_aliases:
-            self.func.current_consumed_own_params.add(self.func.own_consume_aliases[name])
+            slot = self.func.own_consume_aliases[name]
+        else:
+            return None
+        self.func.current_consumed_own_params.add(slot)
+        return slot
 
     def mark_own_element_consumed(self, name: str, index: int) -> None:
         """Mark owned element `index` of tuple param `name` consumed -- moved

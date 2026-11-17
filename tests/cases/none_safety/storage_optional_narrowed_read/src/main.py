@@ -102,8 +102,8 @@ def comprehension() -> None:
     xs: list[R | None] = [R(3), None, R(4)]
     print("comp plain", [plain(x) for x in xs if x is not None])  # tpyc: ok
     print("comp twin", [twin_r(x) for x in xs if x is not None])  # tpyc: ok
-    # Warned copy, a missed move: xs is dead here (TODO.md consuming comprehension).
-    kept = [x for x in xs if x is not None]  # tpyc: warning(/copies/)
+    # xs is dead here: the comprehension consumes it, moving each payload.
+    kept = [x for x in xs if x is not None]  # tpyc: ok
     kept[0].n = 30
     print("comp kept copy", kept[0].n, len(kept))
 

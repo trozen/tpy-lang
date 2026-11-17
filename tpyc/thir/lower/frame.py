@@ -46,13 +46,15 @@ from ...value_category import (
     declared_call_const, for_source_is_rvalue, frame_factory_callee,
     iterator_source_callee, materializing_temp_source, peel_coerce,
     call_returns_cpp_ref, property_access_returns_cpp_ref,
-    is_value_emit_rvalue,
+    is_value_emit_rvalue, OwningArg,
 )
 from ... import modules as builtin_modules
 from ...modules import get_error_return_next_element_type
+from ...modules.type_resolution import (owning_element_slot,
+                                       owning_traversal, traverses_owning)
 from ...compilation_context import get_current_compiler
 from ...symbol_binding import SymbolKind, lookup_imported
-from ...sema.source_records import publish_source_record, read_record
+from ...sema.source_records import handover, publish_source_record, read_record
 from ...sema.storage_policy import first_binding_storage
 from ...type_def_registry import (
     is_str_type, is_str_category, is_big_int_type, is_bytes_type,
@@ -61,7 +63,7 @@ from ...type_def_registry import (
 )
 from ...typesys import (polymorphic_subclass_into_optional,
                         returns_cpp_reference_shape)
-from ...codegen_cpp.context import (CodeGenError, FrameSourceUnnameable,
+from ...codegen_cpp.context import (CodeGenError, FrameSourceUnnameable, escape_cpp_name,
                                     ternary_iterable_lends_storage)
 from ...codegen_cpp.emit_prims import placeholder_init
 from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
@@ -77,6 +79,7 @@ from ..frame import (
     region_cleanups,
 )
 from ...resumable_shape import ResumableShape
+from ..param_contract import frame_captured
 from ..nodes import THIRBorrowedRecord, THIRParam
 from .storage import record_receiver
 from .functions import method_self_type_by_name
@@ -401,7 +404,7 @@ def elem_wants_borrow_form(elem_type: 'TpyType | None') -> bool:
     whatever it turns out to be, GENERICS INCLUDED (`*it` on a `vector<T>` is an
     lvalue for every `T`). `iter_next` cannot use this and does not: an
     arbitrary `__next__` may hand back a fresh value that looks identical to a
-    lent one here, so its field defers to `for_elem_next_t` and lets C++ decide.
+    lent one here, so its field defers to `next_elem_t` and lets C++ decide.
 
     Value elements copy by their own semantics. A `readonly[T]` element rides
     too: it is the DEFAULT element of a non-mutated `*args` pack (sema's
@@ -777,6 +780,13 @@ class FrameBuilder:
                                 self.analyzer)
                 if self_type is not None else None)
 
+    def _owns_receiver(self, func: TpyFunction) -> bool:
+        if self.record_name is None:
+            return False
+        fi = frame_function_info(self.analyzer, func, self.record_name)
+        assert fi is not None, func.name
+        return fi.frame_receiver_type is not None
+
     def publish(self, cfg) -> THIRResumableFrame:
         func, state = self.func, self.state
         # Published before any signature prints: the factory's signature,
@@ -808,6 +818,7 @@ class FrameBuilder:
             captures=captures,
             const_params=const_params,
             receiver=self._receiver(func),
+            owns_receiver=self._owns_receiver(func),
             locals=frame_locals,
             entry_block=cfg.entry_bb,
             blocks=cfg.blocks,
@@ -1276,6 +1287,11 @@ class FrameBuilder:
         self.state.arg_lifts[name] = (source, binds)
         replacement = TpyName(name=name, loc=source.loc)
         self.analyzer.ctx.set_expr_type(replacement, local_t)
+        # The read stands for the argument an owning sink checked: its
+        # record (a fresh container handed over moves) is the local's.
+        record = read_record(self.analyzer.ctx, source)
+        if record is not None:
+            publish_source_record(self.analyzer.ctx, replacement, record)
         return replacement
 
     def _frame_factory_calls(
@@ -1471,7 +1487,7 @@ class FrameBuilder:
                 if temp_slot is None:
                     continue
                 inner = peel_coerce(arg)
-                if (not frame_factory_callee(fi)
+                if (not frame_captured(fi)
                         and isinstance(inner, (TpyCall, TpyMethodCall))
                         and iterator_source_callee(
                             inner.resolved_function_info)):
@@ -1482,7 +1498,10 @@ class FrameBuilder:
                     continue
                 host = self._view_backing_coerce(ptype, arg)
                 source = host.expr if host is not None else arg
-                if shared:
+                # A container handed over is moved out of the seat into the
+                # callee's frame, which then owns it: no handle borrows the
+                # seat the next iteration overwrites.
+                if shared and not self._hands_over(ptype, source):
                     self._reject_shared_loop_seat(
                         fi, source, f"argument '{fi.params[i].name}'",
                         ", or declare the parameter 'Own[...]' so the callee "
@@ -1492,6 +1511,14 @@ class FrameBuilder:
                                               binds=_bound_local(stmt))
         pre.append(stmt)
         return pre
+
+    def _hands_over(self, ptype: 'TpyType', source: TpyExpr) -> bool:
+        """Argument `source` at parameter type `ptype` is handed over: an
+        owning element slot (`owning_element_slot`) whose argument's record
+        says so (`handover`), so the callee's frame takes it by value."""
+        return (owning_element_slot(ptype, self.analyzer.registry)
+                and handover(self.analyzer, source)
+                is OwningArg.HANDED_OVER)
 
     def _reject_shared_loop_seat(self, fi, source: TpyExpr, what: str,
                                  remedy: str) -> 'NoReturn':
@@ -1950,7 +1977,7 @@ class FrameBuilder:
         across suspensions.
 
         Sync for-with-await (M3.1): two slots,
-        `(__for_itr_N: iter_type_t<S>, __for_r_N: iter_result_t<S>)`.
+        `(__for_itr_N: __for_itr_N_t, __for_r_N: iter_next_t<__for_itr_N_t>)`.
 
         Async-for (M6): one slot, `__for_itr_N: aiter_type_t<S>`. No `__for_r_N` slot --
         the advance is a Yield(await __anext__()) and the unwrapped
@@ -3124,7 +3151,12 @@ class FrameBuilder:
         # var's BINDING (the frame's const bindings, which the rest of the body
         # reads); the loop's own fields carry their const through the alias.
         src_is_const = env.is_const_storage_source(stmt.iterable)
-        holds_source = for_source_is_rvalue(stmt, self.analyzer)
+        # A source given up to its consuming `__iter__` (sema's
+        # `consuming_iter_fi`, as the sync loop reads it): what the loop
+        # iterates is the fresh iterator `::tpy::own_iter(...)` returns,
+        # which the frame owns and steps.
+        consuming = stmt.consuming_iter_fi is not None
+        holds_source = consuming or for_source_is_rvalue(stmt, self.analyzer)
 
         # Range counter optimization
         if _is_range_call(stmt.iterable):
@@ -3146,8 +3178,9 @@ class FrameBuilder:
         # The source IS the iterator: `typing.Iterator` (a generator frame, a
         # combinator, a protocol param) or a user type whose `__next__` is
         # `@error_return`.
-        is_iterator = (is_protocol_type(iterable_type)
-                       and iterable_type.qualified_name() == "typing.Iterator")
+        is_iterator = consuming or (
+            is_protocol_type(iterable_type)
+            and iterable_type.qualified_name() == "typing.Iterator")
         if is_iterator or get_error_return_next_element_type(
                 iterable_type, registry=self.analyzer.registry) is not None:
             fields: list[tuple[str, str]] = []
@@ -3281,9 +3314,31 @@ class FrameBuilder:
         # Universal default: ::tpy::__iter__() + __next__() loop.
         # Handles Iterable[T]/NativeIterable[T] protocol params, user types
         # with __iter__(), and any remaining iterable types.
+        # A forwarded alias (`b = xs`) has no field of its own: the
+        # parameter it renders is the one whose deduced type answers.
+        param_name = ((self.func.forwarded_locals or {}).get(
+                          stmt.iterable.name, stmt.iterable.name)
+                      if isinstance(stmt.iterable, TpyName) else None)
+        param_type = next((ptype for pname, ptype in self.func.params
+                           if pname == param_name), None)
+        owning_param = (escape_cpp_name(param_name)
+                        if isinstance(param_type, TpyType)
+                        and traverses_owning(
+                            owning_traversal(param_type,
+                                             self.analyzer.registry),
+                            iterable_type)
+                        else None)
+        # The step and the element form are spelled off the iterator's type,
+        # named once: an owning parameter's is the one `handover_iter`
+        # returns.
+        itr_alias = (f"__for_itr_{uid}_t",
+                     f"::tpy::handover_iter_type_t<decltype({owning_param}), "
+                     f"{alias}>" if owning_param is not None
+                     else f"::tpy::iter_type_t<{alias}>")
+        itr_type = itr_alias[0]
         fields = [
-            (f"__for_itr_{uid}", f"::tpy::iter_type_t<{alias}>"),
-            (f"__for_r_{uid}", f"::tpy::iter_result_t<{alias}>"),
+            (f"__for_itr_{uid}", itr_type),
+            (f"__for_r_{uid}", f"::tpy::iter_next_t<{itr_type}>"),
         ]
         if holds_source or self._lvalue_source_pinned(stmt, pinned_roots):
             # `tpy::__iter__` borrows its argument, so a fresh source is stored
@@ -3317,7 +3372,8 @@ class FrameBuilder:
             and not deduced_source_concrete)
         pointer_payloads: dict[str, str] = (
             {} if source_open else self._step_unpack_payloads(
-                stmt, elem_type, f"::tpy::for_step_elem_t<{alias}>"))
+                stmt, elem_type,
+                f"::tpy::step_elem_t<::tpy::iter_next_t<{itr_type}>>"))
         aliased_targets = frozenset(n for n in pointer_payloads
                                     if n != stmt.var)
         # A pointer-repr `Optional[T]` element is the nullable `T*` here as
@@ -3332,9 +3388,10 @@ class FrameBuilder:
         loop_var_field = (
             None if (stmt.is_tuple_unpack or opt_ptr_var is not None
                      or elem_is_known_value(elem_type))
-            else (stmt.var, f"::tpy::for_elem_next_t<{alias}>"))
+            else (stmt.var, f"::tpy::next_elem_t<{itr_type}>"))
         return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields,
-                                src_alias=alias,
+                                src_alias=alias, itr_alias=itr_alias,
+                                owning_param=owning_param,
                                 loop_var_field=loop_var_field,
                                 opt_ptr_loop_var=opt_ptr_var,
                                 pointer_form_is_const=(
@@ -3597,7 +3654,12 @@ class FrameBuilder:
                         # A genexpr's frame is a unit of this module too.
                         targets.append((src.frame_func.name, None))
                     t = self.env.get_resolved_type(s.iterable)
-                    if (t is not None and is_protocol_type(t)
+                    if s.consuming_iter_fi is not None:
+                        # The frame holds the iterator the source's
+                        # consuming `__iter__` returns: a same-module
+                        # generator frame of the record's.
+                        targets.extend(self._iter_source_dep_units(t))
+                    elif (t is not None and is_protocol_type(t)
                             and t.qualified_name() == "typing.Iterator"):
                         r = self._resolve_generator_call(s.iterable)
                         # Same-module only: the keys are bare `(name, owner)`

@@ -6,19 +6,21 @@
 |---------|--------|
 | Copy warning: `Iterable[Own[T]]` param coercion with Own-stripping | Done |
 | `copy_iter(x)` -- explicit element-by-element copy acknowledgment | Done (CopyIter codegen + CopyIterType sema type) |
-| `own_iter(x)` -- explicit consuming iteration | Done (list via own_iter(); set/dict via auto-consuming __iter__) |
+| `own_iter(x)` -- explicit consuming iteration | Done (any type with a consuming `__iter__`: list, set, dict, Array, user records; typed by that variant's return) |
 | `OwnIter[T]` / `OwnIterSet[T]` / `OwnIterDict[K,V]` runtime types | Done (vector or std::array, ordered_set, ordered_map) |
 | `CopyIter[T]` runtime type (element-by-element copy adapter) | Done (with begin/end for for-loops) |
-| `CopyIterType` / `OwnIterType` as concrete sema types | Done |
+| `CopyIterType` as a concrete sema type (`own_iter` has none: it is typed by the consuming `__iter__` it calls) | Done |
 | `__iter__(self: Own[Self]) -> Iterator[Own[T]]` overload for list | Done (used by explicit `b.__iter__()` at last use) |
 | Consuming `__iter__` overload dispatch (method calls) | Done (overload resolution + codegen for native_function methods) |
 | `auto_own[Self]` / `auto_own[T]` -- auto-generate consuming overloads | Done (parser cloning + ownership propagation through fields) |
 | Ownership propagation through fields (`Own[S].field` -> `Own[T]`) | Partial (sema types propagate; codegen does not yet emit `std::move` for owned fields) |
 | Per-element move in consuming for-loops | Done (consuming loop vars added to `movable_locals`; `std::move(x)` emitted at last use) |
 | `own_iter()` for set/dict | Done (OwnIterSet, OwnIterDict in ordered_set/map.hpp) |
-| Auto-consuming at last use (for-loops, extend, constructors) | Done (list, set, dict keys; auto-selects consuming `__iter__` when iterable is at last use and, for a for-loop, the loop variable is moved out -- a move a local's claim would make: at its last use, with no hidden borrower; a loop variable only written borrows its container) |
+| Auto-consuming at last use (for-loops, comprehensions, extend, constructors) | Done (list, set, dict keys, records; auto-selects consuming `__iter__` when iterable is at last use and, for a for-loop or a comprehension's innermost clause, the loop variable is moved out -- a move a local's claim would make: at its last use, with no hidden borrower; a loop variable only written or read borrows its container. A source the settled body calls non-owning after all is lent, each element copied, warned) |
 | Consuming `dict.items()` | Blocked (Own[Self] overload changes return type, breaking non-iteration callers; needs for-loop-scoped dispatch) |
 | `auto_own` on `__iter__` for user collections | Done (return type + consuming loop codegen fixed) |
+| User records with a TPy-bodied consuming `__iter__` (a `@dispatch` pair or consuming-only): `&` / `&&` members, frame owning its receiver, one runtime entry (`own_iter(T&&)` reaches the `&&` member) | Done. Under CPython the `tpy` stub's `dispatch` runs the lending variant of the pair (it tells the consuming one by its `Own[Self]` receiver -- the `_OwnSelf` marker, `Own["Self"]` included), whichever is declared first; the pair's contract (same elements, side effects and exceptions) makes that equivalent |
+| `Array[T, N]` consuming `__iter__` | Done (`own_iter` moves the `std::array` into `OwnIter`) |
 | User-defined drain iterators (`ArrayListDrainIter`) | Planned |
 | Borrow tracking for view-type drain iterators | Planned (depends on view type tracking) |
 | Unified container constructors (`Iterable[Own[T]]`) | Done -- single `Iterable[Own[T]]` overload, C++ `if constexpr` dispatch |
@@ -138,7 +140,8 @@ the difference is **observable** (the source is still alive after the operation)
 1. Parameter expects `Iterator[Own[T]]` (or `Iterable[Own[T]]` transitionally)
 2. Element type is non-value (copy is meaningful)
 3. Argument is not `copy_iter()` / `copy()`, and either
-   - an lvalue container not at its last use, or
+   - an lvalue container not at its last use, or one the name does not own
+     (below), or
    - an iterator or view (a combinator, a dict view, a generator, a
      generator expression) whose reference elements it LENDS out of named
      storage: `list(zip(ns, cs))`, `list(reversed(cs))`, `list(d.values())`.
@@ -153,8 +156,11 @@ the difference is **observable** (the source is still alive after the operation)
 - An iterator whose reference elements come out of a temporary or are owned
   by it (`zip(ns, [C(5)])`, a generator yielding `Own[C]`) -- no live alias
   exists
-- Last use of a container -- source is dead after this, no observable
-  aliasing divergence
+- Last use of a container the name OWNS -- source is dead after this, no
+  observable aliasing divergence. A name that only refers to the container
+  (a borrowed parameter, a module-level name, an alias, a local a later
+  binding points at existing storage) is lent and warned at its last use too:
+  the container outlives the call
 
 **Error instead of a warning** when the element is `@nocopy`: a live source
 at an owning element slot would need a copy it cannot make, so it is refused
@@ -165,12 +171,15 @@ The same slot, unspelled: an `Iterable[T]` argument whose elements a callable
 argument takes as `Own[X]` (`map(take, ks, rows)` with `take(k, xs:
 Own[list[int32]])`) is checked as an `Iterable[Own[X]]` slot -- warned for a
 live source, refused for a live `@nocopy` one, handed over
-(`own_iter(std::move(rows))`) at its last use.
+(`map(take, ks, std::move(rows))`) at its last use.
 
 A fresh container temporary at an owning element slot -- a call result or a
 list literal (`total(make_rows())`, `total([C(1), C(2)])`), whose element is a
-reference type -- is handed over through its type's consuming `__iter__` the
-same way (`total(::tpy::own_iter(make_rows()))`), so the callee's steps own
+reference type -- is handed over the same way: the container itself is passed
+as an rvalue (`total(::tpyapp::main::make_rows())`), its type having a
+consuming `__iter__`, and the callee's traversal moves it into that
+consuming iterator (`::tpy::own_iter`, through `::tpy::handover_iter` /
+`::tpy::handover_range`, runtime `own_iter.hpp`), so the callee's steps own
 their values rather than lending the temporary's elements to a copy.
 
 An `Own[T]` loop variable over such a slot always holds its own value,
@@ -186,8 +195,8 @@ storage of its own instead (`T x(::tpy::own_bind(*__r));`), since a step of
 these may carry borrow-form pointers; `own_bind` itself hands a tuple back
 with every reference member copied into a value of its own, so no binding
 aliases the source through a member. Statement loops and
-comprehensions bind alike; a generator or `async` frame binds its loop
-variable by its own rule (`BUGS.md#frame-own-loop-var-copies-owned-step`).
+comprehensions bind alike, and so does a generator or `async` frame
+(`v.emplace(::tpy::own_bind(*__r))` into its frame slot).
 
 In a generic body the element type decides per instantiation, so a
 reference-capable `T` hedges ("may copy T elements if not a value type") and
@@ -479,10 +488,6 @@ for x in span(b):    # always borrows, x is Node reference
 - **Consuming `dict.items()` blocked**: `Own[Self]` overload on `items()`
   changes return type from `dict_items` to `Iterator[tuple]`, breaking
   callers like `len(d.items())`. Needs for-loop-scoped consuming dispatch.
-- **`own_iter()` builtin is list-only**: The explicit `own_iter()` function
-  only accepts `list[T]`. Set/dict use auto-consuming via `__iter__`
-  overloads. Could be generalized to dispatch to consuming `__iter__` on
-  any type.
 - **`own_iter()` validates last-use**: `own_iter(items)` warns when `items`
   is not at its last use, since the container is moved and subsequent uses
   are undefined behavior. When at last use, the argument is marked as
@@ -494,10 +499,6 @@ for x in span(b):    # always borrows, x is Node reference
 ---
 
 ## Open questions
-
-- **`Array[T, N]` drain**: should `Array[T, N]` also support `__iter__(Own[Self])`?
-  It is stack-allocated like `UninitArrayStorage`, so a drain iterator over it would
-  also be a borrowing view type.
 
 - **Generic user types and view tracking**: a user type `Stack[T]` with
   `__iter__(self: Own[Self]) -> MyDrainIter[T]` needs `MyDrainIter[T]` registered

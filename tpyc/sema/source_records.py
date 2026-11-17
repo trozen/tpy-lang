@@ -36,9 +36,10 @@ from typing import TYPE_CHECKING, Mapping
 
 from ..parse import TpyExpr, TpyStmt
 from ..typesys import TpyType
-from ..value_category import peel_value_wrappers
+from ..value_category import OwningArg, peel_value_wrappers
 
 if TYPE_CHECKING:
+    from ..value_category import ValueCategoryAnalyzer
     from .elem_paths import ElemPath
     from .compatibility import TupleSink
     from .context import SemanticContext
@@ -60,6 +61,11 @@ class SinkRead:
     # Whether the sink's check declares the copies it makes (a warning,
     # a hedge); a sink no check speaks for records them UNDECLARED.
     declares_copies: bool = True
+    # An argument at an owning element slot that is an iterator object:
+    # whether the ELEMENTS it hands out arrive borrowed (a lending iterator
+    # or view). Its record's leaf is the elements' as its hand-over verdict
+    # says (`SourceRecord.handover`); False for any other sink.
+    elements_lent: bool = False
 
 
 class LeafPermission(Enum):
@@ -137,6 +143,9 @@ class SourceRecord:
     (`under`), whether the sink copies the whole it is part of."""
     leaves: Mapping[ElemPath, Leaf]
     part_of_copy: bool | None = None
+    # An argument at an owning element slot: settlement's hand-over verdict
+    # (`value_category.owning_arg`); None for any other sink's source.
+    handover: OwningArg | None = None
 
     @property
     def copied(self) -> frozenset[ElemPath]:
@@ -278,6 +287,17 @@ def verdict(ctx: 'SemanticContext', expr: TpyExpr | None) -> SourceRecord:
     source no sink checked."""
     rec = read_record(ctx, expr)
     return NO_RECORD if rec is None else rec
+
+
+def handover(analyzer: 'ValueCategoryAnalyzer', expr: TpyExpr) -> OwningArg:
+    """The verdict on argument `expr` of an owning element slot as its
+    record stores it (`SourceRecord.handover`); every such argument has
+    one."""
+    rec = read_record(analyzer.ctx, expr)
+    assert rec is not None and rec.handover is not None, (
+        "an argument at an owning element slot has no hand-over record",
+        expr)
+    return rec.handover
 
 
 def publish_source_record(ctx: 'SemanticContext', expr: TpyExpr,

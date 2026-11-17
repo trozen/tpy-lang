@@ -427,6 +427,16 @@ class BindingRepr:
     # An `auto` iterator object off a generator call, or an `auto&` second
     # name for one.
     iterator_object: bool = False
+    # A second name for an owning element parameter (`b = xs` over
+    # `xs: Iterable[Own[R]]`), which carries its one traversal: a
+    # forwarding reference keeping the category the parameter arrived in.
+    owning_alias: bool = False
+    # An owning element parameter (`xs: Iterable[Own[R]]`, or a static
+    # protocol union with such an alternative) or its forwarding alias
+    # (`owning_alias`): the types (`owning_traversal`) at which a read is
+    # traversed or passed on in the category the caller handed it in
+    # (`traverses_owning`); empty for any other binding.
+    owning_traversal: 'frozenset[TpyType]' = frozenset()
     # An `Own[...]` parameter: the caller handed the value over.
     owned: bool = False
     # A `str` / `bytes` parameter (or its Optional) a resumable frame
