@@ -15,7 +15,7 @@ from .shapes import MIRUnionPayload
 from .presence import MIRPresenceIssue
 from .prepare import MIRPrepared, validated_presence
 from .reach import BEGINS, MIRReferent, reaches, storage_events, storage_exclusions
-from .region_flow import MIRRegionFlow, outgoing_edges
+from .region_flow import outgoing_edges
 from .value import MIRValidationError
 from .witness import MIRHazard, MIRHazardKind
 
@@ -55,7 +55,7 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
             return MIRNotCovered(fn.id, "scope ends", f"missing storage placement for %{slot.id.index}",
                                  slot=slot.id)
     blocks = {b.id: b for b in fn.blocks}
-    regions = MIRRegionFlow(fn)
+    regions = prepared.regions
     slots = {s.id: s for s in fn.slots}
     # Storage a block begins: a root its statements construct, initialize
     # or write by their storage events (`storage_events`; the fact follows
@@ -182,7 +182,7 @@ def _scope_findings(prepared: MIRPrepared, ends: MIRScopeEnds | MIRNotCovered
     blocks = {b.id: b for b in fn.blocks}
     slots = {s.id: s for s in fn.slots}
     exclusions = storage_exclusions(slots, fn.record_layouts)
-    regions = MIRRegionFlow(fn)
+    regions = prepared.regions
     conflicts = []
     hazards: list[MIRHazard] = []
     for edge, events in ends.ends.items():

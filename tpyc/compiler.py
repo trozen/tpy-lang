@@ -20,6 +20,7 @@ from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, Relativ
 from .parse.imports import _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, route_stdlib_name
 from .parse.module_settings import NATIVE_MODULE as _NATIVE_MODULE, read_source_settings
 from .identity_map import IdentityMap, IdentitySet
+from .scc import strongly_connected_components
 from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .sema.analyzer import analyze_component_bodies
@@ -2032,55 +2033,8 @@ class Compiler:
                     succ[name].append(dep_name)
         self._import_succ = succ
 
-        # Tarjan SCC. Iterative for safety on deep import graphs.
-        index_counter = [0]
-        stack: list[str] = []
-        on_stack: set[str] = set()
-        index: dict[str, int] = {}
-        lowlink: dict[str, int] = {}
-        sccs: list[list[str]] = []
-
-        def _strongconnect(start: str) -> None:
-            # Iterative DFS via an explicit work stack of (node, iterator).
-            work: list[tuple[str, list[str], int]] = []
-            index[start] = index_counter[0]
-            lowlink[start] = index_counter[0]
-            index_counter[0] += 1
-            stack.append(start)
-            on_stack.add(start)
-            work.append((start, sorted(succ[start]), 0))
-            while work:
-                v, neighbors, i = work[-1]
-                if i < len(neighbors):
-                    w = neighbors[i]
-                    work[-1] = (v, neighbors, i + 1)
-                    if w not in index:
-                        index[w] = index_counter[0]
-                        lowlink[w] = index_counter[0]
-                        index_counter[0] += 1
-                        stack.append(w)
-                        on_stack.add(w)
-                        work.append((w, sorted(succ[w]), 0))
-                    elif w in on_stack:
-                        lowlink[v] = min(lowlink[v], index[w])
-                else:
-                    work.pop()
-                    if work:
-                        parent = work[-1][0]
-                        lowlink[parent] = min(lowlink[parent], lowlink[v])
-                    if lowlink[v] == index[v]:
-                        component: list[str] = []
-                        while True:
-                            w = stack.pop()
-                            on_stack.discard(w)
-                            component.append(w)
-                            if w == v:
-                                break
-                        sccs.append(sorted(component))
-
-        for name in sorted(self.modules):
-            if name not in index:
-                _strongconnect(name)
+        sccs = [sorted(component) for component in
+                strongly_connected_components(sorted(self.modules), lambda name: sorted(succ[name]))]
 
         # A layer is analyzed one component at a time, so no component may
         # straddle an analyzed layer and the modules after it.

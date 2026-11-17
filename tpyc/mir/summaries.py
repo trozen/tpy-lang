@@ -237,7 +237,8 @@ def _transfers(body: MIRFunction, dependencies: MIRDependencies,
         path = summary_path(store.key.projections)
         for ref in store.loans:
             if not store.result and ref == seeded_loan(store.key):
-                # The lent object's own loan, which the caller's weak join keeps.
+                # The lent object's own loan, where the body has not replaced it yet (an exit
+                # before the store, a store on some paths): the caller's join keeps it.
                 continue
             if ref.static:
                 found.add(MIRLoanTransfer(holder, path, MIR_STATIC))

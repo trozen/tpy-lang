@@ -25,6 +25,7 @@ from .testutil import (
 )
 from ..thir.scalar_leaves import MIRClass
 from .prepare import first_phase, validate_function
+from .region_flow import MIRRegionFlow
 
 B = MIRBodyId("dependencies", "test")
 P, Q, FLAG, X, Y, Z, OUT, STORE, STORE2 = (MIRSlotId(B, i) for i in range(9))
@@ -296,7 +297,7 @@ def test_known_empty_unreachable_invalid_and_uncovered_are_distinct() -> None:
     assert result.active[MIRPoint(A, 0)] == {}
     assert MIRPoint(C, 0) not in result.active
     with pytest.raises(MIRValidationError, match="different MIR function"):
-        _dependencies(first_phase(replace(fn)).presence, _liveness(fn))
+        _dependencies(first_phase(replace(fn)).presence, _liveness(fn), MIRRegionFlow(fn))
     recursive = MIRField(MIRFieldId(CELL, "child"), CELL)
     recursive_fn = bind_parameters(MIRFunction(B, VoidType(), (reference(P, param=True), reference(X)), (MIRBlock(A, (
         MIRAssign(MIRPlace(X), MIRBorrow(MIRPlace(P, (MIRDeref(), recursive)))),

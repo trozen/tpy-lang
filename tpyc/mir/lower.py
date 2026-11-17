@@ -4843,6 +4843,7 @@ class _Lowering:
                              else view_holder_shape(stmt.elem_type) if view
                              else owned_leaf_shape(element.type, MIRRole.STORAGE if copied else MIRRole.LOAN)
                              if element.cls is MIRClass.OWNED_LEAF else scalar_shape(stmt.elem_type), loc=stmt.loc).slot
+        self.mir.records[slot].loop_variable = True
         f = self.fragment()
         head, then, advance, normal, after = (f.block() for _ in range(5))
         with self.temp_in(self.temp_scope(stmt, "loop")):

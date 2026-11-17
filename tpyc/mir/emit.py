@@ -129,6 +129,7 @@ class _SlotRecord:
     destination: bool = False
     bound_storage: MIRSlotId | None = None
     span: object = None
+    loop_variable: bool = False
 
     @property
     def type(self) -> TpyType:
@@ -868,7 +869,7 @@ class _Assembly:
                        storage_duration=self.duration(record.storage_duration),
                        residence=self.region(record.residence) if record.residence is not None else None,
                        destination=record.destination, bound_storage=self.remap(record.bound_storage),
-                       span=record.span)
+                       span=record.span, loop_variable=record.loop_variable)
 
     # --- the function ------------------------------------------------------
 

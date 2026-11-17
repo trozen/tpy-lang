@@ -13,7 +13,7 @@ from . import prepare as prepare_module
 from .collect import MIRBodyVerdict, MIRVerdictStatus, analyze_body, enumerate_bodies
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction,
-    MIRIsAlternative, MIRNotCovered, MIRPlace, MIRRead, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId,
+    MIRIsAlternative, MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId,
     MIRSlotKind, MIRStorageDuration, MIRStorageWrite, MIRStorageWriteMode, MIRConstruct, MIRWrap,
 )
 from .prepare import MIRPrepared, prepare, validate_function, validated
@@ -24,9 +24,8 @@ from .testutil import (
 )
 from .retention import analyze_retention
 from .scope_lifetime import analyze_scope_ends
-from .payload_lifetime import analyze_payload_ends
 from .storage import analyze_storage
-from .validate import MIRPresenceError
+from .validate import MIRPresenceError, reachable_blocks
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 
 P = hand_record("P", "prepare.P", x=INT32)
@@ -145,11 +144,11 @@ def test_an_exception_in_either_dependency_run_propagates(monkeypatch, failing: 
     calls: list[int] = []
     real = prepare_module._dependencies
 
-    def dependencies(presence, liveness):
+    def dependencies(presence, liveness, regions):
         calls.append(len(calls) + 1)
         if len(calls) == failing:
             raise MIRValidationError("broken dependency fact")
-        return real(presence, liveness)
+        return real(presence, liveness, regions)
     monkeypatch.setattr(prepare_module, "_dependencies", dependencies)
     # A replacement of the base's storage that ends no selection, so both runs happen.
     harmless = _guarded(fn.id, fn.slots, MIRPlace(fn.slots[1].id, (MIRDeref(), SP)), (), (), fn.slots[4].id,
@@ -234,6 +233,23 @@ def absent_view(h: SH, fallback: str) -> StrView:
 
 def forward_absent(h: SH, fallback: str) -> StrView:
     return absent_view(h, fallback)
+
+
+def two_object_write(b: S, c: S, flag: bool) -> None:
+    x = b if flag else c
+    x.s = "n" * 40
+
+
+def one_object_write(b: S) -> None:
+    b.s = "n" * 40
+
+
+def infeasible_arm_write(h: SH, b: S) -> None:
+    v: StrView = b.s
+    h.p = None
+    if h.p is not None:
+        b.s = "n" * 40
+    print(v[0])
 """
 
 
@@ -326,7 +342,7 @@ def _outcomes(fn: MIRFunction) -> tuple[str, ...]:
     except MIRValidationError as error:
         return (f"refused: {error}",)
     return tuple(outcome(lambda read=read: read(ready)) for read in (
-        analyze_storage, analyze_retention, analyze_scope_ends, analyze_payload_ends))
+        analyze_storage, analyze_retention, analyze_scope_ends))
 
 
 MISSING_SUM_FACT = "inline aggregate whole write needs its storage write fact"
@@ -363,3 +379,34 @@ def test_an_owned_tuple_without_its_fact_never_validates() -> None:
         MIRAssign(MIRPlace(value), MIRConstant(0)), construct, *entry.statements[1:])), *fn.blocks[1:])))
     with pytest.raises(MIRValidationError, match="inline aggregate whole write needs its storage write fact"):
         validate_function(fn)
+
+
+def _kills(program: _Program, name: str) -> tuple[MIRPrepared, list[MIRPoint]]:
+    analyses = program.verdicts[name].analyses
+    assert analyses is not None and isinstance(analyses.prepared, MIRPrepared)
+    prepared = analyses.prepared
+    return prepared, [p for p, found in prepared.kills.replacements.items()
+                      if any(r.storage and all(ref.external for ref in r.storage) for r in found)]
+
+
+def test_a_write_that_may_land_on_two_objects_spares_the_outside_field(program: _Program) -> None:
+    prepared, points = _kills(program, "two_object_write")
+    point, = points
+    assert prepared.kills.spared[point] == {r for found in prepared.kills.replacements[point] for r in found.storage}
+    prepared, points = _kills(program, "one_object_write")
+    assert points and not any(p in prepared.kills.spared for p in points)
+
+
+def test_a_replacement_on_an_infeasible_arm_is_not_recorded(program: _Program) -> None:
+    # `h.p = None` proves the arm writing `b.s` dead: it is reachable, but no feasible path runs it, so
+    # retention sees no replacement of the field `v` views there.
+    prepared, points = _kills(program, "infeasible_arm_write")
+    fn = prepared.function
+    arm = [MIRPoint(block.id, i) for block in fn.blocks for i in range(len(block.statements))
+           if block.id in reachable_blocks(fn) and MIRPoint(block.id, i) not in prepared.presence.points]
+    assert arm
+    assert not set(arm) & set(prepared.kills.replacements)
+    assert all(point in prepared.presence.points for point in prepared.kills.replacements)
+    retention = analyze_retention(prepared)
+    assert not isinstance(retention, MIRNotCovered)
+    assert not any(conflict.point in arm for conflict in retention.conflicts)

@@ -429,7 +429,7 @@ int32_t enclosing_unknown_index(std::vector<std::vector<int32_t>>& xss, int32_t 
 //         # a nested `for` over the whole list keeps the outer element loan
 //         for w in xss:
 //             if big:
-//                 xss[0].pop()  # tpyc: warning(/Mutation of 'xss\[\.\.\.\]' while iterating/)
+//                 xss[0].pop()  # tpyc: warning(/Mutation of 'xss\[\.\.\.\]' while iterating/) warning(/this call may move the element the iteration over 'xss\[0\]' still walks/)
 //             t += v + len(w)
 //     return t
 int32_t for_nest_element(std::vector<std::vector<int32_t>>& xss, bool big) {
@@ -457,9 +457,9 @@ int32_t for_nest_element(std::vector<std::vector<int32_t>>& xss, bool big) {
 //     t = 0
 //     for v in xss[0]:
 //         for w in xss:
-//             # a sibling element may still shrink
+//             # a sibling element may still shrink; MIR's "may" (BUGS.md#mir-distinct-constant-index-false-may)
 //             if big:
-//                 xss[1].pop()  # tpyc: ok
+//                 xss[1].pop()  # tpyc: warning(/this call may move the element the iteration over 'xss\[0\]' still walks/)
 //             t += v + len(w)
 //     return t
 int32_t for_nest_sibling(std::vector<std::vector<int32_t>>& xss, bool big) {

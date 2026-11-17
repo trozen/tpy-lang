@@ -261,8 +261,8 @@ replacement of provenance remain separate future design work.
 producers stamp the payload modes; validation enforces local inline layout,
 single acyclic initialization and definite assignment before replacement.
 `MIRPresence` exposes immutable feasible-point facts and classified issues,
-and `MIRPayloadEnds` inventories possible ends at those points. `--dump-mir`
-prints the inventory without changing strict selection/freshness rejection.
+and `MIRStatementKills.payloads` inventories possible ends at those points
+(dumped by `dump_payload_ends(prepared)`). `--dump-mir` prints the inventory without changing strict selection/freshness rejection.
 
 Tests cover scalar Optional and union writes, self-copy with unknown tags,
 independent wrapper copies, selection, infeasible points, loops, missing facts

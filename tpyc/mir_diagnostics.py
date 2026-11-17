@@ -31,7 +31,8 @@ from .mir.place_text import (
 from .mir.shapes import REGION_STEPS, MIRTupleIndex
 from .mir.dependencies import MIRReferents, resolve_referents
 from .mir.nodes import (
-    MIRCall, MIREdge, MIRFunction, MIRGoto, MIRPlace, MIRPoint, call_place, source_order, statement_call, statement_target, view_member,
+    MIRCall, MIREdge, MIRFunction, MIRGoto, MIRPlace, MIRPoint, call_place, source_order, statement_call,
+    statement_target, view_member,
 )
 from .mir.witness import MIREffect, MIRHazardKind, MIRMayCause, MIRVerdict, MIRWitness, holder_views
 from .typesys import contains_reference_type, unwrap_readonly, view_owned_leaf
@@ -475,13 +476,20 @@ def _first_read(fn: MIRFunction, reads: tuple[MIRPoint, ...]) -> int | None:
     return min(locs, key=source_order).line if locs else None
 
 
-def _owned_view_fix(fn: MIRFunction, holder: MIRPlace) -> str | None:
-    """A view member made owned keeps its own copy: `make 'Tok.s' an owned 'str'`."""
-    member = view_member(holder)
-    owned = view_owned_leaf(unwrap_readonly(member.type)) if member is not None else None
-    if member is None or owned is None:
+def _owned_view_fix(words: '_Words', holder: MIRPlace, *, local: bool = False) -> str | None:
+    """A view made owned keeps its own copy: a view member
+    (`make 'Tok.s' an owned 'str'`), or with `local` a named local view
+    (`make 'v' an owned 'str'`)."""
+    if (member := view_member(holder)) is not None:
+        owned = view_owned_leaf(unwrap_readonly(member.type))
+        return f"make '{member.id.owner.name}.{member.id.name}' an owned '{owned}'" if owned is not None else None
+    if not local or holder.projections:
         return None
-    return f"make '{member.id.owner.name}.{member.id.name}' an owned '{owned}'"
+    owned = view_owned_leaf(unwrap_readonly(words.names.slots[holder.root].type))
+    spoken = words.place(holder)
+    if owned is None or spoken.origin != "named":
+        return None
+    return f"make {spoken.quoted} an owned '{owned}'"
 
 
 def _body_name(fn: MIRFunction) -> str:
@@ -500,7 +508,7 @@ def _replacement_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLo
     action = "assignment" if statement_target(stmt) == hazard.target else (
         "call" if statement_call(stmt) is not None else "statement")
     use = "continues" if verb == "walks" else "is read" if verb == "views" else "is used"
-    if (owned := _owned_view_fix(fn, hazard.holder)) is not None:
+    if (owned := _owned_view_fix(words, hazard.holder)) is not None:
         owned = f", or {owned}"
     else:
         owned = ""
@@ -569,24 +577,31 @@ def _scope_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLocation
     holder, verb = words.holder(hazard.holder)
     line = _first_read(fn, witness.reads)
     use = "is read" if verb == "views" else "is used"
+    # In a loop a variable of the body is made again each pass, so binding the value there does not help.
+    looped = witness.looped
+    fixes: list[str] = []
     if ended.origin == "temporary":
         what = f"the temporary {ended.quoted} lives only until the end of this statement"
-        fix = f"bind {ended.quoted} to a variable before this statement"
+        if not looped:
+            fixes.append(f"bind {ended.quoted} to a variable before this statement")
     else:
         when = "at the end of this block" if exit_loc is not None else "when control leaves its block here"
         what = f"{words.storage(hazard.target)} is freed {when}"
         span = words.fn and next((s.span for s in fn.slots if s.id == hazard.target.root), None)
         made = words.source(span) if span is not None and ended.origin == "bound" else None
         holder_name = words.place(hazard.holder)
-        if made and holder_name.origin == "named" and not hazard.holder.projections:
-            fix = f"assign '{holder_name.name} = {made}' directly"
+        if (made and holder_name.origin == "named" and not hazard.holder.projections
+                and not holder_views(hazard.holder, words.names.slots)):
+            fixes.append(f"assign '{holder_name.name} = {made}' directly")
         elif ended.origin == "fallback":
-            fix = "bind the value to a variable that outlives the block"
-        else:
-            fix = f"create {ended.quoted} before the block"
-    if (owned := _owned_view_fix(fn, hazard.holder)) is not None:
-        fix += f", or {owned}"
-    return f"{what}, {_still(witness, holder, verb)} it and {use} on line {line}; {fix}", loc
+            fixes.append("bind the value to a variable that outlives the block")
+        elif not words.names.slots[hazard.target.root].loop_variable:
+            fixes.append(f"create {ended.quoted} before the block")
+    if (owned := _owned_view_fix(words, hazard.holder, local=looped)) is not None:
+        fixes.append(owned)
+    if not fixes:
+        fixes.append("keep the value in a variable that outlives the loop")
+    return f"{what}, {_still(witness, holder, verb)} it and {use} on line {line}; {', or '.join(fixes)}", loc
 
 
 def _payload_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLocation | None]:
@@ -627,7 +642,10 @@ def _store_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLocation
         what = f"the temporary {origin.quoted} lives only until the end of this statement"
     else:
         what = f"{words.storage(hazard.target)} is freed when {_body_name(fn)} returns"
-    fix = _owned_view_fix(fn, hazard.holder) or f"store a copy in {holder}"
+    fix = _owned_view_fix(words, hazard.holder) or f"store a copy in {holder}"
+    if witness.verdict is MIRVerdict.MAY:
+        keeps = "may keep a view of it" if verb == "views" else "may still refer to it"
+        return f"{what}, and {holder} {keeps}; {fix}", loc
     return f"{what}, but {holder} {keeps}; {fix}", loc
 
 

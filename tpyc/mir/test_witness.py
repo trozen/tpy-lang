@@ -16,7 +16,7 @@ from . import witness as witness_module
 from .collect import dump_codegen_mir, enumerate_body_sources, lower_and_analyze
 from .dependencies import MIRReferent
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRPlace, MIRPoint, MIRRead, MIRReturn, MIRSlotId,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIREdge, MIRPlace, MIRPoint, MIRRead, MIRReturn, MIRSlotId,
 )
 from .place_text import MIRStorageNames, spoken_place
 from .reach import reaches, reaches_definitely
@@ -787,10 +787,11 @@ def test_the_use_walk_answers_at_the_node_cap_boundary() -> None:
             blocks[bid] = MIRBlock(bid, (MIRAssign(MIRPlace(result), MIRRead(MIRPlace(holder))),), MIRReturn(result))
             edges[bid] = []
     body = SimpleNamespace(blocks=blocks, state=lambda point: {}, successors=lambda block: edges[block.id],
-                           rewrites=lambda point: [], rewrite_bases=lambda point: [])
+                           edges=lambda block: [(MIREdge(block.id, arm), t) for arm, t in enumerate(edges[block.id])],
+                           rewrites=lambda point: [], rewrite_bases=lambda point: [], kills={}, spared={})
     for mode in witness_module.MIRWalkMode:
-        verdict, reads = witness_module._use_reached(body, MIRPoint(ids[0], 0), MIRPlace(holder), mode)
-        assert verdict is True and len(reads) == count + 1
+        verdict, reads, weak, mixed = witness_module._use_reached(body, MIRPoint(ids[0], 0), MIRPlace(holder), mode)
+        assert verdict is True and len(reads) == count + 1 and not weak and not mixed
 
 
 def test_a_copy_read_under_the_condition_that_made_it_stays_silent(join_bodies) -> None:
@@ -824,3 +825,267 @@ def test_a_payload_end_retained_beside_another_place_is_a_partial_may() -> None:
     assert (w.verdict, w.cause) == (MIRVerdict.MAY, MIRMayCause.PARTIAL)
     assert text == "this assignment frees the value held in 'cur', and 'n' may still refer to it and is used on " \
                    "line 4; copy it first"
+
+
+def test_a_cycle_a_kill_recurs_in_is_taken_to_end() -> None:
+    # head -> body -> head, head -> read: the read is reached on every path that leaves the loop.
+    graph = {"head": ["body", "read"], "body": ["head"], "read": "T"}
+    full, ended = witness_module._solve(graph, {"body"})
+    assert full["head"] and ended["head"]
+    # The same loop with no kill in it may never end: reached, but only as a "may".
+    full, ended = witness_module._solve(graph, set())
+    assert full["head"] and not ended["head"]
+
+
+def test_a_cycle_with_no_way_to_a_read_refutes() -> None:
+    graph = {"head": ["body"], "body": ["head"]}
+    full, ended = witness_module._solve(graph, {"body"})
+    assert not full["head"] and not ended["head"]
+    # A path out of the loop that reads nothing refutes too.
+    full, _ = witness_module._solve({"head": ["body", "exit"], "body": ["head"], "exit": "F"}, {"body"})
+    assert not full["head"]
+
+
+LOOP_SOURCE = '''\
+from tpy import StrView, int32
+
+
+class Tok:
+    s: StrView
+
+    def __init__(self, s: StrView) -> None:
+        self.s = s
+
+
+def mk(n: int32) -> str:
+    return str(n) * 30
+
+
+def after_for(k: int32) -> None:
+    v: StrView = "x"
+    for i in range(k):
+        buf = mk(i)
+        v = buf
+    print(v[0])
+
+
+def reset_in_body(k: int32) -> None:
+    v: StrView = "x"
+    for i in range(k):
+        buf = mk(i)
+        v = buf
+        print(v[0])
+        v = "y"
+    print(v[0])
+
+
+def next_iter(k: int32) -> None:
+    v: StrView = "x"
+    for i in range(k):
+        print(v[0])
+        buf = mk(i)
+        v = buf
+
+
+def reused(k: int32) -> None:
+    v: StrView = "x"
+    copied: StrView = "x"
+    for i in range(k):
+        if i >= 0:
+            a = mk(i)
+            v = a
+        copied = v
+        v = "safe"
+        copied = "safe"
+        b = mk(i + 1)
+        copied = b
+    print(copied[0])
+
+
+def spin(k: int32, f: bool) -> None:
+    buf = mk(1)
+    v: StrView = buf
+    if f:
+        buf = mk(2)
+    i = 0
+    while i < k:
+        i += 1
+    print(v[0])
+
+
+def store_loop(t: Tok, k: int32) -> None:
+    for i in range(k):
+        buf = mk(i)
+        t.s = buf
+
+
+def store_reset(t: Tok, k: int32) -> None:
+    for i in range(k):
+        buf = mk(i)
+        t.s = buf
+    t.s = "safe"
+
+
+def with_continue(k: int32) -> None:
+    v: StrView = "x"
+    for i in range(k):
+        v = "safe"
+        buf = mk(i)
+        v = buf
+        if i % 2 == 0:
+            continue
+    print(v[0])
+
+
+class Buf:
+    s: str
+
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+
+def external_loop(b: Buf, k: int32) -> None:
+    t = Tok("safe")
+    for i in range(k):
+        t = Tok(b.s)
+        b.s = str(i) * 40
+    print(t.s[0])
+
+
+def kept_name(ss: list[str]) -> None:
+    t = Tok("x")
+    for s in ss:
+        t = Tok(s)
+    print(t.s[0])
+'''
+
+
+@pytest.fixture(scope="module")
+def loop_bodies():
+    compiler, modules = _compile(LOOP_SOURCE)
+    entry = _entry(modules)
+    _, ctx = compiler.generate_code_and_thir(entry)
+    return _bodies((compiler, entry, ctx))
+
+
+def _warned(bodies, name):
+    return [(w.hazard.kind, _place_root_name(bodies, name, w), w.verdict) for w in _verdicts(bodies, name) if w.warns]
+
+
+def _place_root_name(bodies, name, w):
+    fn, _ = bodies[name]
+    return next(s.name for s in fn.slots if s.id == w.hazard.target.root)
+
+
+def test_a_holder_rebound_each_pass_views_the_last_pass_s_freed_buffer(loop_bodies) -> None:
+    # Each pass renews `v` onto that pass's `buf`; the back edge frees it, and the read after the loop sees it.
+    assert _warned(loop_bodies, "after_for") == [(MIRHazardKind.SCOPE_END, "buf", MIRVerdict.DEFINITE)]
+
+
+def test_a_holder_reset_before_the_pass_ends_stays_silent(loop_bodies) -> None:
+    assert _warned(loop_bodies, "reset_in_body") == []
+
+
+def test_a_read_at_the_next_pass_only_is_not_reached_on_every_path(loop_bodies) -> None:
+    # Filed: BUGS.md#mir-hazard-read-on-some-paths-silent.
+    assert _warned(loop_bodies, "next_iter") == []
+
+
+def test_a_reset_holder_renews_only_onto_the_hazard_s_own_buffer(loop_bodies) -> None:
+    # `copied` is reset, then rebound to `b`: `a`'s end must not warn about it, `b`'s does.
+    assert _warned(loop_bodies, "reused") == [(MIRHazardKind.SCOPE_END, "b", MIRVerdict.DEFINITE)]
+
+
+def test_a_read_reached_only_by_leaving_a_kill_free_loop_is_a_may(loop_bodies) -> None:
+    warned = [w for w in _verdicts(loop_bodies, "spin") if w.warns]
+    assert [(w.hazard.kind, w.verdict, w.cause) for w in warned] == [
+        (MIRHazardKind.REPLACEMENT, MIRVerdict.MAY, MIRMayCause.PARTIAL)]
+
+
+def test_a_store_renewed_each_pass_escapes_and_a_reset_after_the_loop_does_not(loop_bodies) -> None:
+    assert _warned(loop_bodies, "store_loop") == [(MIRHazardKind.STORE_ESCAPE, "buf", MIRVerdict.DEFINITE)]
+    assert _warned(loop_bodies, "store_reset") == []
+
+
+def test_a_reset_holder_is_freed_again_at_every_exit_that_ends_its_buffer(loop_bodies) -> None:
+    # `v` is reset, then rebound to the pass's `buf`: both the `continue` and the normal end free it.
+    assert _warned(loop_bodies, "with_continue") == [(MIRHazardKind.SCOPE_END, "buf", MIRVerdict.DEFINITE)] * 2
+
+
+def test_a_holder_rebound_onto_storage_outside_the_body_is_freed_by_its_replacement(loop_bodies) -> None:
+    # `t.s` renews onto `b.s` each pass; the replacement of `b.s` frees it again before the read after the loop.
+    assert _warned(loop_bodies, "external_loop") == [(MIRHazardKind.REPLACEMENT, "b", MIRVerdict.MAY)]
+
+
+def test_a_witness_says_whether_its_kill_recurs_each_pass(loop_bodies, bodies) -> None:
+    assert [w.looped for w in _verdicts(loop_bodies, "after_for") if w.warns] == [True]
+    assert [w.looped for w in _verdicts(bodies, "block_view") if w.warns] == [False]
+
+
+def test_the_lowering_marks_the_slot_a_for_loop_binds(loop_bodies) -> None:
+    fn, _ = loop_bodies["kept_name"]
+    assert {s.name for s in fn.slots if s.loop_variable} == {"s"}
+
+
+WORDING_SOURCE = '''\
+from tpy import int32
+
+
+class P:
+    x: int32
+
+    def __init__(self, x: int32) -> None:
+        self.x = x
+
+
+def block_ref_made(c: bool) -> int32:
+    q = P(0)
+    r = q
+    if c:
+        p = P(1)
+        r = p
+    return r.x
+'''
+
+
+@pytest.fixture(scope="module")
+def wording_warnings():
+    compiler, modules = _compile(WORDING_SOURCE)
+    entry = _entry(modules)
+    _, ctx = compiler.generate_code_and_thir(entry)
+    return {(d.loc.line, d.message) for _, d in compiler.report_mir_warnings([(entry, ctx)], strict=True)}
+
+
+def test_a_holder_that_refers_to_a_record_is_told_to_assign_it_directly(wording_warnings) -> None:
+    # The view twin is told to create the buffer before the block instead (`conflict_warnings` `block_view_made`).
+    assert wording_warnings == {(16, "the object made for 'p' is freed at the end of this block, but 'r' still "
+                                     "refers to it and is used on line 17; assign 'r = P(1)' directly")}
+
+
+def _source_text(source: str):
+    lines = source.splitlines()
+    return lambda loc: lines[loc.line - 1][loc.column:loc.end_column] if loc.end_line == loc.line else None
+
+
+def test_a_loop_kill_with_no_fix_of_its_own_says_to_keep_the_value_outside_the_loop(bodies) -> None:
+    # Hand-built: every holder a lowered loop body can keep a temporary or a loop variable in has an owned-type
+    # fix, so the scope-end text's last resort is reached here with the record holder itself in a loop.
+    fn, analyses = bodies["temp_view"]
+    (w,) = [w for w in decide(analyses.prepared, analyses.hazards) if w.warns]
+    looped = replace(w, hazard=replace(w.hazard, holder=MIRPlace(w.hazard.holder.root)), looped=True)
+    words = mir_diagnostics._Words(fn, MIRStorageNames(fn), _source_text(SOURCE), False)
+    assert mir_diagnostics._scope_text(looped, words)[0] == (
+        "the temporary 'mk(c)' lives only until the end of this statement, but 't' still refers to it and is used "
+        "on line 109; keep the value in a variable that outlives the loop")
+
+
+def test_a_may_store_escape_of_a_holder_that_refers_says_it_may_still_refer(bodies) -> None:
+    # Hand-built: no lowered body stores a reference (not a view) into the caller's object, so the record
+    # holder stands in for one.
+    fn, analyses = bodies["fill"]
+    (w,) = [w for w in decide(analyses.prepared, analyses.hazards) if w.warns]
+    may = replace(w, hazard=replace(w.hazard, holder=MIRPlace(w.hazard.holder.root)), verdict=MIRVerdict.MAY,
+                  cause=MIRMayCause.PARTIAL)
+    words = mir_diagnostics._Words(fn, MIRStorageNames(fn), _source_text(SOURCE), False)
+    assert mir_diagnostics._store_text(may, words)[0] == (
+        "'buf' is freed when 'fill' returns, and 't' may still refer to it; store a copy in 't'")

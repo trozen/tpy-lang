@@ -14,7 +14,7 @@ from .nodes import (
     MIRStorageDuration, MIRConstant, MIRWrap, MIRCopy,
 )
 from .shapes import MIRUnionPayload
-from .payload_lifetime import MIRPayloadEnds, analyze_payload_ends, dump_payload_ends
+from .payload_lifetime import dump_payload_ends
 from .value import MIRValidationError
 from .testutil import compiled_definitions, bind_parameters, leaf_shape, optional_shape, union_shape, prepared
 from .prepare import validate_function
@@ -71,9 +71,7 @@ def test_an_optional_and_a_union_with_none_are_one_sum() -> None:
             MIRBlock(YES, (MIRAssign(MIRPlace(CURRENT), MIRWrap(0), storage_write=ASSIGN),), MIRGoto(NO)),
             MIRBlock(NO, (), MIRReturn(VALUE))), ENTRY))
         presence = prepared(fn).presence
-        ends = analyze_payload_ends(prepared(fn))
-        assert isinstance(ends, MIRPayloadEnds)
-        return dict(presence.points), dict(presence.edges), presence.domains, dict(ends.ends)
+        return dict(presence.points), dict(presence.edges), presence.domains, dict(prepared(fn).kills.payloads)
 
     payload_shape = leaf_shape(INT32)
     optional = facts(optional_shape(OptionalType(INT32), payload_shape))
@@ -88,24 +86,22 @@ def test_initialization_same_tag_self_copy_and_clear(optional: bool) -> None:
     stmts = (write(optional, tag, fact=INIT), write(optional, tag),
              write(optional, CURRENT), write(optional, 0), write(optional, 0))
     fn = wrapper_function(optional, MIRBlock(ENTRY, stmts, MIRReturn(VALUE)))
-    result = analyze_payload_ends(prepared(fn))
-    assert isinstance(result, MIRPayloadEnds)
-    assert result.ends == {MIRPoint(ENTRY, 3): frozenset({payload(optional)})}
-    assert result.function is fn
+    ready = prepared(fn)
+    result = ready.kills.payloads
+    assert result == {MIRPoint(ENTRY, 3): frozenset({payload(optional)})}
     with pytest.raises(TypeError):
-        result.ends[MIRPoint(ENTRY, 0)] = frozenset()
-    assert "possible inline scalar lifetime ends" in dump_payload_ends(result)
-    assert dump_payload_ends(result) == dump_payload_ends(analyze_payload_ends(prepared(fn)))
+        result[MIRPoint(ENTRY, 0)] = frozenset()  # type: ignore[index]
+    assert "possible inline scalar lifetime ends" in dump_payload_ends(ready)
+    assert dump_payload_ends(ready) == dump_payload_ends(prepared(fn))
 
 
 @pytest.mark.parametrize("optional", [False, True])
 def test_unknown_tag_is_full_domain_but_self_copy_is_correlated(optional: bool) -> None:
     fn = wrapper_function(optional, MIRBlock(ENTRY, (
         write(optional, PARAM, fact=INIT), write(optional, CURRENT), write(optional, PARAM)), MIRReturn(VALUE)))
-    result = analyze_payload_ends(prepared(fn))
-    assert isinstance(result, MIRPayloadEnds)
+    result = prepared(fn).kills.payloads
     expected = {payload(True)} if optional else {payload(False, 1), payload(False, 2)}
-    assert result.ends == {MIRPoint(ENTRY, 2): frozenset(expected)}
+    assert result == {MIRPoint(ENTRY, 2): frozenset(expected)}
     presence = prepared(fn).presence
     assert dict(presence.points[MIRPoint(ENTRY, 2)]).get(MIRPlace(CURRENT)) is None
     assert presence.domains[MIRPlace(CURRENT)] == frozenset({0, 1} if optional else {0, 1, 2})
@@ -117,9 +113,8 @@ def test_copy_has_independent_payload_storage(optional: bool) -> None:
     fn = wrapper_function(optional, MIRBlock(ENTRY, (
         write(optional, tag, fact=INIT), write(optional, CURRENT, target=SAVED, fact=INIT),
         write(optional, 0), write(optional, 0, target=SAVED)), MIRReturn(VALUE)))
-    result = analyze_payload_ends(prepared(fn))
-    assert isinstance(result, MIRPayloadEnds)
-    assert result.ends == {MIRPoint(ENTRY, 2): frozenset({payload(optional)}),
+    result = prepared(fn).kills.payloads
+    assert result == {MIRPoint(ENTRY, 2): frozenset({payload(optional)}),
                            MIRPoint(ENTRY, 3): frozenset({payload(optional, root=SAVED)})}
 
 
@@ -131,15 +126,14 @@ def test_branch_selection_limits_ends_and_omits_infeasible_points(optional: bool
                  MIRBranch(GUARD, YES, NO)),
         MIRBlock(YES, (write(optional, 0),), MIRReturn(VALUE)),
         MIRBlock(NO, (write(optional, 0),), MIRReturn(VALUE)))
-    result = analyze_payload_ends(prepared(fn))
-    assert isinstance(result, MIRPayloadEnds)
-    assert result.ends[MIRPoint(YES, 0)] == frozenset({payload(optional)})
-    assert result.ends.get(MIRPoint(NO, 0), frozenset()) == (frozenset() if optional else frozenset({payload(False, 1)}))
+    result = prepared(fn).kills.payloads
+    assert result[MIRPoint(YES, 0)] == frozenset({payload(optional)})
+    assert result.get(MIRPoint(NO, 0), frozenset()) == (frozenset() if optional else frozenset({payload(False, 1)}))
     known = replace(fn, blocks=(replace(fn.blocks[0], statements=(write(optional, 0, fact=INIT),
                                                                fn.blocks[0].statements[1])), *fn.blocks[1:]))
     presence = prepared(known).presence
     assert MIRPoint(YES, 0) not in presence.points
-    assert not analyze_payload_ends(prepared(known)).ends
+    assert not prepared(known).kills.payloads
 
 
 @pytest.mark.parametrize("optional", [False, True])
@@ -176,7 +170,7 @@ def test_invalid_initialization_contract(optional: bool, malformation: str, mess
         stmts = (replace(stmts[0], storage_write=MIRStorageWrite("initialize")),)
     fn = wrapper_function(optional, MIRBlock(ENTRY, stmts, term))
     with pytest.raises(MIRValidationError, match=message):
-        analyze_payload_ends(prepared(fn))
+        prepared(fn)
 
 
 @pytest.mark.parametrize("optional", [False, True])
@@ -186,9 +180,8 @@ def test_loop_assignments_use_joined_incoming_tags(optional: bool) -> None:
         MIRBlock(ENTRY, (write(optional, tag, fact=INIT),), MIRGoto(YES)),
         MIRBlock(YES, (write(optional, 0), write(optional, tag)), MIRBranch(FLAG, YES, NO)),
         MIRBlock(NO, (), MIRReturn(VALUE)))
-    result = analyze_payload_ends(prepared(fn))
-    assert isinstance(result, MIRPayloadEnds)
-    assert result.ends == {MIRPoint(YES, 0): frozenset({payload(optional)})}
+    result = prepared(fn).kills.payloads
+    assert result == {MIRPoint(YES, 0): frozenset({payload(optional)})}
 
 
 def test_payload_fact_cannot_authorize_scalar_or_parameter_writes() -> None:
@@ -208,7 +201,7 @@ def test_assignment_requires_initialization_on_every_predecessor() -> None:
         MIRBlock(NO, (), MIRGoto(JOIN)),
         MIRBlock(JOIN, (write(False, 0),), MIRReturn(VALUE)))
     with pytest.raises(MIRValidationError, match="assignment before storage initialization"):
-        analyze_payload_ends(prepared(fn))
+        prepared(fn)
 
 
 SOURCE = """\
@@ -291,9 +284,9 @@ def test_source_producers_stamp_initialization_and_assignment(source_bodies: dic
              if isinstance(getattr(s, "storage_write", None), MIRStorageWrite)]
     assert facts == ([MIRStorageWriteMode.INITIALIZE] * (2 if name == "clear" else 1)
                      + [MIRStorageWriteMode.IN_PLACE])
-    events = analyze_payload_ends(prepared(fn))
-    assert isinstance(events, MIRPayloadEnds) and len(events.ends) == 1
-    affected = next(iter(events.ends.values()))
+    events = prepared(fn).kills.payloads
+    assert len(events) == 1
+    affected = next(iter(events.values()))
     current = next(s.id for s in fn.slots if s.name == "current")
     assert all(p.root == current for p in affected)
 
@@ -312,7 +305,7 @@ def test_a_scalar_or_lending_wrapper_copy_cannot_raise(source_bodies: dict[str, 
 def test_pointer_wrapper_writes_do_not_end_the_pointee(source_bodies: dict[str, MIRFunction], name: str) -> None:
     fn = source_bodies[name]
     assert not any(isinstance(s.storage_write, MIRStorageWrite) for b in fn.blocks for s in b.statements)
-    assert analyze_payload_ends(prepared(fn)).ends == {}
+    assert prepared(fn).kills.payloads == {}
 
 
 def test_mixed_wrapper_writes_remain_uncovered_by_lowering() -> None:

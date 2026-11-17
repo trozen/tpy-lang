@@ -520,7 +520,7 @@ def test_absent_payload_needs_a_positive_selection_fact(artifacts: Artifacts) ->
     presence = ready.presence
     unknown = replace(ready, presence=replace(presence, points=MappingProxyType(
         {p: frozenset(f for f in facts if f[0] != MIRPlace(maybe)) for p, facts in presence.points.items()})))
-    unknown = replace(unknown, dependencies=_dependencies(unknown.presence, unknown.liveness))
+    unknown = replace(unknown, dependencies=_dependencies(unknown.presence, unknown.liveness, unknown.regions))
     evidence = _storage_evidence(unknown, frozenset({R_LOCAL}), definitions)
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
     assert any(f"%{maybe.index} has unknown origins" in g.reason for g in evidence.gaps)

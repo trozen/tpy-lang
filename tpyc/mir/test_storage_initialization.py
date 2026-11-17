@@ -12,7 +12,6 @@ from .nodes import (
     MIRSlotKind, MIRStorageDuration, MIRStorageInit, MIRWrap, MIRCopy,
 )
 from .shapes import MIRUnionPayload
-from .payload_lifetime import analyze_payload_ends
 from .scope_lifetime import analyze_scope_ends
 from .storage import analyze_storage, dump_storage
 from .testutil import bind_parameters, execute, leaf_shape, optional_shape, union_shape, prepared
@@ -71,7 +70,7 @@ def test_unassigned_wrapper_has_a_physical_scope_end(shape: str) -> None:
     # The wrapper is constructed with its default: an inventory line, no write.
     assert not inventory.writes and list(inventory.constructions) == [MIRPoint(ENTRY, 0)]
     assert f"bb{ENTRY.index} before 0: construct-wrapper %{CURRENT.index}" in dump_storage(inventory)
-    assert not analyze_payload_ends(prepared(fn)).ends
+    assert not prepared(fn).kills.payloads
     assert dict(prepared(fn).presence.points[MIRPoint(ENTRY, 1)])[MIRPlace(CURRENT)] == frozenset({0})
     event, = analyze_scope_ends(prepared(fn)).ends[MIREdge(ENTRY)]
     assert event.storage == MIRPlace(CURRENT)
@@ -85,7 +84,7 @@ def test_unassigned_wrapper_has_a_physical_scope_end(shape: str) -> None:
 def test_first_source_write_assigns_existing_storage(shape: str) -> None:
     fn = function(shape, MIRBlock(ENTRY, (initialize(shape), write(shape), write(shape)), MIRReturn(VALUE), ROOT))
     validate_function(fn)
-    ends = analyze_payload_ends(prepared(fn)).ends
+    ends = prepared(fn).kills.payloads
     assert ends == ({MIRPoint(ENTRY, 1): frozenset({MIRPlace(CURRENT, (MIRUnionPayload(0),))})}
                     if shape in ("union_bool", "union_int") else {})
     # Each write replaces the wrapper's payload: inventoried apart from the

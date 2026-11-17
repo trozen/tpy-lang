@@ -2055,6 +2055,40 @@ form facts, never on lists of accepted kinds.
   answer keeps rule 1's verdict and reads, so no DEFINITE weakens. The text
   reads the cause: PARTIAL says "may still view / refer to / walk".
   Branches are not correlated (BUGS.md#mir-may-warning-correlated-conditions).
+  **Loop back edges (2026-11-08).** The dependency pass replaces the entries
+  of a write reaching exactly one object, an external one too
+  (`dependencies.strong_write`; `MIRDependencies.overwritten` names them
+  per statement, and retention checks only their new loans). What each
+  statement ends is decided once (`prepare.MIRStatementKills`, on
+  `MIRPrepared` beside the region flow), over the feasible statements:
+  the storage it replaces, with whether the write lands on one object,
+  the storage outside the body a write landing on several objects may
+  leave alone (`spared`), and the scalar payloads it ends; later passes
+  read it. Rule 2 then
+  tracks each holder per pass (`witness._Track`): OLD (holds the hazard's
+  freed value), NEW at a storage (rebound from a tracked value straight
+  onto live storage, the body's or storage outside it such as a
+  parameter's field; freed again at that storage's own kill -- a
+  region-exit edge of `MIRRegionFlow`, a statement ending its payload, or
+  one replacing it, storage outside the body only at a write landing on
+  one object or at the hazard's own kill), FREED at another storage (NEW
+  storage that is not the hazard's, since freed), or NEW at the hazard's
+  own storage after a safe reset (OLD again at every kill of that storage:
+  a `continue` and the normal end of the body both). Attribution (decided
+  2026-11-16): a hazard warns only if every path reads a freed value of
+  the holder and some path its own storage; DEFINITE only when every path
+  reads its own, and the reads it cites are its own. A read of another
+  storage's freed value does not end the walk on that path: a later read
+  of the hazard's own storage still counts (`witness._Other`). A copy of a tracked holder
+  carries its state on the path, never the joined dependency state.
+  Termination (`witness._solve`): a cycle with no way to a read refutes; a
+  read reached only by leaving a cycle that crosses no kill is a PARTIAL
+  MAY. Rule 3 takes a rewrite leaving the origin the entry's only loan as
+  the next pass's store (a call storing the same loan again keeps the
+  escape), and an end of the origin's storage as a kill, under the
+  same solver. Still silent: a read at the next pass only
+  (BUGS.md#mir-hazard-read-on-some-paths-silent); a callee's reset, which
+  only may run (BUGS.md#mir-callee-definite-store-not-a-kill).
   **Cursor encoding.** A cursor depends on its container's `[structure]`
   only (over a view, on that of the storage the view's elements region lies
   in; a leaf cursor on the leaf's whole storage), and `MIRIteratorRead`
@@ -4002,11 +4036,14 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   family ("view member write needs a view holder"). The dependency pass
   (`dependencies.store_loan`) updates the entry of every object the
   record place may reach: STRONG (the loan replaces the entry) when the
-  place reaches exactly one object the body owns, a weak union otherwise
-  (several objects, or an external one, which may alias another): in
+  place reaches exactly one object -- the body's own or an external one
+  (a parameter's, `self`'s, an alias's), since the write lands on that
+  object whatever other names it has -- a weak union over several: in
   `direct_write`, `t.s = b` leaves `t.s` holding `b` only, so replacing
-  `a` afterwards is no conflict, while `fill_static` keeps the caller's
-  loan beside the literal (`mir_borrows(t.s, t.s|static)`). A write with
+  `a` afterwards is no conflict, and `fill_static` replaces the caller's
+  loan with the literal (`mir_borrows(t.s, static)`). The entries a
+  statement replaces are `MIRDependencies.overwritten`; retention checks
+  only their new loans there. A write with
   no origin or into an object with no entry refuses ("view member write
   with no origin", "view member write of an object with no stored
   loan").
@@ -4018,10 +4055,9 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   (`dependencies.fill_through` over `record_fill`, the fill a slot's own
   whole write takes: a construct's operands, a copy's or move's source
   object, a call's RESULT transfers), read off the state before the
-  write. STRONG when the place reaches exactly one object the body owns
-  (a local's storage, an `Own[R]` parameter's object), a weak union
-  otherwise (several objects, or a borrowed parameter's, which may alias
-  another): `store_loan`'s rule, member by member. An entry the object
+  write. STRONG when the place reaches exactly one object (a local's
+  storage, an `Own[R]` or borrowed parameter's object), a weak union over
+  several: `store_loan`'s rule, member by member. An entry the object
   lacks refuses ("record write into an object with no stored loan",
   "record write into no object"). The write stays a replacement event
   of the place, checked over the state it leaves, so a new record
@@ -4176,8 +4212,9 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   of what each entry of a borrowed record parameter's object holds, and at
   each owned-record return what the returned object's entries hold. The
   loan a lent parameter's entry was seeded with (`seeded_loan`) is
-  skipped for that entry only: the caller joins weakly there, so its own
-  loan stays. A RESULT entry publishes it like any other held loan: `ident(r:
+  skipped for that entry only: it is there only where the body has not
+  replaced it yet (an exit before the store, a store on some paths), and
+  the caller joins there, so its own loan stays. A RESULT entry publishes it like any other held loan: `ident(r:
   Own[Tok]) -> Own[Tok]: return r` publishes `result.s <- param0.s`, and
   `maybe_own` (storing into `r.s` on one path) `result.s <- param0.s` and
   `result.s <- param1`, so the caller's result keeps the argument's loan
@@ -4339,15 +4376,12 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   `BUGS.md#view-member-from-view-member-rejects`; `v: StrView = b.s; a.s =
   v` lowers). A whole member replaced through a pointer parameter
   (`member_param`: `o.inner = R(s, s)`; through `self` in a method,
-  `Holder.swap`) reports a `replacement` C++ does
-  not have: the weak update keeps the caller's seeded loan at
-  `o.inner.s`, and that loan (any storage outside the body) may lie
-  under the member the write replaces; a strong update of one external
-  object would change the store rule above. A record written through a
-  place is checked against the state it enters as well as the one it
-  leaves, so reseating a record whose member viewed its own buffer
-  (`r.s = r.buf`, then `r = R(mk(k), "lit")`) reports a replacement
-  although the write overwrites that member too. What is left is in
+  `Holder.swap`) replaces the caller's seeded loan at `o.inner.s`
+  (the write reaches one object), and a record written through a place
+  is checked against the old loans only of the entries it does not
+  replace (`MIRDependencies.overwritten`), while the entries it fills are
+  checked with their new loans: a new member filled from the old record's
+  buffer still conflicts. What is left is in
   TODO.md (MIR entry, "View fields, left after slices 1-3", "View fields
   slice 4" and the units split out above them).
 - **Measured** (`scripts/mir_coverage`, corpus sample, against the

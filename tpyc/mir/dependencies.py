@@ -104,6 +104,10 @@ class MIRDependencies:
     # What those entries, and the returned record's, hold (`caller_stores`):
     # the one source of the summary's transfers and the store escapes.
     caller_stores: tuple[MIRCallerStore, ...] = ()
+    # The stored-loan entries each statement replaces rather than joins (a
+    # strong write, a whole write of record storage): what they held before
+    # the statement is gone after it.
+    overwritten: Mapping[MIRPoint, frozenset[MIRPlace]] = MappingProxyType({})
 
     def live(self, state: MIRReferents, live: frozenset[MIRSlotId]) -> dict[MIRPlace, frozenset[MIRReferent]]:
         """`live_entries` of a state of this body."""
@@ -364,26 +368,24 @@ def resolve_referents(place: MIRPlace, state: MIRReferents, slots: Mapping[MIRSl
     return refs
 
 
-def _strong_write(objects: frozenset[MIRReferent], slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
+def strong_write(objects: frozenset[MIRReferent]) -> bool:
     """Whether a write through a place reaching `objects` replaces their
-    stored loans: it reaches exactly one object, and the body owns it. A
-    write into one external object stays a join: conservative, since the
-    write lands on that object, but its entry keeps the caller's seeded loan
-    (TODO.md, the precision item on whole-member replacement through a
-    borrowed parameter)."""
-    only = next(iter(objects)) if len(objects) == 1 else None
-    return only is not None and not only.external and slots[only.place.root].shape.owns_storage
+    stored loans: it reaches exactly one object -- the body's own or one
+    outside it (a parameter's, `self`'s, an alias's), since the write lands
+    on that object whatever other names it has. A write that may land on
+    either of several objects joins."""
+    return len(objects) == 1
 
 
 def _write_entries(objects: frozenset[MIRReferent], loans: Mapping[tuple[MIRField, ...], frozenset[MIRReferent]],
-                   state: dict[MIRPlace, frozenset[MIRReferent]], slots: Mapping[MIRSlotId, MIRSlot],
-                   stored_loans: frozenset[MIRPlace], reason: str) -> None:
+                   state: dict[MIRPlace, frozenset[MIRReferent]], stored_loans: frozenset[MIRPlace],
+                   reason: str) -> frozenset[MIRPlace]:
     """Each object in `objects` stores `loans` at the entries under it
     (keyed by member path): replaced when the write is strong
-    (`_strong_write`), else joined, which needs the entry's current loans.
+    (`strong_write`), else joined, which needs the entry's current loans.
     An entry no object has refuses (`reason`); one left empty is dropped,
-    so a later read of it refuses."""
-    strong = _strong_write(objects, slots)
+    so a later read of it refuses. Returns the entries replaced."""
+    strong = strong_write(objects)
     writes: dict[MIRPlace, frozenset[MIRReferent]] = {}
     for obj in objects:
         for path, stored in loans.items():
@@ -396,19 +398,20 @@ def _write_entries(objects: frozenset[MIRReferent], loans: Mapping[tuple[MIRFiel
             state[entry] = stored
         else:
             state.pop(entry, None)
+    return frozenset(writes) if strong else frozenset()
 
 
 def store_loan(record: MIRPlace, member: MIRField, loans: frozenset[MIRReferent],
                state: dict[MIRPlace, frozenset[MIRReferent]], slots: Mapping[MIRSlotId, MIRSlot],
-               records: Mapping[TpyType, MIRRecordLayout], stored_loans: frozenset[MIRPlace]) -> None:
+               records: Mapping[TpyType, MIRRecordLayout], stored_loans: frozenset[MIRPlace]) -> frozenset[MIRPlace]:
     """A view member of every object `record` may reach rebound to `loans`
-    (`_write_entries`): the write may land on any of the objects, and an
-    external one may be another's alias."""
+    (`_write_entries`): the write may land on any of the objects. Returns
+    the entries replaced."""
     objects = resolve_referents(record, state, slots, records)
     if not loans or not objects:
         raise MIRUnseededLoan(None, "view member write with no origin")
-    _write_entries(objects, {(member,): loans}, state, slots, stored_loans,
-                   "view member write of an object with no stored loan")
+    return _write_entries(objects, {(member,): loans}, state, stored_loans,
+                          "view member write of an object with no stored loan")
 
 
 def stored_on_fill(target: MIRSlotId, value: object, state: MIRReferents,
@@ -571,22 +574,22 @@ def written_record(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
 
 def fill_through(target: MIRPlace, typ: NominalType, value: object, state: dict[MIRPlace, frozenset[MIRReferent]],
                  slots: Mapping[MIRSlotId, MIRSlot], layouts: Mapping[NominalType, MIRRecordLayout],
-                 stored_loans: frozenset[MIRPlace]) -> None:
+                 stored_loans: frozenset[MIRPlace]) -> frozenset[MIRPlace]:
     """A record of type `typ` written whole through a place (an in-place
     reseat through its holder, a member replaced in place): each object
     the place may reach stores the written record's loans (`record_fill`),
-    replacing what it stored when the place reaches exactly one object the
-    body owns, else joining it (the write lands on one of them, and an
-    external one may be another's alias) -- `store_loan`'s rule, member by
-    member (`_write_entries`)."""
+    replacing what it stored when the place reaches exactly one object,
+    else joining it (the write lands on one of them) -- `store_loan`'s
+    rule, member by member (`_write_entries`). Returns the entries
+    replaced."""
     filled = record_fill(MIRPlace(target.root), typ, value, state, slots, layouts)
     if not filled:
-        return
+        return frozenset()
     objects = resolve_referents(target, state, slots, layouts)
     if not objects:
         raise MIRUnseededLoan(None, "record write into no object")
-    _write_entries(objects, {key.projections: loans for key, loans in filled.items()}, state, slots,
-                   stored_loans, "record write into an object with no stored loan")
+    return _write_entries(objects, {key.projections: loans for key, loans in filled.items()}, state,
+                          stored_loans, "record write into an object with no stored loan")
 
 
 def transfer_loans(call: MIRCall, transfer: MIRLoanTransfer, key: MIRPlace, state: MIRReferents,
@@ -672,7 +675,8 @@ def call_return_problem(present: MIRPresentCall, result: MIRSlot, state: MIRRefe
     return None
 
 
-def _dependencies(presence: MIRPresence, liveness: MIRLiveness) -> MIRDependencies | MIRNotCovered:
+def _dependencies(presence: MIRPresence, liveness: MIRLiveness, regions: MIRRegionFlow
+                  ) -> MIRDependencies | MIRNotCovered:
     """The dependency facts of a body over the presence its preparation
     gives (`prepare.prepare`): every caller reads them from `MIRPrepared`."""
     fn = presence.function
@@ -698,11 +702,13 @@ def _dependencies(presence: MIRPresence, liveness: MIRLiveness) -> MIRDependenci
     present = presence.calls
 
     def transfer(point: MIRPoint, stmt: MIRStatement, state: dict[MIRPlace, frozenset[MIRReferent]],
-                 final: bool) -> None:
+                 final: bool) -> frozenset[MIRPlace]:
+        """Apply the statement to `state`; the stored-loan entries it
+        replaced, as opposed to joined (`MIRDependencies.overwritten`)."""
         if isinstance(stmt, MIRCallStmt):
             apply_transfers(present[point], state, slots, layouts)
         if not isinstance(stmt, MIRAssign):
-            return
+            return frozenset()
         target = stmt.target
         # A call's value is the call as presence sees it (`MIRPresentCall`).
         value = present[point] if isinstance(stmt.value, MIRCall) else stmt.value
@@ -779,25 +785,25 @@ def _dependencies(presence: MIRPresence, liveness: MIRLiveness) -> MIRDependenci
             case _:
                 raise MIRValidationError("unknown dependency operation")
         if (member := view_member(target)) is not None:
-            store_loan(MIRPlace(target.root, target.projections[:-1]), member, result[target], state, slots, layouts,
-                       stored_loans)
-            return
+            return store_loan(MIRPlace(target.root, target.projections[:-1]), member, result[target], state, slots,
+                              layouts, stored_loans)
         if target.projections and (written := written_record(target, slots, layouts)) is not None:
             # A value that names no stored loan refuses in `record_fill`. A
             # base's constructor fills only the base's members: the record's
             # other entries (another base's loans) stay.
             if isinstance(value, MIRPresentCall) and value.initializes:
                 written = value.call.initializes
-            fill_through(target, written, value, state, slots, layouts, stored_loans)
-            return
-        if not target.projections:
-            result.update(stored_on_fill(target.root, value, state, slots, layouts, objects))
-        # A write under a projection (a field, an element of a container) is a
-        # weak update: it never kills what the root's leaves hold.
-        if not target.projections:
-            for leaf in leaves[target.root]:
-                state.pop(leaf, None)
-            state.update((leaf, refs) for leaf, refs in result.items() if refs)
+            return fill_through(target, written, value, state, slots, layouts, stored_loans)
+        if target.projections:
+            # A write under a projection (a field, an element of a container) is a
+            # weak update: it never kills what the root's leaves hold.
+            return frozenset()
+        result.update(stored_on_fill(target.root, value, state, slots, layouts, objects))
+        for leaf in leaves[target.root]:
+            state.pop(leaf, None)
+        state.update((leaf, refs) for leaf, refs in result.items() if refs)
+        # A whole write of record storage replaces every stored loan of the old value.
+        return frozenset(leaf for leaf in leaves[target.root] if leaf in stored_loans)
 
     # A parameter holder borrows storage outside the body; an owned-leaf
     # global's handle names the global itself (`global:<module>.<name>` by its
@@ -811,7 +817,7 @@ def _dependencies(presence: MIRPresence, liveness: MIRLiveness) -> MIRDependenci
     seed.update((key, frozenset({seeded_loan(key)}))
                 for slot in fn.slots if slot.kind is MIRSlotKind.PARAMETER for key in objects[slot.id])
     try:
-        flow = _flow(fn, liveness, slots, seed, transfer, MappingProxyType(objects), stored_loans,
+        flow = _flow(fn, liveness, regions, slots, seed, transfer, MappingProxyType(objects), stored_loans,
                      caller_keys(fn, objects))
     except _DependencyRefusal as refused:
         return MIRNotCovered(fn.id, "dependencies", refused.reason, refused.loc)
@@ -848,16 +854,15 @@ def caller_stores(presence: MIRPresence, dependencies: MIRDependencies) -> tuple
     return tuple(stores)
 
 
-def _flow(fn: MIRFunction, liveness: MIRLiveness, slots: Mapping[MIRSlotId, MIRSlot],
+def _flow(fn: MIRFunction, liveness: MIRLiveness, regions: MIRRegionFlow, slots: Mapping[MIRSlotId, MIRSlot],
           seed: dict[MIRPlace, frozenset[MIRReferent]],
-          transfer: 'Callable[[MIRPoint, MIRStatement, dict[MIRPlace, frozenset[MIRReferent]], bool], None]',
+          transfer: 'Callable[[MIRPoint, MIRStatement, dict[MIRPlace, frozenset[MIRReferent]], bool], frozenset[MIRPlace]]',
           objects: Mapping[MIRSlotId, tuple[MIRPlace, ...]], stored_loans: frozenset[MIRPlace],
           pinned: frozenset[MIRPlace] = frozenset()) -> MIRDependencies:
     """The dependency states to a fixpoint, then each point's facts in a
     final pass that `transfer` checks (`final`)."""
     empty: frozenset[MIRReferent] = frozenset()
     blocks = {b.id: b for b in fn.blocks}
-    regions = MIRRegionFlow(fn)
     incoming: dict[MIRBlockId, dict[MIRPlace, frozenset[MIRReferent]]] = {fn.entry: seed.copy()}
     work = deque([fn.entry])
     queued = {fn.entry}
@@ -887,6 +892,7 @@ def _flow(fn: MIRFunction, liveness: MIRLiveness, slots: Mapping[MIRSlotId, MIRS
     points: dict[MIRPoint, MIRReferents] = {}
     active: dict[MIRPoint, MIRReferents] = {}
     holders: dict[MIRPoint, Mapping[MIRReferent, frozenset[MIRPlace]]] = {}
+    overwritten: dict[MIRPoint, frozenset[MIRPlace]] = {}
     for block in fn.blocks:
         if block.id not in incoming:
             continue
@@ -902,10 +908,11 @@ def _flow(fn: MIRFunction, liveness: MIRLiveness, slots: Mapping[MIRSlotId, MIRS
                     inverse.setdefault(ref, set()).add(leaf)
             holders[point] = MappingProxyType({ref: frozenset(owners) for ref, owners in inverse.items()})
             if index < len(block.statements):
-                transfer(point, block.statements[index], state, True)
+                if replaced := transfer(point, block.statements[index], state, True):
+                    overwritten[point] = replaced
     entry = MappingProxyType(live_entries(incoming[fn.entry], liveness.entry_live, stored_loans, pinned))
     return MIRDependencies(fn, MappingProxyType(points), MappingProxyType(active), MappingProxyType(holders), entry,
-                           objects, stored_loans, pinned)
+                           objects, stored_loans, pinned, overwritten=MappingProxyType(overwritten))
 
 
 def dump_dependencies(result: MIRDependencies | MIRNotCovered) -> str:

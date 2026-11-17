@@ -4,35 +4,30 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "fixtures.hpp"
+#include "part_elements.hpp"
+#include "part_loop_resets.hpp"
+#include "part_loops.hpp"
+#include "part_may.hpp"
+#include "part_may_known.hpp"
+#include "part_records.hpp"
+#include "part_returns.hpp"
 
 namespace tpyapp::main {
 
-struct Tok;
-struct Bad;
-struct A;
-struct P;
+using ::tpyapp::fixtures::mk;
+
+using ::tpyapp::fixtures::P;
+using ::tpyapp::fixtures::Tok;
+
 struct Bag;
 struct C;
 struct Holder;
-struct Named;
-struct NamedLine;
-struct Points;
-struct Frame;
-struct Hv;
-struct Rb;
 struct Rs;
-struct Box;
-struct Hs;
-struct Hl;
-struct Sites;
 
 extern std::string GS;
 inline constexpr std::string_view __name__ = "__main__";
 
-// def mk(c: str) -> str:
-std::string mk(std::string_view c);
-// def mk_a(n: int32) -> Own[A]:
-A mk_a(int32_t n);
 // def first(s: StrView) -> StrView:
 std::string_view first(std::string_view s);
 // def local_buf(flag: bool) -> None:
@@ -40,7 +35,7 @@ void local_buf(bool flag);
 // def local_buf_named(flag: bool) -> None:
 void local_buf_named(bool flag);
 // def kept(ps: list[P], flag: bool) -> int32:
-int32_t kept(std::vector<P>& ps, bool flag);
+int32_t kept(std::vector<::tpyapp::fixtures::P>& ps, bool flag);
 // def block_view(c: bool) -> bool:
 bool block_view(bool c);
 // def block_view_outer(c: bool) -> bool:
@@ -50,232 +45,19 @@ bool temp_view(std::string_view c);
 // def temp_view_bound(c: str) -> bool:
 bool temp_view_bound(std::string_view c);
 // def fill(t: Tok, c: str) -> None:
-void fill(Tok& t, std::string_view c);
+void fill(::tpyapp::fixtures::Tok& t, std::string_view c);
 // def fill_static(t: Tok) -> None:
-void fill_static(Tok& t);
+void fill_static(::tpyapp::fixtures::Tok& t);
 // def reassigned(s: str) -> StrView:
 std::string_view reassigned(std::string_view __param_s);
 // def kept_view(s: StrView) -> StrView:
 std::string_view kept_view(std::string_view s);
-// @error_return(Bad)
-// def error_body(flag: bool) -> int32:  # tpyc: mir(uncovered /-return body/)
-std::expected<int32_t, Bad> error_body(bool flag);
-// def try_body(flag: bool) -> None:  # tpyc: mir(uncovered /unsupported statement/)
-void try_body(bool flag);
-// def match_arm(k: int32, flag: bool) -> None:  # tpyc: mir(uncovered /unsupported statement/)
-void match_arm(int32_t k, bool flag);
-// def r_held(q: Tok, flag: bool) -> Own[Tok]:  # tpyc: mir(conflict /store_escape/)
-Tok r_held(const Tok& q, bool flag);
-// def r_lit(flag: bool) -> Own[Tok]:  # tpyc: mir(conflict /store_escape/)
-Tok r_lit(bool flag);
-// def s_held(t: Tok, q: Tok, flag: bool) -> None:  # tpyc: mir(conflict /store_escape/)
-void s_held(Tok& t, const Tok& q, bool flag);
-// def two_returns(flag: bool) -> Own[Tok]:  # tpyc: mir(conflict /store_escape/)
-Tok two_returns(bool flag);
-// def returned_maybe(c: str, flag: bool, q: Tok) -> Own[Tok]:
-Tok returned_maybe(std::string_view c, bool flag, const Tok& q);
-// def returned(c: str) -> Own[Tok]:
-Tok returned(std::string_view c);
-// def record_view(ln: NamedLine, flag: bool) -> bool:
-bool record_view(NamedLine& ln, bool flag);
-// def record_list(f: Frame, flag: bool) -> int32:
-int32_t record_list(Frame& f, bool flag);
-// def record_list_object(f: Frame, flag: bool) -> int32:
-int32_t record_list_object(Frame& f, bool flag);
-// def record_field(f: Frame, flag: bool) -> int32:
-int32_t record_field(Frame& f, bool flag);
-// def items_of(f: Frame) -> list[P]:
-std::vector<P>& items_of(Frame& f);
-// def lent_list_object(f: Frame, flag: bool) -> int32:
-int32_t lent_list_object(Frame& f, bool flag);
-// def record_alias(ln: NamedLine, flag: bool) -> int32:
-int32_t record_alias(NamedLine& ln, bool flag);
-// def fail() -> int32:
-int32_t fail();
-// def after_raise() -> None:
-void after_raise();
-// def overwritten(flag: bool) -> None:
-void overwritten(bool flag);
-// def restore(t: Tok) -> None:
-void restore(Tok& t);
-// def other_element(ps: list[P], i: int32, j: int32) -> int32:  # tpyc: mir(conflict /replacement/)
-int32_t other_element(std::vector<P>& ps, int32_t i, int32_t j);
-// def loop_var_overwrite(ps: list[P], j: int32, flag: bool) -> int32:
-int32_t loop_var_overwrite(std::vector<P>& ps, int32_t j, bool flag);
-// def link(adj: list[list[int32]], u: int32) -> None:
-void link(std::vector<std::vector<int32_t>>& adj, int32_t u);
-// def other_row(rows: list[list[int32]]) -> None:
-void other_row(std::vector<std::vector<int32_t>>& rows);
-// def str_view(names: list[str], i: int32) -> None:
-void str_view(std::vector<std::string>& names, int32_t i);
-// def str_loop(names: list[str], i: int32) -> None:  # tpyc: mir(covered)
-void str_loop(std::vector<std::string>& names, int32_t i);
-// def scale(xs: list[int32]) -> None:
-void scale(std::vector<int32_t>& xs);
-// def span_scale(s: Span[int32]) -> None:
-void span_scale(std::span<int32_t> s);
-// def dict_scale(d: dict[int32, int32]) -> None:
-void dict_scale(::tpy::ordered_map<int32_t, int32_t>& d);
-// def inner_ref(rows: list[list[P]], i: int32, j: int32) -> int32:  # tpyc: mir(conflict /replacement/)
-int32_t inner_ref(std::vector<std::vector<P>>& rows, int32_t i, int32_t j);
-// def tok_view(names: list[str], i: int32) -> None:  # tpyc: mir(conflict /replacement/)
-void tok_view(std::vector<std::string>& names, int32_t i);
-// def clob(ps: list[P]) -> None:
-void clob(std::vector<P>& ps);
-// def callee_loop(ps: list[P], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
-int32_t callee_loop(std::vector<P>& ps, bool flag);
-// def store_then_grow(xs: list[P]) -> None:
-void store_then_grow(std::vector<P>& xs);
-// def grow_then_store(xs: list[P]) -> None:
-void grow_then_store(std::vector<P>& xs);
-// def kept_store_then_grow(xs: list[P], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
-int32_t kept_store_then_grow(std::vector<P>& xs, bool flag);
-// def kept_grow_then_store(xs: list[P], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
-int32_t kept_grow_then_store(std::vector<P>& xs, bool flag);
-// def row_store_then_grow(rows: list[list[P]], i: int32, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
-int32_t row_store_then_grow(std::vector<std::vector<P>>& rows, int32_t i, bool flag);
-// def row_grow_then_store(rows: list[list[P]], i: int32, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
-int32_t row_grow_then_store(std::vector<std::vector<P>>& rows, int32_t i, bool flag);
-// def which_element() -> None:
-void which_element();
-// def through_param(t: Tok, xs: list[str]) -> int32:  # tpyc: mir(conflict /replacement/)
-int32_t through_param(const Tok& t, std::vector<std::string>& xs);
-// def dict_insert(d: dict[int32, int32]) -> int32:  # tpyc: mir(covered)
-int32_t dict_insert(::tpy::ordered_map<int32_t, int32_t>& d);
-// def drop_and_read(xs: list[P], h: Hv) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
-bool drop_and_read(std::vector<P>& xs, const Hv& h);
-// def drop_and_read_call() -> None:  # tpyc: mir(uncovered /known summary/)
-void drop_and_read_call();
-// def replace_and_read(r: Rb) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
-bool replace_and_read(Rb& r);
-// def replace_and_read_call() -> None:  # tpyc: mir(uncovered /known summary/)
-void replace_and_read_call();
 // def replace_then_read_global(r: Rs) -> bool:  # tpyc: mir_summary(opaque /summary retention/)
 bool replace_then_read_global(Rs& r);
 // def replace_then_read_global_call() -> None:  # tpyc: mir(uncovered /known summary/)
 void replace_then_read_global_call();
-// def one_object(h: Box, flag: bool) -> int32:  # tpyc: mir_summary(known)
-int32_t one_object(Box& h, bool flag);
-// def grow_keep(xs: list[P], p: P) -> int32:  # tpyc: mir_summary(known) mir(conflict /alias_obligation/)
-int32_t grow_keep(std::vector<P>& xs, const P& p);
-// def summary_inverse_call() -> None:
-void summary_inverse_call();
-// def mk_list(n: int32) -> Own[list[int32]]:
-std::vector<int32_t> mk_list(int32_t n);
-// def b_ctor(f: bool) -> None:
-void b_ctor(bool f);
-// def b_ctor_else(f: bool) -> None:
-void b_ctor_else(bool f);
-// def h_field(f: bool) -> None:
-void h_field(bool f);
-// def store_break(xs: list[str]) -> None:
-void store_break(const std::vector<std::string>& xs);
-// def cursor_join(flag: bool) -> None:
-void cursor_join(bool flag);
-// def field_cursor(f: bool) -> None:
-void field_cursor(bool f);
-// def leaf_cursor(flag: bool) -> None:
-void leaf_cursor(bool flag);
-// def may_rebind(c: bool, f: bool) -> None:
-void may_rebind(bool c, bool f);
-// def span_join(c: bool) -> int32:
-int32_t span_join(bool c);
-// def restore_field(f: bool) -> None:
-void restore_field(bool f);
-// def callee_may_reset(flag: bool) -> None:
-void callee_may_reset(bool flag);
-// def g_notc(c: bool) -> None:
-void g_notc(bool c);
-// def g_rebind(f: bool) -> None:
-void g_rebind(bool f);
-// def g_rebind_field(f: bool) -> None:
-void g_rebind_field(bool f);
-// def value_element(a: list[str]) -> None:
-void value_element(std::vector<std::string>& a);
-// def values_existing_key(d: dict[str, str]) -> None:
-void values_existing_key(::tpy::ordered_map<std::string, std::string>& d);
-// def alias_reset_read(f: bool) -> None:
-void alias_reset_read(bool f);
-// def alias_copy_read(f: bool) -> None:
-void alias_copy_read(bool f);
-// def correlated_scope_rebind(f: bool) -> str:
-std::string correlated_scope_rebind(bool f);
-// def may_after_raise(flag: bool) -> None:
-void may_after_raise(bool flag);
-// def g_samef(f: bool) -> None:
-void g_samef(bool f);
-// def g_samef_ctor(f: bool) -> None:
-void g_samef_ctor(bool f);
-// def may_sections() -> None:
-void may_sections();
 // def main() -> None:
 void main();
-
-// class Tok:
-struct Tok {
-    // s: StrView
-    std::string_view s;
-    // n: int32
-    int32_t n;
-
-    // def __init__(self, s: StrView, n: int32) -> None:
-    Tok() = default;
-    explicit Tok(std::string_view s, int32_t n);
-
-    // def adopt(self, v: StrView) -> None:
-    void adopt(std::string_view v);
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Tok";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Tok& obj) {
-    ::tpy::print_object_default(os, Tok::__tpy_class_name__, obj);
-    return os;
-}
-
-// class Bad(Exception, ReturnException):
-struct Bad : ::tpy::ReturnException {
-    // code: int32
-    int32_t code;
-
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Bad";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Bad& obj) {
-    ::tpy::print_object_default(os, Bad::__tpy_class_name__, obj);
-    return os;
-}
-
-// class A:
-struct A {
-    // v: int32
-    int32_t v;
-
-    // def __init__(self, v: int32) -> None:
-    A() = default;
-    explicit A(int32_t v);
-    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const A& obj) {
-    ::tpy::print_object_default(os, A::__tpy_class_name__, obj);
-    return os;
-}
-
-// class P:
-struct P {
-    // x: int32
-    int32_t x;
-
-    // def __init__(self, x: int32) -> None:
-    P() = default;
-    explicit P(int32_t x);
-    static constexpr std::string_view __tpy_class_name__ = "__main__.P";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const P& obj) {
-    ::tpy::print_object_default(os, P::__tpy_class_name__, obj);
-    return os;
-}
 
 // class Bag:
 struct Bag {
@@ -345,106 +127,6 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// class Named:
-struct Named {
-    // x: int32
-    int32_t x;
-    // n: str
-    std::string n;
-
-    // def __init__(self, x: int32, n: str) -> None:
-    Named() = default;
-    explicit Named(int32_t x, std::string_view n);
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Named";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
-    ::tpy::print_object_default(os, Named::__tpy_class_name__, obj);
-    return os;
-}
-
-// class NamedLine:
-struct NamedLine {
-    // a: Named
-    Named a;
-
-    // def __init__(self, a: Named) -> None:
-    NamedLine() = default;
-    explicit NamedLine(const Named& a);
-    static constexpr std::string_view __tpy_class_name__ = "__main__.NamedLine";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const NamedLine& obj) {
-    ::tpy::print_object_default(os, NamedLine::__tpy_class_name__, obj);
-    return os;
-}
-
-// class Points:
-struct Points {
-    // items: list[P]
-    std::vector<P> items;
-    // inner: P
-    P inner;
-
-    // def __init__(self) -> None:
-    Points();
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Points";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Points& obj) {
-    ::tpy::print_object_default(os, Points::__tpy_class_name__, obj);
-    return os;
-}
-
-// class Frame:
-struct Frame {
-    // pts: Points
-    Points pts;
-
-    // def __init__(self) -> None:
-    Frame();
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Frame";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Frame& obj) {
-    ::tpy::print_object_default(os, Frame::__tpy_class_name__, obj);
-    return os;
-}
-
-// class Hv:
-struct Hv {
-    // v: StrView
-    std::string_view v;
-
-    // def __init__(self, v: StrView) -> None:
-    Hv() = default;
-    explicit Hv(std::string_view v);
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Hv";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Hv& obj) {
-    ::tpy::print_object_default(os, Hv::__tpy_class_name__, obj);
-    return os;
-}
-
-// class Rb:
-struct Rb {
-    // buf: str
-    std::string buf;
-    // s: StrView
-    std::string_view s;
-
-    // def __init__(self, buf: str, s: StrView) -> None:
-    Rb() = default;
-    explicit Rb(std::string_view buf, std::string_view s);
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Rb";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Rb& obj) {
-    ::tpy::print_object_default(os, Rb::__tpy_class_name__, obj);
-    return os;
-}
-
 // class Rs:
 struct Rs {
     // s: str
@@ -461,97 +143,6 @@ inline std::ostream& operator<<(std::ostream& os, const Rs& obj) {
     return os;
 }
 
-// class Box:
-struct Box {
-    // items: list[P]
-    std::vector<P> items;
-
-    // def __init__(self) -> None:
-    Box();
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    ::tpy::print_object_default(os, Box::__tpy_class_name__, obj);
-    return os;
-}
-
-// class Hs:
-struct Hs {
-    // s: StrView
-    std::string_view s;
-
-    // def __init__(self) -> None:
-    Hs();
-
-    // def maybe(self, s: StrView, flag: bool) -> None:
-    void maybe(std::string_view s, bool flag);
-
-    // def maybe_reset(self, flag: bool) -> None:
-    void maybe_reset(bool flag);
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Hs";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Hs& obj) {
-    ::tpy::print_object_default(os, Hs::__tpy_class_name__, obj);
-    return os;
-}
-
-// class Hl:
-struct Hl {
-    // items: list[int32]
-    std::vector<int32_t> items;
-
-    // def __init__(self) -> None:
-    Hl();
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Hl";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Hl& obj) {
-    ::tpy::print_object_default(os, Hl::__tpy_class_name__, obj);
-    return os;
-}
-
-// class Sites:
-struct Sites {
-    // n: int32
-    int32_t n;
-
-    // def __init__(self, f: bool) -> None:
-    Sites() = default;
-    explicit Sites(bool f);
-
-    // def run(self, f: bool) -> None:
-    void run(bool f) const;
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Sites";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Sites& obj) {
-    ::tpy::print_object_default(os, Sites::__tpy_class_name__, obj);
-    return os;
-}
-
-
-// def __init__(self, s: StrView, n: int32) -> None:
-//     self.s = s
-//     self.n = n
-inline Tok::Tok(std::string_view s, int32_t n)
-    : s(s),
-      n(n) {}
-
-// def adopt(self, v: StrView) -> None:
-//     self.s = v
-inline void Tok::adopt(std::string_view v) {
-    this->s = v;
-}
-
-// def __init__(self, v: int32) -> None:
-//     self.v = v
-inline A::A(int32_t v) : v(v) {}
-
-// def __init__(self, x: int32) -> None:
-//     self.x = x
-inline P::P(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
 //     self.items = [1, 2]
@@ -606,7 +197,7 @@ inline int32_t Bag::grow_copy() {
 // # store escape, constructor: a view of a temporary kept in a field (never constructed)
 // def __init__(self, c: str) -> None:
 //     self.v = first(mk(c))  # tpyc: warning(/the temporary 'mk\(c\)' lives only until the end of this statement, but 'self.v' keeps a view of it; make 'C.v' an owned 'str'/)
-inline C::C(std::string_view c) : v(::tpyapp::main::first(::tpyapp::main::mk(c))) {}
+inline C::C(std::string_view c) : v(::tpyapp::main::first(::tpyapp::fixtures::mk(c))) {}
 
 // def __init__(self) -> None:
 //     self.s = "init"
@@ -625,7 +216,7 @@ inline std::string_view Holder::view() const {
 //     buf = mk(c)
 //     self.s = buf  # tpyc: warning(/'buf' is freed when 'Holder.view' returns, but 'self.s' keeps a view of it/)
 inline void Holder::set_view(std::string_view c) {
-    std::string buf = ::tpyapp::main::mk(c);
+    std::string buf = ::tpyapp::fixtures::mk(c);
     this->s = buf;
 }
 
@@ -639,10 +230,10 @@ inline void Holder::set_view(std::string_view c) {
 //     print("twin", t.s[0])
 //     return t.n
 inline int32_t Holder::twin(bool flag) {
-    std::string buf = ::tpyapp::main::mk("a");
-    Tok t = Tok(buf, 1);
+    std::string buf = ::tpyapp::fixtures::mk("a");
+    ::tpyapp::fixtures::Tok t = ::tpyapp::fixtures::Tok(buf, 1);
     if (flag) {
-        buf = ::tpyapp::main::mk("b");
+        buf = ::tpyapp::fixtures::mk("b");
     }
     std::cout << "twin" << " " << ::tpy::__getitem__(t.s, 0) << "\n" << ::tpy::check_signals;
     return t.n;
@@ -658,119 +249,17 @@ inline int32_t Holder::twin(bool flag) {
 //     print("twin", t.s[0])
 //     return t.n
 inline int32_t Holder::twin(bool flag) const {
-    std::string buf = ::tpyapp::main::mk("a");
-    Tok t = Tok(buf, 1);
+    std::string buf = ::tpyapp::fixtures::mk("a");
+    ::tpyapp::fixtures::Tok t = ::tpyapp::fixtures::Tok(buf, 1);
     if (flag) {
-        buf = ::tpyapp::main::mk("b");
+        buf = ::tpyapp::fixtures::mk("b");
     }
     std::cout << "twin" << " " << ::tpy::__getitem__(t.s, 0) << "\n" << ::tpy::check_signals;
     return t.n;
 }
 
-// def __init__(self, x: int32, n: str) -> None:
-//     self.x = x
-//     self.n = n
-inline Named::Named(int32_t x, std::string_view n)
-    : x(x),
-      n(n) {}
-
-// def __init__(self, a: Named) -> None:
-//     self.a = a
-inline NamedLine::NamedLine(const Named& a) : a(a) {}
-
-// def __init__(self) -> None:
-//     self.items = [P(1)]
-//     self.inner = P(1)
-inline Points::Points()
-    : items(std::vector<P>{P(1)}),
-      inner(P(1)) {}
-
-// def __init__(self) -> None:
-//     self.pts = Points()
-inline Frame::Frame() : pts(Points()) {}
-
-// def __init__(self, v: StrView) -> None:
-//     self.v = v
-inline Hv::Hv(std::string_view v) : v(v) {}
-
-// def __init__(self, buf: str, s: StrView) -> None:
-//     self.buf = buf
-//     self.s = s
-inline Rb::Rb(std::string_view buf, std::string_view s)
-    : buf(buf),
-      s(s) {}
-
 // def __init__(self, s: str) -> None:
 //     self.s = s
 inline Rs::Rs(std::string_view s) : s(s) {}
-
-// def __init__(self) -> None:
-//     self.items = [P(1)]
-inline Box::Box() : items(std::vector<P>{P(1)}) {}
-
-// def __init__(self) -> None:
-//     self.s = "-"
-inline Hs::Hs() : s("-") {}
-
-// def maybe(self, s: StrView, flag: bool) -> None:
-//     if flag:
-//         self.s = s
-inline void Hs::maybe(std::string_view s, bool flag) {
-    if (flag) {
-        this->s = s;
-    }
-}
-
-// def maybe_reset(self, flag: bool) -> None:
-//     if flag:
-//         self.s = "safe"
-inline void Hs::maybe_reset(bool flag) {
-    if (flag) {
-        this->s = "safe";
-    }
-}
-
-// def __init__(self) -> None:
-//     self.items = mk_list(1)
-inline Hl::Hl() : items(::tpyapp::main::mk_list(1)) {}
-
-// # may hazard, end of a block, constructor body with local holders
-// def __init__(self, f: bool) -> None:
-//     self.n = 0
-//     h = Hs()
-//     if f:
-//         buf = mk("c")
-//         h.s = buf  # tpyc: warning(/'buf' is freed at the end of this block, and 'h.s' may still view it and is read on line 767/)
-//     junk = mk("z")
-//     print("ctor", h.s[0], len(junk))
-inline Sites::Sites(bool f) : n(0) {
-    Hs h = Hs();
-    if (f) {
-        std::string buf = ::tpyapp::main::mk("c");
-        h.s = buf;
-    }
-    std::string junk = ::tpyapp::main::mk("z");
-    std::cout << "ctor" << " " << ::tpy::__getitem__(h.s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
-}
-
-// # may hazard, end of a block, method body with local holders
-// def run(self, f: bool) -> None:
-//     tk = Tok("x", 0)
-//     if f:
-//         buf = mk("m")
-//         tk = Tok(buf, 1)  # tpyc: warning(/'buf' is freed at the end of this block, and 'tk.s' may still view it and is read on line 757/)
-//     junk = mk("z")
-//     print("method", tk.s[0], len(junk))
-inline void Sites::run(bool f) const {
-    Tok __slot_1 = Tok("x", 0);
-    Tok* tk = &__slot_1;
-    std::optional<Tok> __slot_2;
-    if (f) {
-        std::string buf = ::tpyapp::main::mk("m");
-        tk = &*(__slot_2 = Tok(buf, 1));
-    }
-    std::string junk = ::tpyapp::main::mk("z");
-    std::cout << "method" << " " << ::tpy::__getitem__(tk->s, 0) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
-}
 void __tpy_init();
 } // namespace tpyapp::main

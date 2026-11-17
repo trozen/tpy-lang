@@ -15,6 +15,8 @@ main.py:120: warning: Mutation of 'xs' while iterating over it ('append' invalid
 main.py:129: warning: Mutation of 'xss[...]' while iterating over it ('pop' invalidates the iterator)
 main.py:145: warning: Mutation of 'xss[...]' may hit the element being iterated ('pop' may invalidate the iterator)
 main.py:155: warning: Mutation of 'xss[...]' while iterating over it ('pop' invalidates the iterator)
+main.py:155: warning: this call may move the element the iteration over 'xss[0]' still walks, and the loop continues on line 151; iterate over a copy ('copy(xss[0])'), or make the changes after the loop
+main.py:166: warning: this call may move the element the iteration over 'xss[0]' still walks, and the loop continues on line 162; iterate over a copy ('copy(xss[0])'), or make the changes after the loop
 main.py:190: warning: Iterator borrows from temporary receiver object; the temporary is destroyed before iteration begins
 main.py:210: warning: Passing borrowed container 'c' to non-readonly parameter 'rs' (function may invalidate references)
 main.py:272: warning: Passing borrowed container 'gl' to non-readonly parameter 'ys' (function may invalidate references)

@@ -353,13 +353,14 @@ def test_a_write_reaching_several_objects_joins_each(program: _Program) -> None:
     assert {state[MIRPlace(sid, (member,))] for sid in _owned(fn)} == {frozenset({a, b})}
 
 
-def test_a_write_into_a_parameter_joins_the_caller_s_loan(program: _Program) -> None:
+def test_a_write_into_the_one_parameter_object_replaces_the_caller_s_loan(program: _Program) -> None:
     fn = _lowered(program, "literal")
     point, write = _view_write(fn)
-    _, state = _after(fn, point)
+    dependencies, state = _after(fn, point)
     key = MIRPlace(fn.slots[0].id, (write.target.projections[-1],))
     loans = state[key]
-    assert MIRReferent(key, external=True, held=True) in loans and any(ref.static for ref in loans)
+    assert MIRReferent(key, external=True, held=True) not in loans and all(ref.static for ref in loans)
+    assert key in dependencies.overwritten[point]
 
 
 def test_a_view_member_write_carries_no_storage_fact(program: _Program) -> None:
@@ -784,13 +785,15 @@ def test_a_place_ending_at_a_containers_structure(program: _Program) -> None:
         written_record(MIRPlace(v.id, (MIRDeref(), views, structure)), slots, records)
 
 
-def test_a_member_replacement_through_a_parameter_joins_and_transfers(program: _Program) -> None:
+def test_a_member_replacement_through_a_parameter_replaces_and_transfers(program: _Program) -> None:
     fn = _lowered(program, "member_into")
     point, _ = _in_place(fn)
     inner, s = _field(program, "Holder", "inner"), _field(program, "R", "s")
     key = MIRPlace(fn.slots[0].id, (inner, s))
-    _, state = _after(fn, point)
-    assert state[key] == frozenset({seeded_loan(key), MIRReferent(_named(fn, "s"), external=True)})
+    dependencies, state = _after(fn, point)
+    # The write reaches the one object the parameter lends: the caller's loan is replaced.
+    assert state[key] == frozenset({MIRReferent(_named(fn, "s"), external=True)})
+    assert key in dependencies.overwritten[point]
     summary = _summary(program, "member_into")
     assert summary.transfers == frozenset({MIRLoanTransfer(0, (_identity(inner), _identity(s)), 1)})
     # The new member stores `s`'s loan while the old member is replaced: a

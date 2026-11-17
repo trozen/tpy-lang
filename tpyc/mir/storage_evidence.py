@@ -41,7 +41,7 @@ from .nodes import (
 )
 from .shapes import MIRUnionPayload
 from .value import MIRValidationError
-from .payload_lifetime import _payload_conflicts, _payload_ends
+from .payload_lifetime import _payload_conflicts
 from .retention import analyze_retention
 from .scope_lifetime import _scope_conflicts, _scope_ends
 from .storage import analyze_storage
@@ -339,17 +339,13 @@ def _check_storage(prepared: MIRPrepared, required: frozenset[MIRSlotId], defini
                 attribute(MIRStorageConflictKind.SCOPE_END, conflict.ended, conflict.holder,
                           conflict.edge, blocks[conflict.edge.source].terminator.loc)
 
-    payload_ends = _payload_ends(prepared)
-    if isinstance(payload_ends, MIRNotCovered):
-        gaps.append(payload_ends)
+    payloads = _payload_conflicts(prepared)
+    if isinstance(payloads, MIRNotCovered):
+        gaps.append(payloads)
     else:
-        payloads = _payload_conflicts(prepared, payload_ends)
-        if isinstance(payloads, MIRNotCovered):
-            gaps.append(payloads)
-        else:
-            for conflict in payloads:
-                attribute(MIRStorageConflictKind.PAYLOAD_END, conflict.payload, conflict.holder,
-                          conflict.point, point_loc(conflict.point))
+        for conflict in payloads:
+            attribute(MIRStorageConflictKind.PAYLOAD_END, conflict.payload, conflict.holder,
+                      conflict.point, point_loc(conflict.point))
 
     # The strict replacement and call-effect passes reject stale aliases; the
     # freshness gaps above already withhold certification for such a body.

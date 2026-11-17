@@ -21,17 +21,33 @@ shows it on the hazard's own facts:
    path from the kill reads the holder's member (a non-call operand, a
    branch condition or a returned value at the holder or under it,
    directly or through an alias with exactly one referent) before every
-   holder carrying it is rebound or the body exits; a cycle with no read
-   refutes. When that strict walk refutes, the same walk in MAY mode
-   (`MIRWalkMode`) reads through a base with several referents, ends a
-   holder only at a rebind through a single-referent base, and chains any
-   copy of a tracked view: reached there, the hazard is MAY, cause
-   PARTIAL, citing that walk's reads;
+   holder carrying it is rebound or the body exits. Across a back edge a
+   holder is per pass (`_Track`): one rebound onto live storage (the
+   body's, or storage outside it) holds it NEW, and holds a freed value
+   again only at that storage's own kill (a region end, a statement
+   ending its payload, or one replacing it -- storage outside the body
+   only when the write lands on one object, or at the hazard's own kill);
+   a holder reset safely renews only onto the hazard's own storage, freed
+   again at every kill of that storage. Attribution: every path reads a
+   freed value and some path the hazard's own storage (a read of another
+   storage's freed value does not end a path's walk); a path reading
+   only another storage's freed value makes the hazard at most MAY,
+   cause PARTIAL, and the reads cited are those of its own storage. A
+   cycle with no way to a read refutes; a read
+   reached only by leaving a cycle that crosses no kill is at most MAY,
+   cause PARTIAL (`_solve`). When that strict walk refutes, the same walk
+   in MAY mode (`MIRWalkMode`) reads through a base with several
+   referents, ends a holder only at a rebind through a single-referent
+   base, and chains any copy of a tracked view: reached there, the hazard
+   is MAY, cause PARTIAL, citing that walk's reads;
 3. the escape is reached (store escape): from a statement that freshly
    stores the body loan, every path reaches a normal return with no
    rewrite of the stored place, the body loan being the entry's only
-   non-seeded loan there. A store into an `Own[R]` parameter's object is no
-   escape when the body neither returns nor hands on that object.
+   non-seeded loan there; a rewrite storing that loan alone again (the
+   next pass's store) is the store renewed, and a return reached only by
+   leaving a cycle with no renewed store is at most MAY. A store into an
+   `Own[R]` parameter's object is no escape when the body neither returns
+   nor hands on that object.
 
 A hazard rule 2 reaches strictly keeps rule 1's verdict. Anything else
 stays evidence; a witness that exceeds its node cap does too, and says so
@@ -44,17 +60,20 @@ from enum import Enum, auto
 from .call_contract import OWNING_PASSINGS
 from .dependencies import MIRCallerStore, MIRReferents, resolve_referents
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBorrow, MIRBranch, MIREdge, MIRFunction, MIRIsAlternative, MIRIteratorInit, MIRMove,
-    MIRPlace, MIRPoint, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionExtract, MIRWrap, statement_call,
-    statement_target, transfer_member, view_member,
+    MIRAlias, MIRAssign, MIRBlockId, MIRBorrow, MIRBranch, MIREdge, MIRFunction, MIRIsAlternative, MIRIteratorInit,
+    MIRMove, MIRPlace, MIRPoint, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionExtract, MIRWrap,
+    statement_call, statement_target, transfer_member, view_member,
 )
 from .prepare import MIRPrepared
 from ..thir.scalar_leaves import MIRClass
-from .reach import MIRReferent, reaches_definitely, referent_walk, replaced_below, storage_events
+from .reach import (
+    MIRReferent, reaches_definitely, referent_walk, replaced_below, storage_events,
+)
 from .region_flow import outgoing_edges
 from .shapes import REGION_STEPS, MIRContainerStructure, MIRDeref, MIRUnionPayload
 from .validate import reaches_element, statement_read_places
 from .value import MIRRecords, MIRValidationError
+from ..scc import strongly_connected_components
 
 
 class MIRVerdict(Enum):
@@ -132,6 +151,8 @@ class MIRWitness:
     effect: MIREffect | None = None
     # Why a MAY verdict is MAY; None for any other verdict.
     cause: MIRMayCause | None = None
+    # The kill lies on a feasible cycle of the body, so it recurs each pass.
+    looped: bool = False
 
     @property
     def warns(self) -> bool:
@@ -206,12 +227,44 @@ class _Body:
         self.dependencies = prepared.dependencies
         self.slots: Mapping[MIRSlotId, MIRSlot] = {s.id: s for s in fn.slots}
         self.blocks = {b.id: b for b in fn.blocks}
+        self.regions = prepared.regions
+        self.preds: dict[MIRBlockId, list[MIRBlockId]] = {}
+        for block in fn.blocks:
+            for t in self.successors(block):
+                self.preds.setdefault(t, []).append(block.id)
+        # The blocks on a feasible cycle: a kill there recurs each pass.
+        self.cyclic = frozenset(
+            bid for component in strongly_connected_components(self.blocks, lambda b: self.successors(self.blocks[b]))
+            for bid in component if len(component) > 1 or bid in self.successors(self.blocks[bid]))
+        # Every kill of storage by site: each region-exit edge ends the
+        # storage of the regions it leaves, each statement the storage it
+        # replaces and the scalar payloads it ends (`MIRStatementKills`).
+        self.kills: dict[MIRPoint | MIREdge, frozenset[MIRReferent]] = {
+            edge: frozenset(MIRReferent(MIRPlace(slot)) for slot in transition.ended)
+            for edge, transition in self.regions.edges.items() if transition.ended}
+        statement_kills = prepared.kills
+        self.spared: Mapping[MIRPoint, frozenset[MIRReferent]] = statement_kills.spared
+        for point in {*statement_kills.replacements, *statement_kills.payloads}:
+            killed = {r for replacement in statement_kills.replacements.get(point, ()) for r in replacement.storage}
+            killed |= {MIRReferent(place) for place in statement_kills.payloads.get(point, ())}
+            if killed:
+                self.kills[point] = frozenset(killed)
+
+    def in_scope(self, ref: MIRReferent, block: MIRBlockId) -> bool:
+        """Whether body storage `ref` names may be alive in `block`: the
+        block lies in its storage's duration region."""
+        duration = self.slots[ref.place.root].storage_duration
+        return not isinstance(duration, MIRRegionId) or duration in self.regions.chains[self.blocks[block].region]
 
     def state(self, point: MIRPoint) -> MIRReferents:
         return self.dependencies.referents.get(point, {})
 
     def successors(self, block) -> list:
-        return [t for e, t in outgoing_edges(block.id, block.terminator)
+        return [t for _, t in self.edges(block)]
+
+    def edges(self, block) -> list[tuple[MIREdge, MIRBlockId]]:
+        """The block's feasible outgoing edges, each with its target."""
+        return [(e, t) for e, t in outgoing_edges(block.id, block.terminator)
                 if t is not None and e in self.presence.edges]
 
     def rewrites(self, point: MIRPoint, *, transfers: bool = True) -> list[MIRPlace]:
@@ -239,11 +292,18 @@ class _Body:
         return [b for place in places for b in _bases(place, pre, True)]
 
 
-def _all_paths(start: object, step: Callable[[object], object]) -> tuple[bool | None, list[object]]:
-    """Whether every path from `start` reaches a node `step` answers 'T'
-    for (least fixpoint: a cycle without one refutes), and the 'T' nodes
-    explored; None past the node cap. `step` answers 'T', 'F' or the
-    successor nodes (every one of which must hold)."""
+def _all_paths(start: object, step: Callable[[object], object],
+               kills: Iterable[object] = ()) -> tuple[bool | None, list[object], bool, bool]:
+    """Rule 2's answer over the nodes `step` explores from `start`: it
+    answers 'T' (a read of the hazard's own freed storage), 'F', the
+    successor nodes (every one of which must hold), or `_Other` (a read of
+    another storage's freed value, then what the walk past it answers:
+    a later read of the hazard's own storage still counts); `kills` holds
+    the nodes that cross a kill once exploring is done. Answers whether
+    every path reads a freed value and some path the hazard's own (None
+    past the node cap), the 'T' nodes explored, whether the answer needs a
+    cycle that crosses no kill to end (`_solve`), and whether some path
+    reads only another storage's freed value (`mixed`)."""
     graph: dict[object, object] = {}
     order: list[object] = []
     todo = [start]
@@ -254,20 +314,72 @@ def _all_paths(start: object, step: Callable[[object], object]) -> tuple[bool | 
         result = step(node)
         graph[node] = result
         order.append(node)
-        if isinstance(result, list):
-            todo.extend(result)
+        rest = result.rest if isinstance(result, _Other) else result
+        if isinstance(rest, list):
+            todo.extend(rest)
             if len(graph) > NODE_CAP:
-                return None, []
-    value = {n: r == "T" for n, r in graph.items()}
-    changed = True
-    while changed:
-        changed = False
-        for n in order:
-            r = graph[n]
-            if isinstance(r, list) and r and not value[n] and all(value[s] for s in r):
-                value[n] = True
-                changed = True
-    return value[start], [n for n in order if graph[n] == "T"]
+                return None, [], False, False
+    kills = set(kills)
+    # A path has read a freed value at its first read of either kind; only the hazard's own counts for `own`.
+    full, ended = _solve({n: "O" if isinstance(r, _Other) else r for n, r in graph.items()}, kills,
+                         frozenset({"T", "O"}))
+    own, own_ended = _solve({n: r.rest if isinstance(r, _Other) else r for n, r in graph.items()}, kills)
+    hits = [n for n in order if graph[n] == "T"]
+    reached = full[start] and bool(hits)
+    every = own[start]
+    return reached, hits, reached and not (own_ended if every else ended)[start], reached and not every
+
+
+@dataclass(frozen=True)
+class _Other:
+    """A step that read another storage's freed value, then answered `rest`."""
+    rest: object
+
+
+def _solve(graph: Mapping[object, object], kills: set[object],
+           goals: frozenset[str] = frozenset({"T"})) -> tuple[dict[object, bool], dict[object, bool]]:
+    """Two answers over an explored graph (`goals`, 'F' or successor
+    lists), each node's: `full` -- every path reaches a goal node or stays
+    in a cycle forever, and some goal node is reachable (a cycle with no
+    way to a goal fails); `ended` -- every path reaches a goal node or
+    crosses a node of `kills` infinitely often, so only a cycle the
+    hazard's kill recurs in is taken to end. Linear in the explored
+    edges."""
+    def goal(r: object) -> bool:
+        return isinstance(r, str) and r in goals
+
+    preds: dict[object, list[object]] = {n: [] for n in graph}
+    for n, r in graph.items():
+        if isinstance(r, list):
+            for t in r:
+                preds[t].append(n)
+    live = {n for n, r in graph.items() if goal(r)}
+    stack = list(live)
+    while stack:
+        for q in preds[stack.pop()]:
+            if q not in live:
+                live.add(q)
+                stack.append(q)
+
+    def falsify(seeds: set[object]) -> dict[object, bool]:
+        bad = set(seeds)
+        stack = list(seeds)
+        while stack:
+            for q in preds[stack.pop()]:
+                if q not in bad and not goal(graph[q]):
+                    bad.add(q)
+                    stack.append(q)
+        return {n: n not in bad for n in graph}
+
+    dead = {n for n, r in graph.items() if not goal(r) and (not isinstance(r, list) or not r or n not in live)}
+    full = falsify(dead)
+    # A node also fails `ended` when it can stay, avoiding a goal, in a cycle with no kill node.
+    plain = {n for n, r in graph.items() if isinstance(r, list) and r and n not in kills}
+    cycles = set(dead)
+    for component in strongly_connected_components(plain, lambda n: [t for t in graph[n] if t in plain]):
+        if len(component) > 1 or component[0] in graph[component[0]]:
+            cycles.update(component)
+    return full, falsify(cycles)
 
 
 _POINTER_ONLY = (MIRIsAlternative, MIRBorrow, MIRAlias, MIRUnionExtract, MIRWrap, MIRIteratorInit)
@@ -284,15 +396,37 @@ class MIRWalkMode(Enum):
     MAY = auto()
 
 
-def _use_reached(body: _Body, start: MIRPoint, holder: MIRPlace,
-                 mode: MIRWalkMode = MIRWalkMode.STRICT) -> tuple[bool | None, tuple[MIRPoint, ...]]:
-    """Rule 2 from `start`: every feasible path reaches a non-call read of
-    `holder`'s member before every tracked holder is rebound or the body
-    exits, `mode` saying how a base with several referents counts
-    (`MIRWalkMode`). A whole block is one step: its statements run in order."""
+@dataclass(frozen=True)
+class _Freed:
+    """Storage a holder was renewed onto, since freed: reading it reads a
+    freed value, but not the hazard's own (rule 2's attribution)."""
+    storage: MIRReferent
+
+
+#: A tracked holder on one path: (place, None) holds the hazard's freed
+#: value (OLD); (place, storage) holds that live storage (NEW), freed
+#: again at that storage's own kill -- the hazard's own storage turns OLD
+#: there, any other `_Freed`; (place, _OWN) holds the hazard's own storage
+#: after a safe reset, freed again at any kill of that storage.
+_Track = tuple[MIRPlace, object]
+_OWN = "own"
+
+
+def _use_reached(body: _Body, start: MIRPoint, holder: MIRPlace, mode: MIRWalkMode = MIRWalkMode.STRICT,
+                 own: frozenset[MIRReferent] = frozenset(), site: MIRPoint | MIREdge | None = None
+                 ) -> tuple[bool | None, tuple[MIRPoint, ...], bool, bool]:
+    """Rule 2 from `start`, the point after the hazard's kill `site` of its
+    storage `own`: every feasible path reads `holder`'s member while a
+    tracked holder holds a freed value (`_Track`), and some path while it
+    holds the hazard's own; `mode` says how a base with several referents
+    counts (`MIRWalkMode`). A whole block is one step: its statements run
+    in order. Also answers, as `_all_paths` does, the reads of the
+    hazard's own storage, whether the answer needs a cycle that crosses no
+    kill to end, and whether some path reads only another storage's freed
+    value."""
     may = mode is MIRWalkMode.MAY
 
-    def reads_member(place: MIRPlace, tracked: frozenset[MIRPlace], state: MIRReferents) -> bool:
+    def reads_member(place: MIRPlace, tracked: Iterable[MIRPlace], state: MIRReferents) -> bool:
         return any(_member_under(x, k) for x, strength in _bases(place, state, False)
                    if may or strength is MIRVerdict.DEFINITE for k in tracked)
 
@@ -304,56 +438,161 @@ def _use_reached(body: _Body, start: MIRPoint, holder: MIRPlace,
     def definite_storage(place: MIRPlace, state: MIRReferents) -> list[MIRPlace]:
         return [b for b, strength in _bases(place, state, True) if strength is MIRVerdict.DEFINITE]
 
+    def owned(storage: MIRReferent) -> bool:
+        return any(w == storage or reaches_definitely(w, storage) for w in own)
+
+    def frees(where: object, storage: MIRReferent) -> bool:
+        """Whether a kill at `where` frees renewed `storage`. The hazard's
+        own kill frees its own storage whatever the write's strength (rule
+        1 weighed that); any other write frees storage outside the body
+        only when it lands on one object (`_Body.spared`)."""
+        if where == site and owned(storage):
+            return True
+        spared = body.spared.get(where, frozenset()) if storage.external else frozenset()
+        return any(k == storage or reaches_definitely(k, storage)
+                   for k in body.kills.get(where, ()) if k not in spared)
+
+    def kills_own(where: object) -> bool:
+        """Whether a kill at `where` frees the hazard's own storage (`frees`)."""
+        return where == site or any(frees(where, w) for w in own)
+
+    def cross(where: object, tracked: frozenset[_Track]) -> tuple[frozenset[_Track], bool]:
+        """The holders after a kill at `where`: a NEW one whose storage it
+        frees holds a freed value again -- the hazard's own (OLD) or another
+        (`_Freed`). Crossed: the kill frees what a holder holds."""
+        if where != site and where not in body.kills:
+            return tracked, False
+        out: set[_Track] = set()
+        crossed = False
+        for k, storage in tracked:
+            if storage is None:
+                crossed |= kills_own(where)
+            elif storage is _OWN:
+                # Every exit that ends the hazard's storage frees it, not only the hazard's own site.
+                if kills_own(where):
+                    storage, crossed = None, True
+            elif isinstance(storage, _Freed):
+                crossed |= kills_own(where) or frees(where, storage.storage)
+            elif frees(where, storage):
+                storage, crossed = (None if owned(storage) else _Freed(storage)), True
+            out.add((k, storage))
+        return frozenset(out), crossed
+
+    def renewed(k: MIRPlace, held: bool, post: MIRReferents, bid: MIRBlockId) -> set[_Track]:
+        """What a rebound `k` holds NEW: rebound from a tracked value (`held`)
+        straight onto live storage, that storage; back from a safe reset,
+        only the hazard's own storage."""
+        refs = post.get(k, frozenset())
+        # Storage outside the body is live too: its statement-level kills (a replacement) free it again.
+        live = [r for r in refs if not (r.static or r.held) and (r.external or body.in_scope(r, bid))]
+        if held:
+            if may:
+                return {(k, r) for r in live}
+            return {(k, live[0])} if len(refs) == 1 and live else set()
+        if k != holder:
+            return set()
+        hit = [r for r in refs if any(reaches_definitely(w, r) for w in own)
+               and (r.external or body.in_scope(r, bid))]
+        return {(k, _OWN)} if refs and (hit if may else len(hit) == len(refs)) else set()
+
+    def read(tracked: frozenset[_Track], uses: Callable[[list[MIRPlace]], bool]) -> str | None:
+        """'T' when a use reads a holder of the hazard's freed value, 'O'
+        when only one of another freed storage, else None."""
+        if uses([k for k, storage in tracked if storage is None]):
+            return "T"
+        if uses([k for k, storage in tracked if isinstance(storage, _Freed)]):
+            return "O"
+        return None
+
+    # An empty walk only matters where it can come back to the hazard's own kill.
+    returning = _reaching(body, site)
+    crossing: set[tuple] = set()
+
     def step(node: tuple) -> object:
         bid, index, tracked = node
         block = body.blocks[bid]
+        # The first read of another storage's freed value: the walk goes on for a read of the hazard's own.
+        other: int | None = None
+
+        def answered(result: object) -> object:
+            return result if other is None else (_Other(result), other)
         for i in range(index, len(block.statements)):
-            if not tracked:
-                return "F"
+            if not tracked and bid not in returning:
+                return answered("F")
             point = MIRPoint(bid, i)
             stmt = block.statements[i]
             pre = body.state(point)
+            post = body.state(MIRPoint(bid, i + 1))
             target = stmt.target if isinstance(stmt, MIRAssign) else None
-            chained: set[MIRPlace] = set()
+            chained: set[_Track] = set()
+            copies = False
             if statement_call(stmt) is None:
                 value = getattr(stmt, "value", None)
-                if target is not None and any(_target_effect(target, k) == "through" for k in tracked):
-                    return ("T", i)
-                if (not isinstance(value, _POINTER_ONLY)
-                        and any(reads_member(q, tracked, pre) for q in statement_read_places(stmt))):
-                    return ("T", i)
+
+                def uses(old: list[MIRPlace]) -> bool:
+                    if target is not None and any(_target_effect(target, k) == "through" for k in old):
+                        return True
+                    return (not isinstance(value, _POINTER_ONLY)
+                            and any(reads_member(q, old, pre) for q in statement_read_places(stmt)))
+                answer = read(tracked, uses)
+                if answer == "T":
+                    return (answer, i)
+                if answer == "O" and other is None:
+                    other = i
                 if isinstance(value, (MIRAlias, MIRBorrow)) and target is not None:
                     source = value.source if isinstance(value.source, MIRPlace) else MIRPlace(value.source)
-                    if reads_member(source, tracked, pre):
-                        post = body.state(MIRPoint(bid, i + 1))
-                        leaf = MIRPlace(target.root, target.projections)
+                    leaf = MIRPlace(target.root, target.projections)
+                    for k, storage in tracked:
+                        if not reads_member(source, (k,), pre):
+                            continue
+                        # A copy of a tracked holder carries what it holds on this path, never the joined state.
+                        copies = True
                         if may:
                             # A copy into a field through an alias (`a.s = v`) is read back through
                             # the object's other names, so chain it at the storage it lands in too.
-                            chained |= {b for b, _ in _bases(leaf, post, True)}
+                            chained |= {(b, storage) for b, _ in _bases(leaf, post, True)}
                         elif len(post.get(leaf, ())) == 1:
-                            chained.add(leaf)
-            kept = {k for k in tracked if not any(_target_effect(t, k) == "rebind" for t in rebinds(point))}
-            if may and target is not None:
-                # A MAY walk tracks a copy under every name it reached (`(*y).s` and the object's own `a.s`),
-                # so the body's own store ends a holder whose name re-roots to the same storage. A callee's
-                # published store only may run, so it ends only the holder it is spelled at.
-                own = definite_storage(target, pre)
-                kept = {k for k in kept
-                        if not any(_target_effect(t, b) == "rebind" for t in own for b in definite_storage(k, pre))}
-            tracked = frozenset(kept | chained)
-        if not tracked:
-            return "F"
+                            chained.add((leaf, storage))
+            tracked, crossed = cross(point, tracked)
+            if crossed:
+                crossing.add(node)
+            places = rebinds(point)
+            # A MAY walk tracks a copy under every name it reached (`(*y).s` and the object's own `a.s`),
+            # so the body's own store ends a holder whose name re-roots to the same storage. A callee's
+            # published store only may run, so it ends only the holder it is spelled at.
+            stored = definite_storage(target, pre) if may and target is not None else []
+
+            def rebound(k: MIRPlace) -> bool:
+                return (any(_target_effect(t, k) == "rebind" for t in places)
+                        or any(_target_effect(t, b) == "rebind" for t in stored for b in definite_storage(k, pre)))
+
+            held = {k for k, _ in tracked}
+            kept = {(k, storage) for k, storage in tracked if not rebound(k)}
+            fresh: set[_Track] = set()
+            if not copies:
+                for k in held | {holder}:
+                    if rebound(k):
+                        fresh |= renewed(k, k in held, post, bid)
+            tracked = frozenset(kept | fresh | chained)
         term = block.terminator
         state = body.state(MIRPoint(bid, len(block.statements)))
+        operand = (term.value if isinstance(term, MIRReturn) else term.condition if isinstance(term, MIRBranch)
+                   else None)
+        if operand is not None:
+            answer = read(tracked, lambda old: reads_member(MIRPlace(operand), old, state))
+            if answer == "T":
+                return (answer, len(block.statements))
+            if answer == "O" and other is None:
+                other = len(block.statements)
         if isinstance(term, MIRReturn):
-            if term.value is not None and reads_member(MIRPlace(term.value), tracked, state):
-                return ("T", len(block.statements))
-            return "F"
-        if isinstance(term, MIRBranch) and reads_member(MIRPlace(term.condition), tracked, state):
-            return ("T", len(block.statements))
-        successors = body.successors(block)
-        return [(t, 0, tracked) for t in successors] if successors else "F"
+            return answered("F")
+        out = []
+        for edge, t in body.edges(block):
+            after, crossed = cross(edge, tracked)
+            if crossed:
+                crossing.add(node)
+            out.append((t, 0, after))
+        return answered(out if out else "F")
 
     reads: dict[tuple, int] = {}
 
@@ -361,51 +600,83 @@ def _use_reached(body: _Body, start: MIRPoint, holder: MIRPlace,
         result = step(node)
         if isinstance(result, tuple):
             reads[node] = result[1]
-            return "T"
+            return result[0]
         return result
 
-    verdict, hits = _all_paths((start.block, start.index, frozenset({holder})), recorded)
-    return verdict, tuple(sorted({MIRPoint(n[0], reads[n]) for n in hits}, key=lambda p: (p.block.index, p.index)))
+    verdict, hits, weak, mixed = _all_paths((start.block, start.index, frozenset({(holder, None)})), recorded,
+                                            crossing)
+    return (verdict, tuple(sorted({MIRPoint(n[0], reads[n]) for n in hits}, key=lambda p: (p.block.index, p.index))),
+            weak, mixed)
+
+
+def _reaching(body: _Body, site: MIRPoint | MIREdge | None) -> frozenset[MIRBlockId]:
+    """The blocks from which a feasible path reaches `site` (a kill point or
+    the edge it leaves its block by)."""
+    if site is None:
+        return frozenset()
+    goal = site.block if isinstance(site, MIRPoint) else site.source
+    found = {goal}
+    stack = [goal]
+    while stack:
+        for q in body.preds.get(stack.pop(), ()):
+            if q not in found:
+                found.add(q)
+                stack.append(q)
+    return frozenset(found)
 
 
 def _escape_reached(body: _Body, key: MIRPlace, origin: MIRReferent,
-                    returned: bool) -> Callable[[MIRPoint], bool | None]:
-    """Rule 3 for one stored place and origin, one backward pass over the
-    body: from a point, whether every feasible path reaches a normal return
-    with no rewrite of `key` on the way, `origin` being the only
-    non-seeded loan of `key` there (least fixpoint). A store into a record
-    the body returns (`returned`) escapes only at a return of that record."""
+                    returned: bool) -> Callable[[MIRPoint], bool | str]:
+    """Rule 3 for one stored place and origin, one pass over the body's
+    blocks: from a point, whether every feasible path reaches a normal
+    return with no rewrite of `key` on the way, `origin` being the only
+    non-seeded loan of `key` there. A rewrite that leaves `origin` the
+    entry's only loan is the next pass's store, no rewrite; a cycle
+    through one, or through an end of the origin's storage, is taken to
+    end, and an answer that needs any other cycle to end is 'weak'
+    (`_solve`). A store into a record the body returns (`returned`)
+    escapes only at a return of that record."""
     rewritten: dict[MIRPoint, bool] = {}
+    renewing: set[MIRBlockId] = set()
 
     def rewrites(point: MIRPoint) -> bool:
         if point not in rewritten:
-            rewritten[point] = any(_target_effect(t, key) == "rebind" for t in body.rewrites(point))
+            hit = any(_target_effect(t, key) == "rebind" for t in body.rewrites(point))
+            loans = body.state(MIRPoint(point.block, point.index + 1)).get(key, frozenset())
+            if hit and loans == {origin}:
+                renewing.add(point.block)
+                hit = False
+            rewritten[point] = hit
         return rewritten[point]
 
-    def scan(bid, index: int, entry: Mapping) -> bool:
+    def scan(bid: MIRBlockId, index: int) -> object:
         block = body.blocks[bid]
         for i in range(index, len(block.statements)):
             if rewrites(MIRPoint(bid, i)):
-                return False
+                return "F"
         term = block.terminator
         if isinstance(term, MIRReturn):
             if returned and term.value != key.root:
-                return False
+                return "F"
             loans = body.state(MIRPoint(bid, len(block.statements))).get(key, frozenset())
             nonheld = [o for o in loans if not o.held]
-            return len(nonheld) == 1 and nonheld[0] == origin
-        successors = body.successors(block)
-        return bool(successors) and all(entry.get(t, False) for t in successors)
+            return "T" if len(nonheld) == 1 and nonheld[0] == origin else "F"
+        return body.successors(body.blocks[bid]) or "F"
 
-    entry: dict[object, bool] = {bid: False for bid in body.blocks}
-    changed = True
-    while changed:
-        changed = False
-        for bid in reversed(list(body.blocks)):
-            if not entry[bid] and scan(bid, 0, entry):
-                entry[bid] = True
-                changed = True
-    return lambda point: scan(point.block, point.index, entry)
+    graph = {bid: scan(bid, 0) for bid in body.blocks}
+    # A pass that ends the origin's storage (its region's exit edge) kills it too.
+    killing = {site.source for site, killed in body.kills.items()
+               if isinstance(site, MIREdge) and any(k == origin or reaches_definitely(k, origin) for k in killed)}
+    full, ended = _solve(graph, renewing | killing)
+
+    def answer(point: MIRPoint) -> bool | str:
+        found = scan(point.block, point.index)
+        if not isinstance(found, list):
+            return found == "T"
+        if not all(full[t] for t in found):
+            return False
+        return True if all(ended[t] for t in found) else "weak"
+    return answer
 
 
 # --- the rules --------------------------------------------------------------------
@@ -532,11 +803,16 @@ def _store_reached(body: _Body, hazard: MIRHazard, reached: Reached) -> MIRWitne
     key = hazard.holder
     found: list[MIRPoint] = []
     returns: list[MIRPoint] = []
+    # The stores whose escape needs a cycle with no renewed store to end.
+    weak: set[MIRPoint] = set()
 
     def escapes(origin: MIRReferent, point: MIRPoint, returned: bool = False) -> bool:
         if (key, origin, returned) not in reached:
             reached[(key, origin, returned)] = _escape_reached(body, key, origin, returned)
-        return bool(reached[(key, origin, returned)](point))
+        answer = reached[(key, origin, returned)](point)
+        if answer == "weak":
+            weak.add(point)
+        return bool(answer)
 
     for store in hazard.stores:
         origins = [r for r in store.loans if r.place == hazard.target and not r.external]
@@ -545,8 +821,11 @@ def _store_reached(body: _Body, hazard: MIRHazard, reached: Reached) -> MIRWitne
         origin = origins[0]
         if store.result:
             returns.append(store.point)
-            found.extend(p for p in _fresh_stores(body, key, origin)
-                         if escapes(origin, MIRPoint(p.block, p.index + 1), returned=True))
+            for p in _fresh_stores(body, key, origin):
+                if escapes(origin, MIRPoint(p.block, p.index + 1), returned=True):
+                    found.append(p)
+                    if MIRPoint(p.block, p.index + 1) in weak:
+                        weak.add(p)
             continue
         if store.point.index < 1:
             continue
@@ -563,13 +842,19 @@ def _store_reached(body: _Body, hazard: MIRHazard, reached: Reached) -> MIRWitne
             fresh = origin in resolve_referents(place, pre, body.slots, body.fn.record_layouts)
         if fresh and escapes(origin, store.point):
             found.append(prev)
+            if store.point in weak:
+                weak.add(prev)
     slot = body.slots[key.root]
     if (slot.kind is MIRSlotKind.PARAMETER and slot.shape.owns_storage
             and not any(store.result for store in hazard.stores)):
         if not _own_handed_on(body, key.root):
             return MIRWitness(hazard, MIRVerdict.EVIDENCE)
-    return MIRWitness(hazard, _proven(bool(found)), tuple(sorted(set(returns), key=lambda p: (p.block.index, p.index))),
-                      tuple(sorted(set(found), key=lambda p: (p.block.index, p.index))))
+    verdict = _proven(bool(found))
+    if found and all(p in weak for p in found):
+        verdict = MIRVerdict.MAY
+    return MIRWitness(hazard, verdict, tuple(sorted(set(returns), key=lambda p: (p.block.index, p.index))),
+                      tuple(sorted(set(found), key=lambda p: (p.block.index, p.index))),
+                      cause=MIRMayCause.PARTIAL if verdict is MIRVerdict.MAY else None)
 
 
 def decide(prepared: MIRPrepared, hazards: Iterable[MIRHazard]) -> tuple[MIRWitness, ...]:
@@ -577,7 +862,8 @@ def decide(prepared: MIRPrepared, hazards: Iterable[MIRHazard]) -> tuple[MIRWitn
     witness runs once per kill point and holder, the escape witness once per
     stored place and origin."""
     body = _Body(prepared)
-    uses: dict[tuple[MIRPoint, MIRPlace, MIRWalkMode], tuple[bool | None, tuple[MIRPoint, ...]]] = {}
+    hazards = tuple(hazards)
+    uses: dict[tuple, tuple[bool | None, tuple[MIRPoint, ...], bool, bool]] = {}
     reached: Reached = {}
     found: list[MIRWitness] = []
     for hazard in hazards:
@@ -596,24 +882,29 @@ def decide(prepared: MIRPrepared, hazards: Iterable[MIRHazard]) -> tuple[MIRWitn
                 continue
         start = _use_start(body, hazard)
 
-        def use(mode: MIRWalkMode) -> tuple[bool | None, tuple[MIRPoint, ...]]:
-            key = (start, hazard.holder, mode)
+        def use(mode: MIRWalkMode) -> tuple[bool | None, tuple[MIRPoint, ...], bool, bool]:
+            key = (hazard.site, hazard.holder, mode, hazard.written)
             if key not in uses:
-                uses[key] = _use_reached(body, start, hazard.holder, mode)
+                uses[key] = _use_reached(body, start, hazard.holder, mode, hazard.written, hazard.site)
             return uses[key]
 
-        answered, reads = use(MIRWalkMode.STRICT)
+        answered, reads, weak, mixed = use(MIRWalkMode.STRICT)
         verdict = reach if answered else MIRVerdict.EVIDENCE
+        if answered and (weak or mixed) and verdict is MIRVerdict.DEFINITE:
+            # The read is reached only by leaving a cycle no kill recurs in, which may never end, or some
+            # path reads only storage the holder was renewed onto, freed by another kill.
+            verdict, cause = MIRVerdict.MAY, MIRMayCause.PARTIAL
         if answered is False:
             # Only a MAY walk reaches the use: the holder only may be read.
-            answered, reads = use(MIRWalkMode.MAY)
+            answered, reads, _, _ = use(MIRWalkMode.MAY)
             if answered:
                 verdict, cause = MIRVerdict.MAY, MIRMayCause.PARTIAL
         warns = verdict is not MIRVerdict.EVIDENCE
         effect = (replacement_effect(hazard, body.slots, body.fn.record_layouts)
                   if warns and hazard.kind is MIRHazardKind.REPLACEMENT else None)
+        site = hazard.site.block if isinstance(hazard.site, MIRPoint) else hazard.site.source
         found.append(MIRWitness(hazard, verdict, reads if warns else (), capped=answered is None, effect=effect,
-                                cause=cause if verdict is MIRVerdict.MAY else None))
+                                cause=cause if verdict is MIRVerdict.MAY else None, looped=site in body.cyclic))
     return tuple(_escape_decides(found))
 
 

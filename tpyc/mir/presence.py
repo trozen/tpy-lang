@@ -286,7 +286,7 @@ def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId], point:
     return issues
 
 
-def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
+def _analyze_presence(fn: MIRFunction, resolve: Resolve | None, regions: MIRRegionFlow) -> MIRPresence:
     """Solve selection/freshness after structural and definite-assignment
     checks. Without `resolve` no selection on a projected place is recorded
     or demanded: the facts the first dependency run reads, before referents
@@ -294,7 +294,6 @@ def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
     demanded, each ending where `_kill_field_facts` says over the referents
     `resolve` gives."""
     blocks = {b.id: b for b in fn.blocks}
-    regions = MIRRegionFlow(fn)
     edge_facts: dict[MIREdge, Facts] = {}
     booleans = {s.id for s in fn.slots if s.type == BOOL and s.shape.is_scalar}
     slots = {s.id: s for s in fn.slots}

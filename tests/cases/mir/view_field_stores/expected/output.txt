@@ -10,6 +10,9 @@ store_global 40
 set_buf xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 outer_read 41
 outer_replaced xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+wrap_copy 2
+store_and_replace xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+put 1 p
 make m
 made_replaced xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 own_result_seed xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -22,14 +25,12 @@ consume_built 41
 consume_named 6
 private_own_alias 41
 own_write_transfer xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-wrap_copy 2
 factory_copy 42
+wrap_copy_replaced xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 1
 frozen_fields 4
-store_and_replace xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 transfer_replace xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 alias_result xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 borrowed_result xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-put 1 p
 eager True
 call_fill static 51
 call_fill_other static
@@ -38,9 +39,8 @@ reused_construct static
 reused_construct 52
 stamped 1
 reseat_self static
-member_self static
-wrap_copy_replaced xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 1
 wrap_move 1
+member_self static
 member_fresh lit
 member_alias static
 member_param p
@@ -58,3 +58,12 @@ kid_temp 1
 fixed_base 3
 shell_temp 1
 element_view_replaced xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+cond_store x
+store_reset 0
+store_reset 1
+store_reset safe
+store_reset_in_body 0
+store_reset_in_body 1
+store_reset_in_body safe
+fill_other safe
+fill_other_loop safe

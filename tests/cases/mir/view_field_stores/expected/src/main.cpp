@@ -5,12 +5,6 @@ namespace tpyapp::main {
 
 std::string G;
 
-// def mk(k: int32) -> str:
-//     return "x" * (40 + k)
-std::string mk(int32_t k) {
-    return (::tpy::str_repeat("x", (::tpy::add_check<int32_t>(40, k))));
-}
-
 // # free function: the callee stored b's loan in t; b is replaced while t lives
 // # (BUGS.md#record-view-member-source-replaced)
 // def retained_by_callee(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
@@ -22,12 +16,12 @@ std::string mk(int32_t k) {
 //         b = mk(k + 2)  # tpyc: warning(/this assignment frees the old value of 'b', and 't.s' may still view it/)
 //     print("retained_by_callee", t.s)
 void retained_by_callee(int32_t k, bool flag) {
-    std::string a = ::tpyapp::main::mk(k);
-    std::string b = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    Tok t = Tok(a, 1);
+    std::string a = ::tpyapp::fixtures::mk(k);
+    std::string b = ::tpyapp::fixtures::mk((::tpy::add_check<int32_t>(k, 1)));
+    ::tpyapp::fixtures::Tok t = ::tpyapp::fixtures::Tok(a, 1);
     t.reset(b);
     if (flag) {
-        b = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 2)));
+        b = ::tpyapp::fixtures::mk((::tpy::add_check<int32_t>(k, 2)));
     }
     std::cout << "retained_by_callee" << " " << t.s << "\n" << ::tpy::check_signals;
 }
@@ -42,12 +36,12 @@ void retained_by_callee(int32_t k, bool flag) {
 //         b = mk(k + 2)  # tpyc: warning(/this assignment frees the old value of 'b', and 't.s' may still view it/)
 //     print("maybe_retained", t.s)
 void maybe_retained(int32_t k, bool flag) {
-    std::string a = ::tpyapp::main::mk(k);
-    std::string b = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    Tok t = Tok(a, 1);
+    std::string a = ::tpyapp::fixtures::mk(k);
+    std::string b = ::tpyapp::fixtures::mk((::tpy::add_check<int32_t>(k, 1)));
+    ::tpyapp::fixtures::Tok t = ::tpyapp::fixtures::Tok(a, 1);
     t.maybe(b, flag);
     if (flag) {
-        b = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 2)));
+        b = ::tpyapp::fixtures::mk((::tpy::add_check<int32_t>(k, 2)));
     }
     std::cout << "maybe_retained" << " " << t.s << "\n" << ::tpy::check_signals;
 }
@@ -61,11 +55,11 @@ void maybe_retained(int32_t k, bool flag) {
 //     a = mk(k + 2)
 //     print("direct_write", t.s, a)
 void direct_write(int32_t k) {
-    std::string a = ::tpyapp::main::mk(k);
-    std::string b = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    Tok t = Tok(a, 1);
+    std::string a = ::tpyapp::fixtures::mk(k);
+    std::string b = ::tpyapp::fixtures::mk((::tpy::add_check<int32_t>(k, 1)));
+    ::tpyapp::fixtures::Tok t = ::tpyapp::fixtures::Tok(a, 1);
     t.s = b;
-    a = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 2)));
+    a = ::tpyapp::fixtures::mk((::tpy::add_check<int32_t>(k, 2)));
     std::cout << "direct_write" << " " << t.s << " " << a << "\n" << ::tpy::check_signals;
 }
 
@@ -79,12 +73,12 @@ void direct_write(int32_t k) {
 //         b = mk(k + 2)  # tpyc: warning(/this assignment frees the old value of 'b'/)
 //     print("direct_write_source", t.s)
 void direct_write_source(int32_t k, bool flag) {
-    std::string a = ::tpyapp::main::mk(k);
-    std::string b = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    Tok t = Tok(a, 1);
+    std::string a = ::tpyapp::fixtures::mk(k);
+    std::string b = ::tpyapp::fixtures::mk((::tpy::add_check<int32_t>(k, 1)));
+    ::tpyapp::fixtures::Tok t = ::tpyapp::fixtures::Tok(a, 1);
     t.s = b;
     if (flag) {
-        b = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 2)));
+        b = ::tpyapp::fixtures::mk((::tpy::add_check<int32_t>(k, 2)));
     }
     std::cout << "direct_write_source" << " " << t.s << "\n" << ::tpy::check_signals;
 }
@@ -94,15 +88,15 @@ void direct_write_source(int32_t k, bool flag) {
 // def fill(t: Tok, k: int32) -> None:  # tpyc: mir(conflict /store_escape/) mir_summary(opaque /^summary stores a loan of the body's storage$/)
 //     buf = mk(k)
 //     t.s = buf  # tpyc: warning(/'buf' is freed when 'fill' returns/)
-void fill(Tok& t, int32_t k) {
-    std::string buf = ::tpyapp::main::mk(k);
+void fill(::tpyapp::fixtures::Tok& t, int32_t k) {
+    std::string buf = ::tpyapp::fixtures::mk(k);
     t.s = buf;
 }
 
-// # free function: a literal's static storage stored into the caller's record
+// # free function: a literal's static storage stored into the caller's record, replacing the caller's loan
 // def fill_static(t: Tok) -> None:  # tpyc: mir(covered) mir_summary(known)
-//     t.s = "lit"  # tpyc: mir_borrows(t.s, t.s|static)
-void fill_static(Tok& t) {
+//     t.s = "lit"  # tpyc: mir_borrows(t.s, static)
+void fill_static(::tpyapp::fixtures::Tok& t) {
     t.s = "lit";
 }
 
@@ -113,22 +107,22 @@ void fill_static(Tok& t) {
 //     fill_static(t)  # tpyc: mir_borrows(t.s, a|static)
 //     return len(t.s)
 int32_t static_filled(int32_t k) {
-    std::string a = ::tpyapp::main::mk(k);
-    Tok t = Tok(a, 1);
+    std::string a = ::tpyapp::fixtures::mk(k);
+    ::tpyapp::fixtures::Tok t = ::tpyapp::fixtures::Tok(a, 1);
     ::tpyapp::main::fill_static(t);
     return ::tpy::__len__(t.s);
 }
 
-// # free function: a body-local buffer stored per iteration; its scope ends at the back edge,
-// # a non-terminal edge, while the caller's record still holds it
+// # free function: a body-local buffer stored per iteration, ending at the back edge while the caller's
+// # record still holds it; each pass's store renews the escape, so the last one reaches the return
 // def loop_store(t: Tok, n: int32) -> None:  # tpyc: mir(conflict /scope_end/) mir_summary(opaque /^summary stores a loan of the body's storage$/)
 //     for i in range(n):
 //         buf = mk(i)
-//         t.s = buf
-void loop_store(Tok& t, int32_t n) {
+//         t.s = buf  # tpyc: warning(/'buf' is freed when 'loop_store' returns, but 't.s' keeps a view of it/)
+void loop_store(::tpyapp::fixtures::Tok& t, int32_t n) {
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        std::string buf = ::tpyapp::main::mk(i);
+        std::string buf = ::tpyapp::fixtures::mk(i);
         t.s = buf;
     }
 }
@@ -137,7 +131,7 @@ void loop_store(Tok& t, int32_t n) {
 // def store_member(t: Tok, r: R) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary transfer source is a member or element$/)
 //     v: StrView = r.buf
 //     t.s = v
-void store_member(Tok& t, const R& r) {
+void store_member(::tpyapp::fixtures::Tok& t, const ::tpyapp::fixtures::R& r) {
     std::string_view v = r.buf;
     t.s = v;
 }
@@ -145,7 +139,7 @@ void store_member(Tok& t, const R& r) {
 // # free function: a global's loan stored into the caller's record has no transfer form
 // def store_global(t: Tok) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary transfer source outside the parameters$/)
 //     t.s = G
-void store_global(Tok& t) {
+void store_global(::tpyapp::fixtures::Tok& t) {
     t.s = G;
 }
 
@@ -155,8 +149,8 @@ void store_global(Tok& t) {
 //     o = Outer(Tok(a, 1), 2)
 //     return len(o.inner.s)
 int32_t outer_read(int32_t k) {
-    std::string a = ::tpyapp::main::mk(k);
-    Outer o = Outer(Tok(a, 1), 2);
+    std::string a = ::tpyapp::fixtures::mk(k);
+    ::tpyapp::fixtures::Outer o = ::tpyapp::fixtures::Outer(::tpyapp::fixtures::Tok(a, 1), 2);
     return ::tpy::__len__(o.inner.s);
 }
 
@@ -169,821 +163,12 @@ int32_t outer_read(int32_t k) {
 //         a = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'a'/)
 //     print("outer_replaced", o.inner.s)
 void outer_replaced(int32_t k, bool flag) {
-    std::string a = ::tpyapp::main::mk(k);
-    Outer o = Outer(Tok(a, 1), 2);
+    std::string a = ::tpyapp::fixtures::mk(k);
+    ::tpyapp::fixtures::Outer o = ::tpyapp::fixtures::Outer(::tpyapp::fixtures::Tok(a, 1), 2);
     if (flag) {
-        a = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
+        a = ::tpyapp::fixtures::mk((::tpy::add_check<int32_t>(k, 1)));
     }
     std::cout << "outer_replaced" << " " << o.inner.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: an owned result whose member holds the parameter's loan
-// def make(s: str) -> Own[Tok]:  # tpyc: mir(covered) mir_summary(known)
-//     return Tok(s, 2)
-Tok make(std::string_view s) {
-    return Tok(s, 2);
-}
-
-// # free function: the result of make holds b's loan; b is replaced while t lives
-// # (BUGS.md#record-view-member-source-replaced)
-// def made_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     b = mk(k)
-//     t = make(b)  # tpyc: mir_borrows(t.s, b)
-//     if flag:
-//         b = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b'/)
-//     print("made_replaced", t.s)
-void made_replaced(int32_t k, bool flag) {
-    std::string b = ::tpyapp::main::mk(k);
-    Tok t = ::tpyapp::main::make(b);
-    if (flag) {
-        b = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    }
-    std::cout << "made_replaced" << " " << t.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: an owned result whose member views a body-local buffer
-// # (BUGS.md#record-view-field-escapes-local-buffer)
-// def make_local(k: int32) -> Own[Tok]:  # tpyc: mir(conflict /store_escape/)
-//     buf = mk(k)
-//     return Tok(buf, 3)  # tpyc: warning(/'buf' is freed when 'make_local' returns/)
-Tok make_local(int32_t k) {
-    std::string buf = ::tpyapp::main::mk(k);
-    return Tok(buf, 3);
-}
-
-// # free function: the result keeps the argument's own stored loan on the path that does not store
-// def maybe_own(r: Own[Tok], s: str, f: bool) -> Own[Tok]:  # tpyc: mir(covered) mir_summary(known)
-//     if f:
-//         r.s = s
-//     return r
-Tok maybe_own(Tok&& r, std::string_view s, bool f) {
-    if (f) {
-        r.s = s;
-    }
-    return r;
-}
-
-// # free function: t holds b.text's loan through maybe_own's result; b.text is replaced while t lives
-// # (BUGS.md#record-view-member-source-replaced)
-// def own_result_seed(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     b = Buf(mk(k))
-//     t = maybe_own(Tok(b.text, 1), "lit", flag)
-//     if flag:
-//         b.text = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b.text', and 't.s' may still view it/)
-//     # the call binds t in a block after the call's own, so the loans are read here
-//     print("own_result_seed", t.s)  # tpyc: mir_borrows(t.s, b.text|static)
-void own_result_seed(int32_t k, bool flag) {
-    Buf b = Buf(::tpyapp::main::mk(k));
-    Tok t = ::tpyapp::main::maybe_own(Tok(b.text, 1), "lit", flag);
-    if (flag) {
-        b.text = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    }
-    std::cout << "own_result_seed" << " " << t.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: the same through a member record of the handed-over record
-// def maybe_outer(o: Own[Outer], s: str, f: bool) -> Own[Outer]:  # tpyc: mir(covered) mir_summary(known)
-//     if f:
-//         o.inner.s = s
-//     return o
-Outer maybe_outer(Outer&& o, std::string_view s, bool f) {
-    if (f) {
-        o.inner.s = s;
-    }
-    return o;
-}
-
-// # free function: o.inner holds b.text's loan through maybe_outer's result
-// # (BUGS.md#record-view-member-source-replaced)
-// def own_member_seed(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     b = Buf(mk(k))
-//     o = maybe_outer(Outer(Tok(b.text, 1), 2), "lit", flag)
-//     if flag:
-//         b.text = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b.text', and 'o.inner.s' may still view it/)
-//     print("own_member_seed", o.inner.s)
-void own_member_seed(int32_t k, bool flag) {
-    Buf b = Buf(::tpyapp::main::mk(k));
-    Outer o = ::tpyapp::main::maybe_outer(Outer(Tok(b.text, 1), 2), "lit", flag);
-    if (flag) {
-        b.text = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    }
-    std::cout << "own_member_seed" << " " << o.inner.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: an Own parameter returned as it came keeps its stored loan
-// def ident(r: Own[Tok]) -> Own[Tok]:  # tpyc: mir(covered) mir_summary(known)
-//     return r
-Tok ident(Tok&& r) {
-    return r;
-}
-
-// # free function: t holds b.text's loan through ident's result
-// # (BUGS.md#record-view-member-source-replaced)
-// def ident_kept(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     b = Buf(mk(k))
-//     t = ident(Tok(b.text, 1))
-//     if flag:
-//         b.text = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b.text'/)
-//     print("ident_kept", t.s)  # tpyc: mir_borrows(t.s, b.text)
-void ident_kept(int32_t k, bool flag) {
-    Buf b = Buf(::tpyapp::main::mk(k));
-    Tok t = ::tpyapp::main::ident(Tok(b.text, 1));
-    if (flag) {
-        b.text = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    }
-    std::cout << "ident_kept" << " " << t.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: an owned result built in the body views s, which may view b.text, replaced before the
-// # return: a precondition the body publishes, checked at callers MIR analyzes (BUGS.md#record-view-member-source-replaced)
-// def make_replace(s: str, b: Buf, flag: bool) -> Own[Tok]:  # tpyc: mir(conflict /alias_obligation/)
-//     t = Tok(s, 1)
-//     if flag:
-//         b.text = mk(4)
-//     return t
-Tok make_replace(std::string_view s, Buf& b, bool flag) {
-    Tok t = Tok(s, 1);
-    if (flag) {
-        b.text = ::tpyapp::main::mk(4);
-    }
-    return t;
-}
-
-// # free function: the call replaces b.text and fills t with its loan, so passing b.text beside b is
-// # warned at the call: make_replace's no-alias obligation (BUGS.md#record-view-member-source-replaced)
-// def made_replace(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     b = Buf(mk(k))
-//     t = make_replace(b.text, b, flag)  # tpyc: warning(/argument 'b.text' is what 'make_replace' modifies/) warning(/this call frees the old value of 'b.text'/)
-//     print("made_replace", t.s)
-void made_replace(int32_t k, bool flag) {
-    Buf b = Buf(::tpyapp::main::mk(k));
-    Tok t = ::tpyapp::main::make_replace(b.text, b, flag);
-    std::cout << "made_replace" << " " << t.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: an Own parameter's stored loans come from the caller
-// # (only `t.s` is read, so the handed-over record is never consumed: the warning is right)
-// def consume(t: Own[Tok]) -> int32:  # tpyc: mir(covered) mir_summary(known) warning(/never consumed/)
-//     return len(t.s)
-int32_t consume(Tok&& t) {
-    return ::tpy::__len__(t.s);
-}
-
-// # free function: a body-local buffer stored into an Own parameter's object escapes the call
-// # (BUGS.md#record-view-field-escapes-local-buffer)
-// # the Own parameter is only read or written in place, never handed on: the warning is right
-// def own_store_local(t: Own[Tok], k: int32) -> int32:  # tpyc: mir(conflict /store_escape/) mir_summary(opaque /^summary stores a loan of the body's storage$/) warning(/never consumed/)
-//     buf = mk(k)
-//     t.s = buf
-//     return t.n
-int32_t own_store_local(Tok&& t, int32_t k) {
-    std::string buf = ::tpyapp::main::mk(k);
-    t.s = buf;
-    return t.n;
-}
-
-// # free function: a parameter's loan stored into an Own parameter's object is no transfer: no
-// # holder of the caller's reads that object after the call (a moved name's MOVE makes one a
-// # retention conflict at the caller)
-// # the Own parameter is only read or written in place, never handed on: the warning is right
-// def own_store_param(t: Own[Tok], s: str) -> int32:  # tpyc: mir(covered) mir_summary(known) warning(/never consumed/)
-//     t.s = s
-//     return t.n
-int32_t own_store_param(Tok&& t, std::string_view s) {
-    t.s = s;
-    return t.n;
-}
-
-// # free function: a record built for the call is handed to the Own parameter
-// def consume_built(k: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
-//     a = mk(k)
-//     return consume(Tok(a, 1))
-int32_t consume_built(int32_t k) {
-    std::string a = ::tpyapp::main::mk(k);
-    return ::tpyapp::main::consume(Tok(a, 1));
-}
-
-// # free function: a named record handed to an Own parameter
-// def consume_named(k: int32) -> int32:  # tpyc: mir(covered)
-//     t = Tok("static", k)
-//     return consume(t)
-int32_t consume_named(int32_t k) {
-    Tok t = Tok("static", k);
-    return ::tpyapp::main::consume(std::move(t));
-}
-
-// # free function: a replacement through a lent parameter may reach what the Own parameter's object views
-// # (BUGS.md#record-view-member-source-replaced)
-// # the Own parameter is only read or written in place: the warning is right; its view is the caller's choice (opaque summary)
-// def change(a: R, b: Own[R], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/) mir_summary(opaque /summary retention/) warning(/never consumed/)
-//     if flag:
-//         a.buf = mk(5)
-//     return len(b.s)
-int32_t change(R& a, R&& b, bool flag) {
-    if (flag) {
-        a.buf = ::tpyapp::main::mk(5);
-    }
-    return ::tpy::__len__(b.s);
-}
-
-// # free function: one named record lent and handed over stays refused, which keeps an Own
-// # parameter's object private to the callee: the call refuses first at the callee's opaque
-// # summary; behind it, the handed-over argument is the temporary sema's copy builds, which no
-// # owned argument form admits
-// def private_own_alias(k: int32) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
-//     r = R(mk(k), "static")
-//     v: StrView = r.buf
-//     r.s = v
-//     # a named record at an Own parameter is copied, as the warning says; the copy keeps the callee's buffer its own
-//     return change(r, r, False)  # tpyc: warning(/copies R/)
-int32_t private_own_alias(int32_t k) {
-    R r = R(::tpyapp::main::mk(k), "static");
-    std::string_view v = r.buf;
-    r.s = v;
-    R __tmp_1 = r;
-    return ::tpyapp::main::change(r, std::move(__tmp_1), false);
-}
-
-// # free function: a store into t beside a replacement through an Own parameter
-// # the Own parameter is only read or written in place, never handed on: the warning is right
-// def store_replace(t: Tok, s: str, b: Own[Buf], flag: bool) -> None:  # tpyc: mir(covered) mir_summary(known) warning(/never consumed/)
-//     t.s = s
-//     if flag:
-//         b.text = mk(6)
-void store_replace(Tok& t, std::string_view s, Buf&& b, bool flag) {
-    t.s = s;
-    if (flag) {
-        b.text = ::tpyapp::main::mk(6);
-    }
-}
-
-// # free function: the Own argument is a named record, so the call stays refused
-// def own_write_transfer(k: int32, flag: bool) -> None:  # tpyc: mir(uncovered /^constructor argument type$/)
-//     b = Buf(mk(k))
-//     t = Tok("static", 1)
-//     # a named record at an Own parameter is copied, as the warning says; the copy keeps the callee's buffer its own
-//     store_replace(t, b.text, b, flag)  # tpyc: warning(/copies Buf/)
-//     print("own_write_transfer", t.s)
-void own_write_transfer(int32_t k, bool flag) {
-    Buf b = Buf(::tpyapp::main::mk(k));
-    Tok t = Tok("static", 1);
-    Buf __tmp_1 = b;
-    ::tpyapp::main::store_replace(t, b.text, std::move(__tmp_1), flag);
-    std::cout << "own_write_transfer" << " " << t.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: a named record's copy handed to an Own constructor parameter carries its stored loan
-// def wrap_copy(t: Tok) -> int32:  # tpyc: mir(covered)
-//     w = Wrap(copy(t))
-//     return w.t.n
-int32_t wrap_copy(const Tok& t) {
-    Wrap w = Wrap(Tok(t));
-    return w.t.n;
-}
-
-// # free function: the copy views b.text, which is replaced while the wrapper lives
-// # (BUGS.md#record-view-member-source-replaced)
-// def wrap_copy_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     b = Buf(mk(k))
-//     t = Tok(b.text, 1)
-//     w = Wrap(copy(t))
-//     if flag:
-//         b.text = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b.text'/)
-//     print("wrap_copy_replaced", w.t.s, t.n)
-void wrap_copy_replaced(int32_t k, bool flag) {
-    Buf b = Buf(::tpyapp::main::mk(k));
-    Tok t = Tok(b.text, 1);
-    Wrap w = Wrap(Tok(t));
-    if (flag) {
-        b.text = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    }
-    std::cout << "wrap_copy_replaced" << " " << w.t.s << " " << t.n << "\n" << ::tpy::check_signals;
-}
-
-// # free function: a named record's copy handed to an Own function parameter carries its stored loan
-// # into the owned result
-// def factory_copy(k: int32) -> int32:  # tpyc: mir(covered)
-//     a = mk(k)
-//     t = Tok(a, 1)
-//     u = ident(copy(t))
-//     # the call binds u in a block after the call's own, so the loans are read here
-//     return len(u.s) + t.n  # tpyc: mir_borrows(u.s, a)
-int32_t factory_copy(int32_t k) {
-    std::string a = ::tpyapp::main::mk(k);
-    Tok t = Tok(a, 1);
-    Tok u = ::tpyapp::main::ident(Tok(t));
-    return (::tpy::add_check<int32_t>(::tpy::__len__(u.s), t.n));
-}
-
-// # free function: a frozen dataclass's view and scalar fields, initialized by its constructor
-// def frozen_fields(s: str) -> int32:  # tpyc: mir(covered)
-//     f = Frozen(s, 2)
-//     return len(f.s) + f.n  # tpyc: mir_borrows(f.s, s)
-int32_t frozen_fields(std::string_view s) {
-    Frozen f = Frozen(s, 2);
-    return (::tpy::add_check<int32_t>(::tpy::__len__(f.s), f.n));
-}
-
-// # free function: a named record moved into an Own constructor parameter; `t.s` views the temporary
-// # `mk(k)`, dead after its statement while `w` keeps it: BUGS.md#record-view-field-escapes-local-buffer
-// def wrap_move(k: int32) -> int32:  # tpyc: mir(conflict /scope_end/)
-//     t = Tok(mk(k), 1)
-//     w = Wrap(t)
-//     return w.t.n
-int32_t wrap_move(int32_t k) {
-    Tok t = Tok(::tpyapp::main::mk(k), 1);
-    Wrap w = Wrap(std::move(t));
-    return w.t.n;
-}
-
-// # free function: the callee stores s in t, then replaces b.text, which s may view: a precondition the
-// # body publishes, checked at callers MIR analyzes (BUGS.md#record-view-member-source-replaced)
-// def store_and_replace(t: Tok, s: str, b: Buf, flag: bool) -> None:  # tpyc: mir(conflict /alias_obligation/)
-//     t.s = s
-//     if flag:
-//         b.text = mk(3)
-void store_and_replace(Tok& t, std::string_view s, Buf& b, bool flag) {
-    t.s = s;
-    if (flag) {
-        b.text = ::tpyapp::main::mk(3);
-    }
-}
-
-// # free function: the caller half: the call replaces b.text, whose loan it stores in t, so passing
-// # b.text beside b is warned at the call (BUGS.md#record-view-member-source-replaced)
-// def transfer_replace(flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     b = Buf(mk(2))
-//     t = Tok("static", 1)
-//     store_and_replace(t, b.text, b, flag)  # tpyc: warning(/argument 'b.text' is what 'store_and_replace' modifies/) warning(/this call frees the old value of 'b.text', and 't.s' may still view it/)
-//     print("transfer_replace", t.s)
-void transfer_replace(bool flag) {
-    Buf b = Buf(::tpyapp::main::mk(2));
-    Tok t = Tok("static", 1);
-    ::tpyapp::main::store_and_replace(t, b.text, b, flag);
-    std::cout << "transfer_replace" << " " << t.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: write_copy may be called with a is b; its result copies b after the store
-// def write_copy(a: Tok, b: Tok, s: str) -> Own[Tok]:  # tpyc: mir(covered) mir_summary(known)
-//     a.s = s
-//     return copy(b)
-Tok write_copy(Tok& a, const Tok& b, std::string_view s) {
-    a.s = s;
-    return Tok(b);
-}
-
-// # free function: u holds s through the store into t, which the result copies
-// # (BUGS.md#record-view-member-source-replaced)
-// def alias_result(flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     t = Tok("static", 1)
-//     s = mk(5)
-//     u = write_copy(t, t, s)  # tpyc: mir_borrows(u.s, static|s)
-//     t.s = "static"
-//     if flag:
-//         s = mk(6)  # tpyc: warning(/this assignment frees the old value of 's', and 'u.s' may still view it/)
-//     print("alias_result", u.s)
-void alias_result(bool flag) {
-    Tok t = Tok("static", 1);
-    std::string s = ::tpyapp::main::mk(5);
-    Tok u = ::tpyapp::main::write_copy(t, t, s);
-    t.s = "static";
-    if (flag) {
-        s = ::tpyapp::main::mk(6);
-    }
-    std::cout << "alias_result" << " " << u.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: a borrowed result of b's member, read after a store into a, which may be b
-// def put_read(a: Tok, b: Tok, s: str) -> StrView:  # tpyc: mir(covered) mir_summary(known)
-//     a.s = s
-//     return b.s
-std::string_view put_read(Tok& a, const Tok& b, std::string_view s) {
-    a.s = s;
-    return b.s;
-}
-
-// # free function: the view result resolves after the callee's store
-// # (BUGS.md#record-view-member-source-replaced)
-// def borrowed_result(flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     t = Tok("static", 1)
-//     buf = mk(7)
-//     v: StrView = put_read(t, t, buf)  # tpyc: mir_borrows(v, static|buf)
-//     # sema keys v's loan on t, so the rebind warns although v views buf (BUGS.md#view-member-rebind-warns-while-borrowed)
-//     t.s = "static"  # tpyc: warning(/while borrowed/)
-//     if flag:
-//         buf = mk(8)  # tpyc: warning(/this assignment frees the old value of 'buf', and 'v' may still view it/)
-//     print("borrowed_result", v)
-void borrowed_result(bool flag) {
-    Tok t = Tok("static", 1);
-    std::string buf = ::tpyapp::main::mk(7);
-    std::string_view v = ::tpyapp::main::put_read(t, t, buf);
-    t.s = "static";
-    if (flag) {
-        buf = ::tpyapp::main::mk(8);
-    }
-    std::cout << "borrowed_result" << " " << v << "\n" << ::tpy::check_signals;
-}
-
-// def put(t: Tok, s: str) -> int32:  # tpyc: mir(covered) mir_summary(known)
-//     t.s = s
-//     return 1
-int32_t put(Tok& t, std::string_view s) {
-    t.s = s;
-    return 1;
-}
-
-// def first(s: StrView, n: int32) -> StrView:
-//     return s
-std::string_view first(std::string_view s, int32_t n) {
-    return s;
-}
-
-// # free function: an operand read beside a call storing into the same record has no order
-// # (BUGS.md#subexpression-right-to-left-eval)
-// def eager(flag: bool) -> None:  # tpyc: mir(uncovered /^order-sensitive eager operands$/)
-//     t = Tok("static", 1)
-//     buf = mk(9)
-//     v: StrView = first(t.s, put(t, buf))
-//     # C++ evaluates the two operands in either order, so only the length of the loan is stable
-//     print("eager", len(v) > 0)
-void eager(bool flag) {
-    Tok t = Tok("static", 1);
-    std::string buf = ::tpyapp::main::mk(9);
-    std::string_view v = ::tpyapp::main::first(t.s, ::tpyapp::main::put(t, buf));
-    std::cout << "eager" << " " << ::tpy::print_bool((::tpy::__len__(v) > 0)) << "\n" << ::tpy::check_signals;
-}
-
-// def store_return(t: Tok, s: str) -> str:  # tpyc: mir(covered) mir_summary(known)
-//     t.s = s
-//     return mk(10)
-std::string store_return(Tok& t, std::string_view s) {
-    t.s = s;
-    return ::tpyapp::main::mk(10);
-}
-
-// def keep_return(t: Tok, s: str) -> str:  # tpyc: mir(covered) mir_summary(known)
-//     return mk(10)
-std::string keep_return(const Tok& t, std::string_view s) {
-    return ::tpyapp::main::mk(10);
-}
-
-// # free function: the call stores buf's loan in t, and its result replaces buf
-// # (BUGS.md#record-view-member-source-replaced)
-// def call_fill(flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     buf = mk(11)
-//     t = Tok("static", 1)
-//     if flag:
-//         buf = store_return(t, buf)  # tpyc: warning(/this assignment frees the old value of 'buf', and 't.s' may still view it/)
-//     print("call_fill", t.s, len(buf))
-void call_fill(bool flag) {
-    std::string buf = ::tpyapp::main::mk(11);
-    Tok t = Tok("static", 1);
-    if (flag) {
-        buf = ::tpyapp::main::store_return(t, buf);
-    }
-    std::cout << "call_fill" << " " << t.s << " " << ::tpy::__len__(buf) << "\n" << ::tpy::check_signals;
-}
-
-// # free function: the call stores b.text's loan in t, and its result replaces b.text
-// # (BUGS.md#record-view-member-source-replaced)
-// def call_fill_other(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     b = Buf(mk(k))
-//     t = Tok("static", 1)
-//     if flag:
-//         b.text = store_return(t, b.text)  # tpyc: warning(/this assignment frees the old value of 'b.text', and 't.s' may still view it/)
-//     print("call_fill_other", t.s)
-void call_fill_other(int32_t k, bool flag) {
-    Buf b = Buf(::tpyapp::main::mk(k));
-    Tok t = Tok("static", 1);
-    if (flag) {
-        b.text = ::tpyapp::main::store_return(t, b.text);
-    }
-    std::cout << "call_fill_other" << " " << t.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: a callee that stores nothing leaves its result free to replace buf
-// def call_fill_control(k: int32) -> None:  # tpyc: mir(covered)
-//     buf = mk(k)
-//     t = Tok("static", 1)
-//     buf = keep_return(t, buf)
-//     print("call_fill_control", t.s, len(buf))
-void call_fill_control(int32_t k) {
-    std::string buf = ::tpyapp::main::mk(k);
-    Tok t = Tok("static", 1);
-    buf = ::tpyapp::main::keep_return(t, buf);
-    std::cout << "call_fill_control" << " " << t.s << " " << ::tpy::__len__(buf) << "\n" << ::tpy::check_signals;
-}
-
-// # free function: the reused backing's new record views the buffer the same write replaces
-// # (BUGS.md#record-view-member-source-replaced)
-// def reused_construct(n: int32) -> None:  # tpyc: mir(conflict /replacement/)
-//     v: StrView = "static"
-//     anchor = R("anchor", "static")
-//     r = anchor
-//     for i in range(n):
-//         r = anchor
-//         r = R(mk(12), v)  # tpyc: warning(/this statement frees the old value of 'r', and 'r.s' may still view it/)
-//         print("reused_construct", r.s)
-//         v = r.buf
-//         r.s = "static"
-//     print("reused_construct", len(r.buf))
-void reused_construct(int32_t n) {
-    std::string_view v = "static";
-    R anchor = R("anchor", "static");
-    R* r = &(anchor);
-    std::optional<R> __slot_1;
-    int32_t __stop_0 = n;
-    for (int32_t i = 0; i < __stop_0; ++i) {
-        r = &(anchor);
-        r = &*(__slot_1 = R(::tpyapp::main::mk(12), v));
-        std::cout << "reused_construct" << " " << r->s << "\n" << ::tpy::check_signals;
-        v = r->buf;
-        r->s = "static";
-    }
-    std::cout << "reused_construct" << " " << ::tpy::__len__(r->buf) << "\n" << ::tpy::check_signals;
-}
-
-// # free function: a constructor with body effects is called through its summary
-// def stamped(s: str) -> int32:  # tpyc: mir(covered)
-//     st = Stamp(s, 1)  # tpyc: mir_borrows(st.s, s|static)
-//     return st.n
-int32_t stamped(std::string_view s) {
-    Stamp st = Stamp(s, 1);
-    return st.n;
-}
-
-// # free function: a reseat whose new record views the old record's buffer: the
-// # old record keeps a slot of its own, so nothing the view reads is replaced
-// def reseat_self(k: int32, flag: bool) -> None:  # tpyc: mir(covered)
-//     r = R(mk(k), "static")
-//     if flag:
-//         r = R(mk(k + 1), r.buf)
-//     print("reseat_self", r.s)
-void reseat_self(int32_t k, bool flag) {
-    R __slot_1 = R(::tpyapp::main::mk(k), "static");
-    R* r = &__slot_1;
-    std::optional<R> __slot_2;
-    if (flag) {
-        r = &*(__slot_2 = R(::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1))), r->buf));
-    }
-    std::cout << "reseat_self" << " " << r->s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: a whole member holding a view replaced by a record viewing the member it replaces
-// # (BUGS.md#record-view-member-source-replaced)
-// def member_self(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     o = Holder(R(mk(k), "static"))
-//     if flag:
-//         o.inner = R(mk(k + 1), o.inner.buf)  # tpyc: warning(/this assignment frees the old value of 'o.inner', and 'o.inner.s' may still view it/)
-//     print("member_self", o.inner.s)
-void member_self(int32_t k, bool flag) {
-    Holder o = Holder(R(::tpyapp::main::mk(k), "static"));
-    if (flag) {
-        o.inner = R(::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1))), o.inner.buf);
-    }
-    std::cout << "member_self" << " " << o.inner.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: the replacing member views static storage, so nothing views the buffer it replaces
-// def member_fresh(k: int32) -> None:  # tpyc: mir(covered)
-//     o = Holder(R(mk(k), "static"))
-//     o.inner = R(mk(k + 1), "lit")
-//     print("member_fresh", o.inner.s)
-void member_fresh(int32_t k) {
-    Holder o = Holder(R(::tpyapp::main::mk(k), "static"));
-    o.inner = R(::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1))), "lit");
-    std::cout << "member_fresh" << " " << o.inner.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: a reference to the member sees the new record, which views the buffer it replaced
-// # (BUGS.md#record-view-member-source-replaced); sema warns (mutation while borrowed), MIR warns "may"
-// def member_alias(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     o = Holder(R(mk(k), "static"))
-//     a = o.inner
-//     if flag:
-//         o.inner = R(mk(k + 1), a.buf)  # tpyc: warning(/while borrowed/) warning(/this assignment may overwrite what 'a' refers to in place/) warning(/this assignment frees the old value of 'o.inner', and 'o.inner.s' may still view it/)
-//     print("member_alias", a.s)
-void member_alias(int32_t k, bool flag) {
-    Holder o = Holder(R(::tpyapp::main::mk(k), "static"));
-    R& a = o.inner;
-    if (flag) {
-        o.inner = R(::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1))), a.buf);
-    }
-    std::cout << "member_alias" << " " << a.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: a whole member replaced through a borrowed parameter stores s's loan (a transfer).
-// # The new o.inner.s views s, so s viewing the replaced member (`member_param(o, o.inner.buf)`)
-// # dangles: a precondition the body publishes, checked at callers MIR analyzes.
-// def member_param(o: Holder, s: str) -> None:  # tpyc: mir(conflict /alias_obligation/) mir_summary(known)
-//     o.inner = R(s, s)
-void member_param(Holder& o, std::string_view s) {
-    o.inner = R(s, s);
-}
-
-// # free function: a view member written under a member record of the caller's object
-// def fill_inner(o: Holder, s: str) -> None:  # tpyc: mir(covered) mir_summary(known)
-//     o.inner.s = s
-void fill_inner(Holder& o, std::string_view s) {
-    o.inner.s = s;
-}
-
-// # free function: the callee stored s's loan in o.inner; s is replaced while o lives
-// # (BUGS.md#record-view-member-source-replaced)
-// def fill_inner_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     o = Holder(R("member", "static"))
-//     s = mk(k)
-//     fill_inner(o, s)
-//     if flag:
-//         s = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 's', and 'o.inner.s' may still view it/)
-//     print("fill_inner_replaced", o.inner.s)
-void fill_inner_replaced(int32_t k, bool flag) {
-    Holder o = Holder(R("member", "static"));
-    std::string s = ::tpyapp::main::mk(k);
-    ::tpyapp::main::fill_inner(o, s);
-    if (flag) {
-        s = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    }
-    std::cout << "fill_inner_replaced" << " " << o.inner.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: a base's stored loan of the argument the caller lends
-// def derived_lent(s: str) -> int32:  # tpyc: mir(covered) mir_summary(known)
-//     d = Derived(s, 1)
-//     return len(d.s) + d.k
-int32_t derived_lent(std::string_view s) {
-    Derived d = Derived(s, 1);
-    return (::tpy::add_check<int32_t>(::tpy::__len__(d.s), d.k));
-}
-
-// # free function: the base's stored loan views a temporary of the declaration
-// # (BUGS.md#record-view-field-escapes-local-buffer)
-// def derived_temp(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /scope_end/)
-//     d = Derived(mk(k), 1)
-//     if flag:
-//         print("derived_temp", d.s)
-//     print("derived_temp", d.k)
-void derived_temp(int32_t k, bool flag) {
-    Derived d = Derived(::tpyapp::main::mk(k), 1);
-    if (flag) {
-        std::cout << "derived_temp" << " " << d.s << "\n" << ::tpy::check_signals;
-    }
-    std::cout << "derived_temp" << " " << d.k << "\n" << ::tpy::check_signals;
-}
-
-// # free function: an inherited constructor's stored loan views a temporary of the declaration
-// # (BUGS.md#record-view-field-escapes-local-buffer)
-// def kid_temp(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /scope_end/)
-//     d = Kid(mk(k), 1)
-//     if flag:
-//         print("kid_temp", d.s)
-//     print("kid_temp", d.n)
-void kid_temp(int32_t k, bool flag) {
-    Kid d = Kid(::tpyapp::main::mk(k), 1);
-    if (flag) {
-        std::cout << "kid_temp" << " " << d.s << "\n" << ::tpy::check_signals;
-    }
-    std::cout << "kid_temp" << " " << d.n << "\n" << ::tpy::check_signals;
-}
-
-// # free function: a literal base argument's static storage
-// def fixed_base() -> int32:  # tpyc: mir(covered) mir_summary(known)
-//     f = Fixed()
-//     return len(f.s)
-int32_t fixed_base() {
-    Fixed f = Fixed();
-    return ::tpy::__len__(f.s);
-}
-
-// # free function: a member constructor's stored loan views a temporary of the declaration
-// # (BUGS.md#record-view-field-escapes-local-buffer)
-// def shell_temp(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /scope_end/)
-//     sh = Shell(mk(k))
-//     if flag:
-//         print("shell_temp", sh.inner.s)
-//     print("shell_temp", sh.inner.n)
-void shell_temp(int32_t k, bool flag) {
-    Shell sh = Shell(::tpyapp::main::mk(k));
-    if (flag) {
-        std::cout << "shell_temp" << " " << sh.inner.s << "\n" << ::tpy::check_signals;
-    }
-    std::cout << "shell_temp" << " " << sh.inner.n << "\n" << ::tpy::check_signals;
-}
-
-// # free function: a view member read under a member record of a borrowed parameter (nested key, seeded)
-// def nested_read(o: Holder) -> StrView:  # tpyc: mir(covered) mir_summary(known)
-//     return o.inner.s
-std::string_view nested_read(const Holder& o) {
-    return o.inner.s;
-}
-
-// # free function: a body-local buffer stored by a whole member replacement into the caller's object
-// # (BUGS.md#record-view-field-escapes-local-buffer)
-// def member_param_local(o: Holder, k: int32) -> None:  # tpyc: mir(conflict /store_escape/)
-//     buf = mk(k)
-//     o.inner = R(buf, buf)  # tpyc: warning(/'buf' is freed when 'member_param_local' returns/)
-void member_param_local(Holder& o, int32_t k) {
-    std::string buf = ::tpyapp::main::mk(k);
-    o.inner = R(buf, buf);
-}
-
-// # free function: the same into an Own parameter's object, which is the caller's temporary
-// # (BUGS.md#record-view-field-escapes-local-buffer)
-// # the Own parameter is only read or written in place, never handed on: the warning is right
-// def member_own_local(o: Own[Holder], k: int32) -> int32:  # tpyc: mir(conflict /store_escape/) warning(/never consumed/)
-//     buf = mk(k)
-//     o.inner = R(buf, buf)
-//     return len(o.inner.s)
-int32_t member_own_local(Holder&& o, int32_t k) {
-    std::string buf = ::tpyapp::main::mk(k);
-    o.inner = R(buf, buf);
-    return ::tpy::__len__(o.inner.s);
-}
-
-// # free function: a member replacement through a name that may reach either of two objects; known false
-// # warning (BUGS.md#mir-may-warning-correlated-conditions): `src` is replaced only when `x` is `a`
-// def member_either(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     src = mk(k)
-//     a = Holder(R("a", src))
-//     b = Holder(R("b", "static"))
-//     x = a if flag else b
-//     x.inner = R("c", "lit")
-//     if flag:
-//         src = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'src', and 'a.inner.s' may still view it/)
-//     print("member_either", a.inner.s, b.inner.s)
-void member_either(int32_t k, bool flag) {
-    std::string src = ::tpyapp::main::mk(k);
-    Holder a = Holder(R("a", src));
-    Holder b = Holder(R("b", "static"));
-    Holder& x = ((flag) ? (a) : (b));
-    x.inner = R("c", "lit");
-    if (flag) {
-        src = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    }
-    std::cout << "member_either" << " " << a.inner.s << " " << b.inner.s << "\n" << ::tpy::check_signals;
-}
-
-// def make_r(s: str) -> Own[R]:
-//     return R("made", s)
-R make_r(std::string_view s) {
-    return R("made", s);
-}
-
-// # free function: a member replaced by a call's owned result stores what the callee's result transfers
-// # (BUGS.md#record-view-member-source-replaced)
-// def member_from_call(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     src = mk(k)
-//     o = Holder(R("member", "static"))
-//     o.inner = make_r(src)
-//     if flag:
-//         src = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'src'/)
-//     print("member_from_call", o.inner.s)
-void member_from_call(int32_t k, bool flag) {
-    std::string src = ::tpyapp::main::mk(k);
-    Holder o = Holder(R("member", "static"));
-    o.inner = ::tpyapp::main::make_r(src);
-    if (flag) {
-        src = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    }
-    std::cout << "member_from_call" << " " << o.inner.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: a copy of a name reaching either of two records carries both records' loans
-// # (BUGS.md#record-view-member-source-replaced)
-// def copy_either(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     src = mk(k)
-//     a = Tok(src, 1)
-//     b = Tok("static", 2)
-//     t = a if flag else b
-//     w = Wrap(copy(t))
-//     if flag:
-//         src = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'src', and 'w.t.s' may still view it/)
-//     print("copy_either", w.t.s)
-void copy_either(int32_t k, bool flag) {
-    std::string src = ::tpyapp::main::mk(k);
-    Tok a = Tok(src, 1);
-    Tok b = Tok("static", 2);
-    Tok& t = ((flag) ? (a) : (b));
-    Wrap w = Wrap(Tok(t));
-    if (flag) {
-        src = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
-    }
-    std::cout << "copy_either" << " " << w.t.s << "\n" << ::tpy::check_signals;
-}
-
-// # free function: an element store through the record whose view member views that element; the store
-// # rebinds the record's holder, but r.s still views the replaced element (BUGS.md#record-view-member-source-replaced)
-// def element_view_replaced(r: Items, k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
-//     r.setv(r.items[0])
-//     if flag:
-//         r.items[0] = mk(k)  # tpyc: mir_borrows(r.s, r.items[elements]|r.s) warning(/this assignment frees an element of 'r.items', and 'r.s' may still view it/)
-//     print("element_view_replaced", r.s)
-void element_view_replaced(Items& r, int32_t k, bool flag) {
-    r.setv(::tpy::__getitem__(r.items, 0));
-    if (flag) {
-        ::tpy::__setitem__(r.items, 0, ::tpyapp::main::mk(k));
-    }
-    std::cout << "element_view_replaced" << " " << r.s << "\n" << ::tpy::check_signals;
 }
 
 // def main(flag: bool) -> None:
@@ -1009,82 +194,34 @@ void element_view_replaced(Items& r, int32_t k, bool flag) {
 //     print("set_buf", r.buf)
 //     print("outer_read", outer_read(1))
 //     outer_replaced(1, False)
-//     print("make", make("m").s)
-//     made_replaced(1, False)
-//     if flag:
-//         print("make_local", make_local(1).n)
-//     own_result_seed(1, False)
-//     own_member_seed(1, False)
-//     ident_kept(1, False)
-//     made_replace(1, False)
-//     print("consume", consume(Tok("r", 3)))
-//     if flag:
-//         print("own_store_local", own_store_local(Tok("o", 4), 1))
-//     print("own_store_param", own_store_param(Tok("o", 5), "p"))
-//     print("consume_built", consume_built(1))
-//     print("consume_named", consume_named(2))
-//     print("private_own_alias", private_own_alias(1))
-//     own_write_transfer(1, False)
-//     print("wrap_copy", wrap_copy(w))
-//     print("factory_copy", factory_copy(1))
-//     print("frozen_fields", frozen_fields("fz"))
+//     # the sections below share w and t with the ones above
+//     print("wrap_copy", part_own.wrap_copy(w))
 //     b = Buf(mk(2))
-//     store_and_replace(t, b.text, b, False)
+//     part_calls.store_and_replace(t, b.text, b, False)
 //     print("store_and_replace", t.s)
-//     transfer_replace(False)
-//     alias_result(False)
-//     borrowed_result(False)
-//     n = put(w, "p")
+//     n = part_calls.put(w, "p")
 //     print("put", n, w.s)
-//     eager(False)
-//     call_fill(False)
-//     call_fill_other(1, False)
-//     call_fill_control(1)
-//     reused_construct(1)
-//     print("stamped", stamped("st"))
-//     reseat_self(1, False)
-//     member_self(1, False)
-//     wrap_copy_replaced(1, False)
-//     print("wrap_move", wrap_move(1))
-//     member_fresh(1)
-//     member_alias(1, False)
-//     hd = Holder(R("member", "static"))
-//     member_param(hd, "p")
-//     print("member_param", hd.inner.s)
-//     fill_inner(hd, "q")
-//     print("fill_inner", hd.inner.s)
-//     print("nested_read", nested_read(hd))
-//     if flag:
-//         member_param_local(hd, 1)
-//     print("member_own_local", member_own_local(Holder(R("own", "static")), 1))
-//     member_either(1, False)
-//     member_from_call(1, False)
-//     copy_either(1, False)
-//     hd.swap("z")
-//     print("swap", hd.inner.s)
-//     fill_inner_replaced(1, False)
-//     print("derived_lent", derived_lent("dl"))
-//     derived_temp(1, False)
-//     kid_temp(1, False)
-//     print("fixed_base", fixed_base())
-//     shell_temp(1, False)
-//     element_view_replaced(Items([mk(1)], "static"), 2, False)
+//     part_results.main(flag)
+//     part_own.main(flag)
+//     part_calls.main()
+//     part_members.main(flag)
+//     part_loops.main()
 void main(bool flag) {
     ::tpyapp::main::retained_by_callee(1, false);
     ::tpyapp::main::maybe_retained(1, false);
     ::tpyapp::main::direct_write(1);
     ::tpyapp::main::direct_write_source(1, false);
-    Tok t = Tok("q", 1);
+    ::tpyapp::fixtures::Tok t = ::tpyapp::fixtures::Tok("q", 1);
     ::tpyapp::main::fill_static(t);
     std::cout << "fill_static" << " " << t.s << "\n" << ::tpy::check_signals;
     std::cout << "static_filled" << " " << ::tpyapp::main::static_filled(1) << "\n" << ::tpy::check_signals;
-    Tok w = Tok("w", 2);
+    ::tpyapp::fixtures::Tok w = ::tpyapp::fixtures::Tok("w", 2);
     if (flag) {
         ::tpyapp::main::fill(w, 1);
         ::tpyapp::main::loop_store(w, 2);
     }
     std::cout << "fill" << " " << w.n << "\n" << ::tpy::check_signals;
-    R r = R("member", "static");
+    ::tpyapp::fixtures::R r = ::tpyapp::fixtures::R("member", "static");
     ::tpyapp::main::store_member(w, r);
     std::cout << "store_member" << " " << w.s << "\n" << ::tpy::check_signals;
     ::tpyapp::main::store_global(w);
@@ -1093,75 +230,23 @@ void main(bool flag) {
     std::cout << "set_buf" << " " << r.buf << "\n" << ::tpy::check_signals;
     std::cout << "outer_read" << " " << ::tpyapp::main::outer_read(1) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::outer_replaced(1, false);
-    std::cout << "make" << " " << ::tpyapp::main::make("m").s << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::made_replaced(1, false);
-    if (flag) {
-        std::cout << "make_local" << " " << ::tpyapp::main::make_local(1).n << "\n" << ::tpy::check_signals;
-    }
-    ::tpyapp::main::own_result_seed(1, false);
-    ::tpyapp::main::own_member_seed(1, false);
-    ::tpyapp::main::ident_kept(1, false);
-    ::tpyapp::main::made_replace(1, false);
-    std::cout << "consume" << " " << ::tpyapp::main::consume(Tok("r", 3)) << "\n" << ::tpy::check_signals;
-    if (flag) {
-        std::cout << "own_store_local" << " " << ::tpyapp::main::own_store_local(Tok("o", 4), 1) << "\n" << ::tpy::check_signals;
-    }
-    std::cout << "own_store_param" << " " << ::tpyapp::main::own_store_param(Tok("o", 5), "p") << "\n" << ::tpy::check_signals;
-    std::cout << "consume_built" << " " << ::tpyapp::main::consume_built(1) << "\n" << ::tpy::check_signals;
-    std::cout << "consume_named" << " " << ::tpyapp::main::consume_named(2) << "\n" << ::tpy::check_signals;
-    std::cout << "private_own_alias" << " " << ::tpyapp::main::private_own_alias(1) << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::own_write_transfer(1, false);
-    std::cout << "wrap_copy" << " " << ::tpyapp::main::wrap_copy(w) << "\n" << ::tpy::check_signals;
-    std::cout << "factory_copy" << " " << ::tpyapp::main::factory_copy(1) << "\n" << ::tpy::check_signals;
-    std::cout << "frozen_fields" << " " << ::tpyapp::main::frozen_fields("fz") << "\n" << ::tpy::check_signals;
-    Buf b = Buf(::tpyapp::main::mk(2));
-    ::tpyapp::main::store_and_replace(t, b.text, b, false);
+    std::cout << "wrap_copy" << " " << ::tpyapp::part_own::wrap_copy(w) << "\n" << ::tpy::check_signals;
+    ::tpyapp::fixtures::Buf b = ::tpyapp::fixtures::Buf(::tpyapp::fixtures::mk(2));
+    ::tpyapp::part_calls::store_and_replace(t, b.text, b, false);
     std::cout << "store_and_replace" << " " << t.s << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::transfer_replace(false);
-    ::tpyapp::main::alias_result(false);
-    ::tpyapp::main::borrowed_result(false);
-    int32_t n = ::tpyapp::main::put(w, "p");
+    int32_t n = ::tpyapp::part_calls::put(w, "p");
     std::cout << "put" << " " << n << " " << w.s << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::eager(false);
-    ::tpyapp::main::call_fill(false);
-    ::tpyapp::main::call_fill_other(1, false);
-    ::tpyapp::main::call_fill_control(1);
-    ::tpyapp::main::reused_construct(1);
-    std::cout << "stamped" << " " << ::tpyapp::main::stamped("st") << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::reseat_self(1, false);
-    ::tpyapp::main::member_self(1, false);
-    ::tpyapp::main::wrap_copy_replaced(1, false);
-    std::cout << "wrap_move" << " " << ::tpyapp::main::wrap_move(1) << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::member_fresh(1);
-    ::tpyapp::main::member_alias(1, false);
-    Holder hd = Holder(R("member", "static"));
-    ::tpyapp::main::member_param(hd, "p");
-    std::cout << "member_param" << " " << hd.inner.s << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::fill_inner(hd, "q");
-    std::cout << "fill_inner" << " " << hd.inner.s << "\n" << ::tpy::check_signals;
-    std::cout << "nested_read" << " " << ::tpyapp::main::nested_read(hd) << "\n" << ::tpy::check_signals;
-    if (flag) {
-        ::tpyapp::main::member_param_local(hd, 1);
-    }
-    std::cout << "member_own_local" << " " << ::tpyapp::main::member_own_local(Holder(R("own", "static")), 1) << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::member_either(1, false);
-    ::tpyapp::main::member_from_call(1, false);
-    ::tpyapp::main::copy_either(1, false);
-    hd.swap("z");
-    std::cout << "swap" << " " << hd.inner.s << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::fill_inner_replaced(1, false);
-    std::cout << "derived_lent" << " " << ::tpyapp::main::derived_lent("dl") << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::derived_temp(1, false);
-    ::tpyapp::main::kid_temp(1, false);
-    std::cout << "fixed_base" << " " << ::tpyapp::main::fixed_base() << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::shell_temp(1, false);
-    Items __tmp_1 = Items({::tpyapp::main::mk(1)}, "static");
-    ::tpyapp::main::element_view_replaced(__tmp_1, 2, false);
+    ::tpyapp::part_results::main(flag);
+    ::tpyapp::part_own::main(flag);
+    ::tpyapp::part_calls::main();
+    ::tpyapp::part_members::main(flag);
+    ::tpyapp::part_loops::main();
 }
 
-// # MIR over stores into view members: view member writes, callee transfers, member records, owned
-// # results and Own parameters, records written through a place, base and member constructors.
-// from dataclasses import dataclass
+// # MIR over stores into view members and records written through a place: the core shapes are here;
+// # owned results, Own parameters, calls, whole members and loops are in the part_* modules.
+// import part_calls, part_loops, part_members, part_own, part_results
+// from fixtures import Buf, Outer, R, Tok, mk
 //
 // G = mk(0)
 //
@@ -1171,7 +256,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    G = ::tpyapp::main::mk(0);
+    G = ::tpyapp::fixtures::mk(0);
     ::tpyapp::main::main(false);
 }
 

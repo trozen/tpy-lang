@@ -10,9 +10,8 @@ from .liveness import MIRPoint
 from .nodes import MIRFunction, MIRNotCovered, MIRPlace, MIRPresentCall, MIRSlot, MIRSlotId, MIRSlotKind, call_place
 from .value import MIRRecords, MIRValidationError
 from .prepare import MIRPrepared, validated_presence
-from .reach import DistinctExternal, _origin, parameter_object, reaches, replacement_events, storage_exclusions
+from .reach import DistinctExternal, _origin, parameter_object, reaches, storage_exclusions
 from .shapes import distinct_lent_objects
-from .validate import reachable_blocks
 from .witness import MIRHazard, MIRHazardKind
 
 
@@ -41,10 +40,6 @@ def static_referent(ref: MIRReferent) -> bool:
     return ref.static
 
 
-def _nothing_selected(place: MIRPlace) -> frozenset[int]:
-    return frozenset()
-
-
 def analyze_retention(prepared: MIRPrepared) -> MIRRetention | MIRNotCovered:
     fn, liveness, dependencies = prepared.function, prepared.liveness, prepared.dependencies
     presence = validated_presence(prepared)
@@ -62,34 +57,26 @@ def analyze_retention(prepared: MIRPrepared) -> MIRRetention | MIRNotCovered:
     exclusions = storage_exclusions(slots, records)
     conflicts: list[MIRRetentionConflict] = []
     hazards: list[MIRHazard] = []
-    # The storage each reachable statement replaces (`replacement_events`),
-    # at its point, the call's writes as the presence sees them.
-    reached = reachable_blocks(fn)
-    replaced: list[tuple[MIRPoint, MIRPlace, MIRSlotId | None]] = []
-    for block in fn.blocks:
-        for index, stmt in enumerate(block.statements):
-            point = MIRPoint(block.id, index)
-            called = presence.calls.get(point)
-            # No feasible path reaches a point without selection facts: no
-            # sum write there ends a payload.
-            facts = presence.points.get(point)
-            selected = dict(facts).get if facts is not None else _nothing_selected
-            found = replacement_events(stmt, called.writes if called is not None else (), selected, slots)
-            if found is None:
-                return MIRNotCovered(fn.id, "retention", "storage: missing storage write fact", stmt.loc)
-            if block.id in reached:
-                replaced.extend((point, place, owner) for place, owner in found)
-    for point, target, rebind_owner in sorted(replaced, key=lambda e: (e[0].block.index, e[0].index, _place(e[1]))):
+    # The storage each feasible statement replaces (`MIRStatementKills`).
+    if (missing := prepared.kills.missing) is not None:
+        return MIRNotCovered(fn.id, "retention", "storage: missing storage write fact", missing.loc)
+    replaced = [(point, replacement) for point, found in prepared.kills.replacements.items()
+                for replacement in found]
+    for point, replacement in sorted(replaced, key=lambda e: (e[0].block.index, e[0].index, _place(e[1].place))):
+        target, rebind_owner, affected = replacement.place, replacement.rebinds, replacement.storage
         incoming = dependencies.referents[point]
         after = MIRPoint(point.block, point.index + 1)
         outgoing = dependencies.referents[after]
         live_after = liveness.points[after]
-        affected = resolve_referents(target, incoming, slots, records)
         # The statement may install a loan into the storage it replaces --
         # a callee's transfer, or the record it fills -- so the holders of
         # the state it leaves count too, and the filled object's own loans
         # before the holder rebinding to it is live.
-        live_in = dependencies.live(incoming, live_after)
+        # An entry the statement replaces no longer keeps its old loans: only
+        # what the statement stores there counts (`MIRDependencies.overwritten`).
+        overwritten = dependencies.overwritten.get(point, frozenset())
+        live_in = {leaf: refs for leaf, refs in dependencies.live(incoming, live_after).items()
+                   if leaf not in overwritten}
         live_out = dependencies.live(outgoing, live_after)
         holders = dict(live_in)
         for leaf, refs in live_out.items():

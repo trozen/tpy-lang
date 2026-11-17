@@ -113,6 +113,9 @@ class MIRSlot:
     # A temporary's source expression, recorded where the lowering creates
     # it: what a diagnostic spells storage no name reaches by. No MIR fact.
     span: SourceLocation | None = field(default=None, compare=False)
+    # A `for` loop binds the slot each pass, recorded where the lowering
+    # builds the loop: what a diagnostic's hint reads. No MIR fact.
+    loop_variable: bool = field(default=False, compare=False)
 
     @property
     def type(self) -> TpyType:

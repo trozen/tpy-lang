@@ -31,6 +31,7 @@ from .parse.nodes import (SourceLocation, as_name_read,
                           stmts_have_any_suspension, walk_body_stmts,
                           walk_expr_tree, walrus_bindings, written_names)
 from .identity_map import IdentityMap
+from .scc import strongly_connected_components
 from .typesys import LiteralTag, LiteralValue
 from .storage_trace import MEMBER_PATH, path_root
 from .value_category import CONTAINER_LITERAL_NODES, peel_coerce
@@ -922,50 +923,9 @@ def _path_prefixes(path: str, itself: bool) -> list[str]:
 def _scc_order(names: Iterable[str],
                edges: dict[str, list[str]]) -> list[list[str]]:
     """Strongly connected components of `edges` (n -> the names n holds),
-    every component after the components it reaches (Tarjan, iterative:
-    a body can bind thousands of names in one chain)."""
-    index: dict[str, int] = {}
-    low: dict[str, int] = {}
-    on_stack: set[str] = set()
-    stack: list[str] = []
-    out: list[list[str]] = []
-    counter = 0
-    for start in names:
-        if start in index:
-            continue
-        work: list[tuple[str, list[str]]] = []
-        index[start] = low[start] = counter
-        counter += 1
-        stack.append(start)
-        on_stack.add(start)
-        work.append((start, list(edges.get(start, ()))))
-        while work:
-            node, succ = work[-1]
-            if succ:
-                nxt = succ.pop()
-                if nxt not in index:
-                    index[nxt] = low[nxt] = counter
-                    counter += 1
-                    stack.append(nxt)
-                    on_stack.add(nxt)
-                    work.append((nxt, list(edges.get(nxt, ()))))
-                elif nxt in on_stack:
-                    low[node] = min(low[node], index[nxt])
-                continue
-            work.pop()
-            if work:
-                parent = work[-1][0]
-                low[parent] = min(low[parent], low[node])
-            if low[node] == index[node]:
-                comp: list[str] = []
-                while True:
-                    top = stack.pop()
-                    on_stack.discard(top)
-                    comp.append(top)
-                    if top == node:
-                        break
-                out.append(comp)
-    return out
+    every component after the components it reaches."""
+    # Successors in reverse: the visit order the components' order was pinned with.
+    return strongly_connected_components(names, lambda n: reversed(edges.get(n, ())))
 
 
 @dataclass

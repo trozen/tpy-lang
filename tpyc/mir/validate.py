@@ -551,7 +551,7 @@ def _operand_places(stmt: MIRStatement) -> tuple[tuple[MIRSlotId, MIRPlace | Non
     return tuple((sid, None) for sid in operands(value))
 
 
-def _validate_structure(fn: MIRFunction) -> None:
+def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
     # Each summary's path walks, made once by its contract check and read by every call of it.
     # Over the body's layouts: whether a path's records verify is the summary's and the
     # lowering's check (the validator holds no definitions).
@@ -1694,3 +1694,4 @@ def _validate_structure(fn: MIRFunction) -> None:
                     raise MIRDefiniteAssignmentError("return before definite assignment")
     # Storage initialization, after the slot-level assignment above.
     initialization.check(reachable)
+    return regions

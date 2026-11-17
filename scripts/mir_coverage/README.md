@@ -17,7 +17,7 @@ excluded) gets:
 | count | meaning |
 |-------|---------|
 | lowered | `lower_function` / `lower_constructor` returned a `MIRFunction` |
-| complete | every analysis the verdict runs (dependencies, scope ends/conflicts, payload ends/conflicts, storage, call effects, retention, return escapes) returned without `MIRNotCovered` |
+| complete | every analysis the verdict runs (dependencies, scope ends/conflicts, payload conflicts, storage, call effects, retention, return escapes) returned without `MIRNotCovered` |
 | conflict | an inspection reported a conflict (scope end, payload end, replacement, stale alias, return escape) or the certificate's verdict is CONFLICT |
 | certified | `storage_adapter.certify_thir_storage` returned CERTIFIED and the certificate binds the request |
 

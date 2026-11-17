@@ -8,6 +8,22 @@ temp_view_bound False
 fill_static lit
 overwritten safe b
 restore lit
+kept_view k
+twin a
+twin 1 init
+replace_then_read_global True r
+error_body a
+error_body 1
+try_body a
+match_arm a
+through_param 3
+dict_insert 2
+drop_and_read True 2
+replace_and_read True r
+summary_inverse 1 4 2
+after_raise raised
+record_alias 1
+record_objects 1 1 1
 other_element 101 101 9
 loop_var_overwrite 110
 link [[1, 2], [0], [0]]
@@ -23,22 +39,6 @@ tok_view a
 callee_loop 110
 kept_calls 5 5 1
 row_calls 11 11 1
-through_param 3
-dict_insert 2
-kept_view k
-twin a
-twin 1 init
-error_body a
-error_body 1
-try_body a
-after_raise raised
-record_alias 1
-record_objects 1 1 1
-match_arm a
-drop_and_read True 2
-replace_and_read True r
-replace_then_read_global True r
-summary_inverse 1 4 2
 b_ctor x 40
 b_ctor_else x 40
 h_field - 40
@@ -56,6 +56,8 @@ restore_field s
 callee_may_reset s
 g_rebind y 40
 g_rebind_field y 40
+two l
+two_loop l
 value_element one
 value_element two
 values_existing_key x
@@ -66,3 +68,53 @@ alias_copy_read s
 alias_copy_read s
 correlated_scope_rebind y x
 may_after_raise raised
+after_for x
+after_while x
+view_local x
+cond_store x
+field_store x
+loop_var x
+temp_in_loop x
+store_break x
+second_exit s
+both_arms s
+read_old_after_reentry s
+family_reused x
+family_reused_after_end s
+external_loop s
+external_once o
+local_field_loop s
+external_loop_reset s
+cursor_joined 2
+span_loop 1
+spin_then_read s
+same_iter 0
+same_iter 1
+reset_in_body 0
+reset_in_body 1
+reset_in_body y
+outer_buf 0
+alias_reset s
+alias_reset_break s
+call_reset s
+safe_source_copy s
+safe_source_copy s
+safe_source_copy s
+safe_source_copy s
+nested_live_reset 0
+nested_live_reset 1
+nested_live_reset 2
+nested_live_reset s
+next_iter x
+with_continue s
+with_continue_reset 0
+with_continue_reset 1
+with_continue_reset 2
+with_continue_reset s
+overkill o
+defkill s
+own_weak_reset new 0
+own_weak_reset new 1
+own_weak_reset new 2
+nested_reset s
+alternation s

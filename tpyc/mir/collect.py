@@ -204,7 +204,7 @@ class MIRAnalyses:
     @property
     def gaps(self) -> tuple[tuple[str, MIRNotCovered], ...]:
         staged = (("dependencies", self.dependencies), ("scope ends", self.scope.ends),
-                  ("scope conflicts", self.scope.conflicts), ("payload ends", self.payload.ends),
+                  ("scope conflicts", self.scope.conflicts),
                   ("payload conflicts", self.payload.conflicts), ("storage", self.events),
                   ("call effects", self.effects), ("retention", self.retention),
                   ("return escapes", self.escapes), ("store escapes", self.store_escapes))
@@ -239,7 +239,7 @@ def analyze_body(fn: MIRFunction, prepared: MIRPrepared | MIRNotCovered,
     refusal is every analysis's gap."""
     if isinstance(prepared, MIRNotCovered):
         return MIRAnalyses(prepared, prepared, prepared, MIRScopeInspection(fn, prepared, prepared, ()), prepared,
-                           prepared, MIRPayloadInspection(fn, prepared, prepared, ()), prepared, prepared,
+                           prepared, MIRPayloadInspection(fn, prepared, ()), prepared, prepared,
                            obligations)
     events, scope, effects = analyze_storage(prepared), inspect_scope_lifetimes(prepared), analyze_call_effects(prepared)
     retention, payload = analyze_retention(prepared), inspect_payload_lifetimes(prepared)
@@ -742,7 +742,7 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
         lines.append(dump_call_effects(analyses.effects))
         lines.append(dump_storage(analyses.events))
         lines.append(dump_retention(analyses.retention, analyses.obligations))
-        lines.append(dump_payload_ends(analyses.payload.ends))
+        lines.append(dump_payload_ends(analyses.prepared if analyses.prepared is not None else analyses.dependencies))
         lines.append(dump_payload_inspection(analyses.payload))
         lines.append(dump_escapes(analyses.escapes, analyses.store_escapes))
         lines.append(dump_witness_cap(analyses.witnesses))

@@ -14,7 +14,6 @@ from .nodes import (
 )
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
-from .payload_lifetime import analyze_payload_ends
 from .retention import analyze_retention
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage, dump_storage
@@ -93,7 +92,7 @@ def test_empty_sum_is_not_a_record_or_a_source_definition() -> None:
     assert not inventory.writes and list(inventory.constructions) == [MIRPoint(ENTRY, 0)]
     assert inventory.constructions[MIRPoint(ENTRY, 0)].materialized is None
     assert f"before 0: construct-wrapper %{BACKING.index}" in dump_storage(inventory)
-    assert not analyze_payload_ends(prepared(fn)).ends
+    assert not prepared(fn).kills.payloads
     # Its scope end ends the slot itself, which reaches any payload holder.
     event, = analyze_scope_ends(prepared(fn)).ends[MIREdge(ENTRY)]
     assert event.storage == MIRPlace(BACKING) and not event.payloads
@@ -106,7 +105,7 @@ def test_replacement_preserves_physical_identity_and_reports_logical_conflict() 
                            MIRReturn(RESULT), ROOT))
     validate_function(fn)
     assert execute(fn, 7, False) == 9
-    assert not analyze_payload_ends(prepared(fn)).ends
+    assert not prepared(fn).kills.payloads
     ends = analyze_scope_ends(prepared(fn)).ends[MIREdge(ENTRY)]
     assert MIRPlace(BACKING) in {e.storage for e in ends}
     # The refill of the selected alternative replaces the record `SAVED` holds;

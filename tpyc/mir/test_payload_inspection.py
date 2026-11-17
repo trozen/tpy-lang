@@ -13,10 +13,11 @@ from .nodes import (
     MIRSlotKind, MIRUnionExtract,
 )
 from .payload_lifetime import (
-    MIRPayloadConflict, MIRPayloadEnds, _payload_conflicts, _payload_ends,
-    analyze_payload_ends, dump_payload_inspection, inspect_payload_lifetimes,
+    MIRPayloadConflict, _payload_conflicts,
+    dump_payload_inspection, inspect_payload_lifetimes,
 )
 from .presence import MIRPresenceIssueKind, _analyze_presence
+from .region_flow import MIRRegionFlow
 from .storage import analyze_storage
 from .retention import analyze_retention
 from .call_effects import analyze_call_effects
@@ -82,7 +83,7 @@ def test_a_to_b_to_a_does_not_revive_alias_freshness() -> None:
 def test_selection_error_after_freshness_failure_still_blocks_inspection() -> None:
     direct = MIRAssign(MIRPlace(RESULT), MIRRead(payload(False)))
     fn = alias_function(EXTRACT, write(False, 0), READ, direct)
-    assert [i.kind for i in _analyze_presence(fn, None).issues] == [MIRPresenceIssueKind.FRESHNESS,
+    assert [i.kind for i in _analyze_presence(fn, None, MIRRegionFlow(fn)).issues] == [MIRPresenceIssueKind.FRESHNESS,
                                                                  MIRPresenceIssueKind.SELECTION]
     with pytest.raises(MIRPresenceError, match="alias used after holder replacement"):
         validate_function(fn)
@@ -93,7 +94,6 @@ def test_selection_error_after_freshness_failure_still_blocks_inspection() -> No
 @pytest.mark.parametrize("analysis", [
     validate_function,
     lambda fn: analyze_storage(prepared(fn)),
-    lambda fn: analyze_payload_ends(prepared(fn)),
     lambda fn: analyze_retention(prepared(fn)),
     lambda fn: analyze_call_effects(prepared(fn)),
 ])
@@ -133,11 +133,10 @@ def test_uncovered_inputs_do_not_erase_freshness_issues(missing: str) -> None:
         validated(fn)
 
 
-@pytest.mark.parametrize("wrong", ["presence", "liveness", "dependencies", "ends"])
+@pytest.mark.parametrize("wrong", ["presence", "liveness", "dependencies"])
 def test_composition_rejects_equal_but_distinct_function_instances(wrong: str) -> None:
     fn = alias_function(EXTRACT, write(False, 0), READ)
     ready = prepared(fn)
-    ends = _payload_ends(ready)
     other = replace(fn)
     if wrong == "presence":
         ready = replace(ready, presence=replace(ready.presence, function=other))
@@ -145,10 +144,8 @@ def test_composition_rejects_equal_but_distinct_function_instances(wrong: str) -
         ready = replace(ready, liveness=replace(ready.liveness, function=other))
     elif wrong == "dependencies":
         ready = replace(ready, dependencies=replace(ready.dependencies, function=other))
-    else:
-        ends = replace(ends, function=other)
     with pytest.raises(MIRValidationError, match="different MIR function"):
-        _payload_conflicts(ready, ends)
+        _payload_conflicts(ready)
 
 
 def test_branch_and_loop_conflicts_are_possible_static_place_reports() -> None:
@@ -167,8 +164,8 @@ def test_branch_and_loop_conflicts_are_possible_static_place_reports() -> None:
 @pytest.mark.parametrize("tags", list(product(range(3), repeat=3)))
 def test_concrete_payload_generations_are_covered_by_static_events(tags: tuple[int, ...]) -> None:
     fn = alias_function(EXTRACT, *(write(False, tag) for tag in tags), READ)
-    result = inspect_payload_lifetimes(prepared(fn))
-    assert isinstance(result.ends, MIRPayloadEnds)
+    ready = prepared(fn)
+    result = inspect_payload_lifetimes(ready)
     # The trace owns a new generation on each tag switch. An old alias never
     # revives, even when later generations occupy the same static place.
     tag, generation, retained_generation = 2, 0, 0
@@ -183,7 +180,7 @@ def test_concrete_payload_generations_are_covered_by_static_events(tags: tuple[i
                     real_conflicts.add(MIRPayloadConflict(point, place, MIRPlace(ALIAS)))
             generation += 1
         tag = next_tag
-    assert {(point, place) for point, places in result.ends.ends.items() for place in places} == physical_ends
+    assert {(point, place) for point, places in ready.kills.payloads.items() for place in places} == physical_ends
     assert real_conflicts <= set(result.conflicts)
     if all(tag == 2 for tag in tags):
         assert result.conflicts == ()

@@ -1,56 +1,15 @@
-"""Possible ends of inline scalar payloads, without a lifetime-safety verdict."""
+"""Holders of inline scalar payloads a statement ends (`MIRStatementKills.payloads`), without a
+lifetime-safety verdict."""
 
-from collections.abc import Mapping
 from dataclasses import dataclass
-from types import MappingProxyType
 
 from .place_text import _location, _place
-from .nodes import MIRAssign, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint
+from .nodes import MIRFunction, MIRNotCovered, MIRPlace, MIRPoint
 from .presence import MIRPresenceIssue
-from .prepare import MIRPrepared, validated_presence
-from .reach import storage_events, sum_payload_ends
+from .prepare import MIRPrepared
 from .reach import MIRReferent
 from .value import MIRValidationError
 from .witness import MIRHazard, MIRHazardKind
-
-
-@dataclass(frozen=True)
-class MIRPayloadEnds:
-    function: MIRFunction
-    ends: Mapping[MIRPoint, frozenset[MIRPlace]]
-
-
-def analyze_payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
-    validated_presence(prepared)
-    return _payload_ends(prepared)
-
-
-def _payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
-    fn, presence = prepared.function, prepared.presence
-    if presence.function is not fn:
-        raise MIRValidationError("selection facts belong to a different MIR function")
-    slots = {s.id: s for s in fn.slots}
-    ends: dict[MIRPoint, frozenset[MIRPlace]] = {}
-    for block in fn.blocks:
-        for index, stmt in enumerate(block.statements):
-            # A whole sum write's scalar payloads (`storage_events`), weighed
-            # by the one rule replacement reads too (`sum_payload_ends`).
-            written = [event for event in storage_events(stmt, (), slots) if event.payloads]
-            if not written:
-                continue
-            assert isinstance(stmt, MIRAssign)
-            # The validator demands the fact on every whole write of an inline sum.
-            if not all(event.known for event in written):
-                raise MIRValidationError("inline sum write without its storage write fact")
-            point = MIRPoint(block.id, index)
-            if point not in presence.points:
-                continue
-            incoming = dict(presence.points[point])
-            payloads = {place for event in written
-                        for place, owns in sum_payload_ends(event, stmt.value, incoming.get) if not owns}
-            if payloads:
-                ends[point] = frozenset(payloads)
-    return MIRPayloadEnds(fn, MappingProxyType(ends))
 
 
 @dataclass(frozen=True)
@@ -63,7 +22,6 @@ class MIRPayloadConflict:
 @dataclass(frozen=True)
 class MIRPayloadInspection:
     function: MIRFunction
-    ends: MIRPayloadEnds | MIRNotCovered
     conflicts: tuple[MIRPayloadConflict, ...] | MIRNotCovered
     freshness: tuple[MIRPresenceIssue, ...]
     # One per ended payload and holder, for the witness.
@@ -73,34 +31,32 @@ class MIRPayloadInspection:
 def inspect_payload_lifetimes(prepared: MIRPrepared) -> MIRPayloadInspection:
     """Inspect stale aliases without admitting them as valid MIR; a stale
     payload access never prepares (`prepare.prepare`)."""
-    ends = _payload_ends(prepared)
-    found = _payload_findings(prepared, ends)
+    found = _payload_findings(prepared)
     if isinstance(found, MIRNotCovered):
-        return MIRPayloadInspection(prepared.function, ends, found, prepared.presence.issues)
-    return MIRPayloadInspection(prepared.function, ends, found[0], prepared.presence.issues, found[1])
+        return MIRPayloadInspection(prepared.function, found, prepared.presence.issues)
+    return MIRPayloadInspection(prepared.function, found[0], prepared.presence.issues, found[1])
 
 
-def _payload_conflicts(prepared: MIRPrepared,
-                       ends: MIRPayloadEnds | MIRNotCovered) -> tuple[MIRPayloadConflict, ...] | MIRNotCovered:
-    found = _payload_findings(prepared, ends)
+def _payload_conflicts(prepared: MIRPrepared) -> tuple[MIRPayloadConflict, ...] | MIRNotCovered:
+    found = _payload_findings(prepared)
     return found if isinstance(found, MIRNotCovered) else found[0]
 
 
-def _payload_findings(prepared: MIRPrepared, ends: MIRPayloadEnds | MIRNotCovered
+def _payload_findings(prepared: MIRPrepared
                       ) -> tuple[tuple[MIRPayloadConflict, ...], tuple[MIRHazard, ...]] | MIRNotCovered:
     fn, liveness, dependencies = prepared.function, prepared.liveness, prepared.dependencies
-    for result in (prepared.presence, liveness, dependencies, ends):
+    for result in (prepared.presence, liveness, dependencies):
         if isinstance(result, MIRNotCovered):
             if result.body != fn.id:
                 raise MIRValidationError("uncovered analysis belongs to a different MIR body")
         elif result.function is not fn:
             raise MIRValidationError("payload inspection input belongs to a different MIR function")
-    for result in (dependencies, ends):
-        if isinstance(result, MIRNotCovered):
-            return MIRNotCovered(fn.id, "payload conflicts", f"{result.node_kind}: {result.reason}", result.loc)
+    if isinstance(dependencies, MIRNotCovered):
+        return MIRNotCovered(fn.id, "payload conflicts", f"{dependencies.node_kind}: {dependencies.reason}",
+                             dependencies.loc)
     conflicts: list[MIRPayloadConflict] = []
     hazards: list[MIRHazard] = []
-    for point, payloads in ends.ends.items():
+    for point, payloads in prepared.kills.payloads.items():
         incoming = dependencies.referents[point]
         live_after = dependencies.live(incoming, liveness.points[MIRPoint(point.block, point.index + 1)])
         for holder, refs in sorted(live_after.items(), key=lambda item: _place(item[0])):
@@ -130,12 +86,13 @@ def dump_payload_inspection(result: MIRPayloadInspection) -> str:
     return "\n".join(lines) + "\n"
 
 
-def dump_payload_ends(result: MIRPayloadEnds | MIRNotCovered) -> str:
-    if isinstance(result, MIRNotCovered):
-        return f"payload ends not covered: {result.reason}\n"
-    blocks = {b.id: b for b in result.function.blocks}
+def dump_payload_ends(prepared: MIRPrepared | MIRNotCovered) -> str:
+    """The inline scalar payloads each statement ends (`MIRStatementKills.payloads`)."""
+    if isinstance(prepared, MIRNotCovered):
+        return f"payload ends not covered: {prepared.reason}\n"
+    blocks = {b.id: b for b in prepared.function.blocks}
     lines = ["payload ends (possible inline scalar lifetime ends; no safety verdict)"]
-    for point, places in result.ends.items():
+    for point, places in prepared.kills.payloads.items():
         loc = blocks[point.block].statements[point.index].loc
         lines.append(f"  bb{point.block.index} before {point.index}: "
                      + ", ".join(sorted(_place(p) for p in places)) + _location(loc))
