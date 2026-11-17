@@ -2524,7 +2524,7 @@ class ExpressionAnalyzer:
             if root is None:
                 return "it borrows a temporary"
             if (root in self.ctx.func.current_reassigned_vars
-                    or not self.compat._name_is_param_or_global(root)):
+                    or not self.compat._name_outlives_body(root)):
                 return (f"it borrows '{root}', and a generator declared in "
                         f"front of {block} may borrow only parameters the "
                         f"function never rebinds, the receiver and module "

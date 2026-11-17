@@ -5,7 +5,7 @@ from tpy import Own
 
 
 def first_val[T](items: Own[list[T]]) -> T:
-    return items[0]  # tpyc: error(/Cannot return local or temporary as reference/)
+    return items[0]  # tpyc: error(/Cannot return parameter 'items' \(the function's own copy\) as reference/)
 
 
 def main() -> None:

@@ -1,10 +1,10 @@
 # A false reject, pinned (BUGS.md#shared-handle-payload-through-temp-rejected):
-# a value record temporary holding a Ptr to the lambda's argument is taken as
+# a record temporary holding a Ptr to the lambda's argument is taken as
 # the result's referent, though the result points through the Ptr into `q`
 # (CPython prints 7). The module-function twin, `lambda q: unwrap(Wrap(q))`,
 # is refused with the same message.
 from typing import Callable
-from tpy import Ptr, ValueType, int32
+from tpy import Ptr, int32
 
 
 class P:
@@ -14,7 +14,7 @@ class P:
         self.n = n
 
 
-class Wrap(ValueType):
+class Wrap:
     p: Ptr[P]
 
     def __init__(self, p: P) -> None:

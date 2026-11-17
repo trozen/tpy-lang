@@ -1,0 +1,1 @@
+main.py:19: error: Cannot return parameter 'x' (the function's own copy) as reference. Reference type 'Sq | V' is returned by reference. Use Own[Sq | V] to return by value.

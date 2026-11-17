@@ -4478,6 +4478,36 @@ def param_takes_ownership(ptype: 'TpyType') -> bool:
     return unwrap_optional_own(bare) is not None
 
 
+def param_holds_callee_copy(ptype: 'TpyType') -> bool:
+    """Whether the callee holds its OWN copy of what a parameter declared
+    `ptype` carries, so the parameter is the function's storage, like a
+    local, and a view or reference of it dies when the function returns:
+    an `Own[...]` parameter, or one passed by a value form that owns
+    storage -- the passing `to_cpp_param` spells (`signature_const` False:
+    only a `CallableType` flips under const, and it holds no viewable
+    buffer) is `VALUE` and the copy owns its storage (`copy_owns_storage`).
+    A tuple with `Own` elements is not one: only its owned elements are the
+    callee's (BUGS.md#own-tuple-param-element-escape). MIR decides the same fact
+    (`mir.call_contract.parameter_storage`)."""
+    bare = unwrap_readonly(unwrap_send_sync(ptype))
+    if unwrap_optional_own(bare) is not None:
+        return True
+    return (bare.param_passing() is ParamPassing.VALUE
+            and copy_owns_storage(bare))
+
+
+def copy_owns_storage(t: 'TpyType') -> bool:
+    """Whether a by-value copy of `t` owns what a view of it would point
+    into: the type, its Optional peeled, is no handle (`is_indirection_type`
+    -- a view or a `Ptr` copied by value still points at the caller's
+    storage). The tail of both parameter-copy facts, the signature's
+    (`param_holds_callee_copy`) and a coroutine frame's
+    (`frame_capture.frame_owns_param_copy`)."""
+    bare = unwrap_readonly(t)
+    inner = bare.inner if isinstance(bare, OptionalType) else bare
+    return not is_indirection_type(unwrap_readonly(inner))
+
+
 def is_own_pointer_repr_optional(t: 'TpyType') -> bool:
     """True for `Own[OptionalType[T_ref]]` where the inner Optional uses
     pointer representation (`T*` at borrow boundaries, `optional<T>` at

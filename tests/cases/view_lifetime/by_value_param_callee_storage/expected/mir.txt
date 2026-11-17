@@ -1,0 +1,47 @@
+fixtures::__tpy_init: uncovered (module initialization)
+fixtures::V.get@9:4: uncovered (missing receiver fact)
+fixtures::V.__init__@6:4: uncovered (missing record layout)
+fixtures::Sq.__init__@14:4: covered (storage: no_proof_required), summary: known
+fixtures::P.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::name_of@13:0: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)
+main::first_of@18:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::owned_name@25:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+main::aname@48:0: uncovered (async body)
+main::atext@53:0: uncovered (async body)
+main::atuple@58:0: uncovered (async body)
+main::aunion@63:0: uncovered (async body)
+main::gnames@70:0: uncovered (unsupported reference parameter passing)
+main::via_lambda@75:0: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)
+main::pick@81:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::abump@86:0: uncovered (async body)
+main::amain@92:0: uncovered (async body)
+main::main@101:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::R.name_of@35:4: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)
+main::R.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@43:4: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)
+part_frames::__tpy_init: uncovered (module initialization)
+part_frames::chars@9:0: uncovered (by-value capture of a borrowed parameter)
+part_frames::in_block@13:0: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)
+part_frames::after_loop@22:0: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)
+part_frames::captured@29:0: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)
+part_frames::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_frames::<genexpr>@30:13: uncovered (generator expression)
+part_inverse::__tpy_init: uncovered (module initialization)
+part_inverse::opt_str@9:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_inverse::opt_view@15:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_inverse::opt_bytes@21:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_inverse::span@27:0: covered (storage: no_proof_required), summary: known
+part_inverse::view@31:0: covered (storage: no_proof_required), summary: known
+part_inverse::text@35:0: covered (storage: no_proof_required), summary: known
+part_inverse::tup@39:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_inverse::union@44:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_inverse::opt_int@51:0: covered (storage: no_proof_required), summary: known
+part_inverse::one@60:0: covered (storage: no_proof_required), summary: known
+part_inverse::total@64:0: uncovered (unsupported parameter type)
+part_inverse::gname@76:0: uncovered (generic body)
+part_inverse::aptr_name@81:0: uncovered (async body)
+part_inverse::aopt_name@86:0: uncovered (async body)
+part_inverse::amain@94:0: uncovered (async body)
+part_inverse::main@100:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_inverse::C.__init__@56:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

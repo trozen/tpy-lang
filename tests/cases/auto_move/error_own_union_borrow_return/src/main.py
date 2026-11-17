@@ -16,7 +16,7 @@ class B:
 
 
 def ret_union(u: Own[A | B]) -> A | B:
-    return u  # tpyc: error(/Cannot return local or temporary/)
+    return u  # tpyc: error(/Cannot return parameter 'u' \(the function's own copy\)/)
 
 
 def main() -> None:

@@ -252,7 +252,9 @@ def region_view(typ: TpyType) -> bool:
 def parameter_storage(passing: ParamPassing, cls: MIRClass | None) -> bool:
     """Whether a parameter of class `cls` passed at `passing` is the
     callee's own storage: passed by value, unless a loan whatever its role
-    (a view, a protocol parameter)."""
+    (a view, a protocol parameter). Sema's escape checks decide the same
+    fact from the declared type (`typesys.param_holds_callee_copy`);
+    `tpyc/mir/test_param_storage.py` pins that the two agree."""
     return passing in OWNING_PASSINGS and holding_of(cls, MIRRole.STORAGE) is MIRHolding.VALUE
 
 

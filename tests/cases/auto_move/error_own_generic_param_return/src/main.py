@@ -8,7 +8,7 @@ from tpy import Own
 
 
 def opt_any[T](x: Own[T]) -> T | None:
-    return x  # tpyc: error(/Cannot return local or temporary as 'T \| None'/)
+    return x  # tpyc: error(/Cannot return parameter 'x' \(the function's own copy\) as 'T \| None'/)
 
 
 def main() -> None:

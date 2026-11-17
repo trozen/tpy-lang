@@ -1,0 +1,21 @@
+free: ffffffffffffffffffff oooooooooooooooooooo wwwwwwwwwwwwwwwwwwww
+method: mmmmmmmmmmmmmmmmmmmm
+ctor: cccccccccccccccccccc
+async: aaaaaaaaaaaaaaaaaaaa tttttttttttttttttttt
+async copies: pppppppppppppppppppp uuuuuuuuuuuuuuuuuuuu
+async ptr: 4 4
+generator: ['gggggggggggggggggggg']
+lambda: llllllllllllllllllll
+union: uuuuuuuuuuuuuuuuuuuu
+inverse optional: ss ss 20
+inverse views: 2 ss ss
+inverse tuple union: tt uu 3
+inverse self: yyyyyyyyyyyyyyyyyyyy
+inverse callable: 1
+inverse elements: 3
+inverse generic: nn
+inverse async ptr: rr rr True
+frames block: aa
+frames after loop: cc
+frames genexpr: dd
+frames genexpr: dd

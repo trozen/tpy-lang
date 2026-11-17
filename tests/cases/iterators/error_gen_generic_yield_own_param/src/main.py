@@ -12,7 +12,7 @@ class P:
 
 
 def give[T](x: Own[T]) -> Iterator[T]:
-    yield x  # tpyc: error(/Cannot yield local or temporary as reference.*Iterator\[Own\[T\]\]/)
+    yield x  # tpyc: error(/Cannot yield parameter 'x' \(the function's own copy\) as reference.*Iterator\[Own\[T\]\]/)
 
 
 def main() -> None:

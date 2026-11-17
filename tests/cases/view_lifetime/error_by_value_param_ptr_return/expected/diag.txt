@@ -1,0 +1,1 @@
+main.py:7: error: Cannot return pointer to parameter 'n' (the function's own copy); the returned pointer would dangle

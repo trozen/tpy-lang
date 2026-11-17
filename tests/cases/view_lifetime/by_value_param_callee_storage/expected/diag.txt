@@ -1,0 +1,1 @@
+part_inverse.py:86: warning: `Ptr[V] | None` is redundant -- `Ptr[V]` is already nullable; drop the `| None`

@@ -14,7 +14,8 @@ from typing import (TYPE_CHECKING, Callable, Iterable, Iterator, NamedTuple,
                     Optional, Sequence, TypeGuard)
 
 from ..type_def_registry import has_view_param_form
-from ..typesys import (lands_in_indirection, peel_slot, pointer_repr_optional, readonly_access, resolve_int_literals,
+from ..frame_capture import frame_owns_param_copy
+from ..typesys import (param_holds_callee_copy, lands_in_indirection, peel_slot, pointer_repr_optional, readonly_access, resolve_int_literals,
                       BIGINT, is_primitive_type, make_copy_iter)
 from ..typesys import (
     contains_reference_type, inner_type_param_names,
@@ -223,22 +224,28 @@ def _view_keeping_hint(name: str, display: str, source: str | None) -> str:
             f"directly")
 
 
-def _dangling_view_message(return_type: TpyType) -> str | None:
-    """Error message for returning a view that borrows from a local, or None
-    if return_type is not a borrowing-view type.
+# How the view diagnostics name a local or temporary backing (the phrase
+# `TypeCompatibility.dangle_subject` keeps for anything but a callee copy).
+VIEW_LOCAL = "a local or temporary"
+
+
+def _dangling_view_message(return_type: TpyType,
+                           subject: str = VIEW_LOCAL) -> str | None:
+    """Error message for returning a view that borrows from `subject`, or
+    None if return_type is not a borrowing-view type.
     """
     if not is_borrowing_view_type(return_type):
         return None
     family = _view_return_family(return_type)
     if family is not None:
         display, owned = family
-        return (f"Cannot return {display} referencing a local or temporary; "
+        return (f"Cannot return {display} referencing {subject}; "
                 f"use {owned} to return an owned copy")
     if is_span_iter(return_type):
-        return ("Cannot return SpanIter referencing a local or temporary; "
+        return (f"Cannot return SpanIter referencing {subject}; "
                 "the underlying Span would dangle after the function returns")
     display = return_type.name if isinstance(return_type, NominalType) else str(return_type)
-    return (f"Cannot return {display} referencing a local or temporary; "
+    return (f"Cannot return {display} referencing {subject}; "
             f"the storage it borrows would dangle after the function returns")
 
 
@@ -2901,10 +2908,11 @@ class TypeCompatibility:
                     and self.ctx.slot_step_commits()):
                 self._mark_addr_taken(source_expr)
 
-        if coercion.forbid_return_local and is_return:
-            if source_expr is not None and self.is_dangling_return(source_expr):
+        if coercion.forbid_return_local and is_return and source_expr is not None:
+            subject = self.dangling_subject(source_expr, "local or temporary value")
+            if subject is not None:
                 return CompatError(
-                    f"Cannot return local or temporary value; "
+                    f"Cannot return {subject}; "
                     f"the returned pointer/reference would dangle",
                     loc
                 )
@@ -5654,24 +5662,39 @@ class TypeCompatibility:
         `_leaves_param_derived`): the self / param / non-shadowed-global
         checks in one place.
 
-        An `Own[T]` param is CALLEE-owned and dies at function exit, so it does
-        NOT confer return-safety on borrows rooted in it; the same holds for
-        `self` in a consuming method. (Returning the owned value itself moves
-        by value through the OwnType return path, which never reaches the
-        dangling checks.) A generic `Own[...T...]` param is callee storage
-        too: the reference instantiation decides, as at the concrete twin.
+        A parameter the body holds its own copy of (`_holds_copy`:
+        `Own[...]`, a by-value form that owns storage, a coroutine frame's
+        copy) is CALLEE storage and dies at
+        function exit, so it does NOT confer return-safety on borrows rooted
+        in it; the same holds for `self` in a consuming method. (Returning
+        the owned value itself moves by value through the OwnType return
+        path, which never reaches the dangling checks.) A generic
+        `Own[...T...]` param is callee storage too: the reference
+        instantiation decides, as at the concrete twin.
         """
+        return self._name_outlives(name, call=True)
+
+    def _name_outlives_body(self, name: str) -> bool:
+        """True if the name refers to storage older than every local of the
+        body: what `_name_is_param_or_global` calls durable, and a by-value
+        parameter besides -- its copy lives as long as the body does. An
+        ownership-transfer parameter stays excluded, as the body may move
+        out of it."""
+        return self._name_outlives(name, call=False)
+
+    def _name_outlives(self, name: str, *, call: bool) -> bool:
         func = self.ctx.func.current_function
         # Only a real receiver is durable by being `self`; in a free function
         # or a staticmethod the name is an ordinary local, param or global and
         # must answer from its storage, like any other name.
         if name == "self" and self.ctx.self_names_receiver():
             return not (isinstance(func, TpyFunction) and func.is_consuming)
-        if isinstance(func, TpyFunction):
-            for pname, ptype in func.params:
-                if pname == name:
-                    own_inner = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
-                    return own_inner is None
+        found = self._param(name)
+        if found is not None:
+            if call:
+                return not self._holds_copy(*found)
+            return unwrap_optional_own(
+                unwrap_readonly(unwrap_send_sync(found[2]))) is None
         return self._name_is_module_global(name)
 
     def _name_is_module_global(self, name: str) -> bool:
@@ -5741,18 +5764,83 @@ class TypeCompatibility:
 
     def _leaves_dangle(self, ls: list[Leaf], *, view_source: bool = False,
                        gen_yield: bool = False) -> bool:
-        """`is_dangling_return` as a mapping of the durability leaves: a
-        temporary or an unclassified view node dangles; a name by the name
-        rule (`_place_durable`)."""
+        """`is_dangling_return` as a mapping of the durability leaves."""
+        return self._dangling_leaf(ls, view_source=view_source,
+                                   gen_yield=gen_yield) is not None
+
+    def _dangling_leaf(self, ls: list[Leaf], *, view_source: bool = False,
+                       gen_yield: bool = False) -> Leaf | None:
+        """The first durability leaf that dangles, or None: a temporary or
+        an unclassified view node dangles; a name by the name rule
+        (`_place_durable`)."""
         for leaf in ls:
             kind = leaf.kind
             if kind in (LeafKind.TEMPORARY, LeafKind.VIEWNODE):
-                return True
+                return leaf
             if kind is LeafKind.PLACE:
                 if not self._place_durable(leaf, view_source=view_source,
                                            gen_yield=gen_yield):
-                    return True
-        return False
+                    return leaf
+        return None
+
+    def dangling_subject(self, expr: TpyExpr, local: str, *,
+                         view_source: bool = False,
+                         gen_yield: bool = False) -> str | None:
+        """What a dangling `expr` points into, as its diagnostic names it
+        (`dangle_subject`, with the site's own `local` phrase); None when it
+        does not dangle."""
+        leaf = self.dangling_root(expr, view_source=view_source,
+                                  gen_yield=gen_yield)
+        return None if leaf is None else self.dangle_subject(leaf, local)
+
+    def dangling_root(self, expr: TpyExpr, *, view_source: bool = False,
+                      gen_yield: bool = False) -> Leaf | None:
+        """The leaf a dangling `expr` dangles at (`_dangling_leaf` over
+        `durability_leaves`), or None when it does not dangle."""
+        return self._dangling_leaf(
+            self.durability_leaves(expr, gen_yield=gen_yield),
+            view_source=view_source, gen_yield=gen_yield)
+
+    def dangle_subject(self, leaf: Leaf, local: str) -> str:
+        """How every dangling-borrow diagnostic names the storage a dangling
+        leaf lives in: a parameter the function holds its own copy of by
+        name, anything else by the site's own `local` phrase."""
+        if self._roots_in_callee_copy(leaf):
+            return f"parameter '{leaf.name}' (the function's own copy)"
+        return local
+
+    def _roots_in_callee_copy(self, leaf: Leaf) -> bool:
+        """Whether `leaf` is a parameter the function holds its own copy of
+        (`_holds_copy`)."""
+        found = self._param(leaf.name) if leaf.kind is LeafKind.PLACE else None
+        return found is not None and self._holds_copy(*found)
+
+    def _param(self, name: str | None
+               ) -> tuple[TpyFunction, str, TpyType] | None:
+        """The current function and its parameter `name`, with its declared
+        type; None when `name` is no parameter of a function."""
+        func = self.ctx.func.current_function
+        if not isinstance(func, TpyFunction):
+            return None
+        for pname, ptype in func.params:
+            if pname == name:
+                return func, pname, ptype
+        return None
+
+    @staticmethod
+    def _holds_copy(func: TpyFunction, pname: str, ptype: TpyType) -> bool:
+        """Whether body `func` holds its own copy of parameter `pname`, so the
+        parameter is the body's storage and dies with it: an `Own[...]` or
+        owning by-value parameter (`param_holds_callee_copy`), or one a
+        coroutine frame copies (`frame_owns_param_copy`); never a capture,
+        which binds the enclosing variable. A generator frame's copy of a
+        `str` / `bytes` parameter is not counted: its yields of the copy are
+        read while the frame lives, and refusing them waits on the consumer
+        rule (BUGS.md#generator-str-param-copy-view-escape)."""
+        if func.is_capture(pname):
+            return False
+        return (param_holds_callee_copy(ptype)
+                or (func.is_async and frame_owns_param_copy(ptype)))
 
     def _leaves_safe(self, ls: list[Leaf]) -> bool:
         """`is_safe_to_return_expr` as a mapping of the durability leaves:
@@ -6104,27 +6192,30 @@ class TypeCompatibility:
         # Pointer types need dangling checks (the pointer value may point to a local)
         if isinstance(return_type, PtrType):
             self._check_rebound_global_borrow(expr, return_type, verb)
-            if self.is_dangling_return(expr, gen_yield=for_yield):
+            subject = self.dangling_subject(expr, "local or temporary value",
+                                            gen_yield=for_yield)
+            if subject is not None:
                 raise self.ctx.error(
-                    f"Cannot {verb} pointer to local or temporary value; "
+                    f"Cannot {verb} pointer to {subject}; "
                     f"the {verb}ed pointer would dangle",
                     expr
                 )
             return
         # Value types that hold an interior pointer -- returning one that
         # borrows from a local would dangle after the function returns.
-        view_msg = _dangling_view_message(return_type)
-        if view_msg is not None:
+        if is_borrowing_view_type(return_type):
             self._check_rebound_global_borrow(expr, return_type, verb)
             inner = expr.expr if isinstance(expr, TpyCoerce) else expr
             view_arg = borrowing_ctor_arg(inner)
+            bare_src = (unwrap_readonly(source_type)
+                        if source_type is not None else None)
             if view_arg is not None:
                 # A view constructor / slice: its argument is the backing
                 # storage, so a movable owned local there is still a dangling
                 # view source.
-                if self.is_dangling_return(view_arg, view_source=True,
-                                           gen_yield=for_yield):
-                    raise self.ctx.error(view_msg, inner)
+                leaf = self.dangling_root(view_arg, view_source=True,
+                                          gen_yield=for_yield)
+                node: TpyExpr = inner
             else:
                 # Returning a local directly. If the local is ITSELF a view
                 # (its provenance was validated at binding, e.g. a literal- or
@@ -6139,8 +6230,6 @@ class TypeCompatibility:
                 # binding provenance this branch consults, an OWNED local is
                 # dead-on-return storage rejected exactly as an annotated
                 # `str`/`bytes` local is.
-                bare_src = (unwrap_readonly(source_type)
-                            if source_type is not None else None)
                 decided = self.ctx.view_storage_verdict(bare_src)
                 if (decided is not None and not view_storage_final
                         and not self.ctx.view_storage_settled(bare_src)):
@@ -6150,12 +6239,17 @@ class TypeCompatibility:
                 effective_src = decided if decided is not None else source_type
                 src_is_view = (effective_src is not None
                                and _dangling_view_message(effective_src) is not None)
-                if self.is_dangling_return(expr, view_source=not src_is_view,
-                                           gen_yield=for_yield):
-                    raise self.ctx.error(
-                        (None if for_yield else self._stored_copy_return_message(
-                            expr, bare_src, return_type))
-                        or view_msg, expr)
+                leaf = self.dangling_root(expr, view_source=not src_is_view,
+                                          gen_yield=for_yield)
+                node = expr
+            if leaf is not None:
+                stored = (self._stored_copy_return_message(expr, bare_src, return_type)
+                          if view_arg is None and not for_yield
+                          and not self._roots_in_callee_copy(leaf) else None)
+                raise self.ctx.error(
+                    stored or _dangling_view_message(
+                        return_type, self.dangle_subject(leaf, VIEW_LOCAL)),
+                    node)
             return
         # A tuple's borrow form (std::tuple<..., T*, ...>) stores each non-value
         # member by pointer. The check sees through a readonly wrap (the slot is
@@ -6214,10 +6308,12 @@ class TypeCompatibility:
             # pre-coercion source_type is the only reliable signal.
             from_existing_wrapper = (source_type is not None
                 and unwrap_readonly(unwrap_ref_type(source_type)).needs_wrapper())
-            if not from_existing_wrapper or self.is_dangling_return(
-                    src, gen_yield=for_yield):
+            subject = (self.dangling_subject(src, "local or temporary",
+                                             gen_yield=for_yield)
+                       if from_existing_wrapper else "local or temporary")
+            if subject is not None:
                 raise self.ctx.error(
-                    f"Cannot {verb} local or temporary as reference. "
+                    f"Cannot {verb} {subject} as reference. "
                     f"Reference type '{return_type}' is {verb}ed by reference. "
                     f"{_own_fix(return_type, cap=True)}.",
                     expr
@@ -6229,7 +6325,9 @@ class TypeCompatibility:
         if isinstance(return_type, OptionalType):
             if isinstance(expr, TpyNoneLiteral):
                 return
-            if self.is_dangling_return(expr, gen_yield=for_yield):
+            subject = self.dangling_subject(expr, "local or temporary",
+                                            gen_yield=for_yield)
+            if subject is not None:
                 call = expr.expr if isinstance(expr, TpyCoerce) else expr
                 if (isinstance(call, TpyCallLike)
                         and call.result_form is ResultForm.COPY
@@ -6246,7 +6344,7 @@ class TypeCompatibility:
                         expr
                     )
                 raise self.ctx.error(
-                    f"Cannot {verb} local or temporary as '{return_type}'. "
+                    f"Cannot {verb} {subject} as '{return_type}'. "
                     f"The {verb}ed pointer would dangle. "
                     f"{verb.capitalize()} a reference to parameter data, or {_own_fix(return_type, cap=False)}.",
                     expr
@@ -6254,10 +6352,12 @@ class TypeCompatibility:
             return
 
         # Check if the expression is safe to return as a reference
-        if self.is_dangling_return(expr, gen_yield=for_yield):
+        subject = self.dangling_subject(expr, "local or temporary",
+                                        gen_yield=for_yield)
+        if subject is not None:
             if is_protocol_type(return_type):
                 raise self.ctx.error(
-                    f"Cannot {verb} local or temporary as '{return_type}'. "
+                    f"Cannot {verb} {subject} as '{return_type}'. "
                     f"Dynamic protocol return requires a value that outlives the caller "
                     f"(parameter or global).",
                     expr
@@ -6297,7 +6397,7 @@ class TypeCompatibility:
                          else "")
             fix = _own_fix(return_type, cap=not local_fix)
             raise self.ctx.error(
-                f"Cannot {verb} local or temporary as reference. "
+                f"Cannot {verb} {subject} as reference. "
                 f"Reference type '{return_type}' is {verb}ed by reference. "
                 f"{local_fix}{fix}.",
                 expr
@@ -6377,15 +6477,16 @@ class TypeCompatibility:
                 self._check_rebound_global_borrow(inner.elements[i], et, verb)
             if et.is_value_type() or isinstance(et, (OwnType, TypeParamRef)):
                 continue
-            bad = self.is_dangling_return(inner.elements[i], gen_yield=gen_yield)
-            if not bad and et.needs_wrapper():
+            subject = self.dangling_subject(inner.elements[i], "local or temporary",
+                                            gen_yield=gen_yield)
+            if subject is None and et.needs_wrapper():
                 src_et = src_elems[i] if src_elems is not None else None
                 from_existing_wrapper = (src_et is not None
                     and unwrap_readonly(unwrap_ref_type(src_et)).needs_wrapper())
-                bad = not from_existing_wrapper
-            if bad:
+                subject = None if from_existing_wrapper else "local or temporary"
+            if subject is not None:
                 raise self.ctx.error(
-                    f"Cannot {verb} local or temporary as tuple element {i}. "
+                    f"Cannot {verb} {subject} as tuple element {i}. "
                     f"Type '{et}' is {verb}ed by reference. "
                     f"Use Own[{et}] for this tuple element to {verb} by value.",
                     inner.elements[i]

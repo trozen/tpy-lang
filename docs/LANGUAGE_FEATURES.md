@@ -1013,8 +1013,10 @@ def peek(data: StrView) -> StrView:    # string_view in, string_view out
   copy*; use a `str` or `String` field to keep it. Not caught yet, and
   dangling: a view-returning FREE FUNCTION over a fresh argument when the
   callee is analyzed after the caller (`first(mk(n))` in a method,
-  `BUGS.md#strview-field-view-of-temporary`) and an owned local or
-  `Own[str]` param (`BUGS.md#view-field-from-own-str-param`).
+  `BUGS.md#strview-field-view-of-temporary`), an owned local or
+  `Own[str]` param (`BUGS.md#view-field-from-own-str-param`), and a view of a
+  parameter the function holds its own copy of (see below,
+  `BUGS.md#callee-copy-param-view-field-store`).
 - Cannot use `+=` (would dangle -- use `str` or `String` for mutable strings)
 - Returning a `StrView` referencing a local or temporary is an error. This
   covers view-returning methods (`return a.strip()`), f-strings (`return
@@ -1045,6 +1047,35 @@ def peek(data: StrView) -> StrView:    # string_view in, string_view out
   method that replaces elements without moving any with
   `mutates="elements"`, which iterator invalidation and the borrow analysis
   read (see `docs/NATIVE_INTEROP.md` "Declaring element storage").
+- A parameter the function holds its own copy of is the function's storage,
+  like a local: `Own[...]` (a generic `Own[T]` too), a by-value parameter that
+  owns storage (a `ValueType` record, `tuple[...] | None`, a scalar), and any
+  parameter a coroutine (`async def`) frame copies (`str`, `bytes`, a value
+  tuple or union, their `| None` forms). A view or reference of it cannot be
+  returned or yielded: `def f(x: V) -> StrView: return x.name` is *Cannot
+  return StrView referencing parameter 'x' (the function's own copy); use str
+  or String to return an owned copy*, and the same holds for a method's view
+  (`x.get()`), a lambda capturing `x`, a generator's `yield`, a pointer (`take_ptr(x)`) and a union with a reference alternative
+  (`-> V | Sq`). Return `str` / `bytes` (or `Own[...]`) instead. A view
+  parameter (`str`, `StrView`, `Span`, `str | None`, ...), a tuple or value
+  union of a plain function (passed by reference), the receiver, a `Ptr`
+  parameter (a coroutine frame copies the pointer, not its pointee) and a
+  generator expression's captured name stay the caller's storage. A handle
+  a callee copy holds -- `w.p` of a `Ptr` member, a `StrView` field -- is
+  taken for the copy's storage, as a local's or an `Own` parameter's is,
+  though it may point at the caller's
+  (`BUGS.md#view-handle-field-of-own-storage-refused`). A name a lambda
+  binds is read against the enclosing function's parameter of that name
+  (`BUGS.md#lambda-body-names-classified-by-enclosing-params`). Not covered
+  yet: a by-value generic `T` and a view lent through a protocol stub
+  (`BUGS.md#protocol-stub-view-lend-dropped`), a generator's copy of a `str`
+  parameter (`BUGS.md#generator-str-param-copy-view-escape`), a tuple
+  parameter's `Own` elements (`BUGS.md#own-tuple-param-element-escape`) and
+  a coroutine's mixed tuple (`BUGS.md#async-mixed-tuple-param-view-escape`), and
+  a view of such a parameter STORED where it outlives the call -- a field
+  (`BUGS.md#callee-copy-param-view-field-store`) or a caller's container
+  (`BUGS.md#callee-storage-view-container-append`); stores are MIR's to warn
+  on.
 - An *explicit* `StrView`/`BytesView` annotation is a promise not to copy, so a
   binding whose source dies at end-of-statement is an error (`v: StrView =
   make()` / `make().strip()`): drop the annotation (the local then owns) or

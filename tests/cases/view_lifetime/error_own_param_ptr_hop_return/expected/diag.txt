@@ -1,0 +1,1 @@
+main.py:15: error: Cannot return StrView referencing parameter 'xs' (the function's own copy); use str or String to return an owned copy
