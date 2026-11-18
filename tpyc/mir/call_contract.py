@@ -424,8 +424,8 @@ class MIRCallSummary:
     arguments must meet (`MIRAliasObligation`), each checked at the call.
 
     A stub callee (`THIRStubCallee`) has no body: its summary is derived
-    from the declaration alone (`stub_summary`), and its owned-leaf result
-    may borrow every argument it lends (`returns`).
+    from the declaration alone (`stub_summary`), and its result borrows the
+    lent arguments the declaration names (`returns`; fresh with none).
     """
     callee: THIRResolvedCallee | THIRStubCallee
     parameters: tuple[MIRParameterBinding, ...]
@@ -616,11 +616,14 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     reads or writes only its arguments, retains nothing and reaches no other
     TPy storage; admitting only readonly parameters narrows that to a
     reader. So the stub reads every parameter, writes, invalidates and
-    retains nothing, reads no global and may raise. An owned-leaf result is
-    not fresh by declaration -- `min(a, b)` binds `std::min`, a reference to
-    an argument -- so it may borrow every argument the call lends. A
-    constructed result (`constructs_result`, an initializer) is the
-    exception: the call builds a new value, so it borrows no argument."""
+    retains nothing, reads no global and may raise. A body-less binding's
+    result is fresh unless its declaration says where it comes from
+    (`THIRStubCallee.result_origins`): an owned-leaf result borrows the
+    lent arguments named there -- `min(a, b)` over `int` binds `std::min`, a
+    reference to an argument, and declares `borrows=` for it -- and with
+    none it is fresh; a constructed result (`constructs_result`, an
+    initializer) borrows no argument. A view result borrows the named lent
+    arguments, or, with none named, every argument the call lends."""
     if (not isinstance(callee, THIRStubCallee) or not isinstance(callee.identity, THIRStubIdentity)
             or not isinstance(callee.signature, THIRCallableSignature)):
         return "invalid stub callee"
@@ -631,6 +634,8 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
             or any(type(r) is not bool for r in callee.readonly)
             or type(callee.mutates_elements) is not bool or type(callee.receiver) is not bool
             or type(callee.constructs_result) is not bool or callee.constructs_result and callee.receiver
+            or not isinstance(callee.result_origins, frozenset)
+            or not all(type(i) is int and 0 <= i < len(signature.param_types) for i in callee.result_origins)
             or not isinstance(callee.bound_arguments, tuple)
             or not callee.receiver and (callee.mutates_elements or callee.bound_arguments)
             or callee.mutates_elements and (not callee.readonly or callee.readonly[0]
@@ -658,10 +663,12 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
         # A void result returns nothing to borrow, whatever its representation.
         return MIRCallSummary(callee, tuple(bindings), frozenset(range(len(bindings))), frozenset(), frozenset(),
                               frozenset(), frozenset(), False, frozenset())
-    lent = frozenset(_stub_return(i, b, result) for i, b in enumerate(bindings) if b.readonly)
+    origins = _stub_origins(callee, bindings, result)
     if view_result(result, representation) is not None:
-        # A view result may borrow every argument the call lends, and only
-        # those: with none lent its origin is outside the call.
+        # An undeclared view result may borrow every argument the call
+        # lends, and only those: with none lent its origin is outside the call.
+        lent = (origins if callee.result_origins
+                else frozenset(_stub_return(i, b, result) for i, b in enumerate(bindings) if b.readonly))
         if not lent:
             return "stub view result has no lent origin"
         return MIRCallSummary(callee, tuple(bindings), frozenset(range(len(bindings))), frozenset(), frozenset(),
@@ -672,14 +679,7 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     if not (storage_leaf(result, representation)
             or owned_result is not None and representation is Representation.STORAGE):
         return "unsupported stub result type"
-    returns = lent if owned_result is not None and not callee.constructs_result else frozenset()
-    # A parameter read only because it is published as a view (not declared
-    # readonly) says nothing about the result: it may be fresh storage or a
-    # reference into that argument, which only the per-parameter result model
-    # can tell (TODO.md "[MIR] Per-parameter stub contracts").
-    if any(signature.passings[o.parameter] is ParamPassing.VIEW and not callee.readonly[o.parameter]
-           for o in returns):
-        return "stub owned result may be fresh or its view argument"
+    returns = origins if owned_result is not None and not callee.constructs_result else frozenset()
     return MIRCallSummary(callee, tuple(bindings), frozenset(range(len(bindings))), frozenset(), frozenset(),
                           returns, frozenset(), False, frozenset())
 
@@ -694,6 +694,14 @@ def stub_protocol_argument(read: TpyType) -> bool:
         return modeled_members(read) and not _holds_borrow(read)
     td = type_def_of(read)
     return td is not None and (td.owned_leaf or td.loan_inert)
+
+
+def _stub_origins(callee: THIRStubCallee, bindings: list[MIRParameterBinding],
+                  result: TpyType) -> frozenset[MIRReturnOrigin]:
+    """The declared origins of a stub's result (`result_origins`) that the
+    call lends: the receiver, and every other argument bound readonly."""
+    return frozenset(_stub_return(i, bindings[i], result) for i in callee.result_origins
+                     if callee.receiver and i == 0 or bindings[i].readonly)
 
 
 def _stub_return(index: int, binding: MIRParameterBinding, result: TpyType) -> MIRReturnOrigin:
@@ -723,10 +731,12 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     move; a protocol parameter (an iterable, a key) runs code the
     declaration does not describe, so it needs the stub's own contract. A
     method whose type parameter carries a protocol bound dispatches that
-    protocol on the bound type argument, which must be a builtin leaf. A
-    result returned by reference or as a view borrows the receiver and
-    every other lent argument; one returned by value is fresh. Every
-    method may raise."""
+    protocol on the bound type argument, which must be a builtin leaf. The
+    result borrows the lent arguments its declaration names
+    (`result_origins`): one returned by reference or as a view names at
+    least the receiver it borrows, or is refused; one returned by value is
+    fresh, whatever the method declares (`method_stub_callee` publishes no
+    origin for it). Every method may raise."""
     signature = callee.signature
     if (signature.passings is None or len(signature.passings) != len(signature.param_types)
             or signature.return_representation is None
@@ -763,9 +773,9 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     representation = signature.return_representation
     returns: frozenset[MIRReturnOrigin] = frozenset()
     if representation in (Representation.VIEW, Representation.REFERENCE) and not isinstance(result, VoidType):
-        if call_result(callee, None) is None:
+        if call_result(callee, None) is None or not callee.result_origins:
             return "unsupported stub result type"
-        returns = frozenset(_stub_return(i, b, result) for i, b in enumerate(bindings) if i == 0 or b.readonly)
+        returns = _stub_origins(callee, bindings, result)
     elif not isinstance(result, VoidType):
         stored = native_container_subject(result)
         if not (representation is Representation.STORAGE

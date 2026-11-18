@@ -24,3 +24,11 @@ elapsed True
 rotate 2147483648
 cwd_bound True
 link_target target_name
+repr_bound 'q'
+min_alias 99 99
+round_alias 99
+abs_fresh 3
+abs_generator 4
+abs_closure 5
+os_readlink origin_target
+os_realpath origin_target

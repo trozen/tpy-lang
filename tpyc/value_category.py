@@ -1666,9 +1666,9 @@ def param_type_can_lend(ptype: TpyType, *, callables: bool = True) -> bool:
     callee's result borrows: a reference type or open `T` (passed by
     reference), a view, a `str` / `bytes` view parameter, a `*args` pack, a
     tuple with a borrowing element -- and, unless `callables` is off, a
-    callable, whose environment may hold references. The one predicate the
-    `borrows=` / `element_of=` validation and the generator frame's captures
-    read."""
+    callable, whose environment may hold references. The generator frame's
+    captures and the undeclared callee default read it; the `borrows=`
+    validation admits a by-reference owned leaf beside it."""
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
     return (not t.is_value_type() or is_str_type(t) or is_bytes_type(t)
             or is_borrowing_view_type(t) or is_varargs(t)

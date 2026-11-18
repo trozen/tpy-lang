@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::vopt@47:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::first@51:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::opt@56:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
-main::own_ints@67:0: uncovered (stub result may borrow a container argument), summary: opaque (stub result may borrow a container argument)
+main::own_ints@67:0: covered (storage: no_proof_required), summary: known
 main::own_set@72:0: covered (storage: no_proof_required), summary: known
 main::uni@76:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::take_i@80:0: covered (storage: no_proof_required), summary: known

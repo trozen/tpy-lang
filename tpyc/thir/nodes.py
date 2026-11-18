@@ -1134,7 +1134,15 @@ class THIRStubCallee:
     them.
     `constructs_result` says the call builds its result (a builtin type's
     initializer), so an owned result shares no storage with the arguments.
-    Never set on a method stub."""
+    Never set on a method stub.
+    `result_origins` are the parameters (indices into `signature`, so the
+    receiver of a method stub is 0) whose storage the result may be or
+    lie in, as the declaration says: `borrows=` / `element_of=`, the
+    native accessor's receiver borrow, or a template rendering its one
+    argument (`int(x)` renders `x`). With none the result is fresh. The
+    declaration is published as written (`stub_result_origins`); MIR's
+    method summary reads it only for a result returned by reference or as
+    a view (`_method_stub_summary`)."""
     identity: THIRStubIdentity
     signature: THIRCallableSignature
     contract: THIRStubContract | None
@@ -1143,6 +1151,7 @@ class THIRStubCallee:
     receiver: bool = False
     bound_arguments: tuple[TpyType, ...] = ()
     constructs_result: bool = False
+    result_origins: frozenset[int] = frozenset()
 
 
 @dataclass(frozen=True)

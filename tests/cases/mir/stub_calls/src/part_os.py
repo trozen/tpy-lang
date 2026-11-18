@@ -1,5 +1,5 @@
 # MIR over calls reaching declared OS / clock / bit stubs (`transient=True`, `@pure`): a str
-# parameter published as a view is read, a void result lends nothing; undeclared stubs still refuse.
+# parameter published as a view is read, a void result lends nothing, an undeclared result is fresh.
 import os
 import time
 from tpy import StrView, int32, uint32
@@ -59,13 +59,12 @@ def nap() -> None:  # tpyc: mir(uncovered /stub declares no contract/)
     time.sleep(0.0)
 
 
-# str -> str stub: os.readlink's fresh result is not yet modeled, so it declares no contract
-def link_target(name: str) -> str:  # tpyc: mir(uncovered /stub declares no contract/)
+# str -> str stub: os.readlink is transient and its undeclared result is fresh
+def link_target(name: str) -> str:  # tpyc: mir(covered)
     return os.readlink(name)
 
 
-# user transient stub, str -> str: the result may be a fresh string or a reference into the
-# view argument, which the stub's contract does not say, so the caller stays uncovered (never run)
+# user transient stub, str -> str: declaring no origin, its result is fresh
 @cpp_template("std::string({0})", transient=True)
 def duplicate(s: str) -> str: ...
 
@@ -76,15 +75,15 @@ def grow(names: list[str], s: str) -> int32:
 
 
 # a fresh result read while `grow` appends to `names`: no alias warning
-def fresh_safe() -> int32:  # tpyc: mir(uncovered /stub owned result may be fresh or its view argument/)
+def fresh_safe() -> int32:  # tpyc: mir(covered)
     names = ["first"]
     return grow(names, duplicate(names[0]))  # tpyc: ok
 
 
-# a fresh temporary viewed by `h.v` past its statement: not silently covered
-def fresh_dangling(s: str) -> None:  # tpyc: mir(uncovered /stub owned result may be fresh or its view argument/)
+# a fresh temporary viewed by `h.v` past its statement: warned (never run)
+def fresh_dangling(s: str) -> None:
     h = Holder("initial")
-    set_v(h, duplicate(s))
+    set_v(h, duplicate(s))  # tpyc: warning(/the temporary 'duplicate\(s\)' lives only until the end of this statement, and 'h.v' may still view it/)
     print(h.v)
 
 

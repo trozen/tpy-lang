@@ -2301,12 +2301,32 @@ as the corpus grows).
   void, an inert leaf or an owned leaf returned as STORAGE. A protocol
   parameter is admitted only under `@pure` and only for an argument whose
   TypeDef is `loan_inert` or `owned_leaf` (no user dunder can run). A stub
-  result of owned-leaf type MAY BORROW every lent argument (`min(a, b)` is
-  `@pure` and binds `std::min`, a reference to an argument); it is fresh
-  only when no argument is lent, or when the call constructs it
-  (`THIRStubCallee.constructs_result`, a builtin type's initializer:
-  `str(b.n)`, `String(s)`, `bytes(b)` build a new value). An unmarked stub
-  stays opaque. Audited for
+  result is FRESH unless its declaration says where it comes from
+  (since 2026-11-18): it borrows exactly the lent arguments named by
+  `THIRStubCallee.result_origins`, published from the binding's stamped
+  `return_borrows_from` (`borrows=` / `element_of=`; a native method's
+  inferred receiver borrow; a template rendering its one argument,
+  `{0}` / `({0})`, as `int(x)` renders `x`). One THIR helper,
+  `stub_result_origins`, decides the set, so it means "parameters whose
+  storage the result may be" at every callee kind, believing the
+  declaration as written: (1) a template rendering its argument is that
+  argument (at a method stub, `{0}` is the first declared parameter,
+  signature position 1); (2) otherwise the stamped origins, for a free
+  `@native` or `@cpp_template` binding alike -- a declaration that does not
+  match its C++ is the declaration's defect
+  (BUGS.md#undeclared-binding-reference-result-taken-fresh). A method
+  stub's result returned as STORAGE (a native container method, the only
+  receiver a method stub has) stays fresh: `_method_stub_summary` reads the
+  origins only for a reference or view result. Only `dict.get(k, default)`
+  declares one there, exact at a reference `V` only (TODO.md "Make
+  `dict.get(k, default)`'s declaration match its C++"). `min(a, b)` over `int`
+  binds `std::min`, a reference to an argument, and declares
+  `borrows=("arg1", "arg2")`; `round(int)` declares its argument. A
+  constructed result (`constructs_result`, a builtin type's initializer:
+  `str(b.n)`, `String(s)`, `bytes(b)` build a new value) borrows nothing.
+  A free stub's view result with no declared origin may borrow every lent
+  argument; a method stub's reference or view result with none is
+  refused. An unmarked stub stays opaque. Audited for
   the acceptance program: `len` (`@pure`), `time.time` (`transient=True`),
   `math.log` and `int(x: float)` (`@pure`).
 - **Coverage, "stub declares no contract".** Closed for the builtin
@@ -2325,13 +2345,12 @@ as the corpus grows).
   `waitstatus_to_exitcode` and `tls_classify` declare `@pure`; a stub
   parameter published as a view (`str`, `bytes`) is a reader whatever
   its declaration says (`_stub_binding`), and a void stub result lends
-  nothing; a free stub's owned result over such a parameter (a user
-  `str -> str` stub) stays uncovered, since it may be fresh or the
-  argument (TODO.md "[MIR] Per-parameter stub contracts"). Remaining: free stubs without a contract (the check points
+  nothing; a free stub's undeclared owned result over such a parameter (a
+  user `str -> str` stub, the `str -> str` bindings `readlink`, `env_get`,
+  `user_home`, `realpath`, `transient=True` since 2026-11-18) is fresh.
+  Remaining: free stubs without a contract (the check points
   `time.sleep`, `read_fd`, `write_fd`, `kill_pid`, `waitpid`, `input`;
-  the signal requests; the `str -> str` bindings `readlink`, `env_get`,
-  `user_home`, `realpath`, whose result needs a per-parameter result
-  model -- TODO.md "[MIR] Per-parameter stub contracts"; every `Ptr`
+  the signal requests; every `Ptr`
   stub; `unsafe_*`, `frexp` / `modf`, `list.extend`), exception
   classes' and raw `@native` records'
   initializers, and constructor paths that attach no stub callee
@@ -2376,8 +2395,8 @@ as the corpus grows).
   ([projected return origins](#projected-return-origins)), and a result whose origins include a global, a static literal
   or the body's own storage leaves the body lowered and its summary opaque
   ("view result origin outside the parameters"; an empty origin set is
-  never read as fresh). A stub view result borrows every lent argument and
-  refuses with none ("stub view result has no lent origin"). `String`
+  never read as fresh). A stub view result borrows its declared origins, or
+  with none declared every lent argument, and refuses with none lent ("stub view result has no lent origin"). `String`
   bound as `str` is authorized by `THIRCoerce.owned_passthrough`, keyed on
   the sink: a `MIRBorrow` of the `String` place at a borrowing sink (a
   `str` view parameter, a view local), a `MIRCopy` at an owning one. Rule:

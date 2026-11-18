@@ -163,8 +163,26 @@ class CallSignature:
     receiver: bool = False
 
     def passing(self, index: int) -> ParamPassing | None:
-        return published_passing(self.signature,
-                                 index + 1 if self.receiver else index)
+        return published_passing(self.signature, signature_index(index, self.receiver))
+
+
+def signature_index(declared: int, receiver: bool) -> int:
+    """The position in a callee's published signature of its declared
+    parameter `declared` (a FunctionInfo index; -1 is a method's `self`):
+    a method's signature lists the receiver first."""
+    return declared + 1 if receiver else declared
+
+
+def stub_result_origins(fi: FunctionInfo, *, receiver: bool) -> frozenset[int]:
+    """The signature positions whose storage a stub's result may be
+    (`THIRStubCallee.result_origins`), believed as the declaration states
+    them: a template rendering its one argument (`{0}`, the first declared
+    parameter) is that argument, otherwise the stamped `return_borrows_from`.
+    A declaration that does not match its C++ is a defect in the
+    declaration (BUGS.md#undeclared-binding-reference-result-taken-fresh)."""
+    if renders_its_argument(fi.cpp_template):
+        return frozenset({signature_index(0, receiver)})
+    return frozenset(signature_index(i, receiver) for i in fi.root.return_borrows_from or ())
 
 
 def call_signature(resolved: THIRResolvedCallee | None = None,
@@ -368,11 +386,11 @@ def stub_callee(fi: FunctionInfo | None, result_type: TpyType, analyzer: 'Semant
     if not name or any(_open_stub_type(t) for t in (*types, ret)):
         return None
     consts = stub_param_consts(fi)
-    # An identity template hands back its argument, so the result is the argument.
-    constructs = initializer and not renders_its_argument(fi.cpp_template)
-    return THIRStubCallee(THIRStubIdentity(name, types),
-                          callable_signature(types, ret, None, signature_passings(types, consts), analyzer),
-                          _stub_contract(fi), consts, constructs_result=constructs)
+    signature = callable_signature(types, ret, None, signature_passings(types, consts), analyzer)
+    # An initializer template rendering its argument hands that argument back.
+    return THIRStubCallee(THIRStubIdentity(name, types), signature, _stub_contract(fi), consts,
+                          constructs_result=initializer and not renders_its_argument(fi.cpp_template),
+                          result_origins=stub_result_origins(fi, receiver=False))
 
 
 def _stub_contract(fi: FunctionInfo) -> THIRStubContract | None:
@@ -414,11 +432,11 @@ def method_stub_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyz
     if any(_open_stub_type(t) for t in (*types, fi.return_type, *bound)):
         return None
     consts = method_stub_param_consts(fi)
-    return THIRStubCallee(THIRStubIdentity(f"{fi.owning_type_qname}.{fi.name}", types),
-                          callable_signature(types, fi.return_type, None, signature_passings(types, consts),
-                                             analyzer),
+    signature = callable_signature(types, fi.return_type, None, signature_passings(types, consts), analyzer)
+    return THIRStubCallee(THIRStubIdentity(f"{fi.owning_type_qname}.{fi.name}", types), signature,
                           _stub_contract(fi), consts, mutates_elements=fi.native_mutates == "elements",
-                          receiver=True, bound_arguments=tuple(bound))
+                          receiver=True, bound_arguments=tuple(bound),
+                          result_origins=stub_result_origins(fi, receiver=True))
 
 
 @dataclass(frozen=True)

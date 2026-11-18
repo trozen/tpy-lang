@@ -266,6 +266,20 @@ def test_validator_rejects_a_method_stub_on_a_free_call(lowered) -> None:
             validate_function(_replace_node(fn, call, replace(call, stub_callee=damaged)))
 
 
+def test_validator_rejects_result_origins_outside_the_signature(lowered) -> None:
+    # Origins index the published signature; `type(i) is int` keeps a bool out.
+    for owner, kind in (("facts", th.THIRCall), ("methods", th.THIRMethodCall)):
+        fn = lowered[owner]
+        call = next(c for c in nodes(fn, kind) if c.stub_callee is not None)
+        arity = len(call.stub_callee.signature.param_types)
+        validate_function(_replace_node(fn, call, replace(call, stub_callee=replace(
+            call.stub_callee, result_origins=frozenset({arity - 1})))))
+        for origins in (frozenset({arity}), frozenset({-1}), frozenset({True}), frozenset({"0"}), {0}, (0,)):
+            damaged = replace(call.stub_callee, result_origins=origins)
+            with pytest.raises(THIRValidationError, match="invalid stub callee"):
+                validate_function(_replace_node(fn, call, replace(call, stub_callee=damaged)))
+
+
 def test_validator_rejects_a_constructed_result_on_a_method_stub(lowered) -> None:
     # Only an initializer builds its result; a method stub's result is its own.
     fn = lowered["methods"]

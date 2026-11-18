@@ -59,7 +59,7 @@ from ..typesys import (
     contains_type_kind_param,
     unwrap_readonly,
     unwrap_ref_type,
-    is_bodyless_binding, emits_cpp_defaults,
+    is_bodyless_binding, emits_cpp_defaults, is_owned_leaf,
     access_free, declared_result_readonly, strip_auto_readonly,
     twin_takes_variant_args, without_readonly,
 )
@@ -84,7 +84,7 @@ from .send_chain import why_not_send, why_not_sync, render_chain
 from ..type_def_registry import (
     is_fixed_int_type, int_traits_of,
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of, type_def_of,
-    get_type_def, NativeMembers, latch_native_members, TypeDef,
+    get_type_def, NativeMembers, latch_native_members, TypeDef, ParamPassing,
     factory_qnames_in_module, protocol_info_of, return_exception_marker,
     protocol_registered,
     is_str_type, is_borrowing_view_type,
@@ -4624,7 +4624,12 @@ class TypeRegistrar:
         lend only as a container does (`CallAnalyzer._lent_operand_verdict`).
 
         Indices are positions in `info.params` (the call's argument list);
-        a method's `self` is the receiver, index -1."""
+        a method's `self` is the receiver, index -1.
+
+        `borrows=` may also name an owned leaf the C++ passes by reference
+        (`int`, `String`) when the result is an owned value: `std::min`
+        over `const BigInt&` hands back one of its arguments. A view result
+        over one, or a leaf passed by value, has no storage to borrow."""
         where = f"'{func.name}'"
         if not is_bodyless_binding(func):
             raise SemanticError(
@@ -4634,7 +4639,14 @@ class TypeRegistrar:
         if func.is_method:
             self._check_method_borrow_position(func)
 
-        def indices_of(names: tuple[str, ...]) -> set[int]:
+        owned_result = info.return_type is not None and is_owned_leaf(info.return_type)
+
+        def lends_owned_leaf(ptype: TpyType) -> bool:
+            bare = unwrap_readonly(unwrap_ref_type(ptype))
+            return (owned_result and is_owned_leaf(bare)
+                    and bare.param_passing() is not ParamPassing.VALUE)
+
+        def indices_of(names: tuple[str, ...], *, element: bool) -> set[int]:
             out: set[int] = set()
             for name in names:
                 if name == "self" and func.is_method:
@@ -4664,7 +4676,9 @@ class TypeRegistrar:
                     raise SemanticError(
                         f"borrows= / element_of= name '{name}', which is not a "
                         f"parameter of {where}", func.loc)
-                if not param_type_can_lend(info.params[idx].type):
+                ptype = info.params[idx].type
+                if not (param_type_can_lend(ptype)
+                        or not element and lends_owned_leaf(ptype)):
                     raise SemanticError(
                         f"borrows= / element_of= name '{name}', whose type "
                         f"'{info.params[idx].type}' holds no storage the "
@@ -4675,8 +4689,8 @@ class TypeRegistrar:
                 out.add(idx)
             return out
 
-        returns = indices_of(func.declared_borrows or ())
-        elements = indices_of(func.declared_element_of)
+        returns = indices_of(func.declared_borrows or (), element=False)
+        elements = indices_of(func.declared_element_of, element=True)
         info.return_borrows_from = frozenset(returns | elements)
         info.element_borrows_from = frozenset(elements)
         info.borrow_declared = True

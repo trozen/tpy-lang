@@ -101,13 +101,13 @@ def min[T: AnyFixedInt](arg1: T, arg2: T, arg3: T, /) -> T: ...
 @dispatch
 @pure
 @readonly
-@native("std::min")
+@native("std::min", borrows=("arg1", "arg2"))
 def min(arg1: int, arg2: int, /) -> int: ...
 
 @dispatch
 @pure
 @readonly
-@native("tpy::min3")
+@native("tpy::min3", borrows=("arg1", "arg2", "arg3"))
 def min(arg1: int, arg2: int, arg3: int, /) -> int: ...
 
 @dispatch
@@ -179,13 +179,13 @@ def max[T: AnyFixedInt](arg1: T, arg2: T, arg3: T, /) -> T: ...
 @dispatch
 @pure
 @readonly
-@native("std::max")
+@native("std::max", borrows=("arg1", "arg2"))
 def max(arg1: int, arg2: int, /) -> int: ...
 
 @dispatch
 @pure
 @readonly
-@native("tpy::max3")
+@native("tpy::max3", borrows=("arg1", "arg2", "arg3"))
 def max(arg1: int, arg2: int, arg3: int, /) -> int: ...
 
 @dispatch
@@ -500,7 +500,7 @@ def round(number: uint64, ndigits: int32) -> uint64: ...
 @dispatch
 @pure
 @readonly
-@cpp_template("({0})")
+@cpp_template("({0})", borrows=("number",))
 def round(number: int) -> int: ...
 @dispatch
 @pure

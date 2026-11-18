@@ -1,4 +1,14 @@
+part_origin.py:32: warning: the temporary 'repr(p)' lives only until the end of this statement, and 'h.v' may still view it and is read on line 33; bind 'repr(p)' to a variable before this statement, or make 'H.v' an owned 'str'
+part_origin.py:52: warning: the temporary 'repr(p)' lives only until the end of this statement, and 'self.h.v' may still view it and is read on line 53; bind 'repr(p)' to a variable before this statement, or make 'H.v' an owned 'str'
+part_origin.py:60: warning: the argument for parameter 'k' is what 'set_and_read' modifies through parameter 'r' while it still uses 'k'; bind it to a local first or restructure so the call does not hand over both
+part_origin.py:65: warning: the argument for parameter 'k' is what 'set_and_read' modifies through parameter 'r' while it still uses 'k'; bind it to a local first or restructure so the call does not hand over both
+part_origin.py:93: warning: the argument for parameter 'k' is what 'set_and_read' modifies through parameter 'r' while it still uses 'k'; bind it to a local first or restructure so the call does not hand over both
+part_origin.py:114: warning: the argument for parameter 'k' is what 'set_and_len' modifies through parameter 'r' while it still uses 'k'; bind it to a local first or restructure so the call does not hand over both
+part_origin.py:143: warning: the argument for parameter 'k' is what 'set_and_len2' modifies through parameter 'r' while it still uses 'k'; bind it to a local first or restructure so the call does not hand over both
+part_origin.py:148: warning: the temporary 'd.get(k, fb)' lives only until the end of this statement, and 'h.v' may still view it and is read on line 149; bind 'd.get(k, fb)' to a variable before this statement, or make 'H.v' an owned 'str'
+part_origin.py:160: warning: the temporary 'pick(a, b)' lives only until the end of this statement, and 'h.v' may still view it and is read on line 161; bind 'pick(a, b)' to a variable before this statement, or make 'H.v' an owned 'str'
 part_os.py:45: warning: the temporary 'os.getcwd()' lives only until the end of this statement, and 'h.v' may still view it and is read on line 46; bind 'os.getcwd()' to a variable before this statement, or make 'Holder.v' an owned 'str'
-main.py:117: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)
-main.py:117: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 115; iterate over a copy ('copy(items)'), or make the changes after the loop
-main.py:156: warning: the argument for parameter 'k' is what 'set_and_read' modifies through parameter 'r' while it still uses 'k'; bind it to a local first or restructure so the call does not hand over both
+part_os.py:86: warning: the temporary 'duplicate(s)' lives only until the end of this statement, and 'h.v' may still view it and is read on line 87; bind 'duplicate(s)' to a variable before this statement, or make 'Holder.v' an owned 'str'
+main.py:118: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)
+main.py:118: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 116; iterate over a copy ('copy(items)'), or make the changes after the loop
+main.py:157: warning: the argument for parameter 'k' is what 'set_and_read' modifies through parameter 'r' while it still uses 'k'; bind it to a local first or restructure so the call does not hand over both

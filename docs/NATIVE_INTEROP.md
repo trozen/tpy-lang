@@ -395,7 +395,9 @@ field / `Own` slot's own words elsewhere (`copy(...)` makes the copy
 explicit; a non-copyable type is an error). When every named argument is a
 fresh owner nothing can see the copy, and nothing is said. Returning such a
 value through a borrowing `-> Node` is the dangling-return error. A
-value-type result (`int`, `str`, a tuple) is a value at every call. An
+value-type result (`int`, `str`, a tuple) is a value at every call (the
+lifetime analysis still reads a declared origin of one used in place:
+"One declaration has two readers" below). An
 owned element slot -- a tuple / list / set / dict literal element, a list /
 set comprehension element, a dict-comprehension value, an item store, an
 empty container's first store / `append` / `add` (its element type is the
@@ -478,13 +480,46 @@ that copy is certain whatever `T` turns out to be.
 Each name must be a parameter of the binding whose argument can hold storage
 the result borrows (a reference type, an open `T`, a view, a `str`, a callable
 whose environment may hold references); an unknown name, a duplicate, a
-scalar parameter, or the decorator on a function with a body is an error. The
-builtin `min` / `max` (`borrows=` for two or three operands, `element_of=` for
-one iterable) and `next(it, default)` (`borrows=("default",)`,
-`element_of=("it",)`) are declared this way. The declaration says what the
-result borrows, not that the borrow is sound: as with every native
-signature, the stub author answers for the C++ actually returning one of the
-named arguments.
+scalar parameter, or the decorator on a function with a body is an error.
+`borrows=` may also name an owned value the C++ passes by reference (`int`
+as `const BigInt&`, `String`) when the result is an owned value too: `min(a:
+int, b: int) -> int` binds `std::min`, which hands back one of its
+arguments. A view result over such a parameter, and a value passed by copy
+(`int32`), are refused: neither holds storage the result could borrow. The
+builtin `min` / `max` (`borrows=` for two or three operands, over `int` as
+over a reference type, `element_of=` for one iterable), `round(number: int)`
+(`borrows=("number",)`, its template renders the argument) and `next(it,
+default)` (`borrows=("default",)`, `element_of=("it",)`) are declared this
+way. The declaration says what the result borrows, not that the borrow is
+sound: as with every native signature, the stub author answers for the C++
+actually returning one of the named arguments.
+
+One declaration has two readers. Sema reads it for the binding FORM: a
+declared borrow at a value-shaped result (`int`, `str`) is still a value, so
+a local holding `min(a, b)` is a copy. The lifetime analysis (MIR) reads it
+for storage IDENTITY: used in place, before any copy, the result IS the named
+argument, so `set_and_read(r, min(r.n, b))`, where the callee writes `r`
+while it reads `k`, warns as passing `r.n` itself would. For MIR a body-less
+binding's result is FRESH unless its declaration says where it comes from:
+`borrows=` / `element_of=`, a native method's inferred receiver borrow, or
+a template that renders its one argument (`{0}` / `({0})`: `int(x)` renders
+`x`), which is always its argument (at a method, `{0}` is the first
+declared parameter, not `self`). The declaration is believed as written, for
+`@native` and `@cpp_template` alike: `@native("std::min", borrows=("a", "b"))
+def smin(a: str, b: str) -> str` is one of its arguments, and a declaration
+that does not match its C++ is the declaration's defect (nothing checks it
+yet: BUGS.md#undeclared-binding-reference-result-taken-fresh). A native
+container method's result returned by value is fresh, as before: MIR reads
+a method's origins only for a result returned by reference or as a view.
+Only `dict.get(k, default)` declares an origin at such a result, exact at a
+reference `V` only (at a `str` value the C++ builds a new `std::string`;
+TODO.md "Make `dict.get(k, default)`'s declaration match its C++"). So `set_v(h, repr(p))` keeping a view of `repr`'s
+temporary past its statement is a dangling-view warning, and
+`@cpp_template("std::string({0})", transient=True) def duplicate(s: str) ->
+str` is a fresh string. An undeclared binding whose C++ nevertheless returns
+a reference into an argument breaks this contract, for sema and MIR alike
+(no render check catches it yet:
+BUGS.md#undeclared-binding-reference-result-taken-fresh).
 
 #### Taking over a fresh argument: `adopts=`
 

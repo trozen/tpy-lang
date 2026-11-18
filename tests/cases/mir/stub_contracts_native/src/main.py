@@ -71,8 +71,8 @@ def unmarked_nullary() -> float:  # tpyc: mir(uncovered /^stub declares no contr
     return probe_tick()
 
 
-# free function: the str result may borrow what the protocol parameter binds, and an int32 has no storage
-def text_of_scalar(i: int32) -> int32:  # tpyc: mir(uncovered /^stub result may borrow a scalar argument$/)
+# free function: the str result declares no origin, so it is fresh and the int32 argument lends nothing
+def text_of_scalar(i: int32) -> int32:  # tpyc: mir(covered)
     return len(probe_text(i))
 
 

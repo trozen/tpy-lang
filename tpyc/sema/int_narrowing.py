@@ -61,9 +61,9 @@ IDENTITY_TEMPLATE = "{0}"
 
 
 def renders_its_argument(cpp_template: str | None) -> bool:
-    """Whether a constructor's template renders its one argument unchanged,
-    so the call's result is that argument, not a new value."""
-    return cpp_template == IDENTITY_TEMPLATE
+    """Whether a template renders its one argument unchanged (bare or
+    parenthesized), so the call's result is that argument, not a new value."""
+    return cpp_template in (IDENTITY_TEMPLATE, f"({IDENTITY_TEMPLATE})")
 
 
 def same_type_conversion(ctor: FunctionInfo,

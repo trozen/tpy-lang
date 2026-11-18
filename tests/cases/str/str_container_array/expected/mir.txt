@@ -1,3 +1,3 @@
 main::__tpy_init: uncovered (module initialization)
-main::show_span@4:0: uncovered (stub result may borrow a container argument), summary: opaque (stub result may borrow a container argument)
-main::main@8:0: uncovered (stub result may borrow a container argument), summary: opaque (stub result may borrow a container argument)
+main::show_span@4:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::main@8:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)

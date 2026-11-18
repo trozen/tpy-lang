@@ -7,7 +7,7 @@ main::probe_fill@36:0: uncovered (no body to lower)
 main::probe_bump@40:0: uncovered (no body to lower)
 main::unmarked@65:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::unmarked_nullary@70:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
-main::text_of_scalar@75:0: uncovered (stub result may borrow a scalar argument), summary: opaque (stub result may borrow a scalar argument)
+main::text_of_scalar@75:0: covered (storage: no_proof_required), summary: known
 main::mut_ref@80:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
 main::mutable_leaf@85:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
 main::view_result@90:0: covered (storage: no_proof_required), summary: known

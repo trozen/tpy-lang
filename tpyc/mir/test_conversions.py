@@ -70,8 +70,13 @@ def first(t: T) -> StrView:
 
 
 @pure
-@native("pick")
-def pick(a: str, b: str) -> str: ...
+@native("pick", borrows=("a", "b"))
+def pick(a: String, b: String) -> String: ...
+
+
+@pure
+@native("pick_view", borrows=("a", "b"))
+def pick_view(a: str, b: str) -> str: ...
 
 
 def owned_argument(s: str) -> int32:
@@ -153,8 +158,12 @@ def checked_element_borrow(xs: list[str]) -> int32:
     return takes(xs[0])
 
 
-def borrowed_result_view(a: str, b: str) -> int32:
+def borrowed_result_view(a: String, b: String) -> int32:
     return vlen(pick(a, b))
+
+
+def declared_result_view(a: str, b: str) -> int32:
+    return vlen(pick_view(a, b))
 
 
 def view_result(t: T) -> int32:
@@ -377,9 +386,21 @@ def test_a_field_viewed_is_one_borrow(dumps) -> None:
 
 
 def test_a_borrowed_owned_leaf_result_is_viewed_through_its_holder(dumps) -> None:
+    # `String` parameters pass by reference: the declared result is one of them.
     statements = _statements(dumps["borrowed_result_view"])
-    assert statements[2].startswith("%4 = call stub __main__.pick[str, str](%2, %3)")
+    assert statements[2].startswith("%4 = call stub __main__.pick[String, String](%2, %3)")
+    assert "returns={param0, param1}" in statements[2]
     assert statements[3:5] == ["%5 = alias %4", "%6 = call vlen(%5) [reader, may-raise]"]
+
+
+def test_a_declared_owned_result_over_view_parameters_keeps_its_origins(dumps) -> None:
+    # The declaration is believed even where its C++ copies (`str` parameters
+    # are views): a mismatch is the declaration's defect,
+    # BUGS.md#undeclared-binding-reference-result-taken-fresh.
+    statements = _statements(dumps["declared_result_view"])
+    assert statements[2] == ("%4 = call stub __main__.pick_view[str, str](%2, %3) "
+                             "[pure, reader, returns={param0, param1}, may-raise]")
+    assert statements[3] == "%5 = alias %4"
 
 
 def test_a_view_result_is_passed_as_it_is(dumps) -> None:

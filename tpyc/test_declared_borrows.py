@@ -204,10 +204,55 @@ _NATIVE = "from tpy.extern import native, cpp_template\nfrom tpy import int32\n"
     ("@native(borrows=(\"self\",))\n"
      "def f(a: list[int32]) -> list[int32]: ...\n",
      "name 'self', which is not a parameter of 'f'"),
+    # A by-value scalar holds no storage, whatever the result.
+    ("@native(\"pick\", borrows=(\"a\", \"b\"))\n"
+     "def f(a: int32, b: int32) -> int32: ...\n",
+     "name 'a', whose type 'int32' holds no storage"),
+    # A view result over a by-reference owned leaf: only an owned result may be the argument.
+    ("from tpy import StrView\n"
+     "@native(\"first\", borrows=(\"a\",))\n"
+     "def f(a: int) -> StrView: ...\n",
+     "name 'a', whose type 'int' holds no storage"),
+    ("from tpy import String, StrView\n"
+     "@native(\"first\", borrows=(\"a\",))\n"
+     "def f(a: String) -> StrView: ...\n",
+     "name 'a', whose type 'String' holds no storage"),
+    # An owned leaf has no elements a result could be handed out of.
+    ("@native(\"first\", element_of=(\"a\",))\n"
+     "def f(a: int) -> int: ...\n",
+     "name 'a', whose type 'int' holds no storage"),
 ])
 def test_declaration_errors(decl, message):
     with pytest.raises(SemanticError, match=message):
         _entry(_NATIVE + decl)
+
+
+@pytest.mark.parametrize("ptype", ["int", "String"])
+def test_owned_leaf_by_reference_with_an_owned_result_is_admitted(ptype):
+    # `std::min` over `const BigInt&` hands back one of its arguments.
+    entry = _entry(
+        _NATIVE + "from tpy import String\n"
+        f"@native(\"pick\", borrows=(\"a\", \"b\"))\n"
+        f"def pick(a: {ptype}, b: {ptype}) -> {ptype}: ...\n"
+        "\n\n"
+        f"def g(x: {ptype}, y: {ptype}) -> {ptype}:\n"
+        "    return pick(x, y)\n")
+    call, = [c for c in _calls(next(f for f in entry.ast.functions if f.name == "g").body, [])
+             if getattr(c.func, "name", None) == "pick"]
+    root = call.resolved_function_info.root
+    assert root.borrow_declared and root.return_borrows_from == frozenset({0, 1})
+
+
+def test_builtin_min_max_round_over_int_declare_their_operands():
+    entry = _entry(
+        "def f(a: int, b: int, c: int) -> int:\n"
+        "    return min(a, b) + max(a, b, c) + round(a)\n")
+    calls = {c.func.name: c for c in _calls(next(f for f in entry.ast.functions if f.name == "f").body, [])
+             if getattr(c.func, "name", None) in ("min", "max", "round")}
+    assert calls["min"].resolved_function_info.root.return_borrows_from == frozenset({0, 1})
+    assert calls["max"].resolved_function_info.root.return_borrows_from == frozenset({0, 1, 2})
+    assert calls["round"].resolved_function_info.root.return_borrows_from == frozenset({0})
+    assert all(c.resolved_function_info.root.borrow_declared for c in calls.values())
 
 
 def _method_calls(node, out: list[TpyMethodCall]) -> list[TpyMethodCall]:

@@ -67,7 +67,7 @@ from .call_contract import (
     BORROWING_PASSINGS, MIRCallSummary, MIRParameterBinding, MIRPathWalks, MIRSummaryResult, MIRSummaryState, binds_at,
     body_result, call_result, crossed_records,
     owned_aggregate_result, bound_params, parameter_binding, region_view, signature_params, signature_result,
-    stub_protocol_argument, stub_summary, summary_problem, view_result,
+    stub_protocol_argument, stub_summary, summary_problem,
 )
 from .validate import MIRDefiniteAssignmentError, MIRPresenceError, MIRRepeatedInitializationError, reaches_element
 from .prepare import MIRPrepared, validated
@@ -811,7 +811,8 @@ class _Lowering:
                  and len(expr.args) == len(summary.parameters), "call signature mismatch")
         f = self.fragment()
         slots: list[MIRSlotId] = []
-        for arg, binding in zip(expr.args, summary.parameters):
+        origins = {o.parameter for o in summary.returns}
+        for index, (arg, binding) in enumerate(zip(expr.args, summary.parameters)):
             if binding.protocol:
                 # A view dispatches to the runtime code of the leaf it views.
                 read = through_view(arg.result_type)
@@ -822,20 +823,16 @@ class _Lowering:
                     # past the call.
                     _require(arg, callee.contract is th.THIRStubContract.PURE,
                              "stub protocol parameter needs a pure contract")
-                    _require(arg, owned is None and view_result(
-                        signature_result(signature), signature.return_representation) is None,
-                             "stub result may borrow a container argument")
+                    _require(arg, index not in origins, "stub result may borrow a container argument")
                     slots.append(f.lend(self.container_place(arg)))
                     self.writes[arg] = False
                     continue
                 if owned_leaf(read):
                     slots.append(f.splice(self.operand(arg, self.lent_value(arg))))
                     continue
-                # An owned-leaf or view result may borrow what the parameter
-                # binds; a scalar argument has no storage to borrow.
-                _require(arg, owned is None and view_result(
-                    signature_result(signature), signature.return_representation) is None,
-                         "stub result may borrow a scalar argument")
+                # A result borrowing what the parameter binds has no storage
+                # to borrow in a scalar argument.
+                _require(arg, index not in origins, "stub result may borrow a scalar argument")
             slots.append(f.splice(self.argument(binding, arg)))
         self.argument_order_rule(expr, expr.args)
         return self.call_value(f, expr, summary, slots, False, expr.loc)

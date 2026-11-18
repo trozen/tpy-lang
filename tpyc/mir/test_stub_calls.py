@@ -2,7 +2,8 @@
 initializers -- have no body to summarize: MIR derives their summary from
 the declared contract (`@pure` / `transient=True`) and admits only readonly
 leaf parameters, so the stub reads its arguments, reaches nothing else and
-may raise. An owned-leaf result may borrow every argument the call lends."""
+may raise. A result is fresh unless the declaration names where it comes
+from (`THIRStubCallee.result_origins`)."""
 
 import re
 from dataclasses import dataclass, replace
@@ -40,10 +41,15 @@ from .prepare import validate_function
 SOURCE = """\
 import math
 import time
-from tpy import int32, pure, StrView, String
-from tpy.extern import native
+from typing import Sized
+from tpy import Hashable, int32, pure, StrView, String
+from tpy.extern import cpp_template, native
 
 G: str = "glob"
+
+@pure
+@cpp_template("{0}")
+def probe_same(x: int) -> int: ...
 
 class Rec:
     n: int32
@@ -111,6 +117,10 @@ def same_int(a: int) -> int:
     # `int(a)` over an int renders its argument unchanged: the result is `a`.
     return int(a)
 
+def bare_same(a: int) -> int:
+    # A free template rendering its argument bare, `{0}`, is that argument.
+    return probe_same(a)
+
 def smaller(a: int, b: int) -> int:
     # `min` binds `std::min`: the result may borrow either argument, so the local copies it.
     x = min(a, b)
@@ -175,6 +185,43 @@ def record_len(r: Rec) -> int32:
 def view_result(s: str) -> int32:
     v = probe_view(s)
     return 1
+
+def rendered(p: str) -> str:
+    # `repr` declares no origin: its result is a fresh string.
+    return repr(p)
+
+@pure
+@native("probe_sized_view", borrows=("xs",))
+def probe_sized_view(xs: Sized) -> StrView: ...
+
+@pure
+@native("probe_hash_view", borrows=("x",))
+def probe_hash_view(x: Hashable) -> StrView: ...
+
+def sized_origin(xs: list[int32]) -> int32:
+    v = probe_sized_view(xs)
+    return 1
+
+def hash_origin(n: int32) -> int32:
+    v = probe_hash_view(n)
+    return 1
+
+def stored_get(d: dict[str, str], k: str, fb: str) -> str:
+    # `get(k, default)` declares `borrows=("default",), element_of=("self",)`,
+    # but at a `str` value the C++ returns a new string.
+    return d.get(k, fb)
+
+def ref_get(d: dict[str, list[int32]], k: str, fb: list[int32]) -> int32:
+    # At a reference-type value the same declaration is a reference into `d` or `fb`.
+    return len(d.get(k, fb))
+
+def keys_len(d: dict[str, str]) -> int32:
+    # `keys()` declares nothing: the native accessor's receiver borrow is stamped.
+    return len(d.keys())
+
+def stored_setdefault(d: dict[str, str], k: str) -> str:
+    # `setdefault` declares nothing, and its value-typed result is returned as storage.
+    return d.setdefault(k, "x")
 """
 
 
@@ -327,11 +374,110 @@ def test_a_bytes_view_parameter_of_a_transient_stub_is_a_reader(active) -> None:
     assert active.summaries["has"].state is MIRSummaryState.KNOWN
 
 
-def test_an_owned_result_over_a_view_parameter_refuses(active) -> None:
+def test_an_undeclared_owned_result_over_a_view_parameter_is_fresh(active) -> None:
     callee = _thir_calls(active.thir["dup"])[0].stub_callee
     assert callee.readonly == (False,) and callee.signature.passings == (ParamPassing.VIEW,)
-    assert stub_summary(callee) == "stub owned result may be fresh or its view argument"
-    assert active.summaries["dup"].state is not MIRSummaryState.KNOWN
+    assert callee.result_origins == frozenset()
+    summary = stub_summary(callee)
+    assert isinstance(summary, MIRCallSummary) and summary.returns == frozenset()
+    assert active.summaries["dup"].state is MIRSummaryState.KNOWN
+
+
+def test_result_origins_come_from_the_declaration(active) -> None:
+    # borrows=: `min` over int names both operands.
+    minimum = _thir_calls(active.thir["smaller"])[0].stub_callee
+    assert minimum.result_origins == frozenset({0, 1})
+    # An identity initializer template is its argument.
+    assert _thir_calls(active.thir["same_int"])[0].stub_callee.result_origins == frozenset({0})
+    # So is a free, non-initializer one.
+    same = _thir_calls(active.thir["bare_same"])[0].stub_callee
+    assert not same.constructs_result and same.result_origins == frozenset({0})
+    summary = stub_summary(same)
+    assert isinstance(summary, MIRCallSummary) and summary.returns == frozenset({MIRReturnOrigin(0)})
+    # None declared: fresh, though the argument is lent.
+    rendered = _thir_calls(active.thir["rendered"])[0].stub_callee
+    assert rendered.result_origins == frozenset()
+    summary = stub_summary(rendered)
+    assert isinstance(summary, MIRCallSummary) and summary.returns == frozenset()
+    # The origins are read, never re-derived from the lent arguments.
+    assert stub_summary(replace(minimum, result_origins=frozenset({1}))).returns == frozenset({MIRReturnOrigin(1)})
+    assert stub_summary(replace(minimum, result_origins=frozenset())).returns == frozenset()
+    for damaged in (frozenset({2}), frozenset({-1}), {0}, frozenset({True})):
+        assert stub_summary(replace(minimum, result_origins=damaged)) == "invalid stub callee"
+
+
+def test_a_protocol_parameter_named_as_the_result_origin_refuses(active) -> None:
+    # The stub reads a container or scalar protocol argument whole: neither has storage it could hand back.
+    sized = _thir_calls(active.thir["sized_origin"])[0].stub_callee
+    assert sized.result_origins == frozenset({0})
+    contained = active.bodies["sized_origin"]
+    assert isinstance(contained, MIRNotCovered) and contained.reason == "stub result may borrow a container argument"
+    hashed = active.bodies["hash_origin"]
+    assert isinstance(hashed, MIRNotCovered) and hashed.reason == "stub result may borrow a scalar argument"
+
+
+def _method_stub(fn: th.THIRFunction) -> th.THIRStubCallee:
+    found, pending = [], list(fn.body)
+    while pending:
+        node = pending.pop(0)
+        if isinstance(node, th.THIRMethodCall) and node.stub_callee is not None:
+            found.append(node.stub_callee)
+        pending.extend(_iter_children(node))
+    callee, = found
+    return callee
+
+
+def test_a_method_stub_declaration_shifts_past_the_receiver(active) -> None:
+    # `self` (-1) is parameter 0 and declared parameter i is i + 1: `default` (1) is 2, not 1.
+    callee = _method_stub(active.thir["ref_get"])
+    assert callee.identity.qualified_name == "builtins.dict.get" and callee.receiver
+    assert callee.signature.return_representation is not Representation.STORAGE
+    assert callee.result_origins == frozenset({0, 2})
+
+
+def test_a_method_stub_reference_result_keeps_its_origins_but_mir_refuses_the_default(active) -> None:
+    # The twin of `stored_get` at a reference-type value: THIR keeps both declared origins, but a
+    # container `default` is no readonly leaf, so MIR covers no reference-type `dict.get` yet.
+    callee = _method_stub(active.thir["ref_get"])
+    assert callee.result_origins == frozenset({0, 2})
+    assert stub_summary(callee) == "stub parameter is not a readonly leaf"
+    body = active.bodies["ref_get"]
+    assert isinstance(body, MIRNotCovered) and body.node_kind == "THIRMethodCall", body
+
+
+def test_a_method_stub_storage_result_is_fresh_whatever_it_declares(active) -> None:
+    # `dict.get` at a `str` value returns a new string: THIR publishes the declaration as written,
+    # and MIR reads no origin for a method's by-value result.
+    callee = _method_stub(active.thir["stored_get"])
+    assert callee.identity.qualified_name == "builtins.dict.get"
+    assert callee.signature.return_representation is Representation.STORAGE
+    assert callee.result_origins == frozenset({0, 2})
+    summary = stub_summary(callee)
+    assert isinstance(summary, MIRCallSummary) and summary.returns == frozenset()
+    assert summary.borrowed_result is None
+    assert isinstance(active.bodies["stored_get"], MIRFunction), active.bodies["stored_get"]
+
+
+def test_a_method_stub_view_result_borrows_the_stamped_receiver(active) -> None:
+    callee = _method_stub(active.thir["keys_len"])
+    assert callee.identity.qualified_name == "builtins.dict.keys"
+    # The native accessor's receiver stamp (`return_borrows_from == {-1}`), not a declaration.
+    assert callee.result_origins == frozenset({0})
+    summary = stub_summary(callee)
+    assert isinstance(summary, MIRCallSummary), summary
+    assert {o.parameter for o in summary.returns} == {0}
+    # A reference or view result with no origin is refused.
+    assert stub_summary(replace(callee, result_origins=frozenset())) == "unsupported stub result type"
+
+
+def test_a_method_stub_owned_result_is_fresh_unless_declared(active) -> None:
+    callee = _method_stub(active.thir["stored_setdefault"])
+    assert callee.identity.qualified_name == "builtins.dict.setdefault"
+    assert callee.signature.return_representation is Representation.STORAGE
+    # MIR reads the receiver stamp only where the result is returned by reference (BUGS.md#dict-setdefault-value-result-taken-fresh).
+    assert callee.result_origins == frozenset({0})
+    summary = stub_summary(callee)
+    assert isinstance(summary, MIRCallSummary) and summary.returns == frozenset()
 
 
 def test_a_scalar_result_over_a_view_parameter_summarizes(active) -> None:
@@ -378,9 +524,13 @@ def test_a_constructed_owned_result_borrows_no_lent_argument(active) -> None:
     assert callee.identity.qualified_name == "builtins.str.__init__" and callee.readonly == (True,)
     built = stub_summary(callee)
     assert isinstance(built, MIRCallSummary) and built.returns == frozenset()
-    # The same declaration without the fact keeps the `min(a, b)` rule.
+    # Without the fact the result is still fresh, as no origin is declared; a declared one is read.
     kept = stub_summary(replace(callee, constructs_result=False))
-    assert isinstance(kept, MIRCallSummary) and kept.returns == frozenset({MIRReturnOrigin(0)})
+    assert isinstance(kept, MIRCallSummary) and kept.returns == frozenset()
+    named = stub_summary(replace(callee, constructs_result=False, result_origins=frozenset({0})))
+    assert isinstance(named, MIRCallSummary) and named.returns == frozenset({MIRReturnOrigin(0)})
+    # A constructed result borrows nothing, whatever origin is named.
+    assert stub_summary(replace(callee, result_origins=frozenset({0}))).returns == frozenset()
     assert stub_summary(replace(callee, constructs_result=1)) == "invalid stub callee"
 
 
@@ -392,7 +542,7 @@ def test_an_identity_template_initializer_constructs_nothing(active) -> None:
     assert isinstance(summary, MIRCallSummary) and summary.returns == frozenset({MIRReturnOrigin(0)})
 
 
-def test_stub_result_may_borrow_every_lent_argument(active) -> None:
+def test_a_declared_stub_result_borrows_its_named_arguments(active) -> None:
     fn = active.bodies["smaller"]
     stmt, = _call_statements(fn)
     summary = stmt.value.summary
@@ -430,7 +580,7 @@ def test_overload_identities_stay_distinct_in_one_body(active) -> None:
     assert small.callee.identity.param_types == (INT32, INT32)
     assert big.callee.identity.param_types == (BIGINT, BIGINT)
     assert set(fn.call_summaries) == {small, big} and len(fn.call_summaries) == 2
-    # Only the owned-leaf overload's result may borrow its arguments.
+    # Only the owned-leaf overload declares its arguments as the result.
     assert small.returns == frozenset() and big.returns == frozenset({MIRReturnOrigin(0), MIRReturnOrigin(1)})
 
 
@@ -452,7 +602,7 @@ def test_refused_stubs_declare_what_the_gates_read(active) -> None:
     assert calls["mutable_leaf"].signature.passings == (ParamPassing.CONST_REF,)
     assert calls["mutable_leaf"].readonly == (False,)
     assert calls["record_len"].contract is th.THIRStubContract.PURE
-    # A view result may borrow every argument the stub lends, from the declaration alone.
+    # An undeclared view result may borrow every argument the stub lends.
     assert calls["view_result"].contract is th.THIRStubContract.PURE
     assert isinstance(active.view_verdict, MIRCallSummary)
     assert active.view_verdict.returns == frozenset({MIRReturnOrigin(0)})
@@ -721,7 +871,7 @@ def test_method_stub_summary_gates(methods) -> None:
     # A container returned by reference borrows the receiver, as a record does,
     # at the access the stub binds the receiver at.
     for readonly in (False, True):
-        by_reference = replace(append, readonly=(readonly, False), signature=replace(
+        by_reference = replace(append, readonly=(readonly, False), result_origins=frozenset({0}), signature=replace(
             signature, return_type=RefType(xs), return_representation=Representation.REFERENCE,
             passings=(ParamPassing.CONST_REF if readonly else ParamPassing.MUT_REF, signature.passings[1])))
         borrowed = stub_summary(by_reference)
@@ -844,3 +994,56 @@ def test_a_pure_stub_reads_a_native_container_through_its_protocol_parameter(met
     assert not stub_protocol_argument(views) and not stub_protocol_argument(ordered)
     assert not stub_protocol_argument(ps_type := unwrap_readonly(unwrap_ref_type(params["ps"].type)).type_args[0])
     assert ps_type.qualified_name() == "__main__.Point"
+
+
+IDENTITY_METHOD_SOURCE = """\
+from typing import Iterator
+from tpy import StrView, readonly
+from tpy.extern import native, cpp_template
+
+@native("std::vector", elements=True)
+class Pass[T]:
+    @readonly
+    @native("tpy::__iter__", function=True)
+    def __iter__(self) -> Iterator[T]: ...
+
+    @readonly
+    @cpp_template("({0})", borrows=("x",))
+    def same(self, x: StrView) -> StrView: ...
+
+def f(p: Pass[str], x: StrView) -> int:
+    return len(p.same(x))
+"""
+
+
+IDENTITY_METHOD_OWNED_SOURCE = IDENTITY_METHOD_SOURCE.replace(
+    '@cpp_template("({0})", borrows=("x",))\n    def same(self, x: StrView) -> StrView: ...',
+    '@cpp_template("({0})")\n    def same(self, x: str) -> str: ...').replace(
+    "def f(p: Pass[str], x: StrView) -> int:", "def f(p: Pass[str], x: str) -> int:")
+
+
+def test_a_method_identity_template_at_a_by_value_result_is_read_as_fresh() -> None:
+    # MIR reads no origin for a method's by-value result, an identity template's included, until
+    # TODO.md "Make `dict.get(k, default)`'s declaration match its C++" step (3).
+    assert IDENTITY_METHOD_OWNED_SOURCE != IDENTITY_METHOD_SOURCE
+    compiler, modules = _compile(IDENTITY_METHOD_OWNED_SOURCE)
+    _, ctx = compiler.generate_code_and_thir(_entry(modules))
+    fn, = (fn for fn in ctx.thir_functions.values() if fn.name == "f")
+    with activate_compiler(compiler):
+        callee = _method_stub(fn)
+        assert callee.receiver and callee.result_origins == frozenset({1})
+        summary = stub_summary(callee)
+        assert isinstance(summary, MIRCallSummary) and summary.returns == frozenset()
+
+
+def test_a_method_identity_template_is_its_first_declared_parameter() -> None:
+    # `{0}` names the first declared parameter, which the signature lists after the receiver.
+    compiler, modules = _compile(IDENTITY_METHOD_SOURCE)
+    _, ctx = compiler.generate_code_and_thir(_entry(modules))
+    fn, = (fn for fn in ctx.thir_functions.values() if fn.name == "f")
+    with activate_compiler(compiler):
+        callee = _method_stub(fn)
+        assert callee.receiver and callee.result_origins == frozenset({1})
+        summary = stub_summary(callee)
+        assert isinstance(summary, MIRCallSummary), summary
+        assert {origin.parameter for origin in summary.returns} == {1}

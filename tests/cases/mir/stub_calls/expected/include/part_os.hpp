@@ -30,13 +30,13 @@ void cwd_dangle();
 bool cwd_bound();
 // def nap() -> None:  # tpyc: mir(uncovered /stub declares no contract/)
 void nap();
-// def link_target(name: str) -> str:  # tpyc: mir(uncovered /stub declares no contract/)
+// def link_target(name: str) -> str:  # tpyc: mir(covered)
 std::string link_target(std::string_view name);
 // def grow(names: list[str], s: str) -> int32:
 int32_t grow(std::vector<std::string>& names, std::string_view s);
-// def fresh_safe() -> int32:  # tpyc: mir(uncovered /stub owned result may be fresh or its view argument/)
+// def fresh_safe() -> int32:  # tpyc: mir(covered)
 int32_t fresh_safe();
-// def fresh_dangling(s: str) -> None:  # tpyc: mir(uncovered /stub owned result may be fresh or its view argument/)
+// def fresh_dangling(s: str) -> None:
 void fresh_dangling(std::string_view s);
 // def main() -> None:
 void main();

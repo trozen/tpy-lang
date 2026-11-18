@@ -69,7 +69,7 @@ main::not_none@625:0: covered (storage: no_proof_required), summary: known
 main::take_list@633:0: covered (storage: no_proof_required), summary: known
 main::take_dog@637:0: covered (storage: no_proof_required), summary: known
 main::own_arg@643:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
-main::alias_binding@658:0: uncovered (stub result may borrow a container argument), summary: opaque (stub result may borrow a container argument)
+main::alias_binding@658:0: covered (storage: no_proof_required), summary: known
 main::grow@669:0: covered (storage: no_facts: storage facts have not been published)
 main::agrow@674:0: uncovered (async body)
 main::frame_arg@680:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)

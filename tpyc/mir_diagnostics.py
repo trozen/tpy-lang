@@ -104,7 +104,13 @@ def _relation(call: MIRCall, obligation: MIRAliasObligation, written_place: MIRP
 
     def argument(index: int, path: tuple[object, ...]) -> MIRPlace | None:
         refs = resolve_referents(call_place(call, index, _selector(call, index, path), slots), state, slots, records)
-        return next((r.place for r in refs if r.place.root == target.root), None)
+        places = [r.place for r in refs if r.place.root == target.root]
+        # A may-set can hold several places under the written root (`min(r.s, r.t)`): the closest
+        # one names the relation, so the wording never depends on the set's iteration order.
+        if target in places:
+            return target
+        containing = [p for p in places if target.projections[:len(p.projections)] == p.projections]
+        return max(containing, key=lambda p: len(p.projections)) if containing else None
 
     held = argument(obligation.parameter, obligation.path)
     passed = argument(obligation.written.parameter, obligation.written.path)

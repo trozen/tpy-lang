@@ -17,7 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 double unmarked(double x);
 // def unmarked_nullary() -> float:  # tpyc: mir(uncovered /^stub declares no contract$/)
 double unmarked_nullary();
-// def text_of_scalar(i: int32) -> int32:  # tpyc: mir(uncovered /^stub result may borrow a scalar argument$/)
+// def text_of_scalar(i: int32) -> int32:  # tpyc: mir(covered)
 int32_t text_of_scalar(int32_t i);
 // def mut_ref(r: Rec) -> None:  # tpyc: mir(uncovered /^stub parameter is not a readonly leaf$/)
 void mut_ref(Rec& r);
