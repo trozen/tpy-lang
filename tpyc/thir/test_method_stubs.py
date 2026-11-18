@@ -166,8 +166,9 @@ def test_method_stubs_carry_their_receiver_and_bound_facts(lowered) -> None:
     assert get.contract is th.THIRStubContract.PURE and get.readonly == (True, True, True)
     assert get.signature.passings == (ParamPassing.CONST_REF, ParamPassing.VIEW, ParamPassing.VALUE)
     setdefault, = stubs["builtins.dict.setdefault"]
-    # A key passed as a view cannot be written through.
-    assert setdefault.readonly == (False, True, False) and setdefault.contract is None
+    # The key's const verdict is the declaration's; its VIEW passing is what MIR reads as a reader.
+    assert setdefault.readonly == (False, False, False) and setdefault.contract is None
+    assert setdefault.signature.passings[1] is ParamPassing.VIEW
     # The mutable clone of an @auto_readonly view accessor is pure, with a mutable receiver.
     values, = stubs["builtins.dict.values"]
     assert values.contract is th.THIRStubContract.PURE and values.readonly == (False,)
@@ -188,7 +189,7 @@ def test_a_subscript_write_publishes_the_setitem_overload_its_index_selects(lowe
                                                    (_list(INT32), INT32, OwnType(INT32)))
     assert literal.mutates_elements and literal.receiver and literal.contract is None
     assert augmented == literal
-    assert keyed.identity.param_types[1] == STR and keyed.readonly == (False, True, False)
+    assert keyed.identity.param_types[1] == STR and keyed.readonly == (False, False, False)
     assert keyed.signature.passings == (ParamPassing.MUT_REF, ParamPassing.VIEW, ParamPassing.VALUE)
     assert record.signature.passings == (ParamPassing.MUT_REF, ParamPassing.VALUE, ParamPassing.OWN)
 

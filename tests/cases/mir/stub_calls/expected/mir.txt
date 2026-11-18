@@ -1,31 +1,47 @@
 main::__tpy_init: uncovered (module initialization)
-main::lent_len@26:0: covered (storage: no_proof_required), summary: known
-main::global_len@31:0: covered (storage: no_proof_required), summary: known
-main::clock@36:0: covered (storage: no_proof_required), summary: known
-main::construct@41:0: covered (storage: no_proof_required), summary: known
-main::smaller@46:0: covered (storage: no_proof_required), summary: known
-main::smaller_is@52:0: covered (storage: no_proof_required), summary: known
-main::smaller_sum@57:0: covered (storage: no_proof_required), summary: known
-main::overloads@63:0: covered (storage: no_proof_required), summary: known
-main::twice@68:0: covered (storage: no_proof_required), summary: known
-main::both@74:0: covered (storage: no_proof_required), summary: known
-main::dict_get_value@81:0: covered (storage: no_proof_required), summary: known
-main::record_len@87:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
-main::builtin_ctors@98:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::append_while_iterating@112:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-main::mutate_and_read@127:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-main::clear_and_len@132:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-main::fresh_str@138:0: covered (storage: no_proof_required), summary: known
-main::fresh_bytes@143:0: covered (storage: no_proof_required), summary: known
-main::set_and_read@147:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-main::identity_argument@154:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
-main::float32_from_int@159:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::str_key_aug@166:0: covered (storage: no_proof_required), summary: known
-main::grow@170:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::held_len_key@176:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::main@180:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
-main::Rec.__len__@17:4: covered (storage: no_proof_required), summary: known
-main::Rec.label_len@21:4: covered (storage: no_proof_required), summary: known
-main::Rec.__init__@14:4: covered (storage: no_proof_required), summary: known
-main::Point.__init__@92:4: covered (storage: no_proof_required), summary: known
-main::Box.__init__@122:4: covered (storage: no_proof_required), summary: known
+main::lent_len@27:0: covered (storage: no_proof_required), summary: known
+main::global_len@32:0: covered (storage: no_proof_required), summary: known
+main::clock@37:0: covered (storage: no_proof_required), summary: known
+main::construct@42:0: covered (storage: no_proof_required), summary: known
+main::smaller@47:0: covered (storage: no_proof_required), summary: known
+main::smaller_is@53:0: covered (storage: no_proof_required), summary: known
+main::smaller_sum@58:0: covered (storage: no_proof_required), summary: known
+main::overloads@64:0: covered (storage: no_proof_required), summary: known
+main::twice@69:0: covered (storage: no_proof_required), summary: known
+main::both@75:0: covered (storage: no_proof_required), summary: known
+main::dict_get_value@82:0: covered (storage: no_proof_required), summary: known
+main::record_len@88:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::builtin_ctors@99:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::append_while_iterating@113:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::mutate_and_read@128:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::clear_and_len@133:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::fresh_str@139:0: covered (storage: no_proof_required), summary: known
+main::fresh_bytes@144:0: covered (storage: no_proof_required), summary: known
+main::set_and_read@148:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::identity_argument@155:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+main::float32_from_int@160:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::str_key_aug@167:0: covered (storage: no_proof_required), summary: known
+main::grow@171:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::held_len_key@177:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::main@181:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
+main::Rec.__len__@18:4: covered (storage: no_proof_required), summary: known
+main::Rec.label_len@22:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@15:4: covered (storage: no_proof_required), summary: known
+main::Point.__init__@93:4: covered (storage: no_proof_required), summary: known
+main::Box.__init__@123:4: covered (storage: no_proof_required), summary: known
+part_os::__tpy_init: uncovered (module initialization)
+part_os::set_v@17:0: covered (storage: no_proof_required), summary: known
+part_os::probe_exists@22:0: covered (storage: no_proof_required), summary: known
+part_os::drop_dir@27:0: covered (storage: no_proof_required), summary: known
+part_os::elapsed_nonneg@32:0: covered (storage: no_proof_required), summary: known
+part_os::rotate@38:0: covered (storage: no_proof_required), summary: known
+part_os::cwd_dangle@43:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
+part_os::cwd_bound@50:0: covered (storage: no_proof_required), summary: known
+part_os::nap@58:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+part_os::link_target@63:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
+part_os::duplicate@70:0: uncovered (no body to lower)
+part_os::grow@73:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_os::fresh_safe@79:0: uncovered (stub owned result may be fresh or its view argument), summary: opaque (stub owned result may be fresh or its view argument)
+part_os::fresh_dangling@85:0: uncovered (stub owned result may be fresh or its view argument), summary: opaque (stub owned result may be fresh or its view argument)
+part_os::main@91:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_os::Holder.__init__@13:4: covered (storage: no_proof_required), summary: known

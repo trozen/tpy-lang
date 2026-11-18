@@ -3,6 +3,7 @@
 import math
 import time
 from tpy import int32, float32, String, StrView, char
+import part_os
 
 G: str = "glob"
 
@@ -204,6 +205,7 @@ def main() -> None:
     ys = [int32(0), 0, 0]
     held_len_key(ys, bytearray(b"ab"))
     print("held_len_key:", ys)
+    part_os.main()
 
 
 main()

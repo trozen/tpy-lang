@@ -413,7 +413,7 @@ def method_stub_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyz
     types = (bare, *(p.type for p in fi.params))
     if any(_open_stub_type(t) for t in (*types, fi.return_type, *bound)):
         return None
-    consts = method_stub_param_consts(fi, types)
+    consts = method_stub_param_consts(fi)
     return THIRStubCallee(THIRStubIdentity(f"{fi.owning_type_qname}.{fi.name}", types),
                           callable_signature(types, fi.return_type, None, signature_passings(types, consts),
                                              analyzer),

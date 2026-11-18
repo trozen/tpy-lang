@@ -7,22 +7,28 @@
 __tpy__ = {"mod": "native",
            "cpp_namespace": "tpy::bits"}
 from tpy.extern import cpp_template
-from tpy import int32, uint32, uint64
+from tpy import int32, uint32, uint64, pure
 
+@pure
 @cpp_template("std::rotl<uint32_t>({0}, {1})")
 def rotl32(x: uint32, n: int32) -> uint32: ...
 
+@pure
 @cpp_template("std::rotr<uint32_t>({0}, {1})")
 def rotr32(x: uint32, n: int32) -> uint32: ...
 
+@pure
 @cpp_template("std::rotl<uint64_t>({0}, {1})")
 def rotl64(x: uint64, n: int32) -> uint64: ...
 
+@pure
 @cpp_template("std::rotr<uint64_t>({0}, {1})")
 def rotr64(x: uint64, n: int32) -> uint64: ...
 
+@pure
 @cpp_template("std::byteswap<uint32_t>({0})")
 def byteswap32(x: uint32) -> uint32: ...
 
+@pure
 @cpp_template("std::byteswap<uint64_t>({0})")
 def byteswap64(x: uint64) -> uint64: ...

@@ -16,7 +16,7 @@ from tpy import int32, int64
 from tpy.extern import native
 
 
-@native("tpy::stdlib::datetime::local_utc_offset_seconds")
+@native("tpy::stdlib::datetime::local_utc_offset_seconds", transient=True)
 def local_utc_offset_seconds(epoch_seconds: int64) -> int64: ...
 
 

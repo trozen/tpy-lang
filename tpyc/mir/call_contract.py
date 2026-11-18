@@ -586,7 +586,10 @@ def _stub_binding(callee: THIRStubCallee, typ: TpyType, passing: ParamPassing, r
     code); an owned leaf lent readonly (at any other passing the stub could
     mutate, move from or keep the caller's storage); a view (it lends what
     it views and cannot write through it); a scalar by value; and, at a
-    method, an element handed over to the container."""
+    method, an element handed over to the container. A parameter published
+    as a VIEW is read only whatever the stub declares: nothing writes
+    through a view."""
+    readonly = readonly or passing is ParamPassing.VIEW
     binding = parameter_binding(THIRParam("", typ, passing=passing), Declared(readonly))
     if isinstance(binding, str):
         return "stub parameter is not a readonly leaf"
@@ -651,6 +654,10 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
         bindings.append(binding)
     result = signature_result(signature)
     representation = signature.return_representation
+    if isinstance(result, VoidType):
+        # A void result returns nothing to borrow, whatever its representation.
+        return MIRCallSummary(callee, tuple(bindings), frozenset(range(len(bindings))), frozenset(), frozenset(),
+                              frozenset(), frozenset(), False, frozenset())
     lent = frozenset(_stub_return(i, b, result) for i, b in enumerate(bindings) if b.readonly)
     if view_result(result, representation) is not None:
         # A view result may borrow every argument the call lends, and only
@@ -662,10 +669,17 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     if representation in (Representation.VIEW, Representation.REFERENCE):
         return "stub view result"
     owned_result = owned_value_type(result)
-    if not (isinstance(result, VoidType) or storage_leaf(result, representation)
+    if not (storage_leaf(result, representation)
             or owned_result is not None and representation is Representation.STORAGE):
         return "unsupported stub result type"
     returns = lent if owned_result is not None and not callee.constructs_result else frozenset()
+    # A parameter read only because it is published as a view (not declared
+    # readonly) says nothing about the result: it may be fresh storage or a
+    # reference into that argument, which only the per-parameter result model
+    # can tell (TODO.md "[MIR] Per-parameter stub contracts").
+    if any(signature.passings[o.parameter] is ParamPassing.VIEW and not callee.readonly[o.parameter]
+           for o in returns):
+        return "stub owned result may be fresh or its view argument"
     return MIRCallSummary(callee, tuple(bindings), frozenset(range(len(bindings))), frozenset(), frozenset(),
                           returns, frozenset(), False, frozenset())
 

@@ -13,7 +13,7 @@ __tpy__ = {"cpp_namespace": "tpystd::_bindings::mbedtls",
            "includes": ["<tpy/stdlib/mbedtls_h.hpp>"],
            "links": [{"lib": "mbedtls", "managed": True}]}
 
-from tpy import Ptr, uint8, uint32, int32, uint64, readonly
+from tpy import Ptr, uint8, uint32, int32, uint64, readonly, pure
 from tpy.extern import native
 
 
@@ -51,7 +51,7 @@ def tls_add_bundled_ca(s: Ptr[Session]) -> int32: ...
 def tls_add_ca_file(s: Ptr[Session], path: Ptr[readonly[uint8]],
                     path_len: uint64) -> int32: ...
 
-@native("::tpy_tls_bundled_ca_count")
+@native("::tpy_tls_bundled_ca_count", transient=True)
 def tls_bundled_ca_count() -> int32: ...
 
 @native("::tpy_tls_setup")
@@ -86,6 +86,7 @@ def tls_verify_result(s: Ptr[Session]) -> uint32: ...
 @native("::tpy_tls_version")
 def tls_version(s: Ptr[Session]) -> Ptr[readonly[uint8]]: ...
 
+@pure
 @native("::tpy_tls_classify")
 def tls_classify(rc: int32) -> int32: ...
 

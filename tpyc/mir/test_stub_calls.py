@@ -68,6 +68,21 @@ def probe_fill(s: String) -> None: ...
 @native("probe_bump", transient=True)
 def probe_bump(r: Rec) -> None: ...
 
+@native("probe_exists", transient=True)
+def probe_exists(s: str) -> bool: ...
+
+@native("probe_touch", transient=True)
+def probe_touch(s: str) -> None: ...
+
+@native("probe_has", transient=True)
+def probe_has(b: bytes) -> bool: ...
+
+@native("probe_dup", transient=True)
+def probe_dup(s: str) -> str: ...
+
+@native("probe_width", transient=True)
+def probe_width(s: str) -> int32: ...
+
 def lent_len(s: str) -> int32:
     # `len` is @pure; its protocol parameter binds the str, lent for the call.
     return len(s)
@@ -128,6 +143,23 @@ def unmarked(x: float) -> float:
 def unmarked_nullary() -> float:
     # Lending no argument is no contract: an unmarked stub may reach any storage.
     return probe_tick()
+
+def exists(s: str) -> bool:
+    # The str is not declared readonly, yet a view parameter is read only.
+    return probe_exists(s)
+
+def touch(s: str) -> None:
+    probe_touch(s)
+
+def has(b: bytes) -> bool:
+    return probe_has(b)
+
+def dup(s: str) -> str:
+    # A fresh string or a reference into `s`: the contract does not say which.
+    return probe_dup(s)
+
+def width(s: str) -> int32:
+    return probe_width(s)
 
 def mut_ref(r: Rec) -> None:
     probe_bump(r)
@@ -272,6 +304,52 @@ def test_transient_stub_without_arguments(active) -> None:
     assert "%0 = call stub time.time[]() [transient, reader, may-raise]" in _lines(fn)
     assert active.summaries["clock"].state is MIRSummaryState.KNOWN
     assert active.summaries["clock"].summary.normal_return_only is False
+
+
+def test_a_view_parameter_of_a_transient_stub_is_a_reader(active) -> None:
+    callee = _thir_calls(active.thir["exists"])[0].stub_callee
+    # The declaration states no const verdict; the published passing alone makes it a reader.
+    assert callee.readonly == (False,) and callee.signature.passings == (ParamPassing.VIEW,)
+    summary = stub_summary(callee)
+    assert isinstance(summary, MIRCallSummary), summary
+    binding, = summary.parameters
+    assert binding.readonly and summary.reads == frozenset({0}) and not summary.writes
+    assert active.summaries["exists"].state is MIRSummaryState.KNOWN
+
+
+def test_a_bytes_view_parameter_of_a_transient_stub_is_a_reader(active) -> None:
+    callee = _thir_calls(active.thir["has"])[0].stub_callee
+    assert callee.readonly == (False,) and callee.signature.passings == (ParamPassing.VIEW,)
+    summary = stub_summary(callee)
+    assert isinstance(summary, MIRCallSummary), summary
+    binding, = summary.parameters
+    assert binding.readonly and summary.reads == frozenset({0}) and not summary.writes
+    assert active.summaries["has"].state is MIRSummaryState.KNOWN
+
+
+def test_an_owned_result_over_a_view_parameter_refuses(active) -> None:
+    callee = _thir_calls(active.thir["dup"])[0].stub_callee
+    assert callee.readonly == (False,) and callee.signature.passings == (ParamPassing.VIEW,)
+    assert stub_summary(callee) == "stub owned result may be fresh or its view argument"
+    assert active.summaries["dup"].state is not MIRSummaryState.KNOWN
+
+
+def test_a_scalar_result_over_a_view_parameter_summarizes(active) -> None:
+    summary = stub_summary(_thir_calls(active.thir["width"])[0].stub_callee)
+    assert isinstance(summary, MIRCallSummary), summary
+    assert summary.returns == frozenset() and summary.reads == frozenset({0})
+    assert active.summaries["width"].state is MIRSummaryState.KNOWN
+
+
+def test_a_void_stub_result_lends_nothing(active) -> None:
+    callee = _thir_calls(active.thir["touch"])[0].stub_callee
+    # `None` publishes the REFERENCE representation, which alone would ask what the result borrows.
+    assert isinstance(callee.signature.return_type, VoidType)
+    assert callee.signature.return_representation is Representation.REFERENCE
+    summary = stub_summary(callee)
+    assert isinstance(summary, MIRCallSummary), summary
+    assert summary.returns == frozenset() and summary.reads == frozenset({0})
+    assert active.summaries["touch"].state is MIRSummaryState.KNOWN
 
 
 def test_pure_constructor_result_is_fresh(active) -> None:

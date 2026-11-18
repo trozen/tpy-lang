@@ -54,10 +54,10 @@ class SockaddrIn:
 @native("::socket")
 def socket(domain: int32, type_: int32, protocol: int32) -> int32: ...
 
-@native("::close")
+@native("::close", transient=True)
 def close(fd: int32) -> int32: ...
 
-@native("::shutdown")
+@native("::shutdown", transient=True)
 def shutdown(fd: int32, how: int32) -> int32: ...
 
 
@@ -69,7 +69,7 @@ def bind(fd: int32, addr: Ptr[SockaddrIn], addrlen: uint32) -> int32: ...
 @native("::connect")
 def connect(fd: int32, addr: Ptr[SockaddrIn], addrlen: uint32) -> int32: ...
 
-@native("::listen")
+@native("::listen", transient=True)
 def listen(fd: int32, backlog: int32) -> int32: ...
 
 @native("::accept")
@@ -146,7 +146,7 @@ def tpy_resolve_ipv4(host: Ptr[readonly[uint8]], host_len: uint64,
 
 # errno at the point of call. Indirection for platform portability
 # (glibc uses __errno_location, macOS uses __error).
-@native("::tpy_errno")
+@native("::tpy_errno", transient=True)
 def tpy_errno() -> int32: ...
 
 # Last DNS-resolution error message (thread-local, C string, valid until
@@ -157,7 +157,7 @@ def tpy_last_resolve_error() -> Ptr[readonly[uint8]]: ...
 
 # The matching EAI_* code (same thread-local lifetime as the message);
 # becomes socket.gaierror's `.errno`, like CPython.
-@native("::tpy_last_resolve_code")
+@native("::tpy_last_resolve_code", transient=True)
 def tpy_last_resolve_code() -> int32: ...
 
 # Toggle O_NONBLOCK on `fd` (nonblocking != 0 sets it). Backs

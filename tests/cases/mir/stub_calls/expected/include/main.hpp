@@ -5,6 +5,7 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "tpystd/math.hpp"
+#include "part_os.hpp"
 #include <tpy/system.hpp>
 #include <tpy/stdlib/time.hpp>
 

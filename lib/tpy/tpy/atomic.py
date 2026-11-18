@@ -137,5 +137,5 @@ def fence(order: MemoryOrder = MemoryOrder.SEQ_CST) -> None:
     _atomic_fence(order)
 
 
-@native("tpy::atomic_fence")
+@native("tpy::atomic_fence", transient=True)
 def _atomic_fence(order: MemoryOrder) -> None: ...

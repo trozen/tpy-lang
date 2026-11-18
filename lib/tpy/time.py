@@ -10,7 +10,7 @@ from tpy.extern import native
 @native("tpy::time_time", transient=True)
 def time() -> float: ...
 
-@native("tpy::stdlib::time::time_ns")
+@native("tpy::stdlib::time::time_ns", transient=True)
 def time_ns() -> int64: ...
 
 @native("tpy::time_sleep", checks_signals=True)
@@ -19,28 +19,28 @@ def sleep(seconds: float) -> None: ...
 # Sleep until a steady_clock deadline expressed in seconds (same domain
 # as monotonic()). Used by asyncio's run loop to wait for the next
 # timer; user code should generally prefer sleep().
-@native("tpy::stdlib::time::sleep_until_steady")
+@native("tpy::stdlib::time::sleep_until_steady", transient=True)
 def sleep_until_steady(deadline_seconds: float) -> None: ...
 
 # Monotonic clock (use for elapsed-time measurements)
-@native("tpy::stdlib::time::perf_counter")
+@native("tpy::stdlib::time::perf_counter", transient=True)
 def perf_counter() -> float: ...
 
-@native("tpy::stdlib::time::perf_counter_ns")
+@native("tpy::stdlib::time::perf_counter_ns", transient=True)
 def perf_counter_ns() -> int64: ...
 
-@native("tpy::stdlib::time::monotonic")
+@native("tpy::stdlib::time::monotonic", transient=True)
 def monotonic() -> float: ...
 
-@native("tpy::stdlib::time::monotonic_ns")
+@native("tpy::stdlib::time::monotonic_ns", transient=True)
 def monotonic_ns() -> int64: ...
 
 # Process CPU time
-@native("tpy::stdlib::time::process_time")
+@native("tpy::stdlib::time::process_time", transient=True)
 def process_time() -> float: ...
 
 # CPython-parity no-op: TPy's local-time provider reads TZ once at first
 # use, so set-TZ-then-tzset-then-use works; a tzset after local time was
 # already used cannot re-pin the zone (documented divergence).
-@native("tpy::stdlib::time::tzset")
+@native("tpy::stdlib::time::tzset", transient=True)
 def tzset() -> None: ...

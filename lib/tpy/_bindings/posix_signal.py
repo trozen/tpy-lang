@@ -54,7 +54,7 @@ def interrupt_armed() -> bool: ...
 # True where a signal would be delivered on the calling thread right now: the
 # interrupt target thread outside a deferral scope, inside asyncio.run too
 # (tpy/core.hpp). Never in a `--no-signals` build.
-@native("::tpy::signals_deliverable")
+@native("::tpy::signals_deliverable", transient=True)
 def deliverable() -> bool: ...
 
 # Marks a Ctrl-C pending without consuming it, as the SIGINT handler does;
@@ -85,12 +85,12 @@ def set_handler(sig: int32, kind: int32) -> None: ...
 
 # `set_handler(SIGINT, kind)` for asyncio.run's own SIGINT handler, also on a
 # layer the run armed itself (signal_h.hpp).
-@native("::tpy_signal_set_for_run")
+@native("::tpy_signal_set_for_run", transient=True)
 def set_run_handler(kind: int32) -> None: ...
 
 # The kind `sig` has on the calling thread (signal_h.hpp's kinds; none off
 # the interrupt target thread).
-@native("::tpy_signal_kind")
+@native("::tpy_signal_kind", transient=True)
 def handler_kind(sig: int32) -> int32: ...
 
 # Publishes signal.py's dispatcher to the runtime (signal_h.hpp).

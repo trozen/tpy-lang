@@ -115,13 +115,10 @@ def stub_param_consts(fi: FunctionInfo) -> tuple[bool, ...]:
                                  is_readonly=fi.is_readonly, is_method=fi.is_method)
 
 
-def method_stub_param_consts(fi: FunctionInfo, types: tuple[TpyType, ...]) -> tuple[bool, ...]:
-    """A method stub's const verdicts over `types`, its receiver first: the
-    method's `@readonly` for the receiver, then each declared parameter's,
-    a parameter passed as a view (a `str` key) included -- nothing writes
-    through one."""
-    return (fi.is_readonly, *(const or t.param_passing(False) is ParamPassing.VIEW
-                              for const, t in zip(stub_param_consts(fi), types[1:], strict=True)))
+def method_stub_param_consts(fi: FunctionInfo) -> tuple[bool, ...]:
+    """A method stub's const verdicts, its receiver first: the method's
+    `@readonly` for the receiver, then each declared parameter's."""
+    return (fi.is_readonly, *stub_param_consts(fi))
 
 
 def published_passing(signature: THIRCallableSignature | None, index: int) -> ParamPassing | None:

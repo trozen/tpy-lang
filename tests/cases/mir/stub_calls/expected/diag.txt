@@ -1,3 +1,4 @@
-main.py:116: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)
-main.py:116: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 114; iterate over a copy ('copy(items)'), or make the changes after the loop
-main.py:155: warning: the argument for parameter 'k' is what 'set_and_read' modifies through parameter 'r' while it still uses 'k'; bind it to a local first or restructure so the call does not hand over both
+part_os.py:45: warning: the temporary 'os.getcwd()' lives only until the end of this statement, and 'h.v' may still view it and is read on line 46; bind 'os.getcwd()' to a variable before this statement, or make 'Holder.v' an owned 'str'
+main.py:117: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)
+main.py:117: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 115; iterate over a copy ('copy(items)'), or make the changes after the loop
+main.py:156: warning: the argument for parameter 'k' is what 'set_and_read' modifies through parameter 'r' while it still uses 'k'; bind it to a local first or restructure so the call does not hand over both

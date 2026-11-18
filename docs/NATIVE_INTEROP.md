@@ -718,7 +718,11 @@ MIR's stub call contract, and sema's retention verdict reads it as "keeps
 no copy of an argument" (see "What a binding keeps of its arguments"
 below). Each use is an audit of the binding. The kwarg is a bool literal;
 it is rejected on a class-level `@native` (it describes a call, not a
-type's values) and on a binding that carries a TPy body.
+type's values) and on a binding that carries a TPy body. A binding that
+reads or writes process state -- the file system, the environment, a file
+descriptor, a clock (`os.mkdir`, `os.getcwd`, `time.monotonic`) -- takes
+`transient=True`, never `@pure`: sema reads `@pure` as "writes nothing and
+touches no process state".
 
 ### What a binding keeps of its arguments
 

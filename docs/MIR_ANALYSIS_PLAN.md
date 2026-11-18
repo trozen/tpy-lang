@@ -2318,9 +2318,22 @@ as the corpus grows).
   whose key in an augmented assignment would be evaluated twice
   (BUGS.md#aug-inert-key-reread-after-rhs). The scalar `math` stubs and
   `ord(str | String | StrView)` declare `@pure` since 2026-11-02 (the
-  per-stub verdicts are in TODO.md). Remaining: free stubs without a
-  contract (`os.*`, `time.*`, the signal helpers, `unsafe_*`, `frexp` /
-  `modf`, `list.extend`), exception classes' and raw `@native` records'
+  per-stub verdicts are in TODO.md). Since 2026-11-18 the OS, clock,
+  socket and signal-state bindings (`os._native`, `time`,
+  `posix_socket`, `posix_signal`, `hinnant_date`, `tpy.atomic`'s fence)
+  declare `transient=True` and the scalar `tpy.bits` operations,
+  `waitstatus_to_exitcode` and `tls_classify` declare `@pure`; a stub
+  parameter published as a view (`str`, `bytes`) is a reader whatever
+  its declaration says (`_stub_binding`), and a void stub result lends
+  nothing; a free stub's owned result over such a parameter (a user
+  `str -> str` stub) stays uncovered, since it may be fresh or the
+  argument (TODO.md "[MIR] Per-parameter stub contracts"). Remaining: free stubs without a contract (the check points
+  `time.sleep`, `read_fd`, `write_fd`, `kill_pid`, `waitpid`, `input`;
+  the signal requests; the `str -> str` bindings `readlink`, `env_get`,
+  `user_home`, `realpath`, whose result needs a per-parameter result
+  model -- TODO.md "[MIR] Per-parameter stub contracts"; every `Ptr`
+  stub; `unsafe_*`, `frexp` / `modf`, `list.extend`), exception
+  classes' and raw `@native` records'
   initializers, and constructor paths that attach no stub callee
   (`Span` / `SpanIter` / `Ptr`, one-argument `StrView`, the
   `float("inf")` fold, the `bool(obj)` / `str(container)` fallbacks,
