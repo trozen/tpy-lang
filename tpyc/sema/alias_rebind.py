@@ -380,6 +380,19 @@ def tuple_elem_owned(ctx: 'SemanticContext', value: TpyExpr | None,
     return tuple(r and o for r, o in zip(ref, owned))
 
 
+def step_elem_owned(step: TpyType | None,
+                    handed_over: Iterable[ElemPath]
+                    ) -> tuple[bool, ...] | None:
+    """`tuple_elem_owned` of a loop's tuple step holder: each reference
+    element a leaf of which the step hands over (`step_handover_paths`) is
+    the holder's own. None as there."""
+    ref = _reference_elements(step)
+    if ref is None:
+        return None
+    return tuple(r and any(p[:1] == (i,) for p in handed_over)
+                 for i, r in enumerate(ref))
+
+
 def note_tuple_elem_borrows(ctx: 'SemanticContext', name: str,
                             value: TpyExpr | None,
                             slot: TpyType | None) -> None:

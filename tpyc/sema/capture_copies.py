@@ -49,7 +49,7 @@ from ..typesys import (FrameType, OptionalType, TpyType,
                        is_ptr_variant_union, param_takes_ownership,
                        pointer_repr_optional, unwrap_qualifiers,
                        unwrap_ref_type, unwrap_send_sync)
-from .read_binding import ReadBinding, ReadKind
+from .read_binding import ReadBinding, ReadKind, root_binding
 
 if TYPE_CHECKING:
     from .context import FunctionTrackingState, SemanticContext
@@ -116,9 +116,7 @@ def closure_bindings(ctx: 'SemanticContext', closure: Closure) -> ClosureReads:
             types[e.name] = (t if e.name not in types or types[e.name] == t
                              else None)
             if out.get(e.name) is None:
-                while b.kind is ReadKind.CAPTURED and b.outer is not None:
-                    b = b.outer
-                out[e.name] = b
+                out[e.name] = root_binding(b)
         elif b is not None and out.get(e.name) is None:
             out[e.name] = None
         if isinstance(e, TpyLambda):

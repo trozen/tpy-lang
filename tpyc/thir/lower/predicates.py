@@ -10806,7 +10806,7 @@ def _template_ctor_call_fi(e: TpyCall) -> 'FunctionInfo | None':
 
 def _inst_call_container_arg(arg: TpyExpr, analyzer) -> bool:
     """A container-returning CALL at an instantiation arg slot --
-    `set(make_nodes())`, `set(copy(b))`, `list(copy_iter(it))`,
+    `set(make_nodes())`, `set(copy(b))`,
     `list(heapq.merge(a, b))`, `list(borrow(b))`. It renders through the
     ordinary call-arg dispatch, inline into the construct template, exactly
     as the generator-factory and combinator arms above do for their narrower
@@ -10819,8 +10819,7 @@ def _inst_call_container_arg(arg: TpyExpr, analyzer) -> bool:
     way.
 
     Restricted to a CONTAINER result. The iterator-shaped results in the same
-    position (`copy_iter(..)`'s `CopyIter[T]`, a module-qualified generator
-    factory) are blocked one layer down at the free-call result gate and the
+    position (a module-qualified generator factory) are blocked one layer down at the free-call result gate and the
     module-marker gate, so admitting them here would be unwitnessable
     surface."""
     if not isinstance(arg, (TpyCall, TpyMethodCall)):

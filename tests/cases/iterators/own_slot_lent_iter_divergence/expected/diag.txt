@@ -7,8 +7,8 @@ part_owned_storage.py:68: warning: copies Pt elements; use copy_iter() to make t
 part_step_member.py:98: warning: copies Cell elements; use copy_iter() to make this explicit
 part_step_member.py:99: warning: copies Cell elements; use copy_iter() to make this explicit
 part_step_member.py:104: warning: copies Cell elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-part_step_member.py:107: warning: copies Cell elements; use copy_iter() to make this explicit
-part_step_member.py:109: warning: copies Cell elements; use copy_iter() to make this explicit
+part_step_member.py:107: warning: copies Cell elements; use copy() to make this explicit
+part_step_member.py:109: warning: copies Cell elements; use copy() to make this explicit
 part_step_member.py:112: warning: copies tuple[Pt, int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:217: warning: copies list[int32] elements; use copy_iter() to make this explicit
 main.py:131: warning: copies list[int32] elements; use copy_iter() to make this explicit

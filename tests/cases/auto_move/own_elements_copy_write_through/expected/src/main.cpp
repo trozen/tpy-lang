@@ -32,8 +32,8 @@ __gen_fresh_hs fresh_hs() {
 }
 
 // # A type argument the call writes (`each[Own[Item]]`, free function, method
-// # and a generic record's method) counts as written: the loop variable owns the step and moves on,
-// # no copy. The step itself is an unwarned copy of the lent element
+// # and a generic record's method) is the value's own type: the loop variable
+// # owns the step and moves on, no copy. The step itself is an unwarned copy of the lent element
 // # (BUGS.md#lent-list-at-own-iterable-param-copies).
 // def explicit_type_arg(items: list[Own[Item]]) -> None:
 //     keep: list[Item] = []
@@ -52,6 +52,27 @@ __gen_fresh_hs fresh_hs() {
 //     gkeep[0].value = 55
 //     print("explicit generic record method type arg", items[0].value,
 //           gkeep[0].value)
+//     # the same calls held in a name hand over as the calls do
+//     nkeep: list[Item] = []
+//     it = each[Own[Item]](items)
+//     for x in it:
+//         nkeep.append(x)  # tpyc: ok
+//     nkeep[0].value = 33
+//     print("named type arg", items[0].value, nkeep[0].value)
+//     mt = Each().each[Own[Item]](items)
+//     for y in mt:
+//         nkeep.append(y)  # tpyc: ok
+//     nkeep[1].value = 22
+//     print("named method type arg", items[0].value, nkeep[1].value)
+//     # a class type parameter's `Own` reaches the record iterator's
+//     # `__next__ -> U` by substitution: that step hands nothing over, so the
+//     # append copies it
+//     st = G.wrap[Own[Item]](items)
+//     for w in st:
+//         nkeep.append(w)  # tpyc: warning(/copies Item into owned storage/)
+//     nkeep[2].value = 44
+//     print("named static method class type arg", items[0].value,
+//           nkeep[2].value)
 void explicit_type_arg(std::vector<Item>& items) {
     std::vector<Item> keep = std::vector<Item>{};
     {
@@ -94,6 +115,67 @@ void explicit_type_arg(std::vector<Item>& items) {
     }
     ::tpy::__getitem__(gkeep, 0).value = 55;
     std::cout << "explicit generic record method type arg" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(gkeep, 0).value << "\n" << ::tpy::check_signals;
+    std::vector<Item> nkeep = std::vector<Item>{};
+    __gen_each<Item> it = ::tpyapp::main::each<Item>(items);
+    auto& __src_6 = it;
+    auto&& __itr_6 = ::tpy::__iter__(__src_6);
+    for (;;) {
+        auto __r_7 = __itr_6.__next__();
+        if (!__r_7.has_value()) break;
+        auto&& x = ::tpy::own_bind(*__r_7);
+        nkeep.push_back(std::move(x));
+    }
+    ::tpy::__getitem__(nkeep, 0).value = 33;
+    std::cout << "named type arg" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(nkeep, 0).value << "\n" << ::tpy::check_signals;
+    Each __tmp_3 = Each();
+    __gen_Each_each<Item> mt = __tmp_3.each<Item>(items);
+    auto& __src_8 = mt;
+    auto&& __itr_8 = ::tpy::__iter__(__src_8);
+    for (;;) {
+        auto __r_9 = __itr_8.__next__();
+        if (!__r_9.has_value()) break;
+        auto&& y = ::tpy::own_bind(*__r_9);
+        nkeep.push_back(std::move(y));
+    }
+    ::tpy::__getitem__(nkeep, 1).value = 22;
+    std::cout << "named method type arg" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(nkeep, 1).value << "\n" << ::tpy::check_signals;
+    It<Item> st = G<Item>::wrap(items);
+    auto& __src_10 = st;
+    auto&& __itr_10 = ::tpy::__iter__(__src_10);
+    for (;;) {
+        auto __r_11 = __itr_10.__next__();
+        if (!__r_11.has_value()) break;
+        auto&& w = ::tpy::unwrap_ref(*__r_11);
+        nkeep.push_back(w);
+    }
+    ::tpy::__getitem__(nkeep, 2).value = 44;
+    std::cout << "named static method class type arg" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(nkeep, 2).value << "\n" << ::tpy::check_signals;
+}
+
+// def with_target() -> None:
+//     h = Holder()
+//     with h as wi:
+//         # the `with` target refers to the holder's list: its items are copied
+//         out = bump_all(wi)  # tpyc: warning(/copies Item elements/)
+//         print("with target", len(out), h.items[0].value, out[0].value)
+void with_target() {
+    Holder h = Holder();
+    std::optional<std::vector<Item>> out;
+    auto& __ctx_1 = h;
+    auto& wi = __ctx_1.__enter__();
+    try {
+        out = ::tpyapp::main::bump_all(wi);
+        std::cout << "with target" << " " << ::tpy::__len__((*out)) << " " << ::tpy::__getitem__(h.items, 0).value << " " << ::tpy::__getitem__((*out), 0).value << "\n" << ::tpy::check_signals;
+        goto __with_exit_1;
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
+    } catch (...) {
+        __ctx_1.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
 }
 
 // # The callback writes and returns a field, never the `Own` object itself.
@@ -136,6 +218,7 @@ int32_t bump(int32_t k, Item&& x) {
 //     hs3 = set(dup)  # tpyc: warning(/copies H elements/)
 //     print("dups", len(hs3), len(dup))
 //     explicit_type_arg(items)
+//     with_target()
 void main() {
     std::vector<Item> items = {Item(1)};
     std::vector<Item> out = ::tpyapp::main::bump_all(items);
@@ -171,6 +254,7 @@ void main() {
     ::tpy::ordered_set<H> hs3 = ::tpy::set_construct<H>(dup);
     std::cout << "dups" << " " << ::tpy::__len__(hs3) << " " << ::tpy::__len__(dup) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::explicit_type_arg(items);
+    ::tpyapp::main::with_target();
 }
 
 // main()

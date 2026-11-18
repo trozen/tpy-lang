@@ -76,7 +76,6 @@ def _canonical_instances() -> dict[str, ts.TpyType]:
         "tpy.Span":     ts.make_span(I32),
         "tpy.varargs":  ts.make_varargs(I32),
         "tpy.SpanIter": ts.make_span_iter(I32),
-        "tpy.CopyIter": ts.make_copy_iter(I32),
         "tpy.Ptr":      ts.PtrType(I32),
         "tpy.coro.Waker": ts.WAKER,
         "tpy.atomic._RawAtomic": ts.NominalType(
@@ -195,9 +194,9 @@ def test_predicate_functions_agree_with_isinstance(instances):
         assert is_dict_view(inst) == expected, (
             f"is_dict_view({qname}) = {is_dict_view(inst)} but expected {expected}"
         )
-    # iterator adapters: SpanIter + CopyIter (qname-based check)
+    # iterator adapter: SpanIter (qname-based check)
     for qname, inst in instances.items():
-        expected = qname in ("tpy.SpanIter", "tpy.CopyIter")
+        expected = qname == "tpy.SpanIter"
         assert is_iterator_adapter(inst) == expected, (
             f"is_iterator_adapter({qname}) = {is_iterator_adapter(inst)} but expected {expected}"
         )

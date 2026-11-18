@@ -102,7 +102,6 @@ ASYNCIO_CREATE_TASK = "asyncio.create_task"
 
 # -- tpy @builtin_function names with bespoke codegen emission --
 COPY = "tpy.copy"
-COPY_ITER = "tpy.copy_iter"
 OWN_ITER = "tpy.own_iter"
 TRY_PARSE = "tpy.try_parse"
 # Compile-time Send/Sync assertions; checked in sema, elided in codegen.

@@ -16,7 +16,9 @@ from typing import (TYPE_CHECKING, Callable, Iterable, Iterator, NamedTuple,
 from ..type_def_registry import has_view_param_form
 from ..frame_capture import frame_owns_param_copy
 from ..typesys import (param_holds_callee_copy, lands_in_indirection, peel_slot, pointer_repr_optional, readonly_access, resolve_int_literals,
-                      BIGINT, is_primitive_type, make_copy_iter)
+                      BIGINT, is_primitive_type,
+                      substitute_type_params_structural, ask_owning_slot,
+                      concrete_owning_slot_fits)
 from ..typesys import (
     contains_reference_type, inner_type_param_names,
     same_class, Representation, return_representation,
@@ -122,7 +124,7 @@ from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_varargs, is_span_iter, is_list,
     is_str_type, is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
     is_big_int_type, is_fixed_int_type, is_str_category, is_bytes_category,
-    protocol_info_of, iter_yields_owned_elements, is_iterator_adapter,
+    protocol_info_of, is_iterator_adapter,
     is_dict_view,
 )
 from .overloads import type_matches_numeric
@@ -763,7 +765,7 @@ def _handle_lends_elements(ctx: SemanticContext, expr: TpyExpr,
     binding.
 
     An allow-list: every such handle lends unless its type PROVES the
-    elements owned (`iter_yields_owned_elements`, an `Own[T]` element). A
+    elements owned (an `Own[T]` element). A
     handle whose provenance is temporaries only is answered by its
     binding's init, not here (`_dead_handle_value`)."""
     if not handle_owns_elements(ctx, expr, t):
@@ -776,8 +778,6 @@ def _handle_lends_elements(ctx: SemanticContext, expr: TpyExpr,
     elif is_iterator_adapter(bare) or is_dict_view(bare):
         elem = None
     else:
-        return False
-    if iter_yields_owned_elements(bare):
         return False
     return not (elem is not None
                 and isinstance(unwrap_readonly(elem), OwnType))
@@ -1554,6 +1554,17 @@ class TypeCompatibility:
             owning_name_source = isinstance(source_expr, TpyName) and (
                 isinstance(actual, OwnType)
                 or (isinstance(actual, TupleType) and actual.has_nested_own_element()))
+            if (source_expr is not None and is_protocol_type(expected)
+                    and owning_element_slot(expected, self.ctx.registry)
+                    and not self.forwarded_owning_param(source_expr)
+                    and self.ctx.slot_step_commits()):
+                # An argument of the owning element slot's own type
+                # (`Iterator[Own[A]]` fed `copy_iter(xs)`) gets its record
+                # like every other argument shape there; a forwarded owning
+                # parameter is passed on as it arrived and needs none. Not
+                # hoisted from the conformance path's registration below:
+                # that one carries the copy check's `elements_lent`.
+                self.register_sink(source_expr, OwnType(expected), None)
             if not owning_name_source:
                 # An equal-type tuple source (a select of names, a call)
                 # still lends what its slot's `Own` elements own.
@@ -1987,18 +1998,14 @@ class TypeCompatibility:
                 # the slot's `Own` (a type whose only iteration consumes it
                 # included); a lending one meets the slot without it, and
                 # the copy check below copies its steps.
-                structurally_ok = bool(
-                    self.protocols and (
-                        self.protocols.type_conforms_to_protocol(actual_inner, expected)
-                        or self.protocols.type_conforms_to_protocol(
-                            actual_inner, stripped_expected))
-                )
+                protocols = self.protocols
+                structurally_ok = protocols is not None and ask_owning_slot(
+                    expected, lambda slot: protocols.type_conforms_to_protocol(
+                        actual_inner, slot))[0]
             else:
                 # Concrete type: exact match after Own stripping
-                structurally_ok = (
-                    (strip_own_type_args(actual_inner)
-                     if isinstance(actual_inner, NominalType) else actual_inner)
-                    == stripped_expected)
+                structurally_ok = concrete_owning_slot_fits(actual_inner,
+                                                            expected)
             if (structurally_ok and is_protocol_type(expected)
                     and not owning_element_slot(expected, self.ctx.registry)):
                 # A protocol that does not take elements over by iterating
@@ -2026,18 +2033,20 @@ class TypeCompatibility:
                                               keep_own=True)
                     if is_protocol_type(expected)
                     and iteration_shape(expected) is not None else None)
+            copied = (self._copy_iter_return(actual_inner)
+                      if step is not None else None)
             iter_hint = (CONTAINER_COPY_HINT
                          if step is not None and not (
-                             self.protocols
+                             self.protocols and copied is not None
                              and self.protocols.type_conforms_to_protocol(
-                                 make_copy_iter(unwrap_own(step)), expected))
+                                 copied, expected))
                          else ITERABLE_LVALUE_COPY_HINT)
             if structurally_ok:
                 # Own[T] from explicit return/param means caller acknowledged
                 # ownership -- skip warning.  Own[T] from name lookup (owned
                 # local) is implicit and still needs the warning.
                 # An explicit Own handle, an Own type argument on it or a
-                # copy() / copy_iter() of it owns its elements -- unless user
+                # copy() of it owns its elements -- unless user
                 # code lends its step: then the elements are still checked.
                 # So does a source iterating which hands out elements it
                 # owns (`_steps_owned`): its steps move.
@@ -4007,12 +4016,9 @@ class TypeCompatibility:
         consumes. `deferred_return` False: a parameter's return under a
         `finally` consumes only where it is a real last use (a VALUE leaf,
         whose copy costs nothing observable, `copy_permission`)."""
-        binding = self.ctx.read_bindings.get(read)
-        if binding is None or binding.kind is ReadKind.CAPTURED:
+        if not self.read_owns_leaf(read, path):
             return False
-        if not read_ownership(self.ctx, binding).owns(
-                self.ctx.get_expr_type(read), (path,)):
-            return False
+        binding = self.ctx.read_bindings[read]
         comp = self.ctx.comp_moves.get(read)
         return (read in self.ctx.all_last_uses
                 or comp in (CompMove.LAST_SINK, CompMove.RECEIVER)
@@ -4020,6 +4026,16 @@ class TypeCompatibility:
                 or (returned and deferred_return
                     and binding.kind is ReadKind.PARAM
                     and self._return_consumes_param(read)))
+
+    def read_owns_leaf(self, read: TpyName, path: ElemPath) -> bool:
+        """The binding name `read` resolved to owns its leaf at `path`
+        (`read_ownership`, fact 1); a captured name is read in place and
+        owns nothing."""
+        binding = self.ctx.read_bindings.get(read)
+        if binding is None or binding.kind is ReadKind.CAPTURED:
+            return False
+        return read_ownership(self.ctx, binding).owns(
+            self.ctx.get_expr_type(read), (path,))
 
     def _return_consumes_param(self, read: TpyName) -> bool:
         """A whole `return` of an ownership-transfer parameter the last-use
@@ -4474,19 +4490,39 @@ class TypeCompatibility:
         return is_list(inner) or is_dict(inner) or is_set(inner)
 
     def is_copy_call(self, expr: TpyExpr) -> bool:
-        """Check if expression is a copy() or copy_iter() call from the tpy module."""
+        """Check if expression is a copy() call from the tpy module."""
         if isinstance(expr, TpyCoerce):
             return self.is_copy_call(expr.expr)
         if not isinstance(expr, TpyCall):
             return False
-        # Check if this function name maps to tpy.copy or tpy.copy_iter
+        # Check if this function name maps to tpy.copy
         # (handles aliases like "from tpy import copy as c")
         if not isinstance(expr.func, TpyName):
             return False
         if expr.func_name in self.ctx.imported_names:
             module_name, func_name = self.ctx.imported_names[expr.func_name]
-            return module_name == "tpy" and func_name in ("copy", "copy_iter")
+            return module_name == "tpy" and func_name == "copy"
         return False
+
+    def _copy_iter_return(self, source: TpyType) -> TpyType | None:
+        """What `copy_iter(source)` returns, by the stub's own call check
+        (its type parameter inferred from `source`); None where the stub
+        refuses `source`."""
+        module = self.ctx.registry.get_module("tpy")
+        fis = module.functions.get("copy_iter") if module is not None else None
+        if not fis or fis[0].return_type is None or self.protocols is None:
+            return None
+        fi = fis[0]
+        try:
+            subst = self.type_ops.infer_type_params_for_function(
+                fi, [source], self.protocols.satisfies_bound, slots=[0])
+        except SemanticError:
+            return None
+        if subst is None or not self.protocols.type_conforms_to_protocol(
+                source, substitute_type_params_structural(
+                    unwrap_readonly(fi.params[0].type), subst)):
+            return None
+        return substitute_type_params_structural(fi.return_type, subst)
 
     def check_own_consumption(self, expr: TpyExpr) -> 'OwnSlot | None':
         """Mark Own[T] param as consumed if expr transfers ownership; the
@@ -7647,7 +7683,8 @@ class TypeCompatibility:
             lent = frozenset({()}) if self.member_lends(src) else none
             if handover is not None:
                 return ({(): self._element_slot_leaf(
-                    src, owns, payload, handover, reg.elements_lent)}, lent)
+                    src, (), owns, payload, handover, reg.elements_lent)},
+                        lent)
             leaf = self._member_leaf(src, owns, payload,
                                      returned=returned and alone)
             if (reg.binds is not None and leaf.permission.copies
@@ -7659,11 +7696,12 @@ class TypeCompatibility:
             return ({(): leaf}, lent)
         return facts
 
-    def _element_slot_leaf(self, src: TpyExpr, slot_owns: bool,
+    def _element_slot_leaf(self, src: TpyExpr, path: ElemPath,
+                           slot_owns: bool,
                            slot: TpyType, handover: OwningArg,
                            elements_lent: bool) -> TupleLeaf:
-        """The one leaf of argument `src` at an owning element slot `slot`:
-        its ELEMENTS', from its hand-over verdict. Handed over, they move
+        """The one leaf of argument `src`, at `path`, at an owning element
+        slot `slot`: its ELEMENTS', from its hand-over verdict. Handed over, they move
         in with the container; an iterator object passes as itself, its
         elements arriving as it lends them (`elements_lent`); a lent
         container has each element copied, WARNED or HEDGED by its type
@@ -7679,6 +7717,12 @@ class TypeCompatibility:
         if (handover is OwningArg.HANDED_OVER
                 or (handover is OwningArg.ITERATOR and not elements_lent)
                 or (handover is OwningArg.LENT and self._steps_owned(read))):
+            if (isinstance(read, TpyName)
+                    and self.ctx.read_bindings.get(read) is not None
+                    and not self.read_owns_leaf(read, path)):
+                # A name that does not own the leaf (an alias of another
+                # name, a capture) passes the object it refers to.
+                return TupleLeaf(True, True, LeafPermission.PASS)
             return TupleLeaf(not self.new_value(read), True,
                              LeafPermission.MOVE)
         return TupleLeaf(True, True, self.copy_permission(elem)
@@ -7696,7 +7740,7 @@ class TypeCompatibility:
         t = self.ctx.get_expr_type(src)
         if not isinstance(t, TpyType) or self.protocols is None:
             return False
-        return ((self.protocols.steps_handed_over(t, src)
+        return ((self.protocols.steps_handed_over(src)
                  or self.forwarded_owning_param(src))
                 and handle_owns_elements(self.ctx, src, t))
 

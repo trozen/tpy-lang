@@ -44,6 +44,14 @@ class ReadBinding:
     outer: 'ReadBinding | None' = None
 
 
+def root_binding(b: ReadBinding) -> ReadBinding:
+    """The binding a captured read reads in the end: `b` climbed through
+    each enclosing body's capture to the body that binds the name."""
+    while b.kind is ReadKind.CAPTURED and b.outer is not None:
+        b = b.outer
+    return b
+
+
 def resolve_read(ctx: 'SemanticContext', name: str) -> ReadBinding:
     """The binding a read of `name` here resolves to: the innermost scope
     binding it -- a binding site's target (`Scope.binders`), a

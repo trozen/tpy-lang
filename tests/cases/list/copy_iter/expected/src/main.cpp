@@ -7,14 +7,14 @@ namespace tpyapp::main {
 // def test_extend_copy_iter_no_warn() -> None:
 //     a: list[Node] = []
 //     b: list[Node] = [Node(1), Node(2)]
-//     ci = copy_iter(b)  # tpyc: type(/CopyIter\[Node\]/)
+//     ci = copy_iter(b)  # tpyc: type(/Iterator\[Own\[Node\]\]/)
 //     a.extend(ci)  # tpyc: ok
 //     print(len(a))
 //     print(len(b))
 void test_extend_copy_iter_no_warn() {
     std::vector<Node> a = std::vector<Node>{};
     std::vector<Node> b = {Node(1), Node(2)};
-    auto ci = ::tpy::copy_iter<Node>(b);
+    auto ci = ::tpy::copy_iter(b);
     ::tpy::list_extend(a, ci);
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
@@ -28,7 +28,7 @@ void test_extend_copy_iter_no_warn() {
 void test_extend_copy_iter_value_type() {
     std::vector<int32_t> a = std::vector<int32_t>{};
     std::vector<int32_t> b = {1, 2, 3};
-    ::tpy::list_extend(a, ::tpy::copy_iter<int32_t>(b));
+    ::tpy::list_extend(a, ::tpy::copy_iter(b));
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
@@ -41,7 +41,7 @@ void test_extend_copy_iter_value_type() {
 void test_iadd_copy_iter_no_warn() {
     std::vector<Node> a = std::vector<Node>{};
     std::vector<Node> b = {Node(3)};
-    ::tpy::list_extend(a, ::tpy::copy_iter<Node>(b));
+    ::tpy::list_extend(a, ::tpy::copy_iter(b));
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
@@ -53,7 +53,7 @@ void test_iadd_copy_iter_no_warn() {
 //     print(len(b))
 void test_list_ctor_copy_iter_no_warn() {
     std::vector<Node> b = {Node(4)};
-    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(::tpy::copy_iter<Node>(b));
+    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(::tpy::copy_iter(b));
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
@@ -80,12 +80,15 @@ void test_extend_no_copy_iter_warns() {
 void test_for_loop_copy_iter() {
     std::vector<Node> b = {Node(10), Node(20)};
     int32_t total = 0;
-    auto __obj_0 = ::tpy::copy_iter<Node>(b);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        const auto& x = *__beg_0;
-        total = ::tpy::add_check<int32_t>(total, x.val);
+    {
+        auto __src_0 = ::tpy::copy_iter(b);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& x = ::tpy::own_bind(*__r_1);
+            total = ::tpy::add_check<int32_t>(total, x.val);
+        }
     }
     std::cout << total << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;

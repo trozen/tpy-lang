@@ -867,13 +867,14 @@ async def aloop() -> None:
 
 
 def test_step_handover_paths_by_iteration_source() -> None:
-    # What a step hands over is what the iterator's own declaration writes:
-    # a whole `Own` every leaf, an `Own` element marker its subtree, an
-    # `own_iter` every leaf; a container's iteration nothing whatever `Own`
-    # its element spells, a `copy_iter` nothing, and a marker arriving by
-    # substitution (`enumerate` / `zip` over an `Own`-element source, a
-    # name bound to `iter(...)` of one) nothing; a local name only a whole
-    # `Own` step, a select what both arms hand over.
+    # What a step hands over is what its iterator's type declares: a
+    # whole `Own` every leaf, an `Own` element marker its subtree, an
+    # `own_iter` and a `copy_iter` every leaf; a container's iteration
+    # nothing whatever `Own` its element spells; a select what both arms
+    # hand over. A marker arriving by substitution counts as the type
+    # writes it (`enumerate` over a lent `Own`-element list), which copies
+    # the lent element unwarned until the call is refused
+    # (BUGS.md#lent-list-at-own-iterable-param-copies).
     _compiler, modules = _compile(_PRELUDE + _STEPS)
     entry = _entry(modules)
     fns = {f.name: f for f in entry.ast.functions}
@@ -894,14 +895,20 @@ def test_step_handover_paths_by_iteration_source() -> None:
         "a7": set(),              # a lent `list[Own[A]]`
         "a8": {(0,), (1,)},       # an `Iterable[Own[tuple]]` parameter
         "a9": {(0,), (1,)},       # own_iter: every leaf
-        "a10": set(),             # copy_iter
-        "i11": set(),             # enumerate over a lent container
-        "i12": set(),             # an `Own` arriving by substitution
+        "a10": {(0,), (1,)},      # copy_iter: every leaf
+        "i11": {(1, 0)},          # enumerate's substituted marker, a
+                                  # silent copy of the lent element
+                                  # (BUGS.md#lent-list-at-own-iterable-param-copies)
+        "i12": {(1, 0)},          # enumerate over an owning generator:
+                                  # its element's marker
         "k13": set(),             # dict items
         "a14": {(0,)},            # `__anext__`'s declared marker
-        "a15": set(),             # zip over an `Own`-element generator
-        "a16": set(),             # a name bound to `iter(...)` of a lent
-                                  # `Own`-element list, as its call
+        "a15": {(0, 0)},          # zip over an owning generator: its
+                                  # element's marker
+        "a16": {(0,)},            # a name bound to `iter(...)` of a lent
+                                  # `Own`-element list: its substituted
+                                  # marker, a silent copy
+                                  # (BUGS.md#lent-list-at-own-iterable-param-copies)
         "a17": {()},              # a local over a whole `Own` step
         "a18": {()},              # a select of two generators: what both
                                   # arms hand over
@@ -915,9 +922,11 @@ def test_step_handover_paths_by_iteration_source() -> None:
 
 
 def test_a_name_hands_over_what_its_signature_writes() -> None:
-    # A name's step hands over only what a parameter's annotation writes: a
-    # local's type may carry an `Own` by substitution (`iter(xs)` over a
-    # lent `Own`-element list) or arrive bound from a call.
+    # A name's step hands over what its type declares: a parameter's
+    # annotation, a generator object's function (`g = elem()`), and a
+    # local bound to `iter(xs)` over a lent `Own`-element list its
+    # substituted marker -- a silent copy of the lent element until the
+    # call is refused (BUGS.md#lent-list-at-own-iterable-param-copies).
     ctx, fns = _module("""\
 from typing import Iterable
 def elem() -> Iterator[tuple[Own[A], int32]]:
@@ -935,14 +944,14 @@ def f(xs: list[tuple[Own[A], int32]],
 """)
     handed = {s.head_unpack().targets[0]: set(s.step_handover)
               for s in _nodes(fns["f"], TpyForEach)}
-    assert handed == {"a1": set(), "a2": {(0,)}, "a4": set()}
+    assert handed == {"a1": {(0,)}, "a2": {(0,)}, "a4": {(0,)}}
 
 
 def test_written_type_arguments_count_as_the_signature() -> None:
-    # A type argument the call writes counts as the declared return does
-    # (`gen[Own[A]]`, a free function or a generic record's method); an
-    # inferred one and one binding a CLASS type parameter substitute
-    # nothing. The inferred row takes the tuple shape: a scalar
+    # A type argument counts as the declared return does, written
+    # (`gen[Own[A]]`, a free function or a generic record's method) or
+    # inferred; one binding a CLASS type parameter substitutes nothing.
+    # The inferred row takes the tuple shape: a scalar
     # `gen(ys)` over `list[Own[A]]` is refused
     # (BUGS.md#generic-call-own-list-arg-infers-bare).
     ctx, fns = _module("""\
@@ -989,7 +998,9 @@ def f(ys: list[Own[A]], ps: list[tuple[Own[A], int32]]) -> None:
             s.step_handover)
     assert handed == {
         "e1": {()},     # an explicit `Own` type argument: the whole step
-        "e2": set(),    # an inferred `tuple[Own[A], int32]`
+        "e2": {(0,)},   # an inferred `tuple[Own[A], int32]`: a silent
+                        # copy of the lent element
+                        # (BUGS.md#lent-list-at-own-iterable-param-copies)
         "e4": {()},     # a generic record's method's own type parameter
         "e5": set(),    # a class type parameter stays unsubstituted
     }

@@ -2,6 +2,7 @@
 # element slot is applied to the ranking's winner only, so the declared
 # `Iterable[T]` still ranks and `map` finds no overload
 # (BUGS.md#map-owned-iterable-own-callback-no-overload).
+# The hand-over hint is right: a parameter's declared `Own` steps hand over.
 from typing import Iterable
 from tpy import int32, Own
 

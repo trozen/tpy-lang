@@ -18,12 +18,13 @@ from __future__ import annotations
 
 from enum import Enum, auto
 
-from ..parse.nodes import (TpyExpr, TpyFieldAccess, TpyName, TpySubscript,
-                           is_property_getter_read)
+from ..parse.nodes import (TpyExpr, TpyFieldAccess, TpyForEach, TpyName,
+                           TpySubscript, is_property_getter_read)
 from ..typesys import pointer_repr_optional
 from ..typesys import (
     OwnType, TpyType, TupleType, UnionType,
-    borrow_form_differs, is_ptr_variant_union, property_getter_returns_storage_ref,
+    borrow_form_differs, contains_type_kind_param, is_ptr_variant_union,
+    property_getter_returns_storage_ref,
     unwrap_qualifiers, unwrap_readonly,
 )
 from ..value_category import call_returns_cpp_ref, getitem_call_of
@@ -51,15 +52,18 @@ class LoopBinding(Enum):
 
 def loop_binding_kind(elem_type: TpyType, const_loop_var: bool, *,
                       hoisted: bool = False, consuming: bool = False,
-                      copies: bool = False) -> LoopBinding:
+                      copies: bool = False,
+                      handed_over: bool = False) -> LoopBinding:
     """How a loop binds its variable to the element. `copies` is sema's
     copy verdict (`TpyForEach.copies_var`): the loop may write its source
     while the variable is live, so the variable keeps the object it was
-    bound to, as CPython's does. An `Own` element is the loop's own
-    already."""
+    bound to, as CPython's does. An `Own` element, or a whole step
+    `handed_over` (an `Own` the variable's type no longer spells), is the
+    loop's own already: it is moved in whatever the body does with it."""
     owned = isinstance(elem_type, OwnType)
     if owned:
         elem_type = elem_type.wrapped
+    owned = owned or handed_over
     if hoisted:
         return LoopBinding.ASSIGN
     if consuming:
@@ -71,11 +75,24 @@ def loop_binding_kind(elem_type: TpyType, const_loop_var: bool, *,
     if isinstance(unwrap_readonly(elem_type), (UnionType, TupleType)):
         return LoopBinding.CONST_REFERENCE if const_loop_var else LoopBinding.REFERENCE
     if elem_type.is_value_type():
-        return (LoopBinding.CONST_TYPED_REFERENCE if const_loop_var and elem_type.is_expensive_copy()
-                else LoopBinding.VALUE)
+        # An open type parameter binds as its expensive instantiations do.
+        if owned and (elem_type.is_expensive_copy()
+                      or contains_type_kind_param(elem_type)):
+            return LoopBinding.OWNED_STORAGE
+        if not elem_type.is_expensive_copy():
+            return LoopBinding.VALUE
+        if const_loop_var:
+            return LoopBinding.CONST_TYPED_REFERENCE
+        return LoopBinding.VALUE
     if owned:
         return LoopBinding.OWNED
     return LoopBinding.CONST_REFERENCE if const_loop_var else LoopBinding.REFERENCE
+
+
+def binds_handed_over_step(stmt: 'TpyForEach') -> bool:
+    """The `for` variable takes the whole step, handed over (sema's
+    `TpyForEach.binds_whole_step`)."""
+    return stmt.binds_whole_step
 
 
 def _expr_type(analyzer, expr: TpyExpr) -> TpyType | None:

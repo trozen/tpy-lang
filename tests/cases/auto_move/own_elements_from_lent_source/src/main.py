@@ -339,8 +339,6 @@ def main() -> None:
     for zs in map(take, [0], rows):  # tpyc: warning(/copies list\[int32\] elements/)
         print("map live", len(zs))
     print("map live after", len(rows[0]))
-    for zs in map(take, [0], copy_iter(rows)):  # tpyc: ok
-        print("map copy_iter", len(zs))
     for v in map(take_cell, [1], [Cell(4)]):  # tpyc: ok
         print("map rvalue", v)
     dead_cells: list[Cell] = [Cell(5)]

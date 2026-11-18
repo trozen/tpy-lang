@@ -1,1 +1,1 @@
-main.py:26: error: No matching overload for 'max' with argument types (Iterator[Own[P]], key=Fn[[P], int])
+main.py:26: error: No matching overload for 'max' with argument types (Iterator[Own[P]], key=Fn[[P], int]): 'Iterator[Own[P]]' hands over its steps; collect them first (list(...))

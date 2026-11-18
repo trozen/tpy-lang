@@ -308,14 +308,15 @@ the constructor rule is tracked in TODO.md ("View constructors borrow their
 arguments; a view root is durable by its emitted storage").
 
 The kwarg describes a TYPE whose every value borrows. A handle that borrows
-only for some producing calls must not declare it: `copy_iter()`'s `CopyIter`
-borrows a source passed as an lvalue but moves in and owns any temporary
-source -- a container, a view, a record or an iterator (`copy_iter(make())`,
-`copy_iter(map(f, xs))`) -- so as a borrowing view it would reject or warn
-about the owning form. That borrow depends on the argument's
-value category and belongs to the producing call -- the callable-level borrow
-annotation below (`borrows=` / `element_of=`), which `copy_iter()` does not use yet
-(TODO.md, "Callable-level borrow annotation for native stubs").
+only for some producing calls must not declare it: the runtime iterator
+`copy_iter()` returns borrows a source passed as an lvalue but moves in and
+owns any temporary source -- a container, a view, a record or an iterator
+(`copy_iter(make())`, `copy_iter(map(f, xs))`) -- so as a borrowing view it
+would reject or warn about the owning form. That borrow depends on the
+argument's value category and belongs to the producing call -- the
+callable-level borrow annotation below (`borrows=` / `element_of=`), which
+`copy_iter()` does not use yet (TODO.md, "Callable-level borrow annotation for
+native stubs").
 
 The obligation is the stub author's: an unannotated native value type is
 treated as OWNING its data, so forgetting the kwarg on a handle type means its

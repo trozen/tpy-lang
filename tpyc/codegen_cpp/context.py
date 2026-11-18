@@ -715,11 +715,11 @@ def enum_member_cpp(enum_type: TpyType, current_module: str, member: str) -> str
     return f"{enum_cpp_name(enum_type, current_module, einfo=einfo)}::{member_cpp}"
 
 
-def owned_storage_binding(elem_type: OwnType, cpp_var: str,
+def owned_storage_binding(elem_type: TpyType, cpp_var: str,
                           init_expr: str) -> str:
     """An `Own[T]` variable declared with T's storage type, initialized from
     `init_expr` -- an owned step, or a copy of a lent element."""
-    storage = OwnType(unwrap_readonly(elem_type.wrapped)).to_cpp_return()
+    storage = OwnType(unwrap_readonly(unwrap_own(elem_type))).to_cpp_return()
     return f"{storage} {cpp_var}({init_expr});"
 
 

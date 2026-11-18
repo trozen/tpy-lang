@@ -5,6 +5,7 @@ from .._bootstrap._decorators import readonly, pure, Own
 from .._bootstrap._extern import native, cpp_template, value_ptr_coercion, builtin_function
 from ._containers import Span
 from ._types import Spannable, Deref, Default
+from .._typing import Iterable, Iterator
 
 
 @pure
@@ -24,14 +25,15 @@ def take_ptr[T](p: Ptr[T]) -> Ptr[T]: ...
 @cpp_template("{T}{{}}")
 def make_default[T: Default]() -> Own[T]: ...
 
+@readonly
+@cpp_template("::tpy::copy_iter({0})", adopts=("iterable",))
+def copy_iter[T](iterable: readonly[Iterable[T]], /) -> Iterator[Own[T]]: ...
+
 
 # -- Special-handling functions (custom sema/codegen, signatures are illustrative) --
 
 @builtin_function("tpy.copy")
 def copy[T](x: T) -> Own[T]: ...
-
-@builtin_function("tpy.copy_iter")
-def copy_iter[T](x: T) -> T: ...
 
 @builtin_function("tpy.own_iter")
 def own_iter[T](x: T) -> T: ...

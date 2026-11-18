@@ -41,7 +41,7 @@ void main() {
         std::string_view k = *__beg_1;
         std::cout << k << " " << ::tpy::__getitem__(d2, k) << "\n" << ::tpy::check_signals;
     }
-    ::tpy::ordered_map<std::string, Point> d3 = ::tpy::dict_construct<std::string, Point>(::tpy::copy_iter<std::tuple<std::string, Point>>(::tpy::builtin_map<std::tuple<std::string, ::tpy::val_or_ref<Point>>>([](Point& p) -> std::tuple<std::string, Point*> { return ::tpyapp::main::label<Point>(::tpy::fixed_to_str<int32_t>(p.x), p); }, pts)));
+    ::tpy::ordered_map<std::string, Point> d3 = ::tpy::dict_construct<std::string, Point>(::tpy::copy_iter(::tpy::builtin_map<std::tuple<std::string, ::tpy::val_or_ref<Point>>>([](Point& p) -> std::tuple<std::string, Point*> { return ::tpyapp::main::label<Point>(::tpy::fixed_to_str<int32_t>(p.x), p); }, pts)));
     auto& __obj_2 = d3;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();

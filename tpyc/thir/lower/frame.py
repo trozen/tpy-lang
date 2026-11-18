@@ -3743,7 +3743,7 @@ class FrameBuilder:
         #    `std::tuple<T*, ...>` field a non-await borrow tuple would get --
         #    the owned result can't be assigned into a pointer-element field.
         for lname, ltype in gen_types.items():
-            inner = unwrap_ref_type(ltype)
+            inner = unwrap_own(unwrap_ref_type(ltype))
             if not (isinstance(inner, TupleType) and lname not in reassigned):
                 continue
             if (inner.needs_frame_slot()
@@ -3765,7 +3765,8 @@ class FrameBuilder:
             """Join one init's per-element ownership (sema's
             `tuple_elem_owned` for the binding) into the name's verdict."""
             ltype = gen_types.get(name) if name is not None else None
-            inner = unwrap_ref_type(ltype) if ltype is not None else None
+            inner = (unwrap_own(unwrap_ref_type(ltype))
+                     if ltype is not None else None)
             if name is None or not isinstance(inner, TupleType):
                 return
             n = len(inner.element_types)
@@ -3790,6 +3791,9 @@ class FrameBuilder:
                 elif (isinstance(stmt, TpyAssign)
                       and isinstance(stmt.target, TpyName)):
                     record(stmt.target.name, stmt, stmt)
+                # A tuple-unpacking loop's step holder, bound by the advance.
+                if isinstance(stmt, TpyForEach) and stmt.is_tuple_unpack:
+                    record(stmt.var, stmt, stmt)
                 # A walrus binds in expression position: without this row its
                 # owning-call source is invisible here and the frame gets a
                 # borrow-form tuple field aliasing the dead result temporary.
@@ -3811,7 +3815,7 @@ class FrameBuilder:
                     f"lives across a suspension; the two need different "
                     f"storage. Bind the two forms to separate names",
                     loc=getattr(at, "loc", None))
-            inner = unwrap_ref_type(gen_types[lname])
+            inner = unwrap_own(unwrap_ref_type(gen_types[lname]))
             eff = TupleType(tuple(
                 OwnType(et) if own and not isinstance(et, OwnType) else et
                 for et, own in zip(inner.element_types, flags)))

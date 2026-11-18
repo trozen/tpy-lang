@@ -334,8 +334,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # pointer-slot global: bare in the walk
     "top_level.global_slot_proto",  # structural-protocol global: static auto
                                     # slot + addr assign / slot-reuse rebind
-    "decl.own_copy_iter_slot",      # CopyIter decl slot: `auto`
-                                    # spelling, the init render carries type
     "er.discard",                   # expr-stmt `__try_tmp_N` block
     "er.unwrap",                    # `({ ... unwrap_ref_move(*__er_N); })`
     # No corpus witness (every reaching shape needs a borrow-returning
@@ -450,7 +448,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.owning_iterator",          # an iterator object at an owning element slot, passed as itself -> `take(::tpy::own_iter(std::move(xs)))`
     "arg.owning_forward",           # an owning parameter passed on to an iterating slot -> `std::forward<decltype(xs)>(xs)`
     "call.own_iter_explicit",       # explicit own_iter(x) -> ::tpy::own_iter(std::move(x))
-    "call.copy_iter_explicit",      # copy_iter(it) -> ::tpy::copy_iter<Elem>(<it>)
     "call.try_parse",               # try_parse(Enum, s) -> EnumUtil<E>::
                                     # try_parse(s)
     "call.native_ret_cast",         # @native cpp_return_type: static_cast<
@@ -1150,9 +1147,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.generic_open_slot_field_composite",
     "btuple.elem_field",            # F1-record FIELD element in a borrow
                                     # tuple -> `&(<member read>)` lift
-    "protoarg.copy_iter",           # copy_iter(..) rvalue at an
-                                    # Iterable[Own[T]] slot -> bare inline
-                                    # (a CopyIter NAME takes protoarg.bare)
     "ret.container_comp",           # `return {x for ...}` -- the decl-init
                                     # stmt-expr render at the return slot
     "ret.closure_lambda",           # `return lambda x: ...;` -- a direct
@@ -2360,8 +2354,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # not the sibling arm's borrow one
     "foreach.range_object",       # zero-literal-step range: the generic
                                   # begin/end loop over the Range object
-    "foreach.copy_iter_call",     # copy_iter(...) call iterable: the owning
-                                  # begin/end capture of the iterator object
     "foreach.self_iterable",      # `for x in self:` on a user-iterator
                                   # record: the (*this) capture
     "foreach.open_t_param",       # open-T PARAM iterable (Iterable-bound

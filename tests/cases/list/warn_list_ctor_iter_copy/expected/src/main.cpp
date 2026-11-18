@@ -50,7 +50,7 @@ void main() {
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
     std::vector<Point> c = ::tpy::construct<std::vector<Point>>(::tpy::builtin_map<Point>(clone_point, pts));
     std::cout << ::tpy::__len__(c) << "\n" << ::tpy::check_signals;
-    std::vector<Point> d = ::tpy::construct<std::vector<Point>>(::tpy::copy_iter<Point>(::tpy::builtin_map<::tpy::val_or_ref<Point>>(identity, pts)));
+    std::vector<Point> d = ::tpy::construct<std::vector<Point>>(::tpy::copy_iter(::tpy::builtin_map<::tpy::val_or_ref<Point>>(identity, pts)));
     std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 

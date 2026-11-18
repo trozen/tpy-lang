@@ -10,6 +10,7 @@ from itertools import chain
 from typing import TYPE_CHECKING
 
 from ..typesys import (
+    call_result_form,
     make_readonly, store_slot_type,
     TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NominalType, AliasRef,
     TypeParamRef, IntLiteralType, AnyType,
@@ -236,7 +237,8 @@ class NarrowingTracker:
         for method_sig in protocol_info.methods:
             if method_sig.name == "__getitem__":
                 if type_subst:
-                    return self.type_ops.substitute_types(method_sig.return_type, type_subst)
+                    return call_result_form(self.type_ops.substitute_types(
+                        method_sig.return_type, type_subst))
                 return method_sig.return_type
         return None
 

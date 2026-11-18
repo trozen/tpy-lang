@@ -125,7 +125,6 @@ from ...type_def_registry import (
     is_big_int_type,
     is_borrowing_view_type,
     is_bytes_type,
-    is_copy_iter,
     is_dict,
     is_dict_view,
     is_fixed_int_type,
@@ -1098,28 +1097,6 @@ def _for_each_container_route(
         ret = analyzer.get_expr_type(it)
         it_type = _resolved_str_value(ret, analyzer)
         if it_type is None:
-            ret_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
-                     if ret is not None else None)
-            if is_copy_iter(ret_u):
-                # A copy_iter(...) call iterable: the iterator object already
-                # exposes begin/end, so the call rvalue takes the owning
-                # capture directly. This peephole binds the SEMA elem type
-                # without the IntLiteral resolution the native peephole
-                # applies, so a literal elem rejects; own_iter rejects too
-                # (its consuming elem binding + movable-local registration
-                # have no route here).
-                if (stmt.elem_type is not None
-                        and isinstance(unwrap_ref_type(stmt.elem_type),
-                                       IntLiteralType)):
-                    note_detail("foreach.copy_iter_literal_elem")
-                    return None
-                et = _resolved_loop_elem_type(stmt, analyzer)
-                if not _for_each_elem_binding_ok(et):
-                    note_detail("foreach.elem_family."
-                                + _type_family_tag(et, analyzer))
-                    return None
-                _witness("foreach.copy_iter_call")
-                return _ForEachRoute(route="container", elem_type=et)
             # container_ret_ok widens TpyCall lowering past str returns; the
             # bytes returns it admits in value position are filtered here.
             ret_span = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret))) \
@@ -10783,12 +10760,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         and stmt.name not in lc.prescan.hoisted
                         and stmt.name not in lc.prescan.move_through
                         and _witness("decl.list_repeat_slot"))
-                    # A CopyIter slot (`ci = copy_iter(src)`): the TypeDef
-                    # spells `auto`, the special-builtin init render carries
-                    # the concrete type.
-                    or (isinstance(vtype, NominalType)
-                        and is_copy_iter(vtype)
-                        and _witness("decl.own_copy_iter_slot"))
                     # A per-element-Own record tuple slot
                     # (`t = make_pair()` -> `std::tuple<Counter, Counter>`)
                     # is the plain spelled copy like a value tuple.
@@ -11100,9 +11071,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
               # The native-iterator slot spells its generic instantiation
               # (`::tpy::SpanIter<const int32_t>`) via render_type.
               or _native_iter_value_slot(vtype, analyzer)
-              # CopyIter: render_type spells `auto` (the TypeDef's
-              # formatter), the init render carries the concrete type.
-              or (isinstance(vtype, NominalType) and is_copy_iter(vtype))
               # The owned-optional record slot spells via render_type
               # (generic instantiation + cross-module qualification --
               # `std::optional<::tpystd::tplib::rc::Rc<Cell>>`).

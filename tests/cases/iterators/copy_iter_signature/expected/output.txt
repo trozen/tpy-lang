@@ -1,0 +1,70 @@
+ctor 1 2 9 8
+owning param 203 1 7
+for head 1 2
+comp 1 50 [1, 2]
+lazy [50, 60]
+named 2 0 50
+named loop 110
+generator [2, 3] 1
+gen unpack [6, 6] 5
+gen str ['ab1', 'cd']
+gen bytes [b'xy']
+async 5 2
+gen str loop p
+gen str loop qr
+gen str after [1, 2] ['changed', 'qr']
+gen bytes loop b'xyz'
+gen bytes after [3] [b'w']
+async str loop changed
+async str loop qr
+async str after 9 ['changed', 's']
+async unpack 10 4
+closure 70 1
+method 30 3
+value [1, 2, 3] 6
+str ['b', 'a']
+tuple 9 1
+dict values 40 4
+readonly 50 5
+generic 51 5 [7, 8]
+typed ctor 52 5
+iterator slot 6 0 5
+iterator param 6 5
+sync str loop ab
+sync str loop c
+sync str after 3 ['zz', 'c']
+own str lent 3
+own str lent after ['de', 'gh']
+own str copied 4 ['de', 'gh']
+literal 1
+literal 2
+literal 3
+literal list 7
+alias 2 0 1
+capture 23 0 1
+shadowed capture True
+param 23 1
+never consumed 1
+temp generator 23
+bind str 6 ['a', 'b', 'a?', 'b?', 'a!', 'b!', 'a?!', 'b?!'] ['z', 'b']
+bind str nested ['a~', 'b~', 'a?~', 'b?~'] ['z', 'b']
+bind bytes 6 [b'a', b'b', b'a?', b'b?', b'a!', b'b!', b'a?!', b'b?!'] [b'z', b'b']
+bind bytes nested [b'a~', b'b~', b'a?~', b'b?~'] [b'z', b'b']
+bind positions ['a?.', 'b?.'] ['a#', 'a##', 'b#', 'b##'] ['a!', 'b!'] ['a?', 'b?'] ['a', 'z']
+bind int 8 [1, 2, 2, 3, 11, 12, 12, 13] [7, 2]
+bind int nested [101, 102, 102, 103] [7, 2]
+bind cell 6 [1, 2, 1, 2, 11, 12, 11, 12] 7 2
+bind cell nested [101, 102, 101, 102] 7 2
+named generator [11, 2, 1, 2] 9
+whole tuple 3 ['a!?', 'bc!?'] ['z', 'bc']
+owned cells [103, 107] 7 3
+param local 3 3
+param alias 3 3
+param rebind 3 3
+generic str ['ab', 'c'] ['ab', 'c'] ['z', 'c']
+generic int32 [1, 2] [1, 2] [9, 2]
+identity cursor 3 2
+named pairs argument 206 206 9
+bounded nocopy 2 0 2 0
+bounded copyable 2 80 0 2 0
+owning local alias 2 2

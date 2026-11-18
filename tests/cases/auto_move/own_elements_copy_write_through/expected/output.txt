@@ -18,3 +18,7 @@ dups 1 2
 explicit type arg 1 99
 explicit method type arg 1 77
 explicit generic record method type arg 1 55
+named type arg 1 33
+named method type arg 1 22
+named static method class type arg 1 44
+with target 2 1 11

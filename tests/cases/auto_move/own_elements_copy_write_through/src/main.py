@@ -1,9 +1,9 @@
 # The warned divergence of an owning element slot fed a live source: the `Own`
 # loop variable / callback parameter is a COPY, so a write through it does not
 # reach the caller's element where CPython (which aliases) writes it -- also
-# when the body only writes it, never moving it. Also the copy hooks a `set`
-# runs: one per stored element, never one per element `set()` / `extend` is
-# handed over. No CPython run: the outputs differ by design (and CPython
+# when the body only writes it, never moving it, and for a `with` target.
+# Also the copy hooks a `set` runs: one per stored element, never one per
+# element `set()` / `extend` is handed over. No CPython run: the outputs differ by design (and CPython
 # cannot subscript a generic function, `each[Own[Item]]`).
 from __future__ import annotations
 from tpy import int32, Own
@@ -101,9 +101,33 @@ class GEach[U]:
             yield x
 
 
+class It[U]:
+    xs: list[U]
+    i: int32
+
+    def __init__(self, xs: list[U]) -> None:
+        self.xs = xs  # tpyc: warning(/copies list\[U\] into field/)
+        self.i = 0
+
+    def __iter__(self) -> It[U]:
+        return self
+
+    def __next__(self) -> U:
+        if self.i >= len(self.xs):
+            raise StopIteration
+        self.i += 1
+        return self.xs[self.i - 1]
+
+
+class G[U]:
+    @staticmethod
+    def wrap(xs: list[U]) -> Own[It[U]]:
+        return It(xs)
+
+
 # A type argument the call writes (`each[Own[Item]]`, free function, method
-# and a generic record's method) counts as written: the loop variable owns the step and moves on,
-# no copy. The step itself is an unwarned copy of the lent element
+# and a generic record's method) is the value's own type: the loop variable
+# owns the step and moves on, no copy. The step itself is an unwarned copy of the lent element
 # (BUGS.md#lent-list-at-own-iterable-param-copies).
 def explicit_type_arg(items: list[Own[Item]]) -> None:
     keep: list[Item] = []
@@ -122,6 +146,48 @@ def explicit_type_arg(items: list[Own[Item]]) -> None:
     gkeep[0].value = 55
     print("explicit generic record method type arg", items[0].value,
           gkeep[0].value)
+    # the same calls held in a name hand over as the calls do
+    nkeep: list[Item] = []
+    it = each[Own[Item]](items)
+    for x in it:
+        nkeep.append(x)  # tpyc: ok
+    nkeep[0].value = 33
+    print("named type arg", items[0].value, nkeep[0].value)
+    mt = Each().each[Own[Item]](items)
+    for y in mt:
+        nkeep.append(y)  # tpyc: ok
+    nkeep[1].value = 22
+    print("named method type arg", items[0].value, nkeep[1].value)
+    # a class type parameter's `Own` reaches the record iterator's
+    # `__next__ -> U` by substitution: that step hands nothing over, so the
+    # append copies it
+    st = G.wrap[Own[Item]](items)
+    for w in st:
+        nkeep.append(w)  # tpyc: warning(/copies Item into owned storage/)
+    nkeep[2].value = 44
+    print("named static method class type arg", items[0].value,
+          nkeep[2].value)
+
+
+class Holder:
+    items: list[Item]
+
+    def __init__(self) -> None:
+        self.items = [Item(1), Item(2)]
+
+    def __enter__(self) -> list[Item]:
+        return self.items
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        pass
+
+
+def with_target() -> None:
+    h = Holder()
+    with h as wi:
+        # the `with` target refers to the holder's list: its items are copied
+        out = bump_all(wi)  # tpyc: warning(/copies Item elements/)
+        print("with target", len(out), h.items[0].value, out[0].value)
 
 
 # The callback writes and returns a field, never the `Own` object itself.
@@ -161,6 +227,7 @@ def main() -> None:
     hs3 = set(dup)  # tpyc: warning(/copies H elements/)
     print("dups", len(hs3), len(dup))
     explicit_type_arg(items)
+    with_target()
 
 
 main()

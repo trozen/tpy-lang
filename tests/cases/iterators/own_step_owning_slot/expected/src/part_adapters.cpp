@@ -27,7 +27,7 @@ void main() {
     auto oi = ::tpy::own_iter(std::move(toks));
     std::cout << "named own_iter" << " " << ::tpyapp::fixtures::take_tok(oi) << "\n" << ::tpy::check_signals;
     std::vector<::tpyapp::fixtures::Cell> ys = {::tpyapp::fixtures::Cell(3)};
-    auto ci = ::tpy::copy_iter<::tpyapp::fixtures::Cell>(ys);
+    auto ci = ::tpy::copy_iter(ys);
     std::cout << "named copy_iter" << " " << ::tpyapp::fixtures::take(ci) << " " << ::tpyapp::fixtures::take(ci) << " " << ::tpy::__len__(ys) << " " << ::tpy::__getitem__(ys, 0).v << "\n" << ::tpy::check_signals;
     std::vector<Key> ka = {Key(1), Key(3)};
     std::vector<Key> kb = {Key(2)};

@@ -11,6 +11,9 @@ struct Item;
 struct H;
 struct Each;
 template<typename U> struct GEach;
+template<typename U> struct It;
+template<typename U> struct G;
+struct Holder;
 
 } // namespace tpyapp::main
 
@@ -53,6 +56,8 @@ template <typename T>
 __gen_each<T> each(std::vector<T>& xs);
 // def explicit_type_arg(items: list[Own[Item]]) -> None:
 void explicit_type_arg(std::vector<Item>& items);
+// def with_target() -> None:
+void with_target();
 // def bump(k: int32, x: Own[Item]) -> int32:  # tpyc: warning(/Own\[Item\] param 'x' is never consumed/)
 int32_t bump(int32_t k, Item&& x);
 // def main() -> None:
@@ -143,6 +148,70 @@ struct GEach {
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const GEach<U>& obj) {
     ::tpy::print_object_default(os, GEach<U>::__tpy_class_name__, obj);
+    return os;
+}
+
+// class It[U]:
+template<typename U>
+struct It {
+    // xs: list[U]
+    std::vector<U> xs;
+    // i: int32
+    int32_t i;
+
+    // def __init__(self, xs: list[U]) -> None:
+    It() = default;
+    explicit It(const std::vector<U>& xs);
+
+    // def __iter__(self) -> It[U]:
+    It<U>& __iter__();
+
+    // def __next__(self) -> U:
+    std::expected<::tpy::val_or_ref<U>, ::tpy::StopIteration> __next__();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.It";
+};
+
+template<typename U>
+inline std::ostream& operator<<(std::ostream& os, const It<U>& obj) {
+    ::tpy::print_object_default(os, It<U>::__tpy_class_name__, obj);
+    return os;
+}
+
+// class G[U]:
+template<typename U>
+struct G {
+
+
+    // @staticmethod
+    // def wrap(xs: list[U]) -> Own[It[U]]:
+    static It<U> wrap(const std::vector<U>& xs);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.G";
+};
+
+template<typename U>
+inline std::ostream& operator<<(std::ostream& os, const G<U>& obj) {
+    ::tpy::print_object_default(os, G<U>::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Holder:
+struct Holder {
+    // items: list[Item]
+    std::vector<Item> items;
+
+    // def __init__(self) -> None:
+    Holder();
+
+    // def __enter__(self) -> list[Item]:
+    std::vector<Item>& __enter__();
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, Holder::__tpy_class_name__, obj);
     return os;
 }
 
@@ -397,6 +466,59 @@ inline ::tpy::BigInt H::__hash__() const {
 inline bool H::__eq__(const H& o) const {
     return (this->n == o.n);
 }
+
+// def __init__(self) -> None:
+//     self.items = [Item(1), Item(2)]
+inline Holder::Holder() : items(std::vector<Item>{Item(1), Item(2)}) {}
+
+// def __enter__(self) -> list[Item]:
+//     return self.items
+inline std::vector<Item>& Holder::__enter__() {
+    return this->items;
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
+inline void Holder::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
+}
+
+// def __init__(self, xs: list[U]) -> None:
+//     self.xs = xs  # tpyc: warning(/copies list\[U\] into field/)
+//     self.i = 0
+template<typename U>
+inline It<U>::It(const std::vector<U>& xs)
+    : xs(xs),
+      i(0) {}
+
+// def __iter__(self) -> It[U]:
+//     return self
+template<typename U>
+inline It<U>& It<U>::__iter__() {
+    return (*this);
+}
+
+// def __next__(self) -> U:
+//     if self.i >= len(self.xs):
+//         raise StopIteration
+//     self.i += 1
+//     return self.xs[self.i - 1]
+template<typename U>
+inline std::expected<::tpy::val_or_ref<U>, ::tpy::StopIteration> It<U>::__next__() {
+    if ((this->i >= ::tpy::__len__(this->xs))) {
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    this->i = ::tpy::add_check<int32_t>(this->i, 1);
+    return ::tpy::__getitem__(this->xs, (::tpy::sub_check<int32_t>(this->i, 1)));
+}
+
+// @staticmethod
+// def wrap(xs: list[U]) -> Own[It[U]]:
+//     return It(xs)
+template<typename U>
+inline It<U> G<U>::wrap(const std::vector<U>& xs) {
+    return It<U>(xs);
+}
+
 // def bump_all(source: Iterable[Own[Item]]) -> Own[list[Item]]:
 //     out: list[Item] = []
 //     for x in source:

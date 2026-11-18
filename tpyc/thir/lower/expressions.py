@@ -9104,32 +9104,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         if e.consuming_iter_fi is not None:
             _witness("call.own_iter_explicit")
             return consuming_iter(e.args[0], rtype, lc, declared, loc)
-        # `copy_iter(it)` -> `::tpy::copy_iter<Elem>(<it>)` -- the
-        # special-builtin arm. The elem spelling comes off the arg's
-        # iterable element type; an unresolvable elem would need the
-        # plain copy() render -- unwitnessed, so it rejects. The
-        # inner lowers ITERABLE (a combinator / name renders itself).
-        ci_fi = e.resolved_function_info
-        if (ci_fi is not None and ci_fi.qualified_name == qnames.COPY_ITER
-                and len(e.args) == 1 and not e.kwargs):
-            ci_at = analyzer.get_expr_type(e.args[0])
-            if isinstance(ci_at, OwnType):
-                ci_at = ci_at.wrapped
-            ci_elem = get_iterable_element_type(
-                ci_at, registry=analyzer.registry)
-            if ci_elem is None:
-                note_detail("call.copy_iter_elem")
-                raise ThirUnsupported(call_reject_reason("expr.call"))
-            ci_elem = unwrap_ref_type(ci_elem)
-            _witness("call.copy_iter_explicit")
-            return THIRCall(
-                result_type=rtype, callee=e.func_name,
-                args=(_lower_expr(
-                    e.args[0], lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.ITERABLE)),),
-                cpp_template=(
-                    f"::tpy::copy_iter<{lc.render_type(ci_elem)}>({{0}})"),
-                loc=loc)
         # `try_parse(Color, name)` -> `::tpy::EnumUtil<Color>::try_parse(name)`
         # -- the TRY_PARSE special-builtin arm; the enum spelling comes from
         # the fi's Optional return inner, the value arg renders plain.
@@ -9795,17 +9769,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         arg, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.ITERABLE,
                                      allow_temps=temp_args)))
-                elif (isinstance(arg, TpyCall)
-                      and arg.resolved_function_info is not None
-                      and arg.resolved_function_info.qualified_name
-                      == qnames.COPY_ITER):
-                    # A copy_iter rvalue (`list(copy_iter(map(f, xs)))`):
-                    # the wrap renders bare inside the construct template
-                    # via its own special-builtin arm.
-                    _witness("call.inst_iter_arg")
-                    lowered_args.append(_lower_expr(
-                        arg, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.ITERABLE)))
                 elif (isinstance(arg, TpyCall)
                       and _iter_proto_call_ret(arg, analyzer)):
                     # An iterator-protocol call rvalue (`list(iter(words))`

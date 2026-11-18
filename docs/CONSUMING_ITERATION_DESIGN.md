@@ -5,11 +5,10 @@
 | Feature | Status |
 |---------|--------|
 | Copy warning: `Iterable[Own[T]]` param coercion with Own-stripping | Done |
-| `copy_iter(x)` -- explicit element-by-element copy acknowledgment | Done (CopyIter codegen + CopyIterType sema type) |
+| `copy_iter(x)` -- explicit element-by-element copy acknowledgment | Done (an ordinary `@cpp_template` stub `-> Iterator[Own[T]]` over the `CopyIter` runtime adapter; no sema type of its own) |
 | `own_iter(x)` -- explicit consuming iteration | Done (any type with a consuming `__iter__`: list, set, dict, Array, user records; typed by that variant's return) |
 | `OwnIter[T]` / `OwnIterSet[T]` / `OwnIterDict[K,V]` runtime types | Done (vector or std::array, ordered_set, ordered_map) |
 | `CopyIter[T]` runtime type (element-by-element copy adapter) | Done (with begin/end for for-loops) |
-| `CopyIterType` as a concrete sema type (`own_iter` has none: it is typed by the consuming `__iter__` it calls) | Done |
 | `__iter__(self: Own[Self]) -> Iterator[Own[T]]` overload for list | Done (used by explicit `b.__iter__()` at last use) |
 | Consuming `__iter__` overload dispatch (method calls) | Done (overload resolution + codegen for native_function methods) |
 | `auto_own[Self]` / `auto_own[T]` -- auto-generate consuming overloads | Done (parser cloning + ownership propagation through fields) |
@@ -119,7 +118,9 @@ the borrowing overload is used and a warning is emitted.
 `Own[T]` values. This is Rust's `.cloned()` / `.copied()` equivalent:
 
 ```python
-def copy_iter(iterable: Iterable[T]) -> Iterator[Own[T]]: ...
+@readonly
+@cpp_template("::tpy::copy_iter({0})", adopts=("iterable",))
+def copy_iter[T](iterable: readonly[Iterable[T]], /) -> Iterator[Own[T]]: ...
 ```
 
 At C++ level: wraps the borrowing iterator and copies each element directly into
@@ -161,6 +162,10 @@ the difference is **observable** (the source is still alive after the operation)
   (a borrowed parameter, a module-level name, an alias, a local a later
   binding points at existing storage) is lent and warned at its last use too:
   the container outlives the call
+- A parameter declared `Iterable[Own[T]]` forwarded to an owning slot -- its
+  declared `Own` steps are the signature's contract, so they move on
+  unwarned; the warning sits where a lent container meets that parameter
+  (the outer call)
 
 **Error instead of a warning** when the element is `@nocopy`: a live source
 at an owning element slot would need a copy it cannot make, so it is refused
@@ -194,7 +199,11 @@ lent one binds a copy. A tuple, union or optional element is declared in
 storage of its own instead (`T x(::tpy::own_bind(*__r));`), since a step of
 these may carry borrow-form pointers; `own_bind` itself hands a tuple back
 with every reference member copied into a value of its own, so no binding
-aliases the source through a member. Statement loops and
+aliases the source through a member. A value whose copy allocates -- `str`,
+`bytes`, `int` -- or an open value type parameter is declared the same way
+(`std::string s(::tpy::own_bind(*__r));`), and a cheap value (`int32`) by
+value: every owned step binds by move, whatever the body does with the
+variable, never a `const T&` a read-only body would otherwise take. Statement loops and
 comprehensions bind alike, and so does a generator or `async` frame
 (`v.emplace(::tpy::own_bind(*__r))` into its frame slot).
 
@@ -370,14 +379,20 @@ struct CopyIter {
     }
 };
 
-template<typename T, typename Src>
+// T is deduced off the source's step: its value with every lent part made
+// a value of its own.
+template<typename Src>
 auto copy_iter(Src&& src) {
-    return CopyIter<T, detail::arg_source_t<Src>>(std::in_place, std::forward<Src>(src));
+    using Source = detail::arg_source_t<Src>;
+    return CopyIter<detail::copy_iter_elem_t<Source>, Source>(
+        std::in_place, std::forward<Src>(src));
 }
 ```
 
 Each element is copied exactly once, directly into the destination. No
-intermediate container copy.
+intermediate container copy. Sema knows it only by its stub's declared
+return, `Iterator[Own[T]]`: it fits owning slots, and a lending slot refuses
+it as it refuses `own_iter(..)`.
 
 ### User-defined drain iterators (e.g. `ArrayListDrainIter[T]`)
 
@@ -435,7 +450,7 @@ borrow tracking for user types" feature (currently only built-in view types --
 | `Own[Iterable[T]]` | `Iterator[Own[T]]` | last use (auto-move) | auto-call consuming `__iter__(Own[Self])` |
 | `Iterable[T]` | `Iterator[Own[T]]` | not last use | borrowing `__iter__` -> `Iterator[T]`, warn (mismatch) |
 | `copy_iter(x)` | `Iterator[Own[T]]` | explicit | wraps borrowing iter, copies elements, no warn |
-| `Iterator[Own[T]]` | `Iterator[T]` | always | strip `Own`, no copy |
+| `Iterator[Own[T]]` | `Iterator[T]` | never (reference `T`) | refused: an owning iterator fits only an owning slot (`copy_iter(x)` and `own_iter(x)` alike); a value `T`'s owned step is peeled |
 
 ---
 
@@ -471,9 +486,10 @@ for x in span(b):    # always borrows, x is Node reference
   `Iterable[Own[T]]` as a sema-level marker. The compatibility checker strips
   `Own` before protocol conformance, then warns when the source is a non-value
   lvalue that isn't at last use and isn't wrapped in `copy()` or `copy_iter()`.
-- **`copy_iter()`**: Generates real `CopyIter` C++ adapter for element-by-element
-  copy. Works inline in `extend(copy_iter(b))`. Borrow-tracked via
-  `return_borrows_from`.
+- **`copy_iter()`**: An ordinary call of its stub, rendering
+  `::tpy::copy_iter(b)` (the `CopyIter` C++ adapter) for element-by-element
+  copy. Works inline in `extend(copy_iter(b))`. Borrow-tracked as the
+  `map` / `enumerate` combinators are (its stub's `adopts=` parameter).
 - **Container-level move for-loops**: `for x in b` at last use on `list[T]` moves
   the vector into `OwnIter` (source freed early). Overload dispatch selects
   consuming `__iter__` based on liveness.

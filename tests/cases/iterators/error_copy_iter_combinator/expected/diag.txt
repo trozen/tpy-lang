@@ -1,0 +1,1 @@
+main.py:18: error: No matching overload for 'zip' with argument types (Iterator[Own[Cell]], Iterator[Own[list[int32]]]): 'Iterator[Own[Cell]]' hands over its steps; collect them first (list(...)); 'Iterator[Own[list[int32]]]' hands over its steps; collect them first (list(...))

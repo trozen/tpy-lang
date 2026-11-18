@@ -106,7 +106,7 @@ void main() {
     std::array<R, 2> live = {R(1), R(2)};
     std::cout << "subprotocol live" << " " << ::tpyapp::part_slots::take_it(live) << " " << ::tpy::__len__(live) << "\n" << ::tpy::check_signals;
     std::array<R, 2> ci = {R(1), R(2)};
-    std::cout << "subprotocol copy_iter" << " " << ::tpyapp::part_slots::take_it(::tpy::copy_iter<R>(ci)) << " " << ::tpy::__getitem__(ci, 0).v << "\n" << ::tpy::check_signals;
+    std::cout << "subprotocol copy_iter" << " " << ::tpyapp::part_slots::take_it(::tpy::copy_iter(ci)) << " " << ::tpy::__getitem__(ci, 0).v << "\n" << ::tpy::check_signals;
     std::cout << "counted fresh" << " " << ::tpyapp::part_slots::take_counted(::tpyapp::part_slots::mk()) << "\n" << ::tpy::check_signals;
     std::array<R, 1> c = {R(3)};
     std::cout << "counted dead" << " " << ::tpyapp::part_slots::take_counted(std::move(c)) << "\n" << ::tpy::check_signals;

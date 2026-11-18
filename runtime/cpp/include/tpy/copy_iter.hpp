@@ -80,10 +80,21 @@ struct CopyIter {
     }
 };
 
+namespace detail {
+// The element a copy of one step of `Source` is: the step's value with every
+// lent part (a `val_or_ref` over a reference, a tuple's reference member)
+// made a value of its own.
+template<typename Source>
+using copy_iter_elem_t = owned_value_t<
+    decltype(unwrap_ref_move(std::declval<step_value_t<Source>&>()))>;
+}
+
 // Src is `C&` for an lvalue source (borrowed) and `C` for a temporary (owned).
-template<typename T, typename Src>
+template<typename Src>
 auto copy_iter(Src&& src) {
-    return CopyIter<T, detail::arg_source_t<Src>>(std::in_place, std::forward<Src>(src));
+    using Source = detail::arg_source_t<Src>;
+    return CopyIter<detail::copy_iter_elem_t<Source>, Source>(
+        std::in_place, std::forward<Src>(src));
 }
 
 } // namespace tpy

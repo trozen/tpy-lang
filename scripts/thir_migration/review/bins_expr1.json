@@ -697,18 +697,6 @@
  },
  {
   "file": "tpyc/thir/lower/expressions.py",
-  "line": 7383,
-  "func": "_lower_expr_impl",
-  "reason": "call_reject_reason(\"expr.call\")",
-  "bin": "UNSURE",
-  "confidence": "medium",
-  "evidence": "copy_iter over a list, an Iterator[T] param and a user Iterable record all ROUTE; reaching `get_iterable_element_type(...) is None` needs a copy_iter arg sema accepts but the registry cannot type -- not found; leaning DEAD.",
-  "probe": null,
-  "plain_raise": false,
-  "known_shape": null
- },
- {
-  "file": "tpyc/thir/lower/expressions.py",
   "line": 7467,
   "func": "_lower_expr_impl",
   "reason": "call_reject_reason(\"expr.call\")",

@@ -149,37 +149,38 @@ __genexpr_free_function_1_frame __genexpr_free_function_1(std::vector<std::vecto
 //     gl: list[list[int32]] = [[13]]
 //     bump("free genexpr", (x for x in gl))  # tpyc: warning(/copies list\[int32\] elements/)
 void free_function() {
-    ::tpyapp::main::bump("free copy_iter", ::tpy::copy_iter<std::vector<int32_t>>(View()));
+    View __tmp_1 = View();
+    ::tpyapp::main::bump("free copy_iter", ::tpy::copy_iter(__tmp_1));
     std::cout << "free copy_iter G" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump("free Own generator", ::tpyapp::main::fresh());
     std::vector<std::vector<int32_t>> nl = {{5}};
     ::tpyapp::main::bump("free copy() of a list", std::vector<std::vector<int32_t>>(nl));
     std::cout << "free copy() of a list nl" << " " << ::tpy::ListPrinter(nl) << "\n" << ::tpy::check_signals;
-    auto __tmp_1 = Ints();
-    std::cout << "free int32 iterator" << " " << ::tpyapp::main::total(__tmp_1) << "\n" << ::tpy::check_signals;
+    auto __tmp_2 = Ints();
+    std::cout << "free int32 iterator" << " " << ::tpyapp::main::total(__tmp_2) << "\n" << ::tpy::check_signals;
     Bag<std::vector<int32_t>> bag = Bag<std::vector<int32_t>>();
     bag.push(std::vector<int32_t>{7});
     ::tpyapp::main::bump("free generic step", bag);
     Bag<std::vector<int32_t>> ob = Bag<std::vector<int32_t>>();
     std::vector<int32_t> e = {8};
-    std::vector<int32_t> __tmp_2 = e;
-    ob.push(std::move(__tmp_2));
+    std::vector<int32_t> __tmp_3 = e;
+    ob.push(std::move(__tmp_3));
     ::tpyapp::main::bump("free Own type arg", ob);
     std::cout << "free Own type arg ob" << " " << ::tpy::__len__(ob.items) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = View();
-    ::tpyapp::main::bump("free clones_own", ::tpyapp::main::clones_own<std::vector<int32_t>>(__tmp_3));
+    auto __tmp_4 = View();
+    ::tpyapp::main::bump("free clones_own", ::tpyapp::main::clones_own<std::vector<int32_t>>(__tmp_4));
     std::cout << "free clones_own G" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> cl = {{15}};
     ::tpyapp::main::bump("free clones named", ::tpyapp::main::each_lent<std::vector<int32_t>>(cl));
     SubBag sb = SubBag();
     sb.push(std::vector<int32_t>{14});
     ::tpyapp::main::bump("free SubBag", sb);
-    auto __tmp_4 = OwnCursor();
-    ::tpyapp::main::bump("free Own __next__", __tmp_4);
-    auto __tmp_5 = OwnSeparate();
-    ::tpyapp::main::bump("free Own separate __next__", __tmp_5);
-    auto __tmp_6 = PtrView(&(*R));
-    ::tpyapp::main::take_ptrs(__tmp_6);
+    auto __tmp_5 = OwnCursor();
+    ::tpyapp::main::bump("free Own __next__", __tmp_5);
+    auto __tmp_6 = OwnSeparate();
+    ::tpyapp::main::bump("free Own separate __next__", __tmp_6);
+    auto __tmp_7 = PtrView(&(*R));
+    ::tpyapp::main::take_ptrs(__tmp_7);
     std::cout << "free Ptr step" << " " << ::tpy::__len__(R->items) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> d = {{9}};
     ::tpyapp::main::bump("free drain", ::tpyapp::main::drain<std::vector<int32_t>>(d));
@@ -189,8 +190,8 @@ void free_function() {
     ::tpyapp::main::bump("free Bag.drain", bd.drain());
     std::vector<std::vector<int32_t>> fd = {{11}};
     ::tpyapp::main::bump("free filter drain", ::tpy::builtin_filter(keep, ::tpyapp::main::each_lent<std::vector<int32_t>>(fd)));
-    std::vector<std::vector<int32_t>> __tmp_7 = {{12}};
-    ::tpyapp::main::bump("free from_param", ::tpyapp::main::from_param(__tmp_7));
+    std::vector<std::vector<int32_t>> __tmp_8 = {{12}};
+    ::tpyapp::main::bump("free from_param", ::tpyapp::main::from_param(__tmp_8));
     std::vector<std::vector<int32_t>> gl = {{13}};
     ::tpyapp::main::bump("free genexpr", ::tpyapp::main::__genexpr_free_function_1(gl));
 }
@@ -211,7 +212,8 @@ __gen_gen_body gen_body() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpyapp::main::bump("async copy_iter", ::tpy::copy_iter<std::vector<int32_t>>(View()));
+        View __tmp_1 = View();
+        ::tpyapp::main::bump("async copy_iter", ::tpy::copy_iter(__tmp_1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;

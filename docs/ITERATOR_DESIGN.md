@@ -45,7 +45,7 @@ for x in expr:
     body
 
   1. enum iteration               → range-for over EnumUtil<E>::members
-  2. OwnIter[T] / CopyIter[T]     → range-for (they expose begin/end natively)
+  2. own_iter(x)                  → range-for (it exposes begin/end natively)
   3. auto-consuming iteration     → user __iter__(Own[Self]) path
   4. range(...) literal call      → C-style counter loop (or Range<T> begin/end)
   5. concrete NativeIterable OR

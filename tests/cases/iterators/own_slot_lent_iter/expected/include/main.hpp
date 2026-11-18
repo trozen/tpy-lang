@@ -887,7 +887,8 @@ inline std::expected<Tok, ::tpy::StopIteration> TokCursor::__next__() {
 //     bump("method Own generator", fresh())  # tpyc: ok
 //     print("method G", G)
 inline void Driver::run() const {
-    ::tpyapp::main::bump("method copy_iter", ::tpy::copy_iter<std::vector<int32_t>>(View()));
+    View __tmp_1 = View();
+    ::tpyapp::main::bump("method copy_iter", ::tpy::copy_iter(__tmp_1));
     ::tpyapp::main::bump("method Own generator", ::tpyapp::main::fresh());
     std::cout << "method G" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
 }

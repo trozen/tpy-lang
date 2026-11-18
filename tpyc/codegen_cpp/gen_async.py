@@ -54,6 +54,7 @@ from ..type_def_registry import (is_str_type, is_big_int_type,
                                   view_owned_copy_init)
 from . import emit_prims
 from .context import (INDENT, escape_cpp_name, CodeGenError, FinallyContext)
+from .forms import binds_handed_over_step
 from .protocols import protocol_param_template_name, fn_param_template_name
 from ..emitted_members import signature_is_template
 from .functions import default_to_cpp, default_emittable
@@ -4133,9 +4134,11 @@ class AsyncCoroCodegen:
             bind_post = [f"{cpp_var} = &({elem});"]
         elif info is not None and info.opt_ptr_loop_var == stmt.var:
             bind_post = [f"{cpp_var} = ::tpy::optional_to_ptr({elem});"]
-        elif isinstance(unwrap_ref_type(stmt.elem_type), OwnType):
-            # An `Own[T]` loop variable: an owned step moves in, a lent one
-            # is copied (own_bind), as the sync loop binds it.
+        elif (binds_handed_over_step(stmt)
+                or isinstance(unwrap_ref_type(stmt.elem_type), OwnType)):
+            # A handed-over step moves in (own_bind); an `Own`-typed variable
+            # over a lent reference step copies it, as before
+            # (BUGS.md#frame-own-list-param-loop-var-ill-formed).
             owned = f"::tpy::own_bind(*{r})"
             bind_post = ([f"{cpp_var}.emplace({owned});"]
                          if self._frame_of(func).slot_backed(stmt.var)

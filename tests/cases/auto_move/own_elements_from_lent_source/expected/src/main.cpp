@@ -133,8 +133,6 @@ __gen_repeat repeat(std::vector<int32_t>& xs) {
 //     for zs in map(take, [0], rows):  # tpyc: warning(/copies list\[int32\] elements/)
 //         print("map live", len(zs))
 //     print("map live after", len(rows[0]))
-//     for zs in map(take, [0], copy_iter(rows)):  # tpyc: ok
-//         print("map copy_iter", len(zs))
 //     for v in map(take_cell, [1], [Cell(4)]):  # tpyc: ok
 //         print("map rvalue", v)
 //     dead_cells: list[Cell] = [Cell(5)]
@@ -178,7 +176,7 @@ void main() {
     std::vector<std::vector<int32_t>> ll = {{1, 2}};
     std::vector<std::vector<int32_t>> got = ::tpyapp::main::collect(ll);
     std::cout << "free" << " " << ::tpy::__len__(::tpy::__getitem__(got, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> got2 = ::tpyapp::main::collect(::tpy::copy_iter<std::vector<int32_t>>(ll));
+    std::vector<std::vector<int32_t>> got2 = ::tpyapp::main::collect(::tpy::copy_iter(ll));
     std::cout << "free explicit" << " " << ::tpy::__len__(::tpy::__getitem__(got2, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << "\n" << ::tpy::check_signals;
     std::cout << "method" << " " << Sink().absorb(ll) << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << "\n" << ::tpy::check_signals;
     std::cout << "closure" << " " << ::tpyapp::main::via_closure(ll) << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << "\n" << ::tpy::check_signals;
@@ -225,7 +223,7 @@ void main() {
     std::vector<C> hooked = std::vector<C>{};
     hooked.push_back(C(1));
     hooked.push_back(C(2));
-    std::vector<C> kept = ::tpyapp::main::keep_c(::tpy::copy_iter<C>(hooked));
+    std::vector<C> kept = ::tpyapp::main::keep_c(::tpy::copy_iter(hooked));
     ::tpy::__getitem__(kept, 0).n = 50;
     std::cout << "copy_iter" << " " << ::tpy::__len__(kept) << " " << ::tpy::__getitem__(kept, 0).n << " " << ::tpy::__getitem__(hooked, 0).n << "\n" << ::tpy::check_signals;
     std::vector<Cell> cs = ::tpy::make_vector<Cell>(Cell(1), Cell(2));
@@ -245,56 +243,46 @@ void main() {
     }
     std::cout << "map live after" << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << "\n" << ::tpy::check_signals;
     {
-        auto __src_4 = ::tpy::builtin_map_n<std::vector<int32_t>>(take, std::array<int32_t, 1>{0}, ::tpy::copy_iter<std::vector<int32_t>>(rows));
+        auto __src_4 = ::tpy::builtin_map_n<int32_t>(take_cell, std::array<int32_t, 1>{1}, std::array<Cell, 1>{Cell(4)});
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
-            const auto& zs = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "map copy_iter" << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
-        }
-    }
-    {
-        auto __src_6 = ::tpy::builtin_map_n<int32_t>(take_cell, std::array<int32_t, 1>{1}, std::array<Cell, 1>{Cell(4)});
-        auto&& __itr_6 = ::tpy::__iter__(__src_6);
-        for (;;) {
-            auto __r_7 = __itr_6.__next__();
-            if (!__r_7.has_value()) break;
-            int32_t v = ::tpy::unwrap_ref(*__r_7);
+            int32_t v = ::tpy::unwrap_ref(*__r_5);
             std::cout << "map rvalue" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<Cell> dead_cells = ::tpy::make_vector<Cell>(Cell(5));
     {
-        auto __src_8 = ::tpy::builtin_map_n<int32_t>(take_cell, std::array<int32_t, 1>{1}, std::move(dead_cells));
-        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        auto __src_6 = ::tpy::builtin_map_n<int32_t>(take_cell, std::array<int32_t, 1>{1}, std::move(dead_cells));
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
-            auto __r_9 = __itr_8.__next__();
-            if (!__r_9.has_value()) break;
-            int32_t v = ::tpy::unwrap_ref(*__r_9);
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_7);
             std::cout << "map dead" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> d = ::tpy::ordered_map<int32_t, std::vector<int32_t>>({{0, {7}}});
     {
-        auto __src_10 = ::tpy::builtin_map_n<std::vector<int32_t>>(take, std::array<int32_t, 1>{0}, ::tpy::dict_values(d));
-        auto&& __itr_10 = ::tpy::__iter__(__src_10);
+        auto __src_8 = ::tpy::builtin_map_n<std::vector<int32_t>>(take, std::array<int32_t, 1>{0}, ::tpy::dict_values(d));
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
-            auto __r_11 = __itr_10.__next__();
-            if (!__r_11.has_value()) break;
-            const auto& zs = ::tpy::unwrap_ref(*__r_11);
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            const auto& zs = ::tpy::unwrap_ref(*__r_9);
             std::cout << "map view" << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
         }
     }
     std::cout << "map view after" << " " << ::tpy::__len__(::tpy::__getitem__(d, 0)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {7};
     {
-        auto __src_12 = ::tpy::builtin_map_n<std::vector<int32_t>>(take, std::array<int32_t, 2>{0, 1}, ::tpyapp::main::repeat(xs));
-        auto&& __itr_12 = ::tpy::__iter__(__src_12);
+        auto __src_10 = ::tpy::builtin_map_n<std::vector<int32_t>>(take, std::array<int32_t, 2>{0, 1}, ::tpyapp::main::repeat(xs));
+        auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
-            auto __r_13 = __itr_12.__next__();
-            if (!__r_13.has_value()) break;
-            const auto& zs = ::tpy::unwrap_ref(*__r_13);
+            auto __r_11 = __itr_10.__next__();
+            if (!__r_11.has_value()) break;
+            const auto& zs = ::tpy::unwrap_ref(*__r_11);
             std::cout << "map gen" << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
         }
     }

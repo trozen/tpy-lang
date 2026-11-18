@@ -9,6 +9,7 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from ..typesys import (
+    call_result_form,
     TpyType, IntLiteralType, FloatLiteralType, LiteralType,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, ParamInfo, RecordInfo,
     FLOAT, PendingContainerType, OwnType, unwrap_ref_type,
@@ -407,7 +408,8 @@ class OperatorResolver:
                 dc_replace(p, type=substitute_type_params_simple(p.type, type_subst))
                 for p in method.params
             ]
-            new_return = substitute_type_params_simple(method.return_type, type_subst)
+            new_return = call_result_form(substitute_type_params_simple(
+                method.return_type, type_subst))
             method = dc_replace(method, params=new_params, return_type=new_return,
                                 canonical_fi=method.root)
         # Unwrap Ref from return type -- Ref is a codegen-level concern,

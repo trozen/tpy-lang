@@ -1522,10 +1522,6 @@ class MethodAnalyzer:
                             loc=expr.loc)
         result = self.calls._analyze_user_function_call(temp_call, [virtual_func])
         adopt_temp_call(expr, temp_call)
-        if expr.type_args:
-            expr.written_type_params = tuple(
-                tp if tp in new_method_params and ta is not None else None
-                for tp, ta in zip(all_type_params, expr.type_args))
         expr.is_static_call = True
         expr.static_call_owner = record_info
         return result
@@ -1735,7 +1731,7 @@ class MethodAnalyzer:
                     expr,
                 )
             # All params in return type are resolved, substitute
-            return_type = self.type_ops.substitute_type_params(return_type, info.inferred)
+            return_type = self.type_ops.substitute_call_result(return_type, info.inferred)
 
         # Set minimal function info for void methods
         stamp = FunctionInfo(
@@ -2088,9 +2084,6 @@ class MethodAnalyzer:
         has_wildcards = expr.type_args and None in expr.type_args
         binding: ArgBinding | None = None
         if expr.type_args:
-            expr.written_type_params = tuple(
-                tp if ta is not None else None
-                for tp, ta in zip(new_params, expr.type_args))
             # Arity already validated before the no-new-params early return.
             if not has_wildcards:
                 # Full explicit -- no seed needed.

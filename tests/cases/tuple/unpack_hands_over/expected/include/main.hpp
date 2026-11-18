@@ -149,7 +149,7 @@ void head_own_iter();
 // def head_user_next() -> None:
 void head_user_next();
 // def head_copy_iter(xs: list[tuple[A, int32]]) -> None:
-void head_copy_iter(std::vector<std::tuple<A, int32_t>>& xs);
+void head_copy_iter(const std::vector<std::tuple<A, int32_t>>& xs);
 // def head_combinators(ys: list[A], ns: list[int32], d: dict[str, A]) -> None:
 void head_combinators(std::vector<A>& ys, const std::vector<int32_t>& ns, ::tpy::ordered_map<std::string, A>& d);
 // def head_optional(xs: list[tuple[A | None, int32]]) -> None:
@@ -252,7 +252,7 @@ void wrapper_elem(Tree<int32_t>& s);
 void combinators_owning();
 // def gen_head_cells(d: dict[str, A], opts: list[tuple[A | None, int32]],
 //                    qs: list[tuple[A, int32]]) -> Iterator[int32]:
-__gen_gen_head_cells gen_head_cells(::tpy::ordered_map<std::string, A>& d, const std::vector<std::tuple<std::optional<A>, int32_t>>& opts, std::vector<std::tuple<A, int32_t>>& qs);
+__gen_gen_head_cells gen_head_cells(::tpy::ordered_map<std::string, A>& d, const std::vector<std::tuple<std::optional<A>, int32_t>>& opts, const std::vector<std::tuple<A, int32_t>>& qs);
 // def genexpr_cells(d: dict[str, A], opts: list[tuple[A | None, int32]]) -> None:
 void genexpr_cells(::tpy::ordered_map<std::string, A>& d, std::vector<std::tuple<std::optional<A>, int32_t>>& opts);
 // def comp_twice_ref(ps: list[tuple[A, A]]) -> None:
@@ -1188,28 +1188,26 @@ struct __gen_gen_head_cells : public ::tpy::next_iter_mixin<__gen_gen_head_cells
     ::tpy::frame_state __state;
     ::tpy::ordered_map<std::string, A>& d;
     const std::vector<std::tuple<std::optional<A>, int32_t>>& opts;
-    std::vector<std::tuple<A, int32_t>>& qs;
+    const std::vector<std::tuple<A, int32_t>>& qs;
     std::tuple<std::string, A*> __for_tup_57;
     std::string k;
     A* a = nullptr;
     std::tuple<std::optional<A>, int32_t> __for_tup_58;
     A* o = nullptr;
     int32_t n;
-    using __for_src_2_t = ::tpy::for_source_t<decltype((::tpy::copy_iter<std::tuple<A, int32_t>>(qs)))>;
-    using __for_itr_2_t = ::tpy::iter_type_t<__for_src_2_t>;
-    ::tpy::step_elem_t<::tpy::iter_next_t<__for_itr_2_t>>* __for_tup_59 = nullptr;
-    ::tpy::step_elem_member_t<0, ::tpy::step_elem_t<::tpy::iter_next_t<__for_itr_2_t>>>* c = nullptr;
+    ::tpy::frame_slot<std::tuple<A, int32_t>> __for_tup_59;
+    ::tpy::frame_slot<A> c;
     int32_t j;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_items(d)))>;
     using __for_src_1_t = decltype((opts));
+    using __for_src_2_t = ::tpy::for_source_t<decltype((::tpy::copy_iter(qs)))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_1_t>> __for_it_1;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_1_t>> __for_end_1;
     ::tpy::frame_loop_slot<__for_src_2_t> __for_src_2;
-    ::tpy::frame_loop_slot<__for_itr_2_t> __for_itr_2;
-    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_2_t>> __for_r_2;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_2_t>> __for_r_2;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -1224,7 +1222,7 @@ struct __gen_gen_head_cells : public ::tpy::next_iter_mixin<__gen_gen_head_cells
         S_DONE = 9,
     };
 
-    __gen_gen_head_cells(::tpy::ordered_map<std::string, A>& d, const std::vector<std::tuple<std::optional<A>, int32_t>>& opts, std::vector<std::tuple<A, int32_t>>& qs)
+    __gen_gen_head_cells(::tpy::ordered_map<std::string, A>& d, const std::vector<std::tuple<std::optional<A>, int32_t>>& opts, const std::vector<std::tuple<A, int32_t>>& qs)
         : __state(S_INITIAL),
           d(d),
           opts(opts),

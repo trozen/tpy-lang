@@ -12,6 +12,7 @@ import re
 import dataclasses
 
 from ..typesys import (
+    call_result_form,
     same_class, record_owner, unwrap_value_own,
     TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
@@ -19,10 +20,10 @@ from ..typesys import (
     impl_proto_matches_name, get_protocol_qname, unwrap_qualifiers,
     del_suppresses_default_ctor, is_void_like_type,
     unwrap_send_sync, unwrap_ref_type, unwrap_readonly, returns_cpp_reference_shape,
-    is_dynamic_dispatch_inner, ptr_text_pointee, ConcreteGenType, peel_slot,
+    is_dynamic_dispatch_inner, ptr_text_pointee, peel_slot,
 )
 from ..identity_map import IdentityMap
-from ..parse import TpyCall, TpyCoerce, TpyExpr, TpyMethodCall
+from ..parse import TpyExpr
 from ..coercions import is_protocol_safe_coercion, is_protocol_type_arg_widening
 
 if TYPE_CHECKING:
@@ -35,7 +36,7 @@ from ..modules import get_dunder_cpp_template
 from ..modules.type_resolution import adapter_contract
 from .. import qnames
 from ..type_def_registry import (
-    is_copy_iter, is_set, is_dict, is_array, is_span, is_list,
+    is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_char_type, is_str_category,
     is_enum_type, protocol_info_of, protocol_mro, protocol_ancestor_at,
     protocol_effective_methods, type_param_subst,
@@ -44,7 +45,8 @@ from ..type_def_registry import (
 )
 from ..typesys import is_numeric_type, unwrap_own, without_own
 from .elem_paths import (
-    ElemPath, declared_lent_paths, leaves_at, step_hands_over_lent,
+    ElemPath, leaves_at,
+    step_hands_over_lent,
 )
 from .bound_check import find_method_class_param_bound_violation
 from .dyn_erasure import declares_dynamic_base, record_inherits_dynamic
@@ -452,17 +454,6 @@ def text_leaves(t: TpyType) -> Iterator[TpyType]:
         yield from text_leaves(part)
 
 
-def _declared_call_return(expr: TpyExpr | None) -> TpyType | None:
-    """The return type the callee of call `expr` declares -- its
-    signature, the ABI contract, before any substitution at the call --
-    or None when `expr` is no call."""
-    call = expr.expr if isinstance(expr, TpyCoerce) else expr
-    if not isinstance(call, (TpyCall, TpyMethodCall)):
-        return None
-    fi = call.resolved_function_info
-    return fi.root.return_type if fi is not None else None
-
-
 def _conformance_reference_paths(et: TpyType, path: ElemPath
                                  ) -> frozenset[ElemPath]:
     """`paths_at` for the conformance step rule: a type parameter bounded
@@ -486,7 +477,7 @@ class ProtocolConformanceKind(Enum):
     """How a type conforms to a protocol.
 
     EXPLICIT: declared ``extends`` / ``implemented_protocols``, protocol-to-protocol
-    inheritance, or a compiler-intrinsic short-circuit (GenExpr/CopyIter
+    inheritance, or a compiler-intrinsic short-circuit (GenExpr
     satisfying Iterable, Enum satisfying Hashable/Comparable/Equatable,
     ValueType, Default, etc.). All of these represent intentional conformance
     rather than an accidental method-set match.
@@ -717,13 +708,13 @@ class ProtocolChecker:
             return self.classify_protocol_conformance(
                 actual.spelled(actual.parts()), protocol)
 
-        # An iteration adapter (a generator expression, CopyIter)
+        # An iteration adapter (a generator expression)
         # conforms by the whole contract it offers (`adapter_contract`), its
         # element meeting the step with an owning slot's `Own` peeled -- a
         # protocol with no `Iterable` / `Iterator` ancestor is asked of the
         # contract at the element; an `Iterator[T]` object the contract
         # misses answers by its own members below.
-        adapter = isinstance(actual, GenExprType) or is_copy_iter(actual)
+        adapter = isinstance(actual, GenExprType)
         found = (adapter_contract(actual, protocol)
                  if isinstance(protocol, NominalType) else None)
         if found is not None:
@@ -1067,7 +1058,6 @@ class ProtocolChecker:
     # Protocols that ListRepeatType conforms to (lazy repeat range)
     _LIST_REPEAT_PROTOCOLS = {"Iterable", "Sized", "NativeIterable", "NativeRangeConstructible"}
     _GENEXPR_PROTOCOLS = {"Iterable", "Iterator"}
-    _ITER_ADAPTER_PROTOCOLS = {"Iterable"}
 
     def type_extends_any_protocol(self, actual: TpyType, protocol_name: str) -> bool:
         """Check if a type extends any variant of a protocol (ignoring type args).
@@ -1080,8 +1070,6 @@ class ProtocolChecker:
             return protocol_name in self._LIST_REPEAT_PROTOCOLS
         if isinstance(actual, GenExprType):
             return protocol_name in self._GENEXPR_PROTOCOLS
-        if is_copy_iter(actual):
-            return protocol_name in self._ITER_ADAPTER_PROTOCOLS
 
         record_info = self.ctx.registry.get_record_for_type(actual)
         if record_info is None:
@@ -1302,8 +1290,8 @@ class ProtocolChecker:
         `SpanIter[Own[Cell]]` a lent `Cell`). A type with
         no such member answers through
         `get_iterable_element_type(keep_own=True)`. None when nothing
-        declares it -- a type parameter's included: its bound may refuse
-        it at a lending slot, but never proves a handover -- and when the
+        declares it -- a type parameter's included (a loop over its value
+        reads its bound, `step_handover_paths`) -- and when the
         type's only `__iter__` consumes (`consuming_only`): whether a step
         hands over is then the object's hand-over verdict, which the caller
         asks (`owning_arg`)."""
@@ -1444,42 +1432,40 @@ class ProtocolChecker:
         return any(step_hands_over_lent(r, s, _conformance_reference_paths)
                    for r in required for s in steps)
 
-    def steps_handed_over(self, t: TpyType, source: TpyExpr | None) -> bool:
-        """`source`, of type `t`, hands every reference leaf of each step
-        over (`declared_steps`), so its steps move into an owning slot.
-        Only a declaration of the source itself is evidence of that -- a
-        record, an adapter, a generator object, or the return type a
-        called function declares (`heapq.merge` -> `Iterator[Own[T]]`): a
-        protocol value's or a type parameter's declared steps are a
-        requirement, and the value may be a live container lending its
-        elements."""
-        bare = peel_slot(t)
-        if is_protocol_type(bare) and not isinstance(bare, ConcreteGenType):
-            declared = _declared_call_return(source)
-            if declared is None:
-                return False
-            t = declared
-        steps = self.declared_steps(t)
-        return bool(steps) and not any(declared_lent_paths(s) for s in steps)
+    def steps_handed_over(self, source: TpyExpr | None) -> bool:
+        """`source` hands every reference leaf of its step over
+        (`step_handover_paths`, the one rule a loop over it reads), so its
+        steps move into an owning slot. Both read `source`'s own type."""
+        # binding_ownership reaches this module through iter_loans.
+        from .binding_ownership import step_handover_paths
+        if source is None:
+            return False
+        t = self.ctx.get_expr_type(source)
+        steps = self.declared_steps(t) if t is not None else None
+        if not steps:
+            return False
+        step = unwrap_ref_type(steps[0])
+        paths = step_handover_paths(self.ctx, source, step)
+        # A value leaf is copied whoever owns it: only references count.
+        return all(any(r[:len(p)] == p for p in paths)
+                   for r in _conformance_reference_paths(step, ()))
 
     def _adapter_step_fits(self, elem: TpyType, required: TpyType) -> bool:
-        """A compiler adapter (a generator expression, `copy_iter`)
-        yielding `elem` meets a step requirement `required`:
-        the element matches modulo the slot's `Own`."""
-        # An owning adapter (`copy_iter`) at a lending slot is still
-        # accepted (BUGS.md#owning-adapter-at-lending-slot-dangles).
+        """A generator expression yielding `elem` meets a step requirement
+        `required`: the element matches modulo the slot's `Own`."""
         return self.type_ops.types_match_for_inference(unwrap_own(elem),
                                                        unwrap_own(required))
 
     def step_handover_hint(self, actual: TpyType, protocol: TpyType,
                            at_param: bool, spell: Callable[[TpyType], str],
-                           ) -> str | None:
+                           *, declare: bool = True) -> str | None:
         """The remedy for a value of type `actual` refused at a lending
         protocol `protocol` because its steps are handed over: an owning
         element slot, or collecting the steps first -- at a protocol with
         members beyond iteration, which an element slot would drop, the
         lending iteration it declares. A type parameter answers by its
-        bound. None when the refusal has another cause."""
+        bound. None when the refusal has another cause. `declare` False
+        leaves out redeclaring the parameter (an overload set's)."""
         if not (isinstance(protocol, NominalType) and is_protocol_type(protocol)):
             return None
         source = actual
@@ -1518,6 +1504,9 @@ class ProtocolChecker:
                                  qnames.ITERABLE)
         if not self.type_conforms_to_protocol(source, owning):
             return None
+        if not declare:
+            return (f"'{spell(actual)}' hands over its steps; collect them "
+                    f"first (list(...))")
         target = "the parameter" if at_param else "it"
         return (f"'{spell(actual)}' hands over its steps; declare "
                 f"{target} '{spell(owning)}' to take them, or "
@@ -1734,7 +1723,8 @@ class ProtocolChecker:
                     (pname, self.type_ops.substitute_types(ptype, type_subst))
                     for pname, ptype in method_sig.params
                 ]
-                return_type = self.type_ops.substitute_types(method_sig.return_type, type_subst)
+                return_type = call_result_form(
+                    self.type_ops.substitute_types(method_sig.return_type, type_subst))
                 cpp_template = method_sig.cpp_template
                 # .py protocols don't have cpp templates; use dunder map
                 if cpp_template is None:
@@ -1781,7 +1771,8 @@ class ProtocolChecker:
                         return None
 
                 # Return type (recursively substituting Self and type params)
-                return self.type_ops.substitute_types(method_sig.return_type, type_subst)
+                return call_result_form(
+                    self.type_ops.substitute_types(method_sig.return_type, type_subst))
 
         return None
 

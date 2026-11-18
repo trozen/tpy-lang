@@ -1295,13 +1295,6 @@
    "func": "_lower_expr_impl",
    "reason_src": "call_reject_reason('expr.call')"
   },
-  "tpyc/thir/lower/expressions.py:7383": {
-   "arm": "call.copy_iter_elem",
-   "depth": 3,
-   "file": "tpyc/thir/lower/expressions.py",
-   "func": "_lower_expr_impl",
-   "reason_src": "call_reject_reason('expr.call')"
-  },
   "tpyc/thir/lower/expressions.py:7467": {
    "arm": "call.callable_shadow",
    "depth": 2,

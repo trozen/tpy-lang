@@ -25,6 +25,7 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, NamedTuple
 
 from ...codegen_cpp.forms import (LocalBinding, LoopBinding,
+                                  binds_handed_over_step,
                                   is_plain_nonvalue, loop_binding_kind,
                                   is_ptr_variant_union,
                                   is_storage_tuple_alias_decl,
@@ -2454,7 +2455,8 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
         kind = loop_binding_kind(elem, stmt.const_loop_var,
                                  hoisted=stmt.hoist_loop_var,
                                  consuming=consuming,
-                                 copies=stmt.copies_var)
+                                 copies=stmt.copies_var,
+                                 handed_over=binds_handed_over_step(stmt))
         f["loop_binding"] = kind
         # A reference over a const iteration deduces const (`auto&&`); a
         # copy or the hoisted slot is the loop's own mutable value.

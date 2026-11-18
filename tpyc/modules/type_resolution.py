@@ -21,11 +21,11 @@ from tpyc.typesys import (
     TpyType, CHAR, OwnType, GenExprType, ReadonlyType,
     bound_as_spelled, is_any_str_type, is_protocol_type, substitute_type_params_structural,
     unwrap_ref_type, unwrap_qualifiers, unwrap_readonly, unwrap_send_sync,
-    make_iterable, make_iterator, protocol_param_alternatives,
+    make_iterator, protocol_param_alternatives,
 )
 from tpyc import qnames
-from tpyc.type_def_registry import (is_span, is_span_iter, is_copy_iter,
-                                   is_iterator_adapter, iter_yields_owned_elements,
+from tpyc.type_def_registry import (is_span, is_span_iter,
+                                   is_iterator_adapter,
                                    protocol_info_of, protocol_mro,
                                    protocol_effective_methods, type_param_subst,
                                    methods_at_reference, protocol_ancestor_at)
@@ -413,7 +413,7 @@ def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry", *,
 
     Single source of truth for "what element type does iterating this produce?"
     Covers all iterable categories:
-    - Compiler-internal adapters (CopyIter, GenExpr, SpanIter)
+    - Compiler-internal adapters (GenExpr, SpanIter)
     - Protocol-typed params (Iterator[T], Iterable[T], NativeIterable[T], Spannable[T])
     - String types -> char
     - error_return __next__ iterators
@@ -527,34 +527,26 @@ class AdapterContract(NamedTuple):
 def adapter_contract(actual: "TpyType", protocol: "NominalType",
                      ) -> "AdapterContract | None":
     """The contract iteration adapter `actual` offers at static protocol
-    `protocol`: `Iterable` for `CopyIter[T]`, `Iterator` for
-    a generator expression and an `Iterator[T]` object. None when `actual`
+    `protocol`: `Iterator` for a generator expression and an
+    `Iterator[T]` object. None when `actual`
     is no adapter or `protocol` is `@dynamic`."""
     if isinstance(actual, GenExprType):
         elem = actual.element_type
-        offered = qnames.ITERATOR
-    elif is_copy_iter(actual):
-        elem = actual.type_args[0]
-        offered = qnames.ITERABLE
     elif (isinstance(actual, NominalType) and is_protocol_type(actual)
           and actual.qualified_name() == qnames.ITERATOR and actual.type_args):
         elem = actual.type_args[0]
-        offered = qnames.ITERATOR
     else:
         return None
     info = protocol_info_of(protocol)
     if info is None or info.is_dynamic:
         return None
-    make = make_iterator if offered == qnames.ITERATOR else make_iterable
     lineage = [protocol, *protocol_mro(info)]
-    aligned = ((qnames.ITERATOR, qnames.ITERABLE) if offered == qnames.ITERATOR
-               else (qnames.ITERABLE,))
-    for qname in aligned:
+    for qname in (qnames.ITERATOR, qnames.ITERABLE):
         entry = next((a for a in lineage if a.qualified_name() == qname), None)
         at = protocol_ancestor_at(protocol, entry) if entry is not None else None
         if at is not None and len(at.type_args) == 1:
-            return AdapterContract(elem, make(at.type_args[0]), False)
-    return AdapterContract(elem, make(elem), True)
+            return AdapterContract(elem, make_iterator(at.type_args[0]), False)
+    return AdapterContract(elem, make_iterator(elem), True)
 
 
 def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry",
@@ -567,11 +559,7 @@ def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry",
     if is_iterator_adapter(tpy_type) or isinstance(tpy_type, GenExprType):
         if isinstance(tpy_type, GenExprType):
             return tpy_type.element_type
-        elem = tpy_type.type_args[0]
-        # `copy_iter` hands over a copy of each element: the step is owned.
-        if keep_own and iter_yields_owned_elements(tpy_type):
-            return OwnType(elem)
-        return elem
+        return tpy_type.type_args[0]
 
     # Protocol-typed iterables: single type_arg is T
     if is_protocol_type(tpy_type) and tpy_type.qualified_name() in ITERABLE_PROTOCOL_QNAMES:

@@ -372,7 +372,7 @@ template <::tpystd::typing::Iterable<std::string> T_xs>
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const std::string& s = ::tpy::unwrap_ref(*__r_1);
+            std::string s(::tpy::own_bind(*__r_1));
             n = ::tpy::add_check<int32_t>(n, ::tpy::__len__(s));
         }
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));

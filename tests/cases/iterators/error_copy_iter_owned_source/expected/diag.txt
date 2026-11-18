@@ -1,0 +1,1 @@
+main.py:15: error: No matching overload for 'copy_iter' with argument types (Iterator[Own[Cell]]): 'Iterator[Own[Cell]]' hands over its steps; collect them first (list(...))

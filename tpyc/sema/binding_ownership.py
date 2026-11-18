@@ -49,7 +49,7 @@ from typing import TYPE_CHECKING, Mapping
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..parse.nodes import (ResultForm, TpyCall, TpyDictComprehension,
-                           TpyExpr, TpyFieldAccess, TpyForEach,
+                           TpyExpr, TpyForEach,
                            TpyFunction, TpyGeneratorExpression, TpyIfExpr,
                            TpyListComprehension, TpyMatch, TpyMethodCall,
                            TpyName, TpyNamedExpr, TpyNestedDef,
@@ -59,20 +59,18 @@ from ..parse.nodes import (ResultForm, TpyCall, TpyDictComprehension,
                            iter_capture_bindings, walk_body_stmts,
                            walk_expr_tree, written_names)
 from .. import modules as builtin_modules
-from ..type_def_registry import is_copy_iter
-from ..typesys import (FunctionInfo, NominalType, OptionalType, OwnType,
+from ..typesys import (OptionalType, OwnType,
                        global_binds_by_reference,
-                       ReadonlyType, TpyType, TypeParamRef, is_protocol_type,
+                       ReadonlyType, TpyType, TypeParamRef,
                        param_takes_ownership,
-                       substitute_type_params_structural, unwrap_own,
+                       unwrap_own,
                        unwrap_readonly,
                        unwrap_ref_type, unwrap_send_sync,
                        view_family_for_type)
 from ..value_category import (own_iter_source, peel_coerce,
                               peel_value_wrappers, peeled_read)
-from .alias_rebind import tuple_name_bindings
 from .elem_paths import ElemPath, bare_tuple, leaf_paths, owned_leaf_paths
-from .iter_loans import IterElementSource, declared_class, iter_element_source
+from .iter_loans import IterElementSource, iter_element_source
 from .context import NonOwningBind, fold_nonowning
 from .call_lends import callee_lend_fact
 from .decl_types import declared_bound_type
@@ -184,47 +182,62 @@ def step_handover_paths(ctx: 'SemanticContext', iterable: TpyExpr,
                         declared: TpyType | None = None
                         ) -> frozenset[ElemPath]:
     """THE leaf paths (`leaf_paths`) of a step of iterating `iterable` -- of
-    type `step` -- that the iteration hands over, read only off what a
-    signature writes: the `Own` markers of a
-    callee's declared return under the type arguments the call writes (a
-    generator's frame, a native binding's contract), a user iterator class's `__next__`, a `__anext__` result
-    (`declared`, when the caller read it), an unreassigned parameter's or a
-    field's annotation, a whole `Own` every leaf under it; a select what
+    type `step` -- that the iteration hands over, read off the value's own
+    type alone, whatever kind of expression holds it: the `Own` leaves of
+    its declared steps (`declared_steps`; a parameter's declared
+    `Iterable[Own[T]]` included, a type parameter's by its bound, and an
+    `Own` its type carries by substitution,
+    BUGS.md#lent-list-at-own-iterable-param-copies), or of a
+    `__anext__` result (`declared`, when the caller read it); a select what
     both arms hand over, a generator expression's source what its clause
-    does. A container's iteration and a `copy_iter`'s hand
-    over nothing, and so does an `Own` that reaches a step by substitution
-    (`iter(xs)` over a lent `list[tuple[Own[A], int32]]`): any other name
-    hands over a whole `Own` step only. Pure, decided before the loop's
-    body."""
+    does. A container's iteration hands over nothing. Pure, decided before
+    the loop's body."""
     it_t = ctx.get_expr_type(iterable)
     if it_t is None or step is None:
         return frozenset()
     bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(unwrap_own(it_t))))
-    if is_copy_iter(bare) or iter_element_source(
-            bare, ctx.registry) is IterElementSource.CONTAINER:
+    if iter_element_source(bare, ctx.registry) is IterElementSource.CONTAINER:
         return frozenset()
-    if declared is None:
-        # A rebinding walrus iterates the read of its name.
-        e = peeled_read(iterable)
-        if isinstance(e, TpyIfExpr):
-            return (step_handover_paths(ctx, e.then_expr, step)
-                    & step_handover_paths(ctx, e.else_expr, step))
-        if isinstance(e, TpyNamedExpr):
-            return step_handover_paths(ctx, e.value, step)
-        func = ctx.func.current_function
-        if (isinstance(e, TpyName) and isinstance(func, TpyFunction)
-                and func.is_genexpr and func.params
-                and func.params[0][0] == e.name):
-            return func.genexpr_step_handover
-        decl = _declared_iterator(ctx, e, bare)
-        declared = (builtin_modules.get_iterable_element_type(
-            decl, registry=ctx.registry) if decl is not None else None)
-        if declared is None:
-            # A local's type may carry an `Own` its producer never wrote;
-            # only a whole `Own` step is the iterator's to hand over.
-            return (leaf_paths(step) if isinstance(e, TpyName)
-                    and isinstance(unwrap_readonly(step), OwnType)
-                    else frozenset())
+    if declared is not None:
+        return _declared_handover(declared, step)
+    e = peeled_read(iterable)
+    if isinstance(e, TpyIfExpr):
+        return (step_handover_paths(ctx, e.then_expr, step)
+                & step_handover_paths(ctx, e.else_expr, step))
+    func = ctx.func.current_function
+    if (isinstance(e, TpyName) and isinstance(func, TpyFunction)
+            and func.is_genexpr and func.params
+            and func.params[0][0] == e.name):
+        return func.genexpr_step_handover
+    if ctx.protocols is None:
+        return frozenset()
+    src_t: TpyType | None = bare
+    if isinstance(bare, TypeParamRef):
+        # A type parameter's value steps as its bound declares: the generic
+        # hands over what its concrete twin does.
+        src_t = ctx.protocols.type_ops.get_type_param_bound(bare)
+        if src_t is None:
+            return frozenset()
+    steps = ctx.protocols.declared_steps(src_t)
+    if not steps:
+        # A consuming-only `__iter__` declares no lending step; what it
+        # hands over is what it declares.
+        own_step = builtin_modules.get_iterable_element_type(
+            src_t, registry=ctx.registry, keep_own=True)
+        steps = [own_step] if own_step is not None else None
+    if not steps:
+        return frozenset()
+    # Each member C++ may select hands over only what all of them do.
+    paths = _declared_handover(steps[0], step)
+    for s in steps[1:]:
+        paths &= _declared_handover(s, step)
+    return paths
+
+
+def _declared_handover(declared: TpyType, step: TpyType
+                       ) -> frozenset[ElemPath]:
+    """The leaf paths of `step` a declared step `declared` hands over: a
+    whole `Own` every leaf, a tuple's `Own` elements their subtrees."""
     d = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared)))
     leaves = leaf_paths(step)
     if bare_tuple(d) is None:
@@ -232,77 +245,6 @@ def step_handover_paths(ctx: 'SemanticContext', iterable: TpyExpr,
     owned = owned_leaf_paths(d)
     return frozenset(p for p in leaves
                      if any(p[:len(o)] == o for o in owned))
-
-
-def _declared_iterator(ctx: 'SemanticContext', e: TpyExpr, bare: TpyType
-                       ) -> TpyType | None:
-    """The iterator `e` evaluates to as a signature declares it, type
-    parameters unsubstituted but those a call writes: a callee's return, a
-    record's class, an
-    unreassigned parameter's or a field's annotation; None for a local."""
-    if isinstance(e, (TpyCall, TpyMethodCall)):
-        fi = e.resolved_function_info
-        if (fi is not None and not fi.is_constructor
-                and fi.root.return_type is not None):
-            return _with_written_type_args(e, fi.root)
-    if isinstance(bare, NominalType) and not is_protocol_type(bare):
-        record = ctx.registry.get_record_for_type(bare)
-        if record is not None:
-            return declared_class(bare, record)
-    if isinstance(e, TpyName):
-        return bare if _unreassigned_param(ctx, e.name) else None
-    if isinstance(e, TpyFieldAccess):
-        recv = ctx.get_expr_type(e.obj)
-        recv = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-            unwrap_own(recv)))) if recv is not None else None)
-        record = (ctx.registry.get_record_for_type(recv)
-                  if isinstance(recv, NominalType) else None)
-        found = (ctx.registry.declaring_record(record, e.field)
-                 if record is not None else None)
-        return found[1].type if found is not None else None
-    if isinstance(bare, NominalType):
-        return bare
-    return None
-
-
-def _with_written_type_args(e: TpyCall | TpyMethodCall,
-                            fi: FunctionInfo) -> TpyType | None:
-    """`fi`'s declared return with the type arguments the call writes
-    (`gen[Own[A]](ys)`) substituted: those are as written as the
-    signature. An inferred one is not -- it may carry an `Own` the lent
-    argument never handed over. A method's explicit arguments bind what
-    sema recorded (`written_type_params`): its own type parameters, never
-    its class's."""
-    ret = fi.return_type
-    if not e.type_args or ret is None:
-        return ret
-    names: tuple[str | None, ...] | list[str]
-    if isinstance(e, TpyMethodCall) and e.written_type_params is not None:
-        names = e.written_type_params
-    elif fi.is_method or (isinstance(e, TpyMethodCall) and e.is_static_call):
-        return ret
-    else:
-        names = fi.type_params
-    subst = {tp: ta for tp, ta in zip(names, e.type_args)
-             if tp is not None and isinstance(ta, TpyType)}
-    return substitute_type_params_structural(ret, subst) if subst else ret
-
-
-def _unreassigned_param(ctx: 'SemanticContext', name: str) -> bool:
-    """Whether `name` reads a parameter -- of the body being analyzed, or of
-    the one a nested def captures it from -- that no binding of that body
-    reassigns: nothing substitutes into a parameter inside its own body.
-    A generator expression's parameters are no signature: each takes the
-    type of what its clause evaluates, substitutions included."""
-    for func in (ctx.func.current_function, ctx.enclosing_function()):
-        if not isinstance(func, TpyFunction) or func.is_genexpr:
-            return False
-        bindings = tuple_name_bindings(ctx, func, name)
-        if any(n == name for n, _t in func.params):
-            return bindings == []
-        if bindings != []:
-            return False
-    return False
 
 
 def owned_head_targets(head: TpyTupleUnpack) -> frozenset[str]:

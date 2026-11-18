@@ -146,24 +146,27 @@ auto relocated(Make make) {
 
 void container_lvalue() {
     Recs src = {{1}, {2}, {3}};
-    auto ci = tpy::copy_iter<Rec>(src);
+    auto ci = tpy::copy_iter(src);
+    static_assert(std::is_same_v<typename decltype(ci.__next__())::value_type, Rec>);
     auto out = drain<Rec>(ci);
     out[0].v = 99;
     check(sum_v(out) == 99 + 2 + 3, "an lvalue container yields every element");
     check(src[0].v == 1, "a write to a copy does not reach the lvalue container");
 
     const Recs& ro = src;
-    auto cc = tpy::copy_iter<Rec>(ro);
+    auto cc = tpy::copy_iter(ro);
+    static_assert(std::is_same_v<typename decltype(cc.__next__())::value_type, Rec>);
     auto out2 = drain<Rec>(cc);
     check(sum_v(out2) == 6, "a const lvalue container yields every element");
 }
 
 void container_rvalue() {
-    auto ci = tpy::copy_iter<Rec>(Recs{{4}, {5}});
+    auto ci = tpy::copy_iter(Recs{{4}, {5}});
+    static_assert(std::is_same_v<typename decltype(ci.__next__())::value_type, Rec>);
     auto out = drain<Rec>(ci);
     check(sum_v(out) == 9, "a container temporary is owned and iterated");
 
-    auto moved = relocated([] { return tpy::copy_iter<Rec>(RecArr{{{1}, {2}, {3}}}); });
+    auto moved = relocated([] { return tpy::copy_iter(RecArr{{{1}, {2}, {3}}}); });
     auto out2 = drain<Rec>(moved);
     check(sum_v(out2) == 6, "an inline container temporary survives a move before the first pull");
 }
@@ -171,17 +174,20 @@ void container_rvalue() {
 void dict_view_rvalue() {
     tpy::ordered_map<int32_t, Rec> d({{1, Rec{10}}, {2, Rec{20}}});
 
-    auto vs = tpy::copy_iter<Rec>(tpy::dict_values(d));
+    auto vs = tpy::copy_iter(tpy::dict_values(d));
+    static_assert(std::is_same_v<typename decltype(vs.__next__())::value_type, Rec>);
     auto vals = drain<Rec>(vs);
     vals[0].v = 99;
     check(sum_v(vals) == 99 + 20, "a values() temporary is iterated");
     check(tpy::__getitem__(d, 1).v == 10, "a write to a copied value does not reach the dict");
 
-    auto ks = tpy::copy_iter<int32_t>(tpy::dict_keys(d));
+    auto ks = tpy::copy_iter(tpy::dict_keys(d));
+    static_assert(std::is_same_v<typename decltype(ks.__next__())::value_type, int32_t>);
     auto keys = drain<int32_t>(ks);
     check(keys.size() == 2 && keys[0] == 1 && keys[1] == 2, "a keys() temporary is iterated");
 
-    auto is = tpy::copy_iter<std::tuple<int32_t, Rec>>(tpy::dict_items(d));
+    auto is = tpy::copy_iter(tpy::dict_items(d));
+    static_assert(std::is_same_v<typename decltype(is.__next__())::value_type, std::tuple<int32_t, Rec>>);
     auto items = drain<std::tuple<int32_t, Rec>>(is);
     std::get<1>(items[1]).v = 77;
     check(items.size() == 2 && std::get<0>(items[1]) == 2,
@@ -191,7 +197,8 @@ void dict_view_rvalue() {
 
 void self_iterator_rvalue() {
     Recs src = {{1}, {2}};
-    auto ci = tpy::copy_iter<std::tuple<int32_t, Rec>>(tpy::builtin_enumerate(src));
+    auto ci = tpy::copy_iter(tpy::builtin_enumerate(src));
+    static_assert(std::is_same_v<typename decltype(ci.__next__())::value_type, std::tuple<int32_t, Rec>>);
     auto out = drain<std::tuple<int32_t, Rec>>(ci);
     std::get<1>(out[0]).v = 99;
     check(out.size() == 2 && std::get<1>(out[1]).v == 2,
@@ -199,13 +206,15 @@ void self_iterator_rvalue() {
     check(src[0].v == 1, "a write to a copied tuple element does not reach the source");
 
     Ints ns = {7, 8};
-    auto zi = tpy::copy_iter<std::tuple<int32_t, Rec>>(tpy::builtin_zip(ns, src));
+    auto zi = tpy::copy_iter(tpy::builtin_zip(ns, src));
+    static_assert(std::is_same_v<typename decltype(zi.__next__())::value_type, std::tuple<int32_t, Rec>>);
     auto zout = drain<std::tuple<int32_t, Rec>>(zi);
     check(zout.size() == 2 && std::get<0>(zout[1]) == 8 && std::get<1>(zout[1]).v == 2,
           "a zip temporary is iterated");
 
     iter_trace = 0;
-    auto cc = tpy::copy_iter<int32_t>(Counter(3));
+    auto cc = tpy::copy_iter(Counter(3));
+    static_assert(std::is_same_v<typename decltype(cc.__next__())::value_type, int32_t>);
     check(iter_trace == 3, "a self-iterator temporary's __iter__ runs at the call");
     check(drain<int32_t>(cc).size() == 3, "a self-iterator temporary is iterated");
 }
@@ -213,7 +222,8 @@ void self_iterator_rvalue() {
 void self_iterator_lvalue() {
     Counter c(4);
     iter_trace = 0;
-    auto ci = tpy::copy_iter<int32_t>(c);
+    auto ci = tpy::copy_iter(c);
+    static_assert(std::is_same_v<typename decltype(ci.__next__())::value_type, int32_t>);
     check(iter_trace == 4, "an lvalue self-iterator's __iter__ runs at the call");
     check(drain<int32_t>(ci).size() == 4, "an lvalue self-iterator is iterated");
     check(c.i == 4, "an lvalue self-iterator is advanced in place, not through a copy");
@@ -221,39 +231,45 @@ void self_iterator_lvalue() {
 
 void user_record_sources() {
     iter_trace = 0;
-    auto sp = tpy::copy_iter<int32_t>(Separate{3});
+    auto sp = tpy::copy_iter(Separate{3});
+    static_assert(std::is_same_v<typename decltype(sp.__next__())::value_type, int32_t>);
     check(iter_trace == 3, "a pinned record temporary's __iter__ runs once, at the call");
     check(drain<int32_t>(sp).size() == 3, "a pinned record temporary is iterated in place");
 
     Separate s{2};
     iter_trace = 0;
-    auto sl = tpy::copy_iter<int32_t>(s);
+    auto sl = tpy::copy_iter(s);
+    static_assert(std::is_same_v<typename decltype(sl.__next__())::value_type, int32_t>);
     check(iter_trace == 2, "an lvalue record's __iter__ runs once, at the call");
     check(drain<int32_t>(sl).size() == 2, "an lvalue record is iterated");
 
     Delegating d(3);
-    auto dl = tpy::copy_iter<int32_t>(d);
+    auto dl = tpy::copy_iter(d);
+    static_assert(std::is_same_v<typename decltype(dl.__next__())::value_type, int32_t>);
     check(drain<int32_t>(dl).size() == 3, "a delegating lvalue is iterated");
     check(d.inner.i == 3, "a member iterator returned by reference is advanced in place");
 
-    auto dr = tpy::copy_iter<int32_t>(Delegating(2));
+    auto dr = tpy::copy_iter(Delegating(2));
+    static_assert(std::is_same_v<typename decltype(dr.__next__())::value_type, int32_t>);
     auto drn = drain<int32_t>(dr).size();
     check(drn == 2, "a delegating temporary is iterated");
 
     ConstIter k;
-    auto kc = tpy::copy_iter<int32_t>(k);
+    auto kc = tpy::copy_iter(k);
+    static_assert(std::is_same_v<typename decltype(kc.__next__())::value_type, int32_t>);
     check(drain<int32_t>(kc).size() == 3 && k.shared.i == 0,
           "a const-reference iterator is iterated through a copy");
 
-    auto im = tpy::copy_iter<int32_t>(MakesImmovable{2});
+    auto im = tpy::copy_iter(MakesImmovable{2});
+    static_assert(std::is_same_v<typename decltype(im.__next__())::value_type, int32_t>);
     check(drain<int32_t>(im).size() == 2, "an immovable by-value iterator is built in place");
 }
 
 void range_for() {
     Recs src = {{1}, {2}};
     int32_t total = 0;
-    for (auto& r : tpy::copy_iter<Rec>(Recs{{5}, {6}})) total += r.v;
-    for (auto& r : tpy::copy_iter<Rec>(src)) {
+    for (auto& r : tpy::copy_iter(Recs{{5}, {6}})) total += r.v;
+    for (auto& r : tpy::copy_iter(src)) {
         r.v += 100;
         total += r.v;
     }

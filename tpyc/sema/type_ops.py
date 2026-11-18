@@ -9,6 +9,7 @@ from dataclasses import dataclass, field, replace as dc_replace
 from typing import Callable, Literal, Mapping, Sequence, TYPE_CHECKING
 
 from ..typesys import (
+    call_result_form,
     attach_type_param_bounds,
     same_class,
     canonical_readonly, settled_substitution,
@@ -32,7 +33,7 @@ from .dyn_erasure import inherits_in_cpp
 from ..diagnostics import SemanticError, nocopy_container_elem_error
 from .. import qnames
 from ..type_def_registry import (
-    is_copy_iter, is_array, is_span, is_list, is_dict, is_set,
+    is_array, is_span, is_list, is_dict, is_set,
     is_enum_type, is_str_type, is_borrowing_view_type,
     get_type_def, find_factory_by_simple_name, protocol_info_of, is_subtype,
     is_fixed_int_type, protocol_ancestor_at,
@@ -1014,6 +1015,14 @@ class TypeOperations:
         if isinstance(resolved, ReadonlyType):
             return ReadonlyType(strip_template_repr(resolved.wrapped))
         return strip_template_repr(resolved)
+
+    def substitute_call_result(self, typ: TpyType,
+                               subst: dict[str, TpyType | int]) -> TpyType:
+        """A callee's declared return substituted at a call. What a call
+        produces never holds an owned borrow, so an `Own[T]` at a T bound to
+        one (`Own[Ref[X]]`) is `Own[X]`; a parameter keeps the marker, which
+        the copy check reads."""
+        return call_result_form(self.substitute_type_params(typ, subst))
 
     def substitute_type_params(self, typ: TpyType, subst: dict[str, TpyType | int]) -> TpyType:
         """Substitute type parameters with concrete types.
@@ -2535,7 +2544,8 @@ class TypeOperations:
             dc_replace(p, type=self.substitute_param_type(p.type, effective_subst))
             for p in method.params
         ]
-        substituted_return = self.substitute_type_params(method.return_type, effective_subst)
+        substituted_return = self.substitute_call_result(method.return_type,
+                                                         effective_subst)
 
         shadowed = {tp for tp in method.type_params
                     if tp in type_subst and tp in class_params}

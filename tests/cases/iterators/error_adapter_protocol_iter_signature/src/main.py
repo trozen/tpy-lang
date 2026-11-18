@@ -16,7 +16,7 @@ def total(rs: Rows[int32]) -> int32:
 
 def main() -> None:
     xs = [1, 2, 3]
-    print(total(copy_iter(xs)))  # tpyc: error(/CopyIter\[int32\] does not conform to protocol Rows\[int32\]/)
+    print(total(copy_iter(xs)))  # tpyc: error(/Iterator\[Own\[int32\]\] does not conform to protocol Rows\[int32\]/)
 
 
 main()

@@ -1,0 +1,1 @@
+main.py:14: error: No matching overload for 'enumerate' with argument types (Iterator[Own[Cell]]): 'Iterator[Own[Cell]]' hands over its steps; collect them first (list(...))

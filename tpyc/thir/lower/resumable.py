@@ -100,6 +100,7 @@ from ...typesys import (
     is_protocol_type,
     unwrap_readonly,
     unwrap_ref_type,
+    unwrap_own,
     unwrap_send_sync,
 )
 from ...type_def_registry import is_borrowing_view_type
@@ -967,6 +968,10 @@ def _for_advance_reject(t: 'THIRForAdvance', analyzer,
             # unpack mutable-ref-binds it as a borrow-tuple name source.
             _witness("res.loop_btuple_bind")
             return None
+        if classes.get(stmt.var) is FrameLocalClass.OWNING_TUPLE_SLOT:
+            # A step the iteration hands over (`Iterator[Own[tuple]]`):
+            # the advance emplaces it, the head reads off the slot.
+            return None
         return "res.loop_var"
     if _loop_var_bind_ok(elem_type, stmt.var, analyzer, classes, loops):
         return None
@@ -1437,7 +1442,7 @@ def frame_local_class(lname: str, ltype, kind, analyzer,
         # sync pointer rows (`(h == nullptr)`, bare arg pass).
         if _eligible_ptr_value(ltype, analyzer):
             return C.PLAIN
-        if _value_tuple(ltype, analyzer) is not None:
+        if _value_tuple(unwrap_own(lt), analyzer) is not None:
             # Value/storage tuple local (`std::tuple<...>` bare field):
             # the await-result bind is skeleton, reads are the sync
             # tuple-subscript rows (std::get) -- same family the param
@@ -1539,7 +1544,7 @@ def frame_local_class(lname: str, ltype, kind, analyzer,
         # A loop's step holder owning elements its iteration hands over
         # (an `async for` step, awaited by value) is the same slot: the
         # advance emplaces it, its head reads the elements off the slot.
-        if isinstance(lt, TupleType):
+        if isinstance(unwrap_own(lt), TupleType):
             return C.OWNING_TUPLE_SLOT
         return None
     if kind is K.BORROW_TUPLE:

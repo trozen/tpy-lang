@@ -196,7 +196,7 @@ void main() {
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     std::array<R, 2> ys = {R(2), R(1)};
-    std::vector<R> s2 = ::tpy::builtin_sorted<R>(::tpy::copy_iter<R>(ys));
+    std::vector<R> s2 = ::tpy::builtin_sorted<R>(::tpy::copy_iter(ys));
     ::tpy::__getitem__(s2, 0).v = 100;
     std::cout << "sorted copy_iter" << " " << ::tpy::__getitem__(ys, 1).v << "\n" << ::tpy::check_signals;
     std::cout << "sorted forwarded" << " " << ::tpy::ListPrinter(({

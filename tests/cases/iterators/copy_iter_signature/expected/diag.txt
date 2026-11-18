@@ -1,0 +1,8 @@
+part_bind_int_rec.py:93: warning: copies Cell into owned storage; use copy() to make this explicit
+part_bind_int_rec.py:98: warning: copies Cell into owned storage; use copy() to make this explicit
+part_handover.py:114: warning: copies Cell elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_named.py:38: warning: Own[list[Cell]] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_named.py:64: warning: copies Cell elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_sources.py:56: warning: copies Cell elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_sources.py:57: warning: copies Cell elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+part_sources.py:58: warning: copies Cell elements; use copy_iter() to make this explicit (or copy() to copy the entire container)

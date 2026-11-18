@@ -39140,19 +39140,6 @@
 "tpyc/thir/test_thir_wave_asdict.py::test_own_iter_stays_ast"
 ]
 },
-"c8d7de86eb91cc44": {
-"verdict": "BREAKS_AT_CUTOVER",
-"ast": "EMITS",
-"ast_err": "",
-"thir": "EMITS",
-"thir_err": "",
-"fallback": {
-"body:stmt.for_each:foreach.copy_iter_literal_elem": 1
-},
-"uses": [
-"tpyc/thir/test_thir_wave_asdict.py::test_literal_elem_stays_ast"
-]
-},
 "4ddb3514b3d39b5c": {
 "verdict": "FRONTEND_REFUSES",
 "ast": "FRONTEND",

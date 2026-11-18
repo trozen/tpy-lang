@@ -12,7 +12,7 @@ class Node:
 def test_extend_copy_iter_no_warn() -> None:
     a: list[Node] = []
     b: list[Node] = [Node(1), Node(2)]
-    ci = copy_iter(b)  # tpyc: type(/CopyIter\[Node\]/)
+    ci = copy_iter(b)  # tpyc: type(/Iterator\[Own\[Node\]\]/)
     a.extend(ci)  # tpyc: ok
     print(len(a))
     print(len(b))

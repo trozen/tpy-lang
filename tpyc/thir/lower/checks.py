@@ -3668,8 +3668,8 @@ def _len_arg_reject(arg: TpyExpr, locals_: dict[str, TpyType],
         return "len.arg_call"
     return "len.arg_other"
 
-_SPECIAL_BUILTIN_QNAMES = frozenset({qnames.COPY, qnames.COPY_ITER,
-                                     qnames.OWN_ITER, qnames.TRY_PARSE})
+_SPECIAL_BUILTIN_QNAMES = frozenset({qnames.COPY, qnames.OWN_ITER,
+                                     qnames.TRY_PARSE})
 
 
 def _record_ctor_arg(arg: 'TpyExpr | None', analyzer) -> 'TpyCall | None':
@@ -11488,8 +11488,6 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # `sep.join(items)` -> `::tpy::str_join(sep, items)`): the
         # monomorphized lvalue binds bare.
         _ArgRow("protocol_bare_name", _r_protocol_bare_name),
-        # ... and the CopyIter conformer at the Iterable[Own[T]] slot
-        # (`a.extend(copy_iter(b))` / a CopyIter NAME): binds bare too.
         # An enum member (`E.B`, a default filled into `Q().add(c=9)`) at a
         # parameter an import cycle still types as its reference
         # placeholder (`Ref[E]`): no parameter contract classifies that

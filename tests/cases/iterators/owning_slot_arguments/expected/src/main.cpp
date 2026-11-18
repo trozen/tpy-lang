@@ -160,7 +160,7 @@ void shapes() {
     std::cout << "iter" << " " << ::tpy::__getitem__((*out), 0).v << " " << ::tpy::__len__(src2) << "\n" << ::tpy::check_signals;
     std::array<R, 2> src3 = {R(1), R(2)};
     std::optional<std::vector<R>> __slot_7;
-    out = &*(__slot_7 = ::tpyapp::main::take(::tpy::copy_iter<R>(src3)));
+    out = &*(__slot_7 = ::tpyapp::main::take(::tpy::copy_iter(src3)));
     ::tpy::__getitem__((*out), 0).v = 9;
     std::cout << "copy_iter" << " " << ::tpy::__getitem__(src3, 0).v << "\n" << ::tpy::check_signals;
     std::vector<R> src4 = {R(1), R(2)};

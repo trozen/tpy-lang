@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
 from ..holders import Holder, IterHolder
 from ..typesys import pending_view_of, protocol_param_alternatives
-from ..typesys import (unwrap_qualifiers, bound_as_spelled, contains_reference_type, drop_own_marker, pointer_repr_optional, pointer_variant_union,
+from ..typesys import (unwrap_qualifiers, bound_as_spelled, contains_reference_type, unwrap_value_own, drop_own_marker, pointer_repr_optional, pointer_variant_union,
                        holds_result_member,
                        ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
                        BASIC_SLICE, SLICE)
@@ -128,6 +128,7 @@ from .aug_hold import aug_hold_parts
 from .loop_frames import (binding_value, decide_copies_var, for_live_region,
                           worth_const_ref)
 from .binding_ownership import step_handover_paths
+from .elem_paths import bare_tuple, leaf_paths
 from .iter_loans import (
     IterElementSource, iter_element_source, record_iteration_pull,
     iteration_yields_copies,
@@ -158,6 +159,7 @@ from .alias_rebind import (binding_roots, decide_rebind_storage,
                            finalize_pointer_tuples, is_reference_local,
                            value_capture_holds,
                            stamp_bind_kind, stamp_unpack_rebinds,
+                           step_elem_owned,
                            UnpackTarget, target_indices,
                            unpack_target_records)
 from .storage_policy import first_binding_storage
@@ -3068,9 +3070,13 @@ class StatementAnalyzer:
                 # Elements from a readonly iterable inherit readonly status
                 if is_readonly_iterable:
                     elem_type = make_readonly(elem_type)
+                # What the step hands over decides how the variable binds
+                # it, so it is stamped before the variable's type settles.
+                self._stamp_step_handover(stmt, unwrap_ref_type(elem_type))
                 elem_type = self._infer_new_local_type(
-                    stmt.var, elem_type, None, None,
+                    stmt.var, self._step_binding_type(elem_type), None, None,
                     line=(stmt.loc.line if stmt.loc else None),
+                    step_owned=stmt.binds_whole_step and not stmt.is_tuple_unpack,
                 )
                 stmt.elem_type = make_ref(elem_type)
 
@@ -3081,8 +3087,6 @@ class StatementAnalyzer:
                     resolved_for_iter
                     if is_protocol_type(resolved_for_iter)
                     else inner_iterable_type, self.ctx.registry)
-                self._stamp_step_handover(stmt,
-                                          unwrap_ref_type(stmt.elem_type))
                 # Each step, the first one before the body included, is a
                 # call when it runs TPy code.
                 pulls_run_code = record_iteration_pull(
@@ -4304,16 +4308,17 @@ class StatementAnalyzer:
                 f"`__anext__` on '{aiter_type}' must return "
                 f"`Awaitable[T]` (got '{anext_ret}')", stmt.iterable)
 
+        # What each step hands over is what `__anext__`'s declaration writes.
+        self._stamp_step_handover(stmt, elem_type,
+                                  declared=anext_decl.async_inner_return)
         elem_type = self._infer_new_local_type(
-            stmt.var, elem_type, None, None,
+            stmt.var, self._step_binding_type(elem_type), None, None,
             line=(stmt.loc.line if stmt.loc else None),
+            step_owned=stmt.binds_whole_step and not stmt.is_tuple_unpack,
         )
         self._note_loop_var_iteration(stmt.var, elem_type, False,
                                       placeable=False)
         stmt.elem_type = make_ref(elem_type)
-        # What each step hands over is what `__anext__`'s declaration writes.
-        self._stamp_step_handover(stmt, elem_type,
-                                  declared=anext_decl.async_inner_return)
         self._check_loop_var_rebind(stmt, elem_type)
         cid_floor = self.ctx.pending_num_counter
         var_type, declared = self._loop_var_cell_type(stmt, elem_type)
@@ -5332,6 +5337,18 @@ class StatementAnalyzer:
         loop and its unpack head, before the body."""
         stmt.step_handover = step_handover_paths(
             self.ctx, stmt.iterable, step, declared=declared)
+        bare = bare_tuple(unwrap_own(unwrap_ref_type(step)))
+        stmt.binds_whole_step = (
+            bool(stmt.step_handover)
+            and stmt.step_handover >= leaf_paths(unwrap_ref_type(step))
+            if not stmt.is_tuple_unpack
+            else bare is not None and bool(stmt.step_handover) and all(
+                any(p[:1] == (i,) for p in stmt.step_handover)
+                for i in range(len(bare.element_types))))
+        if stmt.is_tuple_unpack:
+            owned = step_elem_owned(step, stmt.step_handover)
+            if owned is not None:
+                self.ctx.tuple_elem_owned[stmt] = owned
         head = stmt.head_unpack()
         if head is not None:
             head.step_handover = stmt.step_handover
@@ -5882,9 +5899,12 @@ class StatementAnalyzer:
     def _infer_new_local_view_type(
         self, name: str, var_type: TpyType,
         init_expr: TpyExpr | None, init_type: TpyType | None,
-        line: int | None, family: ViewTypeFamily,
+        line: int | None, family: ViewTypeFamily, *,
+        step_owned: bool = False,
     ) -> TpyType:
-        """Create a pending view type for a new local of the given family."""
+        """Create a pending view type for a new local of the given family.
+        `step_owned`: a loop variable over a step handed over to it, which
+        owns its buffer as a fresh value's binding does."""
         var_id = self.ctx.next_view_var_id(family)
         vars_reg = self.ctx.view_vars(family)
         var_map = self.ctx.view_var_map(family)
@@ -5916,7 +5936,7 @@ class StatementAnalyzer:
         else:
             # Fresh from owned type (str or bytes)
             if init_expr is None:
-                is_owned = False
+                is_owned = step_owned
             elif is_borrowing_view_type(var_type):
                 # The source's type is already the view, but whether the
                 # local may keep it is the same rule an owned-typed source
@@ -5947,10 +5967,21 @@ class StatementAnalyzer:
         self.ctx.view_pending_resolutions(family).append(var_id)
         return family.pending_type_class(var_id)
 
+    @staticmethod
+    def _step_binding_type(step: TpyType) -> TpyType:
+        """What a loop variable bound to a step of type `step` holds, as
+        `x = <step>` would bind it: an `Own` around a value with no
+        reference in it transfers nothing (`Own[str]` binds a `str`)."""
+        if (isinstance(step, OwnType)
+                and not contains_reference_type(step.wrapped)):
+            return unwrap_value_own(step)
+        return step
+
     def _infer_new_local_type(
         self, name: str, var_type: TpyType,
         init_expr: TpyExpr | None, init_type: TpyType | None,
         line: int | None, *, annotated: bool = False,
+        step_owned: bool = False,
     ) -> TpyType:
         """Apply deferred type inference for a new local variable.
 
@@ -5989,7 +6020,8 @@ class StatementAnalyzer:
                     break
         if family is not None:
             pending = self._infer_new_local_view_type(
-                name, var_type, init_expr, init_type, line, family)
+                name, var_type, init_expr, init_type, line, family,
+                step_owned=step_owned)
             if isinstance(var_type, LiteralType):
                 return dataclasses.replace(var_type, storage=pending)
             return pending

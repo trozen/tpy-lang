@@ -29,7 +29,7 @@ from ..parse import (
 )
 from ..parse.nodes import walk_expr_tree
 from ..type_def_registry import (get_type_def, is_borrowing_view_type,
-                                 iter_yields_owned_elements, protocol_info_of)
+                                 protocol_info_of)
 from ..typesys import (
     contains_reference_type, FunctionInfo, GenExprType, NominalType,
     PendingDictType, PendingListType, ReadonlyType, PendingSetType, RecordInfo,
@@ -403,12 +403,6 @@ def _iterates_type_param(param_type: TpyType, et: TpyType) -> bool:
     return bool(args) and is_protocol_type(p) and args[0] == et
 
 
-def _yields_owned(ctx: SemanticContext, iterable: TpyExpr) -> bool:
-    it_type = ctx.get_expr_type(iterable)
-    return it_type is not None and iter_yields_owned_elements(
-        unwrap_ref_type(unwrap_readonly(unwrap_own(it_type))))
-
-
 def iteration_elem_provenance(ctx: SemanticContext,
                               iterable: TpyExpr) -> ElemProvenance:
     """Per element of what iterating `iterable` yields, the named storage it
@@ -418,8 +412,6 @@ def iteration_elem_provenance(ctx: SemanticContext,
     `C`; an element spelled without one keeps whole-call attribution. A
     leaf user code lends (`user_step_lends`) that no named storage backs is
     UNKNOWN."""
-    if _yields_owned(ctx, iterable):
-        return []
     storage = iterated_storage(ctx, iterable)
     fi = storage.callee
     if fi is None:
@@ -436,8 +428,6 @@ def _unnamed_provenance(ctx: SemanticContext,
     leaves user code lends, UNKNOWN; either arm of a select, per leaf; what
     a call's open-`T` yield forwards from an operand (`zip(ns, View())`,
     `passthru(View())`)."""
-    if _yields_owned(ctx, iterable):
-        return []
     if isinstance(iterable, TpyIfExpr):
         return _merge_provenance(
             iteration_elem_provenance(ctx, iterable.then_expr),

@@ -769,15 +769,18 @@ void head_user_next() {
 //     for x, n in copy_iter(xs):  # tpyc: ok
 //         x.v += n
 //     print("head_copy_iter", xs[0][0].v)
-void head_copy_iter(std::vector<std::tuple<A, int32_t>>& xs) {
-    auto __obj_0 = ::tpy::copy_iter<std::tuple<A, int32_t>>(xs);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& __for_tup_5 = *__beg_0;
-        auto& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_5)));
-        int32_t n = std::get<1>(__for_tup_5);
-        x.v = ::tpy::add_check<int32_t>(x.v, n);
+void head_copy_iter(const std::vector<std::tuple<A, int32_t>>& xs) {
+    {
+        auto __src_0 = ::tpy::copy_iter(xs);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::tuple<A, int32_t> __for_tup_5(::tpy::own_bind(*__r_1));
+            auto&& x = std::move(std::get<0>(__for_tup_5));
+            int32_t n = std::get<1>(__for_tup_5);
+            x.v = ::tpy::add_check<int32_t>(x.v, n);
+        }
     }
     std::cout << "head_copy_iter" << " " << std::get<0>(::tpy::__getitem__(xs, 0)).v << "\n" << ::tpy::check_signals;
 }
@@ -2056,7 +2059,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_head_cells::__next__() {
         }
     }
     case S_RESUME_3: {  // after: yield j
-        c->v = ::tpy::add_check<int32_t>(c->v, 1000);
+        (*c).v = ::tpy::add_check<int32_t>((*c).v, 1000);
         __state = S_JOIN_3;
         continue;
     }
@@ -2078,8 +2081,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_head_cells::__next__() {
     case S_JOIN_2:
     case S_JOIN_1: {
         if ((*__for_it_1) == (*__for_end_1)) {
-            __for_src_2.emplace(::tpy::copy_iter<std::tuple<A, int32_t>>(qs));
-            ::tpy::resumable_iter_init(__for_itr_2, (*__for_src_2));
+            __for_src_2.emplace(::tpy::copy_iter(qs));
             __state = S_JOIN_3;
             continue;
         }
@@ -2090,13 +2092,13 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_head_cells::__next__() {
         return n;
     }
     case S_JOIN_3: {
-        __for_r_2.emplace(::tpy::resumable_iter_next(__for_itr_2, (*__for_src_2)));
+        __for_r_2.emplace((*__for_src_2).__next__());
         if (!(*__for_r_2).has_value()) {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        __for_tup_59 = &(::tpy::unwrap_ref(*(*__for_r_2)));
-        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>((*__for_tup_59)))));
+        __for_tup_59.emplace(::tpy::own_bind(*(*__for_r_2)));
+        c.emplace(std::move(std::get<0>((*__for_tup_59))));
         j = std::get<1>((*__for_tup_59));
         __state = S_RESUME_3;
         return j;
@@ -2109,7 +2111,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_head_cells::__next__() {
 
 // def gen_head_cells(d: dict[str, A], opts: list[tuple[A | None, int32]],
 //                    qs: list[tuple[A, int32]]) -> Iterator[int32]:
-__gen_gen_head_cells gen_head_cells(::tpy::ordered_map<std::string, A>& d, const std::vector<std::tuple<std::optional<A>, int32_t>>& opts, std::vector<std::tuple<A, int32_t>>& qs) {
+__gen_gen_head_cells gen_head_cells(::tpy::ordered_map<std::string, A>& d, const std::vector<std::tuple<std::optional<A>, int32_t>>& opts, const std::vector<std::tuple<A, int32_t>>& qs) {
     return __gen_gen_head_cells(d, opts, qs);
 }
 

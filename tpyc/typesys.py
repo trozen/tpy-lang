@@ -14,7 +14,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace as dc_replace
 from enum import Enum
-from typing import Any, Callable, Collection, Iterable, Iterator, NamedTuple, Optional, Sequence, TYPE_CHECKING
+from typing import Any, Callable, Collection, Iterable, Iterator, NamedTuple, Optional, Sequence, TYPE_CHECKING, TypeVar
 
 from .module_names import public_module_name
 from .compilation_context import get_current_compiler, require_current_compiler
@@ -2372,6 +2372,46 @@ def strip_own_type_args(typ: 'NominalType') -> 'NominalType':
     distinct element type, so both sides are stripped before structural match."""
     return typ.with_inner_types(
         tuple(unwrap_own(a) for a in typ.inner_types()))
+
+
+_A = TypeVar("_A")
+
+
+def ask_owning_slot(slot: 'TpyType', ask: Callable[['TpyType'], _A],
+                    rank: Callable[[_A], int] = lambda a: int(bool(a)),
+                    ) -> 'tuple[_A, TpyType]':
+    """What an owning element slot takes, asked once: `ask` at `slot` as
+    declared (a source handing its steps over meets the slot's `Own`) and at
+    its `Own`-stripped twin (a lent source, whose steps the copy check then
+    copies); the stronger answer by `rank` -- the declared one on a tie --
+    with the slot that gave it."""
+    declared = ask(slot)
+    if not (isinstance(slot, NominalType)
+            and any(isinstance(a, OwnType) for a in slot.inner_types())):
+        return declared, slot
+    stripped_slot = strip_own_type_args(slot)
+    stripped = ask(stripped_slot)
+    if rank(stripped) > rank(declared):
+        return stripped, stripped_slot
+    return declared, slot
+
+
+def concrete_owning_slot_fits(arg: 'TpyType', slot: 'NominalType') -> bool:
+    """A concrete container argument meets a concrete owning slot
+    (`dict[K, Own[V]]`): equal once both sides' `Own` type arguments are
+    stripped."""
+    bare = strip_own_type_args(arg) if isinstance(arg, NominalType) else arg
+    return bare == strip_own_type_args(slot)
+
+
+def call_result_form(typ: 'TpyType') -> 'TpyType':
+    """A callee's declared return as a call produces it: a result never
+    holds an owned borrow, so every `Own[Ref[X]]` under it (an `Own[T]`
+    at a T bound to a borrow) is `Own[X]`."""
+    if isinstance(typ, OwnType):
+        inner = call_result_form(unwrap_ref_type(typ.wrapped))
+        return typ if inner is typ.wrapped else OwnType(inner)
+    return typ.map_inner_types(call_result_form)
 
 
 def borrow_form_differs(t: 'TpyType') -> bool:
@@ -6263,11 +6303,6 @@ def make_span_iter(element_type: 'TpyType') -> 'NominalType':
     const-aware cpp_formatter) comes from the TypeDef registry."""
     return NominalType(name="SpanIter", type_args=(element_type,),
                        _module_qname="tpy.SpanIter")
-
-
-def make_copy_iter(element_type: 'TpyType') -> 'NominalType':
-    return NominalType(name="CopyIter", type_args=(element_type,),
-                       _module_qname="tpy.CopyIter")
 
 
 def make_iterator(element_type: 'TpyType') -> 'NominalType':

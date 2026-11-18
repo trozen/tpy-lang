@@ -872,11 +872,7 @@ queried by `is_boundary_marshallable`, replacing a C++-type-string set
 that could not tell `bytes` from `bytearray`),
 `is_borrowing_view` (every value is a borrow handle into storage it
 does not own: `StrView`, `BytesView`, `Span`, `varargs`, `SpanIter`,
-the dict views; not `CopyIter`, which borrows an lvalue source but owns
-a temporary one, a per-call fact), `iter_yields_owned_elements` (iterating
-hands out elements the adapter owns, never a reference into what it walks:
-`CopyIter`, `OwnIter` -- the element-copy warning's provenance walk stops
-there), `iter_yields_ref_tuple_proxies` (an
+the dict views), `iter_yields_ref_tuple_proxies` (an
 internal stopgap for dict_items, whose iteration yields proxy reference
 tuples -- drives the resumable-frame borrow-tuple loop binding; set by the
 private stub kwarg `_iter_yields_ref_tuple_proxies` and slated for removal), `needs_explicit_element_target`,
@@ -1825,7 +1821,7 @@ hoisted to the top of their respective modules.
 (~50 methods) plus ~20 module-level helpers. The class dispatches
 on `TpyCall` shape -- record constructor, generic function,
 builtin overload, special builtin (`isinstance`, `tpy.copy`,
-`copy_iter`, `own_iter`, `try_parse`), dunder (`__init__`, `__call__`),
+`own_iter`, `try_parse`), dunder (`__init__`, `__call__`),
 macro, fn/callable value, recursive-union constructor, expression
 callee, etc. The methods share:
 

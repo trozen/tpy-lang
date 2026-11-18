@@ -32,7 +32,6 @@ comp own_iter [1, 2]
 comp dead [3]
 map live 1
 map live after 1
-map copy_iter 1
 map rvalue 5
 map dead 6
 map view 1

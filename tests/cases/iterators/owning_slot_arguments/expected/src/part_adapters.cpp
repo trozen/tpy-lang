@@ -351,7 +351,7 @@ void main() {
     std::array<int32_t, 3> xs = {1, 2, 3};
     auto __tmp_1 = ::tpyapp::part_adapters::__genexpr_main_1(xs);
     std::cout << "adapters rows genexpr" << " " << ::tpyapp::part_adapters::total(__tmp_1) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = ::tpy::copy_iter<int32_t>(xs);
+    auto __tmp_2 = ::tpy::copy_iter(xs);
     std::cout << "adapters rows copy_iter" << " " << ::tpyapp::part_adapters::total(__tmp_2) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ys = {4, 5};
     auto __tmp_3 = ::tpy::own_iter(std::move(ys));
@@ -359,12 +359,12 @@ void main() {
     std::array<R, 2> gs = {R(1), R(2)};
     std::cout << "adapters own genexpr" << " " << ::tpyapp::part_adapters::take(::tpyapp::part_adapters::__genexpr_main_2(gs)) << "\n" << ::tpy::check_signals;
     std::array<R, 2> rs = {R(1), R(2)};
-    std::cout << "adapters own copy_iter" << " " << ::tpyapp::part_adapters::take(::tpy::copy_iter<R>(rs)) << " " << ::tpy::__getitem__(rs, 0).v << "\n" << ::tpy::check_signals;
+    std::cout << "adapters own copy_iter" << " " << ::tpyapp::part_adapters::take(::tpy::copy_iter(rs)) << " " << ::tpy::__getitem__(rs, 0).v << "\n" << ::tpy::check_signals;
     std::vector<R> zs = {R(5)};
     std::cout << "adapters own own_iter" << " " << ::tpyapp::part_adapters::take(::tpy::own_iter(std::move(zs))) << "\n" << ::tpy::check_signals;
-    std::cout << "adapters infer own" << " " << ::tpyapp::part_adapters::count_own<int32_t>(::tpy::copy_iter<int32_t>(xs)) << "\n" << ::tpy::check_signals;
+    std::cout << "adapters infer own" << " " << ::tpyapp::part_adapters::count_own<int32_t>(::tpy::copy_iter(xs)) << "\n" << ::tpy::check_signals;
     std::array<std::tuple<int32_t, int32_t>, 2> ps = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    auto __tmp_4 = ::tpy::copy_iter<std::tuple<int32_t, int32_t>>(ps);
+    auto __tmp_4 = ::tpy::copy_iter(ps);
     std::cout << "adapters infer tuple" << " " << ::tpyapp::part_adapters::count_pairs<int32_t>(__tmp_4) << "\n" << ::tpy::check_signals;
     auto __tmp_5 = ::tpyapp::part_adapters::__genexpr_main_3(xs);
     std::cout << "adapters infer tuple genexpr" << " " << ::tpyapp::part_adapters::count_pairs<int32_t>(__tmp_5) << "\n" << ::tpy::check_signals;
@@ -376,7 +376,7 @@ void main() {
     std::cout << "adapters steps iter" << " " << ::tpyapp::part_adapters::sum_steps(__tmp_8) << "\n" << ::tpy::check_signals;
     auto __tmp_9 = ::tpyapp::part_adapters::__genexpr_main_6(xs);
     std::cout << "adapters stepper genexpr" << " " << ::tpyapp::part_adapters::first<int32_t>(__tmp_9, 0) << "\n" << ::tpy::check_signals;
-    auto __tmp_10 = ::tpy::copy_iter<int32_t>(xs);
+    auto __tmp_10 = ::tpy::copy_iter(xs);
     std::cout << "adapters walk copy_iter" << " " << ::tpyapp::part_adapters::walk(__tmp_10) << "\n" << ::tpy::check_signals;
     auto __tmp_11 = ::tpyapp::part_adapters::__genexpr_main_7(xs);
     std::cout << "adapters ctor genexpr" << " " << Acc(__tmp_11).v << "\n" << ::tpy::check_signals;

@@ -89,7 +89,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpyapp::main::bump("generator copy_iter", ::tpy::copy_iter<std::vector<int32_t>>(View()));
+        View __tmp_1 = View();
+        ::tpyapp::main::bump("generator copy_iter", ::tpy::copy_iter(__tmp_1));
         ::tpyapp::main::bump("generator Own generator", ::tpyapp::main::fresh());
         std::cout << "generator G" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
         __state = S_RESUME_0;

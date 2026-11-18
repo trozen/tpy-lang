@@ -6,7 +6,6 @@ operators, calls, methods, and module infrastructure.
 """
 
 from __future__ import annotations
-from dataclasses import replace as dc_replace
 from enum import Enum
 from collections.abc import Hashable
 from typing import TYPE_CHECKING, Callable, NamedTuple, Sequence
@@ -20,7 +19,8 @@ from ..typesys import (
     PendingBytesType, TupleType, UnknownElementType, PendingContainerType,
     NominalType, PtrType, OwnType, ReadonlyType, RefType, CallableType, is_fn_type, VoidType, NoneType,
     OptionalType, UnionType,
-    unwrap_ref_type, strip_own_type_args,
+    unwrap_ref_type, strip_own_type_args, ask_owning_slot,
+    concrete_owning_slot_fits,
     is_callable_type, is_float_type, is_any_float_type,
     contains_type_param, contains_pending_leaf, type_param_names,
 )
@@ -642,15 +642,11 @@ def _classify_strict_match(
         # `list[Node]` meets the owning slot without its `Own` too (the
         # copy check copies its steps), and the closer of the two answers
         # ranks. The widening cost reads its element types.
-        check_param = param_inner
-        if (isinstance(param_inner, NominalType) and param_inner.type_args
-                and any(isinstance(a, OwnType) for a in param_inner.type_args)):
-            stripped = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_inner.type_args)
-            check_param = dc_replace(param_inner, type_args=stripped)
-        kind = protocol_classifier(check_arg, param_inner)
-        if (kind is not ProtocolConformanceKind.EXPLICIT
-                and check_param is not param_inner):
-            kind = protocol_classifier(check_arg, check_param) or kind
+        kind, _ = ask_owning_slot(
+            param_inner, lambda slot: protocol_classifier(check_arg, slot),
+            _conformance_rank)
+        check_param = (strip_own_type_args(param_inner)
+                       if isinstance(param_inner, NominalType) else param_inner)
         if kind is ProtocolConformanceKind.EXPLICIT:
             return (MatchTier.PROTOCOL_EXPLICIT,
                     _type_args_widening_cost(check_arg, check_param, default_int_type,
@@ -663,12 +659,20 @@ def _classify_strict_match(
     # Copy warnings are emitted later by check_type_compatible.
     if (isinstance(param_inner, NominalType) and not is_protocol_type(param_inner)
             and any(isinstance(a, OwnType) for a in param_inner.inner_types())):
-        stripped_param = strip_own_type_args(param_inner)
-        return (MatchTier.EXACT_CONCRETE, 0) if arg_inner == stripped_param else None
+        return ((MatchTier.EXACT_CONCRETE, 0)
+                if concrete_owning_slot_fits(arg_inner, param_inner) else None)
     distance = _upcast_distance(arg_type, param_type, subclass_checker)
     if distance is not None:
         return (MatchTier.SUBCLASS, distance)
     return None
+
+
+def _conformance_rank(kind: 'ProtocolConformanceKind | bool | None') -> int:
+    """An explicit conformance outranks a structural one, which outranks
+    none."""
+    if kind is ProtocolConformanceKind.EXPLICIT:
+        return 2
+    return 1 if kind else 0
 
 
 def _bool_checker_to_classifier(
@@ -866,8 +870,7 @@ def type_matches_with_coercion(
     # Symmetric with the same block in type_matches_strict.
     if (isinstance(param_inner, NominalType) and not is_protocol_type(param_inner)
             and any(isinstance(a, OwnType) for a in param_inner.inner_types())):
-        stripped_param = strip_own_type_args(param_inner)
-        return arg_inner == stripped_param
+        return concrete_owning_slot_fits(arg_inner, param_inner)
     return False
 
 

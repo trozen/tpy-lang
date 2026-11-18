@@ -672,10 +672,6 @@ class TpyMethodCall(TpyCallLike, NoneChecked):
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     subscript_callee: 'TpyExpr | None' = None  # Indexed field alternative to an explicit generic method call
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
-    # Set by sema on a generic method call with explicit type arguments: per
-    # written argument, the method's own type parameter it binds, None for a
-    # class type parameter or a `_` wildcard.
-    written_type_params: tuple[str | None, ...] | None = None
     # Set by sema alongside is_static_call: the resolved owning record. Codegen
     # needs it when the receiver's spelling names no record itself (`cls`).
     static_call_owner: Optional['RecordInfo'] = None
@@ -1708,6 +1704,9 @@ class TpyForEach(TpyStmt):
     # Set by sema before the body: the leaf paths of each step the iteration
     # hands over (`step_handover_paths`), stamped on the head unpack too.
     step_handover: frozenset[tuple[int, ...]] = frozenset()
+    # Set by sema with `step_handover`: the variable (a head, its holder)
+    # takes the whole step, handed over.
+    binds_whole_step: bool = False
     is_async: bool = False  # Set by parser: `async for` (lowers to __aiter__/await __anext__ inside async def)
     async_aiter_type: 'NominalType | None' = None  # set by sema for async-for: the DEFINING record of __anext__ (an ancestor of the iterator when inherited), used by codegen to name the __anext__ coro struct
     async_anext_fi: 'FunctionInfo | None' = None  # set by sema for async-for: the `__anext__` variant the advance calls, whose frame name (`frame_cpp_name`) the sub-coro struct is spelled from

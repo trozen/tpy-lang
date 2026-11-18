@@ -14,10 +14,11 @@ from ..compilation_context import require_current_compiler
 
 from ..typesys import (
     contains_reference_type, lands_in_indirection, make_readonly,
+    substitute_type_params_structural,
     substitute_cpp_ret, bound_as_spelled,
     declares_no_writes, param_may_be_written, is_dyn_protocol,
     default_emittable_at,
-    TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, PendingNumType, make_copy_iter,
+    TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, PendingNumType,
     is_polymorphic_class_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
     IntLiteralType, resolve_int_literals,
     ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
@@ -1833,8 +1834,6 @@ class CallAnalyzer:
                 # Special handling for functions with custom sema
                 if qname == "tpy.copy":
                     return self._analyze_tpy_copy(expr)
-                if qname == "tpy.copy_iter":
-                    return self._analyze_tpy_copy_iter(expr)
                 if qname == "tpy.own_iter":
                     return self._analyze_tpy_own_iter(expr)
                 if qname == "tpy.try_parse":
@@ -2107,8 +2106,6 @@ class CallAnalyzer:
         qname = overloads[0].qualified_name
         if qname == "tpy.copy":
             return self._analyze_tpy_copy(expr)
-        if qname == "tpy.copy_iter":
-            return self._analyze_tpy_copy_iter(expr)
         if qname == "tpy.own_iter":
             return self._analyze_tpy_own_iter(expr)
         if qname == "tpy.try_parse":
@@ -2226,7 +2223,7 @@ class CallAnalyzer:
         synth.resolved_function_info = ga
         ret_type = ga.return_type
         if type_subst and ret_type is not None:
-            ret_type = self.type_ops.substitute_type_params(ret_type, type_subst)
+            ret_type = self.type_ops.substitute_call_result(ret_type, type_subst)
         if len(expr.args) == 3:
             default_arg = expr.args[2]
             if ret_type is not None:
@@ -2523,8 +2520,8 @@ class CallAnalyzer:
         # A borrow-returning source reads as `Ref[T]`, and the copy of it is
         # an owned `T` -- keeping the marker would describe the result as a
         # borrow, so an inferred slot off it (a list literal element) would
-        # spell an array of references. Same rule copy_iter applies per
-        # element.
+        # spell an array of references. Same rule an `Own[T]` slot applies
+        # to a borrow its T binds to.
         arg_type = unwrap_ref_type(arg_type)
         # copy() yields owned storage: `copy(t)` on `tuple[Own[A], B]` is an
         # owned `tuple[A, B]`. Leaving either marker on an element would keep
@@ -2569,37 +2566,6 @@ class CallAnalyzer:
             qualified_name="tpy.copy",
         )
         return OwnType(result_type)
-
-    def _analyze_tpy_copy_iter(self, expr: TpyCall) -> TpyType:
-        """Analyze a call to tpy.copy_iter() - explicit element copy acknowledgment.
-
-        copy_iter(iterable) wraps an iterable and copies each element during
-        iteration. Returns CopyIter[T] where T is the element type.
-        Suppresses the bulk copy warning on extend(), list(), etc.
-        """
-        self.reject_keywords(expr, "copy_iter")
-        if len(expr.args) != 1:
-            raise self.ctx.error("copy_iter() takes exactly 1 argument", expr)
-        arg_type = self.expr.analyze_expr(expr.args[0])
-        if isinstance(arg_type, OwnType):
-            arg_type = arg_type.wrapped
-        elem_type = builtin_modules.get_iterable_element_type(arg_type, registry=self.ctx.registry)
-        if elem_type is None:
-            raise self.ctx.error(
-                f"copy_iter() argument must be iterable, got {arg_type}", expr)
-        # copy_iter produces owned copies -- strip Ref
-        elem_type = unwrap_ref_type(elem_type)
-        result_type = make_copy_iter(elem_type)
-        expr.resolved_function_info = FunctionInfo(
-            name="copy_iter",
-            params=[ParamInfo("x", arg_type)],
-            return_type=result_type,
-            is_readonly=True,
-            is_builtin_function=True,
-            qualified_name="tpy.copy_iter",
-            _return_borrows_from=frozenset({0}),
-        )
-        return result_type
 
     def _analyze_tpy_own_iter(self, expr: TpyCall) -> TpyType:
         """Analyze a call to tpy.own_iter() - consuming iteration.
@@ -3986,7 +3952,16 @@ class CallAnalyzer:
                 p = ctor.params[i]
                 p_type = unwrap_ref_type(operand_param_type(p))
                 if is_protocol_type(p_type):
-                    if not self.protocols.type_extends_any_protocol(at, p_type.name):
+                    extends = self.protocols.type_extends_any_protocol(
+                        at, p_type.name)
+                    if not extends and is_protocol_type(at):
+                        # A protocol value (`copy_iter(xs)`'s `Iterator`,
+                        # which does not inherit `Iterable`) meets the
+                        # parameter by its members.
+                        extends = self.protocols.type_conforms_to_protocol(
+                            at, self.type_ops.substitute_type_params(
+                                p_type, inferred) if inferred else p_type)
+                    if not extends:
                         rejected = True
                         break
                     # Protocol matches structurally, but if it has type params
@@ -6005,8 +5980,56 @@ class CallAnalyzer:
                 for f in views))
             raise self.ctx.error(
                 "\n".join([head] + [f"  {line}" for line in lines]), loc)
-        hint = self.no_match_hint(views, typed, src)
+        hint = (self.no_match_hint(views, typed, src)
+                or self._handover_no_match_hint(views, typed, src))
         raise self.ctx.error(f"{head}{hint}", loc)
+
+    def _handover_no_match_hint(self, views: list[FunctionInfo],
+                                typed: CallSource, src: CallSource) -> str:
+        """The remedies for the arguments a variant refused because they
+        hand their steps over where its parameter lends them
+        (`step_handover_hint`), one per distinct remedy; "" when none.
+        An overload set is mostly library code, so no remedy tells the
+        caller to redeclare its parameter."""
+        if self.protocols is None:
+            return ""
+        shape = shape_of(typed)
+        hints: list[str] = []
+        for f in views:
+            b = shape.binding(f)
+            if b is None:
+                continue
+            for at in typed.addresses:
+                i = b.param_at(at)
+                t = typed.at(at)
+                if i is None or f.params[i].is_kwargs or t is None:
+                    continue
+                slot = unwrap_readonly(f.params[i].type)
+                arg = (src.at(at) if isinstance(at, str)
+                       or at < len(src.positional) else None)
+                step = builtin_modules.get_iterable_element_type(
+                    t, registry=self.ctx.registry, keep_own=True)
+                # Only a source whose own type hands its steps over is
+                # refused for it -- a parameter's declared `Own` steps (an
+                # `Iterable[Own[Box]]` parameter) included: they are its
+                # contract, so the hint fires for them too.
+                if (not isinstance(step, OwnType)
+                        or not self.protocols.steps_handed_over(arg)):
+                    continue
+                if (isinstance(slot, NominalType) and len(slot.type_args) == 1
+                        and isinstance(slot.type_args[0], TypeParamRef)):
+                    # A generic lending slot asked at the element the
+                    # source hands over, so the hint fires only where that
+                    # hand-over alone refuses the argument (TODO.md "Ask a
+                    # refused overload candidate at its inferred
+                    # substitution for the step-handover hint").
+                    slot = substitute_type_params_structural(
+                        slot, {slot.type_args[0].name: step.wrapped})
+                h = self.protocols.step_handover_hint(
+                    t, slot, True, self.compat.call_type_text, declare=False)
+                if h and h not in hints:
+                    hints.append(h)
+        return f": {'; '.join(hints)}" if hints else ""
 
     @staticmethod
     def shared_param_type(survivors: list[FunctionInfo],
@@ -6493,7 +6516,7 @@ class CallAnalyzer:
                 if self.ctx.slot_step_commits():
                     self.ctx.record_own_copy_instantiation(overload.root,
                                                            type_subst)
-                ret = self.type_ops.substitute_type_params(
+                ret = self.type_ops.substitute_call_result(
                     overload.return_type, subst)
                 if isinstance(overload.return_type, UnionType):
                     orig_count = len(overload.return_type.members)
@@ -7267,7 +7290,7 @@ class CallAnalyzer:
             fresh_own="note_lend")
 
         # Resolve return type
-        resolved_return = self.type_ops.substitute_type_params(
+        resolved_return = self.type_ops.substitute_call_result(
             func.return_type, final_subst)
 
         # Builtin generics (e.g. iter) delegate to concrete C++ that returns
