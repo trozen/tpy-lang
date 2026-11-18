@@ -20,6 +20,14 @@ gets the hedged verdict. A pointer or a view held in the capture refers to
 its object rather than holding it, so it is no evidence at all. Every
 warned statement is then true of the generated C++, which this module never
 changes.
+
+An escaping nested def's parameter captures whose form sema settled
+(`TpyNestedDef.storage_captures`, `slot_captures`) take their verdict from
+that form, not from the type, and it is NONE: a bare open `T` held in its
+storage form copies an unobservable value at a value instantiation and
+aliases the caller's object at a reference one; a parameter passed in a
+by-value slot copies the slot -- a pointer, or the trait's `T | None`
+(`std::optional<T>` of a value).
 """
 
 from __future__ import annotations
@@ -152,13 +160,20 @@ def capture_type(closure: Closure, name: str,
 
 def classify_capture(ctx: 'SemanticContext', name: str,
                      binding: ReadBinding | None, ctype: TpyType | None,
-                     read_type: TpyType | None = None) -> CaptureCopy:
+                     read_type: TpyType | None = None,
+                     closure: Closure | None = None) -> CaptureCopy:
     """The copy verdict of by-value capture `name` (module docstring), in
     the body whose function state `ctx.func` is. `read_type`: the type the
     closure's reads of it have (`ClosureReads.read_types`); a value capture
     narrowed to a member copies that member only. A reference capture keeps
-    the binding's verdict: its narrowed member's form is not settled here."""
+    the binding's verdict: its narrowed member's form is not settled here.
+    `closure`: an escaping nested def's storage and slot captures take
+    their verdict from the capture form sema decided for them."""
     if not isinstance(ctype, TpyType):
+        return CaptureCopy.NONE
+    if isinstance(closure, TpyNestedDef) and (
+            name in closure.storage_captures
+            or name in closure.slot_captures):
         return CaptureCopy.NONE
     typ = unwrap_send_sync(unwrap_ref_type(ctype))
     bare = unwrap_qualifiers(typ)
@@ -428,7 +443,7 @@ def closure_holding(ctx: 'SemanticContext', closure: TpyNestedDef,
         if isinstance(ctype, TpyType) and ctx.is_type_nocopy(ctype):
             continue
         verdict = classify_capture(ctx, name, binding, ctype,
-                                   reads.read_types.get(name))
+                                   reads.read_types.get(name), closure)
         if verdict is not CaptureCopy.NONE:
             return name, verdict
     for name, sibling in sibling_defs.items():
@@ -521,7 +536,7 @@ def warn_closure_captures(ctx: 'SemanticContext', body: list[TpyStmt],
             binding = bindings.get(name)
             verdict = classify_capture(ctx, name, binding,
                                        capture_type(closure, name, binding),
-                                       reads.read_types.get(name))
+                                       reads.read_types.get(name), closure)
             if verdict is not CaptureCopy.NONE:
                 warn_once(ctx, copy_message(closure, name, verdict,
                                             reasons.get(name)), closure)

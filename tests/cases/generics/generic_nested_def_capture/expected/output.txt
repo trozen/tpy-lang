@@ -1,0 +1,49 @@
+u.int32 5
+u.V hellohellohellohellohello
+u.str abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd
+u.BigInt 2000000000000000000000000000000
+u.tuple (1, 'xyxyxyxyxyxyxyxyxyxy')
+u.C C(42)
+s.V abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd
+v.int32 7
+v.str abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd
+v.V worldworldworldworldworld
+p.V 30
+p.C 33
+r.C C(44)
+r.str abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd
+nonesc C(77)
+junk 44
+meth.T C(4)
+meth.U abcdabcdabcdabcdabcd
+two C(9) abcdabcdabcdabcdabcd
+rebound made
+ctor C(2)
+ctor abcdabcdabcdabcdabcd
+bytes b'xyxyxyxyxyxyxyxyxyxy'
+send abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd
+send C(4)
+sync C(5)
+send.C C(6)
+sib C(6)
+sib C(7)
+names (1, 2) (3, 4)
+names.g 42 7
+names.l 42 14
+mut 11
+mut 12
+mut.after 12
+junk 24
+opt.T abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd
+opt.T C(6)
+opt.T None
+opt.C C(7)
+union C(8)
+opt.int 1000000000000000000000000000000
+union.val 3
+opt.own False
+tree 9
+proto 2
+opt.P 2
+opt.PQ 2
+junk 44

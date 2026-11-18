@@ -3069,6 +3069,31 @@ def make_ref(t: 'TpyType') -> 'TpyType':
     return RefType(t)
 
 
+def generic_opt_trait_type(t: 'TpyType | None') -> 'OptionalType | None':
+    """The generic `T | None` slot type (`::tpy::opt_param_t<T>` in C++), or
+    None. Its form is decided per instantiation, so neither the pointer
+    compare nor `has_value()` is spellable in the template -- reads of such a
+    binding go through the runtime's form-neutral helpers."""
+    if not isinstance(t, TpyType):
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OptionalType) and t.uses_generic_param_trait():
+        return t
+    return None
+
+
+def open_type_param(t: 'TpyType | None') -> 'TypeParamRef | None':
+    """The open type parameter `t` names bare, through the Send / Sync,
+    Ref and readonly qualifiers a parameter's declared type carries; None
+    for anything else, `Own[T]` and `T | None` included."""
+    bare = t
+    while isinstance(bare, (RefType, ReadonlyType, _MarkerType)):
+        bare = bare.wrapped
+    if isinstance(bare, TypeParamRef) and bare.kind is TypeParamKind.TYPE:
+        return bare
+    return None
+
+
 def unwrap_ref_type(t: 'TpyType') -> 'TpyType':
     """Strip Ref wrapper if present, recursing into tuples."""
     if isinstance(t, RefType):

@@ -3380,6 +3380,9 @@ class THIRNestedDef(THIRStmt):
     closure_id: THIRClosureIdentity | None = None
     # An unsupported capture invalidates the complete inventory.
     captures: tuple[THIRCapture, ...] | None = None
+    # The body's first lines: the alias binding each storage-captured
+    # parameter's name to the value the capture list holds.
+    capture_prologue: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

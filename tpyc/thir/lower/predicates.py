@@ -58,7 +58,7 @@ from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
 from ...sema.call_lends import expr_lends_storage
 from ...typesys import (drop_own_marker, is_bodyless_binding, make_readonly, peel_binding, peel_slot,
                        pointer_repr_optional, readonly_access, repr_shape)
-from ...typesys import element_access, element_access_getitem
+from ...typesys import element_access, element_access_getitem, generic_opt_trait_type
 from ...typesys import NONE, pending_view_of, protocol_param_alternatives, result_follows_receiver_root
 from ...typesys import (
     RecordInfo, body_function_info, body_method_info,
@@ -4174,19 +4174,6 @@ def _optional_ptr_borrow_name(e: TpyExpr, declared: dict[str, TpyType],
     if not (isinstance(e, TpyName) and e.name in declared):
         return None
     return _optional_ptr_borrow(declared[e.name], analyzer)
-
-def generic_opt_trait_type(t: 'TpyType | None') -> 'OptionalType | None':
-    """The generic `T | None` slot type (`::tpy::opt_param_t<T>` in C++), or
-    None. Its form is decided per instantiation, so neither the pointer
-    compare nor `has_value()` is spellable in the template -- reads of such a
-    binding go through the runtime's form-neutral helpers."""
-    if not isinstance(t, TpyType):
-        return None
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, OptionalType) and t.uses_generic_param_trait():
-        return t
-    return None
-
 
 def generic_opt_trait_name(e: TpyExpr, declared: dict[str, TpyType]) -> bool:
     """`e` is a bare name DECLARED as a generic `T | None` slot."""

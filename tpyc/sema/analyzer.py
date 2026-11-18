@@ -18,7 +18,8 @@ from ..typesys import (
     FunctionInfo, ParamInfo, MethodSignature, is_any_str_type, BIGINT, FLOAT,
     body_function_info, body_method_info, analyzes_body,
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType,
-    ReadonlyType, param_has_mutable_borrow_surface,
+    ReadonlyType, generic_opt_trait_type, open_type_param,
+    param_has_mutable_borrow_surface,
     TypeAliasInfo,
     is_void_like_type,
     span_as_const, varargs_as_const, varargs_is_readonly,
@@ -29,7 +30,7 @@ from ..typesys import (
     PendingNumType,
 )
 from ..coercions import CoercionContext
-from ..type_def_registry import is_span, is_varargs, protocol_mro
+from ..type_def_registry import ParamPassing, is_span, is_varargs, protocol_mro
 from ..identity_map import IdentityMap, IdentitySet
 from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
@@ -2262,7 +2263,7 @@ class SemanticAnalyzer:
                 cap_type = self.ctx.func.current_scope.bound_type(cap_name) if self.ctx.func.current_scope else None
                 if cap_type is None:
                     continue
-                raw_type = unwrap_readonly(cap_type)
+                raw_type = unwrap_readonly(unwrap_send_sync(cap_type))
                 is_own_param = isinstance(raw_type, OwnType)
                 if isinstance(raw_type, OwnType):
                     raw_type = raw_type.wrapped
@@ -2285,6 +2286,23 @@ class SemanticAnalyzer:
                                               names_used_after,
                                               copy_reasons, raw_type):
                             self.ctx.mark_own_param_consumed(cap_name)
+                    elif open_type_param(cap_type) is not None:
+                        # The parameter form may be a value or a view the
+                        # call ends, so the closure holds the storage form:
+                        # the hand-written twin's `[x]` at a value type,
+                        # its `[&x]` at a reference type.
+                        node.storage_captures.add(cap_name)
+                    elif not is_own_param and (
+                            generic_opt_trait_type(cap_type) is not None
+                            or cap_type.param_passing()
+                            is ParamPassing.POINTER):
+                        # The signature passes it by value in a slot the call
+                        # ends (a pointer, a pointer variant, the trait's
+                        # `std::optional<T>` / `T*`): the closure copies the
+                        # slot, which refers to what the argument referred to
+                        # -- a temporary included
+                        # (BUGS.md#escaping-capture-pointer-slot-temporary).
+                        node.slot_captures.add(cap_name)
                     elif not raw_type.is_value_type():
                         # Regular const-ref param: caller's object outlives closure
                         node.ref_captures.add(cap_name)

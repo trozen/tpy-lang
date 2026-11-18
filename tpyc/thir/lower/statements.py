@@ -168,8 +168,8 @@ from ...prescan import (
     match_is_none,
     scope_bound_names,
 )
-from ...typesys import (NONE, contains_type_param, protocol_param_alternatives,
-                        type_alternatives)
+from ...typesys import (NONE, contains_type_param, open_type_param,
+                        protocol_param_alternatives, type_alternatives)
 from ...typesys import (is_polymorphic_subclass_fact,
                         polymorphic_source_inner,
                         polymorphic_source_is_pointer,
@@ -4983,15 +4983,33 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     # checked for copyability the way the lambda entry builder checks its own
     # (BUGS.md#nesteddef-copy-capture-uncheckable): a captured record with
     # `__del__` is spelled bare and g++ rejects the deleted copy.
+    capture_prologue: list[str] = []
     if stmt.captured_names:
         if stmt.escapes:
             parts = []
+            # The holder is in scope in the closure body too, beside the
+            # nested def's own parameters and locals.
+            cap_taken = set(lc.alias_taken()) | scope_bound_names(
+                func.body, (p for p, _ in func.params))
             for n in stmt.captured_names:
                 if n == "self":
                     parts.append(self_capture)
                     continue
                 cpp_n = escape_cpp_name(n)
-                if n in stmt.ref_captures:
+                if n in stmt.storage_captures:
+                    # A `capture_slot`, not a bare init-capture: `auto`
+                    # deduction would copy a reference-type object, while
+                    # the slot's member keeps the reference arm.
+                    t = lc.render_resolve(
+                        open_type_param(scope.declared[n]))
+                    held = _fresh_narrow_local(f"__cap_{cpp_n}",
+                                               cap_taken)
+                    cap_taken.add(held)
+                    parts.append(
+                        f"{held} = ::tpy::capture_slot<{t.to_cpp()},"
+                        f" decltype({cpp_n})>({cpp_n})")
+                    capture_prologue.append(f"auto& {cpp_n} = {held}.v;")
+                elif n in stmt.ref_captures:
                     parts.append(f"&{cpp_n}")
                 elif n in stmt.move_captures:
                     parts.append(f"{cpp_n} = std::move({cpp_n})")
@@ -5050,7 +5068,8 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     _witness("stmt.nested_def")
     return THIRNestedDef(name=escape_cpp_name(func.name), capture_cpp=capture,
                          params_cpp=tuple(params_cpp), ret_cpp=ret_cpp,
-                         body=body, loc=loc, closure_id=closure_id, captures=captures)
+                         body=body, loc=loc, closure_id=closure_id, captures=captures,
+                         capture_prologue=tuple(capture_prologue))
 
 
 # The statements whose emitter declares pending named slots (a select's

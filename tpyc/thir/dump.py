@@ -731,6 +731,7 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
         ret = f" -> {stmt.ret_cpp}" if stmt.ret_cpp is not None else ""
         lines = [f"{pad}nested_def[{stmt.capture_cpp}] "
                  f"{stmt.name}({params}){ret}:"]
+        lines.extend(f"{pad}  {line}" for line in stmt.capture_prologue)
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
         return lines

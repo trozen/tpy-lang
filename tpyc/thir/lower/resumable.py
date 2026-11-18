@@ -77,7 +77,7 @@ from ...parse.nodes import (
     TpyTupleUnpack,
     TpyVarDecl,
 )
-from ...typesys import pointer_variant_union
+from ...typesys import generic_opt_trait_type, pointer_variant_union
 from ...typesys import (
     AnyType, unwrap_value_own,
     CallableType,
@@ -209,7 +209,6 @@ from .predicates import (
     _value_tuple,
     _value_tuple_return,
     _generic_value_tuple_return,
-    generic_opt_trait_type,
     unit_opt_instantiation,
 )
 from .statements import (

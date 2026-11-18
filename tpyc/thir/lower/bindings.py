@@ -75,10 +75,10 @@ from ...typesys import (ConcreteGenType, FloatLiteralType, IntLiteralType,
                         NominalType, OptionalType, OwnType, PendingListType,
                         peel_binding, peel_slot,
                         PendingViewType, ReadonlyType, TpyType, TupleType,
-                        RecursiveAliasInstanceType, TypeParamRef, TypeParamKind, UnionType,
+                        RecursiveAliasInstanceType, TypeParamRef, UnionType,
                         collapse_tuple_own_elements,
                         contains_pending_leaf, is_dyn_protocol,
-                        is_own_pointer_repr_optional,
+                        is_own_pointer_repr_optional, open_type_param,
                         pointer_repr_optional, resolve_int_literals,
                         unwrap_optional_own, unwrap_own, unwrap_readonly,
                         unwrap_ref_type, unwrap_send_sync, ValueForm,
@@ -488,12 +488,8 @@ def project_held(rec: BindingRepr | None, rtype: TpyType | None,
 
 def _open_t_param_form(declared: TpyType | None, read: TpyType | None) -> bool:
     """A parameter declared a bare open `T` (not `Own[T]`), read as it."""
-    def bare(t: TpyType | None) -> TpyType | None:
-        return (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-                if t is not None else None)
-    d, r = bare(declared), bare(read)
-    return (isinstance(d, TypeParamRef) and d.kind is TypeParamKind.TYPE
-            and isinstance(r, TypeParamRef))
+    return (open_type_param(declared) is not None
+            and open_type_param(read) is not None)
 
 
 def form_of(held: Held):

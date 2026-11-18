@@ -2411,6 +2411,8 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
     state.try_except_label = None
     state.try_except_err_opt = None
     state.in_except_tier = None
+    for line in stmt.capture_prologue:
+        out.write(f"{INDENT * (indent_level + 1)}{line}\n")
     try:
         # No trailing-comment emission for a lambda body, so a comment after
         # its last statement stays OUTSIDE the closing brace.

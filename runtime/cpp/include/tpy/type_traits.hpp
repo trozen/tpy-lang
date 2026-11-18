@@ -286,6 +286,20 @@ template<typename T> using val_or_ref_t       = typename detail::val_or_ref_impl
 template<typename T> using val_or_cref_t      = typename detail::val_or_cref_impl<T>::type;
 template<typename T> using param_val_or_ref_t = typename detail::param_val_or_ref_impl<T>::type;
 
+// What a closure holds of a `T` parameter declared `P`: a value of its own (the
+// parameter may be a view or a reference the call ends), or the caller's object
+// through the parameter's own reference, so its const-ness stays the signature's.
+// A struct because an init-capture deduces a value; this keeps the reference arm
+// with one spelling. The forwarding ctor, not brace-init: `string_view` converts
+// to `std::string` only explicitly.
+template<typename T, typename P>
+struct capture_slot {
+    std::conditional_t<is_value_type<T>::value, val_or_ref_t<T>, P> v;
+    template<typename U>
+        requires (!std::same_as<std::remove_cvref_t<U>, capture_slot>)
+    explicit capture_slot(U&& u) : v(std::forward<U>(u)) {}
+};
+
 // Tuple-element borrow form for a generic T -- the pointer sibling of
 // val_or_ref_t. A reference can't be a std::tuple member and the concrete
 // tuple borrow form is std::tuple<..., T*>, so generic tuple slots use a bare

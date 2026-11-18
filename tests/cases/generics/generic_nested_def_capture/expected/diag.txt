@@ -1,0 +1,5 @@
+part_method.py:12: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_method.py:34: warning: Escaping closure captures local 'x' by value, but 'x' is reassigned after the closure is created; the closure keeps the value from capture time (CPython would observe the later value). Capture a fresh local that is not reassigned (e.g. `snap = x`), or use copy() to make the snapshot explicit.
+part_slots.py:43: warning: nested function 'g' copies 'x' when it is created
+part_slots.py:50: warning: nested function 'g' copies 'x' when it is created
+part_slots.py:58: warning: nested function 'g' copies the object 'x' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)

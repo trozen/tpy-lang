@@ -1939,6 +1939,13 @@ class TpyNestedDef(TpyStmt):
     ref_captures: set[str] = field(default_factory=set)
     # Non-value locals to move into the closure (last use, no copy needed)
     move_captures: set[str] = field(default_factory=set)
+    # Escaping-closure captures of a type-parameter parameter, held in the
+    # parameter's storage form (`capture_slot`) rather than its passing form
+    storage_captures: set[str] = field(default_factory=set)
+    # Escaping-closure captures of a parameter passed in a by-value borrow
+    # slot (a pointer-form Optional, a pointer-variant union, the generic
+    # `T | None` trait slot): the closure copies the slot
+    slot_captures: set[str] = field(default_factory=set)
     # Set by sema: capture-list FrameType, the def's own frame fact
     frame_type: 'TpyType | None' = None
 

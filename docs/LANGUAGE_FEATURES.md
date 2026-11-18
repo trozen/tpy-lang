@@ -10351,8 +10351,23 @@ Send/Sync rules for built-in types:
   C++ lambdas with auto-inferred captures. Non-escaping closures capture by reference;
   escaping closures (returned as `Callable`, passed to `Callable` params, stored in fields
   or containers) use per-capture mode: non-value parameters capture by reference (caller's
-  object outlives the closure, Python-like semantics), `Own[T]` parameters and locals the closure is the last use of
-  are moved, the remaining ones are copied (with a warning suggesting `copy()` or a
+  object outlives the closure, Python-like semantics), a parameter typed by a bare type
+  parameter `T` (any bound, `readonly[T]` and `Send[T]` / `Sync[T]` included) holds its
+  storage form -- its own value where `T` is a value type (a temporary argument or a `str`
+  view does not dangle), the caller's object where it is a reference type. It is silent:
+  at a value type the copy is unobservable, at a reference type the capture aliases as a
+  Python closure does. A lambda itself still keeps `[x]`
+  (`BUGS.md#generic-lambda-t-param-capture`). A parameter the signature passes by value in
+  a slot -- a pointer-form Optional or a pointer-variant union (`C | None`, `A | B`, a
+  nullable protocol `P | None`; `T | C` too, though that shape is barely usable today,
+  `BUGS.md#open-t-union-param-unusable`) or a `T | None` -- is captured by copying the
+  slot, silently: a pointer refers to what the argument referred to, a temporary included
+  (`BUGS.md#escaping-capture-pointer-slot-temporary`), and the trait's `std::optional<T>`
+  at a value `T` copies an unobservable value. A value Optional or union (`int | None`,
+  `int32 | str`) is copied and warned like any other value
+  (`BUGS.md#immutable-value-capture-cost-warning`).
+  `Own[T]` parameters and locals the closure is the last use of are moved, the remaining
+  ones are copied (with a warning suggesting `copy()` or a
   class) -- an `Own[T]` parameter takes exactly the local's rule, a `@nocopy` one read again
   after the closure included, whose copy C++ refuses
   (`BUGS.md#escaping-closure-nocopy-capture-no-diagnostic`). "Last use" is decided for a
