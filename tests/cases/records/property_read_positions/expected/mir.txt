@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::comprehension@96:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::comprehension@96:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::closure@102:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::context_manager@110:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::manager_is_getter@119:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

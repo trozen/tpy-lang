@@ -126,5 +126,5 @@ main::Noisy.__init__@30:4: covered (storage: no_proof_required), summary: known
 main::Cur.__init__@42:4: covered (storage: no_proof_required), summary: known
 main::Acc.__init__@61:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::Bag.__init__@78:4: uncovered (generic constructor)
-main::Ledger.__init__@93:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Ledger.__init__@93:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::Shelf.Box.__init__@126:8: covered (storage: no_proof_required), summary: known

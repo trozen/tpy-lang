@@ -41,7 +41,7 @@ main::Cell.bump@24:4: covered (storage: no_proof_required), summary: known
 main::Cell.val@29:4: covered (storage: no_proof_required), summary: known
 main::Bag.total@248:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::Bag.bump_all@254:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::Bag.comp_total@260:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Bag.comp_total@260:4: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::Cell.__init__@21:4: covered (storage: no_proof_required), summary: known
 main::Bag2.__init__@36:4: covered (storage: no_proof_required), summary: known
 main::Bag.__init__@245:4: covered (storage: no_proof_required), summary: known

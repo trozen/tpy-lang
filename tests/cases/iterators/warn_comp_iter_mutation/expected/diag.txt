@@ -1,23 +1,76 @@
-main.py:49: warning: Mutation of 'self.items' while iterating over it ('pop' invalidates the iterator)
-main.py:54: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
-main.py:59: warning: Mutation of 'xs' while iterating over it ('pop' invalidates the iterator)
-main.py:64: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
-main.py:69: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
-main.py:74: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
-main.py:79: warning: Passing borrowed container 's' to non-readonly parameter 's' (function may invalidate references)
-main.py:84: warning: Mutation of 'd' while iterating over it ('setdefault' invalidates the iterator)
-main.py:89: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
-main.py:94: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
-main.py:99: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
-main.py:104: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
-main.py:110: warning: Mutation of 'xs' while iterating over it ('pop' invalidates the iterator)
-main.py:120: warning: Mutation of 'xs' while iterating over it ('append' invalidates the iterator)
-main.py:129: warning: Mutation of 'xss[...]' while iterating over it ('pop' invalidates the iterator)
-main.py:145: warning: Mutation of 'xss[...]' may hit the element being iterated ('pop' may invalidate the iterator)
-main.py:155: warning: Mutation of 'xss[...]' while iterating over it ('pop' invalidates the iterator)
-main.py:155: warning: this call may move the element the iteration over 'xss[0]' still walks, and the loop continues on line 151; iterate over a copy ('copy(xss[0])'), or make the changes after the loop
-main.py:166: warning: this call may move the element the iteration over 'xss[0]' still walks, and the loop continues on line 162; iterate over a copy ('copy(xss[0])'), or make the changes after the loop
-main.py:190: warning: Iterator borrows from temporary receiver object; the temporary is destroyed before iteration begins
-main.py:210: warning: Passing borrowed container 'c' to non-readonly parameter 'rs' (function may invalidate references)
-main.py:272: warning: Passing borrowed container 'gl' to non-readonly parameter 'ys' (function may invalidate references)
-main.py:45: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_bound.py:12: warning: Mutation of 'xss[...]' while iterating over it ('pop' invalidates the iterator)
+part_bound.py:12: warning: this call may move the element the iteration over 'xss[0]' still walks, and the loop continues on line 9; iterate over a copy ('copy(xss[0])'), or make the changes after the loop
+part_bound.py:21: warning: Mutation of 'xss[...]' may hit the element being iterated ('pop' may invalidate the iterator)
+part_bound.py:21: warning: this call may move the element the iteration over 'xss[0]' still walks, and the loop continues on line 19; iterate over a copy ('copy(xss[0])'), or make the changes after the loop
+part_bound.py:31: warning: Mutation of 'xss[...]' may hit the element being iterated ('pop' may invalidate the iterator)
+part_bound.py:31: warning: this call may move the element the iteration over 'xss[0]' still walks, and the loop continues on line 28; iterate over a copy ('copy(xss[0])'), or make the changes after the loop
+part_bound.py:62: warning: Passing borrowed container 'c' to non-readonly parameter 'rs' (function may invalidate references)
+part_bound.py:62: warning: this call may move the element the iteration over 'c' still walks, and the loop continues on line 62; iterate over a copy ('copy(c)'), or make the changes after the loop
+part_bound.py:72: warning: Passing borrowed container 'c' to non-readonly parameter 'rs' (function may invalidate references)
+part_bound.py:72: warning: this call may move the element the iteration over 'c' still walks, and the loop continues on line 71; iterate over a copy ('copy(c)'), or make the changes after the loop
+part_enclosing.py:13: warning: Mutation of 'xs' while iterating over it ('append' invalidates the iterator)
+part_enclosing.py:13: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 9; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_enclosing.py:22: warning: Mutation of 'xss[...]' while iterating over it ('pop' invalidates the iterator)
+part_enclosing.py:38: warning: Mutation of 'xss[...]' may hit the element being iterated ('pop' may invalidate the iterator)
+part_enclosing.py:48: warning: Mutation of 'xss[...]' while iterating over it ('pop' invalidates the iterator)
+part_enclosing.py:48: warning: this call may move the element the iteration over 'xss[0]' still walks, and the loop continues on line 44; iterate over a copy ('copy(xss[0])'), or make the changes after the loop
+part_enclosing.py:59: warning: this call may move the element the iteration over 'xss[0]' still walks, and the loop continues on line 55; iterate over a copy ('copy(xss[0])'), or make the changes after the loop
+part_enclosing.py:66: warning: Passing borrowed container 'xss' to non-readonly parameter 'rs' (function may invalidate references)
+part_enclosing.py:66: warning: this call may move the elements of 'xss', and the iteration over 'xss' may still walk them and continues on line 66; iterate over a copy ('copy(xss)'), or make the changes after the loop
+part_enclosing.py:66: warning: this call may move the elements of 'xss', but the iteration over 'v' still walks them and continues on line 66; iterate over a copy ('copy(v)'), or make the changes after the loop
+part_enclosing.py:73: warning: Passing borrowed container 'xss' to non-readonly parameter 'rs' (function may invalidate references)
+part_enclosing.py:73: warning: this call may move the elements of 'xss', and the iteration over 'xss' may still walk them and continues on line 71; iterate over a copy ('copy(xss)'), or make the changes after the loop
+part_enclosing.py:73: warning: this call may move the elements of 'xss', but the iteration over 'v' still walks them and continues on line 72; iterate over a copy ('copy(v)'), or make the changes after the loop
+part_operands.py:26: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_operands.py:42: warning: this call may move the elements of 'pick(xs)', but the iteration over 'xs' still walks them and continues on line 42; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_operands.py:48: warning: this call may move the elements of 'pick(xs)', but the iteration over 'xs' still walks them and continues on line 47; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_operands.py:55: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_operands.py:55: warning: this call may move the elements of 'xs', and the iteration over 'xs' may still walk them and continues on line 55; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_operands.py:60: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_operands.py:60: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 60; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_operands.py:66: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_operands.py:71: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_operands.py:84: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_operands.py:84: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 84; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_operands.py:93: warning: this call may move the element the iteration over 'xss[0]' still walks, and the loop continues on line 90; iterate over a copy ('copy(xss[0])'), or make the changes after the loop
+part_operands.py:116: warning: this call may move the elements of 'pick(xs)', but the iteration over 'xs' still walks them and continues on line 112; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_operands.py:125: warning: this call may move the elements of 'pick(xs)', but the iteration over 'xs' still walks them and continues on line 122; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_positions.py:16: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_positions.py:16: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 16; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_positions.py:20: warning: Mutation of 'self.items' while iterating over it ('pop' invalidates the iterator)
+part_positions.py:20: warning: this call may move the elements of 'self.items', but the iteration over 'self.items' still walks them and continues on line 20; iterate over a copy ('copy(self.items)'), or make the changes after the loop
+part_positions.py:25: warning: Mutation of 'xs' while iterating over it ('pop' invalidates the iterator)
+part_positions.py:25: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 25; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_positions.py:30: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_positions.py:30: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 30; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_positions.py:35: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_positions.py:35: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 35; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_positions.py:40: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_positions.py:45: warning: this call may move the elements of 'pick(xs)', but the iteration over 'xs' still walks them and continues on line 45; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_positions.py:51: warning: this call may move the elements of 'pick(xs)', but the iteration over 'xs' still walks them and continues on line 50; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_positions.py:58: warning: this call may move the elements of 'pick_strs(ks)', but the iteration over 'ks' still walks them and continues on line 58; iterate over a copy ('copy(ks)'), or make the changes after the loop
+part_positions.py:64: warning: this call may move the elements of 'pick_strs(ks)', but the iteration over 'ks' still walks them and continues on line 63; iterate over a copy ('copy(ks)'), or make the changes after the loop
+part_positions.py:71: warning: Passing borrowed container 's' to non-readonly parameter 's' (function may invalidate references)
+part_positions.py:71: warning: this call may move the elements of 's', but the iteration over 's' still walks them and continues on line 71; iterate over a copy ('copy(s)'), or make the changes after the loop
+part_positions.py:76: warning: Mutation of 'd' while iterating over it ('setdefault' invalidates the iterator)
+part_positions.py:76: warning: this call may move the elements of 'd', but the iteration over 'd.values()' still walks them and continues on line 76; iterate over a copy ('list(d.values())'), or make the changes after the loop
+part_positions.py:81: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_positions.py:81: warning: this call may move the elements of 'xs', but the iteration over 'pick(xs)' still walks them and continues on line 81; iterate over a copy ('copy(pick(xs))'), or make the changes after the loop
+part_positions.py:86: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_positions.py:91: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_positions.py:91: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 91; iterate over a copy ('copy(xs)'), or make the changes after the loop
+part_positions.py:96: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_positions.py:102: warning: Mutation of 'xs' while iterating over it ('pop' invalidates the iterator)
+part_scope.py:13: warning: Iterator borrows from temporary receiver object; the temporary is destroyed before iteration begins
+part_scope.py:35: warning: Passing borrowed container 'r' to non-readonly parameter 'ys' (function may invalidate references)
+part_scope.py:44: warning: Passing borrowed container 'c' to non-readonly parameter 'rs' (function may invalidate references)
+part_scope.py:79: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_scope.py:85: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_unlowered.py:19: warning: Passing borrowed container 'ps' to non-readonly parameter 'ps' (function may invalidate references)
+part_unlowered.py:24: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_unlowered.py:42: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_unlowered.py:50: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_unlowered.py:57: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+main.py:16: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+main.py:16: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 16; iterate over a copy ('copy(xs)'), or make the changes after the loop
+main.py:32: warning: Passing borrowed container 'gl' to non-readonly parameter 'ys' (function may invalidate references)

@@ -53,7 +53,7 @@ main::Holder.method@146:4: uncovered (unsupported statement), summary: opaque (u
 main::LentCtx.__enter__@364:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::LentCtx.__exit__@367:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::B.v_own@380:4: covered (storage: no_proof_required), summary: known
-main::B.xs_own@384:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::B.xs_own@384:4: covered (storage: no_proof_required), summary: known
 main::Hp.get@561:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Hp.opt@564:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::Kinds.d_own@622:4: covered (storage: no_proof_required), summary: known

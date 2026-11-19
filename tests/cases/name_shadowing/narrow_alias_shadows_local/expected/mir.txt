@@ -12,7 +12,7 @@ main::multi@137:0: covered (storage: no_proof_required), summary: opaque (summar
 main::asserted@146:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::complement@153:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::inner_decl@161:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::comprehension@169:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::comprehension@169:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
 main::nested@176:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::poly@185:0: uncovered (unsupported parameter type)
 main::gen@194:0: uncovered (unsupported pointer capture)

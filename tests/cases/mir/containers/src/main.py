@@ -427,8 +427,8 @@ def holds(vs: list[StrView]) -> int32:  # tpyc: mir(uncovered /^container holds 
     return len(vs)
 
 
-# comprehension: a frame, kept refused
-def comp(xs: list[int32]) -> Own[list[int32]]:  # tpyc: mir(uncovered /^unsupported record initializer$/)
+# comprehension: built in place, then handed out
+def comp(xs: list[int32]) -> Own[list[int32]]:  # tpyc: mir(covered)
     return [x + 1 for x in xs]
 
 

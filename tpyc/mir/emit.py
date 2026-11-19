@@ -329,12 +329,25 @@ class Fragment:
         """A fresh list of the temporaries a full expression (or a placed
         temporary's initializer) registers while it is built; the enclosing
         list is restored after."""
+        own: list[object] = []
+        with self._active_temporaries(own):
+            yield own
+
+    @contextmanager
+    def statement_block(self) -> Iterator[None]:
+        """Statements inside an expression (a comprehension's loop): no full
+        expression is open, so each of their expressions is a full
+        expression of its own; the enclosing list is restored after."""
+        with self._active_temporaries(None):
+            yield
+
+    @contextmanager
+    def _active_temporaries(self, own: list[object] | None) -> Iterator[None]:
         root = self.root
         outer = root.active_temporaries
-        own: list[object] = []
         root.active_temporaries = own
         try:
-            yield own
+            yield
         finally:
             root.active_temporaries = outer
 

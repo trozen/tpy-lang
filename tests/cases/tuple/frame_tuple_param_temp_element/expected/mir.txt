@@ -8,7 +8,7 @@ main::total@63:0: covered (storage: no_proof_required), summary: known
 main::free_call@68:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::factory_method@77:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::optional_element@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::comprehension_iterable@94:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::comprehension_iterable@94:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::held_handle@101:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::outer@112:0: uncovered (argument held across a suspension)
 main::generator_body@121:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

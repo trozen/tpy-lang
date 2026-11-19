@@ -33,7 +33,7 @@ main::or_rhs@196:0: uncovered (named argument needs complete temporary plan), su
 main::ternary_then@200:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::ternary_else@204:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::chained@208:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::relocated_decl@213:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::relocated_decl@213:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::side_effect@223:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::main@229:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Bx.gen@98:4: uncovered (loop across a suspension)

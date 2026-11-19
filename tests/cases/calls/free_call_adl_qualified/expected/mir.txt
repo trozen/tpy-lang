@@ -7,7 +7,7 @@ main::count@38:0: covered (storage: no_proof_required), summary: known
 main::as_span@48:0: covered (storage: no_proof_required), summary: known
 main::push@54:0: covered (storage: no_proof_required), summary: known
 main::gen@58:0: uncovered (loop across a suspension)
-main::comp@64:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::comp@64:0: covered (storage: no_proof_required), summary: known
 main::closure@73:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::recurse@80:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
 main::pick@87:0: uncovered (generic body)

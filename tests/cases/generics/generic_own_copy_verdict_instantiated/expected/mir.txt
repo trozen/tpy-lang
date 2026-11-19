@@ -25,7 +25,7 @@ main::elems_ctor_twin@279:0: uncovered (unsupported native container element), s
 main::elems_list@285:0: uncovered (generic body)
 main::elems_iadd@290:0: uncovered (generic body)
 main::elems_update@295:0: uncovered (generic body)
-main::comp_slot_twin@305:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::comp_slot_twin@305:0: covered (storage: no_proof_required), summary: known
 main::subscript_slot@311:0: uncovered (generic body)
 main::subscript_slot_twin@316:0: covered (storage: no_proof_required), summary: known
 main::value_only@324:0: uncovered (generic body)

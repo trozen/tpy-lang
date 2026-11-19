@@ -1,38 +1,102 @@
+fixtures::__tpy_init: uncovered (module initialization)
+fixtures::grow@5:0: covered (storage: no_proof_required), summary: known
+fixtures::grow_len@10:0: covered (storage: no_proof_required), summary: known
+fixtures::grow_rows@15:0: covered (storage: no_proof_required), summary: known
+fixtures::grow_set@20:0: covered (storage: no_proof_required), summary: known
+fixtures::pick@25:0: covered (storage: no_proof_required), summary: known
+fixtures::grow_strs@29:0: covered (storage: no_proof_required), summary: known
+fixtures::pick_strs@34:0: covered (storage: no_proof_required), summary: known
+fixtures::mk_box@59:0: covered (storage: no_proof_required), summary: known
+fixtures::Cell.bump@44:4: covered (storage: no_proof_required), summary: known
+fixtures::Box.items_m@55:4: covered (storage: no_proof_required), summary: known
+fixtures::Cell.__init__@41:4: covered (storage: no_proof_required), summary: known
+fixtures::Box.__init__@52:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
-main::grow@8:0: covered (storage: no_proof_required), summary: known
-main::grow_rows@13:0: covered (storage: no_proof_required), summary: known
-main::grow_set@18:0: covered (storage: no_proof_required), summary: known
-main::pick@23:0: covered (storage: no_proof_required), summary: known
-main::free_fn@51:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::direct@57:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::element@62:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::set_comp@67:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::dict_comp@72:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::set_source@77:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::dict_view@82:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::call_source@87:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::nested_comp@92:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::gen_body@97:0: uncovered (unsupported expression type)
-main::async_body@102:0: uncovered (async body)
-main::nested_def@107:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::in_for_body@114:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::enclosing_element_loan@124:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::enclosing_sibling@133:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::enclosing_unknown_index@141:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::for_nest_element@149:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::for_nest_sibling@160:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::mk_box@181:0: covered (storage: no_proof_required), summary: known
-main::temp_receiver@185:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::self_named_source@194:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::other_named_source@205:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::other_container@214:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::after_comp@219:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::range_source@227:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::read_only@232:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::main@237:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
-main::Cell.bump@33:4: covered (storage: no_proof_required), summary: known
-main::Bag.run@47:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::Box.items_m@177:4: covered (storage: no_proof_required), summary: known
-main::Cell.__init__@30:4: covered (storage: no_proof_required), summary: known
-main::Bag.__init__@42:4: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-main::Box.__init__@174:4: covered (storage: no_proof_required), summary: known
+main::free_fn@13:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::main@19:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+part_bound::__tpy_init: uncovered (module initialization)
+part_bound::element_loan_bound@7:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_bound::unknown_index_bound@17:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_bound::unknown_index_for@26:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_bound::self_named_bound@36:0: covered (storage: no_proof_required), summary: known
+part_bound::self_named_for@47:0: covered (storage: no_proof_required), summary: known
+part_bound::other_named_bound@57:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_bound::other_named_for@67:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_bound::main@77:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+part_enclosing::__tpy_init: uncovered (module initialization)
+part_enclosing::in_for_body@7:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_enclosing::enclosing_element_loan@17:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_enclosing::enclosing_sibling@26:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_enclosing::enclosing_unknown_index@34:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_enclosing::for_nest_element@42:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_enclosing::for_nest_sibling@53:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_enclosing::rows@64:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_enclosing::rows_for@69:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_enclosing::main@78:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+part_operands::__tpy_init: uncovered (module initialization)
+part_operands::grow_and_len@7:0: covered (storage: no_proof_required), summary: known
+part_operands::pair@12:0: covered (storage: no_proof_required), summary: known
+part_operands::take@16:0: covered (storage: no_proof_required), summary: known
+part_operands::count@20:0: covered (storage: no_proof_required), summary: known
+part_operands::order_comp@24:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_operands::order_read@29:0: covered (storage: no_proof_required), summary: known
+part_operands::order_call@34:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_operands::via_pick@40:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_operands::via_pick_for@45:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_operands::nested_places@53:0: covered (storage: no_proof_required), conflicts: replacement, alias_obligation, summary: known
+part_operands::own_argument@58:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_operands::borrowed_argument@64:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+part_operands::ternary_arm@69:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+part_operands::range_shadow@75:0: covered (storage: no_proof_required), summary: known
+part_operands::record_element@82:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_operands::bound_sibling@88:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_operands::comp_len@98:0: covered (storage: no_proof_required), summary: known
+part_operands::append_len@103:0: covered (storage: no_proof_required), summary: known
+part_operands::calls_comp@110:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_operands::calls_append@120:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_operands::main@129:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_positions::__tpy_init: uncovered (module initialization)
+part_positions::direct@23:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_positions::element@28:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_positions::set_comp@33:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_positions::dict_comp@38:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_positions::dict_int_key@43:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_positions::dict_int_key_for@48:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_positions::dict_str_key@56:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_positions::dict_str_key_for@61:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_positions::set_source@69:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_positions::dict_view@74:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_positions::call_source@79:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_positions::nested_comp@84:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
+part_positions::gen_body@89:0: covered (storage: no_facts: storage facts have not been published), conflicts: replacement
+part_positions::async_body@94:0: uncovered (async body)
+part_positions::nested_def@99:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_positions::main@106:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
+part_positions::Bag.run@18:4: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_positions::Bag.__init__@13:4: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_scope::__tpy_init: uncovered (module initialization)
+part_scope::temp_receiver@8:0: uncovered (temporary needs full-expression boundary), summary: opaque (temporary needs full-expression boundary)
+part_scope::self_named_source@17:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_scope::self_named_nested@28:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_scope::other_named_source@39:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_scope::other_container@48:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_scope::other_container_for@53:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_scope::param_shadow@61:0: covered (storage: no_proof_required), summary: known
+part_scope::param_shadow_for@67:0: covered (storage: no_proof_required), summary: known
+part_scope::range_bound@77:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+part_scope::range_bound_for@82:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+part_scope::after_comp@90:0: covered (storage: no_proof_required), summary: known
+part_scope::range_source@98:0: covered (storage: no_proof_required), summary: known
+part_scope::read_only@103:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+part_scope::main@108:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_unlowered::__tpy_init: uncovered (module initialization)
+part_unlowered::grow_pairs@7:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_unlowered::key_first@12:0: uncovered (unsupported metadata: presize_if_sized), summary: opaque (unsupported metadata: presize_if_sized)
+part_unlowered::unpack_head@17:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_unlowered::printed@22:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_unlowered::array_comp@27:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+part_unlowered::walrus_pre@33:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
+part_unlowered::in_try@39:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_unlowered::in_with@47:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_unlowered::in_match@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_unlowered::main@62:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

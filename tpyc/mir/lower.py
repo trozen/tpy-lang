@@ -104,6 +104,12 @@ def _user_call(expr: th.THIRExpr) -> bool:
     return isinstance(expr, th.THIRCall) or isinstance(expr, th.THIRMethodCall) and expr.resolved_callee is not None
 
 
+def _built_aggregate(expr: th.THIRExpr) -> bool:
+    """A record or container an expression builds as an rvalue of its own:
+    a construction, a container literal, a comprehension."""
+    return isinstance(expr, (th.THIRCtorCall, th.THIRContainerLiteral, th.THIRComprehensionBlock))
+
+
 def _summary_writes(summary: MIRCallSummary) -> bool:
     """Whether a callee writes what its caller reaches: a parameter write,
     or a loan stored in an argument's object (a view member another operand
@@ -220,6 +226,47 @@ class _Source(Enum):
     MEMBER = auto()         # an aggregate member read in place
     ELEMENT = auto()        # a container's aggregate element, borrowed in place
     CALL = auto()           # a user call's borrowed result
+
+
+@dataclass(eq=False)
+class _Comprehension:
+    """A comprehension being built: the holder its inserts fill its result
+    storage through, the result's type, and whether an expression its body
+    evaluated so far writes (`_WriteFacts`)."""
+    holder: MIRSlotId
+    type: NominalType
+    writes: bool = False
+
+
+class _WriteFacts(IdentityMap[th.THIRExpr, bool]):
+    """Whether each lowered expression writes storage outside its own
+    temporaries. A writing expression recorded while a comprehension is
+    innermost is one its body evaluates, so the comprehension writes too --
+    whichever loop, filter or insert lowered it, and a nested
+    comprehension's own fact included."""
+    __slots__ = ("comprehensions",)
+
+    def __init__(self, comprehensions: list[_Comprehension]) -> None:
+        super().__init__()
+        self.comprehensions = comprehensions
+
+    def __setitem__(self, key: th.THIRExpr, value: bool) -> None:
+        super().__setitem__(key, value)
+        if value and self.comprehensions:
+            self.comprehensions[-1].writes = True
+
+    def setdefault(self, key: th.THIRExpr, default: bool) -> bool:
+        if key not in self:
+            self[key] = default
+        return self[key]
+
+    # Every write goes through `__setitem__`, the one site that marks the
+    # innermost comprehension; the inherited bulk paths would bypass it.
+    def update(self, source: object) -> None:
+        raise TypeError("write facts are recorded one expression at a time")
+
+    def copy(self) -> "IdentityMap[th.THIRExpr, bool]":
+        raise TypeError("write facts are not copied")
 
 
 class _Bound(NamedTuple):
@@ -366,7 +413,9 @@ class _Lowering:
         # the statements being checked run in.
         self.planned = self.temp_plan is not None and bool(self.temp_plan.placements)
         self.temp_now = 0
-        self.writes: IdentityMap[th.THIRExpr, bool] = IdentityMap()
+        # Each comprehension being built, innermost last: its inserts fill it.
+        self.comprehensions: list[_Comprehension] = []
+        self.writes = _WriteFacts(self.comprehensions)
         self.definitions = definitions
         self.records: dict[NominalType, MIRConstructorDefinition | MIRConstructorBody | MIROwnedLeafDefinition
                            | MIRHeldLayout] = {}
@@ -817,13 +866,18 @@ class _Lowering:
                 # A view dispatches to the runtime code of the leaf it views.
                 read = through_view(arg.result_type)
                 _require(arg, stub_protocol_argument(read), "stub protocol argument is not a builtin leaf")
-                if self.container_receiver(arg):
+                built = _built_aggregate(arg)
+                if built or self.container_receiver(arg):
                     # A container (or a view of one) is read whole by the
                     # stub's own runtime code (`len`): no element is lent
                     # past the call.
                     _require(arg, callee.contract is th.THIRStubContract.PURE,
                              "stub protocol parameter needs a pure contract")
                     _require(arg, index not in origins, "stub result may borrow a container argument")
+                    if built:
+                        # Built into storage of the full expression, read whole there.
+                        slots.append(f.lend(self.aggregate_operand(arg, unwrap_readonly(arg.result_type))))
+                        continue
                     slots.append(f.lend(self.container_place(arg)))
                     self.writes[arg] = False
                     continue
@@ -969,7 +1023,7 @@ class _Lowering:
                      "call record argument mismatch")
             self.lent_loans(arg, held.type, ref.type)
             return f
-        _require(arg, isinstance(arg, (th.THIRCtorCall, th.THIRContainerLiteral, th.THIRCopy)) or _user_call(arg),
+        _require(arg, _built_aggregate(arg) or isinstance(arg, th.THIRCopy) or _user_call(arg),
                  "call needs borrowed record name")
         f = self.aggregate_operand(arg, ref.type)
         g = self.fragment()
@@ -1037,8 +1091,7 @@ class _Lowering:
         placement = self.temp_plan.placement(arg)
         _plain(arg, {"init", "cpp_type", "movable"} | ({"addr_of"} if addr_of else set()))
         _require(arg, arg.addr_of is addr_of, "named argument address mismatch")
-        _require(arg, arg.form is th.Form.BORROW and (isinstance(arg.init, (th.THIRCtorCall, th.THIRContainerLiteral))
-                                                    or _user_call(arg.init))
+        _require(arg, arg.form is th.Form.BORROW and (_built_aggregate(arg.init) or _user_call(arg.init))
                  and arg.result_type == reference.type and reference.readonly,
                  "named argument needs readonly record constructor")
         value = self.initializer(arg, lambda: self.aggregate_value(arg.init, reference.type, call=True))
@@ -1143,8 +1196,7 @@ class _Lowering:
         _plain(expr, {"value", "cpp_type"})
         _require(expr, placement.optional and placement.initialization is expr,
                  "select storage needs conditional emplacement")
-        _require(expr, isinstance(expr.value, (th.THIRCtorCall, th.THIRContainerLiteral)),
-                 "select storage needs record constructor")
+        _require(expr, _built_aggregate(expr.value), "select storage needs record constructor")
         value = self.initializer(expr, lambda: self.aggregate_value(expr.value, holder.type))
         self.stable_constructor_operands(expr.value)
         _require(expr, self.movable(holder.type), "select storage needs movable backing")
@@ -1152,14 +1204,17 @@ class _Lowering:
         self.select_temporaries[expr] = temporary
         return temporary
 
-    def stable_constructor_operands(self, expr: th.THIRCtorCall | th.THIRContainerLiteral | th.THIRCall
-                                    | th.THIRMethodCall) -> None:
+    def stable_constructor_operands(self, expr: th.THIRCtorCall | th.THIRContainerLiteral | th.THIRComprehensionBlock
+                                    | th.THIRCall | th.THIRMethodCall) -> None:
         # The temporary is initialized where the plan places it, which may
         # precede other operands: a call building it must write nothing.
         # Narrowed wrapper reads still require a selection proof.
         match expr:
             case th.THIRContainerLiteral():
                 operands = (*expr.elements, *expr.values)
+            case th.THIRComprehensionBlock():
+                # Its loop evaluates arbitrary operands once per pass.
+                raise MIRUnsupported(expr, "named temporary needs stable scalar operands")
             case _:
                 operands = _call_arguments(expr)
                 _require(expr, not self.call_writes(expr), "named temporary needs stable scalar operands")
@@ -2164,30 +2219,98 @@ class _Lowering:
         operands = (expr.elements if len(members) == 1
                     else tuple(e for pair in zip(expr.elements, expr.values) for e in pair))
         f = self.fragment()
-        fields: list[MIRSlotId] = []
-        for index, operand in enumerate(operands):
-            member = members[index % len(members)]
-            match member.cls:
-                case MIRClass.LEAF:
-                    plan = self.expr(operand, member.type)
-                    _require(operand, plan.shape_of().type == member.type, "container element type mismatch")
-                case MIRClass.OWNED_LEAF:
-                    plan = self.operand(operand, self.owned_value(operand))
-                    _require(operand, plan.shape_of().type == member.type, "container element type mismatch")
-                case _:
-                    plan = self.literal_record(operand, member.type)
-            fields.append(f.splice(plan))
+        fields = [f.splice(self.element_value(operand, members[index % len(members)], field=True))
+                  for index, operand in enumerate(operands)]
         self.argument_order_rule(expr, operands)
         self.writes[expr] = any(self.writes.get(o, False) for o in operands)
         f.value = MIRValue(MIRConstruct(tuple(fields), may_raise=True), value_shape(typ), expr.loc)
         return f
+
+    def comprehension(self, expr: th.THIRComprehensionBlock, typ: NominalType) -> Fragment:
+        """A comprehension built into container storage of type `typ`: an
+        empty container in storage of the full expression, lent to a holder
+        as a local's is, filled through it by the statement body THIR
+        published for it (its loops, its filters, its insert), then moved out
+        as the comprehension's value. Each of the body's expressions is a full
+        expression of its own; the comprehension writes whatever they write
+        outside its own storage."""
+        _plain(expr, {"kind", "container_cpp", "body"})
+        _require(expr, expr.result_type == typ and expr.form in (th.Form.VALUE, th.Form.STORAGE),
+                 "container initializer type mismatch")
+        _require(expr, self.mir.active_temporaries is not None, "temporary needs full-expression boundary")
+        problem = container_members(typ, False)
+        _require(expr, not isinstance(problem, str), problem if isinstance(problem, str) else "")
+        f = self.fragment()
+        shape = value_shape(typ)
+        result = f.materialize(MIRValue(MIRConstruct((), may_raise=True), shape, expr.loc), expr)
+        built = _Comprehension(f.holder(holder_form(shape), MIRBorrow(MIRPlace(result)), expr.loc), typ)
+        self.comprehensions.append(built)
+        try:
+            with self.mir.statement_block():
+                body = self.scoped(expr.body, len(self.loops))
+        finally:
+            self.comprehensions.pop()
+        self.sequence(f, body)
+        _require(expr, f.current is not None, "comprehension body has no exit")
+        # Recorded once popped, so an enclosing comprehension writes what this one does.
+        self.writes[expr] = built.writes
+        f.value = MIRValue(MIRMove(result), shape, expr.loc)
+        return f
+
+    def comprehension_insert(self, stmt: th.THIRCompInsert) -> Fragment:
+        """A comprehension's insert into its result: the element (a dict's
+        key, then its value, as Python evaluates them) stored as a literal's
+        member is -- an in-place write of the result's element region through
+        its holder, a dict's key read as a subscript's is."""
+        _plain(stmt, {"kind", "element", "key", "value"})
+        _require(stmt, bool(self.comprehensions), "comprehension insert outside its comprehension")
+        built = self.comprehensions[-1]
+        shape = value_shape(built.type)
+        keyed = shape.value is not None
+        operands = (stmt.key, stmt.value) if keyed else (stmt.element,)
+        unused = (stmt.element,) if keyed else (stmt.key, stmt.value)
+        _require(stmt, all(isinstance(o, th.THIRExpr) for o in operands) and all(o is None for o in unused),
+                 "comprehension insert member mismatch")
+
+        def check() -> Fragment:
+            f = self.fragment()
+            key = self.element_index(stmt.key, shape) if keyed else None
+            value = self.element_value(operands[-1], shape.subscript)
+            self.argument_order_rule(stmt, operands)
+            if key is not None:
+                self.evaluated_index(f, key, shape)
+            holder = MIRPlace(built.holder)
+            place = MIRPlace(built.holder, (*f.storage_steps(holder), MIRContainerElements()))
+            f.write(place, f.splice(value), stmt.loc, MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, built.holder))
+            return f
+        return self.put_expression(stmt.loc, self.full_expression(operands[-1], check=check))
+
+    def element_value(self, operand: th.THIRExpr, member: MIRShape, *, field: bool = False) -> Fragment:
+        """What a container member of shape `member` takes from `operand`
+        (a literal's element, an element write's value, a comprehension's
+        insert): an inert leaf by value, an owned leaf copied or built, a
+        record or container built, handed over, copied or moved. `field`: as
+        a field of a literal's construct, which takes an owned leaf lent for
+        its copy and an aggregate through a temporary or a holder
+        (`literal_record`); else as the value a write stores."""
+        match member.cls:
+            case MIRClass.LEAF:
+                plan = self.expr(operand, member.type)
+                _require(operand, plan.shape_of().type == member.type, "container element type mismatch")
+                return plan if field else plan.sink(plan.shape_of())
+            case MIRClass.OWNED_LEAF:
+                plan = self.operand(operand, self.owned_value(operand)) if field else self.owned_sink(operand)
+                _require(operand, plan.shape_of().type == member.type, "container element type mismatch")
+                return plan
+        return (self.literal_record(operand, member.type) if field
+                else self.aggregate_value(operand, member.type, call=True))
 
     def literal_record(self, expr: th.THIRExpr, typ: NominalType) -> Fragment:
         """A record element of a container literal (or one handed over by
         value): constructed, or handed over by a call's owned result, into a
         temporary of the full expression, which the literal moves from, or
         copied through the holder a name is."""
-        if isinstance(expr, (th.THIRCtorCall, th.THIRContainerLiteral)) or _user_call(expr):
+        if _built_aggregate(expr) or _user_call(expr):
             _require(expr, self.mir.active_temporaries is not None, "temporary needs full-expression boundary")
             return self.aggregate_temporary(expr, self.aggregate_value(expr, typ, call=True))
         _require(expr, isinstance(expr, th.THIRCopy), "unsupported container element")
@@ -2632,6 +2755,8 @@ class _Lowering:
         match expr:
             case th.THIRContainerLiteral() if cls is MIRClass.CONTAINER:
                 return self.container_literal(expr, typ)
+            case th.THIRComprehensionBlock() if cls is MIRClass.CONTAINER:
+                return self.comprehension(expr, typ)
             case th.THIRCtorCall() if cls is MIRClass.RECORD:
                 # A construction is a call of the record's constructor: its
                 # result handed over into the destination.
@@ -2788,8 +2913,8 @@ class _Lowering:
         """A record or container argument built into storage of its full
         expression: a construct or literal, a call handing over its owned
         result, a copy, or a fixed owned local moved out."""
-        _require(arg, isinstance(arg, (th.THIRCtorCall, th.THIRContainerLiteral, th.THIRCopy, th.THIRMove))
-                 or _user_call(arg), "constructor argument type")
+        _require(arg, _built_aggregate(arg) or isinstance(arg, (th.THIRCopy, th.THIRMove)) or _user_call(arg),
+                 "constructor argument type")
         # The temporary stores the loans its construct, the callee's
         # transfers or the copied or moved object name.
         _require(arg, self.mir.active_temporaries is not None, "temporary needs full-expression boundary")
@@ -3097,11 +3222,11 @@ class _Lowering:
         _require(expr, not self.call_writes(expr), "order-sensitive eager operands")
         return self.lent_result(expr, call)
 
-    def element_index(self, expr: th.THIRSubscript, place: MIRShape) -> Fragment:
-        """Check a subscript's index or key into a container place of shape
-        `place`: a fixed-width int position, or a key of the dict's key type
-        (an owned-leaf key is lent, a view of it lent as the view)."""
-        index = expr.index
+    def element_index(self, index: th.THIRExpr, place: MIRShape) -> Fragment:
+        """Check an index or key into a container place of shape `place` (a
+        subscript's, a dict comprehension's key): a fixed-width int position,
+        or a key of the dict's key type (an owned-leaf key is lent, a view of
+        it lent as the view)."""
         _, _, keyed = declared_members(place.type)
         # A key addresses the value member, a position the element; a type
         # keyed by its only member, or whose value member no key reaches, is not modeled.
@@ -3119,6 +3244,16 @@ class _Lowering:
         _require(index, through_view(self.lent_type(index, plan)) == key, "element key type mismatch")
         return plan
 
+    def evaluated_index(self, f: Fragment, index: Fragment, place: MIRShape) -> MIRSlotId:
+        """An index or key (`element_index`) evaluated in `f`: an owned-leaf
+        key is read by the lookup (its hash and its comparisons), so its
+        holder stays live through the access."""
+        loc = index.value.loc
+        evaluated = f.splice(index)
+        if place.value is not None and place.element.cls is not MIRClass.LEAF:
+            f.leaf(BOOL, MIROp("key", (evaluated,), may_raise=True), loc)
+        return evaluated
+
     def element_access(self, expr: th.THIRSubscript) -> Fragment:
         """Check a container subscript as a whole: its place, its index, and
         that the operands cannot reorder a write; the element region it
@@ -3130,17 +3265,12 @@ class _Lowering:
         place = self.container_place(expr.receiver)
         shape = place.shape_of()
         keyed = shape.value is not None
-        index = self.element_index(expr, shape)
+        index = self.element_index(expr.index, shape)
         _require(expr, not self.writes[expr.index] or _literal(expr.index), "order-sensitive eager operands")
         e = self.fragment()
         # Its index or key is evaluated, then its container named: any
         # element, never one by identity.
-        index_loc = index.value.loc
-        evaluated = e.splice(index)
-        if keyed and shape.element.cls is not MIRClass.LEAF:
-            # An owned-leaf key is read by the lookup (its hash and its
-            # comparisons), so its holder stays live through the access.
-            e.leaf(BOOL, MIROp("key", (evaluated,), may_raise=True), index_loc)
+        self.evaluated_index(e, index, shape)
         root = e.splice(place)
         e.value = MIRValue(MIRPlace(root.root, (*root.projections, MIRContainerElements())), loc=expr.loc,
                            raises=not expr.bounds_safe or keyed)
@@ -4196,6 +4326,8 @@ class _Lowering:
                 return None
             case th.THIRSetItem():
                 return self.element_write(stmt)
+            case th.THIRCompInsert():
+                return self.comprehension_insert(stmt)
             case th.THIRAssign() if (isinstance(stmt.target, th.THIRName) and stmt.target.global_binding is None
                                      and self.container_view_access(stmt.target.name) is not None):
                 # Reseating a Span holder: the new source's referents replace the old.
@@ -4623,16 +4755,7 @@ class _Lowering:
             # mutable container replace a readonly element: a coverage
             # restriction (TODO.md "readonly element store").
             _require(stmt, not member.readonly, "readonly element store")
-            match member.cls:
-                case MIRClass.LEAF:
-                    value = self.expr(stmt.value, member.type)
-                    _require(stmt, value.shape_of().type == member.type, "assignment type mismatch")
-                    value.sink(value.shape_of())
-                case MIRClass.OWNED_LEAF:
-                    value = self.owned_sink(stmt.value)
-                    _require(stmt, value.shape_of().type == member.type, "assignment type mismatch")
-                case _:
-                    value = self.aggregate_value(stmt.value, member.type, call=True)
+            value = self.element_value(stmt.value, member)
             self.argument_order_rule(stmt, (target.index, stmt.value))
             # `xs[i] = v`: the value in the member's form (Python evaluates
             # it first), then the index, replaces the element region in
@@ -4692,7 +4815,7 @@ class _Lowering:
     def range_loop(self, stmt: th.THIRForRange, loops: int) -> Fragment:
         _plain(stmt, {"var", "elem_type", "start", "stop", "start_is_literal", "stop_is_literal",
                       "body", "step_kind", "orelse", "hoist_loop_var", "target_written",
-                      "hoist_decls", "hoisted_bindings"})
+                      "hoist_decls", "hoisted_bindings", "presize", "source_in_enclosing"})
         _require(stmt, stmt.elem_type == INT32 and stmt.step_kind in ("plus_one", "unit_neg"),
                  "range needs int32 unit step")
         _require(stmt, isinstance(stmt.var, str) and bool(stmt.var) and isinstance(stmt.stop, th.THIRExpr),
@@ -4710,26 +4833,26 @@ class _Lowering:
                 plan = self.expr(bound, INT32) if admitted else None
                 _require(bound, plan is not None and plan.shape_of().type == INT32, "unsupported range bound")
             bounds.append(plan)
-        _require(stmt, stmt.var not in self.range_counters, "nested range target changes outer induction")
-        _require(stmt, self.bound(stmt.var) is not None and self.bound(stmt.var).type == INT32
-                 if stmt.hoist_loop_var else stmt.var not in self.scope,
-                 "range target residence mismatch")
-        counters, scope = self.range_counters.copy(), self.scope.copy()
-        slot = (self.slot_of(stmt.var) if stmt.hoist_loop_var
-                else self.bind(stmt.var, scalar_shape(INT32), loc=stmt.loc).slot)
-        # An unwritten, unhoisted target is the counter itself; any other is
-        # a copy of it per iteration.
-        direct = not stmt.hoist_loop_var and not stmt.target_written
-        if direct:
-            self.range_counters.add(stmt.var)
-        f = self.fragment()
-        entry, normal, after = f.block(), f.block(), f.block()
-        head, then, advance = f.block(), f.block(), f.block()
-        with self.temp_in(self.temp_scope(stmt, "counter")), self.temp_in(self.temp_scope(stmt, "loop")):
-            self.loops.append((advance.id, after.id))
-            body = self.scoped(stmt.body, loops + 1)
-            self.loops.pop()
-        self.range_counters, self.scope = counters, scope
+        # Entered after the bounds, which read an enclosing binding of the target's name.
+        with self.nested(hide=self.own_scope_target(stmt)):
+            _require(stmt, stmt.var not in self.range_counters, "nested range target changes outer induction")
+            _require(stmt, self.bound(stmt.var) is not None and self.bound(stmt.var).type == INT32
+                     if stmt.hoist_loop_var else stmt.var not in self.scope,
+                     "range target residence mismatch")
+            slot = (self.slot_of(stmt.var) if stmt.hoist_loop_var
+                    else self.bind(stmt.var, scalar_shape(INT32), loc=stmt.loc).slot)
+            # An unwritten, unhoisted target is the counter itself; any other is
+            # a copy of it per iteration.
+            direct = not stmt.hoist_loop_var and not stmt.target_written
+            if direct:
+                self.range_counters.add(stmt.var)
+            f = self.fragment()
+            entry, normal, after = f.block(), f.block(), f.block()
+            head, then, advance = f.block(), f.block(), f.block()
+            with self.temp_in(self.temp_scope(stmt, "counter")), self.temp_in(self.temp_scope(stmt, "loop")):
+                self.loops.append((advance.id, after.id))
+                body = self.scoped(stmt.body, loops + 1)
+                self.loops.pop()
         with self.temp_in(self.temp_scope(stmt, "else") if stmt.orelse else None):
             orelse = self.scoped(stmt.orelse, loops)
         loc = stmt.loc
@@ -4769,7 +4892,8 @@ class _Lowering:
 
     def native_loop(self, stmt: th.THIRForEach, loops: int) -> Fragment:
         _plain(stmt, {"var", "elem_type", "iterable", "body", "const_loop_var", "iterable_lvalue",
-                      "orelse", "hoist_loop_var", "hoist_decls", "hoisted_bindings"})
+                      "orelse", "hoist_loop_var", "hoist_decls", "hoisted_bindings", "presize",
+                      "source_in_enclosing"})
         # A container view a stub returns, or a container a user call returns
         # by reference, is a call result the loop holds.
         view = isinstance(stmt.iterable, (th.THIRCall, th.THIRMethodCall))
@@ -4825,30 +4949,30 @@ class _Lowering:
                      view or copied or binding is LoopBinding.CONST_REFERENCE)),
                  "unsupported native target binding")
         hoists = self.hoists(stmt)
-        _require(stmt, stmt.var not in self.range_counters and stmt.var not in self.iteration_references,
-                 "nested loop replaces outer iteration binding")
-        _require(stmt, self.bound(stmt.var) is not None and self.bound(stmt.var).type == typ
-                 if stmt.hoist_loop_var else stmt.var not in self.scope,
-                 "native target residence mismatch")
-        targets, scope = self.iteration_references.copy(), self.scope.copy()
-        if reference is not None or view or element.cls is MIRClass.OWNED_LEAF and not copied:
-            self.iteration_references.add(stmt.var)
-        if stmt.hoist_loop_var:
-            slot = self.slot_of(stmt.var)
-        else:
-            slot = self.bind(stmt.var, reference if reference is not None
-                             else view_holder_shape(stmt.elem_type) if view
-                             else owned_leaf_shape(element.type, MIRRole.STORAGE if copied else MIRRole.LOAN)
-                             if element.cls is MIRClass.OWNED_LEAF else scalar_shape(stmt.elem_type), loc=stmt.loc).slot
-        self.mir.records[slot].loop_variable = True
-        f = self.fragment()
-        head, then, advance, normal, after = (f.block() for _ in range(5))
-        with self.temp_in(self.temp_scope(stmt, "loop")):
-            self.loops.append((advance.id, after.id))
-            body = self.scoped(stmt.body, loops + 1)
-            self.loops.pop()
-        self.iteration_references = targets
-        self.scope = scope
+        # Entered after the source, which reads an enclosing binding of the target's name.
+        with self.nested(hide=self.own_scope_target(stmt)):
+            _require(stmt, stmt.var not in self.range_counters and stmt.var not in self.iteration_references,
+                     "nested loop replaces outer iteration binding")
+            _require(stmt, self.bound(stmt.var) is not None and self.bound(stmt.var).type == typ
+                     if stmt.hoist_loop_var else stmt.var not in self.scope,
+                     "native target residence mismatch")
+            if reference is not None or view or element.cls is MIRClass.OWNED_LEAF and not copied:
+                self.iteration_references.add(stmt.var)
+            if stmt.hoist_loop_var:
+                slot = self.slot_of(stmt.var)
+            else:
+                slot = self.bind(stmt.var, reference if reference is not None
+                                 else view_holder_shape(stmt.elem_type) if view
+                                 else owned_leaf_shape(element.type, MIRRole.STORAGE if copied else MIRRole.LOAN)
+                                 if element.cls is MIRClass.OWNED_LEAF else scalar_shape(stmt.elem_type),
+                                 loc=stmt.loc).slot
+            self.mir.records[slot].loop_variable = True
+            f = self.fragment()
+            head, then, advance, normal, after = (f.block() for _ in range(5))
+            with self.temp_in(self.temp_scope(stmt, "loop")):
+                self.loops.append((advance.id, after.id))
+                body = self.scoped(stmt.body, loops + 1)
+                self.loops.pop()
         with self.temp_in(self.temp_scope(stmt, "else") if stmt.orelse else None):
             orelse = self.scoped(stmt.orelse, loops)
         loc = stmt.loc
@@ -4959,16 +5083,43 @@ class _Lowering:
         bound = self.bind(name, shape, backing, loc=node.loc, backing_kind=MIRSlotKind.LOCAL)
         return bound.slot, bound.backing, (default.alternative, default.value) if default is not None else None
 
+    def own_scope_target(self, stmt: th.THIRForEach | th.THIRForRange) -> str | None:
+        """A comprehension's loop target, which Python 3 binds in the
+        comprehension's own scope (`nested`'s `hide`): THIR leaves it
+        unhoisted. None for any other loop's."""
+        return stmt.var if self.comprehensions and not stmt.hoist_loop_var else None
+
     @contextmanager
-    def nested(self) -> Iterator[None]:
+    def nested(self, hide: str | None = None) -> Iterator[None]:
         """A nested statement list: the names it binds go out of scope after
-        it, and an owned local stays fixed only if it stays fixed there."""
+        it, and an owned local stays fixed only if it stays fixed there.
+        `hide`: a name it binds in a scope of its own (`own_scope_target`),
+        so the enclosing binding of that name -- its slot and every fact
+        kept by its name -- is invisible inside it and back after it."""
         scope, tuple_roots, fixed_owned = self.scope.copy(), self.tuple_roots.copy(), self.fixed_owned.copy()
+        references, counters = self.iteration_references.copy(), self.range_counters.copy()
+        reassigned = self.reassigned_locals
+        kept = (hide in self.owned_locals, hide in self.parameters)
+        if hide is not None:
+            self.scope.pop(hide, None)
+            # A tuple alias rooted at the hidden binding would reach the new one by name.
+            self.tuple_roots = {n: r for n, r in self.tuple_roots.items() if hide not in (n, r)}
+            for names in (self.iteration_references, self.range_counters, self.owned_locals, self.fixed_owned,
+                          self.parameters):
+                names.discard(hide)
+            self.reassigned_locals = reassigned - {hide}
         try:
             yield
         finally:
             self.scope, self.tuple_roots = scope, tuple_roots
-            self.fixed_owned = fixed_owned & self.fixed_owned
+            self.iteration_references, self.range_counters = references, counters
+            self.fixed_owned = fixed_owned & (self.fixed_owned | ({hide} if hide is not None else set()))
+            if hide is not None:
+                self.reassigned_locals = reassigned
+                for names, was in zip((self.owned_locals, self.parameters), kept):
+                    names.discard(hide)
+                    if was:
+                        names.add(hide)
 
     def scoped(self, stmts: tuple[th.THIRStmt, ...], loops: int) -> list[Fragment]:
         with self.nested():

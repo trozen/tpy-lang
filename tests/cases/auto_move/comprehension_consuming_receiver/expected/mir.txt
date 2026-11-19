@@ -3,11 +3,11 @@ main::take@31:0: covered (storage: no_proof_required), summary: known
 main::tag@35:0: covered (storage: no_proof_required), summary: known
 main::call@40:0: uncovered (unsupported parameter type)
 main::first@44:0: covered (storage: no_proof_required), summary: known
-main::lens@48:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::heads@52:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::lens@48:0: covered (storage: no_proof_required), summary: known
+main::heads@52:0: covered (storage: no_proof_required), summary: known
 main::dict_heads@56:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::borrowed@61:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::set_comp@67:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::set_comp@67:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::dict_enum@73:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::nested_clauses@79:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::owned_outer@85:0: uncovered (unsupported parameter type)
@@ -22,7 +22,7 @@ main::consumed_outer@129:0: uncovered (unsupported record initializer), summary:
 main::shadow_for@140:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
 main::owned_arg@148:0: uncovered (unsupported parameter type)
 main::fresh@152:0: covered (storage: no_proof_required), summary: known
-main::loop_owned_arg@157:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::loop_owned_arg@157:0: uncovered (unsupported metadata: presize_if_sized), summary: opaque (unsupported metadata: presize_if_sized)
 main::in_loop@167:0: uncovered (unsupported parameter type)
 main::shadowing@176:0: uncovered (unsupported parameter type)
 main::lambda_capture@181:0: uncovered (unsupported parameter type)

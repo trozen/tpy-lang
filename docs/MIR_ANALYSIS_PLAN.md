@@ -2771,7 +2771,7 @@ as the corpus grows).
   (an `Iterable` parameter), `xs += ys` and slice assignment ("unsupported
   statement"); iterating or
   unpacking `items()` (tuple elements); `in` (`THIRMembership`); protocol
-  `for` over user iterators, comprehensions and generator expressions
+  `for` over user iterators and generator expressions
   (frames, B4); call-duration loans (`xs.extend(xs)`, `rename(r, r.name)`);
   a getter returning from a `try` / `finally` or a `match` arm
   ("unsupported statement"); sibling-element precision (element identity is
@@ -5012,6 +5012,42 @@ origin) and `seeded_loan` (a member storing a loan). For the
 other: element identity is not tracked, so `put(ps, ps[0].s)` with `put`
 replacing `ps[0]` warns, as `put(ps, ps[1].s)` does (a constant-index
 false positive of the kind field writes already have).
+
+#### Comprehension blocks
+
+A list, set or dict comprehension (`THIRComprehensionBlock`) lowers as the
+statement body THIR publishes for it: an empty container in storage of
+the enclosing full expression, lent to a holder as a local list is to
+its binding, filled by the body's loops (`native_loop`, `range_loop`),
+filters (`if_`) and insert (`THIRCompInsert`, an in-place write of the
+result's `[elements]` through that holder by `element_value`, the member
+store a literal and an element write share; a dict's key is read as a
+subscript's), then moved out. The body runs under
+`Fragment.statement_block()`: no full expression is open there, so each
+filter and insert is one, and a loop's source is evaluated as a `for`
+header's is (a temporary receiver is refused as its `for` twin's). An
+unhoisted loop target is the comprehension's own binding: it hides an
+enclosing one of the same name and every fact kept by that name
+(`_Lowering.nested(hide=...)`). As an operand
+the comprehension writes what the expressions its body lowers write
+(`_WriteFacts`: a writing expression recorded while the comprehension is
+innermost marks it), so
+`pair(len([w for w in xs if grow(xs)]), len(xs))` and `v + len([...])`
+with a writing filter are refused "order-sensitive eager operands", as
+their call twins are. It reaches every position a literal does
+(`_built_aggregate`): a stub's protocol argument (`len([...])`), an
+`Own` argument, a literal's element, a declaration, a return. So
+`len([v for v in xs if grow(xs)])` warns "this call may move the
+elements of 'xs' ..." as its `for` twin does
+(`iterators/warn_comp_iter_mutation`). Not lowered, each with its `for`
+or literal twin's reason: a literal inner source, an unsequenced dict
+comprehension (`BUGS.md#dict-comp-key-value-order`), `key_first`, a
+borrowed user-call argument (a named argument temporary, which needs a
+temporary plan no comprehension body has), a container conditional
+expression, `THIRArrayComprehension`, and generator expressions (their
+frame, TODO.md "Generator expressions"). Its result storage being the
+body's own, as a local list's is, a body with a comprehension has a
+known summary, as its `append` twin does.
 
 ## Scope matrix and remaining increments
 

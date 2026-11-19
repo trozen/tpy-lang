@@ -4,7 +4,7 @@ main::dict_comp@60:0: uncovered (missing or inconsistent hoisted binding facts),
 main::set_comp@70:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::genexpr@80:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::unpack_head@92:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::reassigned_rec@101:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::reassigned_rec@101:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::array_range@110:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::array_source@119:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::in_lambda@128:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -18,7 +18,7 @@ main::<genexpr>@19:9: uncovered (generator expression)
 main::<genexpr>@84:10: uncovered (generator expression)
 main::Items.__enter__@36:4: covered (storage: no_proof_required), summary: known
 main::Items.__exit__@39:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::Meth.method@144:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::Meth.method@144:4: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
 main::Items.__init__@33:4: covered (storage: no_proof_required), summary: known
 main::Rec.__init__@46:4: covered (storage: no_proof_required), summary: known
 main::Meth.__init__@141:4: covered (storage: no_proof_required), summary: known

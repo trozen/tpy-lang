@@ -34,7 +34,7 @@ main::doubled@360:0: uncovered (unsupported parameter type)
 main::delegate_proto_src@366:0: uncovered (loop across a suspension)
 main::iter_object_src@374:0: uncovered (loop across a suspension)
 main::nested_src@382:0: uncovered (loop across a suspension)
-main::take@391:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::take@391:0: covered (storage: no_proof_required), summary: known
 main::arg_temp_src@395:0: uncovered (loop across a suspension)
 main::nested_combinator_src@403:0: uncovered (loop across a suspension)
 main::combinator_temp_src@411:0: uncovered (argument held across a suspension)

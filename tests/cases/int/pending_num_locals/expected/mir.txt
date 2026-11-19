@@ -9,7 +9,7 @@ main::apply@53:0: uncovered (unsupported parameter type), summary: opaque (unsup
 main::free_fn@92:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::gen@100:0: uncovered (loop across a suspension)
 main::async_fn@108:0: uncovered (async body)
-main::comp@119:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::comp@119:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::closure@130:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::cm_body@156:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::try_finally@165:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

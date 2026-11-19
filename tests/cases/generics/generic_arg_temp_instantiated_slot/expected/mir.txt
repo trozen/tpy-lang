@@ -10,7 +10,7 @@ main::view_source@74:0: uncovered (unsupported metadata: template_args_cpp), sum
 main::ref_rvalue@81:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::ref_lvalue@91:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::method_and_ctor@101:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::comprehension@107:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::comprehension@107:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::closure@112:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::cond_operand@118:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::while_condition@124:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)

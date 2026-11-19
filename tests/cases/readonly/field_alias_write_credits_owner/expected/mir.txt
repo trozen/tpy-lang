@@ -15,7 +15,7 @@ main::fn_loop@286:0: uncovered (container holds a borrow), summary: opaque (cont
 main::fn_member_loop@293:0: covered (storage: no_proof_required), summary: opaque (summary record: record member holds a borrow)
 main::fn_member_loop_narrowed@299:0: uncovered (wrapper holds a borrow), summary: opaque (wrapper holds a borrow)
 main::inv_ptr_member_loop@308:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::fn_comprehension@315:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::fn_comprehension@315:0: covered (storage: no_proof_required), summary: opaque (summary record: record member holds a borrow)
 main::fn_walrus@320:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::fn_rc@325:0: uncovered (unsupported metadata: cpp_local_representation), summary: opaque (unsupported metadata: cpp_local_representation)
 main::fn_select@331:0: certified, summary: opaque (summary record: record member holds a borrow)

@@ -14,7 +14,7 @@ main::ref_param_hatch@80:0: uncovered (custom record special member), summary: o
 main::take_own@85:0: uncovered (custom record special member), summary: opaque (custom record special member)
 main::own_param@91:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::use@112:0: covered (storage: no_proof_required), summary: opaque (summary record: custom record special member)
-main::comp_rhs@116:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::comp_rhs@116:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::left_operand@125:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::main@131:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Pinned.__del__@21:4: uncovered (missing receiver fact)

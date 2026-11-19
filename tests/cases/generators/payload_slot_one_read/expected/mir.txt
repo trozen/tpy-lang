@@ -54,7 +54,7 @@ main::keep_opts@458:0: uncovered (unsupported native container element), summary
 main::nc_steps@466:0: uncovered (reference yield)
 main::dict_comp_section@471:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::str_steps@480:0: uncovered (reference yield)
-main::list_comp_section@484:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::list_comp_section@484:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::gen_expr_section@504:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::view_section@512:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::main@521:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

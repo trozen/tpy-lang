@@ -19,7 +19,7 @@ main::and_receiver@175:0: uncovered (unsupported parameter type), summary: opaqu
 main::ternary_receiver@180:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::and_container@186:0: covered (storage: no_proof_required), summary: known
 main::and_walrus_index@191:0: covered (storage: no_proof_required), summary: known
-main::filter_container@198:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::filter_container@198:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::if_head_walrus@204:0: covered (storage: no_proof_required), summary: known
 main::while_head@212:0: covered (storage: no_proof_required), summary: known
 main::comp_alias@234:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

@@ -105,7 +105,7 @@ int32_t set_total(const ::tpy::ordered_set<int32_t>& s);
 int32_t arr_first(const std::array<int32_t, 3>& a);
 // def holds(vs: list[StrView]) -> int32:  # tpyc: mir(uncovered /^container holds a borrow$/)
 int32_t holds(const std::vector<std::string_view>& vs);
-// def comp(xs: list[int32]) -> Own[list[int32]]:  # tpyc: mir(uncovered /^unsupported record initializer$/)
+// def comp(xs: list[int32]) -> Own[list[int32]]:  # tpyc: mir(covered)
 std::vector<int32_t> comp(const std::vector<int32_t>& xs);
 // def extend_it(xs: list[int32], ys: list[int32]) -> None:  # tpyc: mir(uncovered /^stub declares no contract$/)
 void extend_it(std::vector<int32_t>& xs, std::vector<int32_t>& ys);

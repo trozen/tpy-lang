@@ -13,7 +13,7 @@ main::anon_ne@227:0: uncovered (uncertified binary operation), summary: opaque (
 main::held_eq@231:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::mixed_eq@235:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::elem_eq@258:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::count_eq@269:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::count_eq@269:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
 main::gen_eq@274:0: uncovered (unsupported pointer capture)
 main::in_closure@278:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::in_async@285:0: uncovered (async body)

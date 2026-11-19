@@ -651,8 +651,8 @@ int32_t holds(const std::vector<std::string_view>& vs) {
     return ::tpy::__len__(vs);
 }
 
-// # comprehension: a frame, kept refused
-// def comp(xs: list[int32]) -> Own[list[int32]]:  # tpyc: mir(uncovered /^unsupported record initializer$/)
+// # comprehension: built in place, then handed out
+// def comp(xs: list[int32]) -> Own[list[int32]]:  # tpyc: mir(covered)
 //     return [x + 1 for x in xs]
 std::vector<int32_t> comp(const std::vector<int32_t>& xs) {
     return ({

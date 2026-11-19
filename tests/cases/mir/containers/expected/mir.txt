@@ -43,7 +43,7 @@ main::items_iter@404:0: uncovered (missing or invalid native iteration facts), s
 main::set_total@412:0: covered (storage: no_proof_required), summary: known
 main::arr_first@420:0: covered (storage: no_proof_required), summary: known
 main::holds@426:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
-main::comp@431:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::comp@431:0: covered (storage: no_proof_required), summary: known
 main::extend_it@436:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::nested@441:0: covered (storage: no_proof_required), summary: known
 main::rack_items@458:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known

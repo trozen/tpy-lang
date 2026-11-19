@@ -11,7 +11,7 @@ main::write_local@163:0: uncovered (unsupported local type or form), summary: op
 main::write_ptr_field@171:0: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
 main::write_elem@176:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
 main::write_chain@181:0: covered (storage: no_proof_required), summary: known
-main::write_nested@186:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::write_nested@186:0: covered (storage: no_proof_required), summary: known
 main::write_rows@196:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::gen_writes@204:0: uncovered (unsupported parameter type)
 main::gen_iter@211:0: uncovered (unsupported parameter type)
