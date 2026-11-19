@@ -12,21 +12,21 @@ inline constexpr std::string_view __name__ = "__main__";
 // def map_keys[T, K: Comparable](xs: list[T], f: Fn[[T], K]) -> Own[list[K]]:
 template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<K>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<K>;
   }
-std::vector<K> map_keys(std::vector<T>& xs, __F0&& f);
+std::vector<::tpy::storage_t<K>> map_keys(std::vector<::tpy::storage_t<T>>& xs, __F0&& f);
 // def above_first[T, K: Comparable](xs: list[T], f: Fn[[T], K]) -> Own[list[T]]:
 template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<K>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<K>;
   }
-std::vector<T> above_first(std::vector<T>& xs, __F0&& f);
+std::vector<::tpy::storage_t<T>> above_first(std::vector<::tpy::storage_t<T>>& xs, __F0&& f);
 // def names[T](pairs: list[tuple[T, str]]) -> Own[list[str]]:
 template<typename T>
-std::vector<std::string> names(std::vector<std::tuple<T, std::string>>& pairs);
+std::vector<std::string> names(std::vector<std::tuple<::tpy::storage_t<T>, std::string>>& pairs);
 // def keep[T](pairs: list[tuple[T, int32]]) -> Own[list[tuple[T, int32]]]:
 template<typename T>
-std::vector<std::tuple<T, int32_t>> keep(std::vector<std::tuple<T, int32_t>>& pairs);
+std::vector<std::tuple<::tpy::storage_t<T>, int32_t>> keep(std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& pairs);
 // def main() -> None:
 void main();
 
@@ -41,13 +41,13 @@ void main();
 //     return out
 template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<K>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<K>;
   }
-std::vector<K> map_keys(std::vector<T>& xs, __F0&& f) {
-    std::vector<K> out = std::vector<K>{};
+std::vector<::tpy::storage_t<K>> map_keys(std::vector<::tpy::storage_t<T>>& xs, __F0&& f) {
+    std::vector<::tpy::storage_t<K>> out = std::vector<::tpy::storage_t<K>>{};
     int32_t i = 0;
     while ((i < ::tpy::__len__(xs))) {
-        out.push_back(f(xs[static_cast<std::size_t>(i)]));
+        out.push_back(f(::tpy::param_pass<T>(xs[static_cast<std::size_t>(i)])));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     return out;
@@ -65,14 +65,14 @@ std::vector<K> map_keys(std::vector<T>& xs, __F0&& f) {
 //     return out
 template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<K>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<K>;
   }
-std::vector<T> above_first(std::vector<T>& xs, __F0&& f) {
-    std::vector<T> out = std::vector<T>{};
-    ::tpy::val_or_ref_t<K> threshold = f(::tpy::__getitem__(xs, 0));
+std::vector<::tpy::storage_t<T>> above_first(std::vector<::tpy::storage_t<T>>& xs, __F0&& f) {
+    std::vector<::tpy::storage_t<T>> out = std::vector<::tpy::storage_t<T>>{};
+    ::tpy::val_or_ref_t<K> threshold = f(::tpy::param_pass<T>(::tpy::__getitem__(xs, 0)));
     int32_t i = 0;
     while ((i < ::tpy::__len__(xs))) {
-        if ((!((f(xs[static_cast<std::size_t>(i)]) < threshold)))) {
+        if ((!((f(::tpy::param_pass<T>(xs[static_cast<std::size_t>(i)])) < threshold)))) {
             out.push_back(xs[static_cast<std::size_t>(i)]);
         }
         i = ::tpy::add_check<int32_t>(i, 1);
@@ -82,14 +82,14 @@ std::vector<T> above_first(std::vector<T>& xs, __F0&& f) {
 // def names[T](pairs: list[tuple[T, str]]) -> Own[list[str]]:
 //     return map_keys(pairs, lambda p: p[1])  # tpyc: ok
 template<typename T>
-std::vector<std::string> names(std::vector<std::tuple<T, std::string>>& pairs) {
-    return ::tpyapp::main::map_keys<std::tuple<T, std::string>, std::string>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, std::string>& p) -> std::string { return std::get<1>(p); });
+std::vector<std::string> names(std::vector<std::tuple<::tpy::storage_t<T>, std::string>>& pairs) {
+    return ::tpyapp::main::map_keys<std::tuple<::tpy::storage_t<T>, std::string>, std::string>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, std::string>& p) -> std::string { return std::get<1>(p); });
 }
 // def keep[T](pairs: list[tuple[T, int32]]) -> Own[list[tuple[T, int32]]]:
 //     return above_first(pairs, lambda p: p[1])
 template<typename T>
-std::vector<std::tuple<T, int32_t>> keep(std::vector<std::tuple<T, int32_t>>& pairs) {
-    return ::tpyapp::main::above_first<std::tuple<T, int32_t>, int32_t>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); });
+std::vector<std::tuple<::tpy::storage_t<T>, int32_t>> keep(std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& pairs) {
+    return ::tpyapp::main::above_first<std::tuple<::tpy::storage_t<T>, int32_t>, int32_t>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); });
 }
 
 void __tpy_init();

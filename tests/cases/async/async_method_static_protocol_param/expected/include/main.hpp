@@ -49,7 +49,7 @@ struct __coro_Runner_with_timeout {
     const Runner& __self;
     std::unique_ptr<::tpystd::coro::Cancellable<T>> coro;
     double timeout;
-    std::optional<::tpystd::asyncio::__coro_wait_for<T>> __sub_0;
+    std::optional<::tpystd::asyncio::__coro_wait_for<::tpy::storage_t<T>>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -64,7 +64,7 @@ struct __coro_Runner_with_timeout {
           coro(std::move(coro_)),
           timeout(std::move(timeout_)) {}
 
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::storage_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_Runner_with_timeout<T>&) {
@@ -76,7 +76,7 @@ struct __coro_Runner_with_timeout {
 //                           timeout: float) -> Own[T]:
 //     return await asyncio.wait_for(coro, timeout)            # -> S_RESUME_0
 template <typename T>
-::tpystd::tpy::Poll<T> __coro_Runner_with_timeout<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::storage_t<T>> __coro_Runner_with_timeout<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -86,11 +86,11 @@ template <typename T>
     }
     case S_RESUME_0: {  // after: return await asyncio.wait_for(coro, timeout)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<T>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::pending();
         auto __ret0 = std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        return ::tpystd::tpy::Poll<T>::ready(std::move(__ret0));
+        return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::ready(std::move(__ret0));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

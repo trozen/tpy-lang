@@ -11,7 +11,7 @@ template<::tpystd::tpy::Comparable T> struct SortedPair;
 
 // class PairFactory(Protocol):
 template<typename T>
-concept PairFactory = requires(T& t) {
+concept PairFactory = requires(::tpy::storage_t<T>& t) {
     { t.make_pair(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<SortedPair<int32_t>>;
 };
 
@@ -29,9 +29,9 @@ void main();
 template<::tpystd::tpy::Comparable T>
 struct SortedPair {
     // first: T
-    T first;
+    ::tpy::storage_t<T> first;
     // second: T
-    T second;
+    ::tpy::storage_t<T> second;
 
     // def __init__(self, a: T, b: T) -> None:
     SortedPair() = default;
@@ -76,11 +76,11 @@ inline SortedPair<int32_t> DefaultPairFactory::make_pair(int32_t a, int32_t b) c
 template<::tpystd::tpy::Comparable T>
 inline SortedPair<T>::SortedPair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b) {
     if ((a < b)) {
-        this->first = ::tpy::param_to_storage<T>(a);
-        this->second = ::tpy::param_to_storage<T>(b);
+        this->first = ::tpy::param_consume<T>(a);
+        this->second = ::tpy::param_consume<T>(b);
     } else {
-        this->first = ::tpy::param_to_storage<T>(b);
-        this->second = ::tpy::param_to_storage<T>(a);
+        this->first = ::tpy::param_consume<T>(b);
+        this->second = ::tpy::param_consume<T>(a);
     }
 }
 

@@ -17,7 +17,7 @@ template<typename T> struct Seed;
 
 // class Eats(Protocol):
 template<typename T>
-concept Eats = requires(T& t) {
+concept Eats = requires(::tpy::storage_t<T>& t) {
     { t.eat(std::declval<Seed<int32_t>&>()) } -> std::convertible_to<int32_t>;
 };
 
@@ -25,7 +25,7 @@ concept Eats = requires(T& t) {
 template<typename T>
 struct Seed {
     // self.x = x
-    T x;
+    ::tpy::storage_t<T> x;
 
     // def __init__(self, x: Own[T]) -> None:
     Seed() = default;
@@ -60,13 +60,13 @@ template<Eats K> struct Keeper;
 
 // class HasN(Protocol):
 template<typename T>
-concept HasN = requires(T& t) {
+concept HasN = requires(::tpy::storage_t<T>& t) {
     { t.n() } -> std::convertible_to<int32_t>;
 };
 
 // class Feeds(Protocol):
 template<typename T>
-concept Feeds = requires(T& t) {
+concept Feeds = requires(::tpy::storage_t<T>& t) {
     { t.keep(std::declval<Keeper<Eater>&>()) } -> std::convertible_to<int32_t>;
 };
 
@@ -149,7 +149,7 @@ void main();
 template<typename T>
 struct Gen {
     // self.x = x
-    T x;
+    ::tpy::storage_t<T> x;
 
     // def __init__(self, x: Own[T]) -> None:
     Gen() = default;
@@ -238,7 +238,7 @@ inline std::ostream& operator<<(std::ostream& os, const Ov& obj) {
 template<typename T>
 struct Res {
     // self.x = x
-    T x;
+    ::tpy::storage_t<T> x;
     // self.tag = tag
     std::string tag;
     // n: int32
@@ -271,7 +271,7 @@ inline std::ostream& operator<<(std::ostream& os, const Res<T>& obj) {
 template<typename T>
 struct Pair {
     // self.x = x
-    T x;
+    ::tpy::storage_t<T> x;
 
     // def __init__(self, x: Own[T]) -> None:
     Pair() = default;
@@ -293,7 +293,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
 template<typename T>
 struct Shelf {
     // self.x = x
-    T x;
+    ::tpy::storage_t<T> x;
 
     // def __init__(self, x: Own[T]) -> None:
     Shelf() = default;
@@ -316,7 +316,7 @@ inline std::ostream& operator<<(std::ostream& os, const Shelf<T>& obj) {
 template<typename T>
 struct Walker {
     // self.x = x
-    T x;
+    ::tpy::storage_t<T> x;
 
     // def __init__(self, x: Own[T]) -> None:
     Walker() = default;
@@ -340,7 +340,7 @@ inline std::ostream& operator<<(std::ostream& os, const Walker<T>& obj) {
 template<typename T>
 struct Bag {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, x: Own[T], y: Own[T]) -> None:
     Bag() = default;
@@ -364,7 +364,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
 template<::tpystd::typing::Iterable<int32_t> T>
 struct Holder {
     // self.t = t
-    T t;
+    ::tpy::storage_t<T> t;
 
     // def __init__(self, t: Own[T]) -> None:
     Holder() = default;
@@ -443,7 +443,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counts& obj) {
 template<typename T>
 struct Mixed {
     // self.x = x
-    T x;
+    ::tpy::storage_t<T> x;
     // items: list[int32]
     std::vector<int32_t> items;
 
@@ -493,7 +493,7 @@ struct Ops {
     // self.x = x
     Slot x;
     // self.tag = tag
-    T tag;
+    ::tpy::storage_t<T> tag;
 
     // def __init__(self, x: Own[Slot], tag: Own[T]) -> None:
     Ops() = default;
@@ -550,7 +550,7 @@ inline std::ostream& operator<<(std::ostream& os, const Applier& obj) {
 template<Eats K>
 struct Keeper {
     // self.k = k
-    K k;
+    ::tpy::storage_t<K> k;
 
     // def __init__(self, k: Own[K]) -> None:
     Keeper() = default;
@@ -1088,7 +1088,7 @@ inline Res<T>::~Res() {
 //     return Res(x, self.tag + "+copy")
 template<typename T>
 inline Res<T> Res<T>::__copy__() const {
-    T x = T(this->x);
+    ::tpy::storage_t<T> x = ::tpy::storage_t<T>(this->x);
     return Res<T>(std::move(x), (::tpy::str_concat(this->tag, "+copy")));
 }
 
@@ -1168,7 +1168,7 @@ inline std::string Walker<T>::leaves() const {
 // def __init__(self, x: Own[T], y: Own[T]) -> None:
 //     self.items = [x, y]
 template<typename T>
-inline Bag<T>::Bag(::tpy::own_param_t<T> x, ::tpy::own_param_t<T> y) : items(::tpy::make_vector<T>(std::move(x), std::move(y))) {}
+inline Bag<T>::Bag(::tpy::own_param_t<T> x, ::tpy::own_param_t<T> y) : items(::tpy::make_vector<::tpy::storage_t<T>>(std::move(x), std::move(y))) {}
 
 // def __init__(self, t: Own[T]) -> None:
 //     self.t = t

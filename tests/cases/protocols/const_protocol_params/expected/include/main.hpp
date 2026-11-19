@@ -9,13 +9,13 @@ namespace tpyapp::main {
 
 // class Measurable(Protocol):
 template<typename T>
-concept Measurable = requires(const T& t) {
+concept Measurable = requires(const ::tpy::storage_t<T>& t) {
     { t.measure() } -> std::convertible_to<int32_t>;
 };
 
 // class Resizable(Protocol):
 template<typename T>
-concept Resizable = requires(T& t) {
+concept Resizable = requires(::tpy::storage_t<T>& t) {
     { t.measure() } -> std::convertible_to<int32_t>;
     { t.resize(std::declval<int32_t>()) } -> std::convertible_to<void>;
 };
@@ -24,7 +24,7 @@ struct Shape;
 // @dynamic
 // class Shape(Protocol):
 template<typename T>
-concept __Shape_Concept__ = requires(const T& t) {
+concept __Shape_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t.area() } -> std::convertible_to<int32_t>;
 };
 

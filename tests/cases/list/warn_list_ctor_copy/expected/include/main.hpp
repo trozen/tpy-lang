@@ -25,7 +25,7 @@ void test_list_ctor_last_use_no_warn();
 void test_list_ctor_rvalue_no_warn();
 // def test_list_ctor_generic_warns[T](b: list[T]) -> None:
 template<typename T>
-void test_list_ctor_generic_warns(const std::vector<T>& b);
+void test_list_ctor_generic_warns(const std::vector<::tpy::storage_t<T>>& b);
 
 // class Node:
 struct Node {
@@ -52,8 +52,8 @@ inline Node::Node(int32_t val) : val(val) {}
 //     a = list(b)  # tpyc: warning(/may copy T elements/)
 //     print(len(b))
 template<typename T>
-void test_list_ctor_generic_warns(const std::vector<T>& b) {
-    std::vector<T> a = ::tpy::construct<std::vector<T>>(b);
+void test_list_ctor_generic_warns(const std::vector<::tpy::storage_t<T>>& b) {
+    std::vector<::tpy::storage_t<T>> a = ::tpy::construct<std::vector<::tpy::storage_t<T>>>(b);
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 

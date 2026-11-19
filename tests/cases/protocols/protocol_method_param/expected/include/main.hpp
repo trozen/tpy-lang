@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class HasLength(Protocol):
 template<typename T>
-concept HasLength = requires(const T& t) {
+concept HasLength = requires(const ::tpy::storage_t<T>& t) {
     { t.length() } -> std::convertible_to<::tpy::BigInt>;
 };
 

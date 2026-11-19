@@ -18,7 +18,7 @@ void main();
 template<::tpystd::tpy::Hashable T>
 struct Bag {
     // _data: dict[T, int]
-    ::tpy::ordered_map<T, ::tpy::BigInt> _data;
+    ::tpy::ordered_map<::tpy::storage_t<T>, ::tpy::BigInt> _data;
 
     // def __init__(self) -> None:
     Bag();
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
 // def __init__(self) -> None:
 //     self._data = {}
 template<::tpystd::tpy::Hashable T>
-inline Bag<T>::Bag() : _data(::tpy::ordered_map<T, ::tpy::BigInt>()) {}
+inline Bag<T>::Bag() : _data(::tpy::ordered_map<::tpy::storage_t<T>, ::tpy::BigInt>()) {}
 
 // def add_all(self, items: Iterable[T]) -> None:
 //     for x in items:

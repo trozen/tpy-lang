@@ -170,7 +170,7 @@ void free_function(bool c) {
         std::cout << "free set()" << " " << k.v << " " << ::tpy::__getitem__((*GK), 0).v << "\n" << ::tpy::check_signals;
     }
     View __tmp_8 = View();
-    std::vector<std::vector<int32_t>> m = ::tpy::construct<std::vector<std::vector<int32_t>>>(::tpy::builtin_map_n<std::vector<int32_t>>(::tpyapp::fixtures::take, std::array<int32_t, 2>{5, 6}, __tmp_8));
+    std::vector<std::vector<int32_t>> m = ::tpy::construct<std::vector<std::vector<int32_t>>>(::tpy::builtin_map_n<::tpy::own_arg<std::vector<int32_t>>>(::tpyapp::fixtures::take, std::array<int32_t, 2>{5, 6}, __tmp_8));
     std::cout << "free map" << " " << ::tpy::ListPrinter((*G)) << " " << ::tpy::__len__(m) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> ns = {1, 2};
     View __tmp_9 = View();

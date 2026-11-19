@@ -11,13 +11,13 @@ template<typename T> struct Container;
 // @dynamic
 // class Container[T](Protocol):
 template<typename T, typename _T0>
-concept __Container_Concept__ = requires(T& t) {
+concept __Container_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> ::tpy::proto_result<_T0>;
 };
 
 template<typename T>
 struct Container {
-    virtual T get() = 0;
+    virtual ::tpy::storage_t<T> get() = 0;
     virtual ~Container() = default;
 };
 
@@ -75,14 +75,14 @@ struct tpy::Adapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::Cont
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T get() override { return inner.get(); }
+    ::tpy::storage_t<T> get() override { return inner.get(); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__Container_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::Container<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
+    ::tpy::storage_t<T> get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
 };
 
 namespace tpyapp::main {

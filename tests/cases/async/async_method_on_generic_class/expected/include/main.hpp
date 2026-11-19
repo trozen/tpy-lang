@@ -23,7 +23,7 @@ void main();
 template<typename T>
 struct Box {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, v: T) -> None:
     Box() = default;

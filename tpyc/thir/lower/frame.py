@@ -54,6 +54,7 @@ from ...modules.type_resolution import (owning_element_slot,
                                        owning_traversal, traverses_owning)
 from ...compilation_context import get_current_compiler
 from ...symbol_binding import SymbolKind, lookup_imported
+from ...sema.binding_ownership import holds_open_result
 from ...sema.source_records import handover, publish_source_record, read_record
 from ...sema.storage_policy import first_binding_storage
 from ...type_def_registry import (
@@ -335,6 +336,10 @@ class _FrameFormInputs:
     # whose enter type is a type parameter.
     with_targets: 'set[str]' = field(default_factory=set)
     with_generic_targets: 'set[str]' = field(default_factory=set)
+    # The open-result locals (`holds_open_result`) not bound once off a
+    # call (`val_or_ref_frame_locals`): the plain body's pointer over a
+    # slot of each binding site's own.
+    open_result_names: 'frozenset[str]' = frozenset()
 
 
 def _cannot_hold_a_borrow(t: 'TpyType') -> bool:
@@ -1690,7 +1695,15 @@ class FrameBuilder:
             # get a `T*` field rather than an owning frame_slot<T>: a `T*`
             # field kept live across suspensions.
             pointer_form_names=set(self._classify_pointer_alias_locals(func)),
+            open_result_names=self._open_result_names(func),
         )
+
+    def _open_result_names(self, func: TpyFunction) -> 'frozenset[str]':
+        ctx = self.analyzer.ctx
+        once = ctx.val_or_ref_frame_locals.get(func, ())
+        return frozenset(
+            n for n, t in (func.generator_locals or [])
+            if n not in once and holds_open_result(ctx, func, n, t))
 
     def _loop_lends_element_out(self, func: TpyFunction,
                                 bound_names: 'frozenset[str]') -> bool:
@@ -1765,6 +1778,8 @@ class FrameBuilder:
         # emit.
         if self.deps.is_static_protocol_param(ltype_inner):
             kind = FrameLocalKind.PROTOCOL
+        elif lname in inp.open_result_names:
+            kind = FrameLocalKind.REBIND_PTR
         elif inp.pointer_tuples.get(lname) is not None:
             # A pointer tuple: each owned element is the scalar reference
             # local, its object in a per-site field of its own, so the
@@ -1912,6 +1927,15 @@ class FrameBuilder:
         # payload is spelled from `__enter__()` (`with_enter_t<CM>`) because
         # alias-vs-own is not decidable here either.
         inp.source_form_fields.update(state.with_target_payloads)
+        # A local bound once off a call returning an open `T` holds the
+        # call's own result form (`val_or_ref_t<T>`): a reference at a
+        # reference instantiation, the value at `T = Own[X]`.
+        frame_locals = dict(func.generator_locals or [])
+        for name in self.analyzer.ctx.val_or_ref_frame_locals.get(func, ()):
+            t = unwrap_ref_type(frame_locals.get(name))
+            if isinstance(t, TypeParamRef) and name not in inp.source_form_fields:
+                inp.source_form_fields[name] = (
+                    f"::tpy::val_or_ref_t<{t.to_cpp_tag()}>")
         inp.with_targets.update(state.with_target_payloads)
         inp.with_generic_targets.update(state.with_generic_targets)
 
@@ -1932,7 +1956,8 @@ class FrameBuilder:
                                 FrameLocalKind.BORROW_TUPLE)
                        and lname in state.const_frame_bindings),
                 payload=payload,
-                effective_type=effective_type)
+                effective_type=effective_type,
+                open_result=lname in inp.open_result_names)
 
         state.frame_layout = FrameLayoutPlan(
             bindings=bindings, pointer_tuples=frozenset(inp.pointer_tuples))
@@ -2667,6 +2692,7 @@ class FrameBuilder:
         if not ptr_names and not ptr_tuples:
             return
         local_types = dict(func.generator_locals or [])
+        open_names = {n for n, v in layout.bindings.items() if v.open_result}
         owned_masks = self.analyzer.ctx.tuple_elem_owned
         elem_verdicts = self.analyzer.ctx.tuple_elem_storage
         fields: list[THIRFrameHolder] = []
@@ -2708,6 +2734,16 @@ class FrameBuilder:
                 visit_tuple(stmt, name, init)
                 return
             if name not in ptr_names:
+                return
+            if name in open_names:
+                # Every binding of an open-result local may land its value
+                # in a slot (a prvalue, or a snapshot at a value storage
+                # type): each site has one.
+                pointee = unwrap_readonly(unwrap_ref_type(
+                    local_types.get(name)))
+                reserve(stmt, None,
+                        f"std::optional<{self.deps.type_to_cpp(pointee)}>",
+                        name, init)
                 return
             # An IN_PLACE rebind assigns through the pointer into the
             # storage it already aims at: no field of its own. The reseat

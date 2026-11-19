@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Pair[K, V](Protocol):
 template<typename T, typename _T0, typename _T1>
-concept Pair = requires(T& t) {
+concept Pair = requires(::tpy::storage_t<T>& t) {
     { t.first() } -> ::tpy::proto_result<_T0>;
     { t.second() } -> ::tpy::proto_result<_T1>;
 };
@@ -26,7 +26,7 @@ template<typename K, typename V, Pair<K, V> T>
 template<typename K, typename V, Pair<K, V> T>
 ::tpy::val_or_ref_t<V> take_second(::tpy::param_val_or_ref_t<T> x);
 // def head[K, V, T: Pair[list[K], V]](x: T) -> K:      # tpyc: ok
-template<typename K, typename V, Pair<std::vector<K>, V> T>
+template<typename K, typename V, Pair<std::vector<::tpy::storage_t<K>>, V> T>
 ::tpy::val_or_ref_t<K> head(::tpy::param_val_or_ref_t<T> x);
 // def main() -> None:
 void main();
@@ -131,7 +131,7 @@ template<typename K, typename V, Pair<K, V> T>
 }
 // def head[K, V, T: Pair[list[K], V]](x: T) -> K:      # tpyc: ok
 //     return x.first()[0]
-template<typename K, typename V, Pair<std::vector<K>, V> T>
+template<typename K, typename V, Pair<std::vector<::tpy::storage_t<K>>, V> T>
 ::tpy::val_or_ref_t<K> head(::tpy::param_val_or_ref_t<T> x) {
     return ::tpy::__getitem__(x.first(), 0);
 }

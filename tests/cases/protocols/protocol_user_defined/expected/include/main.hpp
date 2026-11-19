@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Measurable(Protocol):
 template<typename T>
-concept Measurable = requires(const T& t) {
+concept Measurable = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 

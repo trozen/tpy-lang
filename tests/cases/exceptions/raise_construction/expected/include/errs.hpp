@@ -11,7 +11,7 @@ struct Shows;
 // @dynamic
 // class Shows(Protocol):
 template<typename T>
-concept __Shows_Concept__ = requires(const T& t) {
+concept __Shows_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t.show() } -> std::convertible_to<std::string_view>;
 };
 
@@ -76,7 +76,7 @@ inline std::ostream& operator<<(std::ostream& os, const ModErr& obj) {
 template<typename T>
 struct ModBox : Carrier {
     // self.v = v
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: Own[T]) -> None:
     ModBox() = default;

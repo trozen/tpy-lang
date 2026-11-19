@@ -12,7 +12,7 @@ struct R;
 
 // class Sink(Protocol):
 template<typename T>
-concept Sink = requires(T& t) {
+concept Sink = requires(::tpy::storage_t<T>& t) {
     { t.take_rec(std::declval<R>()) } -> std::convertible_to<int32_t>;
     { t.take_list(std::declval<std::vector<int32_t>>()) } -> std::convertible_to<int32_t>;
     { t.take_str(std::declval<std::string>()) } -> std::convertible_to<int32_t>;
@@ -24,7 +24,7 @@ struct DSink;
 // @dynamic
 // class DSink(Protocol):
 template<typename T>
-concept __DSink_Concept__ = requires(T& t) {
+concept __DSink_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.take_rec(std::declval<R>()) } -> std::convertible_to<int32_t>;
     { t.take_list(std::declval<std::vector<int32_t>>()) } -> std::convertible_to<int32_t>;
     { t.take_str(std::declval<std::string>()) } -> std::convertible_to<int32_t>;
@@ -43,22 +43,22 @@ struct DSink {
 
 // class Opt(Protocol):
 template<typename T>
-concept Opt = requires(T& t) {
+concept Opt = requires(::tpy::storage_t<T>& t) {
     { t.take_ol(std::declval<std::vector<int32_t>*>()) } -> std::convertible_to<int32_t>;
     { t.take_oi(std::declval<std::optional<int32_t>>()) } -> std::convertible_to<int32_t>;
 };
 
 // class GSink[T](Protocol):
 template<typename T, typename _T0>
-concept GSink = requires(T& t) {
-    { t.put(std::declval<_T0>()) } -> std::convertible_to<void>;
+concept GSink = requires(::tpy::storage_t<T>& t) {
+    { t.put(std::declval<::tpy::storage_t<_T0>>()) } -> std::convertible_to<void>;
 };
 
 struct Bumper;
 // @dynamic
 // class Bumper(Protocol):
 template<typename T>
-concept __Bumper_Concept__ = requires(T& t) {
+concept __Bumper_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.bump() } -> std::convertible_to<int32_t>;
 };
 
@@ -71,7 +71,7 @@ struct Taker;
 // @dynamic
 // class Taker(Protocol):
 template<typename T>
-concept __Taker_Concept__ = requires(T& t) {
+concept __Taker_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.take_p(std::declval<Bumper&>()) } -> std::convertible_to<int32_t>;
 };
 
@@ -82,7 +82,7 @@ struct Taker {
 
 // class Pinger(Protocol):
 template<typename T>
-concept Pinger = requires(T& t) {
+concept Pinger = requires(::tpy::storage_t<T>& t) {
     { t.ping() } -> std::convertible_to<int32_t>;
 };
 
@@ -241,7 +241,7 @@ inline std::ostream& operator<<(std::ostream& os, const OptImpl& obj) {
 template<typename T>
 struct Bag {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Bag();
@@ -520,7 +520,7 @@ inline ElemReader::ElemReader() {
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T>
-inline Bag<T>::Bag() : items(std::vector<T>{}) {}
+inline Bag<T>::Bag() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def put(self, v: Own[T]) -> None:
 //     self.items.append(v)

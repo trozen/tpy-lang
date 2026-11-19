@@ -21,11 +21,11 @@ void main();
 template<typename T>
 struct Holder {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, items: list[T]) -> None:
     Holder() = default;
-    explicit Holder(const std::vector<T>& items);
+    explicit Holder(const std::vector<::tpy::storage_t<T>>& items);
 
     __gen_Holder_walk<T> walk();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -105,7 +105,7 @@ inline __gen_Holder_walk<T> Holder<T>::walk() {
 // def __init__(self, items: list[T]) -> None:
 //     self.items = items
 template<typename T>
-inline Holder<T>::Holder(const std::vector<T>& items) : items(items) {}
+inline Holder<T>::Holder(const std::vector<::tpy::storage_t<T>>& items) : items(items) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

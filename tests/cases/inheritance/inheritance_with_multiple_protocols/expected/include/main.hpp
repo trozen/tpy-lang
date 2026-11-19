@@ -9,19 +9,19 @@ namespace tpyapp::main {
 
 // class Printable(Protocol):
 template<typename T>
-concept Printable = requires(const T& t) {
+concept Printable = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__str__(t) } -> std::convertible_to<std::string_view>;
 };
 
 // class Measurable(Protocol):
 template<typename T>
-concept Measurable = requires(T& t) {
+concept Measurable = requires(::tpy::storage_t<T>& t) {
     { t.weight() } -> std::convertible_to<int32_t>;
 };
 
 // class Describable(Protocol):
 template<typename T>
-concept Describable = requires(T& t) {
+concept Describable = requires(::tpy::storage_t<T>& t) {
     { t.describe() } -> std::convertible_to<std::string_view>;
 };
 

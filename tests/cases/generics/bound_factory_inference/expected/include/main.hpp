@@ -11,7 +11,7 @@ struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>
-concept __Pet_Concept__ = requires(T& t) {
+concept __Pet_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 
@@ -77,11 +77,11 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 template<typename T>
 struct PetBox {
     // _payload: Ptr[T]
-    T* _payload;
+    ::tpy::storage_t<T>* _payload;
     bool __tpy_owned_ = true;
 
     // def __init__(self, payload: Ptr[T]) -> None:
-    explicit PetBox(T* payload);
+    explicit PetBox(::tpy::storage_t<T>* payload);
     PetBox(const PetBox&) = delete;
     PetBox& operator=(const PetBox&) = delete;
     PetBox(PetBox&& other) noexcept;
@@ -149,7 +149,7 @@ inline std::string Dog::name() {
 // def __init__(self, payload: Ptr[T]) -> None:
 //     self._payload = payload
 template<typename T>
-inline PetBox<T>::PetBox(T* payload) : _payload(payload) {}
+inline PetBox<T>::PetBox(::tpy::storage_t<T>* payload) : _payload(payload) {}
 
 template<typename T>
 inline PetBox<T>::PetBox(PetBox&& other) noexcept : _payload(std::move(other._payload)) {

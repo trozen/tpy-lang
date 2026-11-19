@@ -18,7 +18,7 @@ void main();
 template<typename T>
 struct Box {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Box() = default;
@@ -55,7 +55,7 @@ inline ::tpy::val_or_ref_t<T> Box<T>::get() {
 //     return copy(self.value)
 template<typename T>
 inline ::tpy::own_return_t<T> Box<T>::take() const {
-    return T(this->value);
+    return ::tpy::storage_t<T>(this->value);
 }
 
 void __tpy_init();

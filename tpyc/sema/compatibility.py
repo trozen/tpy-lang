@@ -13,7 +13,7 @@ from enum import Enum, auto
 from typing import (TYPE_CHECKING, Callable, Iterable, Iterator, NamedTuple,
                     Optional, Sequence, TypeGuard)
 
-from ..type_def_registry import has_view_param_form
+from ..type_def_registry import has_view_param_form, type_def_of
 from ..frame_capture import frame_owns_param_copy
 from ..typesys import (param_holds_callee_copy, lands_in_indirection, peel_slot, pointer_repr_optional, readonly_access, resolve_int_literals,
                       BIGINT, is_primitive_type,
@@ -21,7 +21,7 @@ from ..typesys import (param_holds_callee_copy, lands_in_indirection, peel_slot,
                       concrete_owning_slot_fits)
 from ..typesys import (
     contains_reference_type, inner_type_param_names,
-    same_class, Representation, return_representation,
+    same_class, stored_element, Representation, return_representation,
     make_readonly,
     ELEM,
     TpyType, IntLiteralType, FloatLiteralType, ListRepeatType,
@@ -65,6 +65,7 @@ from .elem_paths import (
 )
 from .binding_ownership import (CompMove, bound_name,
                                 header_site_ownership, owned_head_targets,
+                                open_owning_local, open_owning_so_far,
                                 read_ownership, record_body_ownership,
                                 site_ownership)
 from .read_binding import ReadKind, resolve_read
@@ -93,12 +94,12 @@ from .dyn_erasure import dyn_erasure_coercion
 from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value, int_payload, callable_fit, callable_value_fit, CallableFit, CallableUpcast
 from ..modules import get_span_return_type
 from .call_lends import (
-    EveryTempLend, Lent, MayLend, ReturnLend,
+    CalleeFact, EveryTempLend, Lent, MayLend, ReturnLend, callee_lend_fact,
     borrowing_ctor_arg, call_result_is_fresh, escaping_borrow_tuple,
     every_lent_operand,
 )
 from .context import (
-    CompTarget, ConsumingLoop, FinallyCapture, ProbeSlot,
+    CompTarget, ConsumingLoop, FinallyCapture, OpenResultCopy, ProbeSlot,
     OwnIterMove, OwningRead, PendingCopy, SinkCopy,
     UnneededCopy, UnpackClaim, OwnSlot, ParkedFunctionState, ParkedRebind,
     BorrowKind, ReadonlyReceiverCheck,
@@ -544,6 +545,12 @@ _LAST_USE_MOVES_SINKS = frozenset({TupleSink.FIELD, TupleSink.YIELD})
 # yield and an argument own what their declared slot's `Own` markers say.
 _STORAGE_SINKS = frozenset({TupleSink.LOCAL, TupleSink.FIELD,
                             TupleSink.CONTAINER})
+# The sinks a tuple literal's member at the body's own open `T` element
+# reaches as an `OPEN_SAME_T` slot (`note_own_instantiation_copy`): owned
+# at `T = Own[X]`, as a scalar at a `-> T` result, a yield or a callee's
+# `x: T` is.
+_OPEN_SAME_T_SINKS = frozenset({TupleSink.RETURN, TupleSink.ARG,
+                                TupleSink.YIELD})
 _NEW_LITERALS = CONTAINER_LITERAL_NODES + (
     TpyNoneLiteral, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
     TpyStrLiteral, TpyBytesLiteral)
@@ -818,6 +825,25 @@ def _lambda_calling(callee: str, names: Sequence[str],
     if wrap is not None:
         call = f"{wrap}({call})"
     return f"lambda {args}: {call}" if args else f"lambda: {call}"
+
+
+def _owned_elements_peeled(actual: TpyType, expected: TpyType) -> TpyType:
+    """`actual` with the `Own` on its element type arguments dropped where
+    `expected` is the same container written without them (a container
+    owning its elements holds them either way); `actual` otherwise."""
+    a = unwrap_readonly(actual)
+    e = unwrap_readonly(expected)
+    if not (isinstance(a, NominalType) and isinstance(e, NominalType)
+            and a.type_args and len(a.type_args) == len(e.type_args)
+            and same_class(a, e)
+            and any(isinstance(t, OwnType) for t in a.type_args)
+            and not any(isinstance(t, OwnType) for t in e.type_args)):
+        return actual
+    td = type_def_of(a)
+    if td is None or not td.owns_elements:
+        return actual
+    peeled = a.map_inner_types(stored_element)
+    return peeled if peeled == e else actual
 
 
 class TypeCompatibility:
@@ -1517,6 +1543,9 @@ class TypeCompatibility:
         again at the leaf would read a stripped `Own[...]` as a borrowing
         sink. None means "not decided yet" -- derive it here.
         """
+        # A written `list[Own[X]]` is the `list[X]` a substitution makes of
+        # `list[T]` at `T = Own[X]`: an element is held either way.
+        actual = _owned_elements_peeled(actual, expected)
         # Resolve NominalType self-references from recursive union members.
         # e.g. NominalType("Tree") -> UnionType, and also inside containers:
         # list[NominalType("Tree")] -> list[UnionType(...)].
@@ -3899,6 +3928,107 @@ class TypeCompatibility:
         bare = unwrap_readonly(unwrap_ref_type(unwrap_own(t)))
         return not bare.is_value_type() or is_borrowing_view_type(bare)
 
+    def open_t_param_last_use(self, expr: 'TpyExpr | None') -> bool:
+        """A last-use read of a parameter of this body declared a bare open
+        type parameter (`x: T`), or of a local holding only open `T`
+        results: borrowed in sema at every instantiation, it hands its
+        value on where `T` is `Own[X]`. For a local the walk answers on the
+        bindings read so far (`open_owning_so_far`), which only a later
+        binding can withdraw -- a superset of the settled fact, so a
+        demotion it drives is safe; a verdict a diagnostic depends on
+        waits for settlement (`OpenResultCopy`)."""
+        if not (isinstance(expr, TpyName) and expr in self.ctx.all_last_uses):
+            return False
+        if self._open_result_local_read(expr):
+            return open_owning_so_far(self.ctx, expr.name)
+        return self.ctx.open_t_param_read(expr)
+
+    def _open_result_local_read(self, expr: TpyExpr) -> bool:
+        """A name read resolving to a local of the function body."""
+        binding = self.ctx.read_bindings.get(expr)
+        return (binding is not None and binding.kind is ReadKind.LOCAL
+                and self.ctx.in_function_body())
+
+    def _settle_open_result_copy(self, r: OpenResultCopy) -> None:
+        """The read copies at an `Own` instantiation unless the settled
+        fact says the local owns there and the read kept its mark."""
+        func = self.ctx.func.current_function
+        if not (r.node in self.ctx.all_last_uses
+                and open_owning_local(self.ctx, func, r.name)):
+            self.ctx.own_copy_obligations.append(r.obligation)
+
+    def own_same_t_slot(self, slot: 'TpyType | None') -> bool:
+        """Whether `slot` -- a `-> T` result, a callee parameter -- is this
+        body's own open `T` (`readonly[T]` included, which owns at
+        `T = Own[X]` too), so a read of a `T` handed to it owns only where
+        the instantiation's `T` is `Own[X]`: the `OPEN_SAME_T` slot class."""
+        fn = self.ctx.func.current_function
+        t = unwrap_readonly(unwrap_ref_type(slot)) if isinstance(
+            slot, TpyType) else None
+        return (isinstance(fn, TpyFunction) and type(t) is TypeParamRef
+                and t.kind is TypeParamKind.TYPE
+                and t.name in (fn.type_params or ()))
+
+    def note_own_instantiation_copy(self, slot: 'TpyType | None',
+                                    value: TpyExpr,
+                                    dest: str = "owned storage") -> None:
+        """A read of this body's own open `T` handed to an `OPEN_SAME_T`
+        slot (`own_same_t_slot`: a `-> T` return, a callee's `x: T`, a
+        tuple literal's member at a `T` element of one) that copies only
+        where `T` is `Own[X]` -- a stored place, a local, a parameter read
+        that is not its last use; a call handing back `T` itself owns its
+        value there -- records the obligation the instantiating call
+        reports (`KIND_OWN_INSTANTIATION`), its copy worded into `dest`."""
+        if not (self.ctx.slot_step_commits() and self.own_same_t_slot(slot)):
+            return
+        expected = unwrap_readonly(unwrap_ref_type(slot))
+        src = peel_coerce(value)
+        at = unwrap_readonly(unwrap_ref_type(self.ctx.get_expr_type(src)))
+        if not isinstance(at, TypeParamRef) or at != expected:
+            return
+        if isinstance(src, TpyCallLike) and type(at) is TypeParamRef:
+            # A call handing back `T` itself owns its value at `Own[X]`; one
+            # handing back its storage form (`Unowned(T)`, a nested call
+            # inferred as the twin) lends there too.
+            return
+        loc = self.ctx._resolve_loc(value)
+        obligation = own_copy.OwnCopyObligation(
+            display_type=expected, target_type=expected, dest=dest,
+            kind=own_copy.KIND_OWN_INSTANTIATION,
+            hint="use copy() to make this explicit",
+            diag=Diagnostic(DiagnosticLevel.WARNING, "", loc))
+        if self.open_t_param_last_use(src):
+            if self._open_result_local_read(src):
+                # Whether the local hands its value on is the settled
+                # whole-body fact's (`_settle_open_result_copy`).
+                self.ctx.func.owning_reads.append(
+                    OpenResultCopy(src.name, src, obligation))
+            return
+        self.ctx.own_copy_obligations.append(obligation)
+
+    def note_open_same_t_arg(self, arg: TpyExpr, ptype: TpyType) -> None:
+        """The slot class of a committed argument, decided here once: at a
+        callee parameter of this body's own open `T` (`own_same_t_slot`), a
+        read of that `T` is `OPEN_SAME_T` (`SemanticContext.open_same_t_args`)
+        -- borrowed at `T = P`, owned at `T = Own[P]`: its last use hands the
+        value on there (a borrower read after it demotes the mark), any
+        other read is a copy reported at the instantiating call."""
+        if (self.ctx.trial_depth or not self.ctx.slot_step_commits()
+                or not self.own_same_t_slot(ptype)):
+            return
+        src = peel_coerce(arg)
+        at = self.ctx.get_expr_type(src)
+        if not (isinstance(at, TpyType) and unwrap_readonly(unwrap_ref_type(
+                at)) == unwrap_readonly(unwrap_ref_type(ptype))
+                and type(unwrap_readonly(unwrap_ref_type(at)))
+                is TypeParamRef):
+            return
+        self.ctx.open_same_t_args.add(src)
+        if self.open_t_param_last_use(src):
+            self.move_before_alias_reads(src, borrowers_only=True)
+            self.demoted_by_hidden_borrow(src)
+        self.note_own_instantiation_copy(ptype, arg)
+
     def _owned_last_use(self, expr: 'TpyExpr | None') -> TypeGuard[TpyName]:
         """A name read carrying the last-use mark of a name that owns its
         value (`_is_owned_var`)."""
@@ -3934,6 +4064,12 @@ class TypeCompatibility:
         (a check run after it) the read's settled verdict answers."""
         if self.ctx.func.settled:
             return self._settled_name_moves(expr, slot)
+        if self.open_t_param_last_use(expr):
+            # Borrowed in sema; the mark lets an `Own[X]` instantiation hand
+            # the value on, so a borrower read after it demotes it as it
+            # does the twin's `Own[X]` parameter's move.
+            self.move_before_alias_reads(expr, borrowers_only=True)
+            self.demoted_by_hidden_borrow(expr)
         if self._owned_last_use(expr):
             # A borrower of the name read in the same statement may read
             # after the move, whichever slot takes it.
@@ -4101,6 +4237,8 @@ class TypeCompatibility:
                     self._warn_unneeded_copy(r)
             elif isinstance(r, FinallyCapture):
                 self._settle_finally_capture(r)
+            elif isinstance(r, OpenResultCopy):
+                self._settle_open_result_copy(r)
         # A settled advice takes its place among the body's diagnostics,
         # as do the copies the arms above register as the walk does.
         added = self.ctx.diagnostics[before:]
@@ -4207,6 +4345,10 @@ class TypeCompatibility:
         the returned name, or the literal member at `r.path` -- so a tuple
         local any element of which is non-owning is no deferrable move
         either."""
+        if self.ctx.open_t_param_read(r.node):
+            # Owns only at `T = Own[X]`: the lowering resolves the capture
+            # per instantiation.
+            return
         binding = (self.ctx.read_bindings.get(r.node)
                    if isinstance(r.node, TpyName) else None)
         t = self.ctx.get_expr_type(r.node)
@@ -6036,6 +6178,22 @@ class TypeCompatibility:
         storage = self.ctx.view_storage_verdict(t) or t
         return view_family_for_type(storage) is not None
 
+    def _open_callable_at_readonly_slot(self, expr: TpyExpr,
+                                        slot: TpyType) -> bool:
+        """A call through a callable value whose return is an open type
+        parameter, yielded at a `readonly[U]` slot: that slot only lends
+        (`val_or_ref<const U>`), and at `U = Own[X]` the call's value is
+        fresh, so the generic body cannot lend it."""
+        if not (isinstance(slot, ReadonlyType)
+                and isinstance(unwrap_readonly(slot), TypeParamRef)):
+            return False
+        call = peel_coerce(expr)
+        if not isinstance(call, TpyCallLike):
+            return False
+        lend = callee_lend_fact(call)
+        return (lend.kind is CalleeFact.CALLABLE
+                and lend.ops.fi.returns_open())
+
     def is_dangling_return(self, expr: TpyExpr, *, view_source: bool = False,
                            gen_yield: bool = False) -> bool:
         """Check if returning this expression would create a dangling reference
@@ -6390,6 +6548,9 @@ class TypeCompatibility:
         # Check if the expression is safe to return as a reference
         subject = self.dangling_subject(expr, "local or temporary",
                                         gen_yield=for_yield)
+        if subject is None and for_yield and self._open_callable_at_readonly_slot(
+                expr, return_type):
+            subject = "local or temporary"
         if subject is not None:
             if is_protocol_type(return_type):
                 raise self.ctx.error(
@@ -6428,8 +6589,10 @@ class TypeCompatibility:
                          if for_yield
                          and (isinstance(call, TpyCall)
                               or call_operands(call) is not None)
-                         and call_result_is_fresh(
+                         and (call_result_is_fresh(
                              self.ctx, call, gen_yield=True)
+                             or self._open_callable_at_readonly_slot(
+                                 call, return_type))
                          else "")
             fix = _own_fix(return_type, cap=not local_fix)
             raise self.ctx.error(
@@ -6891,6 +7054,11 @@ class TypeCompatibility:
             return self.check_member_read(m, slot, dest, path,
                                           last_use_moves=False)
         if nested is None:
+            if sink in _OPEN_SAME_T_SINKS:
+                # A member at this body's own open `T` element copies only
+                # at an `Own[X]` instantiation, as the read alone does.
+                self.note_own_instantiation_copy(
+                    et, m, f"{dest} (tuple element {path})")
             if own is not None:
                 own_et = unwrap_optional_own(et)
                 assert own_et is not None
@@ -7401,7 +7569,10 @@ class TypeCompatibility:
         takes the source (a literal's, a name's or a walrus's does). Any
         other Optional is stored whole (`std::optional<T>`) and registers
         as itself. The one rule of the return, the argument, the lambda
-        result and the yield."""
+        result and the yield -- the copy only an `Own[X]` instantiation
+        makes included (`note_own_instantiation_copy`)."""
+        if source is not None:
+            self.note_own_instantiation_copy(slot, source)
         bare = unwrap_readonly(slot)
         if isinstance(bare, OptionalType):
             inner = unwrap_readonly(bare.inner)

@@ -41,7 +41,7 @@ struct __coro_solo {
     __coro_solo(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -69,7 +69,7 @@ template <typename T>
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        std::tuple<::tpy::val_or_ptr_t<T>> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<T>>(::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x));
+        std::tuple<::tpy::val_or_ptr_t<T>> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<T>>(::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(x)));
         return ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -81,7 +81,7 @@ template <typename T>
 // async def solo[T](x: T) -> tuple[T]:
 template <typename T>
 __coro_solo<T> solo(::tpy::param_val_or_ref_t<T> x) {
-    return __coro_solo<T>(x);
+    return __coro_solo<T>(::tpy::param_pass_last<T>(x));
 }
 
 // async def go() -> None:

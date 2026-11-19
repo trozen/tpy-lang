@@ -1237,6 +1237,7 @@ def _build_comprehension_body(init, result_type, lc, declared,
     if kind == "dict":
         kt = _comp_result_type(init.result_key_type, analyzer)
         vt = _comp_result_type(init.result_value_type, analyzer)
+        # Element positions hold the storage form (`storage_t<T>`).
         container = (f"::tpy::ordered_map<{lc.render_type(kt)}, "
                      f"{lc.render_type(vt)}>")
     else:

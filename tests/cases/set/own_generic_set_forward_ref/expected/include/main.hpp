@@ -28,7 +28,7 @@ void main();
 template<typename T>
 struct Container {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: Own[T]) -> None:
     Container() = default;

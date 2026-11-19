@@ -17,24 +17,24 @@ struct __gen_gen_reassign;
 
 // def reassign[T: ValueType](x: T, y: T) -> T:
 template<::tpy::ValueType T>
-T reassign(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> y);
+::tpy::storage_t<T> reassign(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> y);
 // def via_nonlocal[T: ValueType](x: T, y: T) -> T:
 template<::tpy::ValueType T>
-T via_nonlocal(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> y);
+::tpy::storage_t<T> via_nonlocal(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> y);
 // def gen_reassign[T: ValueType](x: T, y: T) -> Iterator[T]:
 template <typename T>
 __gen_gen_reassign<T> gen_reassign(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y);
 // def or_default[T: ValueType](x: T | None, d: T) -> T:
 template<::tpy::ValueType T>
-T or_default(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d);
+::tpy::storage_t<T> or_default(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d);
 // def take[T: ValueType](x: T | None, y: T | None) -> T | None:
 template<::tpy::ValueType T>
-std::optional<T> take(::tpy::opt_param_t<T> x, ::tpy::opt_param_t<T> y);
+std::optional<::tpy::storage_t<T>> take(::tpy::opt_param_t<T> x, ::tpy::opt_param_t<T> y);
 // def or_default_bytes(x: bytes | None, d: bytes) -> bytes:
 ::tpy::Bytes or_default_bytes(std::optional<::tpy::BytesView> __param_x, ::tpy::BytesView d);
 // def clear[T: ValueType](x: T | None, flag: bool) -> T | None:
 template<::tpy::ValueType T>
-std::optional<T> clear(::tpy::opt_param_t<T> x, bool flag);
+std::optional<::tpy::storage_t<T>> clear(::tpy::opt_param_t<T> x, bool flag);
 // def take_other(x: bytes | None, y: bytes | None) -> bytes | None:
 std::optional<::tpy::Bytes> take_other(std::optional<::tpy::BytesView> __param_x, std::optional<::tpy::BytesView> __param_y);
 // def main() -> None:
@@ -48,7 +48,7 @@ struct C {
     C();
 
     // def swap(self, x: T, y: T) -> T:
-    T swap(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::readonly_form_t<T> y) const;
+    ::tpy::storage_t<T> swap(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::readonly_form_t<T> y) const;
     static constexpr std::string_view __tpy_class_name__ = "part_reassign.C";
 };
 
@@ -66,7 +66,7 @@ struct Clr {
     Clr();
 
     // def clear(self, x: T | None) -> T | None:
-    std::optional<T> clear(::tpy::opt_cparam_t<T> x) const;
+    std::optional<::tpy::storage_t<T>> clear(::tpy::opt_cparam_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "part_reassign.Clr";
 };
 
@@ -78,10 +78,10 @@ inline std::ostream& operator<<(std::ostream& os, const Clr<T>& obj) {
 
 // def gen_reassign[T: ValueType](x: T, y: T) -> Iterator[T]:
 template <typename T>
-struct __gen_gen_reassign : public ::tpy::next_iter_mixin<__gen_gen_reassign<T>, T> {
+struct __gen_gen_reassign : public ::tpy::next_iter_mixin<__gen_gen_reassign<T>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
-    T x;
-    T y;
+    ::tpy::storage_t<T> x;
+    ::tpy::storage_t<T> y;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -92,10 +92,10 @@ struct __gen_gen_reassign : public ::tpy::next_iter_mixin<__gen_gen_reassign<T>,
 
     __gen_gen_reassign(::tpy::param_val_or_ref_t<T> x_, ::tpy::param_val_or_ref_t<T> y_)
         : __state(S_INITIAL),
-          x(x_),
-          y(y_) {}
+          x(::tpy::param_pass_last<T>(x_)),
+          y(::tpy::param_pass_last<T>(y_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_reassign& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen_reassign<T>&) {
@@ -108,7 +108,7 @@ struct __gen_gen_reassign : public ::tpy::next_iter_mixin<__gen_gen_reassign<T>,
 //     x = y  # tpyc: ok
 //     yield x                                                 # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_gen_reassign<T>::__next__() {
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_gen_reassign<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -133,7 +133,7 @@ std::expected<T, ::tpy::StopIteration> __gen_gen_reassign<T>::__next__() {
 // def gen_reassign[T: ValueType](x: T, y: T) -> Iterator[T]:
 template <typename T>
 __gen_gen_reassign<T> gen_reassign(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y) {
-    return __gen_gen_reassign<T>(x, y);
+    return __gen_gen_reassign<T>(::tpy::param_pass_last<T>(x), ::tpy::param_pass_last<T>(y));
 }
 
 
@@ -147,10 +147,10 @@ inline C<T>::C() {
 //     x = y  # tpyc: ok
 //     return x
 template<::tpy::ValueType T>
-inline T C<T>::swap(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::readonly_form_t<T> y) const {
-    T x = ::tpy::param_to_storage<T>(__param_x);
-    x = ::tpy::param_to_assign<T>(y);
-    return ::tpy::param_to_return<T>(x);
+inline ::tpy::storage_t<T> C<T>::swap(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::readonly_form_t<T> y) const {
+    ::tpy::storage_t<T> x = ::tpy::param_to_storage<::tpy::storage_t<T>>(__param_x);
+    x = ::tpy::param_consume<T>(y);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 // def __init__(self) -> None:
@@ -163,7 +163,7 @@ inline Clr<T>::Clr() {
 //     x = None  # tpyc: ok
 //     return x
 template<::tpy::ValueType T>
-inline std::optional<T> Clr<T>::clear(::tpy::opt_cparam_t<T> x) const {
+inline std::optional<::tpy::storage_t<T>> Clr<T>::clear(::tpy::opt_cparam_t<T> x) const {
     x = std::nullopt;
     return x;
 }
@@ -173,10 +173,10 @@ inline std::optional<T> Clr<T>::clear(::tpy::opt_cparam_t<T> x) const {
 //     x = y  # tpyc: ok
 //     return x
 template<::tpy::ValueType T>
-T reassign(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> y) {
-    T x = ::tpy::param_to_storage<T>(__param_x);
-    x = ::tpy::param_to_assign<T>(y);
-    return ::tpy::param_to_return<T>(x);
+::tpy::storage_t<T> reassign(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> y) {
+    ::tpy::storage_t<T> x = ::tpy::param_to_storage<::tpy::storage_t<T>>(__param_x);
+    x = ::tpy::param_consume<T>(y);
+    return ::tpy::param_to_return_last<T>(x);
 }
 // # through `nonlocal` from a closure
 // def via_nonlocal[T: ValueType](x: T, y: T) -> T:
@@ -186,8 +186,8 @@ T reassign(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> 
 //     inner()
 //     return x
 template<::tpy::ValueType T>
-T via_nonlocal(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> y) {
-    T x = ::tpy::param_to_storage<T>(__param_x);
+::tpy::storage_t<T> via_nonlocal(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> y) {
+    ::tpy::storage_t<T> x = ::tpy::param_to_storage<::tpy::storage_t<T>>(__param_x);
     auto inner = [&y, &x]() {
         x = ::tpy::param_to_assign<T>(y);
     };
@@ -200,9 +200,9 @@ T via_nonlocal(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t
 //         x = d  # tpyc: ok
 //     return x
 template<::tpy::ValueType T>
-T or_default(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d) {
+::tpy::storage_t<T> or_default(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d) {
     if ((!::tpy::opt_has_value(x))) {
-        x = ::tpy::param_to_assign<T>(d);
+        x = ::tpy::param_consume<T>(d);
     }
     return (*x);
 }
@@ -212,7 +212,7 @@ T or_default(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d) {
 //         x = y  # tpyc: ok
 //     return x
 template<::tpy::ValueType T>
-std::optional<T> take(::tpy::opt_param_t<T> x, ::tpy::opt_param_t<T> y) {
+std::optional<::tpy::storage_t<T>> take(::tpy::opt_param_t<T> x, ::tpy::opt_param_t<T> y) {
     if ((::tpy::opt_has_value(y))) {
         x = y;
     }
@@ -224,7 +224,7 @@ std::optional<T> take(::tpy::opt_param_t<T> x, ::tpy::opt_param_t<T> y) {
 //         x = None  # tpyc: ok
 //     return x
 template<::tpy::ValueType T>
-std::optional<T> clear(::tpy::opt_param_t<T> x, bool flag) {
+std::optional<::tpy::storage_t<T>> clear(::tpy::opt_param_t<T> x, bool flag) {
     if (flag) {
         x = std::nullopt;
     }

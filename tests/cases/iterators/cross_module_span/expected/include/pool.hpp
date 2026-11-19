@@ -17,17 +17,17 @@ inline constexpr std::string_view __name__ = "pool";
 
 // def make_pool[T](items: Own[list[T]]) -> Own[Pool[T]]:
 template<typename T>
-Pool<T> make_pool(std::vector<T>&& items);
+Pool<T> make_pool(std::vector<::tpy::storage_t<T>>&& items);
 
 // class Pool[T](Spannable[T]):
 template<typename T>
 struct Pool {
     // _items: ArrayList[T, 8]
-    ::tpystd::tplib::array_list::ArrayList<T, 8> _items;
+    ::tpystd::tplib::array_list::ArrayList<::tpy::storage_t<T>, 8> _items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
     Pool() = default;
-    explicit Pool(std::vector<T>&& items);
+    explicit Pool(std::vector<::tpy::storage_t<T>>&& items);
 
     auto begin() { return this->__span__().begin(); }
     auto end() { return this->__span__().end(); }
@@ -35,7 +35,7 @@ struct Pool {
     auto end() const { return this->__span__().end(); }
 
     // def __span__(self) -> Span[readonly[T]]:
-    std::span<const T> __span__() const;
+    std::span<const ::tpy::storage_t<T>> __span__() const;
     static constexpr std::string_view __tpy_class_name__ = "pool.Pool";
 };
 
@@ -49,19 +49,19 @@ inline std::ostream& operator<<(std::ostream& os, const Pool<T>& obj) {
 // def __init__(self, items: Own[list[T]]) -> None:
 //     self._items = ArrayList[T, 8](items)
 template<typename T>
-inline Pool<T>::Pool(std::vector<T>&& items) : _items(::tpystd::tplib::array_list::ArrayList<T, 8>(&(items))) {}
+inline Pool<T>::Pool(std::vector<::tpy::storage_t<T>>&& items) : _items(::tpystd::tplib::array_list::ArrayList<::tpy::storage_t<T>, 8>(&(items))) {}
 
 // def __span__(self) -> Span[readonly[T]]:
 //     return span(self._items)
 template<typename T>
-inline std::span<const T> Pool<T>::__span__() const {
+inline std::span<const ::tpy::storage_t<T>> Pool<T>::__span__() const {
     return ::tpy::as_span(this->_items);
 }
 
 // def make_pool[T](items: Own[list[T]]) -> Own[Pool[T]]:
 //     return Pool[T](items)
 template<typename T>
-Pool<T> make_pool(std::vector<T>&& items) {
+Pool<T> make_pool(std::vector<::tpy::storage_t<T>>&& items) {
     return Pool<T>(std::move(items));
 }
 

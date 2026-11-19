@@ -31,6 +31,7 @@ from ...type_def_registry import has_view_param_form, owned_from_view_explicit
 from ...typesys import (
     by_value_optional_payload,
     contains_type_param,
+    UnownedParam,
     peel_slot,
     FloatLiteralType,
     param_takes_ownership,
@@ -44,6 +45,7 @@ from ...typesys import (
     LiteralType,
     NoneType,
     OptionalType,
+    RefType,
     pointer_repr_optional,
     PtrType,
     RecursiveAliasInstanceType,
@@ -1016,12 +1018,16 @@ def view_to_owned(expr: THIRExpr, slot: Slot, types) -> 'Plan | None':
 
 
 def _open_param_read(s: Source) -> bool:
-    """The bare read of an open-`T` PARAM, spelled `param_val_or_ref_t<T>`:
-    a view, not `T`, at a view-family instantiation (`str`, `bytes`).
-    Held as the projection holds it: a resumable frame's copy is `T`
-    storage."""
-    if not s.id_read or s.held is not Held.BORROWED:
-        return False
+    """A read held in its open-`T` parameter form (`Source.open_t_form`)."""
+    return s.open_t_form
+
+
+def is_open_t_binding(s: Source) -> bool:
+    """Whether NAME read `s` reads a binding held in an open-`T` parameter
+    form -- an open-result local, or a parameter declared a bare open `T`:
+    `stamp_source`'s one decision of `Source.open_t_binding`."""
+    if s.open_result:
+        return True
     pt = s.param_type
     return pt is not None and is_open_type_param_return(
         unwrap_ref_type(unwrap_send_sync(pt)))
@@ -1044,7 +1050,31 @@ def open_param_convert(expr: THIRExpr, t: TpyType, sink: OpenTSink
     directly); a node with no source (a literal) is no such read."""
     if expr.source is None or not _open_param_read(expr.source):
         return None
-    return open_t_convert(expr, t, sink)
+    ot = expr.source.open_type
+    held = (unwrap_readonly(unwrap_ref_type(ot)) if isinstance(ot, TpyType)
+            else None)
+    if isinstance(held, UnownedParam):
+        # A local of the storage form (a nested call's `storage_t<T>`
+        # result) owns nothing more at `T = Own[X]`: its own form decides.
+        t = held
+    return replace(open_t_convert(expr, t, sink),
+                   open_t_last=expr.source.open_last,
+                   open_slot_last=expr.source.slot_last)
+
+
+def open_trait_lift(expr: THIRExpr, t: TpyType, trait: TraitAbi, *,
+                    is_const: bool = False) -> THIRFormConvert:
+    """An open `T` lent into a slot that spells it through its trait (a
+    tuple element's `val_or_ptr_t<T>`, a `T | None` parameter's
+    `opt_param_t<T>`), carrying the read's last use: where the slot holds
+    the value (`T = Own[X]`, a value storage type) that read hands it
+    over, as the twin's `std::move(x)` does."""
+    s = expr.source
+    return THIRFormConvert(
+        result_type=t, value=expr, form=Form.BORROW, is_const=is_const,
+        trait=trait,
+        open_t_last=(s is not None and s.open_last and _open_param_read(s)),
+        open_slot_last=s is not None and s.slot_last, loc=expr.loc)
 
 
 def open_param_result(expr: THIRExpr, slot: Slot,
@@ -1057,6 +1087,12 @@ def open_param_result(expr: THIRExpr, slot: Slot,
     member of a storage result (`T | None` as `std::optional<T>`) builds
     its storage form, `param_to_storage<T>`. Only a bare open-`T` param
     (not `Own[T]`) is that read."""
+    if (expr.source is not None and expr.source.open_result
+            and expr.source.id_read
+            and slot.construct is SlotConstruct.RETURN):
+        # A `val_or_ref_t<T>` local is the result's own form: the
+        # id-expression returns it (moved where it owns).
+        return None
     if slot.holds is SlotHolds.TRAIT:
         if (slot.trait in (TraitAbi.YIELD_SLOT, TraitAbi.VAL_OR_PTR)
                 or slot.construct is SlotConstruct.PASS):
@@ -1367,6 +1403,17 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                 and not implicit), (
         "record moves a lambda parameter outside its result", s.name)
 
+    if slot.open_same_t is not None:
+        # The instantiation decides: a read passes through where the
+        # parameter borrows; where it owns, a read at its last use moves on
+        # and any other read is copied (reported at the instantiating call).
+        _witness("call.open_same_t_arg")
+        return Plan(replace(
+            open_t_convert(expr, slot.open_same_t, OpenTSink.PASS),
+            open_t_last=s.open_last and _open_param_read(s),
+            open_slot_last=s.slot_last),
+            Effect.PASS)
+
     def passes(lands: TpyType) -> Plan:
         """The slot's own construction takes the source as it renders,
         building `lands` from it: a copy of an existing object unless the
@@ -1538,6 +1585,17 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         lifted = open_param_result(expr, slot)
         if lifted is not None:
             return lifted
+        held_t = unwrap_readonly(unwrap_ref_type(expr.result_type))
+        if (slot.lifetime is SlotLifetime.FULL_EXPRESSION
+                and isinstance(unwrap_readonly(st), UnownedParam)
+                and type(held_t) is TypeParamRef and s.prvalue):
+            # An open `T` result at a parameter of `T`'s storage form (a
+            # nested call inferred as the twin): a reference at `T = P`, a
+            # fresh value at `T = Own[P]`, which the parameter's reference
+            # does not bind. It is held for the call in its own form
+            # (`val_or_ref_t<T>`), as the twin holds the fresh `P`.
+            return Plan(expr, Effect.MATERIALIZE,
+                        storage_request=StorageRequest(RefType(held_t)))
         declared_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             slot.declared)))
         if (isinstance(declared_t, OptionalType)
@@ -1575,11 +1633,9 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                 # which a view-family instantiation's parameter (a view)
                 # does not convert to; no template-level form serves both.
                 return Refuse("generic_arg_slot", by_slot=True)
-            return Plan(THIRFormConvert(result_type=st, value=expr,
-                                        form=Form.BORROW,
-                                        is_const=slot.const or s.const,
-                                        trait=lift_trait,
-                                        loc=expr.loc), Effect.LIFT)
+            return Plan(open_trait_lift(expr, st, lift_trait,
+                                        is_const=slot.const or s.const),
+                        Effect.LIFT)
         if open_opt:
             # An open Optional's trait at a reference-typed (or still open)
             # `T` is its borrow form: a pointer at the caller's object.
@@ -1595,8 +1651,11 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             return Plan(expr, Effect.MATERIALIZE,
                         storage_request=StorageRequest(
                             held_object_type(expr, st, types)))
-        if (not explicit_copy and under.movable and not implicit
-                and slot.construct is SlotConstruct.RETURN):
+        if (not explicit_copy and not implicit
+                and slot.construct is SlotConstruct.RETURN
+                and (under.movable
+                     or (slot.trait is TraitAbi.YIELD_SLOT and s.open_last
+                         and _open_param_read(s)))):
             if slot.trait is TraitAbi.YIELD_SLOT:
                 # A generator's yield slot moves a value instantiation in
                 # and lends a reference one: the frame outlives the step.
@@ -1610,6 +1669,16 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             return Plan(THIRMove(value=expr, result_type=st,
                                  form=Form.STORAGE, loc=expr.loc),
                         Effect.MOVE)
+        if (slot.trait is TraitAbi.YIELD_SLOT and s.slot_last
+                and not explicit_copy):
+            # An open-result local at its last use: at a value storage
+            # type the step takes the local's own snapshot over.
+            return Plan(THIRFormConvert(result_type=st, value=expr,
+                                        form=Form.STORAGE,
+                                        is_const=slot.const,
+                                        trait=TraitAbi.YIELD_SLOT,
+                                        open_slot_last=True,
+                                        loc=expr.loc), Effect.PASS)
         return Plan(expr, Effect.PASS)
 
     if holds is SlotHolds.BORROWS:
@@ -1730,7 +1799,8 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             and not (s.held is Held.BORROWED
                      and _same_viewfam(rt, member, types))
             and not (isinstance(member, TypeParamRef)
-                     and s.param_type is not None)):
+                     and (s.param_type is not None
+                          or _open_param_read(s)))):
         # The callee's own overload copies an lvalue of the slot's type;
         # one at its last use moves in. (An open `T` parameter is read in
         # its parameter form, a view where `T` is `str`: its storage form

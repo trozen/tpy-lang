@@ -15,7 +15,7 @@ struct shape;
 // @dynamic
 // class shape(Protocol):
 template<typename T>
-concept __shape_Concept__ = requires(T& t) {
+concept __shape_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.area() } -> std::convertible_to<::tpy::BigInt>;
 };
 

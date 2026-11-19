@@ -51,7 +51,7 @@ std::string tiers__list_int64(std::vector<int64_t>& xs);
 // @dispatch
 // def tiers[T](xs: list[T]) -> str:
 template<typename T>
-std::string tiers__list_T(std::vector<T>& xs);
+std::string tiers__list_T(std::vector<::tpy::storage_t<T>>& xs);
 // @dispatch
 // def tiers(xs: Iterable[int32]) -> str:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
@@ -107,7 +107,7 @@ std::string to_big__Iterable_int64(const T_xs& xs) {
 //     xs.append(xs[0])
 //     return "generic"
 template<typename T>
-std::string tiers__list_T(std::vector<T>& xs) {
+std::string tiers__list_T(std::vector<::tpy::storage_t<T>>& xs) {
     xs.push_back(::tpy::__getitem__(xs, 0));
     return "generic";
 }

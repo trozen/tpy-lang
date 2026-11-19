@@ -178,15 +178,12 @@ contract covers `max` / `min` / `next` over a protocol-typed source in a generic
 Iterable[T]` holds a hedged copy; `xs: list[T]` is the container spelling).
 (open: `BUGS.md#generic-own-slot-borrow-call-unwarned`,
 `BUGS.md#generic-optional-return-committed-to-pointer`,
-`BUGS.md#generic-yield-fn-result-copies`,
 `BUGS.md#generic-dispatch-fallback-frozen-at-open-t`,
-`BUGS.md#generic-spelled-type-args-copy-where-inferred-lend`,
 `BUGS.md#generic-open-t-eq-ill-formed`,
 `BUGS.md#generic-tuple-yield-slot-borrow-form`,
 `BUGS.md#generic-unpack-relay-borrow-tuple-step`,
 `BUGS.md#generic-step-part-alias-yield-rejects`,
-`BUGS.md#open-t-head-target-rebind-twin-gap`,
-`BUGS.md#own-callable-result-lent-callee-copies`) The language contract is
+`BUGS.md#open-t-head-target-rebind-twin-gap`) The language contract is
 `docs/LANGUAGE_FEATURES.md` "Generic Functions".
 
 **Check.** For a changed rule that a generic body can reach, write the monomorphic twin at the

@@ -9,13 +9,13 @@ namespace tpyapp::part_slots {
 
 // class OwnIt[T](Iterable[T], Protocol):
 template<typename T, typename _T0>
-concept OwnIt = requires(T& t) {
+concept OwnIt = requires(::tpy::storage_t<T>& t) {
     ::tpy::handover_iter<T>(t);
 };
 
 // class Rows(Iterable[Own[R]], Protocol):
 template<typename T>
-concept Rows = requires(T& t) {
+concept Rows = requires(::tpy::storage_t<T>& t) {
     ::tpy::handover_iter<T>(t);
 };
 
@@ -23,21 +23,21 @@ template<typename T> struct Bag;
 // @dynamic
 // class Bag[T](Protocol):
 template<typename T, typename _T0>
-concept __Bag_Concept__ = requires(T& t) {
+concept __Bag_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> ::tpy::proto_result<_T0>;
     { t.size() } -> std::convertible_to<int32_t>;
 };
 
 template<typename T>
 struct Bag {
-    virtual T get() = 0;
+    virtual ::tpy::storage_t<T> get() = 0;
     virtual int32_t size() = 0;
     virtual ~Bag() = default;
 };
 
 // class Counted[T](Iterable[T], Protocol):
 template<typename T, typename _T0>
-concept Counted = requires(T& t) {
+concept Counted = requires(::tpy::storage_t<T>& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
     ::tpy::handover_iter<T>(t);
 };
@@ -72,7 +72,7 @@ int32_t take_rows(T_xs&& xs);
 template<::tpystd::typing::Iterable<std::tuple<R, int32_t>> T_xs>
 int32_t take_pairs(T_xs&& xs);
 // def count[T](xs: Iterable[Own[T]]) -> int32:
-template<typename T, ::tpystd::typing::Iterable<T> T_xs>
+template<typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
 int32_t count(T_xs&& xs);
 // def take_iter(xs: Iterator[Own[R]]) -> int32:
 template<::tpystd::typing::Iterator<R> T_xs>
@@ -160,7 +160,7 @@ struct tpy::Adapter<tpyapp::part_slots::Bag<T>, __tpy_Impl> : tpyapp::part_slots
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T get() override { return inner.get(); }
+    ::tpy::storage_t<T> get() override { return inner.get(); }
     int32_t size() override { return inner.size(); }
 };
 
@@ -168,7 +168,7 @@ template<typename T, typename __tpy_Impl> requires tpyapp::part_slots::__Bag_Con
 struct tpy::RefAdapter<tpyapp::part_slots::Bag<T>, __tpy_Impl> : tpyapp::part_slots::Bag<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
+    ::tpy::storage_t<T> get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
     int32_t size() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.size(); }
 };
 
@@ -308,7 +308,7 @@ int32_t take_pairs(T_xs&& xs) {
 //     for _ in xs:
 //         n += 1
 //     return n
-template<typename T, ::tpystd::typing::Iterable<T> T_xs>
+template<typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
 int32_t count(T_xs&& xs) {
     int32_t n = 0;
     auto& __src_0 = xs;

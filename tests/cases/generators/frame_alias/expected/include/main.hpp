@@ -14,7 +14,7 @@ struct Getter;
 // @dynamic
 // class Getter(Protocol):
 template<typename T>
-concept __Getter_Concept__ = requires(T& t) {
+concept __Getter_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> std::convertible_to<int32_t>;
 };
 
@@ -232,9 +232,9 @@ inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
 template<typename T>
 struct Bag {
     // a: T
-    T a;
+    ::tpy::storage_t<T> a;
     // b: T
-    T b;
+    ::tpy::storage_t<T> b;
 
     // def __init__(self, a: Own[T], b: Own[T]) -> None:
     Bag() = default;
@@ -470,8 +470,8 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs<T>, ::tpy::yield_
 
     __gen_pairs(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_)
         : __state(S_INITIAL),
-          a(a_),
-          b(b_) {}
+          a(::tpy::param_pass_last<T>(a_)),
+          b(::tpy::param_pass_last<T>(b_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_pairs& __iter__() { return *this; }
@@ -489,11 +489,11 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_pairs<T>::__ne
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return a;
+        return ::tpy::yield_from_local<T>(a);
     }
     case S_RESUME_0: {  // after: yield a
         __state = S_RESUME_1;
-        return b;
+        return ::tpy::yield_from_local<T>(b);
     }
     case S_RESUME_1: {  // after: yield b
         __state = S_DONE;
@@ -508,7 +508,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_pairs<T>::__ne
 // def pairs[T](a: T, b: T) -> Iterator[T]:
 template <typename T>
 __gen_pairs<T> pairs(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    return __gen_pairs<T>(a, b);
+    return __gen_pairs<T>(::tpy::param_pass_last<T>(a), ::tpy::param_pass_last<T>(b));
 }
 
 // def gen_body() -> Iterator[int32]:

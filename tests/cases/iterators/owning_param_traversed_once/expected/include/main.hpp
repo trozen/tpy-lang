@@ -12,7 +12,7 @@ namespace tpyapp::main {
 
 // class Sizes[T](Protocol):
 template<typename T, typename _T0>
-concept Sizes = requires(const T& t) {
+concept Sizes = requires(const ::tpy::storage_t<T>& t) {
     { t.size() } -> std::convertible_to<int32_t>;
 };
 

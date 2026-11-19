@@ -134,7 +134,7 @@ void slice_source(std::vector<::tpy::BigInt>& a);
 void add_nine(std::vector<::tpy::BigInt>& r);
 // def generic_touch[T](a: list[T], touch: Callable[[T], None]) -> None:
 template<typename T>
-void generic_touch(std::vector<T>& a, const std::function<void(::tpy::param_val_or_ref_t<T>)>& touch);
+void generic_touch(std::vector<::tpy::storage_t<T>>& a, const std::function<void(::tpy::param_val_or_ref_t<T>)>& touch);
 // def keep_isinstance(items: list[int | str]) -> int:
 ::tpy::BigInt keep_isinstance(const std::vector<::tpy::Union<::tpy::BigInt, std::string>>& items);
 // @pure
@@ -1022,13 +1022,13 @@ inline std::vector<::tpy::BigInt>& Rows::operator[](const ::tpy::BigInt& i) {
 //     for y in a:
 //         touch(y)  # generic element: the reference lends the element
 template<typename T>
-void generic_touch(std::vector<T>& a, const std::function<void(::tpy::param_val_or_ref_t<T>)>& touch) {
+void generic_touch(std::vector<::tpy::storage_t<T>>& a, const std::function<void(::tpy::param_val_or_ref_t<T>)>& touch) {
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& y = *__beg_0;
-        touch(y);
+        touch(::tpy::param_pass<T>(y));
     }
 }
 // def keep_generic_prod(xs: Iterable[int], start: int) -> int:

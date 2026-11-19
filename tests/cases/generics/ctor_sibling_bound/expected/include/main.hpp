@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Getter[R](Protocol):
 template<typename T, typename _T0>
-concept Getter = requires(T& t) {
+concept Getter = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> ::tpy::proto_result<_T0>;
 };
 
@@ -39,9 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const IntGet& obj) {
 template<typename R, Getter<R> T>
 struct Pair {
     // r: R
-    R r;
+    ::tpy::storage_t<R> r;
     // t: T
-    T t;
+    ::tpy::storage_t<T> t;
 
     // def __init__(self, r: R, t: T) -> None:
     Pair() = default;

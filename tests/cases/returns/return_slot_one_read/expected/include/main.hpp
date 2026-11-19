@@ -13,7 +13,7 @@ struct Shape;
 // @dynamic
 // class Shape(Protocol):
 template<typename T>
-concept __Shape_Concept__ = requires(T& t) {
+concept __Shape_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.bump() } -> std::convertible_to<void>;
     { t.get() } -> std::convertible_to<int32_t>;
 };
@@ -159,30 +159,30 @@ std::unique_ptr<Shape> dyn_borrowed(const Sq& s);
 std::string json_text(const Json& j);
 // def gen_tuple_name[T](x: tuple[T, int32]) -> Own[tuple[T, int32]]:
 template<typename T>
-std::tuple<T, int32_t> gen_tuple_name(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x);
+std::tuple<::tpy::storage_t<T>, int32_t> gen_tuple_name(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x);
 // def gen_pair[T](a: T) -> tuple[T, int32]:
 template<typename T>
 std::tuple<::tpy::val_or_ptr_t<T>, int32_t> gen_pair(::tpy::param_val_or_ref_t<T> a);
 // def gen_tuple_call[T](a: T) -> Own[tuple[T, int32]]:
 template<typename T>
-std::tuple<T, int32_t> gen_tuple_call(::tpy::param_val_or_ref_t<T> a);
+std::tuple<::tpy::storage_t<T>, int32_t> gen_tuple_call(::tpy::param_val_or_ref_t<T> a);
 // def gen_tuple_pair[T](x: tuple[T, T]) -> Own[tuple[T, T]]:
 template<typename T>
-std::tuple<T, T> gen_tuple_pair(const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<T>>& x);
+std::tuple<::tpy::storage_t<T>, ::tpy::storage_t<T>> gen_tuple_pair(const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<T>>& x);
 // def gen_tuple_loop[T](xs: list[tuple[T, int32]],
 //                       d: tuple[T, int32]) -> Own[tuple[T, int32]]:
 template<typename T>
-std::tuple<T, int32_t> gen_tuple_loop(const std::vector<std::tuple<T, int32_t>>& xs, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& d);
+std::tuple<::tpy::storage_t<T>, int32_t> gen_tuple_loop(const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& xs, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& d);
 // def gen_tuple_select[T](x: tuple[T, int32], y: tuple[T, int32],
 //                         c: bool) -> Own[tuple[T, int32]]:
 template<typename T>
-std::tuple<T, int32_t> gen_tuple_select(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& y, bool c);
+std::tuple<::tpy::storage_t<T>, int32_t> gen_tuple_select(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& y, bool c);
 // def gen_own_pair[T](a: T) -> Own[tuple[T, int32]]:
 template<typename T>
-std::tuple<T, int32_t> gen_own_pair(::tpy::param_val_or_ref_t<T> a);
+std::tuple<::tpy::storage_t<T>, int32_t> gen_own_pair(::tpy::param_val_or_ref_t<T> a);
 // def gen_own_call[T](a: T) -> Own[tuple[T, int32]]:
 template<typename T>
-std::tuple<T, int32_t> gen_own_call(::tpy::param_val_or_ref_t<T> a);
+std::tuple<::tpy::storage_t<T>, int32_t> gen_own_call(::tpy::param_val_or_ref_t<T> a);
 // def own_tuple_param_lists(xs: list[int32], ys: list[int32]) -> tuple[Own[list[int32]], Own[list[int32]]]:
 std::tuple<std::vector<int32_t>, std::vector<int32_t>> own_tuple_param_lists(std::vector<int32_t>& xs, std::vector<int32_t>& ys);
 // def mk_borrow(a: A) -> tuple[A, int32]:
@@ -876,14 +876,14 @@ int32_t through(__F0&& f, A& a) {
 // def gen_tuple_name[T](x: tuple[T, int32]) -> Own[tuple[T, int32]]:
 //     return x  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 template<typename T>
-std::tuple<T, int32_t> gen_tuple_name(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x) {
-    return std::tuple<T, int32_t>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(x))), std::get<1>(x)};
+std::tuple<::tpy::storage_t<T>, int32_t> gen_tuple_name(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x) {
+    return std::tuple<::tpy::storage_t<T>, int32_t>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(x))), std::get<1>(x)};
 }
 // def gen_pair[T](a: T) -> tuple[T, int32]:
 //     return (a, 1)
 template<typename T>
 std::tuple<::tpy::val_or_ptr_t<T>, int32_t> gen_pair(::tpy::param_val_or_ref_t<T> a) {
-    return std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(a), 1};
+    return std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(a)), 1};
 }
 // # gen_tuple_call: a call handing back a generic borrow-form tuple at an owned
 // # tuple result copies each element in (the warned copy is the intended
@@ -891,16 +891,16 @@ std::tuple<::tpy::val_or_ptr_t<T>, int32_t> gen_pair(::tpy::param_val_or_ref_t<T
 // def gen_tuple_call[T](a: T) -> Own[tuple[T, int32]]:
 //     return gen_pair(a)  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 template<typename T>
-std::tuple<T, int32_t> gen_tuple_call(::tpy::param_val_or_ref_t<T> a) {
-    return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<T, int32_t>{::tpy::param_to_storage<T>(std::move(std::get<0>(__t))), std::get<1>(__t)}; }(::tpyapp::main::gen_pair<T>(a));
+std::tuple<::tpy::storage_t<T>, int32_t> gen_tuple_call(::tpy::param_val_or_ref_t<T> a) {
+    return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::tpy::storage_t<T>, int32_t>{::tpy::param_to_storage<T>(std::move(std::get<0>(__t))), std::get<1>(__t)}; }(::tpyapp::main::gen_pair<::tpy::storage_t<T>>(a));
 }
 // # gen_tuple_pair: a two-T tuple parameter copies both elements in (warned per
 // # element).
 // def gen_tuple_pair[T](x: tuple[T, T]) -> Own[tuple[T, T]]:
 //     return x  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/) warning(/may copy T into owned storage \(tuple element 1\)/)
 template<typename T>
-std::tuple<T, T> gen_tuple_pair(const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<T>>& x) {
-    return std::tuple<T, T>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(x))), ::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<1>(x)))};
+std::tuple<::tpy::storage_t<T>, ::tpy::storage_t<T>> gen_tuple_pair(const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<T>>& x) {
+    return std::tuple<::tpy::storage_t<T>, ::tpy::storage_t<T>>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(x))), ::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<1>(x)))};
 }
 // # gen_tuple_loop: a loop variable over generic tuples, and the fallback
 // # parameter, each copied in at the owned result (hedged once per copied
@@ -912,7 +912,7 @@ std::tuple<T, T> gen_tuple_pair(const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::
 //             return x  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 //     return d  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 template<typename T>
-std::tuple<T, int32_t> gen_tuple_loop(const std::vector<std::tuple<T, int32_t>>& xs, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& d) {
+std::tuple<::tpy::storage_t<T>, int32_t> gen_tuple_loop(const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& xs, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& d) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -922,7 +922,7 @@ std::tuple<T, int32_t> gen_tuple_loop(const std::vector<std::tuple<T, int32_t>>&
             return x;
         }
     }
-    return std::tuple<T, int32_t>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(d))), std::get<1>(d)};
+    return std::tuple<::tpy::storage_t<T>, int32_t>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(d))), std::get<1>(d)};
 }
 // # gen_tuple_select: a select of two generic tuple parameters copies the
 // # chosen one in.
@@ -930,22 +930,22 @@ std::tuple<T, int32_t> gen_tuple_loop(const std::vector<std::tuple<T, int32_t>>&
 //                         c: bool) -> Own[tuple[T, int32]]:
 //     return x if c else y  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 template<typename T>
-std::tuple<T, int32_t> gen_tuple_select(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& y, bool c) {
-    return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<T, int32_t>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(__t))), std::get<1>(__t)}; }(((c) ? (x) : (y)));
+std::tuple<::tpy::storage_t<T>, int32_t> gen_tuple_select(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& y, bool c) {
+    return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::tpy::storage_t<T>, int32_t>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(__t))), std::get<1>(__t)}; }(((c) ? (x) : (y)));
 }
 // def gen_own_pair[T](a: T) -> Own[tuple[T, int32]]:
 //     return (a, 2)  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 template<typename T>
-std::tuple<T, int32_t> gen_own_pair(::tpy::param_val_or_ref_t<T> a) {
-    return std::tuple<T, int32_t>{T(a), 2};
+std::tuple<::tpy::storage_t<T>, int32_t> gen_own_pair(::tpy::param_val_or_ref_t<T> a) {
+    return std::tuple<::tpy::storage_t<T>, int32_t>{::tpy::storage_t<T>(a), 2};
 }
 // # gen_own_call: a call handing back a generic OWNED tuple at an owned tuple
 // # result is the fresh storage its declaration says, returned as it is.
 // def gen_own_call[T](a: T) -> Own[tuple[T, int32]]:
 //     return gen_own_pair(a)  # tpyc: ok
 template<typename T>
-std::tuple<T, int32_t> gen_own_call(::tpy::param_val_or_ref_t<T> a) {
-    return ::tpyapp::main::gen_own_pair<T>(a);
+std::tuple<::tpy::storage_t<T>, int32_t> gen_own_call(::tpy::param_val_or_ref_t<T> a) {
+    return ::tpyapp::main::gen_own_pair<::tpy::storage_t<T>>(a);
 }
 
 void __tpy_init();

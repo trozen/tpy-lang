@@ -15,7 +15,7 @@ template<typename T> struct Cloneable;
 // @dynamic
 // class Cloneable[T](Protocol):
 template<typename T, typename _T0>
-concept __Cloneable_Concept__ = requires(const T& t) {
+concept __Cloneable_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t.replicate() } -> std::convertible_to<std::unique_ptr<Cloneable<_T0>>>;
     { t.value() } -> ::tpy::proto_result<_T0>;
 };
@@ -23,7 +23,7 @@ concept __Cloneable_Concept__ = requires(const T& t) {
 template<typename T>
 struct Cloneable {
     virtual std::unique_ptr<Cloneable<T>> replicate() const = 0;
-    virtual T value() const = 0;
+    virtual ::tpy::storage_t<T> value() const = 0;
     virtual ~Cloneable() = default;
 };
 
@@ -73,7 +73,7 @@ struct tpy::Adapter<tpyapp::main::Cloneable<T>, __tpy_Impl> : tpyapp::main::Clon
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     std::unique_ptr<tpyapp::main::Cloneable<T>> replicate() const override { return inner.replicate(); }
-    T value() const override { return inner.value(); }
+    ::tpy::storage_t<T> value() const override { return inner.value(); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__Cloneable_Concept__<std::remove_const_t<__tpy_Impl>, T>
@@ -81,7 +81,7 @@ struct tpy::RefAdapter<tpyapp::main::Cloneable<T>, __tpy_Impl> : tpyapp::main::C
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
     std::unique_ptr<tpyapp::main::Cloneable<T>> replicate() const override { return std::as_const(inner).replicate(); }
-    T value() const override { return std::as_const(inner).value(); }
+    ::tpy::storage_t<T> value() const override { return std::as_const(inner).value(); }
 };
 
 namespace tpyapp::main {

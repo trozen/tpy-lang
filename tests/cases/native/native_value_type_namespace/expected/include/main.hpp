@@ -20,15 +20,15 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def identity[T: ValueType](x: T) -> T:
 template<::tpy::ValueType T>
-T identity(::tpy::param_val_or_ref_t<T> x);
+::tpy::storage_t<T> identity(::tpy::param_val_or_ref_t<T> x);
 // def main() -> None:
 void main();
 
 // def identity[T: ValueType](x: T) -> T:
 //     return x
 template<::tpy::ValueType T>
-T identity(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+::tpy::storage_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 void __tpy_init();

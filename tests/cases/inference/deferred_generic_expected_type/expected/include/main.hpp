@@ -25,7 +25,7 @@ void main();
 template<typename T>
 struct Container {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self) -> None:
     Container();
@@ -48,9 +48,9 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 template<typename T, typename U>
 struct Pair {
     // a: T
-    T a;
+    ::tpy::storage_t<T> a;
     // b: U
-    U b;
+    ::tpy::storage_t<U> b;
 
     // def __init__(self) -> None:
     Pair();
@@ -80,7 +80,7 @@ inline Container<T>::Container() {
 //     self.val = val
 template<typename T>
 inline void Container<T>::set(::tpy::param_val_or_ref_t<T> val) {
-    this->val = ::tpy::param_to_storage<T>(val);
+    this->val = ::tpy::param_consume<T>(val);
 }
 
 // def get(self) -> T:

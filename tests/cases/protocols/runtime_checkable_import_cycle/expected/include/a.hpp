@@ -12,19 +12,19 @@ namespace tpyapp::a {
 // @runtime_checkable
 // class Root(Protocol):
 template<typename T>
-concept Root = requires(T& t) {
+concept Root = requires(::tpy::storage_t<T>& t) {
     { t.f() } -> std::convertible_to<std::string_view>;
 };
 
 // class Child(Mid, Protocol):
 template<typename T>
-concept Child = requires(T& t) {
+concept Child = requires(::tpy::storage_t<T>& t) {
     { t.f() } -> std::convertible_to<std::string_view>;
 };
 
 // class LoneChild(Lone, Protocol):
 template<typename T>
-concept LoneChild = requires(T& t) {
+concept LoneChild = requires(::tpy::storage_t<T>& t) {
     { t.g() } -> std::convertible_to<std::string_view>;
 };
 

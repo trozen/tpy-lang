@@ -21,7 +21,7 @@ void main();
 template<::tpy::NativeIterable<int32_t> T>
 struct Wrap {
     // items: T
-    T items;
+    ::tpy::storage_t<T> items;
 
     // def __init__(self, items: T) -> None:
     Wrap() = default;

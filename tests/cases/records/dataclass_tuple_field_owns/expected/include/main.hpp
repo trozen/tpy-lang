@@ -242,10 +242,10 @@ inline std::ostream& operator<<(std::ostream& os, const Q& obj) {
 template<typename T>
 struct G {
     // pair: tuple[T, int32]
-    std::tuple<T, int32_t> pair;
+    std::tuple<::tpy::storage_t<T>, int32_t> pair;
 
     G() = default;
-    explicit G(std::tuple<T, int32_t> pair);
+    explicit G(std::tuple<::tpy::storage_t<T>, int32_t> pair);
 
     // def __eq__(self, other: "G[T]") -> bool:
     bool __eq__(const G<T>& other) const;
@@ -442,7 +442,7 @@ inline std::string UQ::__repr__() const {
 }
 
 template<typename T>
-inline G<T>::G(std::tuple<T, int32_t> pair) : pair(std::move(pair)) {}
+inline G<T>::G(std::tuple<::tpy::storage_t<T>, int32_t> pair) : pair(std::move(pair)) {}
 
 // # Written out: a generic dataclass's generated methods reject
 // # (BUGS.md#generic-dataclass-rejects).

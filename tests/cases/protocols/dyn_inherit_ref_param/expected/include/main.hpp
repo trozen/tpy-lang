@@ -15,7 +15,7 @@ struct Sink;
 // @dynamic
 // class Sink(Protocol):
 template<typename T>
-concept __Sink_Concept__ = requires(T& t) {
+concept __Sink_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.total(std::declval<::tpy::ordered_map<std::string, int32_t>*>()) } -> std::convertible_to<int32_t>;
     { t.bump(std::declval<::tpy::ordered_map<std::string, int32_t>&>()) } -> std::convertible_to<void>;
     { t.width(std::declval<std::vector<std::string>&>()) } -> std::convertible_to<int32_t>;

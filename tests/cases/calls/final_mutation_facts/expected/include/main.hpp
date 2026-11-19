@@ -41,10 +41,10 @@ void grow(std::vector<P>& xs);
 void bump_all(std::vector<P>& ps);
 // def drop_last[T](xs: list[T]) -> None:
 template<typename T>
-void drop_last(std::vector<T>& xs);
+void drop_last(std::vector<::tpy::storage_t<T>>& xs);
 // def via[T](xs: list[T]) -> None:
 template<typename T>
-void via(std::vector<T>& xs);
+void via(std::vector<::tpy::storage_t<T>>& xs);
 // def forward_put(xs: list[Item]) -> None:
 void forward_put(std::vector<::tpyapp::imported::Item>& xs);
 // def keep(xs: Own[list[P]]) -> Own[list[P]]:
@@ -63,7 +63,7 @@ void silent_sections();
 void later_sections();
 // def first_late[T](xs: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> first_late(std::vector<T>& xs);
+::tpy::val_or_ref_t<T> first_late(std::vector<::tpy::storage_t<T>>& xs);
 
 // class Inner:
 struct Inner {
@@ -197,7 +197,7 @@ struct Relay {
     Relay();
 
     // def via(self, xs: list[T]) -> None:
-    void via(std::vector<T>& xs) const;
+    void via(std::vector<::tpy::storage_t<T>>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Relay";
 };
 
@@ -401,8 +401,8 @@ inline Relay<T>::Relay() : k(::tpy::BigInt(0)) {}
 // def via(self, xs: list[T]) -> None:
 //     drop_last(xs)
 template<typename T>
-inline void Relay<T>::via(std::vector<T>& xs) const {
-    ::tpyapp::main::drop_last<T>(xs);
+inline void Relay<T>::via(std::vector<::tpy::storage_t<T>>& xs) const {
+    ::tpyapp::main::drop_last<::tpy::storage_t<T>>(xs);
 }
 
 // def __init__(self) -> None:
@@ -420,19 +420,19 @@ inline std::string_view Bag<T>::tag() const {
 // def drop_last[T](xs: list[T]) -> None:
 //     xs.pop()
 template<typename T>
-void drop_last(std::vector<T>& xs) {
+void drop_last(std::vector<::tpy::storage_t<T>>& xs) {
     ::tpy::pop_back(xs);
 }
 // def via[T](xs: list[T]) -> None:
 //     drop_last(xs)
 template<typename T>
-void via(std::vector<T>& xs) {
-    ::tpyapp::main::drop_last<T>(xs);
+void via(std::vector<::tpy::storage_t<T>>& xs) {
+    ::tpyapp::main::drop_last<::tpy::storage_t<T>>(xs);
 }
 // def first_late[T](xs: list[T]) -> T:
 //     return xs[0]
 template<typename T>
-::tpy::val_or_ref_t<T> first_late(std::vector<T>& xs) {
+::tpy::val_or_ref_t<T> first_late(std::vector<::tpy::storage_t<T>>& xs) {
     return ::tpy::__getitem__(xs, 0);
 }
 

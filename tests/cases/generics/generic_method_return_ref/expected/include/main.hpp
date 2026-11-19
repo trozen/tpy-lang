@@ -13,7 +13,7 @@ using ::tpystd::tplib::box::Box;
 
 // class Mutable(Protocol):
 template<typename T>
-concept Mutable = requires(T& t) {
+concept Mutable = requires(::tpy::storage_t<T>& t) {
     { t.mutate() } -> std::convertible_to<void>;
 };
 

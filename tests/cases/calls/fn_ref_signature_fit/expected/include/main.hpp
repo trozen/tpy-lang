@@ -15,7 +15,7 @@ using ::tpyapp::helper::h_wide;
 
 // class HasV(Protocol):
 template<typename T>
-concept HasV = requires(const T& t) {
+concept HasV = requires(const ::tpy::storage_t<T>& t) {
     { t.get() } -> std::convertible_to<int32_t>;
 };
 
@@ -23,7 +23,7 @@ struct Speaker;
 // @dynamic
 // class Speaker(Protocol):
 template<typename T>
-concept __Speaker_Concept__ = requires(const T& t) {
+concept __Speaker_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t.speak() } -> std::convertible_to<int32_t>;
 };
 

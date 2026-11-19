@@ -42,7 +42,7 @@ void test_hint_float32_literal();
 void test_hint_lambda();
 // def empty_list[T](n: int) -> Own[list[T]]:
 template<typename T>
-std::vector<T> empty_list(const ::tpy::BigInt& n);
+std::vector<::tpy::storage_t<T>> empty_list(const ::tpy::BigInt& n);
 // def test_hint_generic_call(xs: list[float]) -> None:
 void test_hint_generic_call(std::vector<double>& xs);
 // def make_groups() -> Own[dict[str, list[float]]]:
@@ -58,8 +58,8 @@ void test_captured_none_seed();
 //     out: list[T] = []
 //     return out
 template<typename T>
-std::vector<T> empty_list(const ::tpy::BigInt& n) {
-    std::vector<T> out = std::vector<T>{};
+std::vector<::tpy::storage_t<T>> empty_list(const ::tpy::BigInt& n) {
+    std::vector<::tpy::storage_t<T>> out = std::vector<::tpy::storage_t<T>>{};
     return out;
 }
 

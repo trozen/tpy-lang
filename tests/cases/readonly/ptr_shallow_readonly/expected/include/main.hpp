@@ -11,7 +11,7 @@ namespace tpyapp::main {
 
 // class Getter[T](Protocol):
 template<typename T, typename _T0>
-concept Getter = requires(T& t) {
+concept Getter = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> std::convertible_to<_T0>;
 };
 
@@ -19,13 +19,13 @@ template<typename T> struct DGetter;
 // @dynamic
 // class DGetter[T](Protocol):
 template<typename T, typename _T0>
-concept __DGetter_Concept__ = requires(T& t) {
+concept __DGetter_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> std::convertible_to<_T0>;
 };
 
 template<typename T>
 struct DGetter {
-    virtual T get() = 0;
+    virtual ::tpy::storage_t<T> get() = 0;
     virtual ~DGetter() = default;
 };
 
@@ -312,11 +312,11 @@ inline std::ostream& operator<<(std::ostream& os, const Starter& obj) {
 template<typename T>
 struct PBox {
     // p: Ptr[T]
-    T* p;
+    ::tpy::storage_t<T>* p;
 
     // def __init__(self, p: Ptr[T]) -> None:
     PBox() = default;
-    explicit PBox(T* p);
+    explicit PBox(::tpy::storage_t<T>* p);
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() const;
@@ -345,7 +345,7 @@ struct PHold {
 
     // def __init__(self, p: Ptr[T]) -> None:
     PHold() = default;
-    explicit PHold(T* p);
+    explicit PHold(::tpy::storage_t<T>* p);
 
     // def touch(self) -> int32:
     int32_t touch() const;
@@ -486,7 +486,7 @@ inline std::ostream& operator<<(std::ostream& os, const Va& obj) {
 template<typename T>
 struct GV {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     GV() = default;
@@ -725,7 +725,7 @@ inline std::ostream& operator<<(std::ostream& os, const Stored& obj) {
 template<typename T>
 struct RBox {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, v: T) -> None:
     RBox() = default;
@@ -748,14 +748,14 @@ struct tpy::Adapter<tpyapp::main::DGetter<T>, __tpy_Impl> : tpyapp::main::DGette
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T get() override { return inner.get(); }
+    ::tpy::storage_t<T> get() override { return inner.get(); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__DGetter_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::DGetter<T>, __tpy_Impl> : tpyapp::main::DGetter<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
+    ::tpy::storage_t<T> get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
 };
 
 namespace tpyapp::main {
@@ -1418,14 +1418,14 @@ inline A& Stored::get() {
 // def __init__(self, p: Ptr[T]) -> None:
 //     self.p = p
 template<typename T>
-inline PBox<T>::PBox(T* p) : p(p) {}
+inline PBox<T>::PBox(::tpy::storage_t<T>* p) : p(p) {}
 
 // def get(self) -> T:
 //     q = self.p
 //     return q
 template<typename T>
 inline ::tpy::val_or_ref_t<T> PBox<T>::get() const {
-    T* q = this->p;
+    ::tpy::storage_t<T>* q = this->p;
     return ::tpy::deref_check(q);
 }
 
@@ -1435,7 +1435,7 @@ inline ::tpy::val_or_ref_t<T> PBox<T>::get() const {
 //     return q
 template<typename T>
 inline ::tpy::val_or_ref_t<T> PBox<T>::ga() {
-    T* q = this->p;
+    ::tpy::storage_t<T>* q = this->p;
     return ::tpy::deref_check(q);
 }
 
@@ -1445,14 +1445,14 @@ inline ::tpy::val_or_ref_t<T> PBox<T>::ga() {
 //     return q
 template<typename T>
 inline ::tpy::val_or_cref_t<T> PBox<T>::ga() const {
-    T* q = this->p;
+    ::tpy::storage_t<T>* q = this->p;
     return ::tpy::deref_check(q);
 }
 
 // def __init__(self, p: Ptr[T]) -> None:
 //     self.b = PBox[T](p)
 template<typename T>
-inline PHold<T>::PHold(T* p) : b(PBox<T>(p)) {}
+inline PHold<T>::PHold(::tpy::storage_t<T>* p) : b(PBox<T>(p)) {}
 
 // def touch(self) -> int32:
 //     x = self.b.ga()  # tpyc: ok

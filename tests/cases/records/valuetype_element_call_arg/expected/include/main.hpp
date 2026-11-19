@@ -188,11 +188,11 @@ inline std::ostream& operator<<(std::ostream& os, const Slot& obj) {
 template<typename T>
 struct Bag {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
     Bag() = default;
-    explicit Bag(std::vector<T>&& items);
+    explicit Bag(std::vector<::tpy::storage_t<T>>&& items);
 
     // def __getitem__(self, i: int32) -> T:
     ::tpy::val_or_ref_t<T> __getitem__(int32_t i);
@@ -348,7 +348,7 @@ inline int32_t Mixer::run() const {
 // def __init__(self, items: Own[list[T]]) -> None:
 //     self.items = items
 template<typename T>
-inline Bag<T>::Bag(std::vector<T>&& items) : items(std::move(items)) {}
+inline Bag<T>::Bag(std::vector<::tpy::storage_t<T>>&& items) : items(std::move(items)) {}
 
 // def __getitem__(self, i: int32) -> T:
 //     return self.items[i]

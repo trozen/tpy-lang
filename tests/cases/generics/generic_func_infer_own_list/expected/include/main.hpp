@@ -13,10 +13,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def first_val[T](items: Own[list[T]]) -> Own[T]:
 template<typename T>
-::tpy::own_return_t<T> first_val(std::vector<T>&& items);
+::tpy::own_return_t<T> first_val(std::vector<::tpy::storage_t<T>>&& items);
 // def consume_list[T](items: Own[list[T]]) -> None:
 template<typename T>
-void consume_list(std::vector<T>&& items);
+void consume_list(std::vector<::tpy::storage_t<T>>&& items);
 // def consume_both[T](a: Own[T], b: Own[T]) -> None:
 template<typename T>
 void consume_both(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b);
@@ -42,13 +42,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def first_val[T](items: Own[list[T]]) -> Own[T]:
 //     return items[0]  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
-::tpy::own_return_t<T> first_val(std::vector<T>&& items) {
-    return T(::tpy::__getitem__(items, 0));
+::tpy::own_return_t<T> first_val(std::vector<::tpy::storage_t<T>>&& items) {
+    return ::tpy::storage_t<T>(::tpy::__getitem__(items, 0));
 }
 // def consume_list[T](items: Own[list[T]]) -> None:
 //     pass
 template<typename T>
-void consume_list(std::vector<T>&& items) {
+void consume_list(std::vector<::tpy::storage_t<T>>&& items) {
 }
 // def consume_both[T](a: Own[T], b: Own[T]) -> None:
 //     pass

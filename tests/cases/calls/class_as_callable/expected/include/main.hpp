@@ -143,7 +143,7 @@ inline std::ostream& operator<<(std::ostream& os, const Q& obj) {
 template<::tpy::ValueType T>
 struct Box {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Box() = default;

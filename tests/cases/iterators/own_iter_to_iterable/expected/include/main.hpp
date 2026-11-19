@@ -18,10 +18,10 @@ struct __gen_each_twice;
 
 // def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-__gen_each<T> each(const std::vector<T>& xs);
+__gen_each<T> each(const std::vector<::tpy::storage_t<T>>& xs);
 // def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-__gen_each_twice<T> each_twice(const std::vector<T>& xs);
+__gen_each_twice<T> each_twice(const std::vector<::tpy::storage_t<T>>& xs);
 // def total(xs: Iterable[Own[int32]]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t total(T_xs&& xs);
@@ -55,9 +55,9 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 // def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T>, T> {
+struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
-    const std::vector<T>& xs;
+    const std::vector<::tpy::storage_t<T>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -70,11 +70,11 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T>, T> {
         S_DONE = 3,
     };
 
-    __gen_each(const std::vector<T>& xs)
+    __gen_each(const std::vector<::tpy::storage_t<T>>& xs)
         : __state(S_INITIAL),
           xs(xs) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_each& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_each<T>&) {
@@ -85,7 +85,7 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T>, T> {
 //     for x in xs:
 //         yield copy(x)                                      # -> S_RESUME_0
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_each<T>::__next__() {
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_each<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -103,7 +103,7 @@ std::expected<T, ::tpy::StopIteration> __gen_each<T>::__next__() {
         }
         x = &(*((*__for_it_0))++);
         __state = S_RESUME_0;
-        return T((*x));
+        return ::tpy::storage_t<T>((*x));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -113,15 +113,15 @@ std::expected<T, ::tpy::StopIteration> __gen_each<T>::__next__() {
 
 // def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-__gen_each<T> each(const std::vector<T>& xs) {
+__gen_each<T> each(const std::vector<::tpy::storage_t<T>>& xs) {
     return __gen_each<T>(xs);
 }
 
 // def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-struct __gen_each_twice : public ::tpy::next_iter_mixin<__gen_each_twice<T>, T> {
+struct __gen_each_twice : public ::tpy::next_iter_mixin<__gen_each_twice<T>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
-    const std::vector<T>& xs;
+    const std::vector<::tpy::storage_t<T>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -135,11 +135,11 @@ struct __gen_each_twice : public ::tpy::next_iter_mixin<__gen_each_twice<T>, T> 
         S_DONE = 4,
     };
 
-    __gen_each_twice(const std::vector<T>& xs)
+    __gen_each_twice(const std::vector<::tpy::storage_t<T>>& xs)
         : __state(S_INITIAL),
           xs(xs) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_each_twice& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_each_twice<T>&) {
@@ -153,7 +153,7 @@ struct __gen_each_twice : public ::tpy::next_iter_mixin<__gen_each_twice<T>, T> 
 //         yield copy(x)  # tpyc: ok                                # -> S_RESUME_0
 //         yield copy(x)  # tpyc: ok                                # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_each_twice<T>::__next__() {
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_each_twice<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -165,7 +165,7 @@ std::expected<T, ::tpy::StopIteration> __gen_each_twice<T>::__next__() {
     }
     case S_RESUME_0: {  // after: yield copy(x)  # tpyc: ok
         __state = S_RESUME_1;
-        return T((*x));
+        return ::tpy::storage_t<T>((*x));
     }
     case S_RESUME_1:  // after: yield copy(x)  # tpyc: ok
     case S_JOIN_0: {
@@ -175,7 +175,7 @@ std::expected<T, ::tpy::StopIteration> __gen_each_twice<T>::__next__() {
         }
         x = &(*((*__for_it_0))++);
         __state = S_RESUME_0;
-        return T((*x));
+        return ::tpy::storage_t<T>((*x));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -185,7 +185,7 @@ std::expected<T, ::tpy::StopIteration> __gen_each_twice<T>::__next__() {
 
 // def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-__gen_each_twice<T> each_twice(const std::vector<T>& xs) {
+__gen_each_twice<T> each_twice(const std::vector<::tpy::storage_t<T>>& xs) {
     return __gen_each_twice<T>(xs);
 }
 

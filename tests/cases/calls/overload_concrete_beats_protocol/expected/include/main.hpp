@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Animal(Protocol):
 template<typename T>
-concept Animal = requires(T& t) {
+concept Animal = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 

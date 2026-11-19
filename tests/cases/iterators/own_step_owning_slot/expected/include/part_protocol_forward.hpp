@@ -16,45 +16,45 @@ using ::tpyapp::fixtures::Counter;
 
 // class OwnCells(Iterable[Own[Cell]], Protocol):
 template<typename T>
-concept OwnCells = requires(T& t) {
+concept OwnCells = requires(::tpy::storage_t<T>& t) {
     ::tpy::handover_iter<T>(t);
 };
 
 // class Cells[T](Iterable[T], Protocol):
 template<typename T, typename _T0>
-concept Cells = requires(T& t) {
+concept Cells = requires(::tpy::storage_t<T>& t) {
     ::tpy::handover_iter<T>(t);
 };
 
 // class OwnedCursor(Iterator[Own[Cell]], Protocol):
 template<typename T>
-concept OwnedCursor = requires(T& t) {
+concept OwnedCursor = requires(::tpy::storage_t<T>& t) {
     t.__next__();
     ::tpy::__iter__(t);
 };
 
 // class OwnedSource(Iterable[Own[Cell]], Protocol):
 template<typename T>
-concept OwnedSource = requires(T& t) {
+concept OwnedSource = requires(::tpy::storage_t<T>& t) {
     ::tpy::handover_iter<T>(t);
 };
 
 // class OwnedChild(OwnedSource, Protocol):
 template<typename T>
-concept OwnedChild = requires(T& t) {
+concept OwnedChild = requires(::tpy::storage_t<T>& t) {
     ::tpy::handover_iter<T>(t);
 };
 
 // class Counted(Iterable[int32], Protocol):
 template<typename T>
-concept Counted = requires(T& t) {
+concept Counted = requires(::tpy::storage_t<T>& t) {
     ::tpy::__iter__(t);
     { t.count } -> std::convertible_to<int32_t>;
 };
 
 // class CountedChild(Counted, Protocol):
 template<typename T>
-concept CountedChild = requires(T& t) {
+concept CountedChild = requires(::tpy::storage_t<T>& t) {
     ::tpy::__iter__(t);
     { t.count } -> std::convertible_to<int32_t>;
 };

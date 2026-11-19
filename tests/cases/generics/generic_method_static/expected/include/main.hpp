@@ -43,7 +43,7 @@ inline Utils::Utils() {
 //     return val
 template<typename U>
 inline ::tpy::val_or_ref_t<U> Utils::identity(::tpy::param_val_or_ref_t<U> val) {
-    return ::tpy::param_to_return<U>(val);
+    return ::tpy::param_to_return_last<U>(val);
 }
 
 void __tpy_init();

@@ -225,7 +225,7 @@ void mut_reversed(std::vector<Cell>& cells) {
 //         c.bump(7)
 void mut_map(std::vector<Cell>& cells) {
     {
-        auto __src_0 = ::tpy::builtin_map<::tpy::val_or_ref<Cell>>(same, cells);
+        auto __src_0 = ::tpy::builtin_map<Cell>(same, cells);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -279,7 +279,7 @@ void nested_zip_reversed(std::vector<Cell>& ns, const std::vector<int32_t>& xs) 
 //         n.bump(10)
 void nested_map_filter(std::vector<Cell>& ns) {
     {
-        auto __src_0 = ::tpy::builtin_map<::tpy::val_or_ref<Cell>>(same, ::tpy::builtin_filter(pos, ns));
+        auto __src_0 = ::tpy::builtin_map<Cell>(same, ::tpy::builtin_filter(pos, ns));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -630,7 +630,7 @@ void comp_shapes() {
     ::tpyapp::main::show("comp_zip_gen", ns);
     std::cout << "comp_map_filter" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_3 = ::tpy::builtin_map<::tpy::val_or_ref<Cell>>(same, ::tpy::builtin_filter(pos, ns));
+        auto __obj_3 = ::tpy::builtin_map<Cell>(same, ::tpy::builtin_filter(pos, ns));
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {

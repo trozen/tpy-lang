@@ -13,13 +13,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def leaf_count[K, V](t: DictTree[K, V]) -> int32:
 template<typename K, typename V>
-int32_t leaf_count(const DictTree<K, V>& t);
+int32_t leaf_count(const DictTree<::tpy::storage_t<K>, ::tpy::storage_t<V>>& t);
 // def main() -> None:
 void main();
 
 template<typename K, typename V>
 struct DictTree {
-    using variant_type = ::tpy::Union<V, ::tpy::ordered_map<K, DictTree<K, V>>>;
+    using variant_type = ::tpy::Union<::tpy::storage_t<V>, ::tpy::ordered_map<::tpy::storage_t<K>, DictTree<::tpy::storage_t<K>, ::tpy::storage_t<V>>>>;
     variant_type value;
 
     DictTree() requires std::default_initializable<variant_type> = default;
@@ -51,7 +51,7 @@ struct DictTree {
 //         case _:
 //             return 1
 template<typename K, typename V>
-int32_t leaf_count(const DictTree<K, V>& t) {
+int32_t leaf_count(const DictTree<::tpy::storage_t<K>, ::tpy::storage_t<V>>& t) {
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
     case 1: {
@@ -62,7 +62,7 @@ int32_t leaf_count(const DictTree<K, V>& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& v = *__beg_0;
-            acc = ::tpy::add_check<int32_t>(acc, ::tpyapp::main::leaf_count<K, V>(v));
+            acc = ::tpy::add_check<int32_t>(acc, ::tpyapp::main::leaf_count<::tpy::storage_t<K>, ::tpy::storage_t<V>>(v));
         }
         return acc;
     }

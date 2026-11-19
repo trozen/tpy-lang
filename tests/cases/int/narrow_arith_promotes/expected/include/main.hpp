@@ -74,14 +74,14 @@ int32_t w32(int32_t v);
 // def apply_one[T, U](f: Fn[[int32], U], x: T) -> int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(__a0) } -> ::tpy::returns_form<U>;
   }
 int32_t apply_one__Fn_int32_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // @dispatch
 // def apply_one[T, U](f: Fn[[str], U], x: T) -> int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, std::string_view __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(__a0) } -> ::tpy::returns_form<U>;
   }
 int32_t apply_one__Fn_str_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // def pick(f: bool) -> Literal[300, 5]:
@@ -185,7 +185,7 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 template<typename T>
 struct Box {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self) -> None:
     Box();
@@ -494,7 +494,7 @@ inline Box<T>::Box() {
 //     self.val = val
 template<typename T>
 inline void Box<T>::set(::tpy::param_val_or_ref_t<T> val) {
-    this->val = ::tpy::param_to_storage<T>(val);
+    this->val = ::tpy::param_consume<T>(val);
 }
 
 // @dispatch
@@ -502,7 +502,7 @@ inline void Box<T>::set(::tpy::param_val_or_ref_t<T> val) {
 //     return 1
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(__a0) } -> ::tpy::returns_form<U>;
   }
 int32_t apply_one__Fn_int32_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
     return 1;
@@ -512,7 +512,7 @@ int32_t apply_one__Fn_int32_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
 //     return 1
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, std::string_view __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(__a0) } -> ::tpy::returns_form<U>;
   }
 int32_t apply_one__Fn_str_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
     return 1;

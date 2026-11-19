@@ -35,13 +35,13 @@ __gen_generator_body generator_body(const std::vector<C>& cs);
 void named_adapter();
 // def generic_reversed[T](xs: list[T]) -> Own[list[T]]:
 template<typename T>
-std::vector<T> generic_reversed(const std::vector<T>& xs);
+std::vector<::tpy::storage_t<T>> generic_reversed(const std::vector<::tpy::storage_t<T>>& xs);
 // def generic_pending[T](xs: list[T]) -> Own[list[T]]:
 template<typename T>
-std::vector<T> generic_pending(std::vector<T>& xs);
+std::vector<::tpy::storage_t<T>> generic_pending(std::vector<::tpy::storage_t<T>>& xs);
 // def generic_value_bound[T: ValueType](xs: list[T]) -> Own[list[T]]:
 template<::tpy::ValueType T>
-std::vector<T> generic_value_bound(const std::vector<T>& xs);
+std::vector<::tpy::storage_t<T>> generic_value_bound(const std::vector<::tpy::storage_t<T>>& xs);
 // def generic() -> None:
 void generic();
 // def warned() -> None:
@@ -54,7 +54,7 @@ void acknowledged();
 __gen_later later(std::vector<C>& cs);
 // def later_t[T](xs: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_later_t<T> later_t(std::vector<T>& xs);
+__gen_later_t<T> later_t(std::vector<::tpy::storage_t<T>>& xs);
 // def main() -> None:
 void main();
 
@@ -178,7 +178,7 @@ struct __gen_later : public ::tpy::next_iter_mixin<__gen_later, ::tpy::val_or_re
 template <typename T>
 struct __gen_later_t : public ::tpy::next_iter_mixin<__gen_later_t<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& xs;
+    std::vector<::tpy::storage_t<T>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -191,7 +191,7 @@ struct __gen_later_t : public ::tpy::next_iter_mixin<__gen_later_t<T>, ::tpy::yi
         S_DONE = 3,
     };
 
-    __gen_later_t(std::vector<T>& xs)
+    __gen_later_t(std::vector<::tpy::storage_t<T>>& xs)
         : __state(S_INITIAL),
           xs(xs) {}
 
@@ -234,7 +234,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_later_t<T>::__
 
 // def later_t[T](xs: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_later_t<T> later_t(std::vector<T>& xs) {
+__gen_later_t<T> later_t(std::vector<::tpy::storage_t<T>>& xs) {
     return __gen_later_t<T>(xs);
 }
 
@@ -291,22 +291,22 @@ inline void Bag::field_source() const {
 //     # a generic payload hedges, as list(xs) does in a generic body
 //     return list(reversed(xs))  # tpyc: warning(/may copy T elements if not a value type/)
 template<typename T>
-std::vector<T> generic_reversed(const std::vector<T>& xs) {
-    return ::tpy::construct<std::vector<T>>(::tpy::builtin_reversed(xs));
+std::vector<::tpy::storage_t<T>> generic_reversed(const std::vector<::tpy::storage_t<T>>& xs) {
+    return ::tpy::construct<std::vector<::tpy::storage_t<T>>>(::tpy::builtin_reversed(xs));
 }
 // def generic_pending[T](xs: list[T]) -> Own[list[T]]:
 //     # the same hedge while the generator's facts are still pending
 //     return list(later_t(xs))  # tpyc: warning(/may copy T elements if not a value type/)
 template<typename T>
-std::vector<T> generic_pending(std::vector<T>& xs) {
-    return ::tpy::construct<std::vector<T>>(::tpyapp::main::later_t<T>(xs));
+std::vector<::tpy::storage_t<T>> generic_pending(std::vector<::tpy::storage_t<T>>& xs) {
+    return ::tpy::construct<std::vector<::tpy::storage_t<T>>>(::tpyapp::main::later_t<::tpy::storage_t<T>>(xs));
 }
 // def generic_value_bound[T: ValueType](xs: list[T]) -> Own[list[T]]:
 //     # a value-bound payload copies nothing observable
 //     return list(reversed(xs))  # tpyc: ok
 template<::tpy::ValueType T>
-std::vector<T> generic_value_bound(const std::vector<T>& xs) {
-    return ::tpy::construct<std::vector<T>>(::tpy::builtin_reversed(xs));
+std::vector<::tpy::storage_t<T>> generic_value_bound(const std::vector<::tpy::storage_t<T>>& xs) {
+    return ::tpy::construct<std::vector<::tpy::storage_t<T>>>(::tpy::builtin_reversed(xs));
 }
 
 void __tpy_init();

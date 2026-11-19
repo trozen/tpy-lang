@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Adds(Protocol):
 template<typename T>
-concept Adds = requires(T& t) {
+concept Adds = requires(::tpy::storage_t<T>& t) {
     { t.add(std::declval<int32_t>()) } -> std::convertible_to<void>;
 };
 
@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 template<Adds W>
 struct Adder {
     // _sink: Ptr[W]
-    W* _sink;
+    ::tpy::storage_t<W>* _sink;
 
     // def __init__(self, sink: W) -> None:
     Adder() = default;
@@ -92,9 +92,9 @@ inline void Adder<W>::push(int32_t n) const {
 //     return Adder(sink)
 template<Adds W>
 Adder<W> make_adder(::tpy::param_val_or_ref_t<W> sink) {
-    W* p = &sink;
+    ::tpy::storage_t<W>* p = &sink;
     p->add(0);
-    return Adder<W>(sink);
+    return Adder<W>(::tpy::param_pass_last<W>(sink));
 }
 
 void __tpy_init();

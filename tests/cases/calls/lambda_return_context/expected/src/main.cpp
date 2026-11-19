@@ -86,7 +86,7 @@ void free() {
     std::cout << "free" << " " << ::tpy::ListPrinter(xs) << " " << ::tpyapp::main::take([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>{}; }) << " " << ::tpyapp::main::take([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>(); }) << " " << ::tpyapp::main::take_fn([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>{}; }) << "\n" << ::tpy::check_signals;
     std::function<int32_t()> zero = []() -> int32_t { return (::tpy::BigInt()).to_fixed_check<int32_t>(); };
     std::cout << "free int32" << " " << zero() << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<::tpy::BigInt>> ys = ::tpy::construct<std::vector<std::vector<::tpy::BigInt>>>(::tpy::builtin_map<std::vector<::tpy::BigInt>>([](int32_t x) -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>(); }, std::array<int32_t, 2>{1, 2}));
+    std::vector<std::vector<::tpy::BigInt>> ys = ::tpy::construct<std::vector<std::vector<::tpy::BigInt>>>(::tpy::builtin_map<::tpy::own_arg<std::vector<::tpy::BigInt>>>([](int32_t x) -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>(); }, std::array<int32_t, 2>{1, 2}));
     ::tpy::__getitem__(ys, 0).push_back(5);
     std::cout << "free map" << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     std::cout << "free str" << " " << (::tpyapp::main::later("hello"))() << "\n" << ::tpy::check_signals;

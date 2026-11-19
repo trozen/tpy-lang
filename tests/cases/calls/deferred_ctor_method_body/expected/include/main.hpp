@@ -48,7 +48,7 @@ void main();
 template<typename T>
 struct Wipe {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, xs: list[int32]) -> None:
     Wipe() = default;
@@ -93,7 +93,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 template<typename T>
 struct Clear {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, xs: list[Sink]) -> None:
     Clear() = default;
@@ -114,7 +114,7 @@ inline std::ostream& operator<<(std::ostream& os, const Clear<T>& obj) {
 template<typename T>
 struct Self2 {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Self2();
@@ -527,14 +527,14 @@ inline void Plain::explicit_() const {
 template<typename T>
 inline Wipe<T>::Wipe(std::vector<int32_t>& xs) {
     xs.push_back(7);
-    this->items = std::vector<T>{};
+    this->items = std::vector<::tpy::storage_t<T>>{};
 }
 
 // def put(self, v: T) -> None:
 //     self.items.append(copy(v))
 template<typename T>
 inline void Wipe<T>::put(::tpy::param_val_or_ref_t<T> v) {
-    this->items.push_back(T(v));
+    this->items.push_back(::tpy::storage_t<T>(v));
 }
 
 // # classmethod: `cls(xs)` bound to a local and completed by a later use
@@ -566,26 +566,26 @@ inline int32_t Wipe<T>::ranked_cls(std::vector<int32_t>& xs) {
 template<typename T>
 inline Clear<T>::Clear(std::vector<Sink>& xs) {
     xs.clear();
-    this->items = std::vector<T>{};
+    this->items = std::vector<::tpy::storage_t<T>>{};
 }
 
 // def put(self, v: T) -> None:
 //     self.items.append(copy(v))
 template<typename T>
 inline void Clear<T>::put(::tpy::param_val_or_ref_t<T> v) {
-    this->items.push_back(T(v));
+    this->items.push_back(::tpy::storage_t<T>(v));
 }
 
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T>
-inline Self2<T>::Self2() : items(std::vector<T>{}) {}
+inline Self2<T>::Self2() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def put(self, v: T) -> None:
 //     self.items.append(copy(v))
 template<typename T>
 inline void Self2<T>::put(::tpy::param_val_or_ref_t<T> v) {
-    this->items.push_back(T(v));
+    this->items.push_back(::tpy::storage_t<T>(v));
 }
 
 // # the class's own generic built in its own method, at another T
@@ -607,8 +607,8 @@ inline int32_t Self2<T>::fresh() const {
 //     print("gen", len(b.items))
 template<typename U>
 inline void Plain::gen(::tpy::param_val_or_ref_t<U> u) const {
-    ::tpyapp::bags::Bag<U> b = ::tpyapp::bags::Bag<U>();
-    b.put(u);
+    ::tpyapp::bags::Bag<::tpy::storage_t<U>> b = ::tpyapp::bags::Bag<::tpy::storage_t<U>>();
+    b.put(::tpy::param_pass_last<U>(u));
     std::cout << "gen" << " " << ::tpy::__len__(b.items) << "\n" << ::tpy::check_signals;
 }
 

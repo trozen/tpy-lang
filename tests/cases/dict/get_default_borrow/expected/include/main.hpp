@@ -63,13 +63,13 @@ void field_store(::tpy::ordered_map<std::string, P>& d, P& fb);
 void list_values();
 // def generic[K, V](d: dict[K, V], k: K, dflt: V) -> Own[V]:
 template<typename K, typename V>
-::tpy::own_return_t<V> generic(const ::tpy::ordered_map<K, V>& d, ::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> dflt);
+::tpy::own_return_t<V> generic(const ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>& d, ::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> dflt);
 // def generic_use(d: dict[str, P], fb: P) -> None:
 void generic_use(const ::tpy::ordered_map<std::string, P>& d, P& fb);
 // def generic_opt[V](d: dict[str, V | None], k: str, fk: str,
 //                    read: Callable[[V], int32]) -> int32:
 template<typename V>
-int32_t generic_opt(const ::tpy::ordered_map<std::string, std::optional<V>>& d, std::string_view k, std::string_view fk, const std::function<int32_t(::tpy::param_val_or_ref_t<V>)>& read);
+int32_t generic_opt(const ::tpy::ordered_map<std::string, std::optional<::tpy::storage_t<V>>>& d, std::string_view k, std::string_view fk, const std::function<int32_t(::tpy::param_val_or_ref_t<V>)>& read);
 // def read_int(v: int32) -> int32:
 int32_t read_int(int32_t v);
 // def read_p(p: P) -> int32:
@@ -533,8 +533,8 @@ inline N::N(int32_t n, std::vector<std::string>& log) {
 // def generic[K, V](d: dict[K, V], k: K, dflt: V) -> Own[V]:
 //     return d.get(k, dflt)  # tpyc: warning(/may copy V into owned storage/)
 template<typename K, typename V>
-::tpy::own_return_t<V> generic(const ::tpy::ordered_map<K, V>& d, ::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> dflt) {
-    return ::tpy::dict_get_default(d, k, dflt);
+::tpy::own_return_t<V> generic(const ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>& d, ::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> dflt) {
+    return ::tpy::dict_get_default(d, ::tpy::param_pass_last<K>(k), ::tpy::param_pass_last<V>(dflt));
 }
 // # generic body over `V | None` values: the result is the by-value optional,
 // # a copy at every V (warned); read only, since CPython would alias it. The
@@ -554,22 +554,22 @@ template<typename K, typename V>
 //         return -1
 //     return read(m)
 template<typename V>
-int32_t generic_opt(const ::tpy::ordered_map<std::string, std::optional<V>>& d, std::string_view k, std::string_view fk, const std::function<int32_t(::tpy::param_val_or_ref_t<V>)>& read) {
-    const V* dflt = ::tpy::optional_to_ptr(::tpy::__getitem__(d, fk));
-    std::optional<V> __slot_1 = ::tpy::dict_get_default(d, "q", dflt);
-    V* m = ::tpy::optional_to_ptr(__slot_1);
-    std::optional<V> __slot_2;
+int32_t generic_opt(const ::tpy::ordered_map<std::string, std::optional<::tpy::storage_t<V>>>& d, std::string_view k, std::string_view fk, const std::function<int32_t(::tpy::param_val_or_ref_t<V>)>& read) {
+    const ::tpy::storage_t<V>* dflt = ::tpy::optional_to_ptr(::tpy::__getitem__(d, fk));
+    std::optional<::tpy::storage_t<V>> __slot_1 = ::tpy::dict_get_default(d, "q", dflt);
+    ::tpy::storage_t<V>* m = ::tpy::optional_to_ptr(__slot_1);
+    std::optional<::tpy::storage_t<V>> __slot_2;
     __slot_2 = ::tpy::dict_get_default(d, k, dflt);
     m = ::tpy::optional_to_ptr(__slot_2);
-    std::optional<V> __slot_3 = ::tpy::dict_get_default(d, "zz", nullptr);
-    V* w = ::tpy::optional_to_ptr(__slot_3);
+    std::optional<::tpy::storage_t<V>> __slot_3 = ::tpy::dict_get_default(d, "zz", nullptr);
+    ::tpy::storage_t<V>* w = ::tpy::optional_to_ptr(__slot_3);
     if ((::tpy::opt_has_value(w))) {
         return -2;
     }
     if ((!::tpy::opt_has_value(m))) {
         return -1;
     }
-    return read((*m));
+    return read(::tpy::param_pass<V>((*m)));
 }
 
 void __tpy_init();

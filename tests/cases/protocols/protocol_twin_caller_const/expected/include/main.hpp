@@ -11,20 +11,20 @@ namespace tpyapp::main {
 
 // class Feed(Protocol):
 template<typename T>
-concept Feed = requires(T& t) {
+concept Feed = requires(::tpy::storage_t<T>& t) {
     { t.feed(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
 // class Peeker(Protocol):
 template<typename T>
-concept Peeker = requires(T& t) {
+concept Peeker = requires(::tpy::storage_t<T>& t) {
     { t.peek() } -> std::convertible_to<int32_t>;
     { t.feed(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
 // class Adder[T](Protocol):
 template<typename T, typename _T0>
-concept Adder = requires(T& t) {
+concept Adder = requires(::tpy::storage_t<T>& t) {
     { t.add(std::declval<::tpy::param_val_or_ref_t<_T0>>()) } -> ::tpy::proto_result<_T0>;
 };
 

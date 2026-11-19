@@ -66,8 +66,8 @@ def test_callable_leaf_names_the_queried_trait():
 
 
 def test_own_is_a_sync_leaf_not_a_pass_through():
-    # Own[int32] is Send (delegates) but never Sync (single-owner); the sync
-    # chain must not mislabel it as a mutable container.
+    # Own[int32] is Send (delegates) and, a value type shared by copy, Sync
+    # as int32 is; an owned reference type is never Sync (single-owner),
+    # and the sync chain must not mislabel it as a mutable container.
     assert why_not_send(OwnType(INT32)) is None
-    out = render_chain(why_not_sync(OwnType(INT32)), send=False)
-    assert out == "Own[int32] is not Sync (single-owner move slot, not shareable across threads)"
+    assert why_not_sync(OwnType(INT32)) is None

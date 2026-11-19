@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def first[T](xs: list[T]) -> T | None:
 template<typename T>
-T* first(std::vector<T>& xs);
+::tpy::storage_t<T>* first(std::vector<::tpy::storage_t<T>>& xs);
 // def via_ternary(xs: list[int32], c: bool) -> int32:
 int32_t via_ternary(std::vector<int32_t>& xs, bool c);
 // def via_branches(xs: list[int32], c: bool) -> int32:
@@ -24,7 +24,7 @@ void main();
 //         return x
 //     return None
 template<typename T>
-T* first(std::vector<T>& xs) {
+::tpy::storage_t<T>* first(std::vector<::tpy::storage_t<T>>& xs) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

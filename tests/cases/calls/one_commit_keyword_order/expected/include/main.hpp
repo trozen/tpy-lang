@@ -20,11 +20,11 @@ void main();
 template<typename T>
 struct G {
     // a: T
-    T a;
+    ::tpy::storage_t<T> a;
     // b: T
-    T b;
+    ::tpy::storage_t<T> b;
     // c: T
-    T c;
+    ::tpy::storage_t<T> c;
 
     // def __init__(self, a: T, b: T, c: T) -> None:
     G() = default;

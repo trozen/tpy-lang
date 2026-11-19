@@ -29,7 +29,7 @@ void main();
 template<typename T>
 struct Box {
     // self.v = v  # tpyc: warning(/may copy T into field/)
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Box() = default;
@@ -64,7 +64,7 @@ inline Box<T>::Box(::tpy::readonly_form_t<T> v) : v(v) {}
 //     return g
 template<typename T>
 inline std::function<void()> Box<T>::mk(::tpy::readonly_form_t<T> x) const {
-    auto g = [__cap_x = ::tpy::capture_slot<T, decltype(x)>(x)]() {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
         auto& x = __cap_x.v;
         std::cout << "meth.T" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
     };
@@ -78,7 +78,7 @@ inline std::function<void()> Box<T>::mk(::tpy::readonly_form_t<T> x) const {
 template<typename T>
 template<typename U>
 inline std::function<void()> Box<T>::mk2(::tpy::readonly_form_t<U> y) const {
-    auto g = [__cap_y = ::tpy::capture_slot<U, decltype(y)>(y)]() {
+    auto g = [__cap_y = ::tpy::capture_slot<::tpy::storage_t<U>, decltype(y)>(y)]() {
         auto& y = __cap_y.v;
         std::cout << "meth.U" << " " << ::tpy::ValuePrinter(y) << "\n" << ::tpy::check_signals;
     };
@@ -91,7 +91,7 @@ inline std::function<void()> Box<T>::mk2(::tpy::readonly_form_t<U> y) const {
 //     return g
 template<typename T, typename U>
 std::function<void()> two(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<U> y) {
-    auto g = [__cap_x = ::tpy::capture_slot<T, decltype(x)>(x), __cap_y = ::tpy::capture_slot<U, decltype(y)>(y)]() {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x), __cap_y = ::tpy::capture_slot<::tpy::storage_t<U>, decltype(y)>(y)]() {
         auto& x = __cap_x.v;
         auto& y = __cap_y.v;
         std::cout << "two" << " " << ::tpy::ValuePrinter(x) << " " << ::tpy::ValuePrinter(y) << "\n" << ::tpy::check_signals;
@@ -105,12 +105,12 @@ std::function<void()> two(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_re
 //     return g
 template<::tpy::ValueType T>
 std::function<void()> rebound(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> y) {
-    T x = ::tpy::param_to_storage<T>(__param_x);
-    auto g = [__cap_x = ::tpy::capture_slot<T, decltype(x)>(x)]() {
+    ::tpy::storage_t<T> x = ::tpy::param_to_storage<::tpy::storage_t<T>>(__param_x);
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
         auto& x = __cap_x.v;
         std::cout << "rebound" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
     };
-    x = ::tpy::param_to_assign<T>(y);
+    x = ::tpy::param_consume<T>(y);
     return g;
 }
 

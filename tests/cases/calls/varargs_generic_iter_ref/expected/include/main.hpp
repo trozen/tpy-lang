@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def count_all[T](*args: T) -> int:
 template<typename T>
-::tpy::BigInt count_all(::tpy::varargs<const T> args);
+::tpy::BigInt count_all(::tpy::varargs<const ::tpy::storage_t<T>> args);
 // def main() -> None:
 void main();
 
@@ -43,7 +43,7 @@ inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 //         n += 1
 //     return n
 template<typename T>
-::tpy::BigInt count_all(::tpy::varargs<const T> args) {
+::tpy::BigInt count_all(::tpy::varargs<const ::tpy::storage_t<T>> args) {
     int32_t n = 0;
     auto& __obj_0 = args;
     auto __beg_0 = __obj_0.begin();

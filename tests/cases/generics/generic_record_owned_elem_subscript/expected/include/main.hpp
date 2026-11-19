@@ -15,16 +15,16 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def use_bare[T](src: list[T]) -> Own[Bare[T]]:
 template<typename T>
-Bare<T> use_bare(std::vector<T>& src);
+Bare<T> use_bare(std::vector<::tpy::storage_t<T>>& src);
 // def use_owned[T](src: list[T]) -> Own[Owned[T]]:
 template<typename T>
-Owned<T> use_owned(const std::vector<T>& src);
+Owned<T> use_owned(const std::vector<::tpy::storage_t<T>>& src);
 // def use_pair[T](src: list[tuple[T, int]]) -> Own[Pair[T, int]]:
 template<typename T>
-Pair<T, ::tpy::BigInt> use_pair(const std::vector<std::tuple<T, ::tpy::BigInt>>& src);
+Pair<T, ::tpy::BigInt> use_pair(const std::vector<std::tuple<::tpy::storage_t<T>, ::tpy::BigInt>>& src);
 // def use_dict[K, V](src: dict[K, V], k: K) -> Own[Owned[V]]:
 template<typename K, typename V>
-Owned<V> use_dict(const ::tpy::ordered_map<K, V>& src, ::tpy::param_val_or_ref_t<K> k);
+Owned<V> use_dict(const ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>& src, ::tpy::param_val_or_ref_t<K> k);
 // def main() -> None:
 void main();
 
@@ -32,7 +32,7 @@ void main();
 template<typename U>
 struct Bare {
     // x: U
-    U x;
+    ::tpy::storage_t<U> x;
 
     // def __init__(self, x: U) -> None:
     Bare() = default;
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bare<U>& obj) {
 template<typename T>
 struct Owned {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: Own[T]) -> None:
     Owned() = default;
@@ -68,11 +68,11 @@ inline std::ostream& operator<<(std::ostream& os, const Owned<T>& obj) {
 template<typename A, typename B>
 struct Pair {
     // p: tuple[A, B]
-    std::tuple<A, B> p;
+    std::tuple<::tpy::storage_t<A>, ::tpy::storage_t<B>> p;
 
     // def __init__(self, p: Own[tuple[A, B]]) -> None:
     Pair() = default;
-    explicit Pair(std::tuple<A, B> p);
+    explicit Pair(std::tuple<::tpy::storage_t<A>, ::tpy::storage_t<B>> p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -96,38 +96,38 @@ inline Owned<T>::Owned(::tpy::own_param_t<T> v) : v(std::move(v)) {}
 // def __init__(self, p: Own[tuple[A, B]]) -> None:
 //     self.p = p
 template<typename A, typename B>
-inline Pair<A, B>::Pair(std::tuple<A, B> p) : p(std::move(p)) {}
+inline Pair<A, B>::Pair(std::tuple<::tpy::storage_t<A>, ::tpy::storage_t<B>> p) : p(std::move(p)) {}
 
 // def use_bare[T](src: list[T]) -> Own[Bare[T]]:
 //     b = Bare(src[0])  # tpyc: type(/Bare\[T\]/)
 //     return b
 template<typename T>
-Bare<T> use_bare(std::vector<T>& src) {
-    Bare<T> b = Bare<T>(::tpy::__getitem__(src, 0));
+Bare<T> use_bare(std::vector<::tpy::storage_t<T>>& src) {
+    Bare<T> b = Bare<T>(::tpy::param_pass<T>(::tpy::__getitem__(src, 0)));
     return b;
 }
 // def use_owned[T](src: list[T]) -> Own[Owned[T]]:
 //     o = Owned(copy(src[0]))  # tpyc: type(/Owned\[T\]/)
 //     return o
 template<typename T>
-Owned<T> use_owned(const std::vector<T>& src) {
-    Owned<T> o = Owned<T>(T(::tpy::__getitem__(src, 0)));
+Owned<T> use_owned(const std::vector<::tpy::storage_t<T>>& src) {
+    Owned<T> o = Owned<T>(::tpy::storage_t<T>(::tpy::__getitem__(src, 0)));
     return o;
 }
 // def use_pair[T](src: list[tuple[T, int]]) -> Own[Pair[T, int]]:
 //     p = Pair(copy(src[0]))  # tpyc: type(/Pair\[T, int\]/)
 //     return p
 template<typename T>
-Pair<T, ::tpy::BigInt> use_pair(const std::vector<std::tuple<T, ::tpy::BigInt>>& src) {
-    Pair<T, ::tpy::BigInt> p = Pair<T, ::tpy::BigInt>(std::tuple<T, ::tpy::BigInt>(::tpy::__getitem__(src, 0)));
+Pair<T, ::tpy::BigInt> use_pair(const std::vector<std::tuple<::tpy::storage_t<T>, ::tpy::BigInt>>& src) {
+    Pair<T, ::tpy::BigInt> p = Pair<T, ::tpy::BigInt>(std::tuple<::tpy::storage_t<T>, ::tpy::BigInt>(::tpy::__getitem__(src, 0)));
     return p;
 }
 // def use_dict[K, V](src: dict[K, V], k: K) -> Own[Owned[V]]:
 //     o = Owned(copy(src[k]))  # tpyc: type(/Owned\[V\]/)
 //     return o
 template<typename K, typename V>
-Owned<V> use_dict(const ::tpy::ordered_map<K, V>& src, ::tpy::param_val_or_ref_t<K> k) {
-    Owned<V> o = Owned<V>(V(::tpy::__getitem__(src, k)));
+Owned<V> use_dict(const ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>& src, ::tpy::param_val_or_ref_t<K> k) {
+    Owned<V> o = Owned<V>(::tpy::storage_t<V>(::tpy::__getitem__(src, k)));
     return o;
 }
 

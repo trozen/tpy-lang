@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 template<::tpystd::tpy::Stringable T>
 struct Wrapper {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Wrapper() = default;

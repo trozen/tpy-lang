@@ -678,7 +678,7 @@ void ref_elements() {
         }
     }
     {
-        auto __src_8 = ::tpy::builtin_map<::tpy::val_or_ref<Row>>(bump, ::tpy::__getitem__(ll, 1));
+        auto __src_8 = ::tpy::builtin_map<Row>(bump, ::tpy::__getitem__(ll, 1));
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();

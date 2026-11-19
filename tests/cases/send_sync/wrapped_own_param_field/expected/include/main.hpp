@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Counted(Protocol):
 template<typename T>
-concept Counted = requires(T& t) {
+concept Counted = requires(::tpy::storage_t<T>& t) {
     { t.value() } -> std::convertible_to<int32_t>;
 };
 
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Token& obj) {
 template<Counted T>
 struct Holder {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: Send[Own[T]]) -> None:
     Holder() = default;

@@ -13,14 +13,14 @@ namespace tpyapp::main {
 
 // class Sized[T: ValueType](Protocol):
 template<typename T, typename _T0>
-concept Sized = requires(T& t) {
+concept Sized = requires(::tpy::storage_t<T>& t) {
     { t.size() } -> std::convertible_to<int32_t>;
     { t.item() } -> ::tpy::proto_result<_T0>;
 };
 
 // class Measured[U: ValueType](Sized[U], Protocol):  # tpyc: ok
 template<typename T, typename _T0>
-concept Measured = requires(T& t) {
+concept Measured = requires(::tpy::storage_t<T>& t) {
     { t.count() } -> std::convertible_to<int32_t>;
     { t.size() } -> std::convertible_to<int32_t>;
     { t.item() } -> ::tpy::proto_result<_T0>;
@@ -28,19 +28,19 @@ concept Measured = requires(T& t) {
 
 // class Paired[U: ValueType, V: Sized[U]](Protocol):  # tpyc: ok
 template<typename T, typename _T0, typename _T1>
-concept Paired = requires(T& t) {
+concept Paired = requires(::tpy::storage_t<T>& t) {
     { t.pair() } -> std::convertible_to<int32_t>;
 };
 
 // class Comparable[T](Protocol):
 template<typename T, typename _T0>
-concept Comparable = requires(T& t) {
+concept Comparable = requires(::tpy::storage_t<T>& t) {
     { t.compare(std::declval<::tpy::param_val_or_ref_t<_T0>>()) } -> std::convertible_to<int32_t>;
 };
 
 // class Ranked[T: Comparable[T]](Protocol):  # tpyc: ok
 template<typename T, typename _T0>
-concept Ranked = requires(T& t) {
+concept Ranked = requires(::tpy::storage_t<T>& t) {
     { t.rank() } -> std::convertible_to<int32_t>;
 };
 
@@ -48,13 +48,13 @@ template<typename T> struct Src;
 // @dynamic
 // class Src[T: ValueType](Protocol):
 template<typename T, typename _T0>
-concept __Src_Concept__ = requires(T& t) {
-    { t.get() } -> std::convertible_to<_T0>;
+concept __Src_Concept__ = requires(::tpy::storage_t<T>& t) {
+    { t.get() } -> std::convertible_to<::tpy::storage_t<_T0>>;
 };
 
 template<typename T>
 struct Src {
-    virtual T get() = 0;
+    virtual ::tpy::storage_t<T> get() = 0;
     virtual ~Src() = default;
 };
 
@@ -62,39 +62,39 @@ template<typename T> struct Sink;
 // @dynamic
 // class Sink[T: ValueType](Protocol):
 template<typename T, typename _T0>
-concept __Sink_Concept__ = requires(T& t) {
+concept __Sink_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> ::tpy::proto_result<_T0>;
-    { t.put(std::declval<_T0>()) } -> std::convertible_to<void>;
+    { t.put(std::declval<::tpy::storage_t<_T0>>()) } -> std::convertible_to<void>;
 };
 
 template<typename T>
 struct Sink {
-    virtual T get() = 0;
+    virtual ::tpy::storage_t<T> get() = 0;
     virtual void put(::tpy::param_val_or_ref_t<T> v) = 0;
     virtual ~Sink() = default;
 };
 
 // class Mid[U: ValueType](Src[U], Sink[U], Protocol):  # tpyc: ok
 template<typename T, typename _T0>
-concept Mid = requires(T& t) {
+concept Mid = requires(::tpy::storage_t<T>& t) {
     { t.tag() } -> std::convertible_to<int32_t>;
-    { t.get() } -> std::convertible_to<_T0>;
-    { t.put(std::declval<_T0>()) } -> std::convertible_to<void>;
+    { t.get() } -> std::convertible_to<::tpy::storage_t<_T0>>;
+    { t.put(std::declval<::tpy::storage_t<_T0>>()) } -> std::convertible_to<void>;
 };
 
 // class MidRev[U: ValueType](Sink[U], Src[U], Protocol):  # tpyc: ok
 template<typename T, typename _T0>
-concept MidRev = requires(T& t) {
+concept MidRev = requires(::tpy::storage_t<T>& t) {
     { t.tag() } -> std::convertible_to<int32_t>;
     { t.get() } -> ::tpy::proto_result<_T0>;
-    { t.put(std::declval<_T0>()) } -> std::convertible_to<void>;
+    { t.put(std::declval<::tpy::storage_t<_T0>>()) } -> std::convertible_to<void>;
 };
 
 struct Top;
 // @dynamic
 // class Top(Mid[int32], Protocol):
 template<typename T>
-concept __Top_Concept__ = requires(T& t) {
+concept __Top_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.extra() } -> std::convertible_to<int32_t>;
     { t.tag() } -> std::convertible_to<int32_t>;
     { t.get() } -> std::convertible_to<int32_t>;
@@ -113,13 +113,13 @@ template<typename T> struct Peek;
 // @dynamic
 // class Peek[T: ValueType](Protocol):
 template<typename T, typename _T0>
-concept __Peek_Concept__ = requires(T& t) {
+concept __Peek_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.f() } -> ::tpy::proto_result<_T0>;
 };
 
 template<typename T>
 struct Peek {
-    virtual T f() = 0;
+    virtual ::tpy::storage_t<T> f() = 0;
     virtual ~Peek() = default;
 };
 
@@ -127,8 +127,8 @@ template<typename U> struct OwnPeek;
 // @dynamic
 // class OwnPeek[U: ValueType](Peek[U], Protocol):  # tpyc: ok
 template<typename T, typename _T0>
-concept __OwnPeek_Concept__ = requires(T& t) {
-    { t.f() } -> std::convertible_to<_T0>;
+concept __OwnPeek_Concept__ = requires(::tpy::storage_t<T>& t) {
+    { t.f() } -> std::convertible_to<::tpy::storage_t<_T0>>;
 };
 
 template<typename U>
@@ -140,8 +140,8 @@ template<typename T> struct Taker;
 // @dynamic
 // class Taker[T: ValueType](Protocol):
 template<typename T, typename _T0>
-concept __Taker_Concept__ = requires(T& t) {
-    { t.take(std::declval<std::optional<_T0>>()) } -> std::convertible_to<int32_t>;
+concept __Taker_Concept__ = requires(::tpy::storage_t<T>& t) {
+    { t.take(std::declval<std::optional<::tpy::storage_t<_T0>>>()) } -> std::convertible_to<int32_t>;
 };
 
 template<typename T>
@@ -152,7 +152,7 @@ struct Taker {
 
 // class Late(Protocol):
 template<typename T>
-concept Late = requires(T& t) {
+concept Late = requires(::tpy::storage_t<T>& t) {
     { t.size() } -> std::convertible_to<int32_t>;
 };
 
@@ -285,7 +285,7 @@ void main();
 template<::tpy::ValueType T>
 struct Box {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Box() = default;
@@ -464,7 +464,7 @@ inline std::ostream& operator<<(std::ostream& os, const TakeImpl& obj) {
 template<::tpy::ValueType T>
 struct Slot {
     // x: T | None
-    std::optional<T> x;
+    std::optional<::tpy::storage_t<T>> x;
 
     // def __init__(self, x: T | None) -> None:
     Slot() = default;
@@ -491,7 +491,7 @@ namespace tpyapp::main {
 template<Late T>
 struct Early {
     // t: T
-    T t;
+    ::tpy::storage_t<T> t;
 
     // def __init__(self, t: Own[T]) -> None:
     Early() = default;
@@ -509,7 +509,7 @@ inline std::ostream& operator<<(std::ostream& os, const Early<T>& obj) {
 template<::tpy::ValueType T>
 struct Gen {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Gen() = default;
@@ -529,7 +529,7 @@ inline std::ostream& operator<<(std::ostream& os, const Gen<T>& obj) {
 template<::tpystd::tpy::Equatable T>
 struct EqBox {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: Own[T]) -> None:
     EqBox() = default;
@@ -547,7 +547,7 @@ inline std::ostream& operator<<(std::ostream& os, const EqBox<T>& obj) {
 template<::tpy::ValueType T>
 struct Shadow {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Shadow() = default;
@@ -601,14 +601,14 @@ struct tpy::Adapter<tpyapp::main::Src<T>, __tpy_Impl> : tpyapp::main::Src<T> {
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T get() override { return inner.get(); }
+    ::tpy::storage_t<T> get() override { return inner.get(); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__Src_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::Src<T>, __tpy_Impl> : tpyapp::main::Src<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
+    ::tpy::storage_t<T> get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
 };
 
 template<typename T, tpyapp::main::__Sink_Concept__<T> __tpy_Impl>
@@ -616,7 +616,7 @@ struct tpy::Adapter<tpyapp::main::Sink<T>, __tpy_Impl> : tpyapp::main::Sink<T> {
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T get() override { return inner.get(); }
+    ::tpy::storage_t<T> get() override { return inner.get(); }
     void put(::tpy::param_val_or_ref_t<T> v) override { inner.put(v); }
 };
 
@@ -624,7 +624,7 @@ template<typename T, typename __tpy_Impl> requires tpyapp::main::__Sink_Concept_
 struct tpy::RefAdapter<tpyapp::main::Sink<T>, __tpy_Impl> : tpyapp::main::Sink<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
+    ::tpy::storage_t<T> get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
     void put(::tpy::param_val_or_ref_t<T> v) override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else inner.put(v); }
 };
 
@@ -654,14 +654,14 @@ struct tpy::Adapter<tpyapp::main::Peek<T>, __tpy_Impl> : tpyapp::main::Peek<T> {
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T f() override { return inner.f(); }
+    ::tpy::storage_t<T> f() override { return inner.f(); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__Peek_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::Peek<T>, __tpy_Impl> : tpyapp::main::Peek<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T f() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.f(); }
+    ::tpy::storage_t<T> f() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.f(); }
 };
 
 template<typename U, tpyapp::main::__OwnPeek_Concept__<U> __tpy_Impl>
@@ -669,14 +669,14 @@ struct tpy::Adapter<tpyapp::main::OwnPeek<U>, __tpy_Impl> : tpyapp::main::OwnPee
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    U f() override { return inner.f(); }
+    ::tpy::storage_t<U> f() override { return inner.f(); }
 };
 
 template<typename U, typename __tpy_Impl> requires tpyapp::main::__OwnPeek_Concept__<std::remove_const_t<__tpy_Impl>, U>
 struct tpy::RefAdapter<tpyapp::main::OwnPeek<U>, __tpy_Impl> : tpyapp::main::OwnPeek<U> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    U f() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.f(); }
+    ::tpy::storage_t<U> f() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.f(); }
 };
 
 template<typename T, tpyapp::main::__Taker_Concept__<T> __tpy_Impl>
@@ -701,7 +701,7 @@ template <typename T>
 struct __coro_bounded_async {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    T x;
+    ::tpy::storage_t<T> x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -711,9 +711,9 @@ struct __coro_bounded_async {
     __coro_bounded_async(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::storage_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_bounded_async<T>&) {
@@ -723,14 +723,14 @@ struct __coro_bounded_async {
 // async def bounded_async[T: ValueType](x: T) -> T:  # tpyc: ok
 //     return x
 template <typename T>
-::tpystd::tpy::Poll<T> __coro_bounded_async<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::storage_t<T>> __coro_bounded_async<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        T __tpy_async_ret = x;
-        return ::tpystd::tpy::Poll<T>::ready(std::move(__tpy_async_ret));
+        ::tpy::storage_t<T> __tpy_async_ret = x;
+        return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -741,7 +741,7 @@ template <typename T>
 // async def bounded_async[T: ValueType](x: T) -> T:  # tpyc: ok
 template <typename T>
 __coro_bounded_async<T> bounded_async(::tpy::param_val_or_ref_t<T> x) {
-    return __coro_bounded_async<T>(x);
+    return __coro_bounded_async<T>(::tpy::param_pass_last<T>(x));
 }
 
 // async def boxed_async(b: Box[int32]) -> int32:  # tpyc: ok
@@ -791,9 +791,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 // def bounded_gen[T: ValueType](x: T) -> Iterator[T]:  # tpyc: ok
 template <typename T>
-struct __gen_bounded_gen : public ::tpy::next_iter_mixin<__gen_bounded_gen<T>, T> {
+struct __gen_bounded_gen : public ::tpy::next_iter_mixin<__gen_bounded_gen<T>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
-    T x;
+    ::tpy::storage_t<T> x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -804,9 +804,9 @@ struct __gen_bounded_gen : public ::tpy::next_iter_mixin<__gen_bounded_gen<T>, T
 
     __gen_bounded_gen(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_bounded_gen& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_bounded_gen<T>&) {
@@ -817,7 +817,7 @@ struct __gen_bounded_gen : public ::tpy::next_iter_mixin<__gen_bounded_gen<T>, T
 //     yield x                                                      # -> S_RESUME_0
 //     yield x                                                      # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_bounded_gen<T>::__next__() {
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_bounded_gen<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -841,7 +841,7 @@ std::expected<T, ::tpy::StopIteration> __gen_bounded_gen<T>::__next__() {
 // def bounded_gen[T: ValueType](x: T) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 __gen_bounded_gen<T> bounded_gen(::tpy::param_val_or_ref_t<T> x) {
-    return __gen_bounded_gen<T>(x);
+    return __gen_bounded_gen<T>(::tpy::param_pass_last<T>(x));
 }
 
 // def each(self, x: T) -> Iterator[T]:  # tpyc: ok
@@ -849,7 +849,7 @@ template <::tpy::ValueType T>
 struct __gen_Gen_each : public ::tpy::next_iter_mixin<__gen_Gen_each<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
     const Gen<T>& __self;
-    T x;
+    ::tpy::storage_t<T> x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -860,7 +860,7 @@ struct __gen_Gen_each : public ::tpy::next_iter_mixin<__gen_Gen_each<T>, ::tpy::
     __gen_Gen_each(const Gen<T>& __self, ::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __self(__self),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Gen_each& __iter__() { return *this; }
@@ -892,7 +892,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Gen_each<T>::_
 
 template <::tpy::ValueType T>
 inline __gen_Gen_each<T> Gen<T>::each(::tpy::param_val_or_ref_t<T> x) const {
-    return __gen_Gen_each<T>(*this, x);
+    return __gen_Gen_each<T>(*this, ::tpy::param_pass_last<T>(x));
 }
 
 
@@ -1018,7 +1018,7 @@ inline int32_t Outer<T>::use(::tpy::param_val_or_ref_t<U> x) const {
 // def __init__(self, x: T | None) -> None:
 //     self.x = x
 template<::tpy::ValueType T>
-inline Slot<T>::Slot(::tpy::opt_cparam_t<T> x) : x(::tpy::to_opt_storage<std::optional<T>>(x)) {}
+inline Slot<T>::Slot(::tpy::opt_cparam_t<T> x) : x(::tpy::to_opt_storage<std::optional<::tpy::storage_t<T>>>(x)) {}
 
 // def show_other(self, s: 'Slot[T]') -> None:
 //     if s.x is not None:
@@ -1026,7 +1026,7 @@ inline Slot<T>::Slot(::tpy::opt_cparam_t<T> x) : x(::tpy::to_opt_storage<std::op
 template<::tpy::ValueType T>
 inline void Slot<T>::show_other(Slot<T> s) const {
     if ((s.x.has_value())) {
-        std::cout << "slot method" << " " << ::tpy::print_optional_val<::tpy::ValuePrinter<T>, T>(s.x) << "\n" << ::tpy::check_signals;
+        std::cout << "slot method" << " " << ::tpy::print_optional_val<::tpy::ValuePrinter<::tpy::storage_t<T>>, ::tpy::storage_t<T>>(s.x) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -1134,7 +1134,7 @@ int32_t sub_top(T_r&& r) {
 template<::tpy::ValueType T>
 void show_slot(Slot<T> s) {
     if ((s.x.has_value())) {
-        std::cout << "slot function" << " " << ::tpy::print_optional_val<::tpy::ValuePrinter<T>, T>(s.x) << "\n" << ::tpy::check_signals;
+        std::cout << "slot function" << " " << ::tpy::print_optional_val<::tpy::ValuePrinter<::tpy::storage_t<T>>, ::tpy::storage_t<T>>(s.x) << "\n" << ::tpy::check_signals;
     }
 }
 // # an import cycle: a bounded protocol extends its peer's bounded protocol

@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 template<typename T>
 struct GenericHolder {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: Own[T]):
     GenericHolder() = default;

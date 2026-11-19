@@ -11,7 +11,7 @@ struct Src;
 // @dynamic
 // class Src(Protocol):
 template<typename T>
-concept __Src_Concept__ = requires(T& t) {
+concept __Src_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> std::convertible_to<int32_t>;
     { t.bump() } -> std::convertible_to<void>;
 };
@@ -26,7 +26,7 @@ struct RoSrc;
 // @dynamic
 // class RoSrc(Protocol):
 template<typename T>
-concept __RoSrc_Concept__ = requires(const T& t) {
+concept __RoSrc_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t.get() } -> std::convertible_to<int32_t>;
 };
 
@@ -39,14 +39,14 @@ template<typename T> struct Src2;
 // @dynamic
 // class Src2[T](Protocol):
 template<typename T, typename _T0>
-concept __Src2_Concept__ = requires(T& t) {
+concept __Src2_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> ::tpy::proto_result<_T0>;
     { t.bump() } -> std::convertible_to<void>;
 };
 
 template<typename T>
 struct Src2 {
-    virtual T get() = 0;
+    virtual ::tpy::storage_t<T> get() = 0;
     virtual void bump() = 0;
     virtual ~Src2() = default;
 };
@@ -191,7 +191,7 @@ struct tpy::Adapter<tpyapp::main::Src2<T>, __tpy_Impl> : tpyapp::main::Src2<T> {
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T get() override { return inner.get(); }
+    ::tpy::storage_t<T> get() override { return inner.get(); }
     void bump() override { inner.bump(); }
 };
 
@@ -199,7 +199,7 @@ template<typename T, typename __tpy_Impl> requires tpyapp::main::__Src2_Concept_
 struct tpy::RefAdapter<tpyapp::main::Src2<T>, __tpy_Impl> : tpyapp::main::Src2<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
+    ::tpy::storage_t<T> get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
     void bump() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else inner.bump(); }
 };
 

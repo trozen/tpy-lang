@@ -11,7 +11,7 @@ struct Point;
 
 // class PointFactory(Protocol):
 template<typename T>
-concept PointFactory = requires(T& t) {
+concept PointFactory = requires(::tpy::storage_t<T>& t) {
     { t.create_point(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<Point>;
 };
 

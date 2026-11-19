@@ -108,13 +108,13 @@ inline std::ostream& operator<<(std::ostream& os, const SBare& obj) {
 
 // class GL[U](list[U]):
 template<typename U>
-struct GL : std::vector<U> {
+struct GL : std::vector<::tpy::storage_t<U>> {
 
-    using std::vector<U>::vector;
-    explicit GL(std::vector<U> __base) : std::vector<U>(std::move(__base)) {}
+    using std::vector<::tpy::storage_t<U>>::vector;
+    explicit GL(std::vector<::tpy::storage_t<U>> __base) : std::vector<::tpy::storage_t<U>>(std::move(__base)) {}
 
     void __repr_into__(std::ostream& os) const {
-        ::tpy::print_base_of<std::vector<U>>(os, "GL", *this);
+        ::tpy::print_base_of<std::vector<::tpy::storage_t<U>>>(os, "GL", *this);
     }
 
     std::string __repr__() const {
@@ -343,10 +343,10 @@ struct GLInit : GL<U> {
 
     // def __init__(self, xs: list[U]) -> None:
     GLInit() = default;
-    explicit GLInit(const std::vector<U>& xs);
+    explicit GLInit(const std::vector<::tpy::storage_t<U>>& xs);
 
     void __repr_into__(std::ostream& os) const {
-        ::tpy::print_base_of<std::vector<U>>(os, "GLInit", *this);
+        ::tpy::print_base_of<std::vector<::tpy::storage_t<U>>>(os, "GLInit", *this);
     }
 
     std::string __repr__() const {
@@ -403,7 +403,7 @@ inline SInit2::SInit2(const ::tpy::ordered_set<int32_t>& s) : SBare(::tpy::set_c
 // def __init__(self, xs: list[U]) -> None:
 //     super().__init__(xs)  # tpyc: warning(/may copy U elements/)
 template<typename U>
-inline GLInit<U>::GLInit(const std::vector<U>& xs) : GL<U>(::tpy::construct<std::vector<U>>(xs)) {}
+inline GLInit<U>::GLInit(const std::vector<::tpy::storage_t<U>>& xs) : GL<U>(::tpy::construct<std::vector<::tpy::storage_t<U>>>(xs)) {}
 
 void __tpy_init();
 } // namespace tpyapp::part_init

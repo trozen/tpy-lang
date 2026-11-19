@@ -11,7 +11,7 @@ struct Gauge;
 // @dynamic
 // class Gauge(Protocol):
 template<typename T>
-concept __Gauge_Concept__ = requires(T& t) {
+concept __Gauge_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.peek() } -> std::convertible_to<int32_t>;
     { t.tick() } -> std::convertible_to<int32_t>;
 };

@@ -22,10 +22,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def First[T](items: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> First(std::vector<T>& items);
+::tpy::val_or_ref_t<T> First(std::vector<::tpy::storage_t<T>>& items);
 // def get_item[T](items: list[T], idx: int32) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx);
+::tpy::val_or_ref_t<T> get_item(std::vector<::tpy::storage_t<T>>& items, int32_t idx);
 
 // class Point:
 struct Point {
@@ -56,13 +56,13 @@ inline Point::Point(int32_t x, int32_t y)
 // def First[T](items: list[T]) -> T:
 //     return items[0]
 template<typename T>
-::tpy::val_or_ref_t<T> First(std::vector<T>& items) {
+::tpy::val_or_ref_t<T> First(std::vector<::tpy::storage_t<T>>& items) {
     return ::tpy::__getitem__(items, 0);
 }
 // def get_item[T](items: list[T], idx: int32) -> T:
 //     return items[idx]
 template<typename T>
-::tpy::val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx) {
+::tpy::val_or_ref_t<T> get_item(std::vector<::tpy::storage_t<T>>& items, int32_t idx) {
     return ::tpy::__getitem__(items, idx);
 }
 

@@ -48,26 +48,26 @@ inline std::ostream& operator<<(std::ostream& os, const MyTask<T>& obj) {
 //     return poll_pending()
 template<typename T>
 inline ::tpystd::tpy::Poll<T> MyTask<T>::__poll__(::tpystd::coro::Waker w) const {
-    return ::tpystd::coro::poll_pending<T>();
+    return ::tpystd::coro::poll_pending<::tpy::storage_t<T>>();
 }
 
 // def drive_implicit[T](aw: Awaitable[T]) -> Own[Poll[T]]:
 //     return poll_once(aw)
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 ::tpystd::tpy::Poll<T> drive_implicit(T_aw&& aw) {
-    return ::tpystd::coro::poll_once<T>(aw);
+    return ::tpystd::coro::poll_once<::tpy::storage_t<T>>(aw);
 }
 // def use_shadowed[T](t: MyTask[T]) -> Own[Poll[T]]:
 //     return drive_implicit(t)
 template<typename T>
 ::tpystd::tpy::Poll<T> use_shadowed(const MyTask<T>& t) {
-    return ::tpyapp::main::drive_implicit<T>(t);
+    return ::tpyapp::main::drive_implicit<::tpy::storage_t<T>>(t);
 }
 // def use_renamed[U](t: MyTask[U]) -> Own[Poll[U]]:
 //     return drive_implicit(t)
 template<typename U>
 ::tpystd::tpy::Poll<U> use_renamed(const MyTask<U>& t) {
-    return ::tpyapp::main::drive_implicit<U>(t);
+    return ::tpyapp::main::drive_implicit<::tpy::storage_t<U>>(t);
 }
 
 void __tpy_init();

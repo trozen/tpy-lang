@@ -15,7 +15,7 @@ class P:
         self.x = x
 
 
-def red[T](func: Fn[[T, T], T], a: list[T]) -> Own[T]:
+def red[T](func: Fn[[T, T], Own[T]], a: list[T]) -> Own[T]:
     acc = copy(a[0])
     for i in range(1, len(a)):
         acc = func(acc, a[i])

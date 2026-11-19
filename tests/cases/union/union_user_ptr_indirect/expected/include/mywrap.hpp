@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "mywrap";
 template<typename T>
 struct MyWrap {
     // _ptr: Ptr[T]
-    T* _ptr;
+    ::tpy::storage_t<T>* _ptr;
 
     static constexpr std::string_view __tpy_class_name__ = "mywrap.MyWrap";
 };

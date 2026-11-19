@@ -360,11 +360,11 @@ namespace tpyapp::main {
 template<::tpy::ValueType T>
 struct PV {
     // a: T
-    T a;
+    ::tpy::storage_t<T> a;
 
     // def __init__(self, a: Own[T]) -> None:
     PV() = default;
-    explicit PV(T a);
+    explicit PV(::tpy::storage_t<T> a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.PV";
 };
 
@@ -2418,7 +2418,7 @@ inline void Setter::set_value(int32_t v) {
 // def __init__(self, a: Own[T]) -> None:
 //     self.a = a
 template<::tpy::ValueType T>
-inline PV<T>::PV(T a) : a(std::move(a)) {}
+inline PV<T>::PV(::tpy::storage_t<T> a) : a(std::move(a)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

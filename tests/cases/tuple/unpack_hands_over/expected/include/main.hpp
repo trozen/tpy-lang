@@ -237,7 +237,7 @@ void comp_owned_optional();
 void walrus_ptr(std::vector<std::tuple<A, int32_t>>& xs);
 // def open_t[T](ps: list[tuple[T, int32]], first: T) -> int32:
 template<typename T>
-int32_t open_t(const std::vector<std::tuple<T, int32_t>>& ps, ::tpy::param_val_or_ref_t<T> first);
+int32_t open_t(const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& ps, ::tpy::param_val_or_ref_t<T> first);
 // def open_composite_rebind[T](ps: list[tuple[GCell[T], int32]],
 //                              q: GCell[T]) -> int32:
 template<typename T>
@@ -245,7 +245,7 @@ int32_t open_composite_rebind(std::vector<std::tuple<GCell<T>, int32_t>>& ps, GC
 // def readonly_else_rebind[T](xs: readonly[list[tuple[T, int32]]],
 //                             y: readonly[T]) -> readonly[T]:
 template<typename T>
-::tpy::val_or_cref_t<T> readonly_else_rebind(const std::vector<std::tuple<T, int32_t>>& xs, ::tpy::readonly_form_t<T> y);
+::tpy::val_or_cref_t<T> readonly_else_rebind(const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& xs, ::tpy::readonly_form_t<T> y);
 // def wrapper_elem(s: Tree[int32]) -> None:
 void wrapper_elem(Tree<int32_t>& s);
 // def combinators_owning() -> None:
@@ -262,7 +262,7 @@ void main();
 
 template<typename T>
 struct Tree {
-    using variant_type = ::tpy::Union<T, std::vector<Tree<T>>>;
+    using variant_type = ::tpy::Union<::tpy::storage_t<T>, std::vector<Tree<::tpy::storage_t<T>>>>;
     variant_type value;
 
     Tree() requires std::default_initializable<variant_type> = default;
@@ -469,7 +469,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 template<typename T>
 struct GCell {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
     // k: int32
     int32_t k;
 
@@ -1359,7 +1359,7 @@ inline GCell<T>::GCell(::tpy::own_param_t<T> v)
 //     keep = [first]  # tpyc: warning(/may copy T into owned storage/)
 //     return s + len(keep)
 template<typename T>
-int32_t open_t(const std::vector<std::tuple<T, int32_t>>& ps, ::tpy::param_val_or_ref_t<T> first) {
+int32_t open_t(const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& ps, ::tpy::param_val_or_ref_t<T> first) {
     int32_t s = 0;
     auto& __obj_0 = ps;
     auto __beg_0 = __obj_0.begin();
@@ -1370,7 +1370,7 @@ int32_t open_t(const std::vector<std::tuple<T, int32_t>>& ps, ::tpy::param_val_o
         int32_t n = std::get<1>(__for_tup_52);
         s = ::tpy::add_check<int32_t>(s, n);
     }
-    std::array<T, 1> keep = {::tpy::param_to_storage<T>(first)};
+    std::array<::tpy::storage_t<T>, 1> keep = {::tpy::param_to_storage<T>(first)};
     return (::tpy::add_check<int32_t>(s, ::tpy::__len__(keep)));
 }
 // def open_composite_rebind[T](ps: list[tuple[GCell[T], int32]],
@@ -1409,8 +1409,8 @@ int32_t open_composite_rebind(std::vector<std::tuple<GCell<T>, int32_t>>& ps, GC
 //         x = y  # tpyc: ok
 //     return x
 template<typename T>
-::tpy::val_or_cref_t<T> readonly_else_rebind(const std::vector<std::tuple<T, int32_t>>& xs, ::tpy::readonly_form_t<T> y) {
-    const T* x;
+::tpy::val_or_cref_t<T> readonly_else_rebind(const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& xs, ::tpy::readonly_form_t<T> y) {
+    const ::tpy::storage_t<T>* x;
     auto& __obj_1 = xs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();

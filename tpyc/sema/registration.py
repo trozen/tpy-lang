@@ -29,7 +29,7 @@ def _adopt_skeleton(skeleton, full):
 
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..emitted_members import clone_families
-from ..typesys import (
+from ..typesys import (mark_class_callables, 
     ReadonlyCause, READONLY_RESULT_CAUSE_RANK, strongest_readonly_cause, readonly_result, readonly_protects, RESULT_ROOT,
     mark_overload_group, name_overload_variants,
     unique_cpp_name,
@@ -1956,6 +1956,17 @@ class TypeRegistrar:
         # Validate field types
         for fld in record.fields:
             self._validate_instance_field(fld, record, is_generic)
+        if record.type_params:
+            names = frozenset(record.type_params)
+            for fld in record.fields:
+                if isinstance(fld.type, TpyType):
+                    fld.type = mark_class_callables(fld.type, names)
+            for m in record.methods:
+                m.params = [(n, mark_class_callables(t, names)
+                             if isinstance(t, TpyType) else t)
+                            for n, t in m.params]
+                if isinstance(m.return_type, TpyType):
+                    m.return_type = mark_class_callables(m.return_type, names)
 
         # __await__ on user types: rejected as "not yet supported" per
         # docs/ASYNC_DESIGN.md's v1 sema exclusions. v3+ may support

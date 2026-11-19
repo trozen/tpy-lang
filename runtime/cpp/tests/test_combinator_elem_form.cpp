@@ -174,11 +174,12 @@ static_assert(std::is_same_v<reversed_step_t<Recs>, tpy::val_or_ref<Rec>>);
 static_assert(std::is_same_v<reversed_step_t<Ints&>, int32_t>);
 static_assert(std::is_same_v<reversed_step_t<std::string&>, char>);
 
-// 4. map hands on what the callable hands back, in the step form the compiler
-// declares for the callable's return (`U`): a borrow return lends.
-static_assert(std::is_same_v<map_step_t<tpy::val_or_ref<Rec>, decltype(&same), Recs&>, tpy::val_or_ref<Rec>>);
-static_assert(std::is_same_v<map_step_t<tpy::val_or_ref<const Rec>, decltype(&csame), Recs&>, tpy::val_or_ref<const Rec>>);
-static_assert(std::is_same_v<map_step_t<Rec, decltype(&fresh), Recs&>, Rec>);
+// 4. map hands on what the callable hands back, in the step form its type
+// argument `U` says: a reference `U` lends, an owned one (`own_arg<X>`) is
+// handed over.
+static_assert(std::is_same_v<map_step_t<Rec, decltype(&same), Recs&>, tpy::val_or_ref<Rec>>);
+static_assert(std::is_same_v<map_step_t<const Rec, decltype(&csame), Recs&>, tpy::val_or_ref<const Rec>>);
+static_assert(std::is_same_v<map_step_t<tpy::own_arg<Rec>, decltype(&fresh), Recs&>, Rec>);
 static_assert(std::is_same_v<map_step_t<int32_t, decltype(&val), const Recs&>, int32_t>);
 static_assert(std::is_same_v<
     step_t<decltype(tpy::builtin_map_n<int32_t>(&add, std::declval<Ints&>(), std::declval<Ints&>()))>, int32_t>);

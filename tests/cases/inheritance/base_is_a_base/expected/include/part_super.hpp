@@ -17,7 +17,7 @@ struct SupAddable;
 // @dynamic
 // class SupAddable(Protocol):
 template<typename T>
-concept __SupAddable_Concept__ = requires(const T& t) {
+concept __SupAddable_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t + std::declval<int32_t>() } -> std::convertible_to<int32_t>;
 };
 
@@ -153,16 +153,16 @@ inline std::ostream& operator<<(std::ostream& os, const SupU& obj) {
 
 // class SupBag[T](list[T]):  # tpyc: warning(/'SupBag.append' hides/)
 template<typename T>
-struct SupBag : std::vector<T> {
+struct SupBag : std::vector<::tpy::storage_t<T>> {
 
-    using std::vector<T>::vector;
-    explicit SupBag(std::vector<T> __base) : std::vector<T>(std::move(__base)) {}
+    using std::vector<::tpy::storage_t<T>>::vector;
+    explicit SupBag(std::vector<::tpy::storage_t<T>> __base) : std::vector<::tpy::storage_t<T>>(std::move(__base)) {}
 
     // def append(self, x: T) -> None:
     void append(::tpy::param_val_or_ref_t<T> x);
 
     void __repr_into__(std::ostream& os) const {
-        ::tpy::print_base_of<std::vector<T>>(os, "SupBag", *this);
+        ::tpy::print_base_of<std::vector<::tpy::storage_t<T>>>(os, "SupBag", *this);
     }
 
     std::string __repr__() const {
@@ -674,7 +674,7 @@ inline int32_t SupVChild::__add__(int32_t o) const {
 //     super().append(x)  # tpyc: warning(/may copy T/)
 template<typename T>
 inline void SupBag<T>::append(::tpy::param_val_or_ref_t<T> x) {
-    static_cast<std::vector<T>&>((*this)).push_back(::tpy::param_to_storage<T>(x));
+    static_cast<std::vector<::tpy::storage_t<T>>&>((*this)).push_back(::tpy::param_consume<T>(x));
 }
 
 void __tpy_init();

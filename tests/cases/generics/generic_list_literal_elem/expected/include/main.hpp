@@ -13,10 +13,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def wrap[T](a: Own[T]) -> Own[list[T]]:  # tpyc: ok
 template<typename T>
-std::vector<T> wrap(::tpy::own_param_t<T> a);
+std::vector<::tpy::storage_t<T>> wrap(::tpy::own_param_t<T> a);
 // def twice[T](a: T) -> Own[list[T]]:
 template<typename T>
-std::vector<T> twice(::tpy::param_val_or_ref_t<T> a);
+std::vector<::tpy::storage_t<T>> twice(::tpy::param_val_or_ref_t<T> a);
 // def main() -> None:
 void main();
 
@@ -49,8 +49,8 @@ inline Cell::Cell(const ::tpy::BigInt& n) : n(n) {}
 // def wrap[T](a: Own[T]) -> Own[list[T]]:  # tpyc: ok
 //     return [a]      # tpyc: ok -- the moved element
 template<typename T>
-std::vector<T> wrap(::tpy::own_param_t<T> a) {
-    return ::tpy::make_vector<T>(std::move(a));
+std::vector<::tpy::storage_t<T>> wrap(::tpy::own_param_t<T> a) {
+    return ::tpy::make_vector<::tpy::storage_t<T>>(std::move(a));
 }
 // # Two elements, both copied from the same name, so the declaration-time copy
 // # contract is stated once per element.
@@ -58,8 +58,8 @@ std::vector<T> wrap(::tpy::own_param_t<T> a) {
 //     # tpyc: warning(/may copy T into owned storage/) warning(/may copy T into owned storage/)
 //     return [a, a]   # a copyable `T` element renders bare
 template<typename T>
-std::vector<T> twice(::tpy::param_val_or_ref_t<T> a) {
-    return std::vector<T>{::tpy::param_to_storage<T>(a), ::tpy::param_to_storage<T>(a)};
+std::vector<::tpy::storage_t<T>> twice(::tpy::param_val_or_ref_t<T> a) {
+    return std::vector<::tpy::storage_t<T>>{::tpy::param_to_storage<T>(a), ::tpy::param_to_storage<T>(a)};
 }
 
 void __tpy_init();

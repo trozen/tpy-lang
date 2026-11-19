@@ -14,7 +14,7 @@ template<::std::default_initializable T>
 ::tpy::val_or_ref_t<T> create_default();
 // def fill[T: Default](n: int32) -> Own[list[T]]:
 template<::std::default_initializable T>
-std::vector<T> fill(int32_t n);
+std::vector<::tpy::storage_t<T>> fill(int32_t n);
 // def main() -> None:
 void main();
 
@@ -22,7 +22,7 @@ void main();
 //     return make_default()
 template<::std::default_initializable T>
 ::tpy::val_or_ref_t<T> create_default() {
-    return T{};
+    return ::tpy::storage_t<T>{};
 }
 // def fill[T: Default](n: int32) -> Own[list[T]]:
 //     result: list[T] = []
@@ -30,11 +30,11 @@ template<::std::default_initializable T>
 //         result.append(make_default())
 //     return result
 template<::std::default_initializable T>
-std::vector<T> fill(int32_t n) {
-    std::vector<T> result = std::vector<T>{};
+std::vector<::tpy::storage_t<T>> fill(int32_t n) {
+    std::vector<::tpy::storage_t<T>> result = std::vector<::tpy::storage_t<T>>{};
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        result.push_back(T{});
+        result.push_back(::tpy::storage_t<T>{});
     }
     return result;
 }

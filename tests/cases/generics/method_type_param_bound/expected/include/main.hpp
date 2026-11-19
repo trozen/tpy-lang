@@ -18,9 +18,9 @@ void main();
 template<typename T>
 struct Pair {
     // a: T
-    T a;
+    ::tpy::storage_t<T> a;
     // b: T
-    T b;
+    ::tpy::storage_t<T> b;
 
     // def __init__(self, a: Own[T], b: Own[T]) -> None:
     Pair() = default;
@@ -69,7 +69,7 @@ inline ::tpy::val_or_ref_t<T> Pair<T>::min_val()
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Pair<T>::with_default() const
   requires ::std::default_initializable<T> {
-    return T{};
+    return ::tpy::storage_t<T>{};
 }
 
 void __tpy_init();

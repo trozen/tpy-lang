@@ -22,21 +22,21 @@ std::string defaults(int8_t a = -5, int32_t b = 1, uint32_t c = static_cast<uint
 // def contextual[T, U](f: Fn[[T], U], x: T) -> U:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> contextual(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // @dispatch
 // def twin[T, U](f: Fn[[T], U], x: T) -> U:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> twin__Fn_T_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // @dispatch
 // def twin[T, U](f: Fn[[T, T], U], x: T) -> U:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> twin__Fn_T_T_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // def plain[T](x: T) -> T:
@@ -96,43 +96,43 @@ inline C::C() {
 //     return x
 template<typename T>
 inline ::tpy::val_or_ref_t<T> C::m(::tpy::param_val_or_ref_t<T> x) const {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 // def contextual[T, U](f: Fn[[T], U], x: T) -> U:
 //     return f(x)
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> contextual(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
-    return f(x);
+    return f(::tpy::param_pass_last<T>(x));
 }
 // @dispatch
 // def twin[T, U](f: Fn[[T], U], x: T) -> U:
 //     return f(x)
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> twin__Fn_T_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
-    return f(x);
+    return f(::tpy::param_pass_last<T>(x));
 }
 // @dispatch
 // def twin[T, U](f: Fn[[T, T], U], x: T) -> U:
 //     return f(x, x)
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> twin__Fn_T_T_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
-    return f(x, x);
+    return f(::tpy::param_pass<T>(x), ::tpy::param_pass<T>(x));
 }
 // def plain[T](x: T) -> T:
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> plain(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 void __tpy_init();

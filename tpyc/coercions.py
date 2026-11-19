@@ -1213,7 +1213,12 @@ def callable_fit(
     if not _return_fits(ret, slot_return,
                         exact or expected.is_template, wildcards):
         return CallableFit(CallableMisfit(None, ret, slot_return))
-    if contains_type_param(_return_form(slot_return), set(wildcards)):
+    # A bare open return is answered by what the call binds it to (`P` a
+    # borrow, `Own[P]` a fresh value); an `Own[T]` slot still owns its
+    # result, so a borrowed reference does not fit it -- a value type,
+    # returned by value, does.
+    if (contains_type_param(_return_form(slot_return), set(wildcards))
+            and not isinstance(_logical(slot_return), OwnType)):
         return fits
     # Both returns read as a def's (`contract_return`): a slot that hands
     # back a borrow takes only a callable that does, and one that hands

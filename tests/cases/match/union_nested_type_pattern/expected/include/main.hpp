@@ -25,7 +25,7 @@ void main();
 template<typename T>
 struct Box {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: Own[T]) -> None:
     Box() = default;
@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 template<typename T>
 struct Pair {
     // first: T
-    T first;
+    ::tpy::storage_t<T> first;
     // second: str
     std::string second;
 

@@ -15,6 +15,9 @@
  *      storage drops the const.
  *   4. The `ReferenceType` concept answers a slot by its referent, so a bound
  *      instantiated at the slot spelling is not refused for the wrapper.
+ *   5. At a type argument `Own[X]` (the owned tag `own_arg<X>`) every slot
+ *      form is the hand-written `Own[X]` twin's: an owned parameter, a
+ *      handed-over result and step, and `X` itself as the storage form.
  *
  * Exits non-zero on failure; the harness treats output as the assertion.
  */
@@ -169,6 +172,34 @@ void* operator new(std::size_t n) {
 
 void operator delete(void* p) noexcept { std::free(p); }
 void operator delete(void* p, std::size_t) noexcept { std::free(p); }
+
+namespace owned_tag {
+using ::tpy::own_arg;
+static_assert(std::is_same_v<::tpy::param_val_or_ref_t<own_arg<Point>>, Point&&>);
+static_assert(std::is_same_v<::tpy::own_param_t<own_arg<std::string>>, std::string>);
+static_assert(std::is_same_v<::tpy::readonly_form_t<own_arg<Point>>, Point&&>);
+static_assert(std::is_same_v<::tpy::val_or_ref_t<own_arg<Point>>, Point>);
+static_assert(std::is_same_v<::tpy::yield_slot_t<own_arg<Point>>, Point>);
+static_assert(std::is_same_v<::tpy::storage_t<const own_arg<std::string>>,
+                             const std::string>);
+static_assert(std::is_same_v<::tpy::storage_t<own_arg<Point>>, Point>);
+// The owned arms of the borrow-or-value traits: the twin's `Own[X]`
+// tuple element and `Own[X] | None` parameter hold the value.
+static_assert(std::is_same_v<::tpy::val_or_ptr_t<own_arg<Point>>, Point>);
+static_assert(std::is_same_v<::tpy::val_or_cptr_t<own_arg<Point>>, Point>);
+static_assert(std::is_same_v<::tpy::val_or_ptr_t<own_arg<std::string>>,
+                             std::string>);
+static_assert(std::is_same_v<::tpy::val_or_cptr_t<own_arg<std::string>>,
+                             std::string>);
+static_assert(std::is_same_v<::tpy::opt_param_t<own_arg<Point>>,
+                             std::optional<Point>>);
+static_assert(std::is_same_v<::tpy::opt_cparam_t<own_arg<Point>>,
+                             std::optional<Point>>);
+static_assert(std::is_same_v<::tpy::opt_param_t<own_arg<std::string>>,
+                             std::optional<std::string>>);
+static_assert(std::is_same_v<::tpy::opt_cparam_t<own_arg<std::string>>,
+                             std::optional<std::string>>);
+}  // namespace owned_tag
 
 int main() {
     slot_spelling();

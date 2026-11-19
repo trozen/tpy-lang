@@ -48,7 +48,7 @@ struct __gen_Foo_items : public ::tpy::next_iter_mixin<__gen_Foo_items<U>, ::tpy
     __gen_Foo_items(const Foo& __self, ::tpy::param_val_or_ref_t<U> x_)
         : __state(S_INITIAL),
           __self(__self),
-          x(x_) {}
+          x(::tpy::param_pass_last<U>(x_)) {}
 
     std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __next__();
     __gen_Foo_items& __iter__() { return *this; }
@@ -71,7 +71,7 @@ std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __gen_Foo_items<U>::
     }
     case S_RESUME_0: {  // after: yield x
         __state = S_RESUME_1;
-        return x;
+        return ::tpy::yield_from_local<U>(x);
     }
     case S_RESUME_1: {  // after: yield x
         __state = S_DONE;
@@ -85,7 +85,7 @@ std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __gen_Foo_items<U>::
 
 template <typename U>
 inline __gen_Foo_items<U> Foo::items(::tpy::param_val_or_ref_t<U> x) const {
-    return __gen_Foo_items<U>(*this, x);
+    return __gen_Foo_items<U>(*this, ::tpy::param_pass_last<U>(x));
 }
 
 void __tpy_init();

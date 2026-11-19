@@ -71,7 +71,7 @@ inline Noisy::Noisy(int32_t n) {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> make_default(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 void __tpy_init();

@@ -18,7 +18,7 @@ void main();
 template<typename T, std::size_t N>
 struct Box {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Box();
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T, N>& obj) {
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T, std::size_t N>
-inline Box<T, N>::Box() : items(std::vector<T>{}) {}
+inline Box<T, N>::Box() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

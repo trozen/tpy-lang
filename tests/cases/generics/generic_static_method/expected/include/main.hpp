@@ -18,7 +18,7 @@ void main();
 template<typename T>
 struct Container {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: Own[T]):
     Container() = default;
@@ -33,7 +33,7 @@ struct Container {
 
     // @staticmethod
     // def wrap_optional(v: Own[T] | None) -> Own[Container[T]] | None:
-    static std::optional<Container<T>> wrap_optional(std::optional<T> v);
+    static std::optional<Container<T>> wrap_optional(std::optional<::tpy::storage_t<T>> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -70,7 +70,7 @@ inline Container<T> Container<T>::create(::tpy::own_param_t<T> v) {
 //         return Container(v)
 //     return None
 template<typename T>
-inline std::optional<Container<T>> Container<T>::wrap_optional(std::optional<T> v) {
+inline std::optional<Container<T>> Container<T>::wrap_optional(std::optional<::tpy::storage_t<T>> v) {
     if ((v.has_value())) {
         return Container<T>(std::move((*v)));
     }

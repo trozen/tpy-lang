@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Calculator(Protocol):
 template<typename T>
-concept Calculator = requires(T& t) {
+concept Calculator = requires(::tpy::storage_t<T>& t) {
     { t.add(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
     { t.multiply(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };

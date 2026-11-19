@@ -15,7 +15,7 @@ struct Ray;
 
 // class Tilted(Protocol):
 template<typename T>
-concept Tilted = requires(T& t) {
+concept Tilted = requires(::tpy::storage_t<T>& t) {
     { t.tilt(std::declval<Ray&>()) } -> std::convertible_to<double>;
 };
 
@@ -23,7 +23,7 @@ struct Surface;
 // @dynamic
 // class Surface(Tilted, Protocol):
 template<typename T>
-concept __Surface_Concept__ = requires(T& t) {
+concept __Surface_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.bounce(std::declval<Ray&>()) } -> std::convertible_to<double>;
     { t.count(std::declval<std::vector<Ray>&>()) } -> std::convertible_to<::tpy::BigInt>;
     { t.maybe(std::declval<Ray*>()) } -> std::convertible_to<double>;

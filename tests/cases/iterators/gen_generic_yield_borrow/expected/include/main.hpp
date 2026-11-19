@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Appendable(Protocol):
 template<typename T>
-concept Appendable = requires(T& t) {
+concept Appendable = requires(::tpy::storage_t<T>& t) {
     { t.append(std::declval<int32_t>()) } -> std::convertible_to<void>;
 };
 
@@ -72,53 +72,53 @@ template <typename T>
 __gen_rep<T> rep(::tpy::param_val_or_ref_t<T> obj, int32_t times);
 // def ends[T](items: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_ends<T> ends(std::vector<T>& items);
+__gen_ends<T> ends(std::vector<::tpy::storage_t<T>>& items);
 // def first_then_rest[T](items: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_first_then_rest<T> first_then_rest(std::vector<T>& items);
+__gen_first_then_rest<T> first_then_rest(std::vector<::tpy::storage_t<T>>& items);
 // def in_with[T](items: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_in_with<T> in_with(std::vector<T>& items);
+__gen_in_with<T> in_with(std::vector<::tpy::storage_t<T>>& items);
 // def in_try[T](items: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_in_try<T> in_try(std::vector<T>& items);
+__gen_in_try<T> in_try(std::vector<::tpy::storage_t<T>>& items);
 // def in_match[T](items: list[T], mode: int32) -> Iterator[T]:
 template <typename T>
-__gen_in_match<T> in_match(std::vector<T>& items, int32_t mode);
+__gen_in_match<T> in_match(std::vector<::tpy::storage_t<T>>& items, int32_t mode);
 // def via_local[T](items: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_via_local<T> via_local(const std::vector<T>& items);
+__gen_via_local<T> via_local(const std::vector<::tpy::storage_t<T>>& items);
 // @dispatch
 // def app[A, B](f: Fn[[A], B], x: A) -> B:
 template<typename A, typename B, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<A> __a0) {
-      { __fn(__a0) } -> std::convertible_to<B>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<B>;
   }
 ::tpy::val_or_ref_t<B> app__Fn_A_B__A(__F0&& f, ::tpy::param_val_or_ref_t<A> x);
 // @dispatch
 // def app[A, B](f: Fn[[A], B], x: list[A]) -> B:
 template<typename A, typename B, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<A> __a0) {
-      { __fn(__a0) } -> std::convertible_to<B>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<B>;
   }
-::tpy::val_or_ref_t<B> app__Fn_A_B__list_A(__F0&& f, std::vector<A>& x);
+::tpy::val_or_ref_t<B> app__Fn_A_B__list_A(__F0&& f, std::vector<::tpy::storage_t<A>>& x);
 // def trial_then_local[T](items: list[T], n: int32) -> Iterator[T]:
 template <typename T>
-__gen_trial_then_local<T> trial_then_local(std::vector<T>& items, int32_t n);
+__gen_trial_then_local<T> trial_then_local(std::vector<::tpy::storage_t<T>>& items, int32_t n);
 // def with_nested[T](items: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_with_nested<T> with_nested(std::vector<T>& items);
+__gen_with_nested<T> with_nested(std::vector<::tpy::storage_t<T>>& items);
 // def local_after_nested(x: int32) -> Iterator[Point]:
 __gen_local_after_nested local_after_nested(int32_t x);
 // def via_shadowing_local[T](xs: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_via_shadowing_local<T> via_shadowing_local(std::vector<T>& xs);
+__gen_via_shadowing_local<T> via_shadowing_local(std::vector<::tpy::storage_t<T>>& xs);
 // def mapped[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
 template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F_fn>
 __gen_mapped<T, U, T_it, F_fn> mapped(F_fn&& fn, T_it&& it);
 // def mixed[T](items: list[T], extra: Iterator[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterator<T> T_extra>
-__gen_mixed<T, T_extra> mixed(std::vector<T>& items, T_extra&& extra);
+__gen_mixed<T, T_extra> mixed(std::vector<::tpy::storage_t<T>>& items, T_extra&& extra);
 // def fresh(p: Point) -> Own[Point]:
 Point fresh(const Point& p);
 // def relay[T](it: Iterator[T]) -> Iterator[T]:
@@ -210,11 +210,11 @@ inline std::ostream& operator<<(std::ostream& os, const Bin& obj) {
 template<typename T>
 struct Holder {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, items: list[T]) -> None:
     Holder() = default;
-    explicit Holder(const std::vector<T>& items);
+    explicit Holder(const std::vector<::tpy::storage_t<T>>& items);
 
     __gen_Holder_walk<T> walk();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -230,7 +230,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 template<typename T>
 struct Cell {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Cell() = default;
@@ -406,7 +406,7 @@ struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep<T>, ::tpy::yield_slot
 
     __gen_rep(::tpy::param_val_or_ref_t<T> obj_, int32_t times_)
         : __state(S_INITIAL),
-          obj(obj_),
+          obj(::tpy::param_pass_last<T>(obj_)),
           times(std::move(times_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -449,14 +449,14 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_rep<T>::__next
 // def rep[T: Appendable](obj: T, times: int32) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 __gen_rep<T> rep(::tpy::param_val_or_ref_t<T> obj, int32_t times) {
-    return __gen_rep<T>(obj, times);
+    return __gen_rep<T>(::tpy::param_pass_last<T>(obj), times);
 }
 
 // def ends[T](items: list[T]) -> Iterator[T]:
 template <typename T>
 struct __gen_ends : public ::tpy::next_iter_mixin<__gen_ends<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& items;
+    std::vector<::tpy::storage_t<T>>& items;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -465,7 +465,7 @@ struct __gen_ends : public ::tpy::next_iter_mixin<__gen_ends<T>, ::tpy::yield_sl
         S_DONE = 3,
     };
 
-    __gen_ends(std::vector<T>& items)
+    __gen_ends(std::vector<::tpy::storage_t<T>>& items)
         : __state(S_INITIAL),
           items(items) {}
 
@@ -504,7 +504,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_ends<T>::__nex
 
 // def ends[T](items: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_ends<T> ends(std::vector<T>& items) {
+__gen_ends<T> ends(std::vector<::tpy::storage_t<T>>& items) {
     return __gen_ends<T>(items);
 }
 
@@ -512,8 +512,8 @@ __gen_ends<T> ends(std::vector<T>& items) {
 template <typename T>
 struct __gen_first_then_rest : public ::tpy::next_iter_mixin<__gen_first_then_rest<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& items;
-    T* head = nullptr;
+    std::vector<::tpy::storage_t<T>>& items;
+    ::tpy::storage_t<T>* head = nullptr;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* it = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -527,7 +527,7 @@ struct __gen_first_then_rest : public ::tpy::next_iter_mixin<__gen_first_then_re
         S_DONE = 4,
     };
 
-    __gen_first_then_rest(std::vector<T>& items)
+    __gen_first_then_rest(std::vector<::tpy::storage_t<T>>& items)
         : __state(S_INITIAL),
           items(items) {}
 
@@ -578,7 +578,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_first_then_res
 
 // def first_then_rest[T](items: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_first_then_rest<T> first_then_rest(std::vector<T>& items) {
+__gen_first_then_rest<T> first_then_rest(std::vector<::tpy::storage_t<T>>& items) {
     return __gen_first_then_rest<T>(items);
 }
 
@@ -586,7 +586,7 @@ __gen_first_then_rest<T> first_then_rest(std::vector<T>& items) {
 template <typename T>
 struct __gen_in_with : public ::tpy::next_iter_mixin<__gen_in_with<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& items;
+    std::vector<::tpy::storage_t<T>>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* it = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -602,7 +602,7 @@ struct __gen_in_with : public ::tpy::next_iter_mixin<__gen_in_with<T>, ::tpy::yi
         S_DONE = 5,
     };
 
-    __gen_in_with(std::vector<T>& items)
+    __gen_in_with(std::vector<::tpy::storage_t<T>>& items)
         : __state(S_INITIAL),
           items(items) {}
 
@@ -700,7 +700,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_in_with<T>::__
 
 // def in_with[T](items: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_in_with<T> in_with(std::vector<T>& items) {
+__gen_in_with<T> in_with(std::vector<::tpy::storage_t<T>>& items) {
     return __gen_in_with<T>(items);
 }
 
@@ -708,7 +708,7 @@ __gen_in_with<T> in_with(std::vector<T>& items) {
 template <typename T>
 struct __gen_in_try : public ::tpy::next_iter_mixin<__gen_in_try<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& items;
+    std::vector<::tpy::storage_t<T>>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* it = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -723,7 +723,7 @@ struct __gen_in_try : public ::tpy::next_iter_mixin<__gen_in_try<T>, ::tpy::yiel
         S_DONE = 5,
     };
 
-    __gen_in_try(std::vector<T>& items)
+    __gen_in_try(std::vector<::tpy::storage_t<T>>& items)
         : __state(S_INITIAL),
           items(items) {}
 
@@ -815,7 +815,7 @@ void __gen_in_try<T>::__finally_0() {
 
 // def in_try[T](items: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_in_try<T> in_try(std::vector<T>& items) {
+__gen_in_try<T> in_try(std::vector<::tpy::storage_t<T>>& items) {
     return __gen_in_try<T>(items);
 }
 
@@ -823,7 +823,7 @@ __gen_in_try<T> in_try(std::vector<T>& items) {
 template <typename T>
 struct __gen_in_match : public ::tpy::next_iter_mixin<__gen_in_match<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& items;
+    std::vector<::tpy::storage_t<T>>& items;
     int32_t mode;
 
     enum : int32_t {
@@ -834,7 +834,7 @@ struct __gen_in_match : public ::tpy::next_iter_mixin<__gen_in_match<T>, ::tpy::
         S_DONE = 4,
     };
 
-    __gen_in_match(std::vector<T>& items, int32_t mode_)
+    __gen_in_match(std::vector<::tpy::storage_t<T>>& items, int32_t mode_)
         : __state(S_INITIAL),
           items(items),
           mode(std::move(mode_)) {}
@@ -888,7 +888,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_in_match<T>::_
 
 // def in_match[T](items: list[T], mode: int32) -> Iterator[T]:
 template <typename T>
-__gen_in_match<T> in_match(std::vector<T>& items, int32_t mode) {
+__gen_in_match<T> in_match(std::vector<::tpy::storage_t<T>>& items, int32_t mode) {
     return __gen_in_match<T>(items, mode);
 }
 
@@ -896,9 +896,9 @@ __gen_in_match<T> in_match(std::vector<T>& items, int32_t mode) {
 template <typename T>
 struct __gen_via_local : public ::tpy::next_iter_mixin<__gen_via_local<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    const std::vector<T>& items;
-    ::tpy::frame_slot<std::vector<T>> box;
-    ::tpy::frame_slot<T> src;
+    const std::vector<::tpy::storage_t<T>>& items;
+    ::tpy::frame_slot<std::vector<::tpy::storage_t<T>>> box;
+    ::tpy::frame_slot<::tpy::storage_t<T>> src;
     using __for_src_0_t = decltype(((*box)));
     ::tpy::begin_elem_t<__for_src_0_t>* first = nullptr;
     using __for_src_1_t = decltype(((*box)));
@@ -917,7 +917,7 @@ struct __gen_via_local : public ::tpy::next_iter_mixin<__gen_via_local<T>, ::tpy
         S_DONE = 5,
     };
 
-    __gen_via_local(const std::vector<T>& items)
+    __gen_via_local(const std::vector<::tpy::storage_t<T>>& items)
         : __state(S_INITIAL),
           items(items) {}
 
@@ -947,7 +947,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_via_local<T>::
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        box.emplace(std::vector<T>{});
+        box.emplace(std::vector<::tpy::storage_t<T>>{});
         auto& __obj_0 = items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -992,7 +992,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_via_local<T>::
 
 // def via_local[T](items: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_via_local<T> via_local(const std::vector<T>& items) {
+__gen_via_local<T> via_local(const std::vector<::tpy::storage_t<T>>& items) {
     return __gen_via_local<T>(items);
 }
 
@@ -1000,10 +1000,10 @@ __gen_via_local<T> via_local(const std::vector<T>& items) {
 template <typename T>
 struct __gen_trial_then_local : public ::tpy::next_iter_mixin<__gen_trial_then_local<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& items;
+    std::vector<::tpy::storage_t<T>>& items;
     int32_t n;
     int32_t r;
-    T* head = nullptr;
+    ::tpy::storage_t<T>* head = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -1012,7 +1012,7 @@ struct __gen_trial_then_local : public ::tpy::next_iter_mixin<__gen_trial_then_l
         S_DONE = 3,
     };
 
-    __gen_trial_then_local(std::vector<T>& items, int32_t n_)
+    __gen_trial_then_local(std::vector<::tpy::storage_t<T>>& items, int32_t n_)
         : __state(S_INITIAL),
           items(items),
           n(std::move(n_)) {}
@@ -1061,7 +1061,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_trial_then_loc
 
 // def trial_then_local[T](items: list[T], n: int32) -> Iterator[T]:
 template <typename T>
-__gen_trial_then_local<T> trial_then_local(std::vector<T>& items, int32_t n) {
+__gen_trial_then_local<T> trial_then_local(std::vector<::tpy::storage_t<T>>& items, int32_t n) {
     return __gen_trial_then_local<T>(items, n);
 }
 
@@ -1069,7 +1069,7 @@ __gen_trial_then_local<T> trial_then_local(std::vector<T>& items, int32_t n) {
 template <typename T>
 struct __gen_with_nested : public ::tpy::next_iter_mixin<__gen_with_nested<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& items;
+    std::vector<::tpy::storage_t<T>>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* it = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -1082,7 +1082,7 @@ struct __gen_with_nested : public ::tpy::next_iter_mixin<__gen_with_nested<T>, :
         S_DONE = 3,
     };
 
-    __gen_with_nested(std::vector<T>& items)
+    __gen_with_nested(std::vector<::tpy::storage_t<T>>& items)
         : __state(S_INITIAL),
           items(items) {}
 
@@ -1139,7 +1139,7 @@ int32_t __gen_with_nested<T>::bump(int32_t a) {
 
 // def with_nested[T](items: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_with_nested<T> with_nested(std::vector<T>& items) {
+__gen_with_nested<T> with_nested(std::vector<::tpy::storage_t<T>>& items) {
     return __gen_with_nested<T>(items);
 }
 
@@ -1172,8 +1172,8 @@ struct __gen_local_after_nested : public ::tpy::next_iter_mixin<__gen_local_afte
 template <typename T>
 struct __gen_via_shadowing_local : public ::tpy::next_iter_mixin<__gen_via_shadowing_local<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& xs;
-    T* shadowed_src = nullptr;
+    std::vector<::tpy::storage_t<T>>& xs;
+    ::tpy::storage_t<T>* shadowed_src = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -1182,7 +1182,7 @@ struct __gen_via_shadowing_local : public ::tpy::next_iter_mixin<__gen_via_shado
         S_DONE = 3,
     };
 
-    __gen_via_shadowing_local(std::vector<T>& xs)
+    __gen_via_shadowing_local(std::vector<::tpy::storage_t<T>>& xs)
         : __state(S_INITIAL),
           xs(xs) {}
 
@@ -1224,7 +1224,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_via_shadowing_
 
 // def via_shadowing_local[T](xs: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_via_shadowing_local<T> via_shadowing_local(std::vector<T>& xs) {
+__gen_via_shadowing_local<T> via_shadowing_local(std::vector<::tpy::storage_t<T>>& xs) {
     return __gen_via_shadowing_local<T>(xs);
 }
 
@@ -1239,7 +1239,7 @@ struct __gen_mapped : public ::tpy::next_iter_mixin<__gen_mapped<T, U, T_it, F_f
     ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
     ::tpy::frame_slot<::tpy::next_elem_t<__for_itr_0_t>> x;
-    ::tpy::frame_slot<U> y;
+    ::tpy::frame_slot<::tpy::val_or_ref_t<U>> y;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -1284,7 +1284,7 @@ std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __gen_mapped<T, U, T
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        y.emplace(fn((*x)));
+        y.emplace(fn(::tpy::param_pass<T>((*x))));
         __state = S_RESUME_0;
         return ::tpy::yield_from_local<U>((*y));
     }
@@ -1304,7 +1304,7 @@ __gen_mapped<T, U, T_it, F_fn> mapped(F_fn&& fn, T_it&& it) {
 template <typename T, ::tpystd::typing::Iterator<T> T_extra>
 struct __gen_mixed : public ::tpy::next_iter_mixin<__gen_mixed<T, T_extra>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& items;
+    std::vector<::tpy::storage_t<T>>& items;
     T_extra extra;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
@@ -1323,7 +1323,7 @@ struct __gen_mixed : public ::tpy::next_iter_mixin<__gen_mixed<T, T_extra>, ::tp
         S_DONE = 5,
     };
 
-    __gen_mixed(std::vector<T>& items, T_extra&& extra_)
+    __gen_mixed(std::vector<::tpy::storage_t<T>>& items, T_extra&& extra_)
         : __state(S_INITIAL),
           items(items),
           extra(std::forward<T_extra>(extra_)) {}
@@ -1381,7 +1381,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_mixed<T, T_ext
 
 // def mixed[T](items: list[T], extra: Iterator[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterator<T> T_extra>
-__gen_mixed<T, T_extra> mixed(std::vector<T>& items, T_extra&& extra) {
+__gen_mixed<T, T_extra> mixed(std::vector<::tpy::storage_t<T>>& items, T_extra&& extra) {
     return __gen_mixed<T, T_extra>(items, std::forward<T_extra>(extra));
 }
 
@@ -1658,7 +1658,7 @@ inline int32_t Bin::size() const {
 //     # the generic owning-slot copy contract: a list[T] copies whatever T is
 //     self.items = items  # tpyc: warning(/copies list\[T\] into field/)
 template<typename T>
-inline Holder<T>::Holder(const std::vector<T>& items) : items(items) {}
+inline Holder<T>::Holder(const std::vector<::tpy::storage_t<T>>& items) : items(items) {}
 
 // def __init__(self, v: T) -> None:
 //     # the generic owning-slot copy contract again, at a scalar field: at a
@@ -1690,20 +1690,20 @@ inline ::tpy::val_or_cref_t<T> Cell<T>::val() const {
 //     return f(x)
 template<typename A, typename B, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<A> __a0) {
-      { __fn(__a0) } -> std::convertible_to<B>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<B>;
   }
 ::tpy::val_or_ref_t<B> app__Fn_A_B__A(__F0&& f, ::tpy::param_val_or_ref_t<A> x) {
-    return f(x);
+    return f(::tpy::param_pass_last<A>(x));
 }
 // @dispatch
 // def app[A, B](f: Fn[[A], B], x: list[A]) -> B:
 //     return f(x[0])
 template<typename A, typename B, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<A> __a0) {
-      { __fn(__a0) } -> std::convertible_to<B>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<B>;
   }
-::tpy::val_or_ref_t<B> app__Fn_A_B__list_A(__F0&& f, std::vector<A>& x) {
-    return f(::tpy::__getitem__(x, 0));
+::tpy::val_or_ref_t<B> app__Fn_A_B__list_A(__F0&& f, std::vector<::tpy::storage_t<A>>& x) {
+    return f(::tpy::param_pass<A>(::tpy::__getitem__(x, 0)));
 }
 
 void __tpy_init();

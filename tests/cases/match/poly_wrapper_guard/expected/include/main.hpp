@@ -15,7 +15,7 @@ struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>
-concept __Pet_Concept__ = requires(T& t) {
+concept __Pet_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.legs() } -> std::convertible_to<::tpy::BigInt>;
 };
 

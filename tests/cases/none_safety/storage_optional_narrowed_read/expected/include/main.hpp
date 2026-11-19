@@ -11,7 +11,7 @@ namespace tpyapp::main {
 
 // class Value(Protocol):
 template<typename T>
-concept Value = requires(T& t) {
+concept Value = requires(::tpy::storage_t<T>& t) {
     { t.val() } -> std::convertible_to<int32_t>;
 };
 

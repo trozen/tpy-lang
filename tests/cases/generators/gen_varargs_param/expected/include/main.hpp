@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Counter(Protocol):
 template<typename T>
-concept Counter = requires(T& t) {
+concept Counter = requires(::tpy::storage_t<T>& t) {
     { t.bump() } -> std::convertible_to<int32_t>;
 };
 
@@ -48,7 +48,7 @@ __gen_scalars scalars(::tpy::varargs<const int32_t> xs);
 __gen_strings strings(::tpy::varargs<const std::string> ss);
 // def merge_shape[T: Comparable](*xs: list[T]) -> Iterator[int32]:  # tpyc: ok
 template <typename T>
-__gen_merge_shape<T> merge_shape(::tpy::varargs<const std::vector<T>> xs);
+__gen_merge_shape<T> merge_shape(::tpy::varargs<const std::vector<::tpy::storage_t<T>>> xs);
 // def bump(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 __gen_bump bump(::tpy::varargs<Point> ps);
 // def read_pack(*ps: Point) -> Iterator[int32]:  # tpyc: ok
@@ -236,10 +236,10 @@ struct __gen_strings : public ::tpy::next_iter_mixin<__gen_strings, int32_t> {
 template <typename T>
 struct __gen_merge_shape : public ::tpy::next_iter_mixin<__gen_merge_shape<T>, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::varargs<const std::vector<T>> xs;
+    ::tpy::varargs<const std::vector<::tpy::storage_t<T>>> xs;
     int32_t total;
     int32_t i;
-    ::tpy::frame_slot<std::vector<T>> s;
+    ::tpy::frame_slot<std::vector<::tpy::storage_t<T>>> s;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -249,7 +249,7 @@ struct __gen_merge_shape : public ::tpy::next_iter_mixin<__gen_merge_shape<T>, i
         S_DONE = 4,
     };
 
-    __gen_merge_shape(::tpy::varargs<const std::vector<T>> xs_)
+    __gen_merge_shape(::tpy::varargs<const std::vector<::tpy::storage_t<T>>> xs_)
         : __state(S_INITIAL),
           xs(std::move(xs_)) {}
 
@@ -314,7 +314,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_merge_shape<T>::__next__() {
 
 // def merge_shape[T: Comparable](*xs: list[T]) -> Iterator[int32]:  # tpyc: ok
 template <typename T>
-__gen_merge_shape<T> merge_shape(::tpy::varargs<const std::vector<T>> xs) {
+__gen_merge_shape<T> merge_shape(::tpy::varargs<const std::vector<::tpy::storage_t<T>>> xs) {
     return __gen_merge_shape<T>(xs);
 }
 

@@ -614,8 +614,10 @@ def binds_owned_value(analyzer: 'ValueCategoryAnalyzer',
     """Whether a name bound from `expr` OWNS the object it holds, so its
     last use may move it: no leaf of it is shared storage (`origin`). The
     one ownership question every name binding (declaration, assignment,
-    walrus, the bind-kind stamp) asks."""
-    return not origin_shared(analyzer, expr)
+    walrus, the bind-kind stamp) asks. An open `T` result may lend (at a
+    reference instantiation), so a name bound from it borrows, as a bare
+    `x: T` parameter does."""
+    return not origin_lends_open(analyzer, expr)
 
 
 def result_is_fresh(analyzer: 'ValueCategoryAnalyzer',
@@ -2283,15 +2285,17 @@ def returns_open_type_param(fi: 'FunctionInfo | None') -> bool:
     """The callee's return is a bare type parameter still open in this
     signature -- a substituted view's reads its substitution, unlike
     `FunctionInfo.returns_open` -- and the callee is one whose declaration
-    says what its return convention is.
-
-    A callable VALUE is excluded: its signature is the `Fn` type's, not a
-    declaration anyone checked, and the body that runs may build a fresh
-    value -- so `f(x)` at an `Fn[[T], K]` slot is an rvalue exactly as its
-    monomorphic twin `Fn[[int32], Cell]` is, and reading K as a borrow would
-    warn on the generic where the twin is silent.
+    says what its return convention is -- a callable value's included: a
+    call through `f: Fn[[T], K]` returns what `K` says at each
+    instantiation (`P` a borrow, `Own[P]` a fresh value), as the def's
+    `-> K` does.
     """
-    if fi is None or fi.is_constructor or fi.is_callable_value:
+    if fi is None or fi.is_constructor:
+        return False
+    if (fi.is_callable_value and fi.callable_type is not None
+            and fi.callable_type.class_return):
+        # A class's std::function returns by value: a class's type
+        # parameter is never bound to `Own[X]`.
         return False
     return is_open_type_param_return(fi.return_type)
 
@@ -2526,6 +2530,12 @@ def origin_shared(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     """Some leaf of `expr` is storage the program holds -- what it names
     exists beyond the statement (`binds_owned_value`'s complement)."""
     return any(leaf.kind is OriginKind.SHARED
+               for leaf in origin(analyzer, expr))
+
+
+def origin_lends_open(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
+    """Some leaf of `expr` is shared storage or an open `T` result."""
+    return any(leaf.kind in (OriginKind.SHARED, OriginKind.OPEN)
                for leaf in origin(analyzer, expr))
 
 

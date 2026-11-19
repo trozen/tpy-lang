@@ -13,13 +13,13 @@ inline constexpr std::string_view __name__ = "__main__";
 // def apply[T, U](f: Fn[[T], U], xs: list[T]) -> int32:  # tpyc: ok
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-int32_t apply__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs);
+int32_t apply__Fn_T_U__list_T(__F0&& f, const std::vector<::tpy::storage_t<T>>& xs);
 // @dispatch
 // def apply[T](xs: list[T], a: T, b: T) -> T:  # tpyc: ok
 template<typename T>
-::tpy::val_or_ref_t<T> apply__list_T__T__T(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+::tpy::val_or_ref_t<T> apply__list_T__T__T(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 // def main() -> None:
 void main();
 
@@ -34,17 +34,17 @@ void main();
 //     return int32(0)
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-int32_t apply__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs) {
+int32_t apply__Fn_T_U__list_T(__F0&& f, const std::vector<::tpy::storage_t<T>>& xs) {
     return 0;
 }
 // @dispatch
 // def apply[T](xs: list[T], a: T, b: T) -> T:  # tpyc: ok
 //     return a
 template<typename T>
-::tpy::val_or_ref_t<T> apply__list_T__T__T(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    return ::tpy::param_to_return<T>(a);
+::tpy::val_or_ref_t<T> apply__list_T__T__T(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
+    return ::tpy::param_to_return_last<T>(a);
 }
 
 void __tpy_init();

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Addable(Protocol):
 template<typename T>
-concept Addable = requires(T& t) {
+concept Addable = requires(::tpy::storage_t<T>& t) {
     { t.add(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyNumber& obj) {
 template<Addable T>
 struct Holder {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: T):
     Holder() = default;

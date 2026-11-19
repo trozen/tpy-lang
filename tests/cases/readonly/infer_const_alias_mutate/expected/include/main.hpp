@@ -15,7 +15,7 @@ struct Mutating;
 // @dynamic
 // class Mutating(Protocol):
 template<typename T>
-concept __Mutating_Concept__ = requires(T& t) {
+concept __Mutating_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.do_mutate() } -> std::convertible_to<void>;
 };
 

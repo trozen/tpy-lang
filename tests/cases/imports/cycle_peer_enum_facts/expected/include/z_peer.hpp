@@ -13,7 +13,7 @@ struct Named;
 // @dynamic
 // class Named(Protocol):
 template<typename T>
-concept __Named_Concept__ = requires(T& t) {
+concept __Named_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.tag() } -> std::convertible_to<std::string_view>;
 };
 

@@ -65,11 +65,11 @@ inline std::ostream& operator<<(std::ostream& os, const M& obj) {
 template<typename T>
 struct Holder {
     // _payload: Ptr[T]
-    T* _payload;
+    ::tpy::storage_t<T>* _payload;
 
     // def __init__(self, payload: Ptr[T]) -> None:
     Holder() = default;
-    explicit Holder(T* payload);
+    explicit Holder(::tpy::storage_t<T>* payload);
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() const;
@@ -127,7 +127,7 @@ inline A& M::mine() {
 // def __init__(self, payload: Ptr[T]) -> None:
 //     self._payload = payload
 template<typename T>
-inline Holder<T>::Holder(T* payload) : _payload(payload) {}
+inline Holder<T>::Holder(::tpy::storage_t<T>* payload) : _payload(payload) {}
 
 // def get(self) -> T:
 //     return self._payload  # tpyc: ok

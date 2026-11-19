@@ -20,7 +20,7 @@ void main();
 template<typename T>
 struct Vec {
     // _data: list[T]
-    std::vector<T> _data;
+    std::vector<::tpy::storage_t<T>> _data;
 
     // def __init__(self) -> None:
     Vec();
@@ -34,7 +34,7 @@ struct Vec {
 
     // @auto_readonly
     // def data(self) -> Span[auto_readonly[T]]:
-    std::span<const T> data() const;
+    std::span<const ::tpy::storage_t<T>> data() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Vec";
 };
 
@@ -48,13 +48,13 @@ inline std::ostream& operator<<(std::ostream& os, const Vec<T>& obj) {
 // def __init__(self) -> None:
 //     self._data = []
 template<typename T>
-inline Vec<T>::Vec() : _data(std::vector<T>{}) {}
+inline Vec<T>::Vec() : _data(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def push(self, v: T) -> None:
 //     self._data.append(v)
 template<typename T>
 inline void Vec<T>::push(::tpy::param_val_or_ref_t<T> v) {
-    this->_data.push_back(::tpy::param_to_storage<T>(v));
+    this->_data.push_back(::tpy::param_consume<T>(v));
 }
 
 // @auto_readonly
@@ -69,7 +69,7 @@ inline std::span<T> Vec<T>::data() {
 // def data(self) -> Span[auto_readonly[T]]:
 //     return self._data
 template<typename T>
-inline std::span<const T> Vec<T>::data() const {
+inline std::span<const ::tpy::storage_t<T>> Vec<T>::data() const {
     return ::tpy::as_span(this->_data);
 }
 

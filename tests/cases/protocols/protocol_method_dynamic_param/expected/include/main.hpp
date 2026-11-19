@@ -11,7 +11,7 @@ struct Speaker;
 // @dynamic
 // class Speaker(Protocol):
 template<typename T>
-concept __Speaker_Concept__ = requires(T& t) {
+concept __Speaker_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.speak() } -> std::convertible_to<std::string_view>;
 };
 

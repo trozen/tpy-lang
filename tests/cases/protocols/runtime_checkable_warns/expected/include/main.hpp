@@ -9,20 +9,20 @@ namespace tpyapp::main {
 
 // class Speaker(Protocol):
 template<typename T>
-concept Speaker = requires(T& t) {
+concept Speaker = requires(::tpy::storage_t<T>& t) {
     { t.speak() } -> std::convertible_to<std::string_view>;
 };
 
 // class Walker(Protocol):
 template<typename T>
-concept Walker = requires(T& t) {
+concept Walker = requires(::tpy::storage_t<T>& t) {
     { t.walk() } -> std::convertible_to<int32_t>;
 };
 
 // @runtime_checkable
 // class Eq(Protocol):
 template<typename T>
-concept Eq = requires(const T& t) {
+concept Eq = requires(const ::tpy::storage_t<T>& t) {
     { t == std::declval<T&>() } -> std::convertible_to<bool>;
 };
 

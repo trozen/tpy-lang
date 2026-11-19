@@ -11,7 +11,7 @@ namespace tpyapp::cyc_a {
 
 // class HasGet(Protocol):
 template<typename T>
-concept HasGet = requires(T& t) {
+concept HasGet = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> std::convertible_to<int32_t>;
 };
 

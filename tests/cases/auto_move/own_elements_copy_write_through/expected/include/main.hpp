@@ -53,7 +53,7 @@ std::vector<H> make_hs();
 __gen_fresh_hs fresh_hs();
 // def each[T](xs: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_each<T> each(std::vector<T>& xs);
+__gen_each<T> each(std::vector<::tpy::storage_t<T>>& xs);
 // def explicit_type_arg(items: list[Own[Item]]) -> None:
 void explicit_type_arg(std::vector<Item>& items);
 // def with_target() -> None:
@@ -126,7 +126,7 @@ struct Each {
 
 
     template <typename T>
-    __gen_Each_each<T> each(std::vector<T>& xs) const;
+    __gen_Each_each<T> each(std::vector<::tpy::storage_t<T>>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Each";
 };
 
@@ -141,7 +141,7 @@ struct GEach {
 
 
     template <typename T>
-    __gen_GEach_each<U, T> each(std::vector<T>& xs) const;
+    __gen_GEach_each<U, T> each(std::vector<::tpy::storage_t<T>>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.GEach";
 };
 
@@ -155,19 +155,19 @@ inline std::ostream& operator<<(std::ostream& os, const GEach<U>& obj) {
 template<typename U>
 struct It {
     // xs: list[U]
-    std::vector<U> xs;
+    std::vector<::tpy::storage_t<U>> xs;
     // i: int32
     int32_t i;
 
     // def __init__(self, xs: list[U]) -> None:
     It() = default;
-    explicit It(const std::vector<U>& xs);
+    explicit It(const std::vector<::tpy::storage_t<U>>& xs);
 
     // def __iter__(self) -> It[U]:
     It<U>& __iter__();
 
     // def __next__(self) -> U:
-    std::expected<::tpy::val_or_ref<U>, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::val_or_ref<::tpy::storage_t<U>>, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.It";
 };
 
@@ -184,7 +184,7 @@ struct G {
 
     // @staticmethod
     // def wrap(xs: list[U]) -> Own[It[U]]:
-    static It<U> wrap(const std::vector<U>& xs);
+    static It<U> wrap(const std::vector<::tpy::storage_t<U>>& xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.G";
 };
 
@@ -239,7 +239,7 @@ struct __gen_fresh_hs : public ::tpy::next_iter_mixin<__gen_fresh_hs, H> {
 template <typename T>
 struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& xs;
+    std::vector<::tpy::storage_t<T>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -252,7 +252,7 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T>, ::tpy::yield_sl
         S_DONE = 3,
     };
 
-    __gen_each(std::vector<T>& xs)
+    __gen_each(std::vector<::tpy::storage_t<T>>& xs)
         : __state(S_INITIAL),
           xs(xs) {}
 
@@ -295,7 +295,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_each<T>::__nex
 
 // def each[T](xs: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_each<T> each(std::vector<T>& xs) {
+__gen_each<T> each(std::vector<::tpy::storage_t<T>>& xs) {
     return __gen_each<T>(xs);
 }
 
@@ -304,7 +304,7 @@ template <typename T>
 struct __gen_Each_each : public ::tpy::next_iter_mixin<__gen_Each_each<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
     const Each& __self;
-    std::vector<T>& xs;
+    std::vector<::tpy::storage_t<T>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -317,7 +317,7 @@ struct __gen_Each_each : public ::tpy::next_iter_mixin<__gen_Each_each<T>, ::tpy
         S_DONE = 3,
     };
 
-    __gen_Each_each(const Each& __self, std::vector<T>& xs)
+    __gen_Each_each(const Each& __self, std::vector<::tpy::storage_t<T>>& xs)
         : __state(S_INITIAL),
           __self(__self),
           xs(xs) {}
@@ -361,7 +361,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Each_each<T>::
 
 
 template <typename T>
-inline __gen_Each_each<T> Each::each(std::vector<T>& xs) const {
+inline __gen_Each_each<T> Each::each(std::vector<::tpy::storage_t<T>>& xs) const {
     return __gen_Each_each<T>(*this, xs);
 }
 
@@ -370,7 +370,7 @@ template <typename U, typename T>
 struct __gen_GEach_each : public ::tpy::next_iter_mixin<__gen_GEach_each<U, T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
     const GEach<U>& __self;
-    std::vector<T>& xs;
+    std::vector<::tpy::storage_t<T>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -383,7 +383,7 @@ struct __gen_GEach_each : public ::tpy::next_iter_mixin<__gen_GEach_each<U, T>, 
         S_DONE = 3,
     };
 
-    __gen_GEach_each(const GEach<U>& __self, std::vector<T>& xs)
+    __gen_GEach_each(const GEach<U>& __self, std::vector<::tpy::storage_t<T>>& xs)
         : __state(S_INITIAL),
           __self(__self),
           xs(xs) {}
@@ -428,7 +428,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_GEach_each<U, 
 
 template <typename U>
 template <typename T>
-inline __gen_GEach_each<U, T> GEach<U>::each(std::vector<T>& xs) const {
+inline __gen_GEach_each<U, T> GEach<U>::each(std::vector<::tpy::storage_t<T>>& xs) const {
     return __gen_GEach_each<U, T>(*this, xs);
 }
 
@@ -486,7 +486,7 @@ inline void Holder::__exit__(std::monostate exc_type, const ::tpy::BaseException
 //     self.xs = xs  # tpyc: warning(/copies list\[U\] into field/)
 //     self.i = 0
 template<typename U>
-inline It<U>::It(const std::vector<U>& xs)
+inline It<U>::It(const std::vector<::tpy::storage_t<U>>& xs)
     : xs(xs),
       i(0) {}
 
@@ -503,7 +503,7 @@ inline It<U>& It<U>::__iter__() {
 //     self.i += 1
 //     return self.xs[self.i - 1]
 template<typename U>
-inline std::expected<::tpy::val_or_ref<U>, ::tpy::StopIteration> It<U>::__next__() {
+inline std::expected<::tpy::val_or_ref<::tpy::storage_t<U>>, ::tpy::StopIteration> It<U>::__next__() {
     if ((this->i >= ::tpy::__len__(this->xs))) {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -515,7 +515,7 @@ inline std::expected<::tpy::val_or_ref<U>, ::tpy::StopIteration> It<U>::__next__
 // def wrap(xs: list[U]) -> Own[It[U]]:
 //     return It(xs)
 template<typename U>
-inline It<U> G<U>::wrap(const std::vector<U>& xs) {
+inline It<U> G<U>::wrap(const std::vector<::tpy::storage_t<U>>& xs) {
     return It<U>(xs);
 }
 

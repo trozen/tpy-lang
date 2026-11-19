@@ -96,7 +96,7 @@ struct __gen_repeat__T : public ::tpy::next_iter_mixin<__gen_repeat__T<T>, ::tpy
 
     __gen_repeat__T(::tpy::param_val_or_ref_t<T> object_)
         : __state(S_INITIAL),
-          object(object_) {}
+          object(::tpy::param_pass_last<T>(object_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_repeat__T& __iter__() { return *this; }
@@ -150,7 +150,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat__T<T>::
 // def repeat[T](object: T) -> Iterator[T]: ...
 template <typename T>
 __gen_repeat__T<T> repeat__T(::tpy::param_val_or_ref_t<T> object) {
-    return __gen_repeat__T<T>(object);
+    return __gen_repeat__T<T>(::tpy::param_pass_last<T>(object));
 }
 
 // @overload
@@ -174,7 +174,7 @@ struct __gen_repeat__T__int32 : public ::tpy::next_iter_mixin<__gen_repeat__T__i
 
     __gen_repeat__T__int32(::tpy::param_val_or_ref_t<T> object_, int32_t times_)
         : __state(S_INITIAL),
-          object(object_),
+          object(::tpy::param_pass_last<T>(object_)),
           times(std::move(times_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -225,7 +225,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat__T__int
 // def repeat[T](object: T, times: int32) -> Iterator[T]: ...
 template <typename T>
 __gen_repeat__T__int32<T> repeat__T__int32(::tpy::param_val_or_ref_t<T> object, int32_t times) {
-    return __gen_repeat__T__int32<T>(object, times);
+    return __gen_repeat__T__int32<T>(::tpy::param_pass_last<T>(object), times);
 }
 
 // def cycle[T](it: Iterable[T]) -> Iterator[T]:
@@ -233,7 +233,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_cycle : public ::tpy::next_iter_mixin<__gen_cycle<T, T_it>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
     T_it it;
-    ::tpy::frame_slot<std::vector<T>> saved;
+    ::tpy::frame_slot<std::vector<::tpy::storage_t<T>>> saved;
     using __for_src_0_t = decltype((it));
     using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
     ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
@@ -278,7 +278,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_cycle<T, T_it>
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        saved.emplace(std::vector<T>{});
+        saved.emplace(std::vector<::tpy::storage_t<T>>{});
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
@@ -471,7 +471,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_takewhile<T, T
             continue;
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        if ((!(pred((*x))))) {
+        if ((!(pred(::tpy::param_pass<T>((*x)))))) {
             __state = S_JOIN_1;
             continue;
         } else {
@@ -555,7 +555,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_dropwhile<T, T
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
         if (dropping) {
-            if (pred((*x))) {
+            if (pred(::tpy::param_pass<T>((*x)))) {
                 __state = S_JOIN_0;
                 continue;
             } else {
@@ -638,7 +638,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_filterfalse<T,
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        if ((!(pred((*x))))) {
+        if ((!(pred(::tpy::param_pass<T>((*x)))))) {
             __state = S_RESUME_0;
             return (*x);
         } else {

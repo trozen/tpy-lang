@@ -45,9 +45,9 @@ namespace tpyapp::main {
 template<::tpy::ValueType T>
 struct Pair {
     // first: T
-    T first;
+    ::tpy::storage_t<T> first;
     // second: T
-    T second;
+    ::tpy::storage_t<T> second;
 
     // def __init__(self, first: T, second: T) -> None:
     Pair() = default;

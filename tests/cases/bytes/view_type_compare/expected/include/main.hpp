@@ -29,7 +29,7 @@ void hashes(::tpy::BytesView a);
 __gen_matching matching(const std::vector<::tpy::Bytes>& names, ::tpy::BytesView want);
 // def first_is[T: Comparable](xs: list[T], v: T) -> bool:
 template<::tpystd::tpy::Comparable T>
-bool first_is(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+bool first_is(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v);
 // def filtered(names: list[bytes]) -> None:
 void filtered(const std::vector<::tpy::Bytes>& names);
 // def main() -> None:
@@ -80,7 +80,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 template<typename T>
 struct Box {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: Own[T]) -> None:
     Box() = default;
@@ -183,7 +183,7 @@ inline bool Box<T>::__contains__(::tpy::readonly_form_t<T> needle) const {
 // def first_is[T: Comparable](xs: list[T], v: T) -> bool:
 //     return xs[0] == v or xs[0] < v  # tpyc: ok
 template<::tpystd::tpy::Comparable T>
-bool first_is(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
+bool first_is(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v) {
     return (::tpy::eq(::tpy::__getitem__(xs, 0), v) || (::tpy::__getitem__(xs, 0) < v));
 }
 

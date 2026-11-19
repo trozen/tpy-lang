@@ -31,10 +31,10 @@ void sec_value_bound() {
 void sec_callable_value() {
     std::vector<int32_t> xs = {1};
     std::vector<Cell> g = std::vector<Cell>{};
-    ::tpyapp::main::apply_generic<int32_t, Cell>(xs, [](int32_t v) -> Cell { return Cell(v); }, g);
+    ::tpyapp::main::apply_generic<int32_t, ::tpy::own_arg<Cell>>(xs, [](int32_t v) -> Cell { return Cell(v); }, g);
     std::vector<Cell> t = std::vector<Cell>{};
     ::tpyapp::main::apply_twin(xs, [](int32_t v) -> Cell { return Cell(v); }, t);
-    std::cout << "callable-value:" << " " << ::tpy::__getitem__(g, 0).n << " " << ::tpy::__getitem__(t, 0).n << " " << ::tpyapp::main::ret_generic<int32_t, Cell>(3, [](int32_t v) -> Cell { return Cell(v); }).n << " " << ::tpyapp::main::ret_twin(3, [](int32_t v) -> Cell { return Cell(v); }).n << "\n" << ::tpy::check_signals;
+    std::cout << "callable-value:" << " " << ::tpy::__getitem__(g, 0).n << " " << ::tpy::__getitem__(t, 0).n << " " << ::tpyapp::main::ret_generic<int32_t, ::tpy::own_arg<Cell>>(3, [](int32_t v) -> Cell { return Cell(v); }).n << " " << ::tpyapp::main::ret_twin(3, [](int32_t v) -> Cell { return Cell(v); }).n << "\n" << ::tpy::check_signals;
 }
 
 // def sec_ack() -> None:

@@ -189,7 +189,7 @@ namespace tpyapp::main {
 template<typename T>
 struct Box {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Box() = default;

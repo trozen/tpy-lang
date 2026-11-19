@@ -26,7 +26,7 @@ struct __coro_async_body;
 
 // def empty_list[T](n: int32) -> Own[list[T]]:
 template<typename T>
-std::vector<T> empty_list(int32_t n);
+std::vector<::tpy::storage_t<T>> empty_list(int32_t n);
 // @dispatch
 // def tot3(d: dict[str, float]) -> float:
 double tot3__dict_str_float(const ::tpy::ordered_map<std::string, double>& d);
@@ -47,7 +47,7 @@ double keep__float(double v);
 std::string keep__str(std::string_view s);
 // def call0[T](f: Callable[[], T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> call0(const std::function<T()>& f);
+::tpy::val_or_ref_t<T> call0(const std::function<::tpy::val_or_ref_t<T>()>& f);
 // @dispatch
 // def usebag(b: Bag[float]) -> float:
 double usebag__Bag_float(const Bag<double>& b);
@@ -62,7 +62,7 @@ double ub__Bag2_float(const Bag2<double>& b);
 std::string ub__str(std::string_view s);
 // def peek[T](r: Rec, xs: Own[list[T]]) -> Own[list[T]]:
 template<typename T>
-std::vector<T> peek(Rec& r, std::vector<T>&& xs);
+std::vector<::tpy::storage_t<T>> peek(Rec& r, std::vector<::tpy::storage_t<T>>&& xs);
 // @dispatch
 // def f32d(d: dict[str, float32]) -> float32:
 float f32d__dict_str_float32(const ::tpy::ordered_map<std::string, float>& d);
@@ -103,7 +103,7 @@ int64_t width_g__int64(int64_t v);
 int32_t width_g__int32(int32_t v);
 // def pick2[T](v: list[T], f: float) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> pick2(std::vector<T>& v, double f);
+::tpy::val_or_ref_t<T> pick2(std::vector<::tpy::storage_t<T>>& v, double f);
 // def ret_float(a: int32, c: bool) -> float:
 double ret_float(int32_t a, bool c);
 // def declared_slots(ints: list[int32], a: int32) -> None:
@@ -151,7 +151,7 @@ struct Maker {
 
     // def make_list[T](self, n: int32) -> Own[list[T]]:
     template<typename T>
-    std::vector<T> make_list(int32_t n) const;
+    std::vector<::tpy::storage_t<T>> make_list(int32_t n) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Maker";
 };
 
@@ -164,7 +164,7 @@ inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {
 template<typename T>
 struct Bag {
     // xs: list[T]
-    std::vector<T> xs;
+    std::vector<::tpy::storage_t<T>> xs;
 
     // def __init__(self) -> None:
     Bag();
@@ -339,35 +339,35 @@ inline void PackUser::run() const {
 //     out: list[T] = []
 //     return out
 template<typename T>
-inline std::vector<T> Maker::make_list(int32_t n) const {
-    std::vector<T> out = std::vector<T>{};
+inline std::vector<::tpy::storage_t<T>> Maker::make_list(int32_t n) const {
+    std::vector<::tpy::storage_t<T>> out = std::vector<::tpy::storage_t<T>>{};
     return out;
 }
 
 // def __init__(self) -> None:
 //     self.xs = []
 template<typename T>
-inline Bag<T>::Bag() : xs(std::vector<T>{}) {}
+inline Bag<T>::Bag() : xs(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def empty_list[T](n: int32) -> Own[list[T]]:
 //     out: list[T] = []
 //     return out
 template<typename T>
-std::vector<T> empty_list(int32_t n) {
-    std::vector<T> out = std::vector<T>{};
+std::vector<::tpy::storage_t<T>> empty_list(int32_t n) {
+    std::vector<::tpy::storage_t<T>> out = std::vector<::tpy::storage_t<T>>{};
     return out;
 }
 // def call0[T](f: Callable[[], T]) -> T:
 //     return f()
 template<typename T>
-::tpy::val_or_ref_t<T> call0(const std::function<T()>& f) {
+::tpy::val_or_ref_t<T> call0(const std::function<::tpy::val_or_ref_t<T>()>& f) {
     return f();
 }
 // def peek[T](r: Rec, xs: Own[list[T]]) -> Own[list[T]]:
 //     r.v += 1
 //     return xs
 template<typename T>
-std::vector<T> peek(Rec& r, std::vector<T>&& xs) {
+std::vector<::tpy::storage_t<T>> peek(Rec& r, std::vector<::tpy::storage_t<T>>&& xs) {
     r.v = ::tpy::add_check<int32_t>(r.v, 1);
     return xs;
 }
@@ -384,14 +384,14 @@ template<typename T>
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> apply_t(const std::function<double(::tpy::param_val_or_ref_t<T>)>& fn, ::tpy::param_val_or_ref_t<T> x) {
-    std::cout << "callable_t_float_param" << " " << ::tpy::print_float((::tpy::truediv(fn(x), 2))) << "\n" << ::tpy::check_signals;
-    return ::tpy::param_to_return<T>(x);
+    std::cout << "callable_t_float_param" << " " << ::tpy::print_float((::tpy::truediv(fn(::tpy::param_pass<T>(x)), 2))) << "\n" << ::tpy::check_signals;
+    return ::tpy::param_to_return_last<T>(x);
 }
 // def pick2[T](v: list[T], f: float) -> T:
 //     print("pick2_param", f / 2)
 //     return v[0]
 template<typename T>
-::tpy::val_or_ref_t<T> pick2(std::vector<T>& v, double f) {
+::tpy::val_or_ref_t<T> pick2(std::vector<::tpy::storage_t<T>>& v, double f) {
     std::cout << "pick2_param" << " " << ::tpy::print_float((::tpy::truediv(f, 2))) << "\n" << ::tpy::check_signals;
     return ::tpy::__getitem__(v, 0);
 }

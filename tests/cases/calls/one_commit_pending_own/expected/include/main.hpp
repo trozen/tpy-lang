@@ -20,7 +20,7 @@ struct Bag {
     // names: list[int32]
     std::vector<int32_t> names;
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, names: Own[list[int32]]) -> None:
     Bag() = default;
@@ -44,14 +44,14 @@ inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
 template<typename T>
 inline Bag<T>::Bag(std::vector<int32_t>&& names)
     : names(std::move(names)),
-      items(std::vector<T>{}) {}
+      items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def put(self, v: T) -> None:
 //     # Scaffolding: the element store's own generic copy warning.
 //     self.items.append(v)  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
 inline void Bag<T>::put(::tpy::param_val_or_ref_t<T> v) {
-    this->items.push_back(::tpy::param_to_storage<T>(v));
+    this->items.push_back(::tpy::param_consume<T>(v));
 }
 
 void __tpy_init();

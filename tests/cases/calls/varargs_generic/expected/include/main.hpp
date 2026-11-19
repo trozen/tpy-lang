@@ -14,7 +14,7 @@ template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::varargs<T> args);
 // def count[T](*args: T) -> int32:
 template<typename T>
-int32_t count(::tpy::varargs<const T> args);
+int32_t count(::tpy::varargs<const ::tpy::storage_t<T>> args);
 // def main() -> None:
 void main();
 
@@ -27,7 +27,7 @@ template<typename T>
 // def count[T](*args: T) -> int32:
 //     return len(args)
 template<typename T>
-int32_t count(::tpy::varargs<const T> args) {
+int32_t count(::tpy::varargs<const ::tpy::storage_t<T>> args) {
     return ::tpy::__len__(args);
 }
 

@@ -25,19 +25,23 @@ int32_t add(int32_t a, int32_t b) {
 //     # Single-element list -- returns that element directly.
 //     one: list[int32] = [42]
 //     print(reduce(add, one))                      # 42
+//     part_ref.main()
 void main() {
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
-    std::cout << ::tpystd::functools::reduce__Fn_T_T_T__list_T<int32_t>(add, xs) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpystd::functools::reduce__Fn_T_T_T__list_T<int32_t>([](int32_t a, int32_t b) -> int32_t { return ::std::max<int32_t>(a, b); }, xs) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpystd::functools::reduce__Fn_T_T_T__list_T<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<int32_t>(add, xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<int32_t>([](int32_t a, int32_t b) -> int32_t { return ::std::max<int32_t>(a, b); }, xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, xs) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> one = {42};
-    std::cout << ::tpystd::functools::reduce__Fn_T_T_T__list_T<int32_t>(add, one) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<int32_t>(add, one) << "\n" << ::tpy::check_signals;
+    ::tpyapp::part_ref::main();
 }
 
 // # functools.reduce 2-arg form (uses a[0] as seed). Restored after the
 // # per-candidate Fn arg typing fix unblocked the multi-overload reduce
 // # resolution.
 // from functools import reduce
+//
+// import part_ref
 //
 // main()
 void __tpy_init() {

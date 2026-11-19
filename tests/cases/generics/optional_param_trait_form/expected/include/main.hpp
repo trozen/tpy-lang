@@ -128,7 +128,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 template<typename T>
 struct Container {
     // _val: T | None
-    std::optional<T> _val;
+    std::optional<::tpy::storage_t<T>> _val;
 
     // def __init__(self, val: T | None) -> None:
     Container() = default;
@@ -422,7 +422,7 @@ inline bool CellBox::held() const {
 //     # copy at a reference T -- warned, and identically for the twin below.
 //     self._val = val  # tpyc: warning(/may copy T \| None into field/)
 template<typename T>
-inline Container<T>::Container(::tpy::opt_cparam_t<T> val) : _val(::tpy::to_opt_storage<std::optional<T>>(val)) {}
+inline Container<T>::Container(::tpy::opt_cparam_t<T> val) : _val(::tpy::to_opt_storage<std::optional<::tpy::storage_t<T>>>(val)) {}
 
 // def probe(self, val: T | None) -> bool:
 //     # method position: the method mutates nothing, so the const spelling.
@@ -455,7 +455,7 @@ bool probe_gen(::tpy::opt_cparam_t<T> val) {
 template<typename T>
 ::tpy::val_or_ref_t<T> first_or(::tpy::opt_param_t<T> val, ::tpy::param_val_or_ref_t<T> fallback) {
     if ((!::tpy::opt_has_value(val))) {
-        return ::tpy::param_to_return<T>(fallback);
+        return ::tpy::param_to_return_last<T>(fallback);
     }
     return (*val);
 }

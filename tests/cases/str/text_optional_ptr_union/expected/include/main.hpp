@@ -80,7 +80,7 @@ void payloads(std::optional<::tpy::String> s, const ::tpy::Union<A*, int32_t>& u
 void held_format(const F* o, F* p, ::tpy::Union<const F*, const int32_t*> u);
 // def generic_print[T](p: Ptr[T], o: T | None) -> None:
 template<typename T>
-void generic_print(T* p, ::tpy::opt_cparam_t<T> o);
+void generic_print(::tpy::storage_t<T>* p, ::tpy::opt_cparam_t<T> o);
 // def ptr_forms(s: Ptr[str], v: Ptr[StrView], u: Ptr[A | B],
 //               o: Ptr[int32 | None], r: Ptr[A | None], pp: Ptr[Ptr[int32]],
 //               a: Ptr[A], xs: Ptr[list[int32]]) -> None:
@@ -376,8 +376,8 @@ struct Tree {
 //     # A generic Ptr / Optional prints its payload as Python does.
 //     print("generic print:", p, o)  # tpyc: ok
 template<typename T>
-void generic_print(T* p, ::tpy::opt_cparam_t<T> o) {
-    std::cout << "generic print:" << " " << ::tpy::print_optional<::tpy::ValuePrinter<T>, T>(p) << " " << ::tpy::print_optional<::tpy::ValuePrinter<T>, T>(o) << "\n" << ::tpy::check_signals;
+void generic_print(::tpy::storage_t<T>* p, ::tpy::opt_cparam_t<T> o) {
+    std::cout << "generic print:" << " " << ::tpy::print_optional<::tpy::ValuePrinter<::tpy::storage_t<T>>, ::tpy::storage_t<T>>(p) << " " << ::tpy::print_optional<::tpy::ValuePrinter<::tpy::storage_t<T>>, ::tpy::storage_t<T>>(o) << "\n" << ::tpy::check_signals;
 }
 // def generic[T](v: T) -> str:
 //     return f"{v}"

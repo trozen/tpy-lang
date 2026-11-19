@@ -35,7 +35,7 @@ std::tuple<std::string, Point*> to_pair(Point& p) {
 //         print(k, d2[k])
 void main() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    std::vector<Point> result = ::tpy::construct<std::vector<Point>>(::tpy::builtin_map<::tpy::val_or_ref<Point>>(identity, pts));
+    std::vector<Point> result = ::tpy::construct<std::vector<Point>>(::tpy::builtin_map<Point>(identity, pts));
     auto& __obj_0 = result;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

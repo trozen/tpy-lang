@@ -23,7 +23,7 @@ from io import StringIO
 #   are emitted.
 MethodEmitMode = Literal["inline", "decl", "def_hpp", "def_cpp"]
 
-from ..typesys import make_readonly, pointer_repr_optional, readonly_access
+from ..typesys import contains_type_param, make_readonly, pointer_repr_optional, readonly_access
 from ..typesys import (
     default_emittable_at, emits_cpp_defaults, none_default_cpp_spelling,
     TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, is_fn_type, CallableType,
@@ -285,7 +285,13 @@ class FunctionGenerator:
             req_params_list = [f"__F{idx}& __fn"] + [
                 f"{pt.to_cpp_param_type()} __a{i}" for i, pt in enumerate(fn_type.param_types)
             ]
-            call_args = ", ".join(f"__a{i}" for i in range(len(fn_type.param_types)))
+            # A parameter an instantiation may own (`T` at `T = Own[X]` is
+            # `X&&`) is forwarded as declared, as the body's call hands it.
+            call_args = ", ".join(
+                f"static_cast<decltype(__a{i})&&>(__a{i})"
+                if contains_type_param(pt) or isinstance(pt, OwnType)
+                else f"__a{i}"
+                for i, pt in enumerate(fn_type.param_types))
             if isinstance(fn_type.return_type, VoidType):
                 requires_parts.append(
                     f"requires({', '.join(req_params_list)}) {{\n"
@@ -306,10 +312,19 @@ class FunctionGenerator:
                 elif fn_type.returns_owned_object():
                     form = (f"\n    requires !std::is_reference_v"
                             f"<decltype({call})>;")
+                # An open result takes its instantiation's storage form
+                # (`X` at `R = Own[X]`).
+                concept = ("::tpy::returns_form"
+                           if contains_type_param(fn_type.return_type)
+                           and not fn_type.returns_borrow()
+                           else "std::convertible_to")
+                if concept == "::tpy::returns_form":
+                    # The concept peels the owned tag itself.
+                    ret_cpp = fn_type.return_type.to_cpp_tag()
                 requires_parts.append(
                     f"requires({', '.join(req_params_list)}) {{\n"
                     f"    {{ {call} }}"
-                    f" -> std::convertible_to<{ret_cpp}>;{form}\n"
+                    f" -> {concept}<{ret_cpp}>;{form}\n"
                     f"}}"
                 )
         return template_parts, requires_parts
@@ -1243,7 +1258,7 @@ class FunctionGenerator:
             for tp, bound in class_param_bounds.items():
                 concept_name = self.protocols.get_concept_name(bound)
                 if bound.type_args:
-                    type_args_cpp = ", ".join(t.to_cpp() for t in bound.type_args)
+                    type_args_cpp = ", ".join(t.to_cpp_tag() for t in bound.type_args)
                     req_parts.append(f"{concept_name}<{type_args_cpp}, {tp}>")
                 else:
                     req_parts.append(f"{concept_name}<{tp}>")

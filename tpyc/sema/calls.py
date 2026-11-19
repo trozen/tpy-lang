@@ -54,9 +54,11 @@ from ..prescan import fact_key_root, isinstance_narrowing_key
 from ..modules import extract_type_params
 from ..modules.type_resolution import iteration_shape, owning_element_slot
 from ..namespace import BindingKind, Blocked, NameBinding
-from ..coercions import CoercionContext, VALUE_TO_PTR, owning_param
+from ..coercions import (CoercionContext, VALUE_TO_PTR, callable_fits,
+                         owning_param)
 from ..symbol_binding import (SymbolKind, is_kind, lookup_imported,
                               walk_attribute_chain)
+from . import own_copy
 from .arg_binding import (
     ArgBinding, BindReject, CallSource, Candidate, bind, candidate_of,
     committed, adopt_temp_call, positional_param_index, relaid_copy,
@@ -112,7 +114,7 @@ from .protocols import (
     protocol_methods,
 )
 from .dyn_erasure import erased_source
-from .type_ops import (ReturnSeed, _fills_none_arm, partial_substitute,
+from .type_ops import (ConstraintOrigin, ReturnSeed, _fills_none_arm, partial_substitute, settle_inferred,
                        seeded_arg_hint)
 from .expressions import star_source_element_type
 from .slot_hint import SlotHint
@@ -658,6 +660,22 @@ def validate_generic_defaults(
             raise error_fn(
                 f"Default value for '{param.name}' is incompatible with "
                 f"type '{resolved_type}' (resolved from generic '{func.name}')")
+
+
+def _lambda_hint(ptype: TpyType, partial: dict[str, TpyType]) -> TpyType:
+    """A callable slot `ptype` as the hint a lambda argument is analyzed
+    under: the neutral bindings substituted into its parameter types only,
+    since a lambda declares none; a return naming a type parameter stays
+    open, for the body's result form (`lambda_result_form`) to bind."""
+    bound = (partial.get(ptype.return_type.name)
+             if is_callable_type(ptype)
+             and isinstance(ptype.return_type, TypeParamRef) else None)
+    # A value type is returned by value either way: its binding types the
+    # body (an int literal at an `int64` slot).
+    if bound is None or bound.is_value_type():
+        return partial_substitute(ptype, partial)
+    sub = partial_substitute(ptype, partial)
+    return dc_replace(sub, return_type=ptype.return_type)
 
 
 def resolve_inferred_type_arg(
@@ -4980,14 +4998,23 @@ class CallAnalyzer:
             for k in fn_positions:
                 slot, arg = evidence[k]
                 ptype = unwrap_ref_type(func.params[slot].type)
-                concrete_hint = partial_substitute(ptype, partial_inferred)
+                # A named non-generic function brings its own declared
+                # signature, which binds exactly: nothing the neutral
+                # arguments gave is substituted before it is fitted.
+                named = self._names_plain_function(arg)
+                concrete_hint = (ptype if named
+                                 else _lambda_hint(ptype, partial_inferred)
+                                 if isinstance(arg, TpyLambda)
+                                 else partial_substitute(ptype,
+                                                         partial_inferred))
                 if is_callable_type(concrete_hint):
                     # Only the callee's OWN un-inferred type params block using
                     # this hint to type the lambda; an enclosing-scope type
                     # param (the caller's `T`, e.g. in `list[tuple[T, int32]]`)
                     # is a real in-scope type the lambda params can bind to.
-                    callee_unresolved = set(func.type_params) - set(partial_inferred.keys())
-                    has_unresolved = any(
+                    callee_unresolved = (set(func.type_params) if named else
+                                         set(func.type_params) - set(partial_inferred.keys()))
+                    has_unresolved = not named and any(
                         contains_type_param(p, callee_unresolved)
                         for p in concrete_hint.param_types
                     )
@@ -5333,6 +5360,60 @@ class CallAnalyzer:
                 return None
         return self.ctx.registry.get_function(expr.name) or None
 
+    def _raise_disagreement(self, func: FunctionInfo, expr: TpyCall,
+                            evidence: 'list[tuple[int | None, TpyExpr]]'
+                            ) -> None:
+        """Refuse call `expr` whose callable arguments' declared types bind
+        one type parameter to a borrow and to a new value (`apply_twice(mk,
+        p)`, or `both(identity, mk, p)` at two `Fn[[T], U]` slots): no
+        instantiation is both, as no hand-written twin is. Names each side's
+        argument and, where an owning return caused it, its `Own` spelling."""
+        found = self.type_ops.last_disagreement
+        if found is None:
+            return
+        args = {i: a for i, a in evidence if i is not None}
+
+        def name_of(at: ConstraintOrigin) -> str:
+            return (func.params[at.param].name if at.param is not None
+                    else "the callable")
+
+        def side(t: TpyType, at: ConstraintOrigin) -> str:
+            where = f"'s {at.position}" if at.position else ""
+            return f"{user_type_name(t)} from {name_of(at)}{where}"
+
+        lent_at, owned_at = found.lent_at, found.owned_at
+        owned_arg = args.get(owned_at.param)
+        if isinstance(owned_arg, TpyLambda):
+            what = (f"the lambda builds a new {user_type_name(found.lent)}"
+                    if owned_at.param == lent_at.param
+                    else f"the lambda passed as {name_of(owned_at)} builds "
+                         f"a new {user_type_name(found.lent)}")
+        else:
+            what = side(found.owned, owned_at)
+        # Only an owning RETURN is fixed by spelling `Own` there: the slot
+        # then binds the storage form, as the borrow side does.
+        slot = owned_at.slot
+        fix = ""
+        if (owned_at.position == "return" and slot is not None
+                and is_callable_type(slot)
+                and not isinstance(slot.return_type, OwnType)):
+            fixed = dc_replace(slot, return_type=OwnType(slot.return_type))
+            fix = (f"; write {fixed} if {name_of(owned_at)} builds a new "
+                   f"value")
+        raise self.ctx.error(
+            f"Cannot infer type arguments for '{func.name}': {found.name} is "
+            f"{side(found.lent, lent_at)} but {what}{fix}",
+            expr)
+
+    def _names_plain_function(self, arg: TpyExpr) -> bool:
+        """`arg` names functions none of which is generic."""
+        if not isinstance(arg, TpyName):
+            return False
+        fis = self._named_function_overloads(arg)
+        # An overloaded name is picked by the slot's types: it is fitted at
+        # the substituted hint.
+        return bool(fis) and len(fis) == 1 and not fis[0].is_generic()
+
     def _is_function_binding(self, expr: TpyName) -> bool:
         """True iff ``expr`` names a function (`_named_function_overloads`).
         Used by Regime C to decide which TpyName args need the
@@ -5554,17 +5635,24 @@ class CallAnalyzer:
         # Per-Fn-slot trial.
         for slot in fn_slots:
             ptype = unwrap_send_sync(unwrap_ref_type(func.params[slot.param_index].type))
-            hint = (partial_substitute(ptype, partial_inferred)
-                    if func.is_generic() else ptype)
+            # A named non-generic function's declared signature binds
+            # exactly: nothing the neutral arguments gave is substituted
+            # before it is fitted (as in Regime B).
+            named = self._names_plain_function(slot.arg_expr)
+            hint = (ptype if not func.is_generic() or named
+                    else _lambda_hint(ptype, partial_inferred)
+                    if isinstance(slot.arg_expr, TpyLambda)
+                    else partial_substitute(ptype, partial_inferred))
             if not is_callable_type(hint):
                 return None
             # V1 limit: hint param types still name the callee's own
             # unresolved type params -- no way to validate the lambda/ref
             # against this slot. An enclosing scope's type param is a real
             # in-scope type, as Regime B takes it.
-            unresolved = set(func.type_params) - set(partial_inferred)
-            if any(contains_type_param(p, unresolved)
-                   for p in hint.param_types):
+            unresolved = (set(func.type_params) if named
+                          else set(func.type_params) - set(partial_inferred))
+            if not named and any(contains_type_param(p, unresolved)
+                                 for p in hint.param_types):
                 return None
 
             arg = slot.arg_expr
@@ -5576,9 +5664,29 @@ class CallAnalyzer:
                 # body-analysis trial under ``trial_scope``, which commits
                 # no state: the winner's commit analyzes the lambda.
                 pinned = self._context_pinned(func, hint)
-                slot_type: TpyType = (
-                    pinned if pinned is not None
-                    else self._lambda_body_dry_run(arg, hint))
+                slot_type: TpyType
+                if pinned is None:
+                    slot_type = self._lambda_body_dry_run(arg, hint)
+                else:
+                    owned = unwrap_readonly(pinned.return_type)
+                    if (isinstance(owned, OwnType)
+                            and not owned.wrapped.is_value_type()):
+                        # An owning reference result slot: the body runs
+                        # with its result open, handing back its own result
+                        # form (`lambda_result_form`), which must fit -- a
+                        # lambda returning a parameter lends, and no `Own`
+                        # result slot takes a borrow.
+                        try:
+                            form = self._lambda_body_dry_run(
+                                arg, hint, open_result=True)
+                        except SemanticError:
+                            return None
+                        if not callable_fits(
+                                form, pinned,
+                                inherits=self.type_ops.inherits_in_cpp,
+                                wildcards=frozenset(unresolved)):
+                            return None
+                    slot_type = pinned
             elif (isinstance(arg, (TpyName, TpyFieldAccess))
                     and self.expr._names_class(arg)):
                 # A class name stands for `lambda *a: C(*a)`: this
@@ -5675,7 +5783,7 @@ class CallAnalyzer:
 
     def _lambda_body_dry_run(
         self, lambda_expr: TpyLambda, hint: 'CallableType',
-        *, as_class: str | None = None,
+        *, as_class: str | None = None, open_result: bool = False,
     ) -> 'CallableType':
         """Tentatively analyze ``lambda_expr`` body under ``hint`` to pin
         an unresolved return TPR; roll back all state on exit.
@@ -5701,7 +5809,8 @@ class CallAnalyzer:
         try:
             with self.ctx.trial_scope():
                 return self.expr._analyze_lambda_with_fn_hint(
-                    lambda_expr, hint, as_class=as_class)
+                    lambda_expr, hint, as_class=as_class,
+                    open_result=open_result)
         finally:
             lambda_expr.inferred_param_types = saved_inferred_param_types
             lambda_expr.inferred_return_type = saved_inferred_return_type
@@ -5925,6 +6034,20 @@ class CallAnalyzer:
                      for f, b in cands) if h}
         return hints.pop() if len(hints) == 1 else ""
 
+    def _arg_type_text(self, t: TpyType, arg: 'TpyExpr | None') -> str:
+        """An argument's type as a diagnostic names it: a named function
+        no candidate typed (an `Fn` slot's argument, analyzed per
+        candidate) by its own signature, not the placeholder."""
+        if (isinstance(arg, TpyName) and self._is_function_binding(arg)
+                and not isinstance(t, CallableType)):
+            infos = self._named_function_overloads(arg)
+            if len(infos) == 1 and not infos[0].is_generic():
+                signature = self.expr.build_concrete_callable(
+                    infos[0], (), template=True)
+                return self.compat.call_type_text(
+                    signature.map_inner_types(unwrap_ref_type))
+        return self.compat.call_type_text(t)
+
     def raise_no_match(self, name: str, views: list[FunctionInfo],
                        arg_types: 'CallSource | list[TpyType]',
                        args: 'CallSource | list[TpyExpr | None]',
@@ -5967,7 +6090,10 @@ class CallAnalyzer:
         if refused and len(reasons) == 1:
             raise self.ctx.error(reasons.pop(), loc)
         texts = (list(arg_texts) if arg_texts is not None
-                 else [self.compat.call_type_text(t) for t in typed.positional])
+                 else [self._arg_type_text(t, src.positional[i]
+                                           if i < len(src.positional)
+                                           else None)
+                       for i, t in enumerate(typed.positional)])
         texts += [f"{k}={self.compat.call_type_text(t)}"
                   for k, t in typed.keywords]
         head = (f"No matching overload for '{name}' with argument types "
@@ -6364,6 +6490,7 @@ class CallAnalyzer:
             arg_type = arg_type.wrapped
         if own_checks:
             self.check_own_param(arg, arg_type, pname, check_ptype)
+        self.compat.note_open_same_t_arg(arg, check_ptype)
         self.consume_at_iterating_slot(arg, check_ptype,
                                        call if call is not None else arg)
         skip_coerce = (is_char_literal_init(check_ptype, arg_type, arg)
@@ -6515,7 +6642,8 @@ class CallAnalyzer:
                         overload, expr.inferred_type_args))
                 if self.ctx.slot_step_commits():
                     self.ctx.record_own_copy_instantiation(overload.root,
-                                                           type_subst)
+                                                           type_subst,
+                                                           at=expr)
                 ret = self.type_ops.substitute_call_result(
                     overload.return_type, subst)
                 if isinstance(overload.return_type, UnionType):
@@ -6624,6 +6752,8 @@ class CallAnalyzer:
                 ret = overload.return_type.wrapped if isinstance(overload.return_type, OwnType) else overload.return_type
                 exp = exp.wrapped if isinstance(exp, OwnType) else exp
                 self.type_ops.match_type_with_inference(ret, exp, inferred)
+            settle_inferred(inferred, frozenset(
+                tp for tp, _ in zip(overload.type_params, explicit or ())))
             failed = [
                 (type_arg, overload.type_param_bounds[name])
                 for name, type_arg in inferred.items()
@@ -6642,7 +6772,7 @@ class CallAnalyzer:
                  or self.protocols.type_conforms_to_protocol(t, m)),
                 bound_failures[0])
             raise self.ctx.error(
-                f"Type '{user_type_name(type_arg)}' does not satisfy "
+                f"Type '{user_type_name(unwrap_own(type_arg))}' does not satisfy "
                 f"'{bound}' required by '{expr.func_name}'"
                 f"{self._marker_bound_note(type_arg, bound, bound_failures)}",
                 expr,
@@ -7182,6 +7312,7 @@ class CallAnalyzer:
                                  src=written)
         evidence = binding.evidence(written)
         slots = [slot for slot, _ in evidence]
+        own_sources: dict[str, int] = {}
 
         # Get type substitution from explicit args or inference. The LHS-hint
         # seed is only useful on paths that actually re-analyze args with a
@@ -7208,6 +7339,7 @@ class CallAnalyzer:
                     func, arg_types, self.protocols.satisfies_bound,
                     expected_return_type=self.expr.slot_hint_for(expr),
                     explicit_type_args=expr.type_args, slots=slots,
+                    own_sources=own_sources,
                 )
                 if type_subst is None:
                     raise self.ctx.error(
@@ -7230,12 +7362,14 @@ class CallAnalyzer:
             seed = self.type_ops.seed_subst_from_return_hint(
                 func, self.expr.slot_hint_for(expr))
             arg_types = self._infer_arg_types(func, evidence, seed)
+            self.type_ops.last_disagreement = None
             type_subst = self.type_ops.infer_type_params_for_function(
                 func, arg_types, self.protocols.satisfies_bound,
                 expected_return_type=self.expr.slot_hint_for(expr),
-                slots=slots,
+                slots=slots, own_sources=own_sources,
             )
             if type_subst is None:
+                self._raise_disagreement(func, expr, evidence)
                 # TODO: replace qualified_name check with @compiler_check decorator
                 if func.qualified_name == "tpy.unsafe.unsafe_cast" and len(arg_types) == 1:
                     self._unsafe_cast_diagnostics(expr, arg_types[0])
@@ -7247,7 +7381,7 @@ class CallAnalyzer:
         return candidate_of(
             written, binding,
             self.type_ops.substitute_method_type_params(func, type_subst),
-            func, type_subst, func)
+            func, type_subst, func, own_sources)
 
     def _commit_generic_call(self, expr: TpyCall, cand: Candidate) -> TpyType:
         """Commit call `expr` to the generic function candidate `cand`
@@ -7313,7 +7447,10 @@ class CallAnalyzer:
         if self.ctx.slot_step_commits():
             # After the arguments were received: a candidate the @dispatch
             # fallback refuses leaves no instantiation behind.
-            self.ctx.record_own_copy_instantiation(func.root, type_subst)
+            self.ctx.record_own_copy_instantiation(
+                func.root, type_subst, at=expr,
+                sources=own_copy.binding_sources(func, cand.own_sources,
+                                                 cand.evidence))
         self.commit_facts(expr, func)
         return resolved_return
 

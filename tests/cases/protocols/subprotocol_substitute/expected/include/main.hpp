@@ -14,131 +14,131 @@ struct Token;
 
 // class Getter(Protocol):
 template<typename T>
-concept Getter = requires(T& t) {
+concept Getter = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> std::convertible_to<int32_t>;
 };
 
 // class SameGetter(Getter, Protocol):
 template<typename T>
-concept SameGetter = requires(T& t) {
+concept SameGetter = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> std::convertible_to<int32_t>;
 };
 
 // class Namer(Protocol):
 template<typename T>
-concept Namer = requires(T& t) {
+concept Namer = requires(::tpy::storage_t<T>& t) {
     { t.rename(std::declval<Dog&>()) } -> std::convertible_to<void>;
 };
 
 // class WideNamer(Namer, Protocol):
 template<typename T>
-concept WideNamer = requires(T& t) {
+concept WideNamer = requires(::tpy::storage_t<T>& t) {
     { t.rename(std::declval<Animal&>()) } -> std::convertible_to<void>;
 };
 
 // class Peeks(Protocol):
 template<typename T>
-concept Peeks = requires(T& t) {
+concept Peeks = requires(::tpy::storage_t<T>& t) {
     { t.width() } -> std::convertible_to<int32_t>;
 };
 
 // class Sees(Peeks, Protocol):
 template<typename T>
-concept Sees = requires(const T& t) {
+concept Sees = requires(const ::tpy::storage_t<T>& t) {
     { t.width() } -> std::convertible_to<int32_t>;
 };
 
 // class Scaler(Protocol):
 template<typename T>
-concept Scaler = requires(T& t) {
+concept Scaler = requires(::tpy::storage_t<T>& t) {
     { t.f(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
 // class OffsetScaler(Scaler, Protocol):
 template<typename T>
-concept OffsetScaler = requires(T& t) {
+concept OffsetScaler = requires(::tpy::storage_t<T>& t) {
     { t.f(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
 // class Chain(Protocol):
 template<typename T>
-concept Chain = requires(T& t) {
+concept Chain = requires(::tpy::storage_t<T>& t) {
     t.chain();
     { t.val() } -> std::convertible_to<int32_t>;
 };
 
 // class SubChain(Chain, Protocol):
 template<typename T>
-concept SubChain = requires(T& t) {
+concept SubChain = requires(::tpy::storage_t<T>& t) {
     t.chain();
     { t.val() } -> std::convertible_to<int32_t>;
 };
 
 // class Source[T](Protocol):
 template<typename T, typename _T0>
-concept Source = requires(T& t) {
+concept Source = requires(::tpy::storage_t<T>& t) {
     { t.take() } -> ::tpy::proto_result<_T0>;
 };
 
 // class IntSource(Source[int32], Protocol):
 template<typename T>
-concept IntSource = requires(T& t) {
+concept IntSource = requires(::tpy::storage_t<T>& t) {
     { t.take() } -> std::convertible_to<int32_t>;
 };
 
 // class Mid[U](Source[U], Protocol):
 template<typename T, typename _T0>
-concept Mid = requires(T& t) {
+concept Mid = requires(::tpy::storage_t<T>& t) {
     { t.take() } -> ::tpy::proto_result<_T0>;
 };
 
 // class Leaf[V](Mid[V], Protocol):
 template<typename T, typename _T0>
-concept Leaf = requires(T& t) {
+concept Leaf = requires(::tpy::storage_t<T>& t) {
     { t.take() } -> ::tpy::proto_result<_T0>;
 };
 
 // class KwScaler(Protocol):
 template<typename T>
-concept KwScaler = requires(T& t) {
+concept KwScaler = requires(::tpy::storage_t<T>& t) {
     { t.g(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
 // class KwChild(KwScaler, Protocol):
 template<typename T>
-concept KwChild = requires(T& t) {
+concept KwChild = requires(::tpy::storage_t<T>& t) {
     { t.g(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
 // class Addable(Protocol):
 template<typename T>
-concept Addable = requires(T& t) {
+concept Addable = requires(::tpy::storage_t<T>& t) {
     { t + std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<std::remove_cvref_t<T>>;
     { t.val() } -> std::convertible_to<int32_t>;
 };
 
 // class SubAddable(Addable, Protocol):
 template<typename T>
-concept SubAddable = requires(T& t) {
+concept SubAddable = requires(::tpy::storage_t<T>& t) {
     { t + std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<std::remove_cvref_t<T>>;
     { t.val() } -> std::convertible_to<int32_t>;
 };
 
 // class Holder[T](Protocol):
 template<typename T, typename _T0>
-concept Holder = requires(T& t) {
+concept Holder = requires(::tpy::storage_t<T>& t) {
     { t.v } -> std::convertible_to<_T0>;
 };
 
 // class IntHolder(Holder[int32], Protocol):
 template<typename T>
-concept IntHolder = requires(T& t) {
+concept IntHolder = requires(::tpy::storage_t<T>& t) {
     { t.v } -> std::convertible_to<int32_t>;
 };
 
 // class GenHolder[U](Holder[U], Protocol):
 template<typename T, typename _T0>
-concept GenHolder = requires(T& t) {
+concept GenHolder = requires(::tpy::storage_t<T>& t) {
     { t.v } -> std::convertible_to<_T0>;
 };
 
@@ -146,13 +146,13 @@ template<typename T> struct DynSource;
 // @dynamic
 // class DynSource[T](Protocol):
 template<typename T, typename _T0>
-concept __DynSource_Concept__ = requires(T& t) {
+concept __DynSource_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.take() } -> ::tpy::proto_result<_T0>;
 };
 
 template<typename T>
 struct DynSource {
-    virtual T take() = 0;
+    virtual ::tpy::storage_t<T> take() = 0;
     virtual ~DynSource() = default;
 };
 
@@ -160,7 +160,7 @@ template<typename T> struct DynChild;
 // @dynamic
 // class DynChild[T](DynSource[T], Protocol):
 template<typename T, typename _T0>
-concept __DynChild_Concept__ = requires(T& t) {
+concept __DynChild_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.take() } -> ::tpy::proto_result<_T0>;
 };
 
@@ -171,77 +171,77 @@ struct DynChild : DynSource<T> {
 
 // class Root(Protocol):
 template<typename T>
-concept Root = requires(T& t) {
+concept Root = requires(::tpy::storage_t<T>& t) {
     { t.f() } -> std::convertible_to<int32_t>;
 };
 
 // class Left(Root, Protocol):
 template<typename T>
-concept Left = requires(T& t) {
+concept Left = requires(::tpy::storage_t<T>& t) {
     { t.f() } -> std::convertible_to<int32_t>;
 };
 
 // class Right(Root, Protocol):
 template<typename T>
-concept Right = requires(const T& t) {
+concept Right = requires(const ::tpy::storage_t<T>& t) {
     { t.f() } -> std::convertible_to<int32_t>;
 };
 
 // class Diamond(Left, Right, Protocol):  # tpyc: ok
 template<typename T>
-concept Diamond = requires(const T& t) {
+concept Diamond = requires(const ::tpy::storage_t<T>& t) {
     { t.f() } -> std::convertible_to<int32_t>;
 };
 
 // class SubIter(Iterator[int32], Protocol):
 template<typename T>
-concept SubIter = requires(T& t) {
+concept SubIter = requires(::tpy::storage_t<T>& t) {
     t.__next__();
     ::tpy::__iter__(t);
 };
 
 // class GenSubIter[T](Iterator[T], Protocol):
 template<typename T, typename _T0>
-concept GenSubIter = requires(T& t) {
+concept GenSubIter = requires(::tpy::storage_t<T>& t) {
     t.__next__();
     ::tpy::__iter__(t);
 };
 
 // class Lent(Iterator[Cell], Protocol):
 template<typename T>
-concept Lent = requires(T& t) {
+concept Lent = requires(::tpy::storage_t<T>& t) {
     t.__next__();
     ::tpy::__iter__(t);
 };
 
 // class Bag(Iterable[Cell], Protocol):
 template<typename T>
-concept Bag = requires(T& t) {
+concept Bag = requires(::tpy::storage_t<T>& t) {
     ::tpy::__iter__(t);
 };
 
 // class Fallback(Iterator[int32], Protocol):
 template<typename T>
-concept Fallback = requires(T& t) {
+concept Fallback = requires(::tpy::storage_t<T>& t) {
     t.__next__();
     ::tpy::__iter__(t);
 };
 
 // class Named(Protocol):
 template<typename T>
-concept Named = requires(T& t) {
+concept Named = requires(::tpy::storage_t<T>& t) {
     { t.f(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
 // class PosOnly(Protocol):
 template<typename T>
-concept PosOnly = requires(T& t) {
+concept PosOnly = requires(::tpy::storage_t<T>& t) {
     { t.h(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
 // class Owning(Iterator[Own[Token]], Protocol):
 template<typename T>
-concept Owning = requires(T& t) {
+concept Owning = requires(::tpy::storage_t<T>& t) {
     t.__next__();
     ::tpy::__iter__(t);
 };
@@ -840,14 +840,14 @@ struct tpy::Adapter<tpyapp::main::DynSource<T>, __tpy_Impl> : tpyapp::main::DynS
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T take() override { return inner.take(); }
+    ::tpy::storage_t<T> take() override { return inner.take(); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__DynSource_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::DynSource<T>, __tpy_Impl> : tpyapp::main::DynSource<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T take() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.take(); }
+    ::tpy::storage_t<T> take() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.take(); }
 };
 
 template<typename T, tpyapp::main::__DynChild_Concept__<T> __tpy_Impl>
@@ -855,14 +855,14 @@ struct tpy::Adapter<tpyapp::main::DynChild<T>, __tpy_Impl> : tpyapp::main::DynCh
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T take() override { return inner.take(); }
+    ::tpy::storage_t<T> take() override { return inner.take(); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__DynChild_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::DynChild<T>, __tpy_Impl> : tpyapp::main::DynChild<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T take() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.take(); }
+    ::tpy::storage_t<T> take() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.take(); }
 };
 
 namespace tpyapp::main {

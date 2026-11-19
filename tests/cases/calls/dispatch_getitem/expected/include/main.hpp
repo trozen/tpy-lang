@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 template<typename T>
 struct Store {
     // _data: list[T]
-    std::vector<T> _data;
+    std::vector<::tpy::storage_t<T>> _data;
 
     // def __init__(self) -> None:
     Store();
@@ -67,14 +67,14 @@ struct Store {
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: slice) -> Span[auto_readonly[T]]:
-    std::span<const T> __getitem____slice(::tpy::Slice index) const;
-    std::span<const T> __getitem__(::tpy::Slice index) const;
+    std::span<const ::tpy::storage_t<T>> __getitem____slice(::tpy::Slice index) const;
+    std::span<const ::tpy::storage_t<T>> __getitem__(::tpy::Slice index) const;
 
     ::tpy::val_or_cref_t<T> operator[](int32_t index) const;
 
     ::tpy::val_or_ref_t<T> operator[](int32_t index);
 
-    std::span<const T> operator[](::tpy::Slice index) const;
+    std::span<const ::tpy::storage_t<T>> operator[](::tpy::Slice index) const;
 
     std::span<T> operator[](::tpy::Slice index);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Store";
@@ -169,7 +169,7 @@ inline std::span<const int32_t> Digits::operator[](::tpy::Slice index) const {
 // def __init__(self) -> None:
 //     self._data = []
 template<typename T>
-inline Store<T>::Store() : _data(std::vector<T>{}) {}
+inline Store<T>::Store() : _data(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def add(self, item: Own[T]) -> None:
 //     self._data.append(item)
@@ -237,7 +237,7 @@ inline std::span<T> Store<T>::__getitem__(::tpy::Slice index) {
 //     stop: int32 = s_stop if s_stop is not None else int32(len(self._data))
 //     return self._data[start:stop]
 template<typename T>
-inline std::span<const T> Store<T>::__getitem____slice(::tpy::Slice index) const {
+inline std::span<const ::tpy::storage_t<T>> Store<T>::__getitem____slice(::tpy::Slice index) const {
     std::optional<int32_t> s_start = index.start;
     std::optional<int32_t> s_stop = index.stop;
     int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
@@ -246,7 +246,7 @@ inline std::span<const T> Store<T>::__getitem____slice(::tpy::Slice index) const
 }
 
 template<typename T>
-inline std::span<const T> Store<T>::__getitem__(::tpy::Slice index) const {
+inline std::span<const ::tpy::storage_t<T>> Store<T>::__getitem__(::tpy::Slice index) const {
     return this->__getitem____slice(index);
 }
 
@@ -261,7 +261,7 @@ inline ::tpy::val_or_ref_t<T> Store<T>::operator[](int32_t index) {
 }
 
 template<typename T>
-inline std::span<const T> Store<T>::operator[](::tpy::Slice index) const {
+inline std::span<const ::tpy::storage_t<T>> Store<T>::operator[](::tpy::Slice index) const {
     return __getitem__(index);
 }
 

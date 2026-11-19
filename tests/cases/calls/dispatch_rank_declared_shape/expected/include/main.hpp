@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Named(Protocol):
 template<typename T>
-concept Named = requires(T& t) {
+concept Named = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
     { t.bump(std::declval<int32_t>()) } -> std::convertible_to<void>;
 };
@@ -69,7 +69,7 @@ std::string sp__Named(T_x&& x);
 // @dispatch
 // def sh[T](x: list[T]) -> str:
 template<typename T>
-std::string sh__list_T(std::vector<T>& x);
+std::string sh__list_T(std::vector<::tpy::storage_t<T>>& x);
 // @dispatch
 // def sh[T](x: T) -> str:
 template<typename T>
@@ -87,7 +87,7 @@ std::string mx__list_int32__int32(std::vector<int32_t>& x, int32_t y);
 // @dispatch
 // def mx[T](x: list[T], y: T) -> str:
 template<typename T>
-std::string mx__list_T__T(const std::vector<T>& x, ::tpy::param_val_or_ref_t<T> y);
+std::string mx__list_T__T(const std::vector<::tpy::storage_t<T>>& x, ::tpy::param_val_or_ref_t<T> y);
 // @dispatch
 // def gr(x: Named) -> str:
 template<Named T_x>
@@ -153,7 +153,7 @@ int32_t apply__list_Rec__Callable_Rec_int32(std::vector<Rec>& xs, const std::fun
 // @dispatch
 // def apply[T](xs: list[Rec], f: Callable[[Rec], T]) -> int32:
 template<typename T>
-int32_t apply__list_Rec__Callable_Rec_T(const std::vector<Rec>& xs, const std::function<T(Rec&)>& f);
+int32_t apply__list_Rec__Callable_Rec_T(const std::vector<Rec>& xs, const std::function<::tpy::val_or_ref_t<T>(Rec&)>& f);
 // def proto_vs_t() -> None:
 void proto_vs_t();
 // def base_vs_t() -> None:
@@ -292,7 +292,7 @@ std::string cpt_via(Dog& d, int8_t n);
 // @dispatch
 // def csg[T](x: list[T], n: int64) -> str:
 template<typename T>
-std::string csg__list_T__int64(std::vector<T>& x, int64_t n);
+std::string csg__list_T__int64(std::vector<::tpy::storage_t<T>>& x, int64_t n);
 // @dispatch
 // def csg[T](x: Iterable[T], n: int64) -> str:
 template<typename T, ::tpystd::typing::Iterable<T> T_x>
@@ -300,7 +300,7 @@ std::string csg__Iterable_T__int64(const T_x& x, int64_t n);
 // @dispatch
 // def cst[T](x: list[T], n: int64) -> str:
 template<typename T>
-std::string cst__list_T__int64(std::vector<T>& x, int64_t n);
+std::string cst__list_T__int64(std::vector<::tpy::storage_t<T>>& x, int64_t n);
 // @dispatch
 // def cst[T](x: T, n: int64) -> str:
 template<typename T>
@@ -308,7 +308,7 @@ std::string cst__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n);
 // @dispatch
 // def csf[T](x: list[T], y: float32) -> str:
 template<typename T>
-std::string csf__list_T__float32(std::vector<T>& x, float y);
+std::string csf__list_T__float32(std::vector<::tpy::storage_t<T>>& x, float y);
 // @dispatch
 // def csf[T](x: T, y: float32) -> str:
 template<typename T>
@@ -861,7 +861,7 @@ std::string sp__Named(T_x&& x) {
 //     x.clear()
 //     return "shape"
 template<typename T>
-std::string sh__list_T(std::vector<T>& x) {
+std::string sh__list_T(std::vector<::tpy::storage_t<T>>& x) {
     x.clear();
     return "shape";
 }
@@ -883,7 +883,7 @@ std::string ec__T(::tpy::param_val_or_ref_t<T> x) {
 // def mx[T](x: list[T], y: T) -> str:
 //     return "shape+bare"
 template<typename T>
-std::string mx__list_T__T(const std::vector<T>& x, ::tpy::param_val_or_ref_t<T> y) {
+std::string mx__list_T__T(const std::vector<::tpy::storage_t<T>>& x, ::tpy::param_val_or_ref_t<T> y) {
     return "shape+bare";
 }
 // @dispatch
@@ -934,7 +934,7 @@ std::string pi__T(::tpy::param_val_or_ref_t<T> x) {
 // def apply[T](xs: list[Rec], f: Callable[[Rec], T]) -> int32:
 //     return len(xs)
 template<typename T>
-int32_t apply__list_Rec__Callable_Rec_T(const std::vector<Rec>& xs, const std::function<T(Rec&)>& f) {
+int32_t apply__list_Rec__Callable_Rec_T(const std::vector<Rec>& xs, const std::function<::tpy::val_or_ref_t<T>(Rec&)>& f) {
     return ::tpy::__len__(xs);
 }
 // @dispatch
@@ -1041,7 +1041,7 @@ std::string cpt__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n) {
 //     x.clear()
 //     return "shape"
 template<typename T>
-std::string csg__list_T__int64(std::vector<T>& x, int64_t n) {
+std::string csg__list_T__int64(std::vector<::tpy::storage_t<T>>& x, int64_t n) {
     x.clear();
     return "shape";
 }
@@ -1057,7 +1057,7 @@ std::string csg__Iterable_T__int64(const T_x& x, int64_t n) {
 //     x.clear()
 //     return "shape"
 template<typename T>
-std::string cst__list_T__int64(std::vector<T>& x, int64_t n) {
+std::string cst__list_T__int64(std::vector<::tpy::storage_t<T>>& x, int64_t n) {
     x.clear();
     return "shape";
 }
@@ -1073,7 +1073,7 @@ std::string cst__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n) {
 //     x.clear()
 //     return "shape"
 template<typename T>
-std::string csf__list_T__float32(std::vector<T>& x, float y) {
+std::string csf__list_T__float32(std::vector<::tpy::storage_t<T>>& x, float y) {
     x.clear();
     return "shape";
 }

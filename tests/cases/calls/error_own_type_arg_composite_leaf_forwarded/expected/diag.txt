@@ -1,0 +1,1 @@
+main.py:23: error: `Own[P]` as a type argument of 'outer' is not supported yet: 'T' of 'opt_len' appears inside 'T | None'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'

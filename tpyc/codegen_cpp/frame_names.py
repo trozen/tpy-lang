@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..parse.nodes import GENEXPR_FUNC_PREFIX
 from ..resumable_shape import ResumableShape
+from ..typesys import type_arg_cpp
 from .context import (CodeGenError, FrameSourceUnnameable, escape_cpp_name,
                       module_to_cpp_namespace,
                       resumable_struct_name)
@@ -109,7 +110,7 @@ def frame_struct_qualname(
     # `T_<pname>` extras deduced from static-protocol args.
     all_args: list[str] = []
     if inferred_type_args and not (owner is not None and owner.type_args):
-        all_args.extend(type_to_cpp(ta) for ta in inferred_type_args)
+        all_args.extend(type_arg_cpp(ta, type_to_cpp) for ta in inferred_type_args)
     if extra_template_args:
         all_args.extend(extra_template_args)
     suffix = ("<" + ", ".join(all_args) + ">") if all_args else ""

@@ -45,7 +45,7 @@ struct __gen_rep__T : public ::tpy::next_iter_mixin<__gen_rep__T<T>, ::tpy::yiel
 
     __gen_rep__T(::tpy::param_val_or_ref_t<T> obj_)
         : __state(S_INITIAL),
-          obj(obj_) {}
+          obj(::tpy::param_pass_last<T>(obj_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_rep__T& __iter__() { return *this; }
@@ -90,7 +90,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_rep__T<T>::__n
 // def rep[T](obj: T) -> Iterator[T]: ...
 template <typename T>
 __gen_rep__T<T> rep__T(::tpy::param_val_or_ref_t<T> obj) {
-    return __gen_rep__T<T>(obj);
+    return __gen_rep__T<T>(::tpy::param_pass_last<T>(obj));
 }
 
 // @overload
@@ -111,7 +111,7 @@ struct __gen_rep__T__int32 : public ::tpy::next_iter_mixin<__gen_rep__T__int32<T
 
     __gen_rep__T__int32(::tpy::param_val_or_ref_t<T> obj_, int32_t n_)
         : __state(S_INITIAL),
-          obj(obj_),
+          obj(::tpy::param_pass_last<T>(obj_)),
           n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -156,7 +156,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_rep__T__int32<
 // def rep[T](obj: T, n: int32) -> Iterator[T]: ...
 template <typename T>
 __gen_rep__T__int32<T> rep__T__int32(::tpy::param_val_or_ref_t<T> obj, int32_t n) {
-    return __gen_rep__T__int32<T>(obj, n);
+    return __gen_rep__T__int32<T>(::tpy::param_pass_last<T>(obj), n);
 }
 
 void __tpy_init();

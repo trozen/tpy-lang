@@ -11,13 +11,13 @@ template<typename T> struct Source;
 // @dynamic
 // class Source[T](Protocol):
 template<typename T, typename _T0>
-concept __Source_Concept__ = requires(T& t) {
+concept __Source_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> ::tpy::proto_result<_T0>;
 };
 
 template<typename T>
 struct Source {
-    virtual T get() = 0;
+    virtual ::tpy::storage_t<T> get() = 0;
     virtual ~Source() = default;
 };
 
@@ -25,7 +25,7 @@ template<typename T> struct Counter;
 // @dynamic
 // class Counter[T](Source[T], Protocol):
 template<typename T, typename _T0>
-concept __Counter_Concept__ = requires(T& t) {
+concept __Counter_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.bump() } -> std::convertible_to<void>;
     { t.get() } -> ::tpy::proto_result<_T0>;
 };
@@ -83,14 +83,14 @@ struct tpy::Adapter<tpyapp::main::Source<T>, __tpy_Impl> : tpyapp::main::Source<
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T get() override { return inner.get(); }
+    ::tpy::storage_t<T> get() override { return inner.get(); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__Source_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::Source<T>, __tpy_Impl> : tpyapp::main::Source<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
+    ::tpy::storage_t<T> get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
 };
 
 template<typename T, tpyapp::main::__Counter_Concept__<T> __tpy_Impl>
@@ -99,7 +99,7 @@ struct tpy::Adapter<tpyapp::main::Counter<T>, __tpy_Impl> : tpyapp::main::Counte
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     void bump() override { inner.bump(); }
-    T get() override { return inner.get(); }
+    ::tpy::storage_t<T> get() override { return inner.get(); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__Counter_Concept__<std::remove_const_t<__tpy_Impl>, T>
@@ -107,7 +107,7 @@ struct tpy::RefAdapter<tpyapp::main::Counter<T>, __tpy_Impl> : tpyapp::main::Cou
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
     void bump() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else inner.bump(); }
-    T get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
+    ::tpy::storage_t<T> get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
 };
 
 namespace tpyapp::main {

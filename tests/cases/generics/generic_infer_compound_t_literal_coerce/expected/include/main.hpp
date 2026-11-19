@@ -14,13 +14,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def push_t[T](xs: list[T], item: T) -> None:
 template<typename T>
-void push_t(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> item);
+void push_t(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> item);
 // def put_dict[K, V](d: dict[K, V], k: K, v: V) -> None:
 template<typename K, typename V>
-void put_dict(::tpy::ordered_map<K, V>& d, ::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> v);
+void put_dict(::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>& d, ::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> v);
 // def add_to_set[T](s: set[T], v: T) -> None:
 template<typename T>
-void add_to_set(::tpy::ordered_set<T>& s, ::tpy::param_val_or_ref_t<T> v);
+void add_to_set(::tpy::ordered_set<::tpy::storage_t<T>>& s, ::tpy::param_val_or_ref_t<T> v);
 // def take_any[T](x: T) -> None:
 template<typename T>
 void take_any(::tpy::param_val_or_ref_t<T> x);
@@ -33,20 +33,20 @@ void main();
 // def push_t[T](xs: list[T], item: T) -> None:
 //     xs.append(item)
 template<typename T>
-void push_t(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> item) {
-    xs.push_back(::tpy::param_to_storage<T>(item));
+void push_t(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> item) {
+    xs.push_back(::tpy::param_consume<T>(item));
 }
 // def put_dict[K, V](d: dict[K, V], k: K, v: V) -> None:
 //     d[k] = v
 template<typename K, typename V>
-void put_dict(::tpy::ordered_map<K, V>& d, ::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> v) {
-    ::tpy::__setitem__(d, k, v);
+void put_dict(::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>& d, ::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> v) {
+    ::tpy::__setitem__(d, k, ::tpy::param_consume<V>(v));
 }
 // def add_to_set[T](s: set[T], v: T) -> None:
 //     s.add(v)
 template<typename T>
-void add_to_set(::tpy::ordered_set<T>& s, ::tpy::param_val_or_ref_t<T> v) {
-    s.insert(::tpy::param_to_storage<T>(v));
+void add_to_set(::tpy::ordered_set<::tpy::storage_t<T>>& s, ::tpy::param_val_or_ref_t<T> v) {
+    s.insert(::tpy::param_consume<T>(v));
 }
 // def take_any[T](x: T) -> None:
 //     pass

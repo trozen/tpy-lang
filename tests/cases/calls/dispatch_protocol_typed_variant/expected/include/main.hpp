@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Named(Protocol):
 template<typename T>
-concept Named = requires(T& t) {
+concept Named = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 

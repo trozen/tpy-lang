@@ -23,7 +23,7 @@ struct __gen_gen_except;
 
 // def first[T](xs: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> first(std::vector<T>& xs);
+::tpy::val_or_ref_t<T> first(std::vector<::tpy::storage_t<T>>& xs);
 // def tuple_local(b: Box, q: Box) -> None:
 void tuple_local(Box& b, Box& q);
 // def param_rebind(p: tuple[Box, int32], q: Box) -> None:
@@ -355,7 +355,7 @@ inline void H::rebind(Box& q) {
 // def first[T](xs: list[T]) -> T:
 //     return xs[0]
 template<typename T>
-::tpy::val_or_ref_t<T> first(std::vector<T>& xs) {
+::tpy::val_or_ref_t<T> first(std::vector<::tpy::storage_t<T>>& xs) {
     return ::tpy::__getitem__(xs, 0);
 }
 

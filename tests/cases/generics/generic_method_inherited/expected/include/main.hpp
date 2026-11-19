@@ -19,7 +19,7 @@ void main();
 template<typename T>
 struct Base {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, val: T):
     Base() = default;
@@ -64,7 +64,7 @@ inline Base<T>::Base(::tpy::readonly_form_t<T> val) : val(val) {}
 template<typename T>
 template<typename U>
 inline ::tpy::val_or_ref_t<U> Base<T>::transform(::tpy::param_val_or_ref_t<U> other) const {
-    return ::tpy::param_to_return<U>(other);
+    return ::tpy::param_to_return_last<U>(other);
 }
 
 // def __init__(self, val: T):

@@ -13,16 +13,16 @@ inline constexpr std::string_view __name__ = "__main__";
 // def m[T, U](f: Fn[[T], U], xs: list[T]) -> int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-int32_t m__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs);
+int32_t m__Fn_T_U__list_T(__F0&& f, const std::vector<::tpy::storage_t<T>>& xs);
 // @dispatch
 // def m[T, U](f: Fn[[T, T], U], xs: list[T]) -> int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<U>;
   }
-int32_t m__Fn_T_T_U__list_T(__F0&& f, const std::vector<T>& xs);
+int32_t m__Fn_T_T_U__list_T(__F0&& f, const std::vector<::tpy::storage_t<T>>& xs);
 // def main() -> None:
 void main();
 
@@ -31,9 +31,9 @@ void main();
 //     return int32(len(xs))
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-int32_t m__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs) {
+int32_t m__Fn_T_U__list_T(__F0&& f, const std::vector<::tpy::storage_t<T>>& xs) {
     return ::tpy::__len__(xs);
 }
 // @dispatch
@@ -41,9 +41,9 @@ int32_t m__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs) {
 //     return int32(2 * len(xs))
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<U>;
   }
-int32_t m__Fn_T_T_U__list_T(__F0&& f, const std::vector<T>& xs) {
+int32_t m__Fn_T_T_U__list_T(__F0&& f, const std::vector<::tpy::storage_t<T>>& xs) {
     return (::tpy::mul_check<int32_t>(2, ::tpy::__len__(xs)));
 }
 

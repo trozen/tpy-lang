@@ -1347,11 +1347,9 @@ def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
     else about it: an owned `str` / `String` / `bytes` / `bytearray`
     buffer and a borrowing view constructed from nothing.
 
-    With `gen_yield` (a generator's lending yield slot), a callable value
-    declared to return an open type parameter is fresh too: at an owning
-    callee the instantiation's value is new, and the reference
-    instantiation decides a generic body. A return keeps the default
-    reading, so `return fn(x)` at `-> U` is unchanged."""
+    A call through a callable value whose return is an open type parameter
+    is not fresh: at `U = P` it lends what its arguments lend, at
+    `U = Own[P]` its value is owned and the slot takes it over."""
     if any(leaf.kind is OriginKind.COPY
            or (leaf.kind is OriginKind.NEW and leaf.proven)
            for leaf in origin(ctx, call)):
@@ -1371,7 +1369,11 @@ def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
             or is_bytearray_type(unwrap_own(unwrap_readonly(
                 ctx.get_expr_type(call))))):
         return True
-    return gen_yield and lend.kind is CalleeFact.CALLABLE and fi.returns_open()
+    # A class's std::function of an open return hands back a value
+    # (`CallableType.class_return`), which a lending yield slot cannot lend.
+    return (gen_yield and lend.kind is CalleeFact.CALLABLE
+            and fi.callable_type is not None
+            and fi.callable_type.class_return and fi.returns_open())
 
 
 def _is_null_ptr(call: TpyExpr) -> bool:

@@ -165,9 +165,9 @@ inline std::ostream& operator<<(std::ostream& os, const Built<N>& obj) {
 template<typename A, typename B>
 struct Pair {
     // self.a = a  # tpyc: warning(/may copy A/)
-    A a;
+    ::tpy::storage_t<A> a;
     // self.b = b  # tpyc: warning(/may copy B/)
-    B b;
+    ::tpy::storage_t<B> b;
 
     // def __init__(self, a: A, b: B) -> None:
     Pair() = default;
@@ -309,7 +309,7 @@ inline void Edge<N>::run() const {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 // def outer[T](x: T) -> None:
 //     def inner() -> None:

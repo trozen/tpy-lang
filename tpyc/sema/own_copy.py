@@ -39,14 +39,16 @@ will run itself, while this defers a PROMOTION the instantiation supplies to
 a diagnostic already in the list. See docs/ARCHITECTURE.md for the
 comparison.
 """
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from dataclasses import dataclass, replace
+from typing import TYPE_CHECKING, Collection
 
 from ..diagnostics import Diagnostic, DiagnosticLevel, NOCOPY_REMEDIATION_HINT
 from ..identity_map import IdentityMap
 from ..parse import (ResultForm, TpyCallLike, TpyCoerce, TpyExpr, TpyFieldAccess,
-                     TpySubscript, is_property_getter_read)
-from ..typesys import (NominalType, ReadonlyType, TpyType,
+                     TpyName, TpySubscript, is_property_getter_read)
+from ..typesys import (CallableType, NominalType, OptionalType, OwnType,
+                       ReadonlyType, TpyType, TupleType, TypeParamRef,
+                       UnionType,
                        contains_reference_type, inner_type_param_names,
                        unwrap_qualifiers, unwrap_readonly, unwrap_ref_type)
 
@@ -62,6 +64,10 @@ HEDGE_CLAUSE = "if not a value type"
 # per-element copy a container conversion makes.
 KIND_SLOT = "slot"
 KIND_ELEMENTS = "elements"
+# A read that copies only at an instantiation where its open `T` is
+# `Own[X]` (a stored place returned at `-> T`): reported at the call that
+# instantiates the generic, with the twin's message.
+KIND_OWN_INSTANTIATION = "own_instantiation"
 
 
 @dataclass(frozen=True, eq=False)
@@ -78,6 +84,73 @@ class OwnCopyObligation:
     kind: str
     hint: str
     diag: Diagnostic
+    # The read hands its value on where its open `T` is `Own[X]`
+    # (`SemanticContext.hands_on_at_own`): no copy at that instantiation.
+    hands_on: bool = False
+
+
+@dataclass(frozen=True, eq=False)
+class OwnCompositeLeaf:
+    """The body's own open `param` is a leaf of the tuple or Optional /
+    union `composite` (its signature's or a type in its body). An
+    instantiation at a non-plain `Own[X]` is refused at the instantiating
+    call: the composite's owned forms are not built per leaf
+    (BUGS.md#own-type-arg-composite-leaf-refused). Rides the body's
+    obligations, so the discharge composes it through forwards as it does
+    a copy only an `Own` instantiation makes."""
+
+    param: TypeParamRef
+    composite: TpyType
+    # The generic whose body declares `param`.
+    owner: str
+
+
+def shown_type(t: TpyType) -> TpyType:
+    """`t` as a diagnostic spells it: no borrow markers at any depth."""
+    return unwrap_ref_type(t).map_inner_types(shown_type)
+
+
+def binding_sources(callee: object, own_sources: 'tuple[tuple[str, int], ...]',
+                    evidence: 'tuple[tuple[int | None, TpyExpr], ...]'
+                    ) -> tuple[tuple[str, str, 'str | None'], ...]:
+    """`OwnCopyEdge.sources` from the binder's `own_sources` (type
+    parameter -> index in `evidence`, `Candidate.own_sources`)."""
+    params = list(getattr(callee, "params", None) or ())
+    found = []
+    for name, at in own_sources:
+        if at >= len(evidence):
+            continue
+        slot, arg = evidence[at]
+        if slot is None or slot >= len(params):
+            continue
+        found.append((name, params[slot].name,
+                      arg.name if isinstance(arg, TpyName) else None))
+    return tuple(found)
+
+
+def composite_leaves(typ: TpyType, declared: 'Collection[str]'
+                     ) -> list[TypeParamRef]:
+    """Every open type parameter of `declared` that is a leaf of a tuple or
+    of an Optional / union in `typ` -- at any depth, through a callable's
+    parameters and result, an iterator's step, a container's elements. An
+    element of any other type (`list[T]`) is no leaf: a container owns its
+    elements whether or not they are `Own` (`list[Own[P]]` is `list[P]`);
+    a tuple element (`list[tuple[T, int32]]`) still is, as that normalizes
+    only a whole element. The storage form `Unowned(T)` is none either: it
+    is never `Own`."""
+    found: dict[str, TypeParamRef] = {}
+
+    def walk(t: TpyType, inside: bool) -> None:
+        t = unwrap_qualifiers(t)
+        if type(t) is TypeParamRef:
+            if inside and t.name in declared:
+                found.setdefault(t.name, t)
+            return
+        member = isinstance(t, (TupleType, OptionalType, UnionType))
+        for inner in t.inner_types():
+            walk(inner, member)
+    walk(typ, False)
+    return list(found.values())
 
 
 class OwnCopyVerdicts:
@@ -91,6 +164,20 @@ class OwnCopyVerdicts:
 
     def __init__(self) -> None:
         self._by_obligation: IdentityMap = IdentityMap()
+        self._instantiation_seen: set = set()
+        # Per walked instantiation (`OwnCopyEdge.key`), the
+        # `KIND_OWN_INSTANTIATION` copies it makes, its forwards' included:
+        # (obligation, the substituted `Own[X]` target).
+        self.instantiation_copies: dict[tuple, list] = {}
+        # The instantiations being walked, outermost first, each one's
+        # lowest stack index its walk reached (a cycle back to an
+        # instantiation still in progress), and per cycle root the members
+        # whose walks finished under it: an instantiation cycle reaches one
+        # set of copies, recorded for every member when its root finishes.
+        self.walk_stack: list[tuple] = []
+        self.walk_low: dict[tuple, int] = {}
+        self.cycle_members: dict[tuple, list[tuple]] = {}
+        self.cycle_owner: dict[tuple, tuple] = {}
 
     def record(self, obligation: OwnCopyObligation, level: DiagnosticLevel,
                message: str) -> None:
@@ -107,6 +194,25 @@ class OwnCopyVerdicts:
     def __len__(self) -> int:
         return len(self._by_obligation)
 
+    def instantiation_copy(self, ctx, obligation: OwnCopyObligation,
+                           target: 'OwnType', loc: object,
+                           remedy: str = "") -> None:
+        """Report, at the instantiating call `loc`, the copy obligation's
+        read makes at this `Own[X]` instantiation: the twin's warning (its
+        error for a type that has no copy); `remedy` names the signature
+        that would lend instead."""
+        key = (id(obligation), loc_key(loc))
+        if key in self._instantiation_seen:
+            return
+        self._instantiation_seen.add(key)
+        level, message = slot_message(
+            target.wrapped, target.wrapped, obligation.dest, KIND_SLOT,
+            obligation.hint, non_copyable=ctx.is_type_non_copyable(
+                target.wrapped),
+            remedy="use copy() to make this explicit" + remedy)
+        ctx.diagnostics.append(Diagnostic(
+            level, message, loc if loc is not None else obligation.diag.loc))
+
 
 @dataclass(frozen=True, eq=False)
 class OwnCopyEdge:
@@ -120,10 +226,32 @@ class OwnCopyEdge:
     callee: object
     subst: tuple[tuple[str, TpyType], ...]
     is_record: bool = False
+    # The call that instantiates it -- the outermost concrete call of a
+    # re-composed chain -- where a copy only this instantiation makes is
+    # reported (`KIND_OWN_INSTANTIATION`).
+    loc: object = None
+    # The call inferred its type arguments (none spelled): a remedy may name
+    # the signature that would bind them otherwise.
+    inferred: bool = False
+    # Of an inferred call: per type parameter inference bound to a
+    # non-plain `Own[X]`, the callee's parameter whose argument bound it and
+    # that argument's name (None when it is no name).
+    sources: tuple[tuple[str, str, 'str | None'], ...] = ()
 
     def key(self) -> tuple:
-        """Identity for dedupe: a RecordInfo / FunctionInfo is not hashable."""
+        """Identity for dedupe: a RecordInfo / FunctionInfo is not hashable.
+        The call location is no part of it -- an instantiation is walked
+        once, and the copies only it makes are replayed at each call that
+        reaches it (`OwnCopyVerdicts.instantiation_copies`)."""
         return (id(self.callee), self.subst, self.is_record)
+
+
+def loc_key(loc: object) -> tuple:
+    """A hashable identity of a source location (None for none)."""
+    if loc is None:
+        return ()
+    return (getattr(loc, "file", None), getattr(loc, "line", None),
+            getattr(loc, "column", None))
 
 
 def holds_only_values(typ: TpyType) -> bool:
@@ -265,13 +393,29 @@ def _still_open(display: TpyType, target: TpyType) -> bool:
 
 
 def _apply(ctx, type_ops, obligation: OwnCopyObligation,
-           subst: dict, verdicts: OwnCopyVerdicts) -> None:
-    """Record the verdict this instantiation implies for one obligation."""
+           subst: dict, verdicts: OwnCopyVerdicts, copies: list) -> None:
+    """Record the verdict this instantiation implies for one obligation; a
+    copy only an `Own` instantiation makes joins `copies`, as does a
+    composite leaf this instantiation makes `Own`."""
+    if isinstance(obligation, OwnCompositeLeaf):
+        leaf = type_ops.substitute_types(obligation.param, subst)
+        if (isinstance(leaf, OwnType) and not leaf.is_plain()
+                and not type_has_type_param(leaf)):
+            copies.append((obligation, leaf))
+        return
     display = type_ops.substitute_types(obligation.display_type, subst)
     target = type_ops.substitute_types(obligation.target_type, subst)
+    if obligation.kind == KIND_OWN_INSTANTIATION:
+        if (isinstance(target, OwnType) and not target.is_plain()
+                and not _still_open(display, target)):
+            copies.append((obligation, target))
+        return
     if _still_open(display, target):
         # A method-level type param this route does not bind; the method
         # call that binds it answers.
+        return
+    if (obligation.hands_on and isinstance(target, OwnType)
+            and not target.is_plain()):
         return
     if not ctx.is_type_non_copyable(target):
         # A copyable instantiation says nothing the declaration-time hedge has
@@ -294,17 +438,18 @@ def _collapse_readonly(typ: TpyType) -> TpyType:
 
 
 def _discharge_function(ctx, type_ops, fi, subst: dict, seen: set,
-                        verdicts: OwnCopyVerdicts) -> None:
+                        verdicts: OwnCopyVerdicts, copies: list) -> None:
     for obligation in fi.own_copy_obligations:
-        _apply(ctx, type_ops, obligation, subst, verdicts)
+        _apply(ctx, type_ops, obligation, subst, verdicts, copies)
     for forward in fi.own_copy_forwards:
         composed = tuple(
             (name, _collapse_readonly(type_ops.substitute_types(value, subst)))
             for name, value in forward.subst
         )
-        discharge_edge(ctx, type_ops,
-                       OwnCopyEdge(forward.callee, composed, forward.is_record),
-                       seen, verdicts)
+        copies.extend(_walk_edge(
+            ctx, type_ops,
+            OwnCopyEdge(forward.callee, composed, forward.is_record),
+            seen, verdicts))
 
 
 def _record_methods(record_info):
@@ -317,9 +462,11 @@ def _record_methods(record_info):
 
 
 def _discharge_record(ctx, type_ops, record_info, subst: dict,
-                      seen: set, verdicts: OwnCopyVerdicts) -> None:
+                      seen: set, verdicts: OwnCopyVerdicts,
+                      copies: list) -> None:
     for fi in _record_methods(record_info):
-        _discharge_function(ctx, type_ops, fi.root, subst, seen, verdicts)
+        _discharge_function(ctx, type_ops, fi.root, subst, seen, verdicts,
+                            copies)
     # An ancestor named only through an intermediate generic (`class Kid(
     # Mid[Cell])` over `class Mid[T](Base[T])`) is never spelled at concrete
     # args anywhere, so its instantiation exists only as this composition.
@@ -337,27 +484,175 @@ def _discharge_record(ctx, type_ops, record_info, subst: dict,
         )
         if not composed:
             continue
-        discharge_edge(ctx, type_ops,
-                       OwnCopyEdge(parent_info, composed, True), seen, verdicts)
+        copies.extend(_walk_edge(
+            ctx, type_ops, OwnCopyEdge(parent_info, composed, True), seen,
+            verdicts))
 
 
 def discharge_edge(ctx, type_ops, edge: OwnCopyEdge, seen: set,
                    verdicts: OwnCopyVerdicts) -> None:
-    """Discharge one instantiation, and everything it instantiates in turn.
+    """Discharge one instantiation rooted at a concrete call, and everything
+    it instantiates in turn; the copies only an `Own` instantiation makes
+    are reported at that call (`edge.loc`).
 
     `seen` stops a self-recursive generic (`f[T]` calling `f[T]`) and keeps
     a diamond of forwards from being walked twice; `verdicts` is the
     compilation's table the walk records into.
     """
-    key = edge.key()
-    if key in seen:
+    copies = _walk_edge(ctx, type_ops, edge, seen, verdicts)
+    refused = next(((o, t) for o, t in copies
+                    if isinstance(o, OwnCompositeLeaf)), None)
+    if refused is not None:
+        # The refusal stands alone: the copies it would also report are
+        # of a form the instantiation does not build.
+        _refuse_composite_leaf(ctx, edge, *refused)
         return
-    seen.add(key)
-    subst = dict(edge.subst)
-    if edge.is_record:
-        _discharge_record(ctx, type_ops, edge.callee, subst, seen, verdicts)
+    remedy = (_owned_result_remedy(edge) if copies and edge.inferred
+              else "")
+    for obligation, target in copies:
+        verdicts.instantiation_copy(ctx, obligation, target, edge.loc, remedy)
+
+
+def _refuse_composite_leaf(ctx, edge: OwnCopyEdge, leaf: OwnCompositeLeaf,
+                           target: OwnType) -> None:
+    callee = getattr(edge.callee, "name", "?")
+    where = (f"'{leaf.param.name}'" if leaf.owner == callee
+             else f"'{leaf.param.name}' of '{leaf.owner}'")
+    inside = f"{where} appears inside '{leaf.composite}'"
+    if edge.inferred:
+        message = _inferred_refusal(edge, leaf, target, callee, inside)
     else:
-        _discharge_function(ctx, type_ops, edge.callee, subst, seen, verdicts)
+        message = (f"`{target}` as a type argument of '{callee}' is not "
+                   f"supported yet: {inside}; use `{target.wrapped}` as the "
+                   f"type argument (the argument is lent), or write the "
+                   f"function with `{target}` in place of "
+                   f"'{leaf.param.name}'")
+    ctx.diagnostics.append(Diagnostic(DiagnosticLevel.ERROR, message,
+                                      edge.loc))
+
+
+def _inferred_refusal(edge: OwnCopyEdge, leaf: OwnCompositeLeaf,
+                      target: OwnType, callee: str, inside: str) -> str:
+    """The refusal at a call that wrote no type argument, naming the type
+    parameter and the argument the binder bound to `Own[X]`."""
+    owned = {n: v for n, v in edge.subst
+             if isinstance(v, OwnType) and not v.is_plain()}
+    if leaf.owner == callee and leaf.param.name in owned:
+        name = leaf.param.name
+    else:
+        # A leaf of a generic the callee hands its parameter on to: the
+        # callee's own parameter is known only when one binds `target`.
+        matching = [n for n, v in owned.items() if v == target]
+        name = matching[0] if len(matching) == 1 else None
+    if name is None:
+        return (f"'{callee}' infers `{target}` as a type argument, which is "
+                f"not supported yet: {inside}; write the function with "
+                f"`{target}` in place of '{leaf.param.name}'")
+    value = owned[name]
+    source = next(((p, a) for n, p, a in edge.sources if n == name), None)
+    by = ""
+    remedies = []
+    if source is not None:
+        pname, arg = source
+        by = f" from '{arg}'" if arg else f" from the argument for '{pname}'"
+        ptype = next((unwrap_readonly(unwrap_ref_type(p.type))
+                      for p in getattr(edge.callee, "params", None) or ()
+                      if p.name == pname), None)
+        if isinstance(ptype, CallableType):
+            remedies.append(f"pass a function returning `{value.wrapped}`")
+    remedies.append(f"write the function with `{value}` in place of "
+                    f"'{name}'")
+    return (f"'{callee}' infers `{name} = {value}`{by}, which is not "
+            f"supported yet: {inside}; {' or '.join(remedies)}"
+            f"{_owned_result_remedy(edge, name)}")
+
+
+def _owned_result_remedy(edge: OwnCopyEdge, name: 'str | None' = None) -> str:
+    """Where a callable parameter's bare `T` result is what binds `T` to
+    `Own[X]` at this call (`make: Fn[[], T]` given a fresh callable), the
+    signature that keeps the two contracts apart and lends: the callable's
+    result written `Own[T]`, which binds `T` to `X`. `name` limits it to
+    that type parameter."""
+    params = getattr(edge.callee, "params", None) or ()
+    subst = dict(edge.subst)
+    for p in params:
+        ct = unwrap_readonly(unwrap_ref_type(p.type))
+        ret = getattr(ct, "return_type", None)
+        if (isinstance(ct, CallableType) and type(ret) is TypeParamRef
+                and name in (None, ret.name)
+                and isinstance(subst.get(ret.name), OwnType)
+                # A parameter of `T` binds it too: the result alone is no
+                # remedy there.
+                and not any(ret.name in inner_type_param_names(t)
+                            for t in ct.param_types)):
+            fixed = replace(ct, return_type=OwnType(ret))
+            return (f", or declare '{p.name}: {fixed}' so the result is "
+                    f"lent")
+    return ""
+
+
+def _walk_edge(ctx, type_ops, edge: OwnCopyEdge, seen: set,
+               verdicts: OwnCopyVerdicts) -> list:
+    """Walk one instantiation once (`seen`), returning the copies only an
+    `Own` instantiation makes in it and under it -- the walked one's
+    recorded list on a repeat visit. Mutually recursive instantiations
+    form a cycle (Tarjan's strongly connected component), every member of
+    which reaches the same copies: a visit to a member still in progress
+    adds nothing to the visitor's list, the members' lists flow into the
+    outermost member's, and that one's list is recorded for every member
+    once it finishes."""
+    key = edge.key()
+    stack = verdicts.walk_stack
+    if key in seen:
+        done = verdicts.instantiation_copies.get(key)
+        if done is not None:
+            return done
+        # A member of a cycle still being walked: the visitor joins its
+        # cycle; the visitor's callers join on return (below).
+        root = key
+        while root not in verdicts.walk_low:
+            root = verdicts.cycle_owner[root]
+        _lower_walk_low(verdicts, stack[-1], verdicts.walk_low[root])
+        return []
+    seen.add(key)
+    index = len(stack)
+    stack.append(key)
+    verdicts.walk_low[key] = index
+    copies: list = []
+    subst = dict(edge.subst)
+    try:
+        if edge.is_record:
+            _discharge_record(ctx, type_ops, edge.callee, subst, seen,
+                              verdicts, copies)
+        else:
+            _discharge_function(ctx, type_ops, edge.callee, subst, seen,
+                                verdicts, copies)
+    finally:
+        stack.pop()
+        low = verdicts.walk_low.pop(key)
+        if stack:
+            _lower_walk_low(verdicts, stack[-1], low)
+    members = verdicts.cycle_members.pop(key, [])
+    if low < index:
+        # Not the cycle's root: its copies reach the root through the
+        # caller's list, its entry is written with the root's.
+        owner = stack[low]
+        verdicts.cycle_members.setdefault(owner, []).extend([key, *members])
+        verdicts.cycle_owner[key] = owner
+        for m in members:
+            verdicts.cycle_owner[m] = owner
+        return copies
+    verdicts.instantiation_copies[key] = copies
+    for m in members:
+        verdicts.instantiation_copies[m] = copies
+        verdicts.cycle_owner.pop(m, None)
+    return copies
+
+
+def _lower_walk_low(verdicts: OwnCopyVerdicts, key: object,
+                    low: int) -> None:
+    if verdicts.walk_low[key] > low:
+        verdicts.walk_low[key] = low
 
 
 def copy_result_under_write(receiver: TpyExpr) -> 'TpyCallLike | None':

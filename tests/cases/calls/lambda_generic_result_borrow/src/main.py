@@ -2,8 +2,8 @@
 # borrow when the borrow is rooted outside the lambda body: a parameter's
 # field, or an argument a method on a temporary hands back; a scalar read
 # through a temporary is returned by value. Only a borrow into a value the
-# body created is rejected (error_lambda_key_temp_borrow,
-# error_lambda_key_temp_field).
+# body created is returned by value instead (lambda_key_temp_borrow,
+# lambda_key_temp_field).
 from __future__ import annotations
 from tpy import int32, Own
 

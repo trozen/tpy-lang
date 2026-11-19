@@ -9,25 +9,25 @@ namespace tpyapp::main {
 
 // class Animal(Protocol):
 template<typename T>
-concept Animal = requires(T& t) {
+concept Animal = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 
 // class Walker(Protocol):
 template<typename T>
-concept Walker = requires(T& t) {
+concept Walker = requires(::tpy::storage_t<T>& t) {
     { t.walk() } -> std::convertible_to<::tpy::BigInt>;
 };
 
 // class Swimmer(Protocol):
 template<typename T>
-concept Swimmer = requires(T& t) {
+concept Swimmer = requires(::tpy::storage_t<T>& t) {
     { t.swim() } -> std::convertible_to<::tpy::BigInt>;
 };
 
 // class HasLen(Protocol):
 template<typename T>
-concept HasLen = requires(const T& t) {
+concept HasLen = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<::tpy::BigInt>;
 };
 

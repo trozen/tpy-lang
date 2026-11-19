@@ -18,25 +18,25 @@ inline constexpr std::string_view __name__ = "part_generic";
 // def fill[T, U](f: Fn[[T], U], x: T, out: list[U]) -> None:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-void fill(__F0&& f, ::tpy::param_val_or_ref_t<T> x, std::vector<U>& out);
+void fill(__F0&& f, ::tpy::param_val_or_ref_t<T> x, std::vector<::tpy::storage_t<U>>& out);
 // def fill2[T, U](out: list[U], f: Fn[[T], U], x: T) -> None:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-void fill2(std::vector<U>& out, __F0&& f, ::tpy::param_val_or_ref_t<T> x);
+void fill2(std::vector<::tpy::storage_t<U>>& out, __F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // def build[T](f: Fn[[T], Own[T]], x: T) -> Own[T]:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<::tpy::storage_t<T>>;
   }
 ::tpy::own_return_t<T> build(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // def consume[U](f: Fn[[P], U], p: P) -> U:
 template<typename U, typename __F0>
   requires requires(__F0& __fn, ::tpyapp::fixtures::P& __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(__a0) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> consume(__F0&& f, ::tpyapp::fixtures::P& p);
 // def forward(f: Fn[[P], P], p: P) -> int32:
@@ -50,7 +50,7 @@ int32_t forward(__F0&& f, ::tpyapp::fixtures::P& p);
 void sec_generic();
 // def pick_cb[T, U](f: Callable[[T], U], x: T) -> Callable[[T], U]:
 template<typename T, typename U>
-std::function<U(::tpy::param_val_or_ref_t<T>)> pick_cb(const std::function<U(::tpy::param_val_or_ref_t<T>)>& f, ::tpy::param_val_or_ref_t<T> x);
+std::function<::tpy::val_or_ref_t<U>(::tpy::param_val_or_ref_t<T>)> pick_cb(const std::function<::tpy::val_or_ref_t<U>(::tpy::param_val_or_ref_t<T>)>& f, ::tpy::param_val_or_ref_t<T> x);
 // def sec_generic_lambda() -> None:
 void sec_generic_lambda();
 // def own_fn_to_callable(f: Fn[[P], Own[P]], x: P) -> int32:
@@ -64,7 +64,7 @@ int32_t own_fn_to_callable(__F0&& f, ::tpyapp::fixtures::P& x);
 void sec_map();
 // def pick0[T](f: Callable[[], T]) -> Callable[[], T]:
 template<typename T>
-std::function<T()> pick0(const std::function<T()>& f);
+std::function<::tpy::val_or_ref_t<T>()> pick0(const std::function<::tpy::val_or_ref_t<T>()>& f);
 // def one() -> int32:
 int32_t one();
 // def mk_pair() -> Own[tuple[P, int32]]:
@@ -76,9 +76,9 @@ void sec_identity();
 // def lend_owned[T](f: Fn[[], Own[T]], like: T) -> Callable[[], Own[T]]:
 template<typename T, typename __F0>
   requires requires(__F0& __fn) {
-      { __fn() } -> std::convertible_to<T>;
+      { __fn() } -> ::tpy::returns_form<::tpy::storage_t<T>>;
   }
-std::function<T()> lend_owned(__F0&& f, ::tpy::param_val_or_ref_t<T> like);
+std::function<::tpy::storage_t<T>()> lend_owned(__F0&& f, ::tpy::param_val_or_ref_t<T> like);
 // def mk0() -> Own[P]:
 ::tpyapp::fixtures::P mk0();
 // def sec_hatches() -> None:
@@ -91,35 +91,35 @@ void main();
 //     out.append(f(x))
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-void fill(__F0&& f, ::tpy::param_val_or_ref_t<T> x, std::vector<U>& out) {
-    out.push_back(f(x));
+void fill(__F0&& f, ::tpy::param_val_or_ref_t<T> x, std::vector<::tpy::storage_t<U>>& out) {
+    out.push_back(f(::tpy::param_pass_last<T>(x)));
 }
 // # U bound from the list before the callable: the same verdict either order.
 // def fill2[T, U](out: list[U], f: Fn[[T], U], x: T) -> None:
 //     out.append(f(x))
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-void fill2(std::vector<U>& out, __F0&& f, ::tpy::param_val_or_ref_t<T> x) {
-    out.push_back(f(x));
+void fill2(std::vector<::tpy::storage_t<U>>& out, __F0&& f, ::tpy::param_val_or_ref_t<T> x) {
+    out.push_back(f(::tpy::param_pass_last<T>(x)));
 }
 // def build[T](f: Fn[[T], Own[T]], x: T) -> Own[T]:
 //     return f(x)
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<::tpy::storage_t<T>>;
   }
 ::tpy::own_return_t<T> build(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
-    return f(x);
+    return f(::tpy::param_pass_last<T>(x));
 }
 // def consume[U](f: Fn[[P], U], p: P) -> U:
 //     return f(p)
 template<typename U, typename __F0>
   requires requires(__F0& __fn, ::tpyapp::fixtures::P& __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(__a0) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> consume(__F0&& f, ::tpyapp::fixtures::P& p) {
     return f(p);
@@ -144,7 +144,7 @@ int32_t forward(__F0&& f, ::tpyapp::fixtures::P& p) {
 // def pick_cb[T, U](f: Callable[[T], U], x: T) -> Callable[[T], U]:
 //     return f
 template<typename T, typename U>
-std::function<U(::tpy::param_val_or_ref_t<T>)> pick_cb(const std::function<U(::tpy::param_val_or_ref_t<T>)>& f, ::tpy::param_val_or_ref_t<T> x) {
+std::function<::tpy::val_or_ref_t<U>(::tpy::param_val_or_ref_t<T>)> pick_cb(const std::function<::tpy::val_or_ref_t<U>(::tpy::param_val_or_ref_t<T>)>& f, ::tpy::param_val_or_ref_t<T> x) {
     return f;
 }
 // # a lending Callable at map's open return aliases, as map(ident, ...) does;
@@ -166,7 +166,7 @@ int32_t own_fn_to_callable(__F0&& f, ::tpyapp::fixtures::P& x) {
 // def pick0[T](f: Callable[[], T]) -> Callable[[], T]:
 //     return f
 template<typename T>
-std::function<T()> pick0(const std::function<T()>& f) {
+std::function<::tpy::val_or_ref_t<T>()> pick0(const std::function<::tpy::val_or_ref_t<T>()>& f) {
     return f;
 }
 // # the spellings the generic-slot refusals name compile: a copying lambda at
@@ -177,10 +177,10 @@ std::function<T()> pick0(const std::function<T()>& f) {
 //     return g
 template<typename T, typename __F0>
   requires requires(__F0& __fn) {
-      { __fn() } -> std::convertible_to<T>;
+      { __fn() } -> ::tpy::returns_form<::tpy::storage_t<T>>;
   }
-std::function<T()> lend_owned(__F0&& f, ::tpy::param_val_or_ref_t<T> like) {
-    std::function<T()> g = f;
+std::function<::tpy::storage_t<T>()> lend_owned(__F0&& f, ::tpy::param_val_or_ref_t<T> like) {
+    std::function<::tpy::storage_t<T>()> g = f;
     return g;
 }
 

@@ -82,16 +82,16 @@ int32_t bytearray_read(const ::tpy::ByteArray* b);
 // def trial[T, U](f: Fn[[T], U], xs: list[T]) -> int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-int32_t trial__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs);
+int32_t trial__Fn_T_U__list_T(__F0&& f, const std::vector<::tpy::storage_t<T>>& xs);
 // @dispatch
 // def trial[T, U](f: Fn[[Optional[T]], U], xs: list[T]) -> int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::opt_param_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-int32_t trial__Fn_T_None_U__list_T(__F0&& f, const std::vector<T>& xs);
+int32_t trial__Fn_T_None_U__list_T(__F0&& f, const std::vector<::tpy::storage_t<T>>& xs);
 // def overload_trial() -> int32:
 int32_t overload_trial();
 // def global_slot() -> int32:
@@ -352,9 +352,9 @@ inline Ctor::Ctor(const std::vector<P>* d) : k(::tpy::__getitem__(::tpy::none_it
 //     return 2
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-int32_t trial__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs) {
+int32_t trial__Fn_T_U__list_T(__F0&& f, const std::vector<::tpy::storage_t<T>>& xs) {
     return 2;
 }
 // @dispatch
@@ -362,9 +362,9 @@ int32_t trial__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs) {
 //     return 1
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::opt_param_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-int32_t trial__Fn_T_None_U__list_T(__F0&& f, const std::vector<T>& xs) {
+int32_t trial__Fn_T_None_U__list_T(__F0&& f, const std::vector<::tpy::storage_t<T>>& xs) {
     return 1;
 }
 

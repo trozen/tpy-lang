@@ -22,13 +22,13 @@ struct RTree;
 
 // class Bump(Protocol):
 template<typename T>
-concept Bump = requires(T& t) {
+concept Bump = requires(::tpy::storage_t<T>& t) {
     { t.bump() } -> std::convertible_to<void>;
 };
 
 // class Shape(Protocol):
 template<typename T>
-concept Shape = requires(T& t) {
+concept Shape = requires(::tpy::storage_t<T>& t) {
     { t.area() } -> std::convertible_to<int32_t>;
 };
 
@@ -36,7 +36,7 @@ struct DynShape;
 // @dynamic
 // class DynShape(Protocol):
 template<typename T>
-concept __DynShape_Concept__ = requires(T& t) {
+concept __DynShape_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.area() } -> std::convertible_to<int32_t>;
 };
 
@@ -231,7 +231,7 @@ bool is_str_vu(const ::tpy::Union<int32_t, std::string>& v);
 Dog mk_dog();
 // def wrap_crate[T](v: Own[T] | None) -> Own[Crate[T]] | None:
 template<typename T>
-std::optional<Crate<T>> wrap_crate(std::optional<T> v);
+std::optional<Crate<T>> wrap_crate(std::optional<::tpy::storage_t<T>> v);
 // def has_crate(c: Crate[int32] | None) -> bool:
 bool has_crate(const Crate<int32_t>* c);
 // def pointer_args() -> None:
@@ -261,7 +261,7 @@ template<typename T>
 bool some(::tpy::opt_cparam_t<T> x);
 // def wrap[T](xs: list[T]) -> bool:
 template<typename T>
-bool wrap(std::vector<T>& xs);
+bool wrap(std::vector<::tpy::storage_t<T>>& xs);
 // def opt_view(o: str | None) -> bool:
 bool opt_view(std::optional<std::string_view> o);
 // def opt_view_b(o: bytes | None) -> bool:
@@ -382,7 +382,7 @@ inline std::ostream& operator<<(std::ostream& os, const K& obj) {
 template<typename T>
 struct Keep {
     // first: T
-    T first;
+    ::tpy::storage_t<T> first;
 
     // def __init__(self, first: Own[T]) -> None:
     Keep() = default;
@@ -437,7 +437,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 template<typename T>
 struct Inner {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Inner() = default;
@@ -527,7 +527,7 @@ inline std::ostream& operator<<(std::ostream& os, const Big& obj) {
 template<typename T>
 struct Bag {
     // held: list[T]
-    std::vector<T> held;
+    std::vector<::tpy::storage_t<T>> held;
 
     // def __init__(self) -> None:
     Bag();
@@ -536,7 +536,7 @@ struct Bag {
     void push(::tpy::own_param_t<T> x);
 
     // def echo(self, src: list[T], i: int32) -> None:
-    void echo(const std::vector<T>& src, int32_t i);
+    void echo(const std::vector<::tpy::storage_t<T>>& src, int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -971,7 +971,7 @@ inline std::ostream& operator<<(std::ostream& os, const PetProbe& obj) {
 template<typename T>
 struct Crate {
     // self.value = value
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: Own[T]) -> None:
     Crate() = default;
@@ -1883,7 +1883,7 @@ inline Inner<T>::Inner(::tpy::readonly_form_t<T> v) : v(v) {}
 //     self.v = value  # tpyc: warning(/may copy T into field if not a value type/)
 template<typename T>
 inline void Inner<T>::put(::tpy::param_val_or_ref_t<T> value) {
-    this->v = ::tpy::param_to_storage<T>(value);
+    this->v = ::tpy::param_consume<T>(value);
 }
 
 // def __init__(self, v: T) -> None:
@@ -1902,7 +1902,7 @@ inline void Outer<T>::put_own(::tpy::own_param_t<T> value) {
 // def __init__(self) -> None:
 //     self.held = []
 template<typename T>
-inline Bag<T>::Bag() : held(std::vector<T>{}) {}
+inline Bag<T>::Bag() : held(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def push(self, x: Own[T]) -> None:
 //     self.held.append(x)
@@ -1915,8 +1915,8 @@ inline void Bag<T>::push(::tpy::own_param_t<T> x) {
 //     # own_elem: an element read at a record method's `Own[T]` slot
 //     self.push(src[i])  # tpyc: warning(/may copy T into owned storage if not a value type/)
 template<typename T>
-inline void Bag<T>::echo(const std::vector<T>& src, int32_t i) {
-    T __tmp_1 = ::tpy::__getitem__(src, i);
+inline void Bag<T>::echo(const std::vector<::tpy::storage_t<T>>& src, int32_t i) {
+    ::tpy::storage_t<T> __tmp_1 = ::tpy::__getitem__(src, i);
     this->push(std::move(__tmp_1));
 }
 
@@ -1961,7 +1961,7 @@ int32_t take_dict(::tpy::param_val_or_ref_t<T> w, ::tpy::ordered_map<std::string
 template<typename U>
 bool poke_gen(::tpy::opt_param_t<U> o, const std::function<void(::tpy::param_val_or_ref_t<U>)>& f) {
     if ((::tpy::opt_has_value(o))) {
-        f((*o));
+        f(::tpy::param_pass<U>((*o)));
     }
     return (::tpy::opt_has_value(o));
 }
@@ -1970,7 +1970,7 @@ bool poke_gen(::tpy::opt_param_t<U> o, const std::function<void(::tpy::param_val
 //         return Crate(v)
 //     return None
 template<typename T>
-std::optional<Crate<T>> wrap_crate(std::optional<T> v) {
+std::optional<Crate<T>> wrap_crate(std::optional<::tpy::storage_t<T>> v) {
     if ((v.has_value())) {
         return Crate<T>(std::move((*v)));
     }
@@ -1987,8 +1987,8 @@ bool some(::tpy::opt_cparam_t<T> x) {
 //     # at a record, a scalar and the view-family str / bytes instantiations
 //     return some(xs[0])  # tpyc: ok
 template<typename T>
-bool wrap(std::vector<T>& xs) {
-    return ::tpyapp::main::some<T>(::tpy::to_val_or_ptr<::tpy::opt_cparam_t<T>>(::tpy::__getitem__(xs, 0)));
+bool wrap(std::vector<::tpy::storage_t<T>>& xs) {
+    return ::tpyapp::main::some<::tpy::storage_t<T>>(::tpy::to_val_or_ptr<::tpy::opt_cparam_t<::tpy::storage_t<T>>>(::tpy::__getitem__(xs, 0)));
 }
 // def measure(s: Shape) -> int32:
 //     return s.area()

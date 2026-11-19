@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 template<typename T>
 struct Box {
     // _value: T
-    T _value;
+    ::tpy::storage_t<T> _value;
 
     // def __init__(self, value: T) -> None:
     Box() = default;

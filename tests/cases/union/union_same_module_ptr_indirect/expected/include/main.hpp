@@ -22,7 +22,7 @@ void main();
 template<typename T>
 struct MyWrap {
     // _ptr: Ptr[T]
-    T* _ptr;
+    ::tpy::storage_t<T>* _ptr;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyWrap";
 };

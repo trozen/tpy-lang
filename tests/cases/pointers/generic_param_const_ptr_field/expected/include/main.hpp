@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Reads(Protocol):
 template<typename T>
-concept Reads = requires(const T& t) {
+concept Reads = requires(const ::tpy::storage_t<T>& t) {
     { t.value() } -> std::convertible_to<int32_t>;
 };
 
@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 template<Reads W>
 struct RWView {
     // _src: Ptr[readonly[W]]
-    const W* _src;
+    const ::tpy::storage_t<W>* _src;
 
     // def __init__(self, src: W) -> None:
     RWView() = default;
@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const RWView<W>& obj) {
 template<Reads W>
 struct ROView {
     // _src: Ptr[readonly[W]]
-    const W* _src;
+    const ::tpy::storage_t<W>* _src;
 
     // def __init__(self, src: readonly[W]) -> None:
     ROView() = default;

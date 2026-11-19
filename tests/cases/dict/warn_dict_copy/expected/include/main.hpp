@@ -31,7 +31,7 @@ void test_warn_ior_not_last_use();
 void test_no_warn_ior_last_use();
 // def test_warn_update_generic[V](a: dict[str, V], b: dict[str, V]) -> None:
 template<typename V>
-void test_warn_update_generic(::tpy::ordered_map<std::string, V>& a, ::tpy::ordered_map<std::string, V>& b);
+void test_warn_update_generic(::tpy::ordered_map<std::string, ::tpy::storage_t<V>>& a, ::tpy::ordered_map<std::string, ::tpy::storage_t<V>>& b);
 
 // class Node:
 struct Node {
@@ -58,7 +58,7 @@ inline Node::Node(int32_t val) : val(val) {}
 //     a.update(b)  # tpyc: warning(/may copy V elements/)
 //     print(len(b))
 template<typename V>
-void test_warn_update_generic(::tpy::ordered_map<std::string, V>& a, ::tpy::ordered_map<std::string, V>& b) {
+void test_warn_update_generic(::tpy::ordered_map<std::string, ::tpy::storage_t<V>>& a, ::tpy::ordered_map<std::string, ::tpy::storage_t<V>>& b) {
     ::tpy::dict_update(a, b);
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }

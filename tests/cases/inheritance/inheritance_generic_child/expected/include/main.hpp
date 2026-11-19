@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
 template<typename T>
 struct Container {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Container() = default;
@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 template<typename T>
 struct Box : Animal {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, name: str, value: T) -> None:
     Box() = default;
@@ -78,7 +78,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 template<typename U>
 struct Wrapper : Container<int32_t> {
     // extra: U
-    U extra;
+    ::tpy::storage_t<U> extra;
 
     // def __init__(self, value: int32, extra: U) -> None:
     Wrapper() = default;

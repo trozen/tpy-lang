@@ -18,14 +18,14 @@ struct Tree;
 // @runtime_checkable
 // class P1(Protocol):
 template<typename T>
-concept P1 = requires(T& t) {
+concept P1 = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> std::convertible_to<int32_t>;
 };
 
 // @runtime_checkable
 // class P2(Protocol):
 template<typename T>
-concept P2 = requires(T& t) {
+concept P2 = requires(::tpy::storage_t<T>& t) {
     { t.size() } -> std::convertible_to<int32_t>;
 };
 
@@ -124,7 +124,7 @@ struct Tree {
 template<typename T>
 std::function<void()> mko(::tpy::opt_cparam_t<T> x) {
     auto g = [x]() {
-        std::cout << "opt.T" << " " << ::tpy::print_optional<::tpy::ValuePrinter<T>, T>(x) << "\n" << ::tpy::check_signals;
+        std::cout << "opt.T" << " " << ::tpy::print_optional<::tpy::ValuePrinter<::tpy::storage_t<T>>, ::tpy::storage_t<T>>(x) << "\n" << ::tpy::check_signals;
     };
     return g;
 }

@@ -618,7 +618,7 @@ class MethodAnalyzer:
         if (self.ctx.slot_step_commits() and type_subst
                 and expr.resolved_function_info is not None):
             self.ctx.record_own_copy_instantiation(
-                expr.resolved_function_info.root, type_subst)
+                expr.resolved_function_info.root, type_subst, at=expr)
         self.calls.commit_facts(expr, resolved)
         return resolved.return_type
 

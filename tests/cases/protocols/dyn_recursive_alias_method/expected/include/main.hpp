@@ -14,7 +14,7 @@ struct Counter;
 // @dynamic
 // class Counter(Protocol):
 template<typename T>
-concept __Counter_Concept__ = requires(T& t) {
+concept __Counter_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.count(std::declval<::tpyapp::treelib::Tree<::tpy::BigInt>&>()) } -> std::convertible_to<int32_t>;
 };
 

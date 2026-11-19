@@ -16,7 +16,7 @@ inline constexpr std::string_view __name__ = "tplib.box";
 template<typename T>
 struct Box {
     // _ptr: Ptr[T]
-    T* _ptr;
+    ::tpy::storage_t<T>* _ptr;
     bool __tpy_owned_ = true;
 
     // def __init__(self, value: Own[T]):
@@ -202,7 +202,7 @@ inline void Box<T>::set(::tpy::own_param_t<T> value) {
 template<typename T>
 inline Box<T> Box<T>::clone() const
   requires ::tpy::Copyable<T> {
-    return Box<T>(T(this->get()));
+    return Box<T>(::tpy::storage_t<T>(this->get()));
 }
 
 // def take(self: Own[Self]) -> Own[T]:

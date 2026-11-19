@@ -18,7 +18,7 @@ using ::tpyapp::variant_lib::Box;
 
 // class HasLen(Protocol):
 template<typename T>
-concept HasLen = requires(const T& t) {
+concept HasLen = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<::tpy::BigInt>;
 };
 
@@ -97,7 +97,7 @@ void guard_section();
 // @dispatch
 // def wrap[T](xs: list[T]) -> str:
 template<typename T>
-std::string wrap__list_T(const std::vector<T>& xs);
+std::string wrap__list_T(const std::vector<::tpy::storage_t<T>>& xs);
 // @dispatch
 // def wrap[T](x: T) -> str:
 template<typename T>
@@ -107,7 +107,7 @@ void shape_section();
 // @dispatch
 // def head[T](xs: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> head__list_T(std::vector<T>& xs);
+::tpy::val_or_ref_t<T> head__list_T(std::vector<::tpy::storage_t<T>>& xs);
 // @dispatch
 // def head(x: HasLen) -> int32:
 template<HasLen T_x>
@@ -228,7 +228,7 @@ inline const ::tpyapp::variant_lib::Box& Shelf::first() const {
 // def wrap[T](xs: list[T]) -> str:
 //     return "shape " + str(len(xs))
 template<typename T>
-std::string wrap__list_T(const std::vector<T>& xs) {
+std::string wrap__list_T(const std::vector<::tpy::storage_t<T>>& xs) {
     return (::tpy::str_concat("shape ", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(xs))));
 }
 // @dispatch
@@ -242,7 +242,7 @@ std::string wrap__T(::tpy::param_val_or_ref_t<T> x) {
 // def head[T](xs: list[T]) -> T:
 //     return xs[0]
 template<typename T>
-::tpy::val_or_ref_t<T> head__list_T(std::vector<T>& xs) {
+::tpy::val_or_ref_t<T> head__list_T(std::vector<::tpy::storage_t<T>>& xs) {
     return ::tpy::__getitem__(xs, 0);
 }
 // @dispatch

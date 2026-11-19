@@ -11,7 +11,7 @@ struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>
-concept __Pet_Concept__ = requires(T& t) {
+concept __Pet_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.speak() } -> std::convertible_to<std::string_view>;
 };
 

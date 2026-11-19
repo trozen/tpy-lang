@@ -38,7 +38,7 @@ struct __coro_atotal;
 template<::tpystd::typing::Iterable<std::vector<int32_t>> T_xs>
 std::vector<std::vector<int32_t>> keep(T_xs&& xs);
 // def take_g[T](xs: Iterable[Own[T]]) -> int32:
-template<typename T, ::tpystd::typing::Iterable<T> T_xs>
+template<typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
 int32_t take_g(T_xs&& xs);
 // def doubled(xs: Iterable[Own[Cell]]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<::tpyapp::fixtures::Cell> T_xs>
@@ -237,7 +237,7 @@ std::vector<std::vector<int32_t>> keep(T_xs&& xs) {
 //     for _ in xs:
 //         n += 1
 //     return n
-template<typename T, ::tpystd::typing::Iterable<T> T_xs>
+template<typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
 int32_t take_g(T_xs&& xs) {
     int32_t n = 0;
     auto& __src_0 = xs;

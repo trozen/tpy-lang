@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Counted(Protocol):
 template<typename T>
-concept Counted = requires(T& t) {
+concept Counted = requires(::tpy::storage_t<T>& t) {
     { t.value() } -> std::convertible_to<int32_t>;
 };
 

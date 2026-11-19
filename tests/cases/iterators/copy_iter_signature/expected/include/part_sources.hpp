@@ -24,8 +24,8 @@ int32_t via_alias(T_p&& p);
 template<::tpystd::typing::Iterable<::tpyapp::fixtures::Cell> T_p>
 int32_t via_rebind(T_p&& p);
 // def generic_owned[T: ValueType](xs: Iterable[Own[T]]) -> Own[list[T]]:
-template<::tpy::ValueType T, ::tpystd::typing::Iterable<T> T_xs>
-std::vector<T> generic_owned(T_xs&& xs);
+template<::tpy::ValueType T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
+std::vector<::tpy::storage_t<T>> generic_owned(T_xs&& xs);
 // def concrete_str(xs: Iterable[Own[str]]) -> Own[list[str]]:
 template<::tpystd::typing::Iterable<std::string> T_xs>
 std::vector<std::string> concrete_str(T_xs&& xs);
@@ -73,9 +73,9 @@ int32_t via_rebind(T_p&& p) {
 //     for x in xs:  # an open value step binds as its instantiation does
 //         out.append(x)
 //     return out
-template<::tpy::ValueType T, ::tpystd::typing::Iterable<T> T_xs>
-std::vector<T> generic_owned(T_xs&& xs) {
-    std::vector<T> out = std::vector<T>{};
+template<::tpy::ValueType T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
+std::vector<::tpy::storage_t<T>> generic_owned(T_xs&& xs) {
+    std::vector<::tpy::storage_t<T>> out = std::vector<::tpy::storage_t<T>>{};
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::handover_iter<decltype(xs)>(__src_0);
     for (;;) {

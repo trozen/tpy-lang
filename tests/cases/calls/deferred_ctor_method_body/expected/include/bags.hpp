@@ -18,7 +18,7 @@ inline constexpr std::string_view __name__ = "bags";
 template<typename T>
 struct Bag {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Bag();
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
 template<typename T>
 struct Cell {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Cell() = default;
@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
 template<::tpystd::tpy::Hashable T>
 struct Keyed {
     // keys: set[T]
-    ::tpy::ordered_set<T> keys;
+    ::tpy::ordered_set<::tpy::storage_t<T>> keys;
 
     // def __init__(self) -> None:
     Keyed();
@@ -76,11 +76,11 @@ inline std::ostream& operator<<(std::ostream& os, const Keyed<T>& obj) {
 template<typename T, std::size_t N>
 struct Mat {
     // a: Array[T, N]
-    std::array<T, N> a;
+    std::array<::tpy::storage_t<T>, N> a;
 
     // def __init__(self, a: Array[T, N]) -> None:
     Mat() = default;
-    explicit Mat(const std::array<T, N>& a);
+    explicit Mat(const std::array<::tpy::storage_t<T>, N>& a);
     static constexpr std::string_view __tpy_class_name__ = "bags.Mat";
 };
 
@@ -94,13 +94,13 @@ inline std::ostream& operator<<(std::ostream& os, const Mat<T, N>& obj) {
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T>
-inline Bag<T>::Bag() : items(std::vector<T>{}) {}
+inline Bag<T>::Bag() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def put(self, v: T) -> None:
 //     self.items.append(copy(v))
 template<typename T>
 inline void Bag<T>::put(::tpy::param_val_or_ref_t<T> v) {
-    this->items.push_back(T(v));
+    this->items.push_back(::tpy::storage_t<T>(v));
 }
 
 // def __init__(self, v: T) -> None:
@@ -111,19 +111,19 @@ inline Cell<T>::Cell(::tpy::readonly_form_t<T> v) : v(v) {}
 // def __init__(self) -> None:
 //     self.keys = set()
 template<::tpystd::tpy::Hashable T>
-inline Keyed<T>::Keyed() : keys(::tpy::ordered_set<T>()) {}
+inline Keyed<T>::Keyed() : keys(::tpy::ordered_set<::tpy::storage_t<T>>()) {}
 
 // def put(self, k: T) -> None:
 //     self.keys.add(copy(k))
 template<::tpystd::tpy::Hashable T>
 inline void Keyed<T>::put(::tpy::param_val_or_ref_t<T> k) {
-    this->keys.insert(T(k));
+    this->keys.insert(::tpy::storage_t<T>(k));
 }
 
 // def __init__(self, a: Array[T, N]) -> None:
 //     self.a = copy(a)
 template<typename T, std::size_t N>
-inline Mat<T, N>::Mat(const std::array<T, N>& a) : a(a) {}
+inline Mat<T, N>::Mat(const std::array<::tpy::storage_t<T>, N>& a) : a(a) {}
 
 void __tpy_init();
 } // namespace tpyapp::bags

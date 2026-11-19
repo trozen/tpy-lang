@@ -269,11 +269,11 @@ inline std::ostream& operator<<(std::ostream& os, const Ints& obj) {
 template<typename T>
 struct Box {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
     Box() = default;
-    explicit Box(std::vector<T>&& items);
+    explicit Box(std::vector<::tpy::storage_t<T>>&& items);
 
     // def __iter__(self) -> Iterator[T]:
     //     return iter(self.items)
@@ -783,7 +783,7 @@ inline std::vector<std::string> Letters::listed() const {
 // def __init__(self, items: Own[list[T]]) -> None:
 //     self.items = items
 template<typename T>
-inline Box<T>::Box(std::vector<T>&& items) : items(std::move(items)) {}
+inline Box<T>::Box(std::vector<::tpy::storage_t<T>>&& items) : items(std::move(items)) {}
 
 // def show(xs: Iterable[str]) -> None:
 //     # an Iterable param handed to list()

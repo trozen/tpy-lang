@@ -8,8 +8,10 @@
 
 namespace tpyapp::main {
 
-using ::tpystd::functools::reduce__Fn_U_T_U__Iterable_T__U;
+using ::tpystd::functools::reduce__Fn_U_T_U__list_T__U;
+using ::tpystd::functools::reduce__Fn_U_T_Own_U__Iterable_T__U;
 using ::tpystd::functools::reduce__Fn_T_T_T__list_T;
+using ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T;
 
 struct R;
 struct P;
@@ -20,57 +22,57 @@ inline constexpr std::string_view __name__ = "__main__";
 template <typename T, typename F_f>
 struct __gen_gen;
 
-// def red[T](func: Fn[[T, T], T], a: list[T]) -> Own[T]:
+// def red[T](func: Fn[[T, T], Own[T]], a: list[T]) -> Own[T]:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<::tpy::storage_t<T>>;
   }
-::tpy::own_return_t<T> red(__F0&& func, std::vector<T>& a);
+::tpy::own_return_t<T> red(__F0&& func, std::vector<::tpy::storage_t<T>>& a);
 // def app[T, U](f: Fn[[T], U], xs: list[T]) -> U:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-::tpy::val_or_ref_t<U> app(__F0&& f, std::vector<T>& xs);
+::tpy::val_or_ref_t<U> app(__F0&& f, std::vector<::tpy::storage_t<T>>& xs);
 // def each[T](f: Fn[[T], None], xs: list[T]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-void each(__F0&& f, std::vector<T>& xs);
+void each(__F0&& f, std::vector<::tpy::storage_t<T>>& xs);
 // def on_values[K, V](f: Fn[[V], None], d: dict[K, V]) -> None:
 template<typename K, typename V, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<V> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-void on_values(__F0&& f, ::tpy::ordered_map<K, V>& d);
+void on_values(__F0&& f, ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>& d);
 // def on_iter[T](f: Fn[[T], None], it: Iterable[T]) -> None:
 template<typename T, ::tpystd::typing::Iterable<T> T_it, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void on_iter(__F0&& f, T_it&& it);
 // def gen[T](f: Fn[[T], None], xs: list[T]) -> Iterator[int32]:
 template <typename T, typename F_f>
-__gen_gen<T, F_f> gen(F_f&& f, std::vector<T>& xs);
+__gen_gen<T, F_f> gen(F_f&& f, std::vector<::tpy::storage_t<T>>& xs);
 // def inner[T](f: Fn[[T], None], xs: list[T]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-void inner(__F0&& f, std::vector<T>& xs);
+void inner(__F0&& f, std::vector<::tpy::storage_t<T>>& xs);
 // def outer[T](f: Fn[[T], None], xs: list[T]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-void outer(__F0&& f, std::vector<T>& xs);
+void outer(__F0&& f, std::vector<::tpy::storage_t<T>>& xs);
 // def via_local[T](xs: list[T], f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-void via_local(std::vector<T>& xs, __F0&& f);
+void via_local(std::vector<::tpy::storage_t<T>>& xs, __F0&& f);
 // def combine(a: R, b: R) -> Own[R]:
 R combine(const R& a, R& b);
 // def bump(r: R) -> None:
@@ -129,9 +131,9 @@ struct Runner {
     // def run(self, f: Fn[[T], None], xs: list[T]) -> None:
     template<typename __F0>
       requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-          __fn(__a0);
+          __fn(static_cast<decltype(__a0)&&>(__a0));
       }
-    void run(__F0&& f, std::vector<T>& xs) const;
+    void run(__F0&& f, std::vector<::tpy::storage_t<T>>& xs) const;
 
     // def invoke(self, x: T) -> None:
     void invoke(::tpy::param_val_or_ref_t<T> x) const;
@@ -152,7 +154,7 @@ template <typename T, typename F_f>
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T, F_f>, int32_t> {
     ::tpy::frame_state __state;
     F_f f;
-    std::vector<T>& xs;
+    std::vector<::tpy::storage_t<T>>& xs;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
@@ -164,7 +166,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T, F_f>, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_gen(F_f&& f_, std::vector<T>& xs)
+    __gen_gen(F_f&& f_, std::vector<::tpy::storage_t<T>>& xs)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
           xs(xs) {}
@@ -197,7 +199,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen<T, F_f>::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         i = ((*__for_i_0))++;
-        f(xs[static_cast<std::size_t>(i)]);
+        f(::tpy::param_pass<T>(xs[static_cast<std::size_t>(i)]));
         __state = S_RESUME_0;
         return i;
     }
@@ -209,7 +211,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen<T, F_f>::__next__() {
 
 // def gen[T](f: Fn[[T], None], xs: list[T]) -> Iterator[int32]:
 template <typename T, typename F_f>
-__gen_gen<T, F_f> gen(F_f&& f, std::vector<T>& xs) {
+__gen_gen<T, F_f> gen(F_f&& f, std::vector<::tpy::storage_t<T>>& xs) {
     return __gen_gen<T, F_f>(std::forward<F_f>(f), xs);
 }
 
@@ -235,9 +237,9 @@ inline Runner<T>::Runner(std::function<void(::tpy::param_val_or_ref_t<T>)> cb)
 template<typename T>
 template<typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-inline void Runner<T>::run(__F0&& f, std::vector<T>& xs) const {
+inline void Runner<T>::run(__F0&& f, std::vector<::tpy::storage_t<T>>& xs) const {
     f(::tpy::__getitem__(xs, 0));
 }
 
@@ -255,22 +257,22 @@ inline void Runner<T>::invoke_at(::tpy::param_val_or_ref_t<T> x) const {
     (::tpy::__getitem__(this->cbs, 0))(x);
 }
 
-// def red[T](func: Fn[[T, T], T], a: list[T]) -> Own[T]:
+// def red[T](func: Fn[[T, T], Own[T]], a: list[T]) -> Own[T]:
 //     acc = copy(a[0])
 //     for i in range(1, len(a)):
 //         acc = func(acc, a[i])
 //     return acc
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<::tpy::storage_t<T>>;
   }
-::tpy::own_return_t<T> red(__F0&& func, std::vector<T>& a) {
-    T __slot_1 = T(::tpy::__getitem__(a, 0));
-    T* acc = &__slot_1;
-    std::optional<T> __slot_2;
+::tpy::own_return_t<T> red(__F0&& func, std::vector<::tpy::storage_t<T>>& a) {
+    ::tpy::storage_t<T> __slot_1 = ::tpy::storage_t<T>(::tpy::__getitem__(a, 0));
+    ::tpy::storage_t<T>* acc = &__slot_1;
+    std::optional<::tpy::storage_t<T>> __slot_2;
     int32_t __stop_0 = ::tpy::__len__(a);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        acc = &*(__slot_2 = func((*acc), ::tpy::__getitem__(a, i)));
+        acc = &*(__slot_2 = func(::tpy::param_pass<T>((*acc)), ::tpy::param_pass<T>(::tpy::__getitem__(a, i))));
     }
     return std::move((*acc));
 }
@@ -278,25 +280,25 @@ template<typename T, typename __F0>
 //     return f(xs[0])
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
-::tpy::val_or_ref_t<U> app(__F0&& f, std::vector<T>& xs) {
-    return f(::tpy::__getitem__(xs, 0));
+::tpy::val_or_ref_t<U> app(__F0&& f, std::vector<::tpy::storage_t<T>>& xs) {
+    return f(::tpy::param_pass<T>(::tpy::__getitem__(xs, 0)));
 }
 // def each[T](f: Fn[[T], None], xs: list[T]) -> None:
 //     for x in xs:
 //         f(x)
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-void each(__F0&& f, std::vector<T>& xs) {
+void each(__F0&& f, std::vector<::tpy::storage_t<T>>& xs) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        f(x);
+        f(::tpy::param_pass<T>(x));
     }
 }
 // def on_values[K, V](f: Fn[[V], None], d: dict[K, V]) -> None:
@@ -304,15 +306,15 @@ void each(__F0&& f, std::vector<T>& xs) {
 //         f(d[k])
 template<typename K, typename V, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<V> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-void on_values(__F0&& f, ::tpy::ordered_map<K, V>& d) {
+void on_values(__F0&& f, ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>& d) {
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& k = *__beg_0;
-        f(::tpy::__getitem__(d, k));
+        f(::tpy::param_pass<V>(::tpy::__getitem__(d, k)));
     }
 }
 // def on_iter[T](f: Fn[[T], None], it: Iterable[T]) -> None:
@@ -320,7 +322,7 @@ void on_values(__F0&& f, ::tpy::ordered_map<K, V>& d) {
 //         f(x)
 template<typename T, ::tpystd::typing::Iterable<T> T_it, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void on_iter(__F0&& f, T_it&& it) {
     auto& __src_0 = it;
@@ -329,25 +331,25 @@ void on_iter(__F0&& f, T_it&& it) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& x = ::tpy::unwrap_ref(*__r_1);
-        f(x);
+        f(::tpy::param_pass<T>(x));
     }
 }
 // def inner[T](f: Fn[[T], None], xs: list[T]) -> None:
 //     f(xs[0])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-void inner(__F0&& f, std::vector<T>& xs) {
-    f(::tpy::__getitem__(xs, 0));
+void inner(__F0&& f, std::vector<::tpy::storage_t<T>>& xs) {
+    f(::tpy::param_pass<T>(::tpy::__getitem__(xs, 0)));
 }
 // def outer[T](f: Fn[[T], None], xs: list[T]) -> None:
 //     inner(f, xs)
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-void outer(__F0&& f, std::vector<T>& xs) {
+void outer(__F0&& f, std::vector<::tpy::storage_t<T>>& xs) {
     ::tpyapp::main::inner<T>(f, xs);
 }
 // def via_local[T](xs: list[T], f: Fn[[T], None]) -> None:
@@ -355,11 +357,11 @@ void outer(__F0&& f, std::vector<T>& xs) {
 //     g(xs[0])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-void via_local(std::vector<T>& xs, __F0&& f) {
+void via_local(std::vector<::tpy::storage_t<T>>& xs, __F0&& f) {
     std::function<void(::tpy::param_val_or_ref_t<T>)> g = f;
-    g(::tpy::__getitem__(xs, 0));
+    g(::tpy::param_pass<T>(::tpy::__getitem__(xs, 0)));
 }
 
 void __tpy_init();

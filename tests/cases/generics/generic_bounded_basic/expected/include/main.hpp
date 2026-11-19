@@ -18,7 +18,7 @@ void main();
 template<::tpystd::typing::Sized T>
 struct Container {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: T):
     Container() = default;

@@ -25,7 +25,7 @@ void s1e(A& a);
 void s1f(const std::tuple<A*, int32_t>& t);
 // def s2d[T](ps: list[tuple[T, int32]], out: list[tuple[T, int32]]) -> None:
 template<typename T>
-void s2d(const std::vector<std::tuple<T, int32_t>>& ps, std::vector<std::tuple<T, int32_t>>& out);
+void s2d(const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& ps, std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& out);
 // def main() -> None:
 void main();
 
@@ -53,7 +53,7 @@ inline A::A(int32_t v) : v(v) {}
 // def s2d[T](ps: list[tuple[T, int32]], out: list[tuple[T, int32]]) -> None:
 //     out.append(ps[0])  # tpyc: warning(/may copy T into owned storage \(tuple element 0\) if not a value type/)
 template<typename T>
-void s2d(const std::vector<std::tuple<T, int32_t>>& ps, std::vector<std::tuple<T, int32_t>>& out) {
+void s2d(const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& ps, std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& out) {
     out.push_back(::tpy::__getitem__(ps, 0));
 }
 

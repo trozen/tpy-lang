@@ -18,7 +18,7 @@ int32_t report__int32__int32__int32(int32_t a, int32_t b = 0, int32_t count = 1)
 // @dispatch
 // def pick[T](x: T, y: list[T]) -> str:
 template<typename T>
-std::string pick__T__list_T(::tpy::param_val_or_ref_t<T> x, const std::vector<T>& y);
+std::string pick__T__list_T(::tpy::param_val_or_ref_t<T> x, const std::vector<::tpy::storage_t<T>>& y);
 // @dispatch
 // def pick[T](y: T, x: str) -> str:
 template<typename T>
@@ -33,7 +33,7 @@ void main();
 // def pick[T](x: T, y: list[T]) -> str:
 //     return "list"
 template<typename T>
-std::string pick__T__list_T(::tpy::param_val_or_ref_t<T> x, const std::vector<T>& y) {
+std::string pick__T__list_T(::tpy::param_val_or_ref_t<T> x, const std::vector<::tpy::storage_t<T>>& y) {
     return "list";
 }
 // @dispatch

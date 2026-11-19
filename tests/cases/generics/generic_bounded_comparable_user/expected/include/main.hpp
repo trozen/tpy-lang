@@ -79,9 +79,9 @@ bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
 template<::tpystd::tpy::Comparable T>
 ::tpy::val_or_ref_t<T> find_min(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     if ((a < b)) {
-        return ::tpy::param_to_return<T>(a);
+        return ::tpy::param_to_return_last<T>(a);
     }
-    return ::tpy::param_to_return<T>(b);
+    return ::tpy::param_to_return_last<T>(b);
 }
 
 void __tpy_init();

@@ -82,7 +82,7 @@ template<::tpystd::tpy::ComparableRef T, ::tpystd::typing::Iterable<T> T_xs>
 ::tpy::own_return_t<T> top_any(const T_xs& xs);
 // def top_list[T: ComparableRef](xs: list[T]) -> Own[T]:
 template<::tpystd::tpy::ComparableRef T>
-::tpy::own_return_t<T> top_list(const std::vector<T>& xs);
+::tpy::own_return_t<T> top_list(const std::vector<::tpy::storage_t<T>>& xs);
 // def gen_body(ps: list[P]) -> Iterator[int]:
 __gen_gen_body gen_body(std::vector<P>& ps);
 // async def async_body(ps: list[P]) -> int:
@@ -451,7 +451,7 @@ inline Pq::Pq(const ::tpy::BigInt& v)
 //     return m
 template<::tpystd::tpy::ComparableRef T, ::tpystd::typing::Iterable<T> T_xs>
 ::tpy::own_return_t<T> top_any(const T_xs& xs) {
-    T m = ::tpy::builtin_max_elem(xs);
+    ::tpy::storage_t<T> m = ::tpy::builtin_max_elem(xs);
     return m;
 }
 // # ... and over a `list[T]` source too: a borrow of an open `T` has no slot
@@ -460,8 +460,8 @@ template<::tpystd::tpy::ComparableRef T, ::tpystd::typing::Iterable<T> T_xs>
 //     m = max(xs)  # tpyc: warning(/may copy T into local 'm' if not a value type/)
 //     return m
 template<::tpystd::tpy::ComparableRef T>
-::tpy::own_return_t<T> top_list(const std::vector<T>& xs) {
-    T m = ::tpy::builtin_max_elem(xs);
+::tpy::own_return_t<T> top_list(const std::vector<::tpy::storage_t<T>>& xs) {
+    ::tpy::storage_t<T> m = ::tpy::builtin_max_elem(xs);
     return m;
 }
 

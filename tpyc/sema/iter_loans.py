@@ -37,7 +37,7 @@ from ..typesys import (
     make_list, make_set, yield_uses_borrow_slot,
     is_callable_type, is_dyn_protocol, is_fn_type, is_protocol_type,
     type_param_names,
-    unwrap_own, unwrap_readonly, unwrap_ref_type,
+    OwnType, contains_type_param, unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
 from ..value_category import (
     call_operands, frame_factory_callee, frame_temp_arg_source,
@@ -342,6 +342,19 @@ def _yield_elem_sources(fi: FunctionInfo,
     return out if named else None
 
 
+def _binds_reference(call: TpyExpr, root: FunctionInfo,
+                     et: TypeParamRef) -> bool:
+    """Call `call` binds its callee's type parameter `et` to a bare
+    reference type: no `Own`, so a step of it lends."""
+    targs = getattr(call, "inferred_type_args", None)
+    if not targs or et.name not in root.type_params:
+        return False
+    bound = targs[root.type_params.index(et.name)]
+    return (isinstance(bound, TpyType) and not isinstance(bound, OwnType)
+            and not contains_type_param(bound)
+            and not unwrap_ref_type(unwrap_readonly(bound)).is_value_type())
+
+
 def _elem_param_indices(root: FunctionInfo, et: TpyType) -> list[int]:
     """The parameters of a callee's generic signature whose type mentions a
     type param spelling yield element `et` -- where that element comes from."""
@@ -510,6 +523,11 @@ def _callee_provenance(ctx: SemanticContext, call: TpyExpr,
                 unnamed = _unnamed_provenance(ctx, args_by_idx[i])
                 if _flat_provenance(unnamed):
                     return unnamed
+        # A step parameter the call binds to a bare reference type is a
+        # lend (`Iterator[U]` at `U = P`; `U = Own[P]` hands over): what
+        # the operands lend, or a lend from storage nothing names.
+        if _binds_reference(call, root, et):
+            return every or UnnamedLend.UNKNOWN
         return lent
 
     return elem(args[0], ())

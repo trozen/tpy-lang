@@ -261,44 +261,44 @@ void main() {
     std::array<N, 2> m = {N(8), N(9)};
     std::cout << "nocopy map dead" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_5 = ::tpy::builtin_map<N>(keep, std::move(m));
+        auto __obj_5 = ::tpy::builtin_map<::tpy::own_arg<N>>(keep, std::move(m));
         auto __beg_5 = __obj_5.begin();
         auto __end_5 = __obj_5.end();
         for (; __beg_5 != __end_5; ++__beg_5) {
-            const auto& n = *__beg_5;
+            auto&& n = ::tpy::take_elem(__beg_5);
             __result.push_back(n.v);
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     std::cout << "nocopy map fresh" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_6 = ::tpy::builtin_map<N>(keep, ::tpyapp::part_nocopy::mk());
+        auto __obj_6 = ::tpy::builtin_map<::tpy::own_arg<N>>(keep, ::tpyapp::part_nocopy::mk());
         auto __beg_6 = __obj_6.begin();
         auto __end_6 = __obj_6.end();
         for (; __beg_6 != __end_6; ++__beg_6) {
-            const auto& n = *__beg_6;
+            auto&& n = ::tpy::take_elem(__beg_6);
             __result.push_back(n.v);
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     std::cout << "nocopy map iter" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_7 = ::tpy::builtin_map<N>(keep, ::tpy::__iter__(::tpyapp::part_nocopy::mk()));
+        auto __obj_7 = ::tpy::builtin_map<::tpy::own_arg<N>>(keep, ::tpy::__iter__(::tpyapp::part_nocopy::mk()));
         auto __beg_7 = __obj_7.begin();
         auto __end_7 = __obj_7.end();
         for (; __beg_7 != __end_7; ++__beg_7) {
-            const auto& n = *__beg_7;
+            auto&& n = ::tpy::take_elem(__beg_7);
             __result.push_back(n.v);
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     std::cout << "nocopy map reversed" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_8 = ::tpy::builtin_map<N>(keep, ::tpy::builtin_reversed(::tpyapp::part_nocopy::mk()));
+        auto __obj_8 = ::tpy::builtin_map<::tpy::own_arg<N>>(keep, ::tpy::builtin_reversed(::tpyapp::part_nocopy::mk()));
         auto __beg_8 = __obj_8.begin();
         auto __end_8 = __obj_8.end();
         for (; __beg_8 != __end_8; ++__beg_8) {
-            const auto& n = *__beg_8;
+            auto&& n = ::tpy::take_elem(__beg_8);
             __result.push_back(n.v);
         }
         std::move(__result);

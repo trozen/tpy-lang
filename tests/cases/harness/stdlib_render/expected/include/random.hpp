@@ -38,10 +38,10 @@ void seed__int32(int32_t n);
 int32_t randint(int32_t a, int32_t b);
 // def choice[T](seq: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> choice(const std::vector<T>& seq);
+::tpy::val_or_ref_t<T> choice(const std::vector<::tpy::storage_t<T>>& seq);
 // def shuffle[T](seq: list[T]) -> None:
 template<typename T>
-void shuffle(std::vector<T>& seq);
+void shuffle(std::vector<::tpy::storage_t<T>>& seq);
 // @dispatch
 // def randrange(stop: int32) -> int32:
 int32_t randrange__int32(int32_t stop);
@@ -137,11 +137,11 @@ struct Random {
 
     // def choice[T](self, seq: list[T]) -> T:
     template<typename T>
-    ::tpy::val_or_ref_t<T> choice(const std::vector<T>& seq);
+    ::tpy::val_or_ref_t<T> choice(const std::vector<::tpy::storage_t<T>>& seq);
 
     // def shuffle[T](self, seq: list[T]) -> None:
     template<typename T>
-    void shuffle(std::vector<T>& seq);
+    void shuffle(std::vector<::tpy::storage_t<T>>& seq);
 
     // def uniform(self, a: float, b: float) -> float:
     double uniform(double a, double b);
@@ -377,12 +377,12 @@ inline double Random::betavariate(double alpha, double beta) {
 //         raise IndexError("Cannot choose from an empty sequence")
 //     return copy(seq[int32(self._randbelow(uint32(n)))])
 template<typename T>
-inline ::tpy::val_or_ref_t<T> Random::choice(const std::vector<T>& seq) {
+inline ::tpy::val_or_ref_t<T> Random::choice(const std::vector<::tpy::storage_t<T>>& seq) {
     int32_t n = ::tpy::__len__(seq);
     if ((n == 0)) {
         throw ::tpy::IndexError("Cannot choose from an empty sequence");
     }
-    return T(::tpy::__getitem__(seq, ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>(n)))));
+    return ::tpy::storage_t<T>(::tpy::__getitem__(seq, ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>(n)))));
 }
 
 // def shuffle[T](self, seq: list[T]) -> None:
@@ -397,12 +397,12 @@ inline ::tpy::val_or_ref_t<T> Random::choice(const std::vector<T>& seq) {
 //         seq[j] = tmp
 //         i -= 1
 template<typename T>
-inline void Random::shuffle(std::vector<T>& seq) {
+inline void Random::shuffle(std::vector<::tpy::storage_t<T>>& seq) {
     int32_t i = (::tpy::sub_check<int32_t>(::tpy::__len__(seq), 1));
     while ((i > 0)) {
         int32_t j = ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>((::tpy::add_check<int32_t>(i, 1)))));
-        T tmp = T(::tpy::__getitem__(seq, i));
-        ::tpy::__setitem__(seq, i, T(::tpy::__getitem__(seq, j)));
+        ::tpy::storage_t<T> tmp = ::tpy::storage_t<T>(::tpy::__getitem__(seq, i));
+        ::tpy::__setitem__(seq, i, ::tpy::storage_t<T>(::tpy::__getitem__(seq, j)));
         ::tpy::__setitem__(seq, j, std::move(tmp));
         i = ::tpy::sub_check<int32_t>(i, 1);
     }
@@ -411,14 +411,14 @@ inline void Random::shuffle(std::vector<T>& seq) {
 // def choice[T](seq: list[T]) -> T:
 //     return _inst.choice(seq)
 template<typename T>
-::tpy::val_or_ref_t<T> choice(const std::vector<T>& seq) {
-    return _inst->choice<T>(seq);
+::tpy::val_or_ref_t<T> choice(const std::vector<::tpy::storage_t<T>>& seq) {
+    return _inst->choice<::tpy::storage_t<T>>(seq);
 }
 // def shuffle[T](seq: list[T]) -> None:
 //     _inst.shuffle(seq)
 template<typename T>
-void shuffle(std::vector<T>& seq) {
-    _inst->shuffle<T>(seq);
+void shuffle(std::vector<::tpy::storage_t<T>>& seq) {
+    _inst->shuffle<::tpy::storage_t<T>>(seq);
 }
 
 void __tpy_init();

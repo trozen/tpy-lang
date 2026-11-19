@@ -17,7 +17,7 @@ struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>
-concept __Pet_Concept__ = requires(T& t) {
+concept __Pet_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 
@@ -99,7 +99,7 @@ inline std::string_view Dog::name() const {
 //     return Box(inner)
 template<typename T>
 ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<T>> double_wrap__Own_Rc_T(::tpystd::tplib::rc::Rc<T>&& inner) {
-    return ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<T>>(std::move(inner));
+    return ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<::tpy::storage_t<T>>>(std::move(inner));
 }
 
 void __tpy_init();

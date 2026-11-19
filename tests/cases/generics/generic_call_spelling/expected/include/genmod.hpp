@@ -17,7 +17,7 @@ template<typename T>
 //     return b
 template<typename T>
 ::tpy::val_or_ref_t<T> gf(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    return ::tpy::param_to_return<T>(b);
+    return ::tpy::param_to_return_last<T>(b);
 }
 
 void __tpy_init();

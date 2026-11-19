@@ -53,7 +53,7 @@ struct Outer {
     template<typename T>
     struct Box {
         // value: T
-        T value;
+        ::tpy::storage_t<T> value;
 
         // def __init__(self, value: T) -> None:
         Box() = default;
@@ -316,7 +316,7 @@ struct __coro_2_5_Outer_5_Inner_4_echo {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          value(value_) {}
+          value(::tpy::param_pass_last<T>(value_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -344,7 +344,7 @@ template <typename T>
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(value);
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(value));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -355,7 +355,7 @@ template <typename T>
 
 template <typename T>
 inline __coro_2_5_Outer_5_Inner_4_echo<T> Outer::Inner::echo(::tpy::param_val_or_ref_t<T> value) const {
-    return __coro_2_5_Outer_5_Inner_4_echo<T>(*this, value);
+    return __coro_2_5_Outer_5_Inner_4_echo<T>(*this, ::tpy::param_pass_last<T>(value));
 }
 
 // async def cleanup(self) -> int:
@@ -653,7 +653,7 @@ struct __coro_nested_echo {
         : __state(S_INITIAL),
           __cancel_pending(false),
           inner(inner),
-          value(value_),
+          value(::tpy::param_pass_last<T>(value_)),
           delta(std::move(delta_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
@@ -682,7 +682,7 @@ template <typename T>
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(value);
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(value));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -694,7 +694,7 @@ template <typename T>
 // async def nested_echo[T](inner: Outer.Inner, value: T, delta: int = 1) -> T:
 template <typename T>
 __coro_nested_echo<T> nested_echo(Outer::Inner& inner, ::tpy::param_val_or_ref_t<T> value, ::tpy::BigInt delta) {
-    return __coro_nested_echo<T>(inner, value, delta);
+    return __coro_nested_echo<T>(inner, ::tpy::param_pass_last<T>(value), delta);
 }
 
 // def values(self) -> Iterator[int]:

@@ -37,9 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 template<typename T>
 struct Pair {
     // first_val: T
-    T first_val;
+    ::tpy::storage_t<T> first_val;
     // second_val: T
-    T second_val;
+    ::tpy::storage_t<T> second_val;
 
     // def __init__(self, a: T, b: T) -> None:
     Pair() = default;

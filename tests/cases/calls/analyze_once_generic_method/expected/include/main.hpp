@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 template<typename T>
 struct Bag {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Bag();
@@ -69,7 +69,7 @@ struct K {
 
     // def first[U](self, xs: list[U]) -> U:
     template<typename U>
-    ::tpy::val_or_ref_t<U> first(std::vector<U>& xs) const;
+    ::tpy::val_or_ref_t<U> first(std::vector<::tpy::storage_t<U>>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.K";
 };
 
@@ -96,7 +96,7 @@ inline K::K() : n(0) {}
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T>
-inline Bag<T>::Bag() : items(std::vector<T>{}) {}
+inline Bag<T>::Bag() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def put(self, x: Own[T]) -> None:
 //     self.items.append(x)
@@ -117,7 +117,7 @@ inline ::tpy::own_return_t<U> K::m(::tpy::own_param_t<U> x) {
 // def first[U](self, xs: list[U]) -> U:
 //     return xs[0]
 template<typename U>
-inline ::tpy::val_or_ref_t<U> K::first(std::vector<U>& xs) const {
+inline ::tpy::val_or_ref_t<U> K::first(std::vector<::tpy::storage_t<U>>& xs) const {
     return ::tpy::__getitem__(xs, 0);
 }
 

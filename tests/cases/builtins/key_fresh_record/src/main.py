@@ -58,10 +58,13 @@ def free(rs: list[Rec]) -> None:
     print("free min3_cls", min(a, b, c, key=Key).n)  # tpyc: ok
     print("free max3_own", max(a, b, c, key=lambda r: make_key(r)).n)  # tpyc: ok
     print("free max3_cls", max(a, b, c, key=Key).n)  # tpyc: ok
-    # an identity key copies the element (warned, as at a plain Callable
-    # parameter; BUGS.md#identity-key-lambda-copies-element); non-mutating calls on the const param
-    print("free sorted_id", ns(sorted(rs, key=lambda r: r)))  # tpyc: warning(/copies Rec into owned storage/)
-    print("free min_id", min(a, b, key=lambda r: r).n)  # tpyc: warning(/copies Rec into owned storage/)
+    # an identity key returns its parameter, a borrow: the key copies
+    # nothing (the sorted list copies the elements, as above); non-mutating
+    # calls on the const param
+    print("free sorted_id", ns(sorted(rs, key=lambda r: r)))  # tpyc: warning(/copies Rec elements/)
+    # the result is `a` or `b` itself: a write through it reaches it
+    min(a, b, key=lambda r: r).n += 10  # tpyc: ok
+    print("free min_id", a.n, b.n)
     print("free min_method", min(a, b, key=lambda r: r.score()).n)  # tpyc: ok
     print("free max_helper", max(a, b, key=lambda r: helper(r)).n)  # tpyc: ok
 

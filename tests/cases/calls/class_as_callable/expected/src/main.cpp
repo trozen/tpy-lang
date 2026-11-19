@@ -192,11 +192,11 @@ void ref_arg() {
     std::vector<std::vector<::tpy::BigInt>> lol = {{1}, {2}};
     std::cout << "ref arg map" << " " << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
-        auto __obj_0 = ::tpy::builtin_map<Appender>([](std::vector<::tpy::BigInt>& __tpy_fa0) -> Appender { return Appender(__tpy_fa0); }, lol);
+        auto __obj_0 = ::tpy::builtin_map<::tpy::own_arg<Appender>>([](std::vector<::tpy::BigInt>& __tpy_fa0) -> Appender { return Appender(__tpy_fa0); }, lol);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& a = *__beg_0;
+            auto&& a = ::tpy::take_elem(__beg_0);
             __result.push_back(a.n);
         }
         std::move(__result);
@@ -217,22 +217,22 @@ void builtins_() {
     std::cout << "sorted" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<int32_t>(std::array<int32_t, 3>{3, 1, 20}, [](int32_t __tpy_fa0) -> std::string { return ::tpy::fixed_to_str<int32_t>(__tpy_fa0); })) << "\n" << ::tpy::check_signals;
     std::cout << "map list" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_0 = ::tpy::builtin_map<std::vector<char>>([](std::string_view __tpy_fa0) -> std::vector<char> { return ::tpy::construct<std::vector<char>>(__tpy_fa0); }, std::array<std::string, 2>{"ab", "c"});
+        auto __obj_0 = ::tpy::builtin_map<::tpy::own_arg<std::vector<char>>>([](std::string_view __tpy_fa0) -> std::vector<char> { return ::tpy::construct<std::vector<char>>(__tpy_fa0); }, std::array<std::string, 2>{"ab", "c"});
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& x = *__beg_0;
+            auto&& x = ::tpy::take_elem(__beg_0);
             __result.push_back(::tpy::__len__(x));
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     std::cout << "map generic" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_1 = ::tpy::builtin_map<Box<int32_t>>([](int32_t __tpy_fa0) -> Box<int32_t> { return Box<int32_t>(__tpy_fa0); }, std::array<int32_t, 2>{5, 6});
+        auto __obj_1 = ::tpy::builtin_map<::tpy::own_arg<Box<int32_t>>>([](int32_t __tpy_fa0) -> Box<int32_t> { return Box<int32_t>(__tpy_fa0); }, std::array<int32_t, 2>{5, 6});
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
-            const auto& b = *__beg_1;
+            auto&& b = ::tpy::take_elem(__beg_1);
             __result.push_back(b.v);
         }
         std::move(__result);

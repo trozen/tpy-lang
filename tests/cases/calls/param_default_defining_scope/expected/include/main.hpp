@@ -380,7 +380,7 @@ int32_t through_protocol(T_p&& p) {
 //     return defs.Box(v).F  # tpyc: ok
 template<typename T>
 std::string_view static_temp_generic(::tpy::param_val_or_ref_t<T> v) {
-    return ({ static_cast<void>(::tpyapp::defs::Box<T>(v)); ::tpyapp::defs::Box<T>::F; });
+    return ({ static_cast<void>(::tpyapp::defs::Box<::tpy::storage_t<T>>(::tpy::param_pass_last<T>(v))); ::tpyapp::defs::Box<::tpy::storage_t<T>>::F; });
 }
 
 void __tpy_init();

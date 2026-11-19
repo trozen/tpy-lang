@@ -12,7 +12,7 @@ namespace tpyapp::main {
 
 // class Lookup(Protocol):
 template<typename T>
-concept Lookup = requires(T& t) {
+concept Lookup = requires(::tpy::storage_t<T>& t) {
     { ::tpy::__getitem__(t, std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
@@ -114,13 +114,13 @@ inline std::ostream& operator<<(std::ostream& os, const Counts& obj) {
 template<::tpystd::tpy::Hashable K, typename V>
 struct DefaultDict {
     // factory: Callable[[], V]
-    std::function<V()> factory;
+    std::function<::tpy::storage_t<V>()> factory;
     // data: dict[K, V]
-    ::tpy::ordered_map<K, V> data;
+    ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>> data;
 
     // def __init__(self, factory: Callable[[], V]) -> None:
     DefaultDict() = default;
-    explicit DefaultDict(std::function<V()> factory);
+    explicit DefaultDict(std::function<::tpy::storage_t<V>()> factory);
 
     // @readonly(False)
     // def __getitem__(self, key: K) -> V:
@@ -686,9 +686,9 @@ inline KeyMono::KeyMono() : KeyBase<int64_t>() {}
 //     self.factory = factory
 //     self.data = {}
 template<::tpystd::tpy::Hashable K, typename V>
-inline DefaultDict<K, V>::DefaultDict(std::function<V()> factory)
+inline DefaultDict<K, V>::DefaultDict(std::function<::tpy::storage_t<V>()> factory)
     : factory(factory),
-      data(::tpy::ordered_map<K, V>()) {}
+      data(::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>()) {}
 
 // # Node-based storage: the insert never moves an existing value.
 // @readonly(False)
@@ -699,7 +699,7 @@ inline DefaultDict<K, V>::DefaultDict(std::function<V()> factory)
 template<::tpystd::tpy::Hashable K, typename V>
 inline ::tpy::val_or_ref_t<V> DefaultDict<K, V>::__getitem__(::tpy::param_val_or_ref_t<K> key) {
     if ((!(this->data.contains(key)))) {
-        ::tpy::__setitem__(this->data, K(key), (*this).factory());
+        ::tpy::__setitem__(this->data, ::tpy::storage_t<K>(key), (*this).factory());
     }
     return ::tpy::__getitem__(this->data, key);
 }

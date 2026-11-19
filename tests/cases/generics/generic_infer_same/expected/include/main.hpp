@@ -16,9 +16,9 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T>
 struct Same {
     // a: T
-    T a;
+    ::tpy::storage_t<T> a;
     // b: T
-    T b;
+    ::tpy::storage_t<T> b;
 
     // def __init__(self, a: T, b: T) -> None:
     Same() = default;

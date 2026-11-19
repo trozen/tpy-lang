@@ -558,12 +558,6 @@ def via_it(f: Fn[[int32], int32], n: int32) -> None:
     ("f: Callable[[P], int32] = take",
      r"'take' cannot be passed as Callable\[\[P\], int32\]: its parameter "
      r"'p' is Own\[P\] and would receive P"),
-    ("print(callg(take, P(1)))",
-     r"'take' cannot be passed as Fn\[\[P\], int32\]: its parameter 'p' "
-     r"is Own\[P\] and would receive P"),
-    ("print(list(my_map(take, [P(1)])))",
-     r"'take' cannot be passed as Fn\[\[P\], U\]: its parameter 'p' "
-     r"is Own\[P\] and would receive P"),
     # A union holding a reference member is a union of pointers at a
     # parameter: a value does not convert into it.
     ("print(call32(mixed, 1))",
@@ -754,8 +748,7 @@ def via_it(f: Fn[[int32], int32], n: int32) -> None:
         "readonly-into-mutable", "str-into-union", "int-widened-into-union",
         "tuple-view-element", "own-dynamic-return", "subclass-return", "any",
         "callable-to-callable-widened", "borrow-at-own-slot",
-        "own-at-borrow-slot", "own-at-callable", "own-at-generic-slot",
-        "own-at-user-generic-feed", "value-into-pointer-union",
+        "own-at-borrow-slot", "own-at-callable", "value-into-pointer-union",
         "ref-tuple-into-union", "ref-tuple-into-optional",
         "own-ref-tuple", "bytes-into-bytearray",
         "object-converted-overloads", "object-mutable-readonly-pair",
@@ -782,6 +775,19 @@ def test_refused_shape(stmt: str, message: str) -> None:
               f"    {stmt}\n")
     with pytest.raises(SemanticError, match=message):
         _compile(source)
+
+
+@pytest.mark.parametrize("stmt", [
+    "print(callg(take, P(1)))",
+    "print(list(my_map(take, [P(1)])))",
+], ids=["own-at-generic-slot", "own-at-user-generic-feed"])
+def test_owning_callable_binds_own_type_argument(stmt: str) -> None:
+    """An owning callable at a generic slot binds the type argument
+    `Own[P]` from its declared parameter, so the call hands its argument
+    over (`T = Own[P]`): accepted, as the twin `Fn[[Own[P]], int32]` is."""
+    _compile(_PRELUDE + "\n\ndef main() -> None:\n"
+             "    h: Callable[[P | None], int32] = optp\n"
+             f"    {stmt}\n")
 
 
 def test_enclosing_type_param_is_no_wildcard() -> None:

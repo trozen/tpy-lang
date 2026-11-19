@@ -1,0 +1,1 @@
+main.py:29: error: Cannot infer type arguments for 'both': U is P from f's return but Own[P] from g's return; write Fn[[T], Own[U]] if g builds a new value

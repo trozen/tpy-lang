@@ -913,9 +913,14 @@ def _check_node(owner: str, node: THIRNode) -> None:
                            and (is_plain_nonvalue(cv)
                                 or (isinstance(cv, TypeParamRef)
                                     and node.trait is not None)))
+        # An open-`T` hand-off at the same `T` (`param_pass<T>`) or a last
+        # use (`param_consume<T>`) differs per instantiation, never a no-op.
+        open_t_handoff = (node.open_t_sink is OpenTSink.PASS
+                          or node.open_t_last or node.open_slot_last)
         if (node.form is node.value.form
                 and node.result_type == node.value.result_type
-                and not node.move and not ref_to_ptr_lift):
+                and not node.move and not ref_to_ptr_lift
+                and not open_t_handoff):
             _fail(owner, node,
                   f"no-op form convert (form={node.form.name}, "
                   f"type={node.result_type})")

@@ -48,7 +48,7 @@ Point& set_x(Point& p, int32_t new_x) {
 void main() {
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
     {
-        auto __src_0 = ::tpy::builtin_map<::tpy::val_or_ref<Point>>(identity, pts);
+        auto __src_0 = ::tpy::builtin_map<Point>(identity, pts);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -60,12 +60,12 @@ void main() {
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n" << ::tpy::check_signals;
     {
-        auto __src_2 = ::tpy::builtin_map<Point>(make_new, pts);
+        auto __src_2 = ::tpy::builtin_map<::tpy::own_arg<Point>>(make_new, pts);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
-            auto&& p = ::tpy::unwrap_ref(*__r_3);
+            auto&& p = ::tpy::own_bind(*__r_3);
             p.x = 999;
         }
     }
@@ -73,7 +73,7 @@ void main() {
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> vals = {10, 20};
     {
-        auto __src_4 = ::tpy::builtin_map_n<::tpy::val_or_ref<Point>>(set_x, pts, vals);
+        auto __src_4 = ::tpy::builtin_map_n<Point>(set_x, pts, vals);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();

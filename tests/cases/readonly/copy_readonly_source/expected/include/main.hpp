@@ -110,7 +110,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 template<typename T>
 struct GHolder {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, v: Own[T]) -> None:
     GHolder() = default;
@@ -295,7 +295,7 @@ inline ::tpy::val_or_cref_t<T> GHolder<T>::get() const {
 //     return GHolder(copy(self.get()))  # tpyc: ok
 template<typename T>
 inline GHolder<T> GHolder<T>::cloned() const {
-    return GHolder<T>(T(this->get()));
+    return GHolder<T>(::tpy::storage_t<T>(this->get()));
 }
 
 void __tpy_init();

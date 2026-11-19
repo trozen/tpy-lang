@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class HasLen(Protocol):
 template<typename T>
-concept HasLen = requires(const T& t) {
+concept HasLen = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<::tpy::BigInt>;
 };
 
@@ -22,7 +22,7 @@ int32_t head__HasLen(const T_x& x);
 // @dispatch
 // def head[T](xs: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> head__list_T(std::vector<T>& xs);
+::tpy::val_or_ref_t<T> head__list_T(std::vector<::tpy::storage_t<T>>& xs);
 // def head_section() -> None:
 void head_section();
 // def main() -> None:
@@ -39,7 +39,7 @@ int32_t head__HasLen(const T_x& x) {
 // def head[T](xs: list[T]) -> T:
 //     return xs[0]
 template<typename T>
-::tpy::val_or_ref_t<T> head__list_T(std::vector<T>& xs) {
+::tpy::val_or_ref_t<T> head__list_T(std::vector<::tpy::storage_t<T>>& xs) {
     return ::tpy::__getitem__(xs, 0);
 }
 

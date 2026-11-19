@@ -80,7 +80,7 @@ template<typename __F0>
 int32_t apply(__F0&& f, int32_t v);
 // def first_big[T: Comparable](xs: list[T], lim: T) -> bool:
 template<::tpystd::tpy::Comparable T>
-bool first_big(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> lim);
+bool first_big(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> lim);
 // def narrowed(xs: list[int32], k: int32 | None) -> int32:
 int32_t narrowed(const std::vector<int32_t>& xs, std::optional<int32_t> k);
 // def narrowed_for_head(xs: list[int32], k: int32 | None) -> None:
@@ -118,10 +118,10 @@ template <typename F_self>
 __genexpr_tot_4_frame<F_self> __genexpr_tot_4(const std::vector<int32_t>& __src, F_self&& self);
 // return sum(1 for v in self.items)  # tpyc: ok
 template <typename T>
-__genexpr_count_5_frame<T> __genexpr_count_5(const std::vector<T>& __src);
+__genexpr_count_5_frame<T> __genexpr_count_5(const std::vector<::tpy::storage_t<T>>& __src);
 // return any(lim < x for x in xs)  # tpyc: ok
 template <typename T, typename F_lim>
-__genexpr_first_big_12_frame<T, F_lim> __genexpr_first_big_12(const std::vector<T>& __src, F_lim&& lim);
+__genexpr_first_big_12_frame<T, F_lim> __genexpr_first_big_12(const std::vector<::tpy::storage_t<T>>& __src, F_lim&& lim);
 // yield sum(y * k for y in xs)  # tpyc: ok
 template <typename F_k>
 __genexpr_walk_22_frame<F_k> __genexpr_walk_22(const std::vector<int32_t>& __src, F_k&& k);
@@ -224,11 +224,11 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 template<typename T>
 struct Bag {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
     Bag() = default;
-    explicit Bag(std::vector<T>&& items);
+    explicit Bag(std::vector<::tpy::storage_t<T>>&& items);
 
     // def count(self) -> int32:
     int32_t count() const;
@@ -580,7 +580,7 @@ __genexpr_tot_4_frame<F_self> __genexpr_tot_4(const std::vector<int32_t>& __src,
 template <typename T>
 struct __genexpr_count_5_frame : public ::tpy::next_iter_mixin<__genexpr_count_5_frame<T>, int32_t> {
     ::tpy::frame_state __state;
-    const std::vector<T>& __src;
+    const std::vector<::tpy::storage_t<T>>& __src;
     using __for_src_0_t = decltype((__src));
     ::tpy::begin_elem_t<__for_src_0_t>* v = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -593,7 +593,7 @@ struct __genexpr_count_5_frame : public ::tpy::next_iter_mixin<__genexpr_count_5
         S_DONE = 3,
     };
 
-    __genexpr_count_5_frame(const std::vector<T>& __src)
+    __genexpr_count_5_frame(const std::vector<::tpy::storage_t<T>>& __src)
         : __state(S_INITIAL),
           __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
@@ -618,7 +618,7 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_count_5_frame<T>::__next_
 
 // return sum(1 for v in self.items)  # tpyc: ok
 template <typename T>
-__genexpr_count_5_frame<T> __genexpr_count_5(const std::vector<T>& __src) {
+__genexpr_count_5_frame<T> __genexpr_count_5(const std::vector<::tpy::storage_t<T>>& __src) {
     return __genexpr_count_5_frame<T>(__src);
 }
 
@@ -626,7 +626,7 @@ __genexpr_count_5_frame<T> __genexpr_count_5(const std::vector<T>& __src) {
 template <typename T, typename F_lim>
 struct __genexpr_first_big_12_frame : public ::tpy::next_iter_mixin<__genexpr_first_big_12_frame<T, F_lim>, bool> {
     ::tpy::frame_state __state;
-    const std::vector<T>& __src;
+    const std::vector<::tpy::storage_t<T>>& __src;
     F_lim lim;
     using __for_src_0_t = decltype((__src));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
@@ -640,7 +640,7 @@ struct __genexpr_first_big_12_frame : public ::tpy::next_iter_mixin<__genexpr_fi
         S_DONE = 3,
     };
 
-    __genexpr_first_big_12_frame(const std::vector<T>& __src, F_lim&& lim_)
+    __genexpr_first_big_12_frame(const std::vector<::tpy::storage_t<T>>& __src, F_lim&& lim_)
         : __state(S_INITIAL),
           __src(__src),
           lim(std::forward<F_lim>(lim_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
@@ -666,7 +666,7 @@ std::expected<bool, ::tpy::StopIteration> __genexpr_first_big_12_frame<T, F_lim>
 
 // return any(lim < x for x in xs)  # tpyc: ok
 template <typename T, typename F_lim>
-__genexpr_first_big_12_frame<T, F_lim> __genexpr_first_big_12(const std::vector<T>& __src, F_lim&& lim) {
+__genexpr_first_big_12_frame<T, F_lim> __genexpr_first_big_12(const std::vector<::tpy::storage_t<T>>& __src, F_lim&& lim) {
     return __genexpr_first_big_12_frame<T, F_lim>(__src, std::forward<F_lim>(lim));
 }
 
@@ -896,7 +896,7 @@ inline Shelf::Box::Box()
 // def __init__(self, items: Own[list[T]]) -> None:
 //     self.items = items
 template<typename T>
-inline Bag<T>::Bag(std::vector<T>&& items) : items(std::move(items)) {}
+inline Bag<T>::Bag(std::vector<::tpy::storage_t<T>>&& items) : items(std::move(items)) {}
 
 // def count(self) -> int32:
 //     # a method of a GENERIC class: the frame takes the class's type params.
@@ -937,7 +937,7 @@ int32_t apply(__F0&& f, int32_t v) {
 //     # generic function: the frame takes the enclosing type params.
 //     return any(lim < x for x in xs)  # tpyc: ok
 template<::tpystd::tpy::Comparable T>
-bool first_big(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> lim) {
+bool first_big(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> lim) {
     return ::tpy::builtin_any(::tpyapp::main::__genexpr_first_big_12<T>(xs, lim));
 }
 

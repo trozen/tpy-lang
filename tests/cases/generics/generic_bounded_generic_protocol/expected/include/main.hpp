@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Container[T](Protocol):
 template<typename T, typename _T0>
-concept Container = requires(T& t) {
+concept Container = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> ::tpy::proto_result<_T0>;
 };
 
@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 template<Container<int32_t> V>
 struct Holder {
     // item: V
-    V item;
+    ::tpy::storage_t<V> item;
 
     // def __init__(self, item: V) -> None:
     Holder() = default;

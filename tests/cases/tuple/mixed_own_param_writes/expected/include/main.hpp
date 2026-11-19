@@ -16,7 +16,7 @@ struct Taker;
 // @dynamic
 // class Taker(Protocol):
 template<typename T>
-concept __Taker_Concept__ = requires(T& t) {
+concept __Taker_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.pair(std::declval<std::tuple<Tok, Tok>>()) } -> std::convertible_to<int32_t>;
     { t.one(std::declval<Tok>()) } -> std::convertible_to<int32_t>;
 };
@@ -517,7 +517,7 @@ inline void Slot::put(std::tuple<Box, const Box*>&& p) {
 //     f(p[1])
 template<typename T>
 void g_inner(std::tuple<::tpy::own_return_t<T>, ::tpy::val_or_ptr_t<T>>&& p, const std::function<void(::tpy::param_val_or_ref_t<T>)>& f) {
-    f(::tpy::tuple_elem_ref(std::get<1>(p)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<1>(p))));
 }
 // def g_forward[T](p: tuple[Own[T], T], f: Callable[[T], None]) -> None:  # tpyc: ok
 //     g_inner(p, f)

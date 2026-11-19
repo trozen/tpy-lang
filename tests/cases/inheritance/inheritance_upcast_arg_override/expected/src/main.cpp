@@ -179,7 +179,7 @@ void callbacks() {
     std::cout << "method" << " " << ho.run(f, c) << "\n" << ::tpy::check_signals;
     std::cout << "optional" << " " << ::tpyapp::main::opt_child(c, f) << "\n" << ::tpy::check_signals;
     std::cout << "generic" << " " << ::tpyapp::main::ap<Child>(f, c) << "\n" << ::tpy::check_signals;
-    std::cout << "generic2" << " " << ::tpyapp::main::ap2<int32_t>(f2, 1) << "\n" << ::tpy::check_signals;
+    std::cout << "generic2" << " " << ::tpyapp::main::ap2<::tpy::BigInt>(f2, ::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
     std::cout << "overload-object" << " " << ::tpyapp::main::ov__Fn_Child_str__Child(Namer(), c) << "\n" << ::tpy::check_signals;
     std::cout << "overload-value" << " " << ::tpyapp::main::ov__Fn_Child_str__Child(hb, c) << "\n" << ::tpy::check_signals;
     std::cout << "generic-object" << " " << ::tpyapp::main::ap<Child>(Namer(), c) << "\n" << ::tpy::check_signals;

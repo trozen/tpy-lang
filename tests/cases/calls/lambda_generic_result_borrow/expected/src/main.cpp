@@ -63,7 +63,7 @@ void main() {
     std::cout << "free_min" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& r) -> const Inner& { return r.inner; })).n << "\n" << ::tpy::check_signals;
     Team().ranked();
     {
-        auto __src_1 = ::tpy::builtin_map<::tpy::val_or_ref<Inner>>([](Rec& r) -> Inner& { return r.inner; }, rs);
+        auto __src_1 = ::tpy::builtin_map<Inner>([](Rec& r) -> Inner& { return r.inner; }, rs);
         auto&& __itr_1 = ::tpy::__iter__(__src_1);
         for (;;) {
             auto __r_2 = __itr_1.__next__();
@@ -86,7 +86,7 @@ void main() {
     })) << "\n" << ::tpy::check_signals;
     Holder h = Holder();
     {
-        auto __src_4 = ::tpy::builtin_map<::tpy::val_or_ref<Inner>>([&h](Rec& r) -> Inner& { return ::tpyapp::main::mk(r).shared(h); }, rs);
+        auto __src_4 = ::tpy::builtin_map<Inner>([&h](Rec& r) -> Inner& { return ::tpyapp::main::mk(r).shared(h); }, rs);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();

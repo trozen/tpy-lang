@@ -9,50 +9,50 @@ namespace tpyapp::part_adapters {
 
 // class Rows[T](Iterable[T], Protocol):
 template<typename T, typename _T0>
-concept Rows = requires(T& t) {
+concept Rows = requires(::tpy::storage_t<T>& t) {
     ::tpy::handover_iter<T>(t);
 };
 
 // class OwnRows[T](Iterable[Own[T]], Protocol):
 template<typename T, typename _T0>
-concept OwnRows = requires(T& t) {
+concept OwnRows = requires(::tpy::storage_t<T>& t) {
     ::tpy::handover_iter<T>(t);
 };
 
 // class Pairs[T](Iterable[tuple[T, T]], Protocol):
 template<typename T, typename _T0>
-concept Pairs = requires(T& t) {
+concept Pairs = requires(::tpy::storage_t<T>& t) {
     ::tpy::__iter__(t);
 };
 
 // class FixedRows(Iterable[int32], Protocol):
 template<typename T>
-concept FixedRows = requires(T& t) {
+concept FixedRows = requires(::tpy::storage_t<T>& t) {
     ::tpy::__iter__(t);
 };
 
 // class Steps[T](Iterator[T], Protocol):
 template<typename T, typename _T0>
-concept Steps = requires(T& t) {
+concept Steps = requires(::tpy::storage_t<T>& t) {
     t.__next__();
     ::tpy::__iter__(t);
 };
 
 // class Stepper[T](Protocol):
 template<typename T, typename _T0>
-concept Stepper = requires(T& t) {
+concept Stepper = requires(::tpy::storage_t<T>& t) {
     t.__next__();
 };
 
 // class Walk(Protocol):
 template<typename T>
-concept Walk = requires(T& t) {
+concept Walk = requires(::tpy::storage_t<T>& t) {
     ::tpy::__iter__(t);
 };
 
 // class Tagged[T](Iterable[Own[T]], Protocol):
 template<typename T, typename _T0>
-concept Tagged = requires(T& t) {
+concept Tagged = requires(::tpy::storage_t<T>& t) {
     ::tpy::handover_iter<T>(t);
     { t.tag } -> std::convertible_to<int32_t>;
 };
@@ -305,7 +305,7 @@ template<typename T, ::tpyapp::part_adapters::Stepper<T> T_s>
         goto __after_try_1;
         // except StopIteration:
         __except_1:;
-        return ::tpy::param_to_return<T>(d);
+        return ::tpy::param_to_return_last<T>(d);
         __after_try_1:;
     }
 }

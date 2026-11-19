@@ -527,24 +527,28 @@ class Candidate:
     `evidence`: `binding.evidence` of what it was written with; `subst`:
     the type arguments the call instantiates its callee at (literal
     markers kept), at which a filled default constructs; `origin`: the
-    generic declaration `matched` instantiates, None for a plain one."""
+    generic declaration `matched` instantiates, None for a plain one;
+    `own_sources`: per type parameter inference bound to a non-plain
+    `Own[X]`, the index in `evidence` of the argument that bound it."""
     matched: 'FunctionInfo'
     declared: 'FunctionInfo | None'
     binding: ArgBinding
     evidence: tuple[tuple[int, 'TpyExpr'], ...]
     subst: dict = field(default_factory=dict)
     origin: 'FunctionInfo | None' = None
+    own_sources: tuple[tuple[str, int], ...] = ()
 
 
 def candidate_of(written: CallSource, binding: ArgBinding,
                  matched: 'FunctionInfo', declared: 'FunctionInfo | None',
                  subst: dict | None = None,
-                 origin: 'FunctionInfo | None' = None) -> Candidate:
+                 origin: 'FunctionInfo | None' = None,
+                 own_sources: 'dict[str, int] | None' = None) -> Candidate:
     """The `Candidate` of `matched`, whose parameters the call written as
     `written` binds by `binding`."""
     return Candidate(matched, declared, binding,
                      tuple(binding.evidence(written)), dict(subst or {}),
-                     origin)
+                     origin, tuple((own_sources or {}).items()))
 
 
 @dataclass(frozen=True)

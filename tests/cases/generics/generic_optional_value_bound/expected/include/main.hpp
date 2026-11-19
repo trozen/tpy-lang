@@ -18,7 +18,7 @@ void main();
 template<::tpy::ValueType T>
 struct Box {
     // _value: T
-    T _value;
+    ::tpy::storage_t<T> _value;
     // _has: bool
     bool _has;
 
@@ -27,7 +27,7 @@ struct Box {
     explicit Box(::tpy::readonly_form_t<T> value);
 
     // def get(self) -> T | None:
-    std::optional<T> get() const;
+    std::optional<::tpy::storage_t<T>> get() const;
 
     // def clear(self) -> None:
     void clear();
@@ -54,7 +54,7 @@ inline Box<T>::Box(::tpy::readonly_form_t<T> value)
 //         return self._value
 //     return None
 template<::tpy::ValueType T>
-inline std::optional<T> Box<T>::get() const {
+inline std::optional<::tpy::storage_t<T>> Box<T>::get() const {
     if (this->_has) {
         return this->_value;
     }

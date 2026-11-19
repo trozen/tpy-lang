@@ -21,7 +21,7 @@ void main();
 template<typename T>
 struct Channel {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: T) -> None:
     Channel() = default;

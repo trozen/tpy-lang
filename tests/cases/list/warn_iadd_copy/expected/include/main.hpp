@@ -29,7 +29,7 @@ void test_iadd_range_no_warn();
 void test_iadd_span_warns();
 // def test_iadd_generic_warns[T](a: list[T], b: list[T]) -> None:
 template<typename T>
-void test_iadd_generic_warns(std::vector<T>& a, const std::vector<T>& b);
+void test_iadd_generic_warns(std::vector<::tpy::storage_t<T>>& a, const std::vector<::tpy::storage_t<T>>& b);
 
 // class Node:
 struct Node {
@@ -56,7 +56,7 @@ inline Node::Node(int32_t val) : val(val) {}
 //     a += b  # tpyc: warning(/may copy T elements/)
 //     print(len(b))
 template<typename T>
-void test_iadd_generic_warns(std::vector<T>& a, const std::vector<T>& b) {
+void test_iadd_generic_warns(std::vector<::tpy::storage_t<T>>& a, const std::vector<::tpy::storage_t<T>>& b) {
     ::tpy::list_extend(a, b);
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }

@@ -9,60 +9,60 @@ namespace tpystd::tpy {
 // @runtime_checkable
 // class Truthy(Protocol):
 template<typename T>
-concept Truthy = requires(const T& t) {
+concept Truthy = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__bool__(t) } -> std::convertible_to<bool>;
 };
 
 // @runtime_checkable
 // class Stringable(Protocol):
 template<typename T>
-concept Stringable = requires(const T& t) {
+concept Stringable = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__str__(t) } -> std::convertible_to<std::string_view>;
 };
 
 // @runtime_checkable
 // class Representable(Protocol):
 template<typename T>
-concept Representable = requires(const T& t) {
+concept Representable = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::repr_of(t) } -> std::convertible_to<std::string_view>;
 };
 
 // class Hashable(Protocol):
 template<typename T>
-concept Hashable = requires(const T& t) {
+concept Hashable = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__hash__(t) } -> std::convertible_to<uint64_t>;
 };
 
 // class Comparable(Protocol):
 template<typename T>
-concept Comparable = requires(const T& t) {
+concept Comparable = requires(const ::tpy::storage_t<T>& t) {
     { t < std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<bool>;
 };
 
 // class Equatable(Protocol):
 template<typename T>
-concept Equatable = requires(const T& t) {
+concept Equatable = requires(const ::tpy::storage_t<T>& t) {
     { t == std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<bool>;
 };
 
 // @runtime_checkable
 // class Deref[T](Protocol):
 template<typename T, typename _T0>
-concept Deref = requires(const T& t) {
+concept Deref = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::deref_check(t) } -> ::tpy::proto_result<_T0>;
 };
 
 // @runtime_checkable
 // class Spannable[T](Protocol):
 template<typename T, typename _T0>
-concept Spannable = requires(const T& t) {
-    { ::tpy::as_span(t) } -> std::convertible_to<std::span<const _T0>>;
+concept Spannable = requires(const ::tpy::storage_t<T>& t) {
+    { ::tpy::as_span(t) } -> std::convertible_to<std::span<const ::tpy::storage_t<_T0>>>;
 };
 
 // @runtime_checkable
 // class Writable(Protocol):
 template<typename T>
-concept Writable = requires(T& t) {
+concept Writable = requires(::tpy::storage_t<T>& t) {
     { t.write(std::declval<std::string>()) } -> std::convertible_to<int32_t>;
     { t.flush() } -> std::convertible_to<void>;
 };
@@ -70,7 +70,7 @@ concept Writable = requires(T& t) {
 // @runtime_checkable
 // class Readable(Protocol):
 template<typename T>
-concept Readable = requires(T& t) {
+concept Readable = requires(::tpy::storage_t<T>& t) {
     { t.read(std::declval<int32_t>()) } -> std::convertible_to<std::string_view>;
     { t.readline() } -> std::convertible_to<std::string_view>;
 };
@@ -78,7 +78,7 @@ concept Readable = requires(T& t) {
 // @runtime_checkable
 // class BinaryWritable(Protocol):
 template<typename T>
-concept BinaryWritable = requires(T& t) {
+concept BinaryWritable = requires(::tpy::storage_t<T>& t) {
     { t.write(std::declval<::tpy::Bytes>()) } -> std::convertible_to<int32_t>;
     { t.flush() } -> std::convertible_to<void>;
 };
@@ -86,7 +86,7 @@ concept BinaryWritable = requires(T& t) {
 // @runtime_checkable
 // class BinaryReadable(Protocol):
 template<typename T>
-concept BinaryReadable = requires(T& t) {
+concept BinaryReadable = requires(::tpy::storage_t<T>& t) {
     { t.read(std::declval<int32_t>()) } -> std::convertible_to<::tpy::Bytes>;
     { t.readline() } -> std::convertible_to<::tpy::Bytes>;
 };
@@ -94,7 +94,7 @@ concept BinaryReadable = requires(T& t) {
 // @runtime_checkable
 // class Seekable(Protocol):
 template<typename T>
-concept Seekable = requires(T& t) {
+concept Seekable = requires(::tpy::storage_t<T>& t) {
     { t.seek(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
     { t.tell() } -> std::convertible_to<int32_t>;
 };
@@ -102,19 +102,19 @@ concept Seekable = requires(T& t) {
 // @runtime_checkable
 // class Closable(Protocol):
 template<typename T>
-concept Closable = requires(T& t) {
+concept Closable = requires(::tpy::storage_t<T>& t) {
     { t.close() } -> std::convertible_to<void>;
 };
 
 // class ComparableValue(Comparable, ValueType, Protocol): ...
 template<typename T>
-concept ComparableValue = requires(const T& t) {
+concept ComparableValue = requires(const ::tpy::storage_t<T>& t) {
     { t < std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<bool>;
 };
 
 // class ComparableRef(Comparable, ReferenceType, Protocol): ...
 template<typename T>
-concept ComparableRef = requires(const T& t) {
+concept ComparableRef = requires(const ::tpy::storage_t<T>& t) {
     { t < std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<bool>;
 };
 

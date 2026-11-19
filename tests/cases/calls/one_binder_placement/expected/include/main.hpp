@@ -11,19 +11,19 @@ namespace tpyapp::main {
 
 // class Keyed(Protocol):
 template<typename T>
-concept Keyed = requires(T& t) {
+concept Keyed = requires(::tpy::storage_t<T>& t) {
     { t.m(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
 // class KeyedAt[T](Protocol):
 template<typename T, typename _T0>
-concept KeyedAt = requires(T& t) {
+concept KeyedAt = requires(::tpy::storage_t<T>& t) {
     { t.m(std::declval<::tpy::param_val_or_ref_t<_T0>>()) } -> ::tpy::proto_result<_T0>;
 };
 
 // class KeyedInt(KeyedAt[int32], Protocol):
 template<typename T>
-concept KeyedInt = requires(T& t) {
+concept KeyedInt = requires(::tpy::storage_t<T>& t) {
     { t.m(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
@@ -31,7 +31,7 @@ struct Valued;
 // @dynamic
 // class Valued(Protocol):
 template<typename T>
-concept __Valued_Concept__ = requires(T& t) {
+concept __Valued_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.value() } -> std::convertible_to<int32_t>;
 };
 
@@ -497,7 +497,7 @@ using MaybeValued = std::optional<Valued>;
 //     return value
 template<typename T>
 ::tpy::val_or_ref_t<T> tagged__str__T(std::string_view key, ::tpy::param_val_or_ref_t<T> value) {
-    return ::tpy::param_to_return<T>(value);
+    return ::tpy::param_to_return_last<T>(value);
 }
 // @dispatch
 // def choose[T](x: T) -> str:
@@ -532,8 +532,8 @@ int32_t keyed_at(T_p&& p) {
 template<typename T>
 void nested(::tpy::param_val_or_ref_t<T> x) {
     auto inner = [&x]() {
-        std::vector<T> xs = std::vector<T>();
-        std::vector<T> ys = std::vector<T>{};
+        std::vector<::tpy::storage_t<T>> xs = std::vector<::tpy::storage_t<T>>();
+        std::vector<::tpy::storage_t<T>> ys = std::vector<::tpy::storage_t<T>>{};
         xs.push_back(::tpy::param_to_storage<T>(x));
         ys.push_back(::tpy::param_to_storage<T>(x));
         std::cout << "nested" << " " << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;

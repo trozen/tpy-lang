@@ -9,13 +9,13 @@ namespace tpyapp::main {
 
 // class Callable(Protocol):
 template<typename T>
-concept Callable = requires(T& t) {
+concept Callable = requires(::tpy::storage_t<T>& t) {
     { t.call() } -> std::convertible_to<int32_t>;
 };
 
 // class OneArg(Protocol):
 template<typename T>
-concept OneArg = requires(T& t) {
+concept OneArg = requires(::tpy::storage_t<T>& t) {
     { t.process(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 

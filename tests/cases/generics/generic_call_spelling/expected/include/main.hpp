@@ -40,14 +40,14 @@ inline std::ostream& operator<<(std::ostream& os, const Util& obj) {
 //     return b
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Util::smax(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    return ::tpy::param_to_return<T>(b);
+    return ::tpy::param_to_return_last<T>(b);
 }
 
 // def pick[T](a: T, b: T) -> T:
 //     return b
 template<typename T>
 ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    return ::tpy::param_to_return<T>(b);
+    return ::tpy::param_to_return_last<T>(b);
 }
 
 void __tpy_init();

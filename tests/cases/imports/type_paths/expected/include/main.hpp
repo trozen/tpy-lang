@@ -25,7 +25,7 @@ using ::tpyapp::m::RErr;
 
 // class Doubles(m.HasV, Protocol):  # tpyc: ok
 template<typename T>
-concept Doubles = requires(T& t) {
+concept Doubles = requires(::tpy::storage_t<T>& t) {
     { t.twice() } -> std::convertible_to<::tpy::BigInt>;
     { t.get_v() } -> std::convertible_to<::tpy::BigInt>;
 };
@@ -34,7 +34,7 @@ struct P;
 // @dynamic
 // class P(Protocol):
 template<typename T>
-concept __P_Concept__ = requires(T& t) {
+concept __P_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.other() } -> std::convertible_to<::tpy::BigInt>;
 };
 
@@ -47,7 +47,7 @@ struct Q;
 // @dynamic
 // class Q(pa.P, Protocol):  # tpyc: ok
 template<typename T>
-concept __Q_Concept__ = requires(T& t) {
+concept __Q_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.extra() } -> std::convertible_to<::tpy::BigInt>;
     { t.value() } -> std::convertible_to<::tpy::BigInt>;
     { t.bump() } -> std::convertible_to<void>;
@@ -424,7 +424,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holds4& obj) {
 template<typename T>
 struct Wrap {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: Own[T]) -> None:
     Wrap() = default;

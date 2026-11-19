@@ -25,7 +25,7 @@ void main();
 template<typename T>
 struct Box {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: Own[T]) -> None:
     Box() = default;
@@ -78,7 +78,7 @@ void sink(::tpy::own_param_t<T> x) {
 //     sink(x)
 template<typename T>
 void forward(::tpy::own_param_t<T> x) {
-    ::tpyapp::main::sink<T>(std::move(x));
+    ::tpyapp::main::sink<::tpy::storage_t<T>>(std::move(x));
 }
 
 void __tpy_init();

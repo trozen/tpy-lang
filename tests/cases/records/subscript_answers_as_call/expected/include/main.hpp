@@ -239,7 +239,7 @@ inline std::ostream& operator<<(std::ostream& os, const Table& obj) {
 template<typename T>
 struct Box {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, a: Own[T], b: Own[T]) -> None:
     Box() = default;
@@ -970,7 +970,7 @@ inline std::ostream& operator<<(std::ostream& os, const OwnGet& obj) {
 template<typename T>
 struct Lender {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: Own[T]) -> None:
     Lender() = default;
@@ -1959,7 +1959,7 @@ inline Sub::Sub() : Table() {}
 // def __init__(self, a: Own[T], b: Own[T]) -> None:
 //     self.items = [a, b]
 template<typename T>
-inline Box<T>::Box(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b) : items(::tpy::make_vector<T>(std::move(a), std::move(b))) {}
+inline Box<T>::Box(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b) : items(::tpy::make_vector<::tpy::storage_t<T>>(std::move(a), std::move(b))) {}
 
 // @dispatch
 // def __getitem__(self, i: int32) -> T:
@@ -2049,7 +2049,7 @@ inline ::tpy::val_or_ref_t<T> Lender<T>::get() {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> ident(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 void __tpy_init();

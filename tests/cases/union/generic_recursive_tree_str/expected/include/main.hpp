@@ -13,13 +13,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def depth[T](t: Tree[T]) -> int32:
 template<typename T>
-int32_t depth(const Tree<T>& t);
+int32_t depth(const Tree<::tpy::storage_t<T>>& t);
 // def main() -> None:
 void main();
 
 template<typename T>
 struct Tree {
-    using variant_type = ::tpy::Union<T, std::vector<Tree<T>>>;
+    using variant_type = ::tpy::Union<::tpy::storage_t<T>, std::vector<Tree<::tpy::storage_t<T>>>>;
     variant_type value;
 
     Tree() requires std::default_initializable<variant_type> = default;
@@ -53,7 +53,7 @@ struct Tree {
 //         case _:
 //             return 0
 template<typename T>
-int32_t depth(const Tree<T>& t) {
+int32_t depth(const Tree<::tpy::storage_t<T>>& t) {
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
     case 1: {
@@ -64,7 +64,7 @@ int32_t depth(const Tree<T>& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& child = *__beg_0;
-            int32_t d = ::tpyapp::main::depth<T>(child);
+            int32_t d = ::tpyapp::main::depth<::tpy::storage_t<T>>(child);
             if ((d > best)) {
                 best = d;
             }

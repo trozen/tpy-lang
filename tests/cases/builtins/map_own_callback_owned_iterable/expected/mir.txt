@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@15:0: covered (storage: no_proof_required), summary: known
+main::run@19:0: uncovered (unsupported parameter type)
+main::Box.__init__@11:4: covered (storage: no_proof_required), summary: known

@@ -19,7 +19,7 @@ using ::tpystd::io::FileIO;
 
 // class _ByteSource(Protocol):
 template<typename T>
-concept _ByteSource = requires(T& t) {
+concept _ByteSource = requires(::tpy::storage_t<T>& t) {
     { t.read(std::declval<int32_t>()) } -> std::convertible_to<::tpy::Bytes>;
 };
 

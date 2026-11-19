@@ -26,7 +26,7 @@ from ..typesys import (
     is_void_like_type,
     is_open_type_param_return, contains_type_param, coro_struct_owner,
     type_param_names,
-    strip_template_repr, resolve_int_literals, INT_TYPE_ARG_MAX,
+    strip_template_repr, resolve_int_literals, INT_TYPE_ARG_MAX, unowned,
 )
 from ..coercions import resolve_coercion, CoercionContext, callable_value_fits
 from .dyn_erasure import inherits_in_cpp
@@ -36,7 +36,7 @@ from ..type_def_registry import (
     is_array, is_span, is_list, is_dict, is_set,
     is_enum_type, is_str_type, is_borrowing_view_type,
     get_type_def, find_factory_by_simple_name, protocol_info_of, is_subtype,
-    is_fixed_int_type, protocol_ancestor_at,
+    is_fixed_int_type, protocol_ancestor_at, type_def_of,
 )
 from ..parse import TpyFunction
 from tpyc import modules as builtin_modules
@@ -125,8 +125,136 @@ def _substitute_types(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     if isinstance(typ, SelfType) and "Self" in subst:
         return subst["Self"]
     if isinstance(typ, TypeParamRef):
-        return subst.get(typ.name, typ)
+        return typ.substituted(subst[typ.name]) if typ.name in subst else typ
     return typ.map_inner_types(lambda t: _substitute_types(t, subst))
+
+
+# A merge of two exact constraints that disagree (`P` and `Own[P]`).
+_DISAGREE = object()
+
+
+@dataclass(frozen=True)
+class ConstraintOrigin:
+    """Where an exact constraint on a type parameter came from: the index of
+    the function parameter its argument binds and the position ("parameter"
+    or "return") in that argument's callable signature."""
+    param: 'int | None' = None
+    position: 'str | None' = None
+    slot: 'TpyType | None' = None
+
+
+@dataclass(frozen=True)
+class Disagreement:
+    """Two exact constraints binding `name` to a borrow and to a new value."""
+    name: str
+    lent: 'TpyType'
+    owned: 'TpyType'
+    lent_at: ConstraintOrigin
+    owned_at: ConstraintOrigin
+
+
+@dataclass(frozen=True)
+class ExactBorrow(TpyType):
+    """An inferred entry only an exact position gave: a callable argument's
+    declared parameter type or return that is not `Own` (`identity -> P`).
+    Lives in an inference dict until `settle_inferred` unwraps it; never a
+    type anything renders."""
+    wrapped: TpyType
+
+    def __str__(self) -> str:
+        return str(self.wrapped)
+
+    def is_value_type(self) -> bool:
+        return self.wrapped.is_value_type()
+
+    def inner_types(self) -> tuple[TpyType, ...]:
+        return (self.wrapped,)
+
+    def with_inner_types(self, types: tuple[TpyType, ...]) -> TpyType:
+        return ExactBorrow(types[0])
+
+
+def _constraint_entry(arg: TpyType, was_owned: bool, exact: bool) -> TpyType:
+    """The inferred entry an argument `arg` (its top-level `Own` already
+    peeled, `was_owned` telling) records for a bare type parameter: an exact
+    borrow `ExactBorrow(X)`, an exact owned `Own[X]`, a neutral one as it
+    is. A value type is handed over by value whichever way it is declared,
+    so its exact and neutral constraints are one."""
+    if not exact or isinstance(arg, (UnknownElementType, IntLiteralType,
+                                     FloatLiteralType, PendingListType,
+                                     PendingViewType)):
+        return arg
+    core = arg.wrapped if isinstance(arg, RefType) else arg
+    if was_owned and not _plain_value(core):
+        return OwnType(core)
+    if core.is_value_type():
+        return core
+    return ExactBorrow(core)
+
+
+def _plain_value(t: TpyType) -> bool:
+    return OwnType(t).is_plain() and not contains_type_param(t)
+
+
+def _constraint_core(t: TpyType) -> tuple[TpyType, str]:
+    if isinstance(t, ExactBorrow):
+        return t.wrapped, "exact"
+    if isinstance(t, OwnType):
+        return t.wrapped, "own"
+    if isinstance(t, RefType):
+        return t.wrapped, "neutral"
+    return t, "neutral"
+
+
+def _merge_constraint_kinds(existing: TpyType, new: TpyType) -> 'TpyType | object | None':
+    """The settled merge of two entries for one type parameter when their
+    kinds differ over one type: an exact one wins over a neutral one, two
+    exact ones that disagree on ownership refuse (`_DISAGREE`). None leaves
+    the pair to the ordinary consistency rules."""
+    if existing == new:
+        return existing
+    e_core, e_kind = _constraint_core(existing)
+    n_core, n_kind = _constraint_core(new)
+    if e_core != n_core:
+        return None
+    if e_kind == n_kind:
+        return None if e_kind == "neutral" else existing
+    if e_kind == "neutral":
+        return new
+    if n_kind == "neutral":
+        return existing
+    # An exact borrow against an exact `Own`: a value type is returned by
+    # value either way.
+    if e_core.is_value_type():
+        return existing if e_kind == "own" else new
+    return _DISAGREE
+
+
+def settle_inferred(inferred: dict[str, 'TpyType | int'],
+                    spelled: 'frozenset[str]' = frozenset()) -> None:
+    """Settle the constraint kinds `match_type_with_inference` recorded into
+    the committed type arguments: an exact borrow is its type, a plain
+    `Own[X]` is `X`, a top-level borrow marker of a neutral one is dropped
+    (`val_or_ref` is never a type argument), and a binding only neutral
+    positions gave to an open type parameter of the enclosing body is that
+    parameter's storage form (`Unowned(T)`), as the hand-written twin
+    infers. `spelled` names the positions the call wrote, which keep what
+    they say."""
+    for name, t in list(inferred.items()):
+        if not isinstance(t, TpyType):
+            continue
+        if isinstance(t, ExactBorrow):
+            inferred[name] = t.wrapped
+            continue
+        if isinstance(t, OwnType) and t.is_plain():
+            inferred[name] = t.wrapped
+            continue
+        if isinstance(t, RefType):
+            t = t.wrapped
+            inferred[name] = t
+        if (name not in spelled and type(t) is TypeParamRef
+                and t.kind is TypeParamKind.TYPE):
+            inferred[name] = unowned(t)
 
 
 def to_owned_storage_form(typ: TpyType) -> TpyType:
@@ -383,6 +511,16 @@ class TypeOperations:
 
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
+        # The last two exact constraints that disagreed on ownership, for the
+        # refusal to name: the type parameter, the borrow and the owned
+        # binding, and where each came from.
+        self.last_disagreement: 'Disagreement | None' = None
+        self._callable_slot: 'TpyType | None' = None
+        # Where the exact constraint being matched sits: the parameter index
+        # of the argument and its position in the callable's signature.
+        self._match_param: 'int | None' = None
+        self._callable_pos: 'str | None' = None
+        self._exact_origins: 'dict[str, ConstraintOrigin]' = {}
         # Set after construction (ProtocolChecker depends on TypeOperations,
         # so it can't be constructed before us). Mirrors the deferred-wiring
         # pattern in TypeCompatibility. Used by validate_hashable_container_elem
@@ -1050,7 +1188,7 @@ class TypeOperations:
                     # INT type params: keep as TypeParamRef for expression contexts (codegen uses the name)
                     # Type-level substitution for Array etc. is handled below
                     return typ
-                return replacement
+                return typ.substituted(replacement)
             raise SemanticError(f"Unknown type parameter '{typ.name}'")
         # Special handling for OptionalType: preserve T* repr from the template.
         # When the template used T* (unbounded TypeParamRef -> not a value type),
@@ -1082,7 +1220,9 @@ class TypeOperations:
             changed = False
             for arg in typ.type_args:
                 if isinstance(arg, TypeParamRef) and arg.name in subst:
-                    new_args.append(subst[arg.name])
+                    repl = subst[arg.name]
+                    new_args.append(typ.substituted_arg(arg, arg.substituted(repl))
+                                    if isinstance(repl, TpyType) else repl)
                     changed = True
                 elif isinstance(arg, TpyType):
                     new_arg = self._substitute(arg, subst)
@@ -1198,15 +1338,39 @@ class TypeOperations:
         return (isinstance(typ, TypeParamRef)
                 and is_value_type_bound(self.get_type_param_bound(typ)))
 
+    def _exact_takes_subclass(self, a: TpyType, b: TpyType) -> TpyType | None:
+        """Of an exact constraint (a callable's declared `Base` parameter)
+        and a neutral one naming a subclass of it (a `Child` argument), the
+        subclass: the callable receives it as its `Base` parameter (the
+        upcast the callable fit warns). None for any other pair."""
+        for exact, neutral in ((a, b), (b, a)):
+            if (isinstance(exact, ExactBorrow)
+                    and _constraint_core(neutral)[1] == "neutral"):
+                sub = unwrap_ref_type(neutral)
+                if (isinstance(sub, NominalType)
+                        and isinstance(exact.wrapped, NominalType)
+                        and self.inherits_in_cpp(sub, exact.wrapped)):
+                    return neutral
+        return None
+
     def match_type_with_inference(
         self,
         param_type: TpyType,
         arg_type: TpyType,
-        inferred: dict[str, TpyType]
+        inferred: dict[str, TpyType],
+        exact: bool = False,
     ) -> bool:
         """Match param_type against arg_type, collecting type param inferences.
 
         Returns True if types match (with inference), False otherwise.
+
+        A position constrains a type parameter `exact`ly (a callable
+        argument's declared parameter types and return, a user class's type
+        argument: `Own` kept) or neutrally (an argument value at `x: T`, an
+        iterator step, an element of a container owning its elements: agrees
+        with `X` and `Own[X]` alike). The kind rides in the entry until
+        `settle_inferred`: an exact borrow is `Ref[X]`, an exact owned value
+        `Own[X]`, a neutral binding bare `X`.
         """
         # Send/Sync markers are sema-only slot assertions enforced at the
         # compatibility check, not here -- peel both sides so a marker never
@@ -1219,7 +1383,7 @@ class TypeOperations:
         # RefType wrapper on param: strip Ref from param side and also strip
         # from arg if present (Ref[T] param accepts both T and Ref[T] args).
         if isinstance(param_type, RefType):
-            return self.match_type_with_inference(param_type.wrapped, unwrap_ref_type(arg_type), inferred)
+            return self.match_type_with_inference(param_type.wrapped, unwrap_ref_type(arg_type), inferred, exact)
         # Ref on arg side is preserved for type param inference -- this lets
         # map(identity, pts) infer U=Ref[Point] from identity's return type,
         # so the template emits val_or_ref<Point> for reference preservation.
@@ -1227,7 +1391,7 @@ class TypeOperations:
         # ReadonlyType wrapper: unwrap for matching (readonly[T] accepts T and readonly[T])
         if isinstance(param_type, ReadonlyType):
             arg_unwrapped = unwrap_readonly(arg_type)
-            return self.match_type_with_inference(param_type.wrapped, arg_unwrapped, inferred)
+            return self.match_type_with_inference(param_type.wrapped, arg_unwrapped, inferred, exact)
 
         # Own[T] wrapper on argument -- unwrap before matching.
         # Own is an ownership marker (e.g. from copy()), not a distinct type.
@@ -1241,8 +1405,38 @@ class TypeOperations:
 
         # TypeParamRef -- infer or check consistency
         if isinstance(param_type, TypeParamRef):
+            arg_type = _constraint_entry(arg_type, arg_was_owned, exact)
+            if exact and self._callable_pos is not None:
+                self._exact_origins.setdefault(
+                    param_type.name,
+                    ConstraintOrigin(self._match_param, self._callable_pos,
+                                     self._callable_slot))
             if param_type.name in inferred:
                 existing = inferred[param_type.name]
+                merged = _merge_constraint_kinds(existing, arg_type)
+                if merged is not None:
+                    if merged is _DISAGREE:
+                        here = ConstraintOrigin(self._match_param,
+                                                self._callable_pos,
+                                                self._callable_slot)
+                        before = self._exact_origins.get(param_type.name,
+                                                         ConstraintOrigin())
+                        if isinstance(arg_type, OwnType):
+                            lent, owned = existing, arg_type
+                            lent_at, owned_at = before, here
+                        else:
+                            lent, owned = arg_type, existing
+                            lent_at, owned_at = here, before
+                        self.last_disagreement = Disagreement(
+                            param_type.name, _constraint_core(lent)[0],
+                            owned, lent_at, owned_at)
+                        return False
+                    inferred[param_type.name] = merged
+                    return True
+                upcast = self._exact_takes_subclass(existing, arg_type)
+                if upcast is not None:
+                    inferred[param_type.name] = upcast
+                    return True
                 # UnknownElementType is a "no info" placeholder from an empty
                 # container literal. Either side can be it; the concrete side
                 # wins so `f([1], [])` and `f([], [1])` infer T identically.
@@ -1306,7 +1500,7 @@ class TypeOperations:
             if len(param_type.element_types) != len(arg_type.element_types):
                 return False
             return all(
-                self.match_type_with_inference(p, a, inferred)
+                self.match_type_with_inference(p, a, inferred, exact)
                 for p, a in zip(param_type.element_types, arg_type.element_types)
             )
 
@@ -1327,7 +1521,7 @@ class TypeOperations:
 
         # NominalType (record) with type args (e.g., Box[T] nested)
         if isinstance(param_type, NominalType) and param_type.is_record and param_type.type_args:
-            return self._match_record_with_inference(param_type, arg_type, inferred)
+            return self._match_record_with_inference(param_type, arg_type, inferred, exact)
 
         # (PtrType handled above, before list)
 
@@ -1345,7 +1539,7 @@ class TypeOperations:
                 # for a bare TypeParamRef param) is unaffected.
                 inner_arg = unwrap_ref_type(arg_type)
             return self.match_type_with_inference(
-                param_type.inner, inner_arg, inferred
+                param_type.inner, inner_arg, inferred, exact
             )
 
         # CallableType with TypeParamRef in param/return (e.g. Fn[[T], U] or Callable[[T], U])
@@ -1361,12 +1555,27 @@ class TypeOperations:
             # (`contract_return`) -- a named function's signature already
             # carries that form. A template callable's return may be a
             # lambda body's expression type, which says no such thing.
-            arg_return = (arg_type.return_type if arg_type.is_template
-                          else arg_type.contract_return())
-            pairs = [*zip(param_type.param_types, arg_type.param_types),
-                     (param_type.return_type, arg_return)]
-            return (all(self.match_type_with_inference(pp, ap, inferred)
-                        for pp, ap in pairs if contains_type_param(pp))
+            # The callable's declared parameter types and return bind
+            # exactly, `Own` kept: `mk -> Own[P]` gives `Own[P]`,
+            # `identity -> P` gives `P`.
+            pairs = [*((pp, ap, "parameter") for pp, ap in
+                       zip(param_type.param_types, arg_type.param_types)),
+                     (param_type.return_type, arg_type.return_type, "return")]
+            outer = self._callable_slot, self._callable_pos
+            self._callable_slot = param_type
+            try:
+                bound = True
+                for pp, ap, pos in pairs:
+                    if not contains_type_param(pp):
+                        continue
+                    self._callable_pos = pos
+                    if not self.match_type_with_inference(pp, ap, inferred,
+                                                          exact=True):
+                        bound = False
+                        break
+            finally:
+                self._callable_slot, self._callable_pos = outer
+            return (bound
                     and callable_value_fits(
                         arg_type, param_type, inherits=self.inherits_in_cpp,
                         wildcards=type_param_names(param_type)))
@@ -1646,6 +1855,7 @@ class TypeOperations:
         param_type: NominalType,
         arg_type: TpyType,
         inferred: dict[str, TpyType],
+        exact: bool = False,
     ) -> bool:
         """Match a generic record NominalType against arg_type (e.g., Box[T])."""
         # Type args are what inference solves for (Box[T] vs Box[int32]).
@@ -1654,9 +1864,13 @@ class TypeOperations:
             return False
         if len(param_type.type_args) != len(arg_type.type_args):
             return False
+        # An element of a container owning its elements (`dict`, `set`)
+        # binds neutrally; a user class's type argument as its position does.
+        td = type_def_of(param_type)
+        exact = exact and not (td is not None and td.owns_elements)
         for pt, at in zip(param_type.type_args, arg_type.type_args):
             if isinstance(pt, TpyType) and isinstance(at, TpyType):
-                if not self.match_type_with_inference(pt, at, inferred):
+                if not self.match_type_with_inference(pt, at, inferred, exact):
                     return False
             elif isinstance(pt, TypeParamRef) and pt.kind == TypeParamKind.INT and isinstance(at, int):
                 if pt.name in inferred:
@@ -1754,6 +1968,7 @@ class TypeOperations:
         explicit_type_args: 'tuple[TpyType | None, ...] | None' = None,
         joined: set[str] | None = None,
         literal: 'Callable[[TpyType], TpyType] | None' = None,
+        own_sources: 'dict[str, int] | None' = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from function arguments.
 
@@ -1770,13 +1985,17 @@ class TypeOperations:
         `joined`, when given, since the call then converts an argument.
         An int literal a type parameter binds takes the type `literal`
         gives (the call ranking's `CallRanking.literal_type`), by default
-        `default_int_for_literal`.
+        `default_int_for_literal`. `own_sources`, when given, gets per type
+        parameter an argument binds to a non-plain `Own[X]` the index (in
+        `arg_types`) of the first argument whose match bound it so.
         """
         return_hint = SlotHint.of(expected_return_type)
         # A fill-only hint prefers no protocol form for the result.
         expected_return_type = (return_hint.type if return_hint is not None
                                 and not return_hint.is_fill else None)
         inferred: dict[str, TpyType] = {}
+        self._exact_origins = {}
+        self._match_param = None
         if explicit_type_args:
             if len(explicit_type_args) > len(func.type_params):
                 return None
@@ -1786,18 +2005,29 @@ class TypeOperations:
         # Scalar fixed-int bindings of a bare type param are joined after
         # every argument is seen, so the verdict cannot depend on their order.
         direct_ints: dict[str, list[tuple[TpyType, TpyType]]] = {}
+        at = 0
 
         def match_arg(ptype: TpyType, arg_t: TpyType) -> bool:
             direct = _direct_fixed_int_binding(ptype, arg_t)
             if direct is not None:
                 direct_ints.setdefault(direct[0], []).append((ptype, direct[1]))
                 return True
-            return self.match_type_with_inference(ptype, arg_t, inferred)
+            if own_sources is None:
+                return self.match_type_with_inference(ptype, arg_t, inferred)
+            before = dict(inferred)
+            if not self.match_type_with_inference(ptype, arg_t, inferred):
+                return False
+            for name, t in inferred.items():
+                if (name not in own_sources and isinstance(t, OwnType)
+                        and not t.is_plain() and before.get(name) != t):
+                    own_sources[name] = at
+            return True
 
         none_arms: list[tuple[TpyType, TpyType]] = []
-        for slot, arg_t in zip(slots, arg_types):
+        for at, (slot, arg_t) in enumerate(zip(slots, arg_types)):
             if slot is None or arg_t is None:
                 continue
+            self._match_param = slot
             p = func.params[slot]
             ptype = p.type
             # A parameter naming no type parameter is evidence of nothing:
@@ -1944,6 +2174,10 @@ class TypeOperations:
             if isinstance(inferred[tp], UnknownElementType):
                 return None
 
+        settle_inferred(inferred, frozenset(
+            tp for tp, arg in zip(func.type_params, explicit_type_args or ())
+            if arg is not None))
+
         # Substitute already-inferred params into the bound before validating
         # so a bound that names another param (`U: T`) is checked against the
         # resolved form, not the raw type-param.
@@ -2024,6 +2258,12 @@ class TypeOperations:
         for tp in record.type_params:
             if tp not in inferred:
                 return None
+        # A class's type parameter is never bound to `Own[X]`, a callable's
+        # included (a `defaultdict(lambda: [])` holds `list[int32]`).
+        settle_inferred(inferred, frozenset(record.type_params))
+        for tp, t in list(inferred.items()):
+            if isinstance(t, OwnType):
+                inferred[tp] = t.wrapped
 
         # LHS-hint @dynamic-protocol preference (structural conformer -> Adapter
         # wrap at call site). See `_apply_dyn_hint_at_position` for the gate.

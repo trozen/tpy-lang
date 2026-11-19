@@ -2396,6 +2396,12 @@ class THIRNarrowedRead(THIRExpr):
     union_extraction: THIRUnionExtraction | None = field(default=None, kw_only=True)
 
 
+def open_local_last_cpp(t_cpp: str, value_cpp: str) -> str:
+    """An open-result pointer local's last-use read: at a value storage
+    type its pointee is the local's own slot, which the sink takes over."""
+    return f"::tpy::open_local_last<{t_cpp}>({value_cpp})"
+
+
 class OpenTSink(Enum):
     """Which `T` storage an open-`T` parameter-form value is converted for
     (`THIRFormConvert` over an open `T`): a store builds `T`
@@ -2405,12 +2411,29 @@ class OpenTSink(Enum):
     STORAGE = auto()
     RETURN = auto()
     ASSIGN = auto()
+    # An argument at an open-`T` parameter of a callee at the same
+    # instantiation: borrowed at `T = P`, owned at `T = Own[P]`.
+    PASS = auto()
 
-    def render(self, t_cpp: str, value_cpp: str) -> str:
-        """The runtime conversion of `value_cpp` for this sink."""
-        helper = {OpenTSink.STORAGE: "param_to_storage",
-                  OpenTSink.RETURN: "param_to_return",
-                  OpenTSink.ASSIGN: "param_to_assign"}[self]
+    def render(self, t_cpp: str, value_cpp: str, last: bool = False,
+               slot_last: bool = False) -> str:
+        """The runtime conversion of `value_cpp` for this sink; `last`: the
+        read is the parameter's last use, which an `Own[X]` instantiation
+        hands over instead of copying; `slot_last`: the read is an
+        open-result pointer local's last use, whose pointee at a value
+        storage type is the local's own slot (`open_local_last`), which
+        every sink takes over."""
+        if slot_last:
+            value_cpp = open_local_last_cpp(t_cpp, value_cpp)
+        helper = ({OpenTSink.STORAGE: "param_consume",
+                   OpenTSink.RETURN: "param_to_return_last",
+                   OpenTSink.ASSIGN: "param_consume",
+                   OpenTSink.PASS: "param_pass_last"}
+                  if last else
+                  {OpenTSink.STORAGE: "param_to_storage",
+                   OpenTSink.RETURN: "param_to_return",
+                   OpenTSink.ASSIGN: "param_to_assign",
+                   OpenTSink.PASS: "param_pass"})[self]
         return f"::tpy::{helper}<{t_cpp}>({value_cpp})"
 
 
@@ -2454,6 +2477,12 @@ class THIRFormConvert(THIRExpr):
     move: bool = False
     materialize: 'bool | None' = None
     open_t_sink: OpenTSink = OpenTSink.STORAGE
+    # The read is a bare open-`T` parameter's last use (sema's
+    # `is_last_use`): an `Own[X]` instantiation hands the value over.
+    open_t_last: bool = False
+    # The read is an open-result pointer local's last use
+    # (`Source.slot_last`, `OpenTSink.render`).
+    open_slot_last: bool = False
     # An open-`T` BORROW into a slot that spells it through its trait (a
     # tuple element's `val_or_ptr_t<T>`): the instantiation decides the
     # address-of or the value (`::tpy::to_val_or_ptr`). None: the bare
@@ -2752,6 +2781,11 @@ class THIRPtrLocalDecl(THIRStmt):
     # `const_indirect_locals`); only the pointer line takes
     # the prefix -- the rebind `std::optional<T>` slot stays non-const.
     is_const: bool = False
+    # PTR_ADDR of a local holding an open `T` result (`open_result`): the
+    # `T` spelling its binding is decided by per instantiation
+    # (`::tpy::init_result<T>` over a slot of its own -- a reference
+    # re-pointed at, a value snapshotted into the slot). None otherwise.
+    open_t: str | None = None
 
     @property
     def bound_name(self) -> str:
@@ -2793,6 +2827,9 @@ class THIRPtrLocalRebind(THIRStmt):
     rebind_storage: 'RebindStorage | None' = None
     # See THIRAssign.rebuild: the slot holds a generator / coroutine frame.
     rebuild: bool = False
+    # A FRAME_RVALUE binding of an open-result local: the C++ spelling of
+    # its open `T` (`THIRAssign.open_reseat`).
+    open_reseat: 'str | None' = None
     # The slot `own_slot_cpp` asks for (see THIRAssign.own_slot).
     own_slot: THIRRebindSlot | None = field(
         default=None, kw_only=True, compare=False, repr=False)
@@ -2887,6 +2924,10 @@ class THIRAssign(THIRStmt):
     # The object is a generator / coroutine frame, which is not assignable:
     # IN_PLACE destroys it and constructs the new one in its storage, OWN
     # emplaces the site's slot.
+    # A binding of an open-result local (`BindingConstruct.OPEN_RESULT`),
+    # the C++ spelling of its open `T`: a reference result re-points the
+    # local (`reseat_result<T>`), a by-value one fills its slot.
+    open_reseat: str | None = None
     rebuild: bool = False
     # The slot this write fills (`own_slot_cpp`, or the borrow-tuple slot
     # an owning-call reseat refills), stamped by the lowering
@@ -3109,6 +3150,10 @@ class THIRFinallyDeferredReturn(THIRStmt):
     capture: 'THIRExpr | None' = None
     indirect: bool = False
     optional_move: bool = False
+    # A bare `x: T` parameter's capture: the `T` spelling its materialize
+    # is decided by per instantiation (`::tpy::param_to_return_last<T>`,
+    # moved at `T = Own[X]`, lent at `T = P`). None otherwise.
+    open_t: str | None = None
     # A returned tuple literal: the rebuilt tuple's spelling and one part per
     # member, in the literal's evaluation order. `capture` is None then.
     tuple_cpp: str | None = None
@@ -3995,6 +4040,11 @@ class THIRErrorReturnBind(THIRStmt):
     # spelling (see THIRAssign.rebind_storage).
     rebind_storage: 'RebindStorage | None' = None
     slot_cpp: 'str | None' = None
+    # With `ptr_rebind`: an open-result local's write (`THIRAssign.open_reseat`).
+    open_reseat: 'str | None' = None
+    # With `open_reseat` in a resumable frame: the frame field the ptr-slot
+    # prescan reserved for the site, the slot in place of one of its own.
+    frame_slot: 'str | None' = None
     alias_bind: bool = False
     target: 'THIRExpr | None' = None
     # Its propagate check returns: `THIRReturn.staged`.
@@ -4012,6 +4062,7 @@ class THIRErrorReturnBind(THIRStmt):
         """What the storage of its own the pointer bind fills holds, else
         None (an in-place write, or no pointer bind)."""
         if (not self.ptr_rebind or self.target is not None
+                or self.frame_slot is not None
                 or self.rebind_storage is RebindStorage.IN_PLACE):
             return None
         return self.slot_cpp

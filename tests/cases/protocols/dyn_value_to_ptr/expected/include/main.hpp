@@ -11,7 +11,7 @@ struct Awaker;
 // @dynamic
 // class Awaker(Protocol):
 template<typename T>
-concept __Awaker_Concept__ = requires(T& t) {
+concept __Awaker_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.mark(std::declval<int32_t>()) } -> std::convertible_to<void>;
 };
 

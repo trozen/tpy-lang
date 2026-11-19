@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // def stub[T, U](fn: Fn[[T], U]) -> int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
 int32_t stub__Fn_T_U(__F0&& fn);
 // @dispatch
@@ -27,7 +27,7 @@ void main();
 //     return int32(0)
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
 int32_t stub__Fn_T_U(__F0&& fn) {
     return 0;

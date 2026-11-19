@@ -13,7 +13,7 @@ struct Rec;
 
 // class Shapes(Protocol):
 template<typename T>
-concept Shapes = requires(T& t) {
+concept Shapes = requires(::tpy::storage_t<T>& t) {
     { t.bump(std::declval<Rec&>()) } -> std::convertible_to<int32_t>;
     { t.grow(std::declval<std::vector<int32_t>&>()) } -> std::convertible_to<int32_t>;
     { t.total(std::declval<const std::vector<int32_t>&>()) } -> std::convertible_to<int32_t>;
@@ -26,7 +26,7 @@ struct Dyn;
 // @dynamic
 // class Dyn(Protocol):
 template<typename T>
-concept __Dyn_Concept__ = requires(T& t) {
+concept __Dyn_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.bump(std::declval<Rec&>()) } -> std::convertible_to<int32_t>;
     { t.pick(std::declval<Holder&>()) } -> std::convertible_to<Rec>;
     { t.tag() } -> std::convertible_to<int32_t>;

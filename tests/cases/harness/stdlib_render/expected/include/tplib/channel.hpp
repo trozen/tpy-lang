@@ -191,7 +191,7 @@ inline std::ostream& operator<<(std::ostream& os, const Receiver<T>& obj) {
 
 // def __iter__(self) -> Iterator[Own[T]]:
 template <typename T>
-struct __gen_Receiver___iter__ : public ::tpy::next_iter_mixin<__gen_Receiver___iter__<T>, T> {
+struct __gen_Receiver___iter__ : public ::tpy::next_iter_mixin<__gen_Receiver___iter__<T>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
     const Receiver<T>& __self;
 
@@ -208,7 +208,7 @@ struct __gen_Receiver___iter__ : public ::tpy::next_iter_mixin<__gen_Receiver___
         : __state(S_INITIAL),
           __self(__self) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_Receiver___iter__& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_Receiver___iter__<T>&) {
@@ -223,7 +223,7 @@ struct __gen_Receiver___iter__ : public ::tpy::next_iter_mixin<__gen_Receiver___
 //         except ChannelClosed:
 //             return
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_Receiver___iter__<T>::__next__() {
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_Receiver___iter__<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -345,7 +345,7 @@ inline void _Buf<T>::_push(::tpy::own_param_t<T> value) {
 //     return value
 template<typename T>
 inline ::tpy::own_return_t<T> _Buf<T>::_pop() {
-    T value = this->_buf.take(this->_head);
+    ::tpy::storage_t<T> value = this->_buf.take(this->_head);
     this->_head = (::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, 1)), this->_cap));
     this->_count = ::tpy::sub_check<uint32_t>(this->_count, 1);
     return value;
@@ -587,7 +587,7 @@ inline Receiver<T>::~Receiver() {
 template<typename T>
 inline ::tpy::own_return_t<T> Receiver<T>::recv() const {
     const _Chan<T>& c = this->_chan.get();
-    std::optional<T> value;
+    std::optional<::tpy::storage_t<T>> value;
     auto __ctx_6 = c._buf.lock();
     auto& g = __ctx_6.__enter__();
     try {

@@ -417,7 +417,7 @@ struct __coro_counted {
     T_it it;
     int32_t skip;
     int32_t c;
-    ::tpy::frame_slot<T> _x;
+    ::tpy::frame_slot<::tpy::storage_t<T>> _x;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {

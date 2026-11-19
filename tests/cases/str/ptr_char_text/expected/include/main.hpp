@@ -24,7 +24,7 @@ template<typename T>
 void gen_text(std::string_view tag, ::tpy::param_val_or_ref_t<T> x);
 // def gen_ptr[T](tag: str, p: Ptr[T]) -> None:
 template<typename T>
-void gen_ptr(std::string_view tag, T* p);
+void gen_ptr(std::string_view tag, ::tpy::storage_t<T>* p);
 // def gen_print[T](tag: str, x: T) -> None:
 template<typename T>
 void gen_print(std::string_view tag, ::tpy::param_val_or_ref_t<T> x);
@@ -140,7 +140,7 @@ void gen_text(std::string_view tag, ::tpy::param_val_or_ref_t<T> x) {
 //     print(tag, f"{p}", f"{p!r}")  # tpyc: ok
 //     print(tag, str(p), repr(p))  # tpyc: ok
 template<typename T>
-void gen_ptr(std::string_view tag, T* p) {
+void gen_ptr(std::string_view tag, ::tpy::storage_t<T>* p) {
     std::cout << tag << " " << std::format("{}", ::tpy::__str__(p)) << " " << std::format("{}", ::tpy::repr_of(p)) << "\n" << ::tpy::check_signals;
     std::cout << tag << " " << std::string(::tpy::__str__(p)) << " " << std::string(::tpy::repr_of(p)) << "\n" << ::tpy::check_signals;
 }
@@ -158,7 +158,7 @@ void gen_print(std::string_view tag, ::tpy::param_val_or_ref_t<T> x) {
 //     print("gen-key", d[p])
 template<typename T>
 void gen_key(::tpy::param_val_or_ref_t<T> p) {
-    ::tpy::ordered_map<T, int32_t> d = ::tpy::ordered_map<T, int32_t>();
+    ::tpy::ordered_map<::tpy::storage_t<T>, int32_t> d = ::tpy::ordered_map<::tpy::storage_t<T>, int32_t>();
     ::tpy::__setitem__(d, p, 7);
     std::cout << "gen-key" << " " << ::tpy::__getitem__(d, p) << "\n" << ::tpy::check_signals;
 }

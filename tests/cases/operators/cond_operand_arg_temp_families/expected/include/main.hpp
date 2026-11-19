@@ -18,7 +18,7 @@ struct Shape;
 // @dynamic
 // class Shape(Protocol):
 template<typename T>
-concept __Shape_Concept__ = requires(T& t) {
+concept __Shape_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.area() } -> std::convertible_to<double>;
 };
 
@@ -55,7 +55,7 @@ template<typename T>
 bool anyslot(std::string_view tag, ::tpy::param_val_or_ref_t<T> v);
 // def listslot[T](tag: str, v: list[T]) -> bool:
 template<typename T>
-bool listslot(std::string_view tag, const std::vector<T>& v);
+bool listslot(std::string_view tag, const std::vector<::tpy::storage_t<T>>& v);
 // def show(tag: str, t: Value) -> int32:
 int32_t show(std::string_view tag, const Value& t);
 // def leaf_count(tag: str, t: Tree[int32]) -> int32:
@@ -99,7 +99,7 @@ void main();
 
 template<typename T>
 struct Tree {
-    using variant_type = ::tpy::Union<T, std::vector<Tree<T>>>;
+    using variant_type = ::tpy::Union<::tpy::storage_t<T>, std::vector<Tree<::tpy::storage_t<T>>>>;
     variant_type value;
 
     Tree() requires std::default_initializable<variant_type> = default;
@@ -443,7 +443,7 @@ bool anyslot(std::string_view tag, ::tpy::param_val_or_ref_t<T> v) {
 //     print(tag, len(v))
 //     return True
 template<typename T>
-bool listslot(std::string_view tag, const std::vector<T>& v) {
+bool listslot(std::string_view tag, const std::vector<::tpy::storage_t<T>>& v) {
     std::cout << tag << " " << ::tpy::__len__(v) << "\n" << ::tpy::check_signals;
     return true;
 }

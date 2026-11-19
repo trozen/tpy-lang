@@ -36,8 +36,8 @@ from ..type_def_registry import (
     is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
 from ..typesys import (NoneType, pointer_trait_cpp, substitute_cpp_ret, OptionalType, TpyType, TupleType,
-                       TypeParamRef, UnionType, VoidType, unwrap_qualifiers,
-                       view_family_for_type)
+                       TypeParamRef, UnionType, VoidType,
+                       unwrap_qualifiers, view_family_for_type)
 from .source import TraitAbi
 from .frame import LeafRole
 from .nodes import (THIRRebindSlot, THIRStoragePlacement, Form, PrintForm,
@@ -71,7 +71,7 @@ from .nodes import (THIRRebindSlot, THIRStoragePlacement, Form, PrintForm,
     THIRBorrowTupleLiteral, THIRTupleLiteral, THIRTupleUnpack, TupleElemBind,
     THIRTruthy, THIROptViewArg, THIROwnOptRebuild, THIRUnaryNot,
     THIRUnaryArith, THIRUnionArgLift, THIRVarDecl, THIRVarargPack, THIRWhile,
-    THIRWith, WithTargetArm)
+    THIRWith, WithTargetArm, OpenTSink, open_local_last_cpp)
 from .faces import witness as _witness
 from .temp_plan import THIRTempPlan, THIRTempPlacement, if_chain, validate_plan
 
@@ -1031,6 +1031,7 @@ def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
     # std::initializer_list elements would copy a std::move / cannot hold a
     # non-copyable element).
     t = unwrap_qualifiers(e.result_type)
+    # The element types are element positions: their storage form.
     if is_dict(t):
         k_cpp = t.type_args[0].to_cpp()
         v_cpp = t.type_args[1].to_cpp()
@@ -1272,7 +1273,13 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
                  else t if e.trait is TraitAbi.VAL_OR_PTR and isinstance(t, TypeParamRef)
                  else None)
         if spelled is not None and arg_t is not None:
-            return f"::tpy::to_val_or_ptr<{spelled}<{arg_t.to_cpp()}>>({inner})"
+            if e.open_t_last:
+                inner = OpenTSink.PASS.render(arg_t.to_cpp_tag(), inner,
+                                              last=True,
+                                              slot_last=e.open_slot_last)
+            elif e.open_slot_last:
+                inner = open_local_last_cpp(arg_t.to_cpp_tag(), inner)
+            return f"::tpy::to_val_or_ptr<{spelled}<{arg_t.to_cpp_tag()}>>({inner})"
         # F1 Optional[ref] read: `std::optional<T>` lvalue -> `T*`.
         if isinstance(t, OptionalType):
             return f"::tpy::optional_to_ptr({inner})"
@@ -1290,10 +1297,14 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         if is_plain_nonvalue(t):
             return f"&({inner})"
     elif e.form is Form.STORAGE:
+        if e.trait is TraitAbi.YIELD_SLOT and e.open_slot_last:
+            # An open-result local's last use (`open_slot_last`): the step
+            # converts from what `open_local_last` hands it.
+            return open_local_last_cpp(t.to_cpp_tag(), inner)
         if e.trait is TraitAbi.YIELD_SLOT:
             # A frame local at its last use into an open-`T` yield slot: the
             # instantiation moves a value in or lends a reference.
-            elem = f"const {t.to_cpp()}" if e.is_const else t.to_cpp()
+            elem = f"const {t.to_cpp_tag()}" if e.is_const else t.to_cpp_tag()
             return f"::tpy::yield_from_local<{elem}>({inner})"
         if e.base_copy:
             # `move`: the value is an rvalue the base part moves out of.
@@ -1347,7 +1358,8 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         if isinstance(t, TypeParamRef):
             if e.move:
                 return f"std::move({inner})"
-            return e.open_t_sink.render(t.to_cpp(), inner)
+            return e.open_t_sink.render(t.to_cpp_tag(), inner, e.open_t_last,
+                                        e.open_slot_last)
         # A plain non-value record/container slot (a field write / MIL cell):
         # the storage sink consumes the source directly -- `std::move(v)` for
         # an owned source at its last use, the bare render (a copy) otherwise.
@@ -1470,6 +1482,9 @@ def binding_write_parts(
             # (`saved = &*(__ptr_slot_fN = Point(9));`, over the prescanned
             # frame field).
             value_cpp = _emit_expr(stmt.value, state)
+            if stmt.open_reseat is not None:
+                return [f"::tpy::reseat_result<{stmt.open_reseat}>("
+                        f"{name}, {stmt.val_cpp}, {value_cpp})"]
             return [_rvalue_reseat_expr(name, value_cpp, state,
                                         rebuild=stmt.rebuild,
                                         frame_slot=stmt.val_cpp)]
@@ -1596,6 +1611,13 @@ def binding_write_parts(
         # that still points at it.
         assert isinstance(stmt.target, THIRName)
         value_cpp = _emit_expr(stmt.value, state)
+        if stmt.open_reseat is not None:
+            # An open-`T` result: a reference instantiation's re-points the
+            # local, a by-value one's lands in the slot it points at.
+            slot = _own_slot(state, stmt.own_slot)
+            return [f"::tpy::reseat_result<{stmt.open_reseat}>("
+                    f"{escape_cpp_name(stmt.target.name)}, {slot}, "
+                    f"{value_cpp})"]
         return [_rvalue_reseat_expr(escape_cpp_name(stmt.target.name),
                                     value_cpp, state, rebuild=stmt.rebuild,
                                     own_cpp=stmt.own_slot_cpp,
@@ -1760,7 +1782,11 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return f"'{escape_cpp_char(e.value)}'"
     if isinstance(e, THIRWalrus) and e.write is not None:
         # The plain assignment's write, as the operands of a comma
-        # expression, then the value read back out.
+        # expression, then the value read back out; a first binding
+        # pre-declares the local it writes.
+        if e.cpp_type is not None:
+            state.temps.declare_named(e.cpp_name, e.cpp_type, init=e.init,
+                                      suffix=e.placeholder)
         parts = binding_write_parts(e.write, state)
         if e.write_is_read and len(parts) == 1:
             # The assignment expression already evaluates to the read.
@@ -2860,6 +2886,9 @@ def _deferred_return_capture(stmt: THIRFinallyDeferredReturn,
         return ([f"auto* {ptr} = {base};"],
                 f"::tpy::ptr_to_optional_move({ptr})")
     lvalue = f"(*{base})" if stmt.indirect else base
+    if stmt.open_t is not None:
+        return ([f"auto* {ptr} = &({lvalue});"],
+                f"::tpy::param_to_return_last<{stmt.open_t}>(*{ptr})")
     return [f"auto* {ptr} = &({lvalue});"], f"std::move(*{ptr})"
 
 
@@ -4333,6 +4362,17 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
                       f"__slot_{init_slot} = {init_cpp};\n")
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
                       f"::tpy::optional_to_ptr(__slot_{init_slot});\n")
+        elif stmt.kind is PtrSlotKind.PTR_ADDR and stmt.open_t is not None:
+            # A local holding an open `T` result: the instantiation decides
+            # between pointing at the source and holding it in the slot.
+            init_cpp = _emit_expr(stmt.init, state)
+            state.temps.flush(out, indent)
+            init_slot = (state.assert_local_slot() or state.next_slot())
+            out.write(f"{indent}std::optional<{stmt.cpp_type}> "
+                      f"__slot_{init_slot};\n")
+            out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
+                      f"::tpy::init_result<{stmt.open_t}>("
+                      f"__slot_{init_slot}, {init_cpp});\n")
         elif stmt.kind is PtrSlotKind.PTR_ADDR:
             # Address-of an existing lvalue -- the decl itself takes no slot
             # (the decl twin of the PTR_ADDR reseat).
@@ -4583,9 +4623,15 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
                       f"::tpy::unwrap_ref_move(*{tmp});\n")
             _witness("er.bind_field_target")
         elif stmt.ptr_rebind:
-            if stmt.own_slot_cpp is None:
+            if stmt.own_slot_cpp is None and stmt.frame_slot is None:
                 out.write(f"{inner}(*{name}) = "
                           f"::tpy::unwrap_ref_move(*{tmp});\n")
+            elif stmt.open_reseat is not None:
+                slot = (stmt.frame_slot if stmt.frame_slot is not None
+                        else _own_slot(state, stmt.own_slot))
+                out.write(f"{inner}::tpy::reseat_result<{stmt.open_reseat}>("
+                          f"{name}, {slot}, "
+                          f"::tpy::unwrap_ref_move(*{tmp}));\n")
             else:
                 slot = _own_slot(state, stmt.own_slot)
                 out.write(f"{inner}{name} = &*({slot} = "

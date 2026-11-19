@@ -24,7 +24,7 @@ void main();
 template<::tpystd::typing::Iterable<int32_t> T>
 struct Summer {
     // items: T
-    T items;
+    ::tpy::storage_t<T> items;
 
     // def __init__(self, items: Own[T]) -> None:
     Summer() = default;

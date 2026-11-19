@@ -13,7 +13,7 @@ using ::tpyapp::a::Counter;
 
 // class Greeter(Protocol):
 template<typename T>
-concept Greeter = requires(T& t) {
+concept Greeter = requires(::tpy::storage_t<T>& t) {
     { t.hello() } -> std::convertible_to<std::string_view>;
 };
 

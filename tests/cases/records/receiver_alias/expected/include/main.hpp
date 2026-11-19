@@ -433,7 +433,7 @@ template<typename T>
 inline ::tpy::val_or_ref_t<T> Cell::generic(::tpy::param_val_or_ref_t<T> value) {
     Cell& me = (*this);
     me.n = ::tpy::add_check<int32_t>(me.n, 1);
-    return ::tpy::param_to_return<T>(value);
+    return ::tpy::param_to_return_last<T>(value);
 }
 
 void __tpy_init();

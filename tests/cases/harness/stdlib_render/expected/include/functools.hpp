@@ -10,66 +10,130 @@ namespace tpystd::functools {
 inline constexpr std::string_view __name__ = "functools";
 
 // @dispatch
-// def reduce[T, U](func: Fn[[U, T], U], a: Iterable[T], initial: U) -> Own[U]:
+// def reduce[T, U: ReferenceType](func: Fn[[U, T], U], a: list[T], initial: U) -> U:
+template<typename T, ::tpy::ReferenceType U, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<U>;
+  }
+::tpy::val_or_ref_t<U> reduce__Fn_U_T_U__list_T__U(__F0&& func, std::vector<::tpy::storage_t<T>>& a, ::tpy::param_val_or_ref_t<U> initial);
+// @dispatch
+// def reduce[T, U](func: Fn[[U, T], Own[U]], a: Iterable[T], initial: U) -> Own[U]:
 template<typename T, typename U, ::tpystd::typing::Iterable<T> T_a, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<::tpy::storage_t<U>>;
   }
-::tpy::own_return_t<U> reduce__Fn_U_T_U__Iterable_T__U(__F0&& func, T_a&& a, ::tpy::param_val_or_ref_t<U> initial);
+::tpy::own_return_t<U> reduce__Fn_U_T_Own_U__Iterable_T__U(__F0&& func, T_a&& a, ::tpy::param_val_or_ref_t<U> initial);
 // @dispatch
-// def reduce[T](func: Fn[[T, T], T], a: list[T]) -> Own[T]:
+// def reduce[T: ReferenceType](func: Fn[[T, T], T], a: list[T]) -> T:
+template<::tpy::ReferenceType T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<T>;
+  }
+::tpy::val_or_ref_t<T> reduce__Fn_T_T_T__list_T(__F0&& func, std::vector<::tpy::storage_t<T>>& a);
+// @dispatch
+// def reduce[T](func: Fn[[T, T], Own[T]], a: list[T]) -> Own[T]:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<::tpy::storage_t<T>>;
   }
-::tpy::own_return_t<T> reduce__Fn_T_T_T__list_T(__F0&& func, std::vector<T>& a);
+::tpy::own_return_t<T> reduce__Fn_T_T_Own_T__list_T(__F0&& func, std::vector<::tpy::storage_t<T>>& a);
 
 // @dispatch
-// def reduce[T, U](func: Fn[[U, T], U], a: Iterable[T], initial: U) -> Own[U]:
+// def reduce[T, U: ReferenceType](func: Fn[[U, T], U], a: list[T], initial: U) -> U:
+//     acc = initial
+//     for i in range(len(a)):
+//         acc = func(acc, a[i])
+//     return acc
+template<typename T, ::tpy::ReferenceType U, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<U>;
+  }
+::tpy::val_or_ref_t<U> reduce__Fn_U_T_U__list_T__U(__F0&& func, std::vector<::tpy::storage_t<T>>& a, ::tpy::param_val_or_ref_t<U> initial) {
+    std::optional<::tpy::storage_t<U>> __slot_1;
+    ::tpy::storage_t<U>* acc = ::tpy::init_result<U>(__slot_1, initial);
+    std::optional<::tpy::storage_t<U>> __slot_2;
+    int32_t __stop_0 = ::tpy::__len__(a);
+    for (int32_t i = 0; i < __stop_0; ++i) {
+        ::tpy::reseat_result<U>(acc, __slot_2, func(::tpy::param_pass<U>((*acc)), ::tpy::param_pass<T>(a[static_cast<std::size_t>(i)])));
+    }
+    return ::tpy::param_to_return<U>(::tpy::open_local_last<U>((*acc)));
+}
+// @dispatch
+// def reduce[T, U](func: Fn[[U, T], Own[U]], a: Iterable[T], initial: U) -> Own[U]:
 //     acc: U = copy(initial)
 //     for x in a:
 //         acc = func(acc, x)
 //     return acc
 template<typename T, typename U, ::tpystd::typing::Iterable<T> T_a, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<::tpy::storage_t<U>>;
   }
-::tpy::own_return_t<U> reduce__Fn_U_T_U__Iterable_T__U(__F0&& func, T_a&& a, ::tpy::param_val_or_ref_t<U> initial) {
-    U __slot_1 = U(initial);
-    U* acc = &__slot_1;
-    std::optional<U> __slot_2;
+::tpy::own_return_t<U> reduce__Fn_U_T_Own_U__Iterable_T__U(__F0&& func, T_a&& a, ::tpy::param_val_or_ref_t<U> initial) {
+    ::tpy::storage_t<U> __slot_1 = ::tpy::storage_t<U>(initial);
+    ::tpy::storage_t<U>* acc = &__slot_1;
+    std::optional<::tpy::storage_t<U>> __slot_2;
     auto& __src_0 = a;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& x = ::tpy::unwrap_ref(*__r_1);
-        acc = &*(__slot_2 = func((*acc), x));
+        acc = &*(__slot_2 = func(::tpy::param_pass<U>((*acc)), ::tpy::param_pass<T>(x)));
     }
     return std::move((*acc));
 }
 // @dispatch
-// def reduce[T](func: Fn[[T, T], T], a: list[T]) -> Own[T]:
+// def reduce[T: ReferenceType](func: Fn[[T, T], T], a: list[T]) -> T:
 //     if len(a) == 0:
-//         raise ValueError("reduce() of empty list with no initial value")
-//     acc: T = copy(a[0])
+//         raise TypeError("reduce() of empty iterable with no initial value")
+//     acc = a[0]
 //     for i in range(1, len(a)):
+//         acc = func(acc, a[i])
+//     return acc
+template<::tpy::ReferenceType T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<T>;
+  }
+::tpy::val_or_ref_t<T> reduce__Fn_T_T_T__list_T(__F0&& func, std::vector<::tpy::storage_t<T>>& a) {
+    if ((::tpy::__len__(a) == 0)) {
+        throw ::tpy::TypeError("reduce() of empty iterable with no initial value");
+    }
+    std::optional<::tpy::storage_t<T>> __slot_1;
+    ::tpy::storage_t<T>* acc = ::tpy::init_result<T>(__slot_1, ::tpy::__getitem__(a, 0));
+    std::optional<::tpy::storage_t<T>> __slot_2;
+    int32_t __stop_0 = ::tpy::__len__(a);
+    for (int32_t i = 1; i < __stop_0; ++i) {
+        ::tpy::reseat_result<T>(acc, __slot_2, func(::tpy::param_pass<T>((*acc)), ::tpy::param_pass<T>(::tpy::__getitem__(a, i))));
+    }
+    return ::tpy::param_to_return<T>(::tpy::open_local_last<T>((*acc)));
+}
+// @dispatch
+// def reduce[T](func: Fn[[T, T], Own[T]], a: list[T]) -> Own[T]:
+//     if len(a) == 0:
+//         raise TypeError("reduce() of empty iterable with no initial value")
+//     if len(a) == 1:
+//         return copy(a[0])
+//     acc = func(a[0], a[1])
+//     for i in range(2, len(a)):
 //         acc = func(acc, a[i])
 //     return acc
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<::tpy::storage_t<T>>;
   }
-::tpy::own_return_t<T> reduce__Fn_T_T_T__list_T(__F0&& func, std::vector<T>& a) {
+::tpy::own_return_t<T> reduce__Fn_T_T_Own_T__list_T(__F0&& func, std::vector<::tpy::storage_t<T>>& a) {
     if ((::tpy::__len__(a) == 0)) {
-        throw ::tpy::ValueError("reduce() of empty list with no initial value");
+        throw ::tpy::TypeError("reduce() of empty iterable with no initial value");
     }
-    T __slot_1 = T(::tpy::__getitem__(a, 0));
-    T* acc = &__slot_1;
-    std::optional<T> __slot_2;
+    if ((::tpy::__len__(a) == 1)) {
+        return ::tpy::storage_t<T>(::tpy::__getitem__(a, 0));
+    }
+    ::tpy::storage_t<T> __slot_1 = func(::tpy::param_pass<T>(::tpy::__getitem__(a, 0)), ::tpy::param_pass<T>(::tpy::__getitem__(a, 1)));
+    ::tpy::storage_t<T>* acc = &__slot_1;
+    std::optional<::tpy::storage_t<T>> __slot_2;
     int32_t __stop_0 = ::tpy::__len__(a);
-    for (int32_t i = 1; i < __stop_0; ++i) {
-        acc = &*(__slot_2 = func((*acc), ::tpy::__getitem__(a, i)));
+    for (int32_t i = 2; i < __stop_0; ++i) {
+        acc = &*(__slot_2 = func(::tpy::param_pass<T>((*acc)), ::tpy::param_pass<T>(::tpy::__getitem__(a, i))));
     }
     return std::move((*acc));
 }

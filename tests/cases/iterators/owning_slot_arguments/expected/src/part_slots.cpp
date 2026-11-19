@@ -141,40 +141,40 @@ void main() {
     gc.push_back(R(3));
     std::cout << "generic counted" << " " << ::tpyapp::part_slots::count<R>(std::move(gc)) << "\n" << ::tpy::check_signals;
     std::array<S, 2> ns = {S("a"), S("b")};
-    std::vector<S> ms = ::tpy::construct<std::vector<S>>(::tpy::builtin_map<S>(keep_s, ::tpy::__iter__(ns)));
+    std::vector<S> ms = ::tpy::construct<std::vector<S>>(::tpy::builtin_map<::tpy::own_arg<S>>(keep_s, ::tpy::__iter__(ns)));
     std::cout << "map lent" << " " << ::tpy::__getitem__(ms, 1).s << " " << ::tpy::__getitem__(ns, 0).s << " " << ::tpy::__getitem__(ns, 1).s << " " << ::tpy::__len__(ns) << "\n" << ::tpy::check_signals;
     std::array<S, 2> rs = {S("c"), S("d")};
-    std::vector<S> mr = ::tpy::construct<std::vector<S>>(::tpy::builtin_map<S>(keep_s, ::tpy::builtin_reversed(rs)));
+    std::vector<S> mr = ::tpy::construct<std::vector<S>>(::tpy::builtin_map<::tpy::own_arg<S>>(keep_s, ::tpy::builtin_reversed(rs)));
     std::cout << "map reversed lent" << " " << ::tpy::__getitem__(mr, 0).s << " " << ::tpy::__getitem__(rs, 0).s << " " << ::tpy::__len__(rs) << "\n" << ::tpy::check_signals;
     std::cout << "map iter fresh" << " " << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
-        auto __obj_0 = ::tpy::builtin_map<S>(keep_s, ::tpy::__iter__(::tpyapp::part_slots::mk_s()));
+        auto __obj_0 = ::tpy::builtin_map<::tpy::own_arg<S>>(keep_s, ::tpy::__iter__(::tpyapp::part_slots::mk_s()));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& x = *__beg_0;
+            auto&& x = ::tpy::take_elem(__beg_0);
             __result.push_back(x.s);
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     std::cout << "map reversed fresh" << " " << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
-        auto __obj_1 = ::tpy::builtin_map<S>(keep_s, ::tpy::builtin_reversed(::tpyapp::part_slots::mk_s()));
+        auto __obj_1 = ::tpy::builtin_map<::tpy::own_arg<S>>(keep_s, ::tpy::builtin_reversed(::tpyapp::part_slots::mk_s()));
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
-            const auto& x = *__beg_1;
+            auto&& x = ::tpy::take_elem(__beg_1);
             __result.push_back(x.s);
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     std::cout << "map fresh moved" << " " << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
-        auto __obj_2 = ::tpy::builtin_map<S>(keep_s, ::tpyapp::part_slots::mk_s());
+        auto __obj_2 = ::tpy::builtin_map<::tpy::own_arg<S>>(keep_s, ::tpyapp::part_slots::mk_s());
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            const auto& x = *__beg_2;
+            auto&& x = ::tpy::take_elem(__beg_2);
             __result.push_back(x.s);
         }
         std::move(__result);

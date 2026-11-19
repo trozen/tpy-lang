@@ -32,10 +32,10 @@ int64_t combine(int64_t a, int64_t b = 10, int64_t c = 20);
 int64_t partial(int64_t a, int64_t b = 10, int64_t c = 30, int64_t d = 40);
 // def total[T](*xs: T, k: int64 = 5) -> int64:
 template<typename T>
-int64_t total(::tpy::varargs<const T> xs, int64_t k = 5);
+int64_t total(::tpy::varargs<const ::tpy::storage_t<T>> xs, int64_t k = 5);
 // def total2[T](*xs: T, k: str = "") -> str:
 template<typename T>
-std::string total2(::tpy::varargs<const T> xs, std::string_view k = "");
+std::string total2(::tpy::varargs<const ::tpy::storage_t<T>> xs, std::string_view k = "");
 // def g(a: int64, *, k: int64 = 5) -> int64:
 int64_t g(int64_t a, int64_t k = 5);
 // @dispatch
@@ -48,14 +48,14 @@ int64_t outer__str(std::string_view x);
 // def apply[U](f: Fn[[int64], U], x: int64) -> U:
 template<typename U, typename __F0>
   requires requires(__F0& __fn, int64_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(__a0) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> apply__Fn_int64_U__int64(__F0&& f, int64_t x);
 // @dispatch
 // def apply[U](f: Fn[[str], U], x: str) -> U:
 template<typename U, typename __F0>
   requires requires(__F0& __fn, std::string_view __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(__a0) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> apply__Fn_str_U__str(__F0&& f, std::string_view x);
 // def kw_sum(**kw: Unpack[Opts]) -> int64:
@@ -68,7 +68,7 @@ template<typename T>
 ::tpy::val_or_ref_t<T> kw_only(::tpy::param_val_or_ref_t<T> k);
 // def kw_after_args[T](*xs: T, k: T) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> kw_after_args(::tpy::varargs<const T> xs, ::tpy::param_val_or_ref_t<T> k);
+::tpy::val_or_ref_t<T> kw_after_args(::tpy::varargs<const ::tpy::storage_t<T>> xs, ::tpy::param_val_or_ref_t<T> k);
 // def opt[T](x: T, *, k: T | None = None) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> opt(::tpy::param_val_or_ref_t<T> x, ::tpy::opt_param_t<T> k = nullptr);
@@ -92,7 +92,7 @@ std::string fk__str__Fn_str_str(std::string_view k, __F0&& fn);
 // def apply_opt[T](maybe: T | None, value: T, fn: Fn[[T], T]) -> T:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<T>;
   }
 ::tpy::val_or_ref_t<T> apply_opt(::tpy::opt_cparam_t<T> maybe, ::tpy::param_val_or_ref_t<T> value, __F0&& fn);
 // def none_arm_and_trials() -> None:
@@ -263,7 +263,7 @@ inline std::ostream& operator<<(std::ostream& os, const OptPick& obj) {
 template<typename T>
 struct OptBox {
     // self.x = x
-    T x;
+    ::tpy::storage_t<T> x;
 
     // def __init__(self, x: T, *, k: T | None = None) -> None:
     OptBox() = default;
@@ -485,7 +485,7 @@ inline void Bag<T>::put(::tpy::readonly_form_t<T> v, int64_t n) const {
 //     return x
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Gen::pick(::tpy::param_val_or_ref_t<T> x, int64_t y) const {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 // def __init__(self) -> None:
@@ -505,14 +505,14 @@ inline void Opt<T>::f(std::optional<int64_t> x, int64_t k) const {
 //     return k
 template<typename T>
 inline ::tpy::val_or_ref_t<T> KwPick::pick(::tpy::readonly_form_t<T> x, ::tpy::param_val_or_ref_t<T> k) const {
-    return ::tpy::param_to_return<T>(k);
+    return ::tpy::param_to_return_last<T>(k);
 }
 
 // def pick[T](self, x: T, *, k: T | None = None) -> T:
 //     return x
 template<typename T>
 inline ::tpy::val_or_ref_t<T> OptPick::pick(::tpy::param_val_or_ref_t<T> x, ::tpy::opt_cparam_t<T> k) const {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 // def __init__(self, x: T, *, k: T | None = None) -> None:
@@ -524,13 +524,13 @@ inline OptBox<T>::OptBox(::tpy::readonly_form_t<T> x, ::tpy::opt_cparam_t<T> k) 
 // def total[T](*xs: T, k: int64 = 5) -> int64:
 //     return len(xs) * 100 + k
 template<typename T>
-int64_t total(::tpy::varargs<const T> xs, int64_t k) {
+int64_t total(::tpy::varargs<const ::tpy::storage_t<T>> xs, int64_t k) {
     return (::tpy::add_check<int64_t>(static_cast<int64_t>((::tpy::mul_check<int32_t>(::tpy::__len__(xs), 100))), k));
 }
 // def total2[T](*xs: T, k: str = "") -> str:
 //     return str(len(xs)) + k
 template<typename T>
-std::string total2(::tpy::varargs<const T> xs, std::string_view k) {
+std::string total2(::tpy::varargs<const ::tpy::storage_t<T>> xs, std::string_view k) {
     return (::tpy::str_concat(::tpy::fixed_to_str<int32_t>(::tpy::__len__(xs)), k));
 }
 // @dispatch
@@ -538,7 +538,7 @@ std::string total2(::tpy::varargs<const T> xs, std::string_view k) {
 //     return f(x)
 template<typename U, typename __F0>
   requires requires(__F0& __fn, int64_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(__a0) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> apply__Fn_int64_U__int64(__F0&& f, int64_t x) {
     return f(x);
@@ -548,7 +548,7 @@ template<typename U, typename __F0>
 //     return f(x)
 template<typename U, typename __F0>
   requires requires(__F0& __fn, std::string_view __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(__a0) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> apply__Fn_str_U__str(__F0&& f, std::string_view x) {
     return f(x);
@@ -559,19 +559,19 @@ template<typename U, typename __F0>
 //     return k
 template<typename T>
 ::tpy::val_or_ref_t<T> kw_infer(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> k) {
-    return ::tpy::param_to_return<T>(k);
+    return ::tpy::param_to_return_last<T>(k);
 }
 // def kw_only[T](*, k: T) -> T:
 //     return k
 template<typename T>
 ::tpy::val_or_ref_t<T> kw_only(::tpy::param_val_or_ref_t<T> k) {
-    return ::tpy::param_to_return<T>(k);
+    return ::tpy::param_to_return_last<T>(k);
 }
 // def kw_after_args[T](*xs: T, k: T) -> T:
 //     return k
 template<typename T>
-::tpy::val_or_ref_t<T> kw_after_args(::tpy::varargs<const T> xs, ::tpy::param_val_or_ref_t<T> k) {
-    return ::tpy::param_to_return<T>(k);
+::tpy::val_or_ref_t<T> kw_after_args(::tpy::varargs<const ::tpy::storage_t<T>> xs, ::tpy::param_val_or_ref_t<T> k) {
+    return ::tpy::param_to_return_last<T>(k);
 }
 // # A `None` at a `T | None` parameter fills its None arm: no evidence for `T`
 // # beside an argument that is, keyword or positional.
@@ -584,7 +584,7 @@ template<typename T>
     if ((::tpy::opt_has_value(k))) {
         return (*k);
     }
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 // def optp[T](x: T, k: T | None = None) -> T:
 //     if k is not None:
@@ -595,7 +595,7 @@ template<typename T>
     if ((::tpy::opt_has_value(k))) {
         return (*k);
     }
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 // # A candidate tried per lambda infers `T` from its keyword-only `k`.
 // @dispatch
@@ -606,7 +606,7 @@ template<typename T, typename __F0>
       { __fn(__a0) } -> std::convertible_to<int64_t>;
   }
 ::tpy::val_or_ref_t<T> fk__T__Fn_int64_int64(::tpy::param_val_or_ref_t<T> k, __F0&& fn) {
-    return ::tpy::param_to_return<T>(k);
+    return ::tpy::param_to_return_last<T>(k);
 }
 // @dispatch
 // def fk(*, k: str, fn: Fn[[str], str]) -> str:
@@ -624,10 +624,10 @@ std::string fk__str__Fn_str_str(std::string_view k, __F0&& fn) {
 //     return fn(value)
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<T>;
   }
 ::tpy::val_or_ref_t<T> apply_opt(::tpy::opt_cparam_t<T> maybe, ::tpy::param_val_or_ref_t<T> value, __F0&& fn) {
-    return fn(value);
+    return fn(::tpy::param_pass_last<T>(value));
 }
 
 void __tpy_init();

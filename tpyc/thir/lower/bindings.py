@@ -63,6 +63,8 @@ from ...sema.binding_ownership import (NOT_OWNED, Acquired, BindingOwnership,
                                        generator_object,
                                        lambda_param_ownership,
                                        local_ownership,
+                                       open_owning_local,
+                                       holds_open_result,
                                        param_ownership,
                                        receiver_ownership, site_ownership)
 from ...sema.dyn_erasure import is_dyn_base_local
@@ -826,6 +828,14 @@ def classify_binding(site: _Site, name: str, typ: TpyType | None,
         # A local's value is no move source: liveness does not see an
         # iterator or view of it (BUGS.md#owned-viewfam-local-last-use-copies).
         rec = replace(rec, move_exception=_value_exception(typ))
+    owner = site.func if site.func is not None else inp.func
+    # A resumable frame's local holds an open result in its frame slot
+    # (`frame_slot<val_or_ref_t<U>>`), read as a plain local's is.
+    if _local_site(site) or site.kind == "frame":
+        ctx = inp.analyzer.ctx
+        if holds_open_result(ctx, owner, name, typ):
+            rec = replace(rec, open_result=True,
+                          open_owning=open_owning_local(ctx, owner, name))
     # A lambda's parameters live in the lambda's scope, never the frame's.
     if (inp.frame is not None and name in inp.frame.const_bindings
             and site.kind != "lambda"
@@ -1161,8 +1171,12 @@ def _frame_row(site, name, typ, inp: PlanInputs, visible):
     ptt = ptr_tuple_form(name, inp, inp.func)
     if ptt is not None:
         f["ptr_tuple"] = ptt
+    # An open-result local's field is the plain body's pointer over a slot
+    # of each binding site's own (`BC.OPEN_RESULT`), as the layout placed it.
+    construct = (BC.OPEN_RESULT if lay is not None
+                 and getattr(lay, "open_result", False) else None)
     return BindingRepr(name=name, site=None, type=typ, form=_frame_form(cls),
-                       site_kind=site.kind, **f)
+                       construct=construct, site_kind=site.kind, **f)
 
 
 _FRAME_POINTER_CLASSES = frozenset({
@@ -1369,6 +1383,8 @@ def _decl_row(site, name, typ, inp: 'PlanInputs', visible):
     """A first VarDecl's record: the declaration ladder's form, then whether
     it is a second name for an iterator object, which it holds the same way
     whatever form the ladder picked."""
+    if site.init is not None and _open_result_pointer(site, name, typ, inp):
+        return _open_result_row(site, name, typ)
     bind = _decl_local_binding(site, typ, inp, visible)
     rec = _decl_ladder(site, name, typ, inp, visible, bind)
     init, pre = site.init, inp.prescan
@@ -1389,6 +1405,32 @@ def _decl_row(site, name, typ, inp: 'PlanInputs', visible):
             rec = replace(rec, owning_alias=True,
                           owning_traversal=alternatives)
     return rec
+
+
+def _open_result_pointer(site, name: str, typ, inp: 'PlanInputs') -> bool:
+    """A plain-function local of a bare open `T` that some binding binds
+    to an open `T` result (`holds_open_result`), declared where a pointer
+    can stand for every binding: its first declaration when it is rebound
+    (a single-assignment one keeps `val_or_ref_t<R>`, `TPARAM_CALL`) or its
+    first walrus, either where no hoist predeclares it, or the
+    predeclaration of a branch / try that binds it."""
+    fn = site.func or inp.func
+    pre = inp.prescan
+    if site.kind != "hoist" and (name in pre.hoisted
+                                 or (site.kind == "decl"
+                                     and name not in pre.reassigned)):
+        return False
+    return (not (inp.frame is not None and name in inp.frame.fields)
+            and name not in pre.escape_hoisted
+            and name not in pre.move_through
+            and holds_open_result(inp.analyzer.ctx, fn, name, typ))
+
+
+def _open_result_row(site, name: str, typ) -> BindingRepr:
+    """The pointer over a slot of its own that every binding of an
+    open-result local fills or re-points (`BC.OPEN_RESULT`)."""
+    return _mk(site, name, typ, F.POINTER, BC.OPEN_RESULT, pointer=True,
+               rebind_slot=True)
 
 
 def _decl_local_binding(site, typ, inp: 'PlanInputs', visible
@@ -2157,6 +2199,8 @@ def _hoist_row(site, name, typ, inp: 'PlanInputs', visible):
                    move_exception=M.MODULE_STORAGE)
     if typ is None:
         return None
+    if _open_result_pointer(site, name, typ, inp):
+        return _open_result_row(site, name, typ)
     ctx = _PlanCtx(inp, visible, site.func or inp.func)
     vt = _p.resolve_pending_container(typ, an) or typ
     if _try_hoist_type_ok(vt, an):
@@ -2580,6 +2624,8 @@ def _walrus_row(site, name, typ, inp: 'PlanInputs', visible):
     sync only but the last."""
     an, pre = inp.analyzer, inp.prescan
     func = site.func or inp.func
+    if _open_result_pointer(site, name, typ, inp):
+        return _open_result_row(site, name, typ)
     vtu = _p.walrus_value_type(site.node, an)
     if vtu is None:
         return _mk(site, name, typ, F.NONE, None)

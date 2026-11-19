@@ -80,7 +80,7 @@ inline std::ostream& operator<<(std::ostream& os, const NotLastUse& obj) {
 template<typename T>
 struct GenericHolder {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: Own[T]):
     GenericHolder() = default;
@@ -101,9 +101,9 @@ inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
 template<typename T>
 struct GenericNotLastUse {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
     // spare: T
-    T spare;
+    ::tpy::storage_t<T> spare;
 
     // def __init__(self, item: Own[T]):
     GenericNotLastUse() = default;

@@ -22,7 +22,7 @@ void main();
 template<typename T>
 struct G {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
     // tag: str
     std::string tag;
 
@@ -71,11 +71,11 @@ inline std::ostream& operator<<(std::ostream& os, const Mixin& obj) {
 
 // class H[W](G[list[W]]):
 template<typename W>
-struct H : G<std::vector<W>> {
+struct H : G<std::vector<::tpy::storage_t<W>>> {
 
     // def __init__(self, item: list[W]) -> None:
     H() = default;
-    explicit H(std::vector<W>& item);
+    explicit H(std::vector<::tpy::storage_t<W>>& item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };
 
@@ -174,7 +174,7 @@ inline ::tpy::val_or_ref_t<T> G<T>::get() {
 //     self.item = item  # tpyc: warning(/may copy T into field/)
 template<typename T>
 inline void G<T>::put(::tpy::param_val_or_ref_t<T> item) {
-    this->item = ::tpy::param_to_storage<T>(item);
+    this->item = ::tpy::param_consume<T>(item);
 }
 
 // @property
@@ -203,7 +203,7 @@ inline std::string G<T>::describe() const {
 // def __init__(self, item: list[W]) -> None:
 //     super().__init__(item)
 template<typename W>
-inline H<W>::H(std::vector<W>& item) : G<std::vector<W>>(item) {}
+inline H<W>::H(std::vector<::tpy::storage_t<W>>& item) : G<std::vector<::tpy::storage_t<W>>>(item) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

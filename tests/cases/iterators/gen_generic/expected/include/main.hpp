@@ -9,19 +9,19 @@ namespace tpyapp::main {
 
 // class Appendable(Protocol):
 template<typename T>
-concept Appendable = requires(T& t) {
+concept Appendable = requires(::tpy::storage_t<T>& t) {
     { t.append(std::declval<int32_t>()) } -> std::convertible_to<void>;
 };
 
 // class Readable(Protocol):
 template<typename T>
-concept Readable = requires(const T& t) {
+concept Readable = requires(const ::tpy::storage_t<T>& t) {
     { t.size() } -> std::convertible_to<int32_t>;
 };
 
 // class Sized(Protocol):
 template<typename T>
-concept Sized = requires(const T& t) {
+concept Sized = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
@@ -97,7 +97,7 @@ struct __gen_bump_each : public ::tpy::next_iter_mixin<__gen_bump_each<T>, int32
 
     __gen_bump_each(::tpy::param_val_or_ref_t<T> obj_, int32_t count_)
         : __state(S_INITIAL),
-          obj(obj_),
+          obj(::tpy::param_pass_last<T>(obj_)),
           count(std::move(count_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -147,7 +147,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump_each<T>::__next__() {
 // def bump_each[T: Appendable](obj: T, count: int32) -> Iterator[int32]:
 template <typename T>
 __gen_bump_each<T> bump_each(::tpy::param_val_or_ref_t<T> obj, int32_t count) {
-    return __gen_bump_each<T>(obj, count);
+    return __gen_bump_each<T>(::tpy::param_pass_last<T>(obj), count);
 }
 
 // def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
@@ -311,7 +311,7 @@ struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, ::tpy::yiel
 
     __gen_repeat(::tpy::param_val_or_ref_t<T> value_, int32_t count_)
         : __state(S_INITIAL),
-          value(value_),
+          value(::tpy::param_pass_last<T>(value_)),
           count(std::move(count_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -358,7 +358,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat<T>::__n
 // def repeat[T](value: T, count: int32) -> Iterator[T]:
 template <typename T>
 __gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> value, int32_t count) {
-    return __gen_repeat<T>(value, count);
+    return __gen_repeat<T>(::tpy::param_pass_last<T>(value), count);
 }
 
 // def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[int32, T]]:

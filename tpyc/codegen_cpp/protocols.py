@@ -139,7 +139,7 @@ def dynamic_base_name(protocol: NominalType, analyzer) -> str:
     if protocol_info and protocol_info.cpp_concept:
         base = protocol_info.cpp_concept
         if protocol.type_args:
-            args_cpp = ", ".join(t.to_cpp() for t in protocol.type_args)
+            args_cpp = ", ".join(t.to_cpp_tag() for t in protocol.type_args)
             return f"{base}<{args_cpp}>"
         return base
     name = protocol.name
@@ -156,7 +156,7 @@ def dynamic_base_name(protocol: NominalType, analyzer) -> str:
                 or shadowed_local_cpp_name(protocol._module_qname)
                 or name)
     if protocol.type_args:
-        args_cpp = ", ".join(t.to_cpp() for t in protocol.type_args)
+        args_cpp = ", ".join(t.to_cpp_tag() for t in protocol.type_args)
         return f"{base}<{args_cpp}>"
     return base
 
@@ -538,7 +538,7 @@ class ProtocolGenerator:
                 bound = type_param_bounds[tp]
                 concept_name = self.get_concept_name(bound)
                 if bound.type_args:
-                    type_args_cpp = ", ".join(t.to_cpp() for t in bound.type_args)
+                    type_args_cpp = ", ".join(t.to_cpp_tag() for t in bound.type_args)
                     template_parts.append(f"{concept_name}<{type_args_cpp}> {tp}")
                 else:
                     template_parts.append(f"{concept_name} {tp}")
@@ -602,7 +602,7 @@ class ProtocolGenerator:
         """
         concept_name = self.get_concept_name(ptype)
         if ptype.type_args:
-            type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
+            type_args_cpp = ", ".join(t.to_cpp_tag() for t in ptype.type_args)
             return f"{concept_name}<{subject}, {type_args_cpp}>"
         return f"{concept_name}<{subject}>"
 
@@ -680,7 +680,7 @@ class ProtocolGenerator:
                 bound = type_param_bounds[tp]
                 concept_name = self.get_concept_name(bound)
                 if bound.type_args:
-                    type_args_cpp = ", ".join(t.to_cpp() for t in bound.type_args)
+                    type_args_cpp = ", ".join(t.to_cpp_tag() for t in bound.type_args)
                     template_parts.append(f"{concept_name}<{type_args_cpp}> {tp}")
                 else:
                     template_parts.append(f"{concept_name} {tp}")
@@ -699,7 +699,7 @@ class ProtocolGenerator:
                 ptype = info.protocols[0]
                 concept_name = self.get_concept_name(ptype)
                 if ptype.type_args:
-                    type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
+                    type_args_cpp = ", ".join(t.to_cpp_tag() for t in ptype.type_args)
                     template_parts.append(f"{concept_name}<{type_args_cpp}> T_{pname}")
                 else:
                     template_parts.append(f"{concept_name} T_{pname}")
@@ -804,10 +804,12 @@ class ProtocolGenerator:
         if not all_methods and not all_fields_for_decl:
             out.write(f"concept {concept_name} = true;\n")
             return True
+        # The checked type is the storage form: a bound holds at `T = Own[X]`
+        # as it does at `X`.
         if protocol_is_const(protocol_info):
-            out.write(f"concept {concept_name} = requires(const T& t) {{\n")
+            out.write(f"concept {concept_name} = requires(const ::tpy::storage_t<T>& t) {{\n")
         else:
-            out.write(f"concept {concept_name} = requires(T& t) {{\n")
+            out.write(f"concept {concept_name} = requires(::tpy::storage_t<T>& t) {{\n")
 
 
         def subst_type(typ: TpyType) -> TpyType:
@@ -844,7 +846,8 @@ class ProtocolGenerator:
             resolved = subst_type(typ)
             if is_str_type(resolved):
                 return "std::string_view"
-            return resolved.to_cpp()
+            # A bare concept parameter is a constraint argument: its tag.
+            return resolved.to_cpp_tag()
 
         for method_sig in all_methods:
             # Generate requirement for each method.

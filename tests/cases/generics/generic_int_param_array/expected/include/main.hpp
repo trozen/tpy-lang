@@ -18,7 +18,7 @@ void main();
 template<typename T, std::size_t N>
 struct Buffer {
     // data: Array[T, N]
-    std::array<T, N> data;
+    std::array<::tpy::storage_t<T>, N> data;
 
     // def __init__(self) -> None:
     Buffer();
@@ -48,7 +48,7 @@ inline Buffer<T, N>::Buffer() {
 //     self.data[idx] = val
 template<typename T, std::size_t N>
 inline void Buffer<T, N>::set(int32_t idx, ::tpy::param_val_or_ref_t<T> val) {
-    ::tpy::__setitem__(this->data, idx, val);
+    ::tpy::__setitem__(this->data, idx, ::tpy::param_consume<T>(val));
 }
 
 // def get(self, idx: int32) -> T:

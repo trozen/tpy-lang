@@ -32,7 +32,7 @@ void main();
 template<typename T>
 struct Box {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, val: T) -> None:
     Box() = default;
@@ -53,9 +53,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 template<typename T, typename U>
 struct Pair {
     // a: T
-    T a;
+    ::tpy::storage_t<T> a;
     // b: U
-    U b;
+    ::tpy::storage_t<U> b;
 
     // def __init__(self, a: T, b: U) -> None:
     Pair() = default;
@@ -73,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T, U>& obj) {
 template<typename T>
 struct Container {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self) -> None:
     Container();
@@ -96,7 +96,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 template<typename T>
 struct Mapper {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, val: T) -> None:
     Mapper() = default;
@@ -145,7 +145,7 @@ inline Container<T>::Container() {
 //     self.val = val
 template<typename T>
 inline void Container<T>::set(::tpy::param_val_or_ref_t<T> val) {
-    this->val = ::tpy::param_to_storage<T>(val);
+    this->val = ::tpy::param_consume<T>(val);
 }
 
 // def get(self) -> T:
@@ -165,26 +165,26 @@ inline Mapper<T>::Mapper(::tpy::readonly_form_t<T> val) : val(val) {}
 template<typename T>
 template<typename U, typename V>
 inline ::tpy::val_or_ref_t<V> Mapper<T>::transform(::tpy::readonly_form_t<U> u, ::tpy::param_val_or_ref_t<V> v) const {
-    return ::tpy::param_to_return<V>(v);
+    return ::tpy::param_to_return_last<V>(v);
 }
 
 // def identity[T](x: T) -> T:
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 // def pair_func[T, U](a: T, b: U) -> T:
 //     return a
 template<typename T, typename U>
 ::tpy::val_or_ref_t<T> pair_func(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
-    return ::tpy::param_to_return<T>(a);
+    return ::tpy::param_to_return_last<T>(a);
 }
 // def triple[A, B, C](a: A, b: B, c: C) -> B:
 //     return b
 template<typename A, typename B, typename C>
 ::tpy::val_or_ref_t<B> triple(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b, ::tpy::param_val_or_ref_t<C> c) {
-    return ::tpy::param_to_return<B>(b);
+    return ::tpy::param_to_return_last<B>(b);
 }
 
 void __tpy_init();

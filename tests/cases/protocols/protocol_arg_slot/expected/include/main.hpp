@@ -11,31 +11,31 @@ namespace tpyapp::main {
 
 // class HasArea(Protocol):
 template<typename T>
-concept HasArea = requires(T& t) {
+concept HasArea = requires(::tpy::storage_t<T>& t) {
     { t.area() } -> std::convertible_to<int32_t>;
 };
 
 // class Growable(Protocol):
 template<typename T>
-concept Growable = requires(T& t) {
+concept Growable = requires(::tpy::storage_t<T>& t) {
     { t.grow() } -> std::convertible_to<void>;
 };
 
 // class ReadsW(Protocol):
 template<typename T>
-concept ReadsW = requires(const T& t) {
+concept ReadsW = requires(const ::tpy::storage_t<T>& t) {
     { t.width() } -> std::convertible_to<int32_t>;
 };
 
 // class PeeksW(Protocol):
 template<typename T>
-concept PeeksW = requires(T& t) {
+concept PeeksW = requires(::tpy::storage_t<T>& t) {
     { t.width() } -> std::convertible_to<int32_t>;
 };
 
 // class SeesW(PeeksW, Protocol):
 template<typename T>
-concept SeesW = requires(const T& t) {
+concept SeesW = requires(const ::tpy::storage_t<T>& t) {
     { t.width() } -> std::convertible_to<int32_t>;
 };
 
@@ -316,7 +316,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grower& obj) {
 template<typename T>
 struct Tagged {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Tagged();
@@ -739,7 +739,7 @@ inline Grower::Grower(T_x&& x) {
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T>
-inline Tagged<T>::Tagged() : items(std::vector<T>{}) {}
+inline Tagged<T>::Tagged() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def grow_with(self, x: Growable) -> int32:
 //     x.grow()

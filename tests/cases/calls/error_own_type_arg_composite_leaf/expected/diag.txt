@@ -1,0 +1,9 @@
+main.py:16: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:52: error: `Own[P]` as a type argument of 'pair' is not supported yet: 'T' appears inside 'tuple[T, int32]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
+main.py:55: error: `Own[P]` as a type argument of 'two' is not supported yet: 'B' appears inside 'tuple[A, B]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'B'
+main.py:57: error: `Own[P]` as a type argument of 'count' is not supported yet: 'T' appears inside 'tuple[T, int32]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
+main.py:59: error: `Own[P]` as a type argument of 'steps' is not supported yet: 'T' appears inside 'Iterator[tuple[T, int32]]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
+main.py:62: error: `Own[P]` as a type argument of 'either' is not supported yet: 'T' appears inside 'T | int32'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
+main.py:64: error: `Own[P]` as a type argument of 'opt' is not supported yet: 'T' appears inside 'T | None'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
+main.py:66: error: `Own[P]` as a type argument of 'rows' is not supported yet: 'T' appears inside 'list[tuple[T, int32]]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
+main.py:68: error: `Own[P]` as a type argument of 'co' is not supported yet: 'T' appears inside 'tuple[T, int32]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'

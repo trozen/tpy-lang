@@ -42,9 +42,9 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 template<typename K, typename V>
 struct Holder {
     // _k: K
-    K _k;
+    ::tpy::storage_t<K> _k;
     // _v: V
-    V _v;
+    ::tpy::storage_t<V> _v;
 
     // def __init__(self, k: K, v: V):
     Holder() = default;
@@ -71,7 +71,7 @@ struct Holder {
     ::tpy::val_or_cref_t<V> val() const;
 
     // def find(self, want: int32) -> V | None:
-    V* find(int32_t want);
+    ::tpy::storage_t<V>* find(int32_t want);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -179,7 +179,7 @@ inline ::tpy::val_or_cref_t<V> Holder<K, V>::val() const {
 //         return self._v
 //     return None
 template<typename K, typename V>
-inline V* Holder<K, V>::find(int32_t want) {
+inline ::tpy::storage_t<V>* Holder<K, V>::find(int32_t want) {
     if ((want > 0)) {
         return &(this->_v);
     }

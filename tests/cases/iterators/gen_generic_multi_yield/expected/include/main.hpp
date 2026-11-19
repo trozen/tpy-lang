@@ -34,8 +34,8 @@ struct __gen_two_yields : public ::tpy::next_iter_mixin<__gen_two_yields<T>, ::t
 
     __gen_two_yields(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_)
         : __state(S_INITIAL),
-          a(a_),
-          b(b_) {}
+          a(::tpy::param_pass_last<T>(a_)),
+          b(::tpy::param_pass_last<T>(b_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_two_yields& __iter__() { return *this; }
@@ -53,11 +53,11 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_two_yields<T>:
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return a;
+        return ::tpy::yield_from_local<T>(a);
     }
     case S_RESUME_0: {  // after: yield a
         __state = S_RESUME_1;
-        return b;
+        return ::tpy::yield_from_local<T>(b);
     }
     case S_RESUME_1: {  // after: yield b
         __state = S_DONE;
@@ -72,7 +72,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_two_yields<T>:
 // def two_yields[T](a: T, b: T) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 __gen_two_yields<T> two_yields(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    return __gen_two_yields<T>(a, b);
+    return __gen_two_yields<T>(::tpy::param_pass_last<T>(a), ::tpy::param_pass_last<T>(b));
 }
 
 void __tpy_init();

@@ -104,17 +104,17 @@ inline std::ostream& operator<<(std::ostream& os, const OwnCounter& obj) {
 template<typename T>
 struct Popper {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
     Popper() = default;
-    explicit Popper(std::vector<T>&& items);
+    explicit Popper(std::vector<::tpy::storage_t<T>>&& items);
 
     // def __iter__(self) -> Self:
     Popper<T>& __iter__();
 
     // def __next__(self) -> Own[T]:
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "part_source_shapes.Popper";
 };
 
@@ -142,7 +142,7 @@ inline std::ostream& operator<<(std::ostream& os, const PopBag& obj) {
 template<typename T>
 struct Holder {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
     // done: bool
     bool done;
 
@@ -154,7 +154,7 @@ struct Holder {
     Holder<T>& __iter__();
 
     // def __next__(self) -> T:
-    std::expected<::tpy::val_or_ref<T>, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::val_or_ref<::tpy::storage_t<T>>, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "part_source_shapes.Holder";
 };
 
@@ -267,7 +267,7 @@ inline Holder<::tpyapp::fixtures::Cell> HolderBag::__iter__() const {
 // def __init__(self, items: Own[list[T]]) -> None:
 //     self.items = items
 template<typename T>
-inline Popper<T>::Popper(std::vector<T>&& items) : items(std::move(items)) {}
+inline Popper<T>::Popper(std::vector<::tpy::storage_t<T>>&& items) : items(std::move(items)) {}
 
 // def __iter__(self) -> Self:
 //     return self
@@ -281,7 +281,7 @@ inline Popper<T>& Popper<T>::__iter__() {
 //         raise StopIteration
 //     return self.items.pop()
 template<typename T>
-inline std::expected<T, ::tpy::StopIteration> Popper<T>::__next__() {
+inline std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> Popper<T>::__next__() {
     if ((::tpy::__len__(this->items) == 0)) {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -309,7 +309,7 @@ inline Holder<T>& Holder<T>::__iter__() {
 //     self.done = True
 //     return self.item
 template<typename T>
-inline std::expected<::tpy::val_or_ref<T>, ::tpy::StopIteration> Holder<T>::__next__() {
+inline std::expected<::tpy::val_or_ref<::tpy::storage_t<T>>, ::tpy::StopIteration> Holder<T>::__next__() {
     if (this->done) {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

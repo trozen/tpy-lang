@@ -19,8 +19,8 @@ int32_t cross_slot(::tpy::param_val_or_ref_t<T> v);
 //     return len(xs)
 template<typename T>
 int32_t cross_slot(::tpy::param_val_or_ref_t<T> v) {
-    std::vector<T> xs = std::vector<T>{};
-    xs.push_back(::tpy::param_to_storage<T>(v));
+    std::vector<::tpy::storage_t<T>> xs = std::vector<::tpy::storage_t<T>>{};
+    xs.push_back(::tpy::param_consume<T>(v));
     return ::tpy::__len__(xs);
 }
 

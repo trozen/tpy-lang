@@ -27,7 +27,7 @@ void main();
 template<typename T>
 struct Container {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
 
     // def __repr__(self) -> str:
@@ -45,9 +45,9 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 template<typename A, typename B>
 struct Pair {
     // first: A
-    A first;
+    ::tpy::storage_t<A> first;
     // second: B
-    B second;
+    ::tpy::storage_t<B> second;
 
     // def __init__(self, a: A) -> None:
     Pair() = default;
@@ -94,7 +94,7 @@ Container<T> make_box() {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 void __tpy_init();

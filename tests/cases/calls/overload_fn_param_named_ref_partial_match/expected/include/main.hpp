@@ -13,16 +13,16 @@ inline constexpr std::string_view __name__ = "__main__";
 // def g[T](f: Fn[[T], int32], xs: list[T]) -> int32:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> std::convertible_to<int32_t>;
   }
-int32_t g__Fn_T_int32__list_T(__F0&& f, std::vector<T>& xs);
+int32_t g__Fn_T_int32__list_T(__F0&& f, std::vector<::tpy::storage_t<T>>& xs);
 // @dispatch
 // def g[T](f: Fn[[T, T], int32], xs: list[T]) -> int32:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> std::convertible_to<int32_t>;
   }
-int32_t g__Fn_T_T_int32__list_T(__F0&& f, std::vector<T>& xs);
+int32_t g__Fn_T_T_int32__list_T(__F0&& f, std::vector<::tpy::storage_t<T>>& xs);
 // def square(x: int32) -> int32:
 int32_t square(int32_t x);
 // def add(a: int32, b: int32) -> int32:
@@ -35,20 +35,20 @@ void main();
 //     return f(xs[0])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> std::convertible_to<int32_t>;
   }
-int32_t g__Fn_T_int32__list_T(__F0&& f, std::vector<T>& xs) {
-    return f(::tpy::__getitem__(xs, 0));
+int32_t g__Fn_T_int32__list_T(__F0&& f, std::vector<::tpy::storage_t<T>>& xs) {
+    return f(::tpy::param_pass<T>(::tpy::__getitem__(xs, 0)));
 }
 // @dispatch
 // def g[T](f: Fn[[T, T], int32], xs: list[T]) -> int32:  # tpyc: ok
 //     return f(xs[0], xs[0])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> std::convertible_to<int32_t>;
   }
-int32_t g__Fn_T_T_int32__list_T(__F0&& f, std::vector<T>& xs) {
-    return f(::tpy::__getitem__(xs, 0), ::tpy::__getitem__(xs, 0));
+int32_t g__Fn_T_T_int32__list_T(__F0&& f, std::vector<::tpy::storage_t<T>>& xs) {
+    return f(::tpy::param_pass<T>(::tpy::__getitem__(xs, 0)), ::tpy::param_pass<T>(::tpy::__getitem__(xs, 0)));
 }
 
 void __tpy_init();

@@ -63,7 +63,7 @@ struct __coro_Container_echo {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -82,7 +82,7 @@ template <typename T>
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x);
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(x));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -93,7 +93,7 @@ template <typename T>
 
 template <typename T>
 inline __coro_Container_echo<T> Container::echo(::tpy::param_val_or_ref_t<T> x) const {
-    return __coro_Container_echo<T>(*this, x);
+    return __coro_Container_echo<T>(*this, ::tpy::param_pass_last<T>(x));
 }
 
 // async def labeled[T](self, x: T) -> tuple[str, T]:
@@ -113,7 +113,7 @@ struct __coro_Container_labeled {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<std::string, ::tpy::val_or_ptr_t<T>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -132,7 +132,7 @@ template <typename T>
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        std::tuple<std::string, ::tpy::val_or_ptr_t<T>> __tpy_async_ret = std::tuple<std::string, ::tpy::val_or_ptr_t<T>>{__self.label, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};
+        std::tuple<std::string, ::tpy::val_or_ptr_t<T>> __tpy_async_ret = std::tuple<std::string, ::tpy::val_or_ptr_t<T>>{__self.label, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(x))};
         return ::tpystd::tpy::Poll<std::tuple<std::string, ::tpy::val_or_ptr_t<T>>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -143,7 +143,7 @@ template <typename T>
 
 template <typename T>
 inline __coro_Container_labeled<T> Container::labeled(::tpy::param_val_or_ref_t<T> x) const {
-    return __coro_Container_labeled<T>(*this, x);
+    return __coro_Container_labeled<T>(*this, ::tpy::param_pass_last<T>(x));
 }
 
 // async def main_coro() -> None:

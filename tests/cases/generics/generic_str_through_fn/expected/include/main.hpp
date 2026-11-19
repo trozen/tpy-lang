@@ -12,13 +12,13 @@ inline constexpr std::string_view __name__ = "__main__";
 // def apply[U](f: Fn[[U], U], init: U) -> Own[U]:
 template<typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
 ::tpy::own_return_t<U> apply(__F0&& f, ::tpy::param_val_or_ref_t<U> init);
 // def reduce2[U](f: Fn[[U, U], U], a: U, b: U) -> Own[U]:
 template<typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<U> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<U>;
   }
 ::tpy::own_return_t<U> reduce2(__F0&& f, ::tpy::param_val_or_ref_t<U> a, ::tpy::param_val_or_ref_t<U> b);
 // def main() -> None:
@@ -28,19 +28,19 @@ void main();
 //     return copy(f(init))
 template<typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0) {
-      { __fn(__a0) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<U>;
   }
 ::tpy::own_return_t<U> apply(__F0&& f, ::tpy::param_val_or_ref_t<U> init) {
-    return U(f(init));
+    return ::tpy::storage_t<U>(f(::tpy::param_pass_last<U>(init)));
 }
 // def reduce2[U](f: Fn[[U, U], U], a: U, b: U) -> Own[U]:
 //     return copy(f(a, b))
 template<typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<U> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<U>;
   }
 ::tpy::own_return_t<U> reduce2(__F0&& f, ::tpy::param_val_or_ref_t<U> a, ::tpy::param_val_or_ref_t<U> b) {
-    return U(f(a, b));
+    return ::tpy::storage_t<U>(f(::tpy::param_pass_last<U>(a), ::tpy::param_pass_last<U>(b)));
 }
 
 void __tpy_init();

@@ -82,7 +82,7 @@ int32_t first_ro(const std::vector<P>& xs, const ::tpy::ordered_map<std::string,
 int32_t opt_reads(const std::vector<int32_t>* xs, const ::tpy::ordered_map<std::string, int32_t>* d);
 // def generic_store[T](xs: list[T], v: T) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> generic_store(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+::tpy::val_or_ref_t<T> generic_store(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v);
 // def references() -> None:
 void references();
 // def recv(xs: list[int32]) -> list[int32]:
@@ -372,8 +372,8 @@ inline int32_t Named::operator[](std::string_view k) const {
 //     xs[0] = copy(v)
 //     return xs[1]
 template<typename T>
-::tpy::val_or_ref_t<T> generic_store(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
-    ::tpy::__setitem__(xs, 0, T(v));
+::tpy::val_or_ref_t<T> generic_store(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v) {
+    ::tpy::__setitem__(xs, 0, ::tpy::storage_t<T>(v));
     return ::tpy::__getitem__(xs, 1);
 }
 

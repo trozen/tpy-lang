@@ -11,7 +11,7 @@ struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>
-concept __Pet_Concept__ = requires(T& t) {
+concept __Pet_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.sound() } -> std::convertible_to<int32_t>;
 };
 
@@ -106,7 +106,7 @@ inline int32_t Dog::sound() {
 //     return x
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Bag::conv(::tpy::param_val_or_ref_t<T> x) const {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 void __tpy_init();

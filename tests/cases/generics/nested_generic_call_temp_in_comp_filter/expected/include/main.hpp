@@ -25,7 +25,7 @@ void main();
 template<typename T>
 struct Box {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, val: Own[T]) -> None:
     Box() = default;
@@ -49,7 +49,7 @@ inline Box<T>::Box(::tpy::own_param_t<T> val) : val(std::move(val)) {}
 //     return Box[T](v)
 template<typename T>
 Box<T> wrap(::tpy::param_val_or_ref_t<T> v) {
-    return Box<T>(::tpy::param_to_storage<T>(v));
+    return Box<T>(::tpy::param_consume<T>(v));
 }
 
 void __tpy_init();

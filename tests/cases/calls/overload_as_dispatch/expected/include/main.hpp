@@ -15,7 +15,7 @@ struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>
-concept __Pet_Concept__ = requires(T& t) {
+concept __Pet_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.noise() } -> std::convertible_to<std::string_view>;
 };
 
@@ -26,7 +26,7 @@ struct Pet {
 
 // class Pinger(Protocol):
 template<typename T>
-concept Pinger = requires(T& t) {
+concept Pinger = requires(::tpy::storage_t<T>& t) {
     { t.ping() } -> std::convertible_to<int32_t>;
 };
 
@@ -108,11 +108,11 @@ double area__Circle(const Circle& s);
 // @overload
 // def first[T](xs: list[T]) -> T: ...
 template<typename T>
-::tpy::val_or_ref_t<T> first__list_T(std::vector<T>& xs);
+::tpy::val_or_ref_t<T> first__list_T(std::vector<::tpy::storage_t<T>>& xs);
 // @overload
 // def first[T](xs: list[T], i: int32) -> T: ...
 template<typename T>
-::tpy::val_or_ref_t<T> first__list_T__int32(std::vector<T>& xs, int32_t i);
+::tpy::val_or_ref_t<T> first__list_T__int32(std::vector<::tpy::storage_t<T>>& xs, int32_t i);
 // @overload
 // def count(n: int32) -> Iterator[int32]: ...
 __gen_count__int32 count__int32(int32_t n);
@@ -500,7 +500,7 @@ inline std::ostream& operator<<(std::ostream& os, const Shop& obj) {
 template<typename T>
 struct Box {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Box() = default;
@@ -1666,14 +1666,14 @@ inline ::tpy::val_or_ref_t<T> Box<T>::get(std::string_view i) {
 // @overload
 // def first[T](xs: list[T]) -> T: ...
 template<typename T>
-::tpy::val_or_ref_t<T> first__list_T(std::vector<T>& xs) {
+::tpy::val_or_ref_t<T> first__list_T(std::vector<::tpy::storage_t<T>>& xs) {
     int32_t i = 0;
     return ::tpy::__getitem__(xs, i);
 }
 // @overload
 // def first[T](xs: list[T], i: int32) -> T: ...
 template<typename T>
-::tpy::val_or_ref_t<T> first__list_T__int32(std::vector<T>& xs, int32_t i) {
+::tpy::val_or_ref_t<T> first__list_T__int32(std::vector<::tpy::storage_t<T>>& xs, int32_t i) {
     return ::tpy::__getitem__(xs, i);
 }
 // # a generic stub's positional-only defaults: `gpo(1)` ranks z's 5 at the

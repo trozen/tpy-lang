@@ -544,8 +544,10 @@ datetime::time.__init__@472:4: uncovered (missing record layout)
 datetime::datetime.__init__@629:4: uncovered (missing record layout)
 errno::__tpy_init: uncovered (module initialization)
 functools::__tpy_init: uncovered (module initialization)
-functools::reduce@19:0: uncovered (no body to lower)
-functools::reduce@27:0: uncovered (no body to lower)
+functools::reduce@24:0: uncovered (no body to lower)
+functools::reduce@32:0: uncovered (no body to lower)
+functools::reduce@40:0: uncovered (no body to lower)
+functools::reduce@50:0: uncovered (no body to lower)
 gzip::__tpy_init: uncovered (module initialization)
 gzip::_u16le@55:0: covered (storage: no_proof_required), summary: known
 gzip::_u32le@59:0: covered (storage: no_proof_required), summary: known

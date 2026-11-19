@@ -41,11 +41,11 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 template<typename T>
 struct Holder {
     // _payload: Ptr[T]
-    T* _payload;
+    ::tpy::storage_t<T>* _payload;
     bool __tpy_owned_ = true;
 
     // def __init__(self, payload: Ptr[T]) -> None:
-    explicit Holder(T* payload);
+    explicit Holder(::tpy::storage_t<T>* payload);
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
     Holder(Holder&& other) noexcept;
@@ -79,7 +79,7 @@ inline std::string Leaf::kind() const {
 // def __init__(self, payload: Ptr[T]) -> None:
 //     self._payload = payload
 template<typename T>
-inline Holder<T>::Holder(T* payload) : _payload(payload) {}
+inline Holder<T>::Holder(::tpy::storage_t<T>* payload) : _payload(payload) {}
 
 template<typename T>
 inline Holder<T>::Holder(Holder&& other) noexcept : _payload(std::move(other._payload)) {

@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // @runtime_checkable
 // class HasN(Protocol):
 template<typename T>
-concept HasN = requires(T& t) {
+concept HasN = requires(::tpy::storage_t<T>& t) {
     { t.n() } -> std::convertible_to<int32_t>;
 };
 

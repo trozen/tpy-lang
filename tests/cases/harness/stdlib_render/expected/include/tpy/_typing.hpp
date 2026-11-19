@@ -8,14 +8,14 @@ namespace tpystd::typing {
 // @runtime_checkable
 // class Sized(Protocol):
 template<typename T>
-concept Sized = requires(const T& t) {
+concept Sized = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
 // @runtime_checkable
 // class Sequence[T](Protocol):
 template<typename T, typename _T0>
-concept Sequence = requires(const T& t) {
+concept Sequence = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
     { ::tpy::__getitem__(t, std::declval<int32_t>()) } -> ::tpy::proto_result<_T0>;
 };
@@ -23,7 +23,7 @@ concept Sequence = requires(const T& t) {
 // @runtime_checkable
 // class MutableSequence[T](Protocol):
 template<typename T, typename _T0>
-concept MutableSequence = requires(T& t) {
+concept MutableSequence = requires(::tpy::storage_t<T>& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
     { ::tpy::__getitem__(t, std::declval<int32_t>()) } -> ::tpy::proto_result<_T0>;
     { ::tpy::__setitem__(t, std::declval<int32_t>(), std::declval<::tpy::param_val_or_ref_t<_T0>>()) } -> std::convertible_to<void>;
@@ -32,7 +32,7 @@ concept MutableSequence = requires(T& t) {
 // @runtime_checkable
 // class Iterator[T](Protocol):
 template<typename T, typename _T0>
-concept Iterator = requires(T& t) {
+concept Iterator = requires(::tpy::storage_t<T>& t) {
     t.__next__();
     ::tpy::__iter__(t);
 };
@@ -40,7 +40,7 @@ concept Iterator = requires(T& t) {
 // @runtime_checkable
 // class Iterable[T](Protocol):
 template<typename T, typename _T0>
-concept Iterable = requires(T& t) {
+concept Iterable = requires(::tpy::storage_t<T>& t) {
     ::tpy::handover_iter<T>(t);
 };
 

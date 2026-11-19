@@ -22,7 +22,7 @@ struct RawBinaryIO;
 // @dynamic
 // class RawBinaryIO(Protocol):
 template<typename T>
-concept __RawBinaryIO_Concept__ = requires(T& t) {
+concept __RawBinaryIO_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.read(std::declval<int32_t>()) } -> std::convertible_to<::tpy::Bytes>;
     { t.close() } -> std::convertible_to<void>;
 };
@@ -37,7 +37,7 @@ struct RawBinaryWriter;
 // @dynamic
 // class RawBinaryWriter(Protocol):
 template<typename T>
-concept __RawBinaryWriter_Concept__ = requires(T& t) {
+concept __RawBinaryWriter_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.write(std::declval<::tpy::Bytes>()) } -> std::convertible_to<int32_t>;
     { t.close() } -> std::convertible_to<void>;
     { t.fileno() } -> std::convertible_to<int64_t>;

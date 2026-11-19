@@ -407,7 +407,7 @@ inline A& Holds::borrow() {
 //     return t  # tpyc: warning(/may copy T into owned storage \(tuple element 0\) if not a value type/)
 template<typename T>
 std::tuple<::tpy::own_return_t<T>, A*> g_mixed(::tpy::param_val_or_ref_t<T> p, A& q) {
-    auto t = std::tuple<T, A*>{::tpy::param_to_storage<T>(p), &(q)};
+    auto t = std::tuple<::tpy::storage_t<T>, A*>{::tpy::param_to_storage<T>(p), &(q)};
     return std::tuple<::tpy::own_return_t<T>, A*>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(t))), std::get<1>(t)};
 }
 

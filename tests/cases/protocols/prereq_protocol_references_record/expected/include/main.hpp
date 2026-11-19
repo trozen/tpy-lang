@@ -11,7 +11,7 @@ struct Result;
 
 // class Convertible(Protocol):
 template<typename T>
-concept Convertible = requires(T& t) {
+concept Convertible = requires(::tpy::storage_t<T>& t) {
     { t.to_result() } -> std::convertible_to<Result>;
 };
 
@@ -54,7 +54,7 @@ template<Convertible T> struct Wrapper;
 
 // class WrapperMaker(Protocol):
 template<typename T>
-concept WrapperMaker = requires(T& t) {
+concept WrapperMaker = requires(::tpy::storage_t<T>& t) {
     { t.make(std::declval<std::string>()) } -> std::convertible_to<Wrapper<Message>>;
 };
 
@@ -70,7 +70,7 @@ void main();
 template<Convertible T>
 struct Wrapper {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Wrapper() = default;
@@ -105,7 +105,7 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultWrapperMaker& obj
 template<WrapperMaker T>
 struct Container {
     // factory: T
-    T factory;
+    ::tpy::storage_t<T> factory;
 
     // def __init__(self, factory: T) -> None:
     Container() = default;

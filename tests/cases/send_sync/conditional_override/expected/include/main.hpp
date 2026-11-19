@@ -21,11 +21,11 @@ void main();
 template<typename T>
 struct Shared {
     // p: Ptr[T]
-    T* p;
+    ::tpy::storage_t<T>* p;
 
     // def __init__(self, p: Ptr[T]) -> None:
     Shared() = default;
-    explicit Shared(T* p);
+    explicit Shared(::tpy::storage_t<T>* p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shared";
 };
 
@@ -40,11 +40,11 @@ inline std::ostream& operator<<(std::ostream& os, const Shared<T>& obj) {
 template<typename T>
 struct SendCell {
     // p: Ptr[T]
-    T* p;
+    ::tpy::storage_t<T>* p;
 
     // def __init__(self, p: Ptr[T]) -> None:
     SendCell() = default;
-    explicit SendCell(T* p);
+    explicit SendCell(::tpy::storage_t<T>* p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.SendCell";
 };
 
@@ -58,12 +58,12 @@ inline std::ostream& operator<<(std::ostream& os, const SendCell<T>& obj) {
 // def __init__(self, p: Ptr[T]) -> None:
 //     self.p = p
 template<typename T>
-inline Shared<T>::Shared(T* p) : p(p) {}
+inline Shared<T>::Shared(::tpy::storage_t<T>* p) : p(p) {}
 
 // def __init__(self, p: Ptr[T]) -> None:
 //     self.p = p
 template<typename T>
-inline SendCell<T>::SendCell(T* p) : p(p) {}
+inline SendCell<T>::SendCell(::tpy::storage_t<T>* p) : p(p) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

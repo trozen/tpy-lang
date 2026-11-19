@@ -14,10 +14,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def as_animal[U: Animal](p: Ptr[U]) -> Ptr[Animal]:
 template<typename U>
-Animal* as_animal(U* p);
+Animal* as_animal(::tpy::storage_t<U>* p);
 // def as_animal_ro[U: Animal](p: Ptr[readonly[U]]) -> Ptr[readonly[Animal]]:
 template<typename U>
-const Animal* as_animal_ro(const U* p);
+const Animal* as_animal_ro(const ::tpy::storage_t<U>* p);
 // def main() -> None:
 void main();
 
@@ -65,13 +65,13 @@ inline int32_t Animal::base_code() const {
 // def as_animal[U: Animal](p: Ptr[U]) -> Ptr[Animal]:
 //     return p  # tpyc: ok
 template<typename U>
-Animal* as_animal(U* p) {
+Animal* as_animal(::tpy::storage_t<U>* p) {
     return p;
 }
 // def as_animal_ro[U: Animal](p: Ptr[readonly[U]]) -> Ptr[readonly[Animal]]:
 //     return p  # tpyc: ok
 template<typename U>
-const Animal* as_animal_ro(const U* p) {
+const Animal* as_animal_ro(const ::tpy::storage_t<U>* p) {
     return p;
 }
 

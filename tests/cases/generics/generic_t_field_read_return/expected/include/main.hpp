@@ -18,9 +18,9 @@ void main();
 template<typename T>
 struct Cell {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
     // other: T
-    T other;
+    ::tpy::storage_t<T> other;
 
     // def __init__(self, v: Own[T], o: Own[T]) -> None:
     Cell() = default;
@@ -73,14 +73,14 @@ inline ::tpy::val_or_ref_t<T> Cell<T>::pick() {
 //     return v
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Cell<T>::echo(::tpy::param_val_or_ref_t<T> v) const {
-    return ::tpy::param_to_return<T>(v);
+    return ::tpy::param_to_return_last<T>(v);
 }
 
 // def store(self, v: T) -> None:
 //     self.value = v
 template<typename T>
 inline void Cell<T>::store(::tpy::param_val_or_ref_t<T> v) {
-    this->value = ::tpy::param_to_storage<T>(v);
+    this->value = ::tpy::param_consume<T>(v);
 }
 
 void __tpy_init();

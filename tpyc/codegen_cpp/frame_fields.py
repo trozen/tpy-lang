@@ -82,6 +82,9 @@ def order_frame_fields(fields: 'list[FrameField]') -> 'list[FrameField]':
                 continue
             out.add(b)
             out |= lifetime_closure(b)
+        # Reached back through a field whose drop runs nothing (a pointer
+        # re-pointed between its own slots): no order against itself.
+        out.discard(name)
         closure_memo[name] = frozenset(out)
         return closure_memo[name]
 

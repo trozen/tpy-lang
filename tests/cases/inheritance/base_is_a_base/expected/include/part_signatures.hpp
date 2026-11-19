@@ -226,7 +226,7 @@ struct __coro_awaited_poll {
 //     return value
 template<typename U>
 inline ::tpy::val_or_ref_t<U> ChooseBase::choose(::tpy::param_val_or_ref_t<U> value) const {
-    return ::tpy::param_to_return<U>(value);
+    return ::tpy::param_to_return_last<U>(value);
 }
 
 // @staticmethod
@@ -234,7 +234,7 @@ inline ::tpy::val_or_ref_t<U> ChooseBase::choose(::tpy::param_val_or_ref_t<U> va
 //     return x
 template<typename T>
 inline ::tpy::val_or_ref_t<T> StaticG<T>::ident(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 // @staticmethod
@@ -243,7 +243,7 @@ inline ::tpy::val_or_ref_t<T> StaticG<T>::ident(::tpy::param_val_or_ref_t<T> x) 
 template<typename T>
 template<typename U>
 inline ::tpy::val_or_ref_t<U> StaticG<T>::pick(::tpy::param_val_or_ref_t<U> x) {
-    return ::tpy::param_to_return<U>(x);
+    return ::tpy::param_to_return_last<U>(x);
 }
 
 // @staticmethod
@@ -251,7 +251,7 @@ inline ::tpy::val_or_ref_t<U> StaticG<T>::pick(::tpy::param_val_or_ref_t<U> x) {
 //     return x
 template<typename U>
 inline ::tpy::val_or_ref_t<U> StaticPlain::pick(::tpy::param_val_or_ref_t<U> x) {
-    return ::tpy::param_to_return<U>(x);
+    return ::tpy::param_to_return_last<U>(x);
 }
 
 void __tpy_init();

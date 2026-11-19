@@ -56,7 +56,7 @@ std::expected<::tpy::BigInt, MarkerError> error_body();
 void match_body(const ::tpy::BigInt& subject);
 // def generic_count[T: AnyFixedInt](values: list[T]) -> int:
 template<::tpy::AnyFixedInt T>
-::tpy::BigInt generic_count(std::vector<T>& values);
+::tpy::BigInt generic_count(std::vector<::tpy::storage_t<T>>& values);
 // def concrete_count(values: list[int32]) -> int:
 ::tpy::BigInt concrete_count(std::vector<int32_t>& values);
 // @noalloc
@@ -293,7 +293,7 @@ inline Item::Item(const ::tpy::BigInt& value) : value(value) {}
 //     values.clear()  # tpyc: ok
 //     return count
 template<::tpy::AnyFixedInt T>
-::tpy::BigInt generic_count(std::vector<T>& values) {
+::tpy::BigInt generic_count(std::vector<::tpy::storage_t<T>>& values) {
     int32_t count = 0;
     int32_t __stop_0 = ::tpy::__len__(values);
     for (int32_t __range_0 = 0; __range_0 < __stop_0; ++__range_0) {

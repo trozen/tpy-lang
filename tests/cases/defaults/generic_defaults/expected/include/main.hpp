@@ -11,10 +11,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def first_or[T](items: list[T], fallback: T = int32(0)) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> first_or(std::vector<T>& items, ::tpy::param_val_or_ref_t<T> fallback = 0);
+::tpy::val_or_ref_t<T> first_or(std::vector<::tpy::storage_t<T>>& items, ::tpy::param_val_or_ref_t<T> fallback = 0);
 // def fallback_or[T](items: list[T], fallback: T = 0) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> fallback_or(std::vector<T>& items, ::tpy::param_val_or_ref_t<T> fallback = 0);
+::tpy::val_or_ref_t<T> fallback_or(std::vector<::tpy::storage_t<T>>& items, ::tpy::param_val_or_ref_t<T> fallback = 0);
 // def pick[T](a: T, b: T, use_first: bool = True) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b, bool use_first = true);
@@ -26,22 +26,22 @@ void main();
 //         return items[0]
 //     return fallback
 template<typename T>
-::tpy::val_or_ref_t<T> first_or(std::vector<T>& items, ::tpy::param_val_or_ref_t<T> fallback) {
+::tpy::val_or_ref_t<T> first_or(std::vector<::tpy::storage_t<T>>& items, ::tpy::param_val_or_ref_t<T> fallback) {
     if ((::tpy::__len__(items) > 0)) {
         return ::tpy::__getitem__(items, 0);
     }
-    return ::tpy::param_to_return<T>(fallback);
+    return ::tpy::param_to_return_last<T>(fallback);
 }
 // def fallback_or[T](items: list[T], fallback: T = 0) -> T:
 //     if len(items) > 0:
 //         return items[0]
 //     return fallback
 template<typename T>
-::tpy::val_or_ref_t<T> fallback_or(std::vector<T>& items, ::tpy::param_val_or_ref_t<T> fallback) {
+::tpy::val_or_ref_t<T> fallback_or(std::vector<::tpy::storage_t<T>>& items, ::tpy::param_val_or_ref_t<T> fallback) {
     if ((::tpy::__len__(items) > 0)) {
         return ::tpy::__getitem__(items, 0);
     }
-    return ::tpy::param_to_return<T>(fallback);
+    return ::tpy::param_to_return_last<T>(fallback);
 }
 // def pick[T](a: T, b: T, use_first: bool = True) -> T:
 //     if use_first:
@@ -50,9 +50,9 @@ template<typename T>
 template<typename T>
 ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b, bool use_first) {
     if (use_first) {
-        return ::tpy::param_to_return<T>(a);
+        return ::tpy::param_to_return_last<T>(a);
     }
-    return ::tpy::param_to_return<T>(b);
+    return ::tpy::param_to_return_last<T>(b);
 }
 
 void __tpy_init();

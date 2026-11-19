@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class IntCounted(Iterable[int32], Protocol):
 template<typename T>
-concept IntCounted = requires(T& t) {
+concept IntCounted = requires(::tpy::storage_t<T>& t) {
     { t.length() } -> std::convertible_to<int32_t>;
     ::tpy::__iter__(t);
 };

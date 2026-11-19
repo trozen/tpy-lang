@@ -11,21 +11,21 @@ inline constexpr std::string_view __name__ = "helpers";
 
 // def first[T](items: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> first(std::vector<T>& items);
+::tpy::val_or_ref_t<T> first(std::vector<::tpy::storage_t<T>>& items);
 // def length[T](items: list[T]) -> int32:
 template<typename T>
-int32_t length(const std::vector<T>& items);
+int32_t length(const std::vector<::tpy::storage_t<T>>& items);
 
 // def first[T](items: list[T]) -> T:
 //     return items[0]
 template<typename T>
-::tpy::val_or_ref_t<T> first(std::vector<T>& items) {
+::tpy::val_or_ref_t<T> first(std::vector<::tpy::storage_t<T>>& items) {
     return ::tpy::__getitem__(items, 0);
 }
 // def length[T](items: list[T]) -> int32:
 //     return len(items)
 template<typename T>
-int32_t length(const std::vector<T>& items) {
+int32_t length(const std::vector<::tpy::storage_t<T>>& items) {
     return ::tpy::__len__(items);
 }
 

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Printable(Protocol):
 template<typename T>
-concept Printable = requires(T& t) {
+concept Printable = requires(::tpy::storage_t<T>& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
@@ -36,7 +36,7 @@ template<Printable T> struct Container;
 
 // class ContainerFactory(Protocol):
 template<typename T>
-concept ContainerFactory = requires(T& t) {
+concept ContainerFactory = requires(::tpy::storage_t<T>& t) {
     { t.make(std::declval<std::string>()) } -> std::convertible_to<Container<Message>>;
 };
 
@@ -54,7 +54,7 @@ void main();
 template<Printable T>
 struct Container {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Container() = default;

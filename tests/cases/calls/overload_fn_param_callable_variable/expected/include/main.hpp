@@ -13,14 +13,14 @@ inline constexpr std::string_view __name__ = "__main__";
 // def apply[T](f: Fn[[T], T], x: T) -> T:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<T>;
   }
 ::tpy::val_or_ref_t<T> apply__Fn_T_T__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // @dispatch
 // def apply[T](f: Fn[[T, T], T], x: T) -> T:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<T>;
   }
 ::tpy::val_or_ref_t<T> apply__Fn_T_T_T__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // def main() -> None:
@@ -31,20 +31,20 @@ void main();
 //     return f(x)
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<T>;
   }
 ::tpy::val_or_ref_t<T> apply__Fn_T_T__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
-    return f(x);
+    return f(::tpy::param_pass_last<T>(x));
 }
 // @dispatch
 // def apply[T](f: Fn[[T, T], T], x: T) -> T:  # tpyc: ok
 //     return f(x, x)
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<T>;
   }
 ::tpy::val_or_ref_t<T> apply__Fn_T_T_T__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
-    return f(x, x);
+    return f(::tpy::param_pass<T>(x), ::tpy::param_pass<T>(x));
 }
 
 void __tpy_init();

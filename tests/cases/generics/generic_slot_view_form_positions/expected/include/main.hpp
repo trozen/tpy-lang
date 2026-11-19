@@ -26,12 +26,12 @@ struct __coro_async_body;
 
 // def has_item[T: Equatable](xs: list[T], v: T) -> bool:
 template<::tpystd::tpy::Equatable T>
-bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+bool has_item(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v);
 // def has_item_str(xs: list[str], v: str) -> bool:
 bool has_item_str(const std::vector<std::string>& xs, std::string_view v);
 // def peek[T](xs: list[T], v: readonly[T]) -> bool:
 template<typename T>
-bool peek(const std::vector<T>& xs, ::tpy::readonly_form_t<T> v);
+bool peek(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::readonly_form_t<T> v);
 // def peek_str(xs: list[str], v: readonly[str]) -> bool:
 bool peek_str(const std::vector<std::string>& xs, std::string_view v);
 // def peek_bytes(xs: list[bytes], v: readonly[bytes]) -> bool:
@@ -77,7 +77,7 @@ void main();
 template<typename T>
 struct Boxed {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, value: T) -> None:
     Boxed() = default;
@@ -95,7 +95,7 @@ inline std::ostream& operator<<(std::ostream& os, const Boxed<T>& obj) {
 template<typename T>
 struct OwnBoxed {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, value: Own[T]) -> None:
     OwnBoxed() = default;
@@ -162,7 +162,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 template<typename T>
 struct Labels {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, first: T) -> None:
     Labels() = default;
@@ -275,7 +275,7 @@ inline void OwnBoxed<T>::put(::tpy::own_param_t<T> value) {
 // def __init__(self, first: T) -> None:
 //     self.items = [first]  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
-inline Labels<T>::Labels(::tpy::readonly_form_t<T> first) : items(::tpy::make_vector<T>(::tpy::param_to_storage<T>(first))) {}
+inline Labels<T>::Labels(::tpy::readonly_form_t<T> first) : items(::tpy::make_vector<::tpy::storage_t<T>>(::tpy::param_to_storage<T>(first))) {}
 
 // def has(self, value: T) -> bool:
 //     for it in self.items:
@@ -302,7 +302,7 @@ inline bool Labels<T>::has(::tpy::readonly_form_t<T> value) const {
 //             return True
 //     return False
 template<::tpystd::tpy::Equatable T>
-bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
+bool has_item(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -322,7 +322,7 @@ bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
 //             return True
 //     return False
 template<typename T>
-bool peek(const std::vector<T>& xs, ::tpy::readonly_form_t<T> v) {
+bool peek(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::readonly_form_t<T> v) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

@@ -1,0 +1,1 @@
+main.py:25: error: Cannot infer type arguments for 'apply_twice': U is P from f's parameter but Own[P] from f's return; write Fn[[U], Own[U]] if f builds a new value

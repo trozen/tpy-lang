@@ -1,0 +1,2 @@
+CPython cannot subscript a generic function (`take[Own[P]](p)`), and the
+warned copies below differ from CPython's aliasing by design.

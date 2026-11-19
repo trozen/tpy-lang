@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Bump(Protocol):
 template<typename T>
-concept Bump = requires(T& t) {
+concept Bump = requires(::tpy::storage_t<T>& t) {
     { t.bump() } -> std::convertible_to<void>;
 };
 

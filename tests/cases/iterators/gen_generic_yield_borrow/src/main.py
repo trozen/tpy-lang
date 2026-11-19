@@ -391,12 +391,12 @@ def main() -> None:
         p.x += 100
     print("named-fn", ns[0].x, ns[1].x)
 
-    # a LAMBDA callee returns its own value (the named form above lends), so
-    # the frame local holds a copy -- read-only, since a write through it
-    # would not reach the source (BUGS.md#generic-yield-fn-result-copies)
+    # a LAMBDA callee returning its parameter lends it, as the named form
+    # above does: the frame local refers to the element
     ms = [Point(1), Point(2)]
-    for p in mapped(lambda q: q, ms):  # tpyc: warning(/copies Point into owned storage/)
-        print("fn", p.x)
+    for p in mapped(lambda q: q, ms):  # tpyc: ok
+        p.x += 100
+    print("fn", ms[0].x, ms[1].x)
 
     # ... and an `Own`-returning named callee behind the same param: a fresh
     # value the frame local owns

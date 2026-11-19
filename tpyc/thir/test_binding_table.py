@@ -3252,10 +3252,11 @@ def test_frame_slots_const_hoists_and_globals_pin_their_move() -> None:
     def field(fn: str, name: str) -> tuple:
         rec = tables[fn].root.bindings[name]
         return (rec.move_exception, rec.move_forced, rec.movable)
-    # A generic resumable body's `y = ident(x)` holds its own frame slot,
-    # which moves: generator and coroutine alike.
-    assert field("gen_slot", "y") == (None, None, True)
-    assert field("async_slot", "y") == (None, None, True)
+    # A generic resumable body's `y = ident(x)` frame slot holds the open
+    # result in its own form (`val_or_ref_t<T>`), a borrow at a reference
+    # `T`, which no sink moves out of: generator and coroutine alike.
+    assert field("gen_slot", "y") == (None, None, False)
+    assert field("async_slot", "y") == (None, None, False)
     # A frame's try-hoisted local is a slot its binds re-point, which moves
     # out of the object it owns.
     assert field("gen_hoist", "y") == (None, None, True)

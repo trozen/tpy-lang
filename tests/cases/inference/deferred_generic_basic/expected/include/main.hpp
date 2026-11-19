@@ -20,7 +20,7 @@ struct Container {
     // count: int32
     int32_t count;
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self) -> None:
     Container();
@@ -53,7 +53,7 @@ inline Container<T>::Container() : count(0) {}
 //     self.count = self.count + int32(1)
 template<typename T>
 inline void Container<T>::set(::tpy::param_val_or_ref_t<T> val) {
-    this->val = ::tpy::param_to_storage<T>(val);
+    this->val = ::tpy::param_consume<T>(val);
     this->count = (::tpy::add_check<int32_t>(this->count, 1));
 }
 

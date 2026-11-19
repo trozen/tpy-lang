@@ -27,7 +27,7 @@ void main();
 template<typename T>
 struct Cell {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Cell() = default;

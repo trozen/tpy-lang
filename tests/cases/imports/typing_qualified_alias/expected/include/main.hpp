@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Greetable(t.Protocol):
 template<typename T>
-concept Greetable = requires(T& t) {
+concept Greetable = requires(::tpy::storage_t<T>& t) {
     { t.greet() } -> std::convertible_to<std::string_view>;
 };
 

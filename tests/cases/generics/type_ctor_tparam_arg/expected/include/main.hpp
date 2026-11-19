@@ -30,7 +30,7 @@ void main();
 template<::tpy::AnyFixedInt T>
 struct Counter {
     // n: T
-    T n;
+    ::tpy::storage_t<T> n;
 
     // def __init__(self, n: T) -> None:
     Counter() = default;

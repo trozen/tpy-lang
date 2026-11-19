@@ -135,7 +135,7 @@ inline void Ctx::__exit__(std::monostate et, const ::tpy::BaseException* ev, std
 //     return v
 template<::tpy::AnyFixedInt T>
 ::tpy::val_or_ref_t<T> same(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_to_return<T>(v);
+    return ::tpy::param_to_return_last<T>(v);
 }
 
 void __tpy_init();

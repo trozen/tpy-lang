@@ -18,7 +18,7 @@ void main();
 template<typename T>
 struct Box {
     // self.v = v  # tpyc: warning(/may copy T into field/)
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T):
     Box() = default;

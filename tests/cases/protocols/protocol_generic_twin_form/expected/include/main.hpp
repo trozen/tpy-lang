@@ -11,7 +11,7 @@ namespace tpyapp::main {
 
 // class Adder[T](Protocol):
 template<typename T, typename _T0>
-concept Adder = requires(T& t) {
+concept Adder = requires(::tpy::storage_t<T>& t) {
     { t.add(std::declval<::tpy::param_val_or_ref_t<_T0>>()) } -> std::convertible_to<void>;
 };
 

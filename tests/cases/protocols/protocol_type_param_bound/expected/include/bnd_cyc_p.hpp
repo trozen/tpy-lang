@@ -11,7 +11,7 @@ namespace tpyapp::bnd_cyc_p {
 
 // class Sized[T: ValueType](Protocol):
 template<typename T, typename _T0>
-concept Sized = requires(T& t) {
+concept Sized = requires(::tpy::storage_t<T>& t) {
     { t.size() } -> std::convertible_to<int32_t>;
 };
 

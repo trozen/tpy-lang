@@ -9,13 +9,13 @@ namespace tpyapp::main {
 
 // class Base(Protocol):
 template<typename T>
-concept Base = requires(const T& t) {
+concept Base = requires(const ::tpy::storage_t<T>& t) {
     { t.read() } -> std::convertible_to<int32_t>;
 };
 
 // class Child(Base, Protocol):
 template<typename T>
-concept Child = requires(T& t) {
+concept Child = requires(::tpy::storage_t<T>& t) {
     { t.write(std::declval<int32_t>()) } -> std::convertible_to<void>;
     { t.read() } -> std::convertible_to<int32_t>;
 };

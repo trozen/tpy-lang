@@ -38,7 +38,7 @@ void main();
 template<typename T>
 struct Holder {
     // self.x = x  # tpyc: warning(/may copy T into field/)
-    T x;
+    ::tpy::storage_t<T> x;
 
     // def __init__(self, x: T) -> None:
     Holder() = default;

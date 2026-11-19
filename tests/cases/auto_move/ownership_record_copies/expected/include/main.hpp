@@ -52,10 +52,10 @@ template<typename T>
 ::tpy::val_or_ref_t<T> ident(::tpy::param_val_or_ref_t<T> x);
 // def keep[T](xs: list[T], x: T) -> None:
 template<typename T>
-void keep(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> x);
+void keep(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> x);
 // def keep_peek[T](out: list[T], c: Cell[T]) -> None:
 template<typename T>
-void keep_peek(std::vector<T>& out, Cell<T>& c);
+void keep_peek(std::vector<::tpy::storage_t<T>>& out, Cell<T>& c);
 // def chained(h: H, a: A) -> None:
 void chained(H& h, const A& a);
 // def lam_value(a: A) -> Own[A]:
@@ -75,10 +75,10 @@ A lam_select(A& b, bool flag);
 std::function<A()> lam_pointer_local(std::vector<A>& xs, bool c);
 // def keep_rebound[T](xs: list[T], x: T, z: T) -> None:
 template<typename T>
-void keep_rebound(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> z);
+void keep_rebound(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> z);
 // def keep_next[T](it: Iterator[T], xs: list[T]) -> None:
 template<typename T, ::tpystd::typing::Iterator<T> T_it>
-void keep_next(T_it&& it, std::vector<T>& xs);
+void keep_next(T_it&& it, std::vector<::tpy::storage_t<T>>& xs);
 // def mixed_literal(b: A) -> None:
 void mixed_literal(A& b);
 // def lift_one(a: A) -> Own[list[tuple[A, int32]]]:
@@ -164,7 +164,7 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 template<typename T>
 struct Cell {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: Own[T]) -> None:
     Cell() = default;
@@ -405,25 +405,25 @@ inline ::tpy::val_or_ref_t<T> Cell<T>::peek() {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> ident(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 // def keep[T](xs: list[T], x: T) -> None:
 //     y = ident(x)
 //     # a generic local bound off a lending call borrows: the append copies
 //     xs.append(y)  # tpyc: warning(/may copy T into owned storage if not a value type/)
 template<typename T>
-void keep(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> x) {
-    ::tpy::val_or_ref_t<T> y = ::tpyapp::main::ident<T>(x);
-    xs.push_back(y);
+void keep(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> x) {
+    ::tpy::val_or_ref_t<::tpy::storage_t<T>> y = ::tpyapp::main::ident<::tpy::storage_t<T>>(x);
+    xs.push_back(::tpy::param_to_storage<::tpy::storage_t<T>>(::tpy::open_local_last<::tpy::storage_t<T>>(y)));
 }
 // def keep_peek[T](out: list[T], c: Cell[T]) -> None:
 //     y = c.peek()
 //     # ... and off a lending method of a generic class
 //     out.append(y)  # tpyc: warning(/may copy T into owned storage if not a value type/)
 template<typename T>
-void keep_peek(std::vector<T>& out, Cell<T>& c) {
+void keep_peek(std::vector<::tpy::storage_t<T>>& out, Cell<T>& c) {
     ::tpy::val_or_ref_t<T> y = c.peek();
-    out.push_back(y);
+    out.push_back(::tpy::param_consume<T>(::tpy::open_local_last<T>(y)));
 }
 // def through(f: Fn[[A], Own[A]], a: A) -> Own[A]:
 //     return f(a)
@@ -436,42 +436,43 @@ A through(__F0&& f, A& a) {
     return f(a);
 }
 // def keep_rebound[T](xs: list[T], x: T, z: T) -> None:
-//     # a rebound generic local copies at each bind, unwarned, and each append
-//     # moves that copy (BUGS.md#generic-lending-local-copies-unwarned)
+//     # a rebound generic local off a lending call borrows what each bind
+//     # lends at a reference `T`: each append is the hedged copy
 //     y = ident(x)
-//     xs.append(y)  # tpyc: ok
+//     xs.append(y)  # tpyc: warning(/may copy T into owned storage if not a value type/)
 //     y = ident(z)
-//     xs.append(y)  # tpyc: ok
+//     xs.append(y)  # tpyc: warning(/may copy T into owned storage if not a value type/)
 template<typename T>
-void keep_rebound(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> z) {
-    T __slot_1 = ::tpyapp::main::ident<T>(x);
-    T* y = &__slot_1;
-    xs.push_back(std::move((*y)));
-    std::optional<T> __slot_2;
-    y = &*(__slot_2 = ::tpyapp::main::ident<T>(z));
-    xs.push_back(std::move((*y)));
+void keep_rebound(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> z) {
+    std::optional<::tpy::storage_t<T>> __slot_1;
+    ::tpy::storage_t<T>* y = ::tpy::init_result<::tpy::storage_t<T>>(__slot_1, ::tpyapp::main::ident<::tpy::storage_t<T>>(x));
+    xs.push_back(::tpy::param_to_storage<::tpy::storage_t<T>>(::tpy::open_local_last<::tpy::storage_t<T>>((*y))));
+    std::optional<::tpy::storage_t<T>> __slot_2;
+    ::tpy::reseat_result<::tpy::storage_t<T>>(y, __slot_2, ::tpyapp::main::ident<::tpy::storage_t<T>>(z));
+    xs.push_back(::tpy::param_to_storage<::tpy::storage_t<T>>(::tpy::open_local_last<::tpy::storage_t<T>>((*y))));
 }
 // def keep_next[T](it: Iterator[T], xs: list[T]) -> None:
 //     try:
 //         r = next(it)
-//         # a generic stub's result bound to a hoisted local: the slot holds
-//         # a copy made at the bind, which the append moves on; the hedge
-//         # speaks for that copy at the read the record keeps
-//         # (BUGS.md#generic-lending-local-copies-unwarned: the bind's own
-//         # copy is not registered)
+//         # a generic stub's result bound to a hoisted local: it points at
+//         # the step, as a plain local bound to an open `T` result does
+//         # (`reseat_result<T>`), and the append's copy is the hedge, which
+//         # speaks for that copy at the read the record keeps; at an `Own`
+//         # instantiation the local holds the step in its slot
 //         xs.append(r)  # tpyc: warning(/may copy T into owned storage if not a value type/)
 //     except StopIteration:
 //         pass
 template<typename T, ::tpystd::typing::Iterator<T> T_it>
-void keep_next(T_it&& it, std::vector<T>& xs) {
-    std::optional<T> r;
+void keep_next(T_it&& it, std::vector<::tpy::storage_t<T>>& xs) {
+    std::optional<::tpy::storage_t<T>> __slot_1;
+    ::tpy::storage_t<T>* r;
     {
         {
             auto __try_tmp_2 = ::tpy::next(it);
             if (!__try_tmp_2.has_value()) goto __except_1;
-            r = ::tpy::unwrap_ref_move(*__try_tmp_2);
+            ::tpy::reseat_result<::tpy::storage_t<T>>(r, __slot_1, ::tpy::unwrap_ref_move(*__try_tmp_2));
         }
-        xs.push_back(std::move((*r)));
+        xs.push_back(::tpy::param_to_storage<::tpy::storage_t<T>>(::tpy::open_local_last<::tpy::storage_t<T>>((*r))));
         goto __after_try_1;
         // except StopIteration:
         __except_1:;

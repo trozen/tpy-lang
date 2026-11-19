@@ -40,7 +40,7 @@ void eq_override();
 void plain_equatable();
 // def ne_generic[U: Equatable](a: list[U], b: list[U]) -> bool:
 template<::tpystd::tpy::Equatable U>
-bool ne_generic(const std::vector<U>& a, const std::vector<U>& b);
+bool ne_generic(const std::vector<::tpy::storage_t<U>>& a, const std::vector<::tpy::storage_t<U>>& b);
 // def generic_eq() -> None:
 void generic_eq();
 // def native_callees(xs: list[Pt], s: set[Pt], m: dict[Pt, int32],
@@ -116,13 +116,13 @@ inline std::ostream& operator<<(std::ostream& os, const EqD& obj) {
 
 // class GLT[T](list[T]):
 template<typename T>
-struct GLT : std::vector<T> {
+struct GLT : std::vector<::tpy::storage_t<T>> {
 
-    using std::vector<T>::vector;
-    explicit GLT(std::vector<T> __base) : std::vector<T>(std::move(__base)) {}
+    using std::vector<::tpy::storage_t<T>>::vector;
+    explicit GLT(std::vector<::tpy::storage_t<T>> __base) : std::vector<::tpy::storage_t<T>>(std::move(__base)) {}
 
     void __repr_into__(std::ostream& os) const {
-        ::tpy::print_base_of<std::vector<T>>(os, "GLT", *this);
+        ::tpy::print_base_of<std::vector<::tpy::storage_t<T>>>(os, "GLT", *this);
     }
 
     std::string __repr__() const {
@@ -141,10 +141,10 @@ inline std::ostream& operator<<(std::ostream& os, const GLT<T>& obj) {
 
 // class EqGL[T](list[T]):  # tpyc: warning(/'EqGL.__eq__' hides 'list.__eq__'/)
 template<typename T>
-struct EqGL : std::vector<T> {
+struct EqGL : std::vector<::tpy::storage_t<T>> {
 
-    using std::vector<T>::vector;
-    explicit EqGL(std::vector<T> __base) : std::vector<T>(std::move(__base)) {}
+    using std::vector<::tpy::storage_t<T>>::vector;
+    explicit EqGL(std::vector<::tpy::storage_t<T>> __base) : std::vector<::tpy::storage_t<T>>(std::move(__base)) {}
 
     // def __eq__(self, other: "EqGL[T]") -> bool:
     bool __eq__(const EqGL<T>& other) const;
@@ -154,7 +154,7 @@ struct EqGL : std::vector<T> {
     }
 
     void __repr_into__(std::ostream& os) const {
-        ::tpy::print_base_of<std::vector<T>>(os, "EqGL", *this);
+        ::tpy::print_base_of<std::vector<::tpy::storage_t<T>>>(os, "EqGL", *this);
     }
 
     std::string __repr__() const {
@@ -390,7 +390,7 @@ inline bool EqGL<T>::__eq__(const EqGL<T>& other) const {
 //     # an open element type resolves `list.__ne__` as a concrete one does
 //     return a != b  # tpyc: ok
 template<::tpystd::tpy::Equatable U>
-bool ne_generic(const std::vector<U>& a, const std::vector<U>& b) {
+bool ne_generic(const std::vector<::tpy::storage_t<U>>& a, const std::vector<::tpy::storage_t<U>>& b) {
     return (::tpy::container_ne(a, b));
 }
 

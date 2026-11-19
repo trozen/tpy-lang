@@ -11,7 +11,7 @@ struct Shape;
 // @dynamic
 // class Shape(Protocol):
 template<typename T>
-concept __Shape_Concept__ = requires(T& t) {
+concept __Shape_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.area() } -> std::convertible_to<int32_t>;
 };
 

@@ -188,7 +188,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_gtakewhile<T, 
             continue;
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        if ((!(pred((*x))))) {
+        if ((!(pred(::tpy::param_pass<T>((*x)))))) {
             __state = S_JOIN_1;
             continue;
         } else {

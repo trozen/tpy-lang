@@ -67,7 +67,7 @@ inline ::tpystd::tpy::Poll<std::monostate> Nothing::__poll__(::tpystd::coro::Wak
 //     return poll_once(aw).value()
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 ::tpy::val_or_ref_t<T> drain(T_aw&& aw) {
-    return ::tpystd::coro::poll_once<T>(aw).value();
+    return ::tpystd::coro::poll_once<::tpy::storage_t<T>>(aw).value();
 }
 
 void __tpy_init();

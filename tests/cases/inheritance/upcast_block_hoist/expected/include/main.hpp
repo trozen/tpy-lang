@@ -182,7 +182,7 @@ inline std::ostream& operator<<(std::ostream& os, const HDer& obj) {
 template<typename T>
 struct GDer : Base {
     // self.extra = extra
-    T extra;
+    ::tpy::storage_t<T> extra;
 
     // def __init__(self, n: int32, extra: T) -> None:
     GDer() = default;
@@ -321,7 +321,7 @@ inline GDer<T>& GDer<T>::operator=(const GDer& other) {
 template<typename T>
 inline GDer<T> GDer<T>::__copy__() const {
     std::cout << "generic copy hook" << "\n" << ::tpy::check_signals;
-    return GDer<T>((::tpy::add_check<int32_t>(this->n, 100)), T(this->extra));
+    return GDer<T>((::tpy::add_check<int32_t>(this->n, 100)), ::tpy::storage_t<T>(this->extra));
 }
 
 void __tpy_init();

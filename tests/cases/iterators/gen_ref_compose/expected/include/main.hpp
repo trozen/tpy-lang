@@ -61,7 +61,7 @@ struct __gen_my_map : public ::tpy::next_iter_mixin<__gen_my_map<T, U, T_it, F_f
     ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
     ::tpy::frame_slot<::tpy::next_elem_t<__for_itr_0_t>> x;
-    ::tpy::frame_slot<U> y;
+    ::tpy::frame_slot<::tpy::val_or_ref_t<U>> y;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -105,7 +105,7 @@ std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __gen_my_map<T, U, T
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        y.emplace(fn((*x)));
+        y.emplace(fn(::tpy::param_pass<T>((*x))));
         __state = S_RESUME_0;
         return ::tpy::yield_from_local<U>((*y));
     }

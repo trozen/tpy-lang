@@ -18,9 +18,9 @@ void main();
 template<typename T, typename U>
 struct Pair {
     // a: T
-    T a;
+    ::tpy::storage_t<T> a;
     // b: U
-    U b;
+    ::tpy::storage_t<U> b;
 
     // def __init__(self) -> None:
     Pair();
@@ -59,14 +59,14 @@ inline Pair<T, U>::Pair() {
 //     self.a = val
 template<typename T, typename U>
 inline void Pair<T, U>::set_a(::tpy::param_val_or_ref_t<T> val) {
-    this->a = ::tpy::param_to_storage<T>(val);
+    this->a = ::tpy::param_consume<T>(val);
 }
 
 // def set_b(self, val: U) -> None:
 //     self.b = val
 template<typename T, typename U>
 inline void Pair<T, U>::set_b(::tpy::param_val_or_ref_t<U> val) {
-    this->b = ::tpy::param_to_storage<U>(val);
+    this->b = ::tpy::param_consume<U>(val);
 }
 
 // def set_both(self, a: T, b: U) -> None:
@@ -74,8 +74,8 @@ inline void Pair<T, U>::set_b(::tpy::param_val_or_ref_t<U> val) {
 //     self.b = b
 template<typename T, typename U>
 inline void Pair<T, U>::set_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
-    this->a = ::tpy::param_to_storage<T>(a);
-    this->b = ::tpy::param_to_storage<U>(b);
+    this->a = ::tpy::param_consume<T>(a);
+    this->b = ::tpy::param_consume<U>(b);
 }
 
 // def get_a(self) -> T:

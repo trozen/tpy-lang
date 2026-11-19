@@ -21,7 +21,7 @@ struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>
-concept __Pet_Concept__ = requires(T& t) {
+concept __Pet_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 
@@ -504,9 +504,11 @@ template <typename T>
 struct __gen_tparam_gen : public ::tpy::next_iter_mixin<__gen_tparam_gen<T>, bool> {
     ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> x;
-    ::tpy::frame_slot<T> y;
-    ::tpy::frame_slot<T> z;
-    ::tpy::frame_slot<T> w;
+    ::tpy::storage_t<T>* y = nullptr;
+    std::optional<::tpy::storage_t<T>> __ptr_slot_f0;
+    ::tpy::storage_t<T>* z = nullptr;
+    std::optional<::tpy::storage_t<T>> __ptr_slot_f1;
+    ::tpy::frame_slot<::tpy::val_or_ref_t<::tpy::storage_t<T>>> w;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -520,7 +522,7 @@ struct __gen_tparam_gen : public ::tpy::next_iter_mixin<__gen_tparam_gen<T>, boo
 
     __gen_tparam_gen(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();
     __gen_tparam_gen& __iter__() { return *this; }
@@ -543,7 +545,7 @@ std::expected<bool, ::tpy::StopIteration> __gen_tparam_gen<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        if (({ (void)(y.emplace(::tpyapp::main::same<T>(x))); ::tpy::isinstance_static<Square, T>(); })) {
+        if (({ (void)((::tpy::reseat_result<::tpy::storage_t<T>>(y, __ptr_slot_f0, ::tpyapp::main::same<::tpy::storage_t<T>>(x)), *y)); ::tpy::isinstance_static<Square, ::tpy::storage_t<T>>(); })) {
             __state = S_RESUME_0;
             return true;
         } else {
@@ -552,9 +554,9 @@ std::expected<bool, ::tpy::StopIteration> __gen_tparam_gen<T>::__next__() {
         }
     }
     case S_RESUME_2: {  // after: yield isinstance(z := same(x), Square)  # tpyc: ok
-        w.emplace(::tpyapp::main::same<T>(x));
+        w.emplace(::tpyapp::main::same<::tpy::storage_t<T>>(x));
         __state = S_RESUME_3;
-        return ::tpy::isinstance_static<Square, T>();
+        return ::tpy::isinstance_static<Square, ::tpy::storage_t<T>>();
     }
     case S_RESUME_3: {  // after: yield isinstance(w, Square)  # tpyc: ok
         __state = S_DONE;
@@ -564,7 +566,7 @@ std::expected<bool, ::tpy::StopIteration> __gen_tparam_gen<T>::__next__() {
     case S_RESUME_1:  // after: yield False
     case S_JOIN_0: {
         __state = S_RESUME_2;
-        return ({ (void)(z.emplace(::tpyapp::main::same<T>(x))); ::tpy::isinstance_static<Square, T>(); });
+        return ({ (void)((::tpy::reseat_result<::tpy::storage_t<T>>(z, __ptr_slot_f1, ::tpyapp::main::same<::tpy::storage_t<T>>(x)), *z)); ::tpy::isinstance_static<Square, ::tpy::storage_t<T>>(); });
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -575,7 +577,7 @@ std::expected<bool, ::tpy::StopIteration> __gen_tparam_gen<T>::__next__() {
 // def tparam_gen[T: Shape](x: T) -> Iterator[bool]:
 template <typename T>
 __gen_tparam_gen<T> tparam_gen(::tpy::param_val_or_ref_t<T> x) {
-    return __gen_tparam_gen<T>(x);
+    return __gen_tparam_gen<T>(::tpy::param_pass_last<T>(x));
 }
 
 // def gen(rc: Rc[Pet]) -> Iterator[bool]:
@@ -758,14 +760,14 @@ struct Tree {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> same(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 // def is_square[T: Shape](x: T) -> bool:
 //     # a type-parameter subject with no name
 //     return isinstance(same(x), Square)  # tpyc: ok
 template<typename T>
 bool is_square(::tpy::param_val_or_ref_t<T> x) {
-    return ({ (void)(::tpyapp::main::same<T>(x)); ::tpy::isinstance_static<Square, T>(); });
+    return ({ (void)(::tpyapp::main::same<::tpy::storage_t<T>>(x)); ::tpy::isinstance_static<Square, ::tpy::storage_t<T>>(); });
 }
 
 void __tpy_init();

@@ -17,7 +17,7 @@ struct Greeter;
 // @dynamic
 // class Greeter(Protocol):
 template<typename T>
-concept __Greeter_Concept__ = requires(T& t) {
+concept __Greeter_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.greet() } -> std::convertible_to<std::string_view>;
 };
 
@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 template<typename T>
 struct Container {
     // payload: T
-    T payload;
+    ::tpy::storage_t<T> payload;
 
     // def __init__(self, val: Own[T]) -> None:
     Container() = default;
@@ -126,7 +126,7 @@ inline Container<T>::Container(::tpy::own_param_t<T> val) : payload(std::move(va
 template<typename T>
 template<typename U>
 inline ::tpystd::tplib::rc::Rc<U> Container<T>::wrap(::tpy::own_param_t<U> value) const {
-    return Rc<U>::template new_<U>(std::move(value));
+    return Rc<::tpy::storage_t<U>>::template new_<::tpy::storage_t<U>>(std::move(value));
 }
 
 void __tpy_init();

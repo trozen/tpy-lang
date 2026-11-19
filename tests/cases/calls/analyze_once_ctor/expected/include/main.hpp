@@ -84,7 +84,7 @@ inline std::ostream& operator<<(std::ostream& os, const E& obj) {
 template<typename T>
 struct Holder {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: Own[T]) -> None:
     Holder() = default;
@@ -102,7 +102,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 template<typename T>
 struct Bag {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Bag();
@@ -119,9 +119,9 @@ inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
 template<typename K, typename T>
 struct Tagged {
     // key: K
-    K key;
+    ::tpy::storage_t<K> key;
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, key: Own[K]) -> None:
     Tagged() = default;
@@ -206,7 +206,7 @@ inline Holder<T>::Holder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T>
-inline Bag<T>::Bag() : items(std::vector<T>{}) {}
+inline Bag<T>::Bag() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def __init__(self, key: Own[K]) -> None:
 //     self.key = key
@@ -214,7 +214,7 @@ inline Bag<T>::Bag() : items(std::vector<T>{}) {}
 template<typename K, typename T>
 inline Tagged<K, T>::Tagged(::tpy::own_param_t<K> key)
     : key(std::move(key)),
-      items(std::vector<T>{}) {}
+      items(std::vector<::tpy::storage_t<T>>{}) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

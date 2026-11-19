@@ -29,7 +29,7 @@ struct AnyTask;
 // @dynamic
 // class AnyTask(Protocol):
 template<typename T>
-concept __AnyTask_Concept__ = requires(T& t) {
+concept __AnyTask_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.poll_any(std::declval<::tpystd::coro::Waker>()) } -> std::convertible_to<bool>;
     { t.cancel_any() } -> std::convertible_to<void>;
 };
@@ -42,7 +42,7 @@ struct AnyTask {
 
 // class Reactor(Protocol):
 template<typename T>
-concept Reactor = requires(T& t) {
+concept Reactor = requires(::tpy::storage_t<T>& t) {
     { t.register_fd(std::declval<int32_t>(), std::declval<uint32_t>(), std::declval<::tpystd::coro::Waker>()) } -> std::convertible_to<void>;
     { t.unregister_fd(std::declval<int32_t>()) } -> std::convertible_to<void>;
     { t.poll(std::declval<int32_t>()) } -> std::convertible_to<void>;
@@ -998,11 +998,11 @@ inline ::tpystd::tpy::Poll<T> TaskState<T>::__poll__(::tpystd::coro::Waker w) {
         if ((!(this->result.has()))) {
             throw ::tpy::RuntimeError("Task: __poll__ after Ready was already consumed");
         }
-        return ::tpystd::coro::poll_ready<T>(this->result.take());
+        return ::tpystd::coro::poll_ready<::tpy::storage_t<T>>(this->result.take());
     }
     if (this->executor_owned) {
         this->awaiter = w;
-        return ::tpystd::coro::poll_pending<T>();
+        return ::tpystd::coro::poll_pending<::tpy::storage_t<T>>();
     }
     ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
     if ((frame == nullptr)) {
@@ -1015,7 +1015,7 @@ inline ::tpystd::tpy::Poll<T> TaskState<T>::__poll__(::tpystd::coro::Waker w) {
             p = frame->get().__poll__(w);
             this->polling = false;
             if (this->_take_must_cancel(p->is_ready(), w)) {
-                return ::tpystd::coro::poll_pending<T>();
+                return ::tpystd::coro::poll_pending<::tpy::storage_t<T>>();
             }
             if (p->is_ready()) {
                 this->done = true;

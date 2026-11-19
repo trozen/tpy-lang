@@ -19,7 +19,7 @@ void main();
 template<typename T, std::size_t N>
 struct Bag {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Bag();
@@ -58,13 +58,13 @@ inline std::ostream& operator<<(std::ostream& os, const IntBag& obj) {
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T, std::size_t N>
-inline Bag<T, N>::Bag() : items(std::vector<T>{}) {}
+inline Bag<T, N>::Bag() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def add(self, value: T) -> None:
 //     self.items.append(value)
 template<typename T, std::size_t N>
 inline void Bag<T, N>::add(::tpy::param_val_or_ref_t<T> value) {
-    this->items.push_back(::tpy::param_to_storage<T>(value));
+    this->items.push_back(::tpy::param_consume<T>(value));
 }
 
 // def resize[T: Default](self, n: int32) -> None:
@@ -79,7 +79,7 @@ inline void Bag<T, N>::resize(int32_t n)
         ::tpy::pop_back(this->items);
     }
     while ((::tpy::__len__(this->items) < n)) {
-        this->items.push_back(T{});
+        this->items.push_back(::tpy::storage_t<T>{});
     }
 }
 

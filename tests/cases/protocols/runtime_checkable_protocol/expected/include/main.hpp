@@ -10,19 +10,19 @@ namespace tpyapp::main {
 // @runtime_checkable
 // class Speaker(Protocol):
 template<typename T>
-concept Speaker = requires(T& t) {
+concept Speaker = requires(::tpy::storage_t<T>& t) {
     { t.speak() } -> std::convertible_to<std::string_view>;
 };
 
 // class Walker(Protocol):
 template<typename T>
-concept Walker = requires(T& t) {
+concept Walker = requires(::tpy::storage_t<T>& t) {
     { t.walk() } -> std::convertible_to<int32_t>;
 };
 
 // class LoudSpeaker(Speaker, Protocol):
 template<typename T>
-concept LoudSpeaker = requires(T& t) {
+concept LoudSpeaker = requires(::tpy::storage_t<T>& t) {
     { t.shout() } -> std::convertible_to<std::string_view>;
     { t.speak() } -> std::convertible_to<std::string_view>;
 };
@@ -30,7 +30,7 @@ concept LoudSpeaker = requires(T& t) {
 // @runtime_checkable
 // class Getter[T](Protocol):
 template<typename T, typename _T0>
-concept Getter = requires(T& t) {
+concept Getter = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> ::tpy::proto_result<_T0>;
 };
 
@@ -39,7 +39,7 @@ struct Shape;
 // @dynamic
 // class Shape(Protocol):
 template<typename T>
-concept __Shape_Concept__ = requires(T& t) {
+concept __Shape_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.area() } -> std::convertible_to<int32_t>;
 };
 

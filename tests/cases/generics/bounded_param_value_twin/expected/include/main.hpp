@@ -22,15 +22,15 @@ template <typename T>
 struct __gen_gen;
 template <typename T>
 struct __coro_aw;
-template <typename T, ::tpystd::typing::Iterable<T> T_xs>
+template <typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
 struct __gen_drain;
-template <typename T, ::tpystd::typing::Iterable<T> T_xs>
+template <typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
 struct __coro_adrain;
 struct __coro_amain;
 
 // def fopt[T: ValueType](x: T | None) -> T | None:
 template<::tpy::ValueType T>
-std::optional<T> fopt(::tpy::opt_param_t<T> x);
+std::optional<::tpy::storage_t<T>> fopt(::tpy::opt_param_t<T> x);
 // def read_cell(c: Cell[str]) -> str:
 std::string read_cell(const Cell<std::string>& c);
 // def gen[T: ValueType](x: T) -> Iterator[T]:
@@ -40,10 +40,10 @@ __gen_gen<T> gen(::tpy::param_val_or_ref_t<T> x);
 template <typename T>
 __coro_aw<T> aw(::tpy::param_val_or_ref_t<T> x);
 // def drain[T: ValueType](xs: Iterable[Own[T]]) -> Iterator[T]:
-template <typename T, ::tpystd::typing::Iterable<T> T_xs>
+template <typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
 __gen_drain<T, T_xs> drain(T_xs&& xs);
 // async def adrain[T: ValueType](xs: Iterable[Own[T]]) -> int32:
-template <typename T, ::tpystd::typing::Iterable<T> T_xs>
+template <typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
 __coro_adrain<T, T_xs> adrain(T_xs&& xs);
 // def cap[T: ValueType](x: T) -> None:
 template<::tpy::ValueType T>
@@ -59,7 +59,7 @@ template<typename T>
 ::tpy::own_return_t<T> ret_own(::tpy::param_val_or_ref_t<T> v);
 // def opt_back[T: ValueType](x: Own[T]) -> T | None:
 template<::tpy::ValueType T>
-std::optional<T> opt_back(T x);
+std::optional<::tpy::storage_t<T>> opt_back(::tpy::storage_t<T> x);
 // async def amain() -> None:
 __coro_amain amain();
 // def main() -> None:
@@ -69,7 +69,7 @@ void main();
 template<typename U>
 struct Holder {
     // self.u = u  # tpyc: warning(/may copy U into field/)
-    U u;
+    ::tpy::storage_t<U> u;
 
     // def __init__(self, u: U) -> None:
     Holder() = default;
@@ -77,7 +77,7 @@ struct Holder {
 
     // def tag[T: ValueType](self, x: T) -> T | None:
     template<::tpy::ValueType T>
-    std::optional<T> tag(::tpy::readonly_form_t<T> x) const;
+    std::optional<::tpy::storage_t<T>> tag(::tpy::readonly_form_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -95,7 +95,7 @@ struct C {
     C();
 
     // def opt(self, x: T) -> T | None:
-    std::optional<T> opt(::tpy::readonly_form_t<T> x) const;
+    std::optional<::tpy::storage_t<T>> opt(::tpy::readonly_form_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
@@ -109,14 +109,14 @@ inline std::ostream& operator<<(std::ostream& os, const C<T>& obj) {
 template<::tpy::ValueType T>
 struct Cell {
     // self.v = v
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Cell() = default;
     explicit Cell(::tpy::readonly_form_t<T> v);
 
     // def get(self) -> T:
-    T get() const;
+    ::tpy::storage_t<T> get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -131,7 +131,7 @@ template <typename T>
 struct __coro_aw {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    T x;
+    ::tpy::storage_t<T> x;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -143,9 +143,9 @@ struct __coro_aw {
     __coro_aw(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::storage_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_aw<T>&) {
@@ -157,7 +157,7 @@ struct __coro_aw {
 //     await asyncio.sleep(0)              # -> S_RESUME_0
 //     return x  # tpyc: ok
 template <typename T>
-::tpystd::tpy::Poll<T> __coro_aw<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::storage_t<T>> __coro_aw<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -167,12 +167,12 @@ template <typename T>
     }
     case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<T>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        T __tpy_async_ret = x;
-        return ::tpystd::tpy::Poll<T>::ready(std::move(__tpy_async_ret));
+        ::tpy::storage_t<T> __tpy_async_ret = x;
+        return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -183,11 +183,11 @@ template <typename T>
 // async def aw[T: ValueType](x: T) -> T:
 template <typename T>
 __coro_aw<T> aw(::tpy::param_val_or_ref_t<T> x) {
-    return __coro_aw<T>(x);
+    return __coro_aw<T>(::tpy::param_pass_last<T>(x));
 }
 
 // async def adrain[T: ValueType](xs: Iterable[Own[T]]) -> int32:
-template <typename T, ::tpystd::typing::Iterable<T> T_xs>
+template <typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
 struct __coro_adrain {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -227,7 +227,7 @@ struct __coro_adrain {
 //         print("adrain", x)
 //         n += 1
 //     return n
-template <typename T, ::tpystd::typing::Iterable<T> T_xs>
+template <typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
 ::tpystd::tpy::Poll<int32_t> __coro_adrain<T, T_xs>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
@@ -266,7 +266,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_xs>
 
 
 // async def adrain[T: ValueType](xs: Iterable[Own[T]]) -> int32:
-template <typename T, ::tpystd::typing::Iterable<T> T_xs>
+template <typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
 __coro_adrain<T, T_xs> adrain(T_xs&& xs) {
     return __coro_adrain<T, T_xs>(std::forward<T_xs>(xs));
 }
@@ -309,9 +309,9 @@ struct __coro_amain {
 
 // def gen[T: ValueType](x: T) -> Iterator[T]:
 template <typename T>
-struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, T> {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
-    T x;
+    ::tpy::storage_t<T> x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -322,9 +322,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, T> {
 
     __gen_gen(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen<T>&) {
@@ -336,7 +336,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, T> {
 //     yield x                                  # -> S_RESUME_0
 //     yield x  # tpyc: ok                      # -> S_RESUME_1
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_gen<T>::__next__() {
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_gen<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -360,12 +360,12 @@ std::expected<T, ::tpy::StopIteration> __gen_gen<T>::__next__() {
 // def gen[T: ValueType](x: T) -> Iterator[T]:
 template <typename T>
 __gen_gen<T> gen(::tpy::param_val_or_ref_t<T> x) {
-    return __gen_gen<T>(x);
+    return __gen_gen<T>(::tpy::param_pass_last<T>(x));
 }
 
 // def drain[T: ValueType](xs: Iterable[Own[T]]) -> Iterator[T]:
-template <typename T, ::tpystd::typing::Iterable<T> T_xs>
-struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain<T, T_xs>, T> {
+template <typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
+struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain<T, T_xs>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
     T_xs xs;
     using __for_src_0_t = decltype((xs));
@@ -385,7 +385,7 @@ struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain<T, T_xs>, T> {
         : __state(S_INITIAL),
           xs(std::forward<T_xs>(xs_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_drain& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_drain<T, T_xs>&) {
@@ -396,8 +396,8 @@ struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain<T, T_xs>, T> {
 // def drain[T: ValueType](xs: Iterable[Own[T]]) -> Iterator[T]:
 //     for x in xs:  # tpyc: ok
 //         yield x                                                # -> S_RESUME_0
-template <typename T, ::tpystd::typing::Iterable<T> T_xs>
-std::expected<T, ::tpy::StopIteration> __gen_drain<T, T_xs>::__next__() {
+template <typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_drain<T, T_xs>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -423,7 +423,7 @@ std::expected<T, ::tpy::StopIteration> __gen_drain<T, T_xs>::__next__() {
 
 
 // def drain[T: ValueType](xs: Iterable[Own[T]]) -> Iterator[T]:
-template <typename T, ::tpystd::typing::Iterable<T> T_xs>
+template <typename T, ::tpystd::typing::Iterable<::tpy::storage_t<T>> T_xs>
 __gen_drain<T, T_xs> drain(T_xs&& xs) {
     return __gen_drain<T, T_xs>(std::forward<T_xs>(xs));
 }
@@ -439,8 +439,8 @@ inline Holder<U>::Holder(::tpy::readonly_form_t<U> u) : u(u) {}
 //     return x  # tpyc: ok
 template<typename U>
 template<::tpy::ValueType T>
-inline std::optional<T> Holder<U>::tag(::tpy::readonly_form_t<T> x) const {
-    return ::tpy::param_to_storage<T>(x);
+inline std::optional<::tpy::storage_t<T>> Holder<U>::tag(::tpy::readonly_form_t<T> x) const {
+    return ::tpy::param_consume<T>(x);
 }
 
 // def __init__(self) -> None:
@@ -452,8 +452,8 @@ inline C<T>::C() {
 // def opt(self, x: T) -> T | None:
 //     return x  # tpyc: ok
 template<::tpy::ValueType T>
-inline std::optional<T> C<T>::opt(::tpy::readonly_form_t<T> x) const {
-    return ::tpy::param_to_storage<T>(x);
+inline std::optional<::tpy::storage_t<T>> C<T>::opt(::tpy::readonly_form_t<T> x) const {
+    return ::tpy::param_consume<T>(x);
 }
 
 // def __init__(self, v: T) -> None:
@@ -464,7 +464,7 @@ inline Cell<T>::Cell(::tpy::readonly_form_t<T> v) : v(v) {}
 // def get(self) -> T:
 //     return self.v
 template<::tpy::ValueType T>
-inline T Cell<T>::get() const {
+inline ::tpy::storage_t<T> Cell<T>::get() const {
     return this->v;
 }
 
@@ -472,7 +472,7 @@ inline T Cell<T>::get() const {
 // def fopt[T: ValueType](x: T | None) -> T | None:
 //     return x  # tpyc: ok
 template<::tpy::ValueType T>
-std::optional<T> fopt(::tpy::opt_param_t<T> x) {
+std::optional<::tpy::storage_t<T>> fopt(::tpy::opt_param_t<T> x) {
     return x;
 }
 // # closure capture of a bounded parameter
@@ -505,13 +505,13 @@ void show_any(::tpy::param_val_or_ref_t<T> x) {
 //     return v  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
 ::tpy::own_return_t<T> ret_own(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_to_storage<T>(v);
+    return ::tpy::param_consume<T>(v);
 }
 // # an `Own[T]` parameter into a `T | None` return
 // def opt_back[T: ValueType](x: Own[T]) -> T | None:
 //     return x  # tpyc: ok
 template<::tpy::ValueType T>
-std::optional<T> opt_back(T x) {
+std::optional<::tpy::storage_t<T>> opt_back(::tpy::storage_t<T> x) {
     return x;
 }
 

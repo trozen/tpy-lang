@@ -707,7 +707,7 @@ struct __gen_gen_t : public ::tpy::next_iter_mixin<__gen_gen_t<T>, ::tpy::yield_
 
     __gen_gen_t(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_t& __iter__() { return *this; }
@@ -730,7 +730,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_gen_t<T>::__ne
     }
     case S_RESUME_0: {  // after: yield x  # tpyc: ok
         __state = S_RESUME_1;
-        return x;
+        return ::tpy::yield_from_local<T>(x);
     }
     case S_RESUME_1: {  // after: yield x
         __state = S_DONE;
@@ -745,7 +745,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_gen_t<T>::__ne
 // def gen_t[T](x: T) -> Iterator[T]:
 template <typename T>
 __gen_gen_t<T> gen_t(::tpy::param_val_or_ref_t<T> x) {
-    return __gen_gen_t<T>(x);
+    return __gen_gen_t<T>(::tpy::param_pass_last<T>(x));
 }
 
 // def own_make() -> Iterator[Own[A]]:

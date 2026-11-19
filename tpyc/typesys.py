@@ -776,6 +776,13 @@ class TpyType:
             return f"{self.to_cpp()} {name}"
         return f"const {self.to_cpp()}& {name}"
 
+    def to_cpp_tag(self) -> str:
+        """This type spelled as a C++ template or form-trait ARGUMENT
+        (`f<T>`, `param_val_or_ref_t<T>`): an open type parameter keeps its
+        owned tag there, where every object position (`to_cpp`) holds its
+        storage form."""
+        return self.to_cpp()
+
     def to_cpp_stored(self) -> str:
         """Return the C++ type for storage in containers that cannot hold
         references (std::expected, std::optional).
@@ -1077,7 +1084,7 @@ class FloatLiteralType(TpyType):
         return True
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class TypeParamRef(TpyType):
     """Unresolved type parameter reference (e.g., T in class Stack[T]).
 
@@ -1110,8 +1117,30 @@ class TypeParamRef(TpyType):
     bound: Optional['NominalType'] = field(default=None, compare=False, hash=False)
     kind: TypeParamKind = TypeParamKind.TYPE
 
+    def __eq__(self, other: object) -> bool:
+        # The storage form `Unowned(T)` (`UnownedParam`) is `T` to every
+        # type question; only its render and its substitution differ.
+        if not isinstance(other, TypeParamRef):
+            return NotImplemented
+        return self.name == other.name and self.kind == other.kind
+
+    def __hash__(self) -> int:
+        return hash((self.name, self.kind))
+
     def to_cpp(self) -> str:
-        return self.name  # Template parameter name (works for both TYPE and INT)
+        # Every object position -- a local, a slot, an element, a member of
+        # an Optional / union / tuple, a pointee -- holds the storage form,
+        # a complete type at `T = Own[X]` where the tag is not.
+        if self.kind is TypeParamKind.INT:
+            return self.name
+        return f"::tpy::storage_t<{self.name}>"
+
+    def to_cpp_tag(self) -> str:
+        return self.name
+
+    def substituted(self, replacement: 'TpyType') -> 'TpyType':
+        """This parameter replaced by its binding `replacement`."""
+        return replacement
 
     def __str__(self) -> str:
         return self.name
@@ -1150,7 +1179,7 @@ class TypeParamRef(TpyType):
     def to_cpp_param_type(self) -> str:
         if self.kind == TypeParamKind.INT:
             return "std::size_t"
-        return f"::tpy::param_val_or_ref_t<{self.name}>"
+        return f"::tpy::param_val_or_ref_t<{self.to_cpp_tag()}>"
 
     def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
         return ParamPassing.VALUE if self.kind == TypeParamKind.INT else ParamPassing.TRAIT
@@ -1160,7 +1189,7 @@ class TypeParamRef(TpyType):
             # INT params are passed by value (they're std::size_t)
             return f"std::size_t {name}"
         # Use trait-based param type: const T& for value types, T& for object types
-        return f"::tpy::param_val_or_ref_t<{self.name}> {name}"
+        return f"::tpy::param_val_or_ref_t<{self.to_cpp_tag()}> {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
         if self.kind == TypeParamKind.INT:
@@ -1170,29 +1199,84 @@ class TypeParamRef(TpyType):
         # generic body there is nothing to materialize because `T` is not fixed.
         # `readonly_form_t` const-qualifies a mutable reference and passes every
         # other form through, so a reference instantiation keeps `const T&`.
-        return f"::tpy::readonly_form_t<{self.to_cpp()}> {name}"
+        return f"::tpy::readonly_form_t<{self.to_cpp_tag()}> {name}"
 
     def to_cpp_return(self) -> str:
         if self.kind == TypeParamKind.INT:
             return "std::size_t"
         if self.return_passing() is ReturnPassing.VALUE:
-            # The trait's value arm, spelled out: a value-bounded T returns T.
-            return self.name
+            # The trait's value arm, spelled out: a value-bounded T returns
+            # its storage form (`std::string` at `T = Own[str]`).
+            return self.to_cpp()
         # Use trait-based return type: T for value types, T& for object types
-        return f"::tpy::val_or_ref_t<{self.name}>"
+        return f"::tpy::val_or_ref_t<{self.to_cpp_tag()}>"
 
     def to_cpp_return_const(self) -> str:
         if self.kind == TypeParamKind.INT:
             return "std::size_t"
         if self.return_passing() is ReturnPassing.VALUE:
-            return self.name
+            return self.to_cpp()
         # Use trait-based return type: T for value types, const T& for object types
-        return f"::tpy::val_or_cref_t<{self.name}>"
+        return f"::tpy::val_or_cref_t<{self.to_cpp_tag()}>"
 
     def return_passing(self) -> ReturnPassing:
         if self.kind == TypeParamKind.INT or self.is_value_type():
             return ReturnPassing.VALUE
         return ReturnPassing.TRAIT
+
+
+@dataclass(frozen=True, eq=False)
+class UnownedParam(TypeParamRef):
+    """`Unowned(T)`: the storage form of an open type parameter `T` -- `T`
+    with a top-level `Own` removed (C++ `::tpy::storage_t<T>`). A call in a
+    generic body whose binding to the body's `T` came only from positions
+    that agree with `X` and `Own[X]` alike gets it as its type argument, so
+    at `T = Own[P]` the nested call is instantiated at `P`, as the
+    hand-written twin infers. Equal to `T` for every type question; built
+    only through `unowned`, which collapses once `T` is substituted."""
+
+    def to_cpp_tag(self) -> str:
+        return self.to_cpp()
+
+    def substituted(self, replacement: 'TpyType') -> 'TpyType':
+        return unowned(replacement)
+
+    def to_cpp_const_param(self, name: str) -> str:
+        return f"::tpy::readonly_form_t<{self.to_cpp()}> {name}"
+
+
+def stored_element(t: 'TpyType | int') -> 'TpyType | int':
+    """An element position's type: `Own` on an element of a container that
+    owns its elements is redundant (`list[Own[P]]` is `list[P]`)."""
+    return t.wrapped if isinstance(t, OwnType) else t
+
+
+def unowned(t: 'TpyType') -> 'TpyType':
+    """`Unowned(t)`: `t` with a top-level `Own` removed; an open type
+    parameter stays open as its storage form (`UnownedParam`)."""
+    if isinstance(t, OwnType):
+        return t.wrapped
+    if type(t) is TypeParamRef and t.kind is TypeParamKind.TYPE:
+        return UnownedParam(t.name, t.bound, t.kind)
+    return t
+
+
+def type_arg_cpp(arg: 'TpyType', render: 'Callable[[TpyType], str]') -> str:
+    """A generic's type argument as its C++ template argument: `Own[X]` is
+    the owned tag `::tpy::own_arg<X>` unless it is plain `X`; the tag over
+    an open parameter peels a tag the parameter already carries
+    (`Own[Own[P]]` is `Own[P]`)."""
+    if isinstance(arg, OwnType) and not arg.is_plain():
+        inner = unwrap_readonly(arg.wrapped)
+        if isinstance(inner, TypeParamRef):
+            # The open parameter's storage form (`to_cpp`).
+            return f"::tpy::own_arg<{inner.to_cpp()}>"
+        return f"::tpy::own_arg<{render(arg.wrapped)}>"
+    if isinstance(arg, OwnType):
+        return render(arg.wrapped)
+    if isinstance(arg, TypeParamRef):
+        return arg.to_cpp_tag()
+    return render(arg)
 
 
 def is_native_template(td: Optional["TypeDef"]) -> bool:
@@ -1235,9 +1319,12 @@ def template_args_cpp(owner: str, td: Optional["TypeDef"], args: Sequence[object
     template's TypeDef (its parameter names and readonly spelling)."""
     const_readonly = spells_readonly_arg_const(td)
     names = td.param_names if td is not None else ()
+    elements = td is not None and td.owns_elements
     return ", ".join(
         int_type_arg_cpp(arg, owner, names[i] if i < len(names) else f"#{i + 1}")
         if isinstance(arg, int) and not isinstance(arg, bool)
+        else render(arg)
+        if elements and isinstance(arg, TypeParamRef)
         else template_arg_cpp(arg, const_readonly, render)
         for i, arg in enumerate(args))
 
@@ -1251,6 +1338,8 @@ def template_arg_cpp(arg: object, const_readonly: bool,
         return str(arg)
     if const_readonly and isinstance(arg, ReadonlyType):
         return f"const {render(arg.wrapped)}"
+    if isinstance(arg, TypeParamRef):
+        return arg.to_cpp_tag()
     return render(arg)
 
 
@@ -1619,11 +1708,23 @@ class NominalType(TpyType):
         for arg in self.type_args:
             if isinstance(arg, TpyType) and not (
                     isinstance(arg, TypeParamRef) and arg.kind == TypeParamKind.INT):
-                new_args.append(next(type_iter))
+                new = next(type_iter)
+                new_args.append(self.substituted_arg(arg, new))
             else:
                 new_args.append(arg)
         return NominalType(self.name, tuple(new_args), self.is_protocol, self._module_qname,
                          self.is_dynamic_protocol)
+
+    def substituted_arg(self, old: 'TpyType', new: 'TpyType | int') -> 'TpyType | int':
+        """Type argument `old` of this type replaced by `new`. An `Own`
+        that arrives by substituting a type parameter at an element of a
+        container that owns its elements is redundant (`list[T]` at
+        `T = Own[P]` is `list[P]`); a written `dict[K, Own[V]]` keeps its."""
+        if (isinstance(old, TypeParamRef) and isinstance(new, OwnType)):
+            td = self._nominal_td()
+            if td is not None and td.owns_elements:
+                return stored_element(new)
+        return new
 
 
 def same_class(a: 'TpyType', b: 'TpyType') -> bool:
@@ -1672,7 +1773,7 @@ def substitute_type_params_structural(
 def _substitute_structural(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     # Keeps every inner readonly: a handle's referent stays const storage.
     if isinstance(typ, TypeParamRef):
-        return subst.get(typ.name, typ)
+        return typ.substituted(subst[typ.name]) if typ.name in subst else typ
     # NominalType.type_args can hold raw ints (Array[T, N]); map_inner_types
     # only walks TpyType entries, so mixed args need direct handling to
     # preserve the int slots.
@@ -1681,7 +1782,9 @@ def _substitute_structural(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
         changed = False
         for arg in typ.type_args:
             if isinstance(arg, TypeParamRef) and arg.name in subst:
-                new_args.append(subst[arg.name])
+                repl = subst[arg.name]
+                new_args.append(typ.substituted_arg(arg, arg.substituted(repl))
+                                if isinstance(repl, TpyType) else repl)
                 changed = True
             elif hasattr(arg, "map_inner_types"):
                 new = _substitute_structural(arg, subst)
@@ -1714,7 +1817,7 @@ def substitute_type_params_simple(
 
 def _substitute_simple(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     if isinstance(typ, TypeParamRef):
-        return subst.get(typ.name, typ)
+        return typ.substituted(subst[typ.name]) if typ.name in subst else typ
     return typ.map_inner_types(lambda t: _substitute_simple(t, subst))
 
 
@@ -1734,7 +1837,8 @@ def expand_fi_template(fi: 'FunctionInfo',
         for name, typ in effective_subst.items():
             placeholder = f"{{{name}}}"
             if placeholder in template and hasattr(typ, "to_cpp"):
-                template = template.replace(placeholder, typ.to_cpp_stored())
+                template = template.replace(
+                    placeholder, type_arg_cpp(typ, lambda t: t.to_cpp_stored()))
     if fi.return_type is not None:
         ret_type = fi.return_type
         if effective_subst and "{cpp}" in template:
@@ -2078,6 +2182,12 @@ class OwnType(TpyType):
     """
     wrapped: TpyType
 
+    def is_plain(self) -> bool:
+        """`Own[X]` is plain `X`: a by-value scalar, which a parameter, a
+        result and a container hold alike."""
+        return (self.wrapped.is_value_type()
+                and self.wrapped.param_passing() is ParamPassing.VALUE)
+
     def drop_runs_user_code(self) -> bool:
         return self.wrapped.drop_runs_user_code()
 
@@ -2100,8 +2210,9 @@ class OwnType(TpyType):
 
     def is_sync(self) -> bool:
         # Single-owner move slot; sharing readonly aliases of an Own[T]
-        # slot is a category error regardless of T.
-        return False
+        # slot is a category error -- except where the owned value is a
+        # value type, which is shared by copy (`Own[str]` is a `str`).
+        return self.wrapped.is_value_type() and self.wrapped.is_sync()
 
     def is_movable(self) -> bool:
         return self.wrapped.is_movable()
@@ -2116,7 +2227,7 @@ class OwnType(TpyType):
             # own_param_t resolves to unique_ptr<T> for abstract @dynamic T,
             # T&& otherwise -- lazy per-T dispatch in a template context.
             # Also prevents forwarding-ref deduction (non-deduced context).
-            return f"::tpy::own_param_t<{cpp_type}>"
+            return f"::tpy::own_param_t<{self.wrapped.to_cpp_tag()}>"
         return f"{cpp_type}&&"
 
     def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
@@ -2141,7 +2252,7 @@ class OwnType(TpyType):
             return f"{self.wrapped.to_cpp()} {name}"
         cpp_type = self.wrapped.to_cpp()
         if isinstance(self.wrapped, TypeParamRef):
-            return f"::tpy::own_param_t<{cpp_type}> {name}"
+            return f"::tpy::own_param_t<{self.wrapped.to_cpp_tag()}> {name}"
         return f"{cpp_type}&& {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
@@ -2152,7 +2263,7 @@ class OwnType(TpyType):
         # for abstract @dynamic. Direct `T` would be ill-formed when T
         # monomorphizes to an abstract base.
         if self.return_passing() is ReturnPassing.TRAIT:
-            return f"::tpy::own_return_t<{self.wrapped.to_cpp()}>"
+            return f"::tpy::own_return_t<{self.wrapped.to_cpp_tag()}>"
         return self.to_cpp()
 
     def return_passing(self) -> ReturnPassing:
@@ -2171,6 +2282,9 @@ class OwnType(TpyType):
         return (self.wrapped,)
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        # `Own[Own[X]]` is `Own[X]`: a substituted `Own[T]` at `T = Own[X]`.
+        if isinstance(types[0], OwnType):
+            return types[0]
         return OwnType(types[0])
 
 
@@ -2184,6 +2298,9 @@ class ReadonlyType(TpyType):
 
     def to_cpp(self) -> str:
         return self.wrapped.to_cpp()
+
+    def to_cpp_tag(self) -> str:
+        return self.wrapped.to_cpp_tag()
 
     def is_value_type(self) -> bool:
         return self.wrapped.is_value_type()
@@ -2235,7 +2352,7 @@ class ReadonlyType(TpyType):
         """Readonly non-value types need val_or_ref<const T> for storage
         in containers that cannot hold references."""
         if not self.wrapped.is_value_type():
-            return f"::tpy::val_or_ref<const {self.wrapped.to_cpp()}>"
+            return f"::tpy::val_or_ref<const {self.wrapped.to_cpp_tag()}>"
         return self.to_cpp()
 
     def is_ref_param(self) -> bool:
@@ -2474,8 +2591,10 @@ def yield_borrow_slot_cpp(elem_type: 'TpyType', cpp_elem: str) -> str:
     when sema infers it as a borrow (`Ref[X]` renders `val_or_ref<X>`), so a
     bare wrap would nest at exactly those instantiations."""
     is_const = isinstance(unwrap_ref_type(elem_type), ReadonlyType)
-    if isinstance(unwrap_ref_type(unwrap_readonly(elem_type)), TypeParamRef):
-        inner = f"const {cpp_elem}" if is_const else cpp_elem
+    tparam = unwrap_ref_type(unwrap_readonly(elem_type))
+    if isinstance(tparam, TypeParamRef):
+        tag = tparam.to_cpp_tag()
+        inner = f"const {tag}" if is_const else tag
         return f"::tpy::yield_slot_t<{inner}>"
     if is_const:
         return f"::tpy::val_or_ref<const {cpp_elem}>"
@@ -2758,6 +2877,9 @@ class _MarkerType(TpyType):
     def to_cpp(self) -> str:
         return self.wrapped.to_cpp()
 
+    def to_cpp_tag(self) -> str:
+        return self.wrapped.to_cpp_tag()
+
     def is_value_type(self) -> bool:
         return self.wrapped.is_value_type()
 
@@ -3039,7 +3161,7 @@ class RefType(TpyType):
     def to_cpp_stored(self) -> str:
         """C++ type for storage in containers that cannot hold references
         (std::expected, std::optional)."""
-        return f"::tpy::val_or_ref<{self.wrapped.to_cpp()}>"
+        return f"::tpy::val_or_ref<{self.wrapped.to_cpp_tag()}>"
 
     def is_value_type(self) -> bool:
         return False
@@ -3258,8 +3380,29 @@ def _type_arg_own_peeled(ret_type: TpyType | None,
     if not (isinstance(root_rt, RefType)
             and isinstance(unwrap_readonly(root_rt.wrapped), TypeParamRef)):
         return ret_type
+    # Only a CLASS's type parameter: a function's own (a generic method's
+    # `U` included) substitutes literally, `-> T` at `T = Own[P]` handing
+    # the value over.
+    if not _class_type_param(fi.root, unwrap_readonly(root_rt.wrapped).name):
+        return ret_type
     rt = unwrap_readonly(ret_type)
     return rt.wrapped if isinstance(rt, OwnType) else ret_type
+
+
+def _class_type_param(fi: FunctionInfo, name: str) -> bool:
+    """`name` is a type parameter of the class declaring method `fi`."""
+    if not fi.is_method:
+        return False
+    if fi.owning_type_qname is None:
+        # A method whose record the info does not name: the class reading.
+        return True
+    from tpyc.type_def_registry import get_type_def
+    td = get_type_def(fi.owning_type_qname)
+    rec = td.record if td is not None else None
+    if rec is None:
+        # A record the registry cannot name: keep the class reading.
+        return True
+    return name in (rec.type_params or ())
 
 
 def _sync_result_is_reference(ret_type: TpyType | None,
@@ -5118,7 +5261,7 @@ class OptionalType(TpyType):
 
     def to_cpp_param_type(self) -> str:
         if self.uses_generic_param_trait():
-            return f"{pointer_trait_cpp('opt_param_t', False)}<{self.inner.to_cpp()}>"
+            return f"{pointer_trait_cpp('opt_param_t', False)}<{self.inner.to_cpp_tag()}>"
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}*"
         fam = view_family_for_type(self.inner)
@@ -5140,7 +5283,7 @@ class OptionalType(TpyType):
 
     def to_cpp_param(self, name: str) -> str:
         if self.uses_generic_param_trait():
-            return f"{pointer_trait_cpp('opt_param_t', False)}<{self.inner.to_cpp()}> {name}"
+            return f"{pointer_trait_cpp('opt_param_t', False)}<{self.inner.to_cpp_tag()}> {name}"
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}* {name}"
         fam = view_family_for_type(self.inner)
@@ -5150,7 +5293,7 @@ class OptionalType(TpyType):
 
     def to_cpp_const_param(self, name: str) -> str:
         if self.uses_generic_param_trait():
-            return f"{pointer_trait_cpp('opt_param_t', True)}<{self.inner.to_cpp()}> {name}"
+            return f"{pointer_trait_cpp('opt_param_t', True)}<{self.inner.to_cpp_tag()}> {name}"
         if self.uses_pointer_repr():
             return f"const {self.inner.to_cpp()}* {name}"
         fam = view_family_for_type(self.inner)
@@ -5260,7 +5403,7 @@ class AliasRef(TpyType):
         # which already routes the name to the qualified C++ form.
         base = _native_cpp_names_view().get(self.name, self.name)
         if self.args:
-            rendered = ", ".join(a.to_cpp() for a in self.args)
+            rendered = ", ".join(a.to_cpp_tag() for a in self.args)
             return f"{base}<{rendered}>"
         return base
 
@@ -6757,23 +6900,20 @@ class CallableType(TpyType):
     param_types: tuple[TpyType, ...]
     return_type: TpyType
     is_template: bool = False
-    # The return is DECLARED as an open type parameter: each
-    # instantiation's own convention answers it, not the def rule
-    # (`contract_return`). An `Fn`'s stays set once substituted
-    # (`Fn[[T], U]` at `U = P`): its requires clause takes either form of
-    # `P`, which no decided spelling does. A std::function's is settled on
-    # substitution (`_settled_open_return`).
-    open_return: bool = False
+    # A std::function whose return is a CLASS's open type parameter (a
+    # field or method signature of a generic class): a class's type
+    # parameter is never bound to `Own[X]` (only a function's takes `Own`
+    # literally), so it hands its instantiation's value back by value, and a
+    # substitution settles the return to its storage spelling
+    # (`_settled_open_return`).
+    class_return: bool = field(default=False, compare=False, hash=False)
 
     def __post_init__(self) -> None:
-        if is_open_type_param_return(self.return_type):
-            object.__setattr__(self, "open_return", True)
-        elif self.open_return and not self.is_template:
-            # Equal C++ is one type: a substituted `Callable[[], T]` is the
-            # declared `Callable[[], Own[P]]` at `T = P`.
+        if (self.class_return and not self.is_template
+                and not is_open_type_param_return(self.return_type)):
             object.__setattr__(self, "return_type",
                                _settled_open_return(self.return_type))
-            object.__setattr__(self, "open_return", False)
+            object.__setattr__(self, "class_return", False)
 
     @staticmethod
     def _callable_param_cpp(t: 'TpyType') -> str:
@@ -6817,11 +6957,11 @@ class CallableType(TpyType):
         return contract
 
     def returns_open(self) -> bool:
-        """THE question whether this callable's return is declared as an
-        open type parameter (`is_open_type_param_return`), substituted
-        since or not (`open_return`): an `Own[T]` is not one, its form
-        is decided."""
-        return self.open_return or is_open_type_param_return(self.return_type)
+        """THE question whether this callable's return is an open type
+        parameter (`is_open_type_param_return`): an `Own[T]` is not one, its
+        form is decided; a substituted one is what its type argument says
+        (`P` a borrow, `Own[P]` a fresh value)."""
+        return is_open_type_param_return(self.return_type)
 
     def returns_borrow(self) -> bool:
         """A call through this callable hands back a C++ reference, as a
@@ -6841,9 +6981,13 @@ class CallableType(TpyType):
     def _std_function_sig(self) -> str:
         representation = classify_result_representation(
             self.return_type, position=ResultPosition.ERASED_CALLABLE)
+        # An open return hands back what its instantiation says: a borrow at
+        # `U = P`, the value at `U = Own[P]` (`val_or_ref_t<U>`).
         ret = ("void" if representation is ResultRepresentation.ERASED_VOID
                else self.contract_return().to_cpp_return()
-               if self.returns_borrow() else self.return_type.to_cpp())
+               if self.returns_borrow()
+               or (self.returns_open() and not self.class_return)
+               else self.return_type.to_cpp())
         params = ", ".join(self._callable_param_cpp(t) for t in self.param_types)
         return f"std::function<{ret}({params})>"
 
@@ -6884,7 +7028,7 @@ class CallableType(TpyType):
 
     def with_inner_types(self, types: tuple[TpyType, ...]) -> 'TpyType':
         return CallableType(types[:-1], types[-1], self.is_template,
-                            self.returns_open())
+                            class_return=self.class_return)
 
     def __str__(self) -> str:
         params = ", ".join(str(t) for t in self.param_types)
@@ -6896,17 +7040,36 @@ class CallableType(TpyType):
 
 
 def _settled_open_return(ret: TpyType) -> TpyType:
-    """The decided spelling of a std::function's open return substituted
-    with `ret`: such a std::function hands its result back by value
-    (`std::function<U(...)>`), so a type whose return form is not its
-    storage form (`returns_storage_form`: a class, a tuple holding one, an
-    Optional or union of one) is `Own[R]`, any other itself."""
+    """The decided spelling of a class's std::function open return
+    substituted with `ret` (`CallableType.class_return`): it hands its
+    result back by value, so a type whose return form is not its storage
+    form (`returns_storage_form`) is `Own[R]`, any other itself."""
     while True:
         peeled = unwrap_ref_type(unwrap_readonly(ret))
         if peeled is ret:
             break
         ret = peeled
     return ret if returns_storage_form(ret) else OwnType(ret)
+
+
+def mark_class_callables(t: TpyType, class_params: 'frozenset[str]') -> TpyType:
+    """`t` with each non-template callable whose return is one of the
+    class type parameters `class_params` marked `class_return`."""
+    if isinstance(t, CallableType):
+        inner = tuple(mark_class_callables(x, class_params)
+                      for x in t.inner_types())
+        ret = unwrap_readonly(inner[-1])
+        mark = (not t.is_template and isinstance(ret, TypeParamRef)
+                and ret.name in class_params)
+        if mark or any(n is not o for n, o in zip(inner, t.inner_types())):
+            return CallableType(inner[:-1], inner[-1], t.is_template,
+                                class_return=mark or t.class_return)
+        return t
+    inner = t.inner_types()
+    new = tuple(mark_class_callables(x, class_params) for x in inner)
+    if any(n is not o for n, o in zip(new, inner)):
+        return t.with_inner_types(new)
+    return t
 
 
 def make_fn_type(param_types: tuple['TpyType', ...], return_type: 'TpyType') -> CallableType:

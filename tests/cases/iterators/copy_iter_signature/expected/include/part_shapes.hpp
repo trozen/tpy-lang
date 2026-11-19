@@ -14,7 +14,7 @@ using ::tpyapp::fixtures::Cell;
 
 // class Steps[T](Iterator[T], Protocol):
 template<typename T, typename _T0>
-concept Steps = requires(T& t) {
+concept Steps = requires(::tpy::storage_t<T>& t) {
     t.__next__();
     ::tpy::__iter__(t);
 };
@@ -39,7 +39,7 @@ int32_t own_str_lens(T_source&& source);
 std::vector<::tpyapp::fixtures::Cell> ro_copies(const std::vector<::tpyapp::fixtures::Cell>& cells);
 // def h[T](xs: list[T]) -> Own[list[T]]:
 template<typename T>
-std::vector<T> h(const std::vector<T>& xs);
+std::vector<::tpy::storage_t<T>> h(const std::vector<::tpy::storage_t<T>>& xs);
 // def main() -> None:
 void main();
 
@@ -111,8 +111,8 @@ int32_t own_str_lens(T_source&& source) {
 //     # a generic element: the copy is whatever T's copy is
 //     return list(copy_iter(xs))  # tpyc: ok
 template<typename T>
-std::vector<T> h(const std::vector<T>& xs) {
-    return ::tpy::construct<std::vector<T>>(::tpy::copy_iter(xs));
+std::vector<::tpy::storage_t<T>> h(const std::vector<::tpy::storage_t<T>>& xs) {
+    return ::tpy::construct<std::vector<::tpy::storage_t<T>>>(::tpy::copy_iter(xs));
 }
 
 void __tpy_init();

@@ -48,7 +48,7 @@ _FRESH_COLLECTION_NODES = (
 from ..typesys import (ResultPosition, ResultRepresentation,
                        classify_result_representation, pointer_repr_optional,
                        yield_borrow_slot_cpp)
-from ..typesys import IntLiteralType, NominalType, OwnType, TpyType, OptionalType, ReadonlyType, TupleType, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, ConcreteFrameType
+from ..typesys import TypeParamKind, TypeParamRef, IntLiteralType, NominalType, OwnType, TpyType, OptionalType, ReadonlyType, TupleType, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, ConcreteFrameType, type_arg_cpp
 from ..value_category import for_source_is_rvalue
 from ..type_def_registry import (is_str_type, is_big_int_type,
                                   view_owned_copy_init)
@@ -148,6 +148,9 @@ class _CoroParam:
     # the owned field (`::tpy::Bytes(b_)`, or the optional-aware form for
     # `str|None` / `bytes|None`). Built via view_owned_copy_init.
     owned_copy_init: str = ""
+    # TYPE_PARAM of TYPE kind only: the parameter's `T`, which the factory's
+    # hand-off (`param_pass_last<T>`) is spelled at.
+    tparam_cpp: str = ""
 
     def field_decl(self) -> str:
         if self.kind is FrameCaptureKind.REF:
@@ -183,11 +186,13 @@ class _CoroParam:
     def ctor_init(self) -> str:
         if self.kind is FrameCaptureKind.REF:
             return f"{self.cpp_name}({self.cpp_name})"
+        if self.kind is FrameCaptureKind.TYPE_PARAM and self.tparam_cpp:
+            # `param_val_or_ref_t<T>` borrows at `T = P` (bound as it is) and
+            # owns at `T = Own[X]`, where the frame takes the value over.
+            return (f"{self.cpp_name}(::tpy::param_pass_last<"
+                    f"{self.tparam_cpp}>({self.cpp_name}_))")
         if self.kind in (FrameCaptureKind.POINTER, FrameCaptureKind.TYPE_PARAM):
             # POINTER: raw pointer, trivially copyable -- std::move is noise.
-            # TYPE_PARAM: `param_val_or_ref_t<T>` is already a reference type;
-            # std::move on it yields an rvalue that won't bind to the field
-            # type for non-value Ts. Direct bind/copy is uniformly correct.
             return f"{self.cpp_name}({self.cpp_name}_)"
         if self.kind in _DEDUCED_SLOT_KINDS:
             # `T_<pname>` / `F_<pname>` is the class template param, so the
@@ -500,6 +505,11 @@ class AsyncCoroCodegen:
                 ctor_param_type=ctor_type,
                 kind=kind,
                 owned_copy_init=owned_init,
+                tparam_cpp=(ptype_inner.to_cpp_tag()
+                            if kind is FrameCaptureKind.TYPE_PARAM
+                            and isinstance(ptype_inner, TypeParamRef)
+                            and ptype_inner.kind is TypeParamKind.TYPE
+                            else ""),
             ))
         return out
 
@@ -529,7 +539,7 @@ class AsyncCoroCodegen:
             concept_name = self.functions.protocols.get_concept_name(proto)
             targ_name = protocol_param_template_name(pname)
             if proto.type_args:
-                targs = ", ".join(t.to_cpp() for t in proto.type_args)
+                targs = ", ".join(t.to_cpp_tag() for t in proto.type_args)
                 parts.append(f"{concept_name}<{targs}> {targ_name}")
             else:
                 parts.append(f"{concept_name} {targ_name}")
@@ -720,7 +730,7 @@ class AsyncCoroCodegen:
             bare = unwrap_readonly(unwrap_send_sync(rt))
             trait = ("val_or_cptr_t" if isinstance(rt, ReadonlyType)
                      else "val_or_ptr_t")
-            return f"::tpy::{trait}<{self.types.type_to_cpp(bare)}>"
+            return f"::tpy::{trait}<{type_arg_cpp(bare, self.types.type_to_cpp)}>"
         return self.types.type_to_cpp(rt)
 
     def _is_void_return(self, func: TpyFunction) -> bool:
@@ -1446,6 +1456,11 @@ class AsyncCoroCodegen:
                     f"std::forward<{cparam.ctor_param_type}>({cparam.cpp_name})")
             elif cparam.kind in _MOVED_IN_KINDS:
                 parts.append(f"std::move({cparam.cpp_name})")
+            elif cparam.kind is FrameCaptureKind.TYPE_PARAM and cparam.tparam_cpp:
+                # The factory's parameter goes to the same `T` in the frame
+                # at its last use: owned at `T = Own[X]`, it moves on.
+                parts.append(f"::tpy::param_pass_last<{cparam.tparam_cpp}>"
+                             f"({cparam.cpp_name})")
             else:
                 parts.append(cparam.cpp_name)
         return ", ".join(parts)

@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def leaf_count[T](t: Tree[T]) -> int32:  # tpyc: ok
 template<typename T>
-int32_t leaf_count(const Tree<T>& t);
+int32_t leaf_count(const Tree<::tpy::storage_t<T>>& t);
 // def sum_leaves(t: Tree[int]) -> int32:
 int32_t sum_leaves(const Tree<::tpy::BigInt>& t);
 // def main() -> None:
@@ -21,7 +21,7 @@ void main();
 
 template<typename T>
 struct Tree {
-    using variant_type = ::tpy::Union<T, std::vector<Tree<T>>>;
+    using variant_type = ::tpy::Union<::tpy::storage_t<T>, std::vector<Tree<::tpy::storage_t<T>>>>;
     variant_type value;
 
     Tree() requires std::default_initializable<variant_type> = default;
@@ -53,7 +53,7 @@ struct Tree {
 //         case _:
 //             return 1
 template<typename T>
-int32_t leaf_count(const Tree<T>& t) {
+int32_t leaf_count(const Tree<::tpy::storage_t<T>>& t) {
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
     case 1: {
@@ -64,7 +64,7 @@ int32_t leaf_count(const Tree<T>& t) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& child = *__beg_0;
-            total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::leaf_count<T>(child));
+            total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::leaf_count<::tpy::storage_t<T>>(child));
         }
         return total;
     }

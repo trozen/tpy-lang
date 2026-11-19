@@ -106,7 +106,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 template<typename T>
 struct Boxed {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Boxed() = default;
@@ -171,7 +171,7 @@ struct __coro_echo {
     __coro_echo(::tpy::param_val_or_ref_t<T> value_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          value(value_) {}
+          value(::tpy::param_pass_last<T>(value_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -189,7 +189,7 @@ template <typename T>
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(value);
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(value));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -201,7 +201,7 @@ template <typename T>
 // async def echo[T](value: T) -> T:
 template <typename T>
 __coro_echo<T> echo(::tpy::param_val_or_ref_t<T> value) {
-    return __coro_echo<T>(value);
+    return __coro_echo<T>(::tpy::param_pass_last<T>(value));
 }
 
 // async def async_main() -> int32:
@@ -245,7 +245,7 @@ struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, ::tpy::yiel
 
     __gen_repeat(::tpy::param_val_or_ref_t<T> value_, int32_t count_)
         : __state(S_INITIAL),
-          value(value_),
+          value(::tpy::param_pass_last<T>(value_)),
           count(std::move(count_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -295,7 +295,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat<T>::__n
 // def repeat[T](value: T, count: int32) -> Iterator[T]:
 template <typename T>
 __gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> value, int32_t count) {
-    return __gen_repeat<T>(value, count);
+    return __gen_repeat<T>(::tpy::param_pass_last<T>(value), count);
 }
 
 // def gen_body() -> Iterator[int32]:
@@ -364,7 +364,7 @@ bool anyslot(std::string_view name, ::tpy::param_val_or_ref_t<T> v) {
 //     return v
 template<typename T>
 ::tpy::val_or_ref_t<T> pass_through(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_to_return<T>(v);
+    return ::tpy::param_to_return_last<T>(v);
 }
 
 void __tpy_init();

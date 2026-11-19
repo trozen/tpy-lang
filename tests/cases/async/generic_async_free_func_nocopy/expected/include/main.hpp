@@ -21,7 +21,7 @@ struct __coro_main_coro;
 
 // async def unwrap[T](b: Box[T]) -> T:
 template <typename T>
-__coro_unwrap<T> unwrap(::tpystd::tplib::box::Box<T>& b);
+__coro_unwrap<T> unwrap(::tpystd::tplib::box::Box<::tpy::storage_t<T>>& b);
 // async def main_coro() -> None:
 __coro_main_coro main_coro();
 // def main() -> None:
@@ -32,14 +32,14 @@ template <typename T>
 struct __coro_unwrap {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpystd::tplib::box::Box<T>& b;
+    ::tpystd::tplib::box::Box<::tpy::storage_t<T>>& b;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_DONE = 1,
     };
 
-    __coro_unwrap(::tpystd::tplib::box::Box<T>& b)
+    __coro_unwrap(::tpystd::tplib::box::Box<::tpy::storage_t<T>>& b)
         : __state(S_INITIAL),
           __cancel_pending(false),
           b(b) {}
@@ -71,7 +71,7 @@ template <typename T>
 
 // async def unwrap[T](b: Box[T]) -> T:
 template <typename T>
-__coro_unwrap<T> unwrap(::tpystd::tplib::box::Box<T>& b) {
+__coro_unwrap<T> unwrap(::tpystd::tplib::box::Box<::tpy::storage_t<T>>& b) {
     return __coro_unwrap<T>(b);
 }
 

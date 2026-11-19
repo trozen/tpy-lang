@@ -14,7 +14,7 @@ using ::tpystd::tplib::array_list::ArrayList;
 
 // class PairMaker(Protocol):
 template<typename T>
-concept PairMaker = requires(T& t) {
+concept PairMaker = requires(::tpy::storage_t<T>& t) {
     { t.pair() } -> std::convertible_to<std::tuple<std::vector<std::string>, int32_t>>;
 };
 

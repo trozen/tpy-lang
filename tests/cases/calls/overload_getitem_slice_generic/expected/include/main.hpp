@@ -18,7 +18,7 @@ void main();
 template<typename T>
 struct Container {
     // _data: list[T]
-    std::vector<T> _data;
+    std::vector<::tpy::storage_t<T>> _data;
 
     // def __init__(self) -> None:
     Container();
@@ -40,14 +40,14 @@ struct Container {
 
     // @overload
     // def __getitem__(self, index: slice) -> Span[readonly[T]]: ...  # tpyc: ok
-    std::span<const T> __getitem____slice(::tpy::Slice index) const;
-    std::span<const T> __getitem__(::tpy::Slice index) const;
+    std::span<const ::tpy::storage_t<T>> __getitem____slice(::tpy::Slice index) const;
+    std::span<const ::tpy::storage_t<T>> __getitem__(::tpy::Slice index) const;
 
     ::tpy::val_or_cref_t<T> operator[](int32_t index) const;
 
     ::tpy::val_or_ref_t<T> operator[](int32_t index);
 
-    std::span<const T> operator[](::tpy::Slice index) const;
+    std::span<const ::tpy::storage_t<T>> operator[](::tpy::Slice index) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -61,13 +61,13 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // def __init__(self) -> None:
 //     self._data = []
 template<typename T>
-inline Container<T>::Container() : _data(std::vector<T>{}) {}
+inline Container<T>::Container() : _data(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def add(self, item: T) -> None:
 //     self._data.append(item)
 template<typename T>
 inline void Container<T>::add(::tpy::param_val_or_ref_t<T> item) {
-    this->_data.push_back(::tpy::param_to_storage<T>(item));
+    this->_data.push_back(::tpy::param_consume<T>(item));
 }
 
 // @overload
@@ -105,7 +105,7 @@ inline ::tpy::val_or_cref_t<T> Container<T>::__getitem__(int32_t index) const {
 // @overload
 // def __getitem__(self, index: slice) -> Span[readonly[T]]: ...  # tpyc: ok
 template<typename T>
-inline std::span<const T> Container<T>::__getitem____slice(::tpy::Slice index) const {
+inline std::span<const ::tpy::storage_t<T>> Container<T>::__getitem____slice(::tpy::Slice index) const {
     if (true) {
         std::optional<int32_t> s_start = index.start;
         std::optional<int32_t> s_stop = index.stop;
@@ -116,7 +116,7 @@ inline std::span<const T> Container<T>::__getitem____slice(::tpy::Slice index) c
 }
 
 template<typename T>
-inline std::span<const T> Container<T>::__getitem__(::tpy::Slice index) const {
+inline std::span<const ::tpy::storage_t<T>> Container<T>::__getitem__(::tpy::Slice index) const {
     return this->__getitem____slice(index);
 }
 
@@ -131,7 +131,7 @@ inline ::tpy::val_or_ref_t<T> Container<T>::operator[](int32_t index) {
 }
 
 template<typename T>
-inline std::span<const T> Container<T>::operator[](::tpy::Slice index) const {
+inline std::span<const ::tpy::storage_t<T>> Container<T>::operator[](::tpy::Slice index) const {
     return __getitem__(index);
 }
 

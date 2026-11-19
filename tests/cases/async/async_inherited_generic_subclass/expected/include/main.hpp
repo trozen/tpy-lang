@@ -43,7 +43,7 @@ void main();
 template<typename T>
 struct Box {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Box() = default;
@@ -88,7 +88,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pool& obj) {
 template<typename T>
 struct Guard {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Guard() = default;

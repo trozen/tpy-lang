@@ -9,27 +9,27 @@ namespace tpyapp::main {
 
 // class HasValue(Protocol):
 template<typename T>
-concept HasValue = requires(T& t) {
+concept HasValue = requires(::tpy::storage_t<T>& t) {
     { t.value } -> std::convertible_to<int32_t>;
 };
 
 // class HasXY(Protocol):
 template<typename T>
-concept HasXY = requires(T& t) {
+concept HasXY = requires(::tpy::storage_t<T>& t) {
     { t.x } -> std::convertible_to<int32_t>;
     { t.y } -> std::convertible_to<int32_t>;
 };
 
 // class Container(Protocol):
 template<typename T>
-concept Container = requires(T& t) {
+concept Container = requires(::tpy::storage_t<T>& t) {
     { t.is_empty() } -> std::convertible_to<bool>;
     { t.count } -> std::convertible_to<int32_t>;
 };
 
 // class Holder[T](Protocol):
 template<typename T, typename _T0>
-concept Holder = requires(T& t) {
+concept Holder = requires(::tpy::storage_t<T>& t) {
     { t.item } -> std::convertible_to<_T0>;
 };
 
@@ -129,7 +129,7 @@ inline std::ostream& operator<<(std::ostream& os, const IntHolder& obj) {
 template<HasValue T>
 struct Wrapper {
     // inner: T
-    T inner;
+    ::tpy::storage_t<T> inner;
 
     // def __init__(self, val: T):
     Wrapper() = default;

@@ -53,7 +53,7 @@ struct __gen_repeat_n : public ::tpy::next_iter_mixin<__gen_repeat_n<T>, ::tpy::
 
     __gen_repeat_n(::tpy::param_val_or_ref_t<T> obj_, int32_t times_)
         : __state(S_INITIAL),
-          obj(obj_),
+          obj(::tpy::param_pass_last<T>(obj_)),
           times(std::move(times_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -96,7 +96,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat_n<T>::_
 // def repeat_n[T](obj: T, times: int32) -> Iterator[T]:
 template <typename T>
 __gen_repeat_n<T> repeat_n(::tpy::param_val_or_ref_t<T> obj, int32_t times) {
-    return __gen_repeat_n<T>(obj, times);
+    return __gen_repeat_n<T>(::tpy::param_pass_last<T>(obj), times);
 }
 
 // def take[T](it: Iterable[T], n: int32) -> Iterator[T]:

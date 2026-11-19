@@ -127,21 +127,21 @@ class G[U]:
 
 # A type argument the call writes (`each[Own[Item]]`, free function, method
 # and a generic record's method) is the value's own type: the loop variable
-# owns the step and moves on, no copy. The step itself is an unwarned copy of the lent element
-# (BUGS.md#lent-list-at-own-iterable-param-copies).
+# owns the step and moves on, no copy. The step itself is a copy of the lent
+# element, which the yield makes at `T = Own[Item]` only, warned at the call.
 def explicit_type_arg(items: list[Own[Item]]) -> None:
     keep: list[Item] = []
-    for x in each[Own[Item]](items):
+    for x in each[Own[Item]](items):  # tpyc: warning(/copies Item into owned storage/)
         keep.append(x)  # tpyc: ok
     keep[0].value = 99
     print("explicit type arg", items[0].value, keep[0].value)
     mkeep: list[Item] = []
-    for y in Each().each[Own[Item]](items):
+    for y in Each().each[Own[Item]](items):  # tpyc: warning(/copies Item into owned storage/)
         mkeep.append(y)  # tpyc: ok
     mkeep[0].value = 77
     print("explicit method type arg", items[0].value, mkeep[0].value)
     gkeep: list[Item] = []
-    for z in GEach[int32]().each[Own[Item]](items):
+    for z in GEach[int32]().each[Own[Item]](items):  # tpyc: warning(/copies Item into owned storage/)
         gkeep.append(z)  # tpyc: ok
     gkeep[0].value = 55
     print("explicit generic record method type arg", items[0].value,

@@ -17,7 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T>
 struct Container {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Container() = default;

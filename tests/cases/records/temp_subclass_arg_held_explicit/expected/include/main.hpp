@@ -11,7 +11,7 @@ struct Surface;
 // @dynamic
 // class Surface(Protocol):
 template<typename T>
-concept __Surface_Concept__ = requires(T& t) {
+concept __Surface_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.hit() } -> std::convertible_to<std::string_view>;
 };
 

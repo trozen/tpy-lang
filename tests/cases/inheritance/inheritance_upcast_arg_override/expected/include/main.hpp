@@ -13,7 +13,7 @@ struct Speaker;
 // @dynamic
 // class Speaker(Protocol):
 template<typename T>
-concept __Speaker_Concept__ = requires(T& t) {
+concept __Speaker_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.speak() } -> std::convertible_to<std::string_view>;
 };
 
@@ -95,30 +95,30 @@ std::string ovp__Fn_Child_str__Child(__F0&& g, const Child& c);
 // def ap[T](g: Fn[[T], str], x: T) -> str:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<std::string>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> std::convertible_to<std::string>;
   }
 std::string ap(__F0&& g, ::tpy::param_val_or_ref_t<T> x);
 // def ap2[T](g: Fn[[Child, T], str], x: T) -> str:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, Child& __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<std::string>;
+      { __fn(__a0, static_cast<decltype(__a1)&&>(__a1)) } -> std::convertible_to<std::string>;
   }
 std::string ap2(__F0&& g, ::tpy::param_val_or_ref_t<T> x);
 // def fwd[T](g: Fn[[T], str], x: T) -> str:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<std::string>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> std::convertible_to<std::string>;
   }
 std::string fwd(__F0&& g, ::tpy::param_val_or_ref_t<T> x);
 // def apply_l[T](g: Fn[[Child, list[T]], str], x: list[T]) -> str:
 template<typename T, typename __F0>
-  requires requires(__F0& __fn, Child& __a0, std::vector<T>& __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<std::string>;
+  requires requires(__F0& __fn, Child& __a0, std::vector<::tpy::storage_t<T>>& __a1) {
+      { __fn(__a0, static_cast<decltype(__a1)&&>(__a1)) } -> std::convertible_to<std::string>;
   }
-std::string apply_l(__F0&& g, std::vector<T>& x);
+std::string apply_l(__F0&& g, std::vector<::tpy::storage_t<T>>& x);
 // def forward_l[T](x: list[T]) -> str:
 template<typename T>
-std::string forward_l(std::vector<T>& x);
+std::string forward_l(std::vector<::tpy::storage_t<T>>& x);
 // def gen_cb() -> Iterator[Callable[[Child], str]]:
 __gen_gen_cb gen_cb();
 // async def co_cb(c: Child) -> str:
@@ -454,38 +454,38 @@ std::string ovp__Fn_Child_str__Child(__F0&& g, const Child& c) {
 //     return g(x)
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<std::string>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> std::convertible_to<std::string>;
   }
 std::string ap(__F0&& g, ::tpy::param_val_or_ref_t<T> x) {
-    return g(x);
+    return g(::tpy::param_pass_last<T>(x));
 }
 // def ap2[T](g: Fn[[Child, T], str], x: T) -> str:
 //     return g(Child(), x)
 template<typename T, typename __F0>
   requires requires(__F0& __fn, Child& __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<std::string>;
+      { __fn(__a0, static_cast<decltype(__a1)&&>(__a1)) } -> std::convertible_to<std::string>;
   }
 std::string ap2(__F0&& g, ::tpy::param_val_or_ref_t<T> x) {
     Child __tmp_1 = Child();
-    return g(__tmp_1, x);
+    return g(__tmp_1, ::tpy::param_pass_last<T>(x));
 }
 // def fwd[T](g: Fn[[T], str], x: T) -> str:
 //     # Generic body: T is still open at ap's slot, so nothing warns here.
 //     return ap(g, x)  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<std::string>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> std::convertible_to<std::string>;
   }
 std::string fwd(__F0&& g, ::tpy::param_val_or_ref_t<T> x) {
-    return ::tpyapp::main::ap<T>(g, x);
+    return ::tpyapp::main::ap<T>(g, ::tpy::param_pass_last<T>(x));
 }
 // def apply_l[T](g: Fn[[Child, list[T]], str], x: list[T]) -> str:
 //     return g(Child(), x)
 template<typename T, typename __F0>
-  requires requires(__F0& __fn, Child& __a0, std::vector<T>& __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<std::string>;
+  requires requires(__F0& __fn, Child& __a0, std::vector<::tpy::storage_t<T>>& __a1) {
+      { __fn(__a0, static_cast<decltype(__a1)&&>(__a1)) } -> std::convertible_to<std::string>;
   }
-std::string apply_l(__F0&& g, std::vector<T>& x) {
+std::string apply_l(__F0&& g, std::vector<::tpy::storage_t<T>>& x) {
     Child __tmp_1 = Child();
     return g(__tmp_1, x);
 }
@@ -499,12 +499,12 @@ std::string apply_l(__F0&& g, std::vector<T>& x) {
 //     return (apply_l(fl, x)  # tpyc: warning(/calls through 'b' run 'Base.name'/)
 //             + apply_l(hl, x))  # tpyc: warning(/calls through 'arg1' run 'Base.name'/)
 template<typename T>
-std::string forward_l(std::vector<T>& x) {
-    auto fl = [](Base& b, std::vector<T>& y) -> std::string {
+std::string forward_l(std::vector<::tpy::storage_t<T>>& x) {
+    auto fl = [](Base& b, std::vector<::tpy::storage_t<T>>& y) -> std::string {
         return b.name();
     };
-    std::function<std::string(Base&, std::vector<T>&)> hl = fl;
-    return (::tpy::str_concat(::tpyapp::main::apply_l<T>(fl, x), ::tpyapp::main::apply_l<T>(hl, x)));
+    std::function<std::string(Base&, std::vector<::tpy::storage_t<T>>&)> hl = fl;
+    return (::tpy::str_concat(::tpyapp::main::apply_l<::tpy::storage_t<T>>(fl, x), ::tpyapp::main::apply_l<::tpy::storage_t<T>>(hl, x)));
 }
 
 void __tpy_init();

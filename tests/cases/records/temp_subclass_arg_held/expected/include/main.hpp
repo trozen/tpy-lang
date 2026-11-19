@@ -20,7 +20,7 @@ struct Surface;
 // @dynamic
 // class Surface(Protocol):
 template<typename T>
-concept __Surface_Concept__ = requires(T& t) {
+concept __Surface_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.tag() } -> std::convertible_to<std::string_view>;
     { t.hit() } -> std::convertible_to<std::string_view>;
 };
@@ -35,7 +35,7 @@ struct Runner;
 // @dynamic
 // class Runner(Protocol):
 template<typename T>
-concept __Runner_Concept__ = requires(T& t) {
+concept __Runner_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.run(std::declval<Mat&>()) } -> std::convertible_to<std::string_view>;
 };
 
@@ -46,7 +46,7 @@ struct Runner {
 
 // class SRunner(Protocol):
 template<typename T>
-concept SRunner = requires(T& t) {
+concept SRunner = requires(::tpy::storage_t<T>& t) {
     { t.run(std::declval<Mat&>()) } -> std::convertible_to<std::string_view>;
 };
 
@@ -54,7 +54,7 @@ struct Filler;
 // @dynamic
 // class Filler(Protocol):
 template<typename T>
-concept __Filler_Concept__ = requires(T& t) {
+concept __Filler_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.fill(std::declval<std::vector<::tpy::BigInt>&>()) } -> std::convertible_to<::tpy::BigInt>;
 };
 

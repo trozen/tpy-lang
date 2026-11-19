@@ -9,7 +9,7 @@ namespace tpystd::tpy::sync {
 
 // class _CondvarLock(Protocol):
 template<typename T>
-concept _CondvarLock = requires(const T& t) {
+concept _CondvarLock = requires(const ::tpy::storage_t<T>& t) {
     { t._raw_mutex() } -> std::convertible_to<::tpy::MovableMutex*>;
 };
 
@@ -112,7 +112,7 @@ struct Mutex {
     // _cell: Ptr[_MutexCell[T]]
     _MutexCell<T>* _cell;
     // _payload: Ptr[T]
-    T* _payload;
+    ::tpy::storage_t<T>* _payload;
     bool __tpy_owned_ = true;
 
     // def __init__(self, value: Own[T]) -> None:
@@ -149,7 +149,7 @@ struct MutexGuard {
     // _cell: Ptr[_MutexCell[T]]
     _MutexCell<T>* _cell;
     // _payload: Ptr[T]
-    T* _payload;
+    ::tpy::storage_t<T>* _payload;
     // _locked: bool
     bool _locked;
     // _raw_mu: Ptr[_RawMutex]
@@ -157,7 +157,7 @@ struct MutexGuard {
 
     // def __init__(self, cell: Ptr[_MutexCell[T]], payload: Ptr[T]) -> None:
     MutexGuard() = default;
-    explicit MutexGuard(_MutexCell<T>* cell, T* payload);
+    explicit MutexGuard(_MutexCell<T>* cell, ::tpy::storage_t<T>* payload);
     // non-copyable (@nocopy)
     MutexGuard(const MutexGuard&) = delete;
     MutexGuard& operator=(const MutexGuard&) = delete;
@@ -211,7 +211,7 @@ struct RwLock {
     // _cell: Ptr[_RwLockCell[T]]
     _RwLockCell<T>* _cell;
     // _payload: Ptr[T]
-    T* _payload;
+    ::tpy::storage_t<T>* _payload;
     bool __tpy_owned_ = true;
 
     // def __init__(self, value: Own[T]) -> None:
@@ -252,13 +252,13 @@ struct ReadGuard {
     // _cell: Ptr[_RwLockCell[T]]
     _RwLockCell<T>* _cell;
     // _payload: Ptr[readonly[T]]
-    const T* _payload;
+    const ::tpy::storage_t<T>* _payload;
     // _locked: bool
     bool _locked;
 
     // def __init__(self, cell: Ptr[_RwLockCell[T]], payload: Ptr[readonly[T]]) -> None:
     ReadGuard() = default;
-    explicit ReadGuard(_RwLockCell<T>* cell, const T* payload);
+    explicit ReadGuard(_RwLockCell<T>* cell, const ::tpy::storage_t<T>* payload);
     // non-copyable (@nocopy)
     ReadGuard(const ReadGuard&) = delete;
     ReadGuard& operator=(const ReadGuard&) = delete;
@@ -295,13 +295,13 @@ struct WriteGuard {
     // _cell: Ptr[_RwLockCell[T]]
     _RwLockCell<T>* _cell;
     // _payload: Ptr[T]
-    T* _payload;
+    ::tpy::storage_t<T>* _payload;
     // _locked: bool
     bool _locked;
 
     // def __init__(self, cell: Ptr[_RwLockCell[T]], payload: Ptr[T]) -> None:
     WriteGuard() = default;
-    explicit WriteGuard(_RwLockCell<T>* cell, T* payload);
+    explicit WriteGuard(_RwLockCell<T>* cell, ::tpy::storage_t<T>* payload);
     // non-copyable (@nocopy)
     WriteGuard(const WriteGuard&) = delete;
     WriteGuard& operator=(const WriteGuard&) = delete;
@@ -585,7 +585,7 @@ inline MutexGuard<T> Mutex<T>::lock() const {
 //     self._locked = False
 //     self._raw_mu = take_ptr(cell._mu)
 template<typename T>
-inline MutexGuard<T>::MutexGuard(_MutexCell<T>* cell, T* payload)
+inline MutexGuard<T>::MutexGuard(_MutexCell<T>* cell, ::tpy::storage_t<T>* payload)
     : _cell(cell),
       _payload(payload),
       _locked(false),
@@ -764,7 +764,7 @@ inline WriteGuard<T> RwLock<T>::write() const {
 //     self._payload = payload
 //     self._locked = False
 template<typename T>
-inline ReadGuard<T>::ReadGuard(_RwLockCell<T>* cell, const T* payload)
+inline ReadGuard<T>::ReadGuard(_RwLockCell<T>* cell, const ::tpy::storage_t<T>* payload)
     : _cell(cell),
       _payload(payload),
       _locked(false) {}
@@ -818,7 +818,7 @@ inline auto ReadGuard<T>::operator*() -> decltype(__deref__()) {
 //     self._payload = payload
 //     self._locked = False
 template<typename T>
-inline WriteGuard<T>::WriteGuard(_RwLockCell<T>* cell, T* payload)
+inline WriteGuard<T>::WriteGuard(_RwLockCell<T>* cell, ::tpy::storage_t<T>* payload)
     : _cell(cell),
       _payload(payload),
       _locked(false) {}

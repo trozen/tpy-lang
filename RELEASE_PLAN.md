@@ -59,8 +59,7 @@ sema: one implementation per concept
   calls -- TODO: "One binder: what remains"
 - A `Callable` type means what a `def` means: the concrete contract
   (`Callable[[P], P]` may lend, `Callable[[P], Own[P]]` hands over),
-  then its spelled-generic twin --
-  `BUGS.md#generic-spelled-type-args-copy-where-inferred-lend`
+  then its spelled-generic twin -- TODO: "Callable contract unit 2"
 - `@overload` stubs as `@dispatch` variants, the rest -- TODO:
   "`@overload` copies: the residue"
 - Fully qualified local type names in the C++ -- TODO: "Always

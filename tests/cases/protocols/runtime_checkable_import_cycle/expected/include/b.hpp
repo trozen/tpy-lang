@@ -11,13 +11,13 @@ namespace tpyapp::b {
 
 // class Mid(Root, Protocol):
 template<typename T>
-concept Mid = requires(T& t) {
+concept Mid = requires(::tpy::storage_t<T>& t) {
     { t.f() } -> std::convertible_to<std::string_view>;
 };
 
 // class Lone(Protocol):
 template<typename T>
-concept Lone = requires(T& t) {
+concept Lone = requires(::tpy::storage_t<T>& t) {
     { t.g() } -> std::convertible_to<std::string_view>;
 };
 

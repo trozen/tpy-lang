@@ -351,15 +351,28 @@ std::vector<T> builtin_sorted_key(Iter&& iterable0, KeyFn&& key, bool reverse = 
     }
     // Schwartzian transform: compute key once per element (O(n)), then sort
     // by pre-computed keys (O(n log n) comparisons on cheap key values).
-    using K = std::decay_t<decltype(key(items[0]))>;
+    // A key handing back a reference (an identity key, a field) lends what
+    // `items` holds, which outlives the sort: keep a pointer, not a copy.
+    using KR = decltype(key(items[0]));
+    constexpr bool lent_key = std::is_lvalue_reference_v<KR>;
+    using K = std::conditional_t<lent_key, std::remove_reference_t<KR>*,
+                                 std::decay_t<KR>>;
     std::vector<std::pair<K, size_t>> decorated;
     decorated.reserve(items.size());
     for (size_t i = 0; i < items.size(); ++i) {
-        decorated.emplace_back(key(items[i]), i);
+        if constexpr (lent_key) {
+            decorated.emplace_back(&key(items[i]), i);
+        } else {
+            decorated.emplace_back(key(items[i]), i);
+        }
     }
     std::stable_sort(decorated.begin(), decorated.end(),
         [reverse](const auto& a, const auto& b) {
-            return reverse ? b.first < a.first : a.first < b.first;
+            if constexpr (lent_key) {
+                return reverse ? *b.first < *a.first : *a.first < *b.first;
+            } else {
+                return reverse ? b.first < a.first : a.first < b.first;
+            }
         });
     std::vector<T> result;
     result.reserve(items.size());

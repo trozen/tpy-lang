@@ -11,7 +11,7 @@ struct Shape;
 // @dynamic
 // class Shape(Protocol):
 template<typename T>
-concept __Shape_Concept__ = requires(T& t) {
+concept __Shape_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.grow() } -> std::convertible_to<void>;
 };
 
@@ -350,7 +350,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 template<typename T>
 struct Cell {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, val: Own[T]) -> None:
     Cell() = default;
@@ -815,7 +815,7 @@ inline ::tpy::val_or_ref_t<T> Cell<T>::get() {
 //     return x
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Scaler::same(::tpy::param_val_or_ref_t<T> x) const {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 void __tpy_init();

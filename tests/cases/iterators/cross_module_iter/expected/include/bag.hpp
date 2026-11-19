@@ -16,18 +16,18 @@ struct __gen_Bag___iter__;
 
 // def make_bag[T](items: Own[list[T]]) -> Own[Bag[T]]:
 template<typename T>
-Bag<T> make_bag(std::vector<T>&& items);
+Bag<T> make_bag(std::vector<::tpy::storage_t<T>>&& items);
 
 // @nocopy
 // class Bag[T]:
 template<typename T>
 struct Bag {
     // _items: list[T]
-    std::vector<T> _items;
+    std::vector<::tpy::storage_t<T>> _items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
     Bag() = default;
-    explicit Bag(std::vector<T>&& items);
+    explicit Bag(std::vector<::tpy::storage_t<T>>&& items);
     // non-copyable (@nocopy)
     Bag(const Bag&) = delete;
     Bag& operator=(const Bag&) = delete;
@@ -112,12 +112,12 @@ inline __gen_Bag___iter__<T> Bag<T>::__iter__() {
 // def __init__(self, items: Own[list[T]]) -> None:
 //     self._items = items
 template<typename T>
-inline Bag<T>::Bag(std::vector<T>&& items) : _items(std::move(items)) {}
+inline Bag<T>::Bag(std::vector<::tpy::storage_t<T>>&& items) : _items(std::move(items)) {}
 
 // def make_bag[T](items: Own[list[T]]) -> Own[Bag[T]]:
 //     return Bag[T](items)
 template<typename T>
-Bag<T> make_bag(std::vector<T>&& items) {
+Bag<T> make_bag(std::vector<::tpy::storage_t<T>>&& items) {
     return Bag<T>(std::move(items));
 }
 

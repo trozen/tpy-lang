@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Drawable(Protocol):
 template<typename T>
-concept Drawable = requires(T& t) {
+concept Drawable = requires(::tpy::storage_t<T>& t) {
     { t.draw() } -> std::convertible_to<int64_t>;
 };
 

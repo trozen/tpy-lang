@@ -50,10 +50,10 @@ struct __gen_PtrView___iter__;
 __gen_fresh fresh();
 // def drain[T](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-__gen_drain<T> drain(std::vector<T>& xs);
+__gen_drain<T> drain(std::vector<::tpy::storage_t<T>>& xs);
 // def each_lent[T](xs: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_each_lent<T> each_lent(std::vector<T>& xs);
+__gen_each_lent<T> each_lent(std::vector<::tpy::storage_t<T>>& xs);
 // def clones_own[T](src: Iterable[T]) -> Iterator[Own[T]]:
 template <typename T, ::tpystd::typing::Iterable<T> T_src>
 __gen_clones_own<T, T_src> clones_own(T_src&& src);
@@ -116,7 +116,7 @@ inline std::ostream& operator<<(std::ostream& os, const Ints& obj) {
 template<typename T>
 struct Bag {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Bag();
@@ -340,9 +340,9 @@ struct __gen_fresh : public ::tpy::next_iter_mixin<__gen_fresh, std::vector<int3
 
 // def drain[T](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain<T>, T> {
+struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain<T>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& xs;
+    std::vector<::tpy::storage_t<T>>& xs;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -351,11 +351,11 @@ struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain<T>, T> {
         S_DONE = 3,
     };
 
-    __gen_drain(std::vector<T>& xs)
+    __gen_drain(std::vector<::tpy::storage_t<T>>& xs)
         : __state(S_INITIAL),
           xs(xs) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_drain& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_drain<T>&) {
@@ -366,7 +366,7 @@ struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain<T>, T> {
 //     while len(xs) > 0:
 //         yield xs.pop()                          # -> S_RESUME_0
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_drain<T>::__next__() {
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_drain<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -389,7 +389,7 @@ std::expected<T, ::tpy::StopIteration> __gen_drain<T>::__next__() {
 
 // def drain[T](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
-__gen_drain<T> drain(std::vector<T>& xs) {
+__gen_drain<T> drain(std::vector<::tpy::storage_t<T>>& xs) {
     return __gen_drain<T>(xs);
 }
 
@@ -397,7 +397,7 @@ __gen_drain<T> drain(std::vector<T>& xs) {
 template <typename T>
 struct __gen_each_lent : public ::tpy::next_iter_mixin<__gen_each_lent<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& xs;
+    std::vector<::tpy::storage_t<T>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -410,7 +410,7 @@ struct __gen_each_lent : public ::tpy::next_iter_mixin<__gen_each_lent<T>, ::tpy
         S_DONE = 3,
     };
 
-    __gen_each_lent(std::vector<T>& xs)
+    __gen_each_lent(std::vector<::tpy::storage_t<T>>& xs)
         : __state(S_INITIAL),
           xs(xs) {}
 
@@ -454,13 +454,13 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_each_lent<T>::
 
 // def each_lent[T](xs: list[T]) -> Iterator[T]:
 template <typename T>
-__gen_each_lent<T> each_lent(std::vector<T>& xs) {
+__gen_each_lent<T> each_lent(std::vector<::tpy::storage_t<T>>& xs) {
     return __gen_each_lent<T>(xs);
 }
 
 // def clones_own[T](src: Iterable[T]) -> Iterator[Own[T]]:
 template <typename T, ::tpystd::typing::Iterable<T> T_src>
-struct __gen_clones_own : public ::tpy::next_iter_mixin<__gen_clones_own<T, T_src>, T> {
+struct __gen_clones_own : public ::tpy::next_iter_mixin<__gen_clones_own<T, T_src>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
     T_src src;
     using __for_src_0_t = decltype((src));
@@ -480,7 +480,7 @@ struct __gen_clones_own : public ::tpy::next_iter_mixin<__gen_clones_own<T, T_sr
         : __state(S_INITIAL),
           src(std::forward<T_src>(src_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_clones_own& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_clones_own<T, T_src>&) {
@@ -491,7 +491,7 @@ struct __gen_clones_own : public ::tpy::next_iter_mixin<__gen_clones_own<T, T_sr
 //     for x in src:
 //         yield copy(x)                                     # -> S_RESUME_0
 template <typename T, ::tpystd::typing::Iterable<T> T_src>
-std::expected<T, ::tpy::StopIteration> __gen_clones_own<T, T_src>::__next__() {
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_clones_own<T, T_src>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -508,7 +508,7 @@ std::expected<T, ::tpy::StopIteration> __gen_clones_own<T, T_src>::__next__() {
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
         __state = S_RESUME_0;
-        return T((*x));
+        return ::tpy::storage_t<T>((*x));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -719,7 +719,7 @@ inline __gen_Bag___iter__<T> Bag<T>::__iter__() {
 
 // def drain(self) -> Iterator[Own[T]]:
 template <typename T>
-struct __gen_Bag_drain : public ::tpy::next_iter_mixin<__gen_Bag_drain<T>, T> {
+struct __gen_Bag_drain : public ::tpy::next_iter_mixin<__gen_Bag_drain<T>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
     Bag<T>& __self;
 
@@ -734,7 +734,7 @@ struct __gen_Bag_drain : public ::tpy::next_iter_mixin<__gen_Bag_drain<T>, T> {
         : __state(S_INITIAL),
           __self(__self) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_Bag_drain& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_Bag_drain<T>&) {
@@ -746,7 +746,7 @@ struct __gen_Bag_drain : public ::tpy::next_iter_mixin<__gen_Bag_drain<T>, T> {
 //     while len(self.items) > 0:
 //         yield self.items.pop()        # -> S_RESUME_0
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_Bag_drain<T>::__next__() {
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_Bag_drain<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -896,7 +896,7 @@ inline void Driver::run() const {
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T>
-inline Bag<T>::Bag() : items(std::vector<T>{}) {}
+inline Bag<T>::Bag() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def push(self, x: Own[T]) -> None:
 //     self.items.append(x)

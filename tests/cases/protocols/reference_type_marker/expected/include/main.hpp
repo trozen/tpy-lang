@@ -111,14 +111,14 @@ inline void Owner::bump() {
 //     return x
 template<::tpy::ReferenceType T>
 ::tpy::val_or_ref_t<T> touch(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 // # A generic body whose own T carries the bound satisfies the callee's.
 // def relay[T: ReferenceType](x: T) -> T:
 //     return touch(x)  # tpyc: ok
 template<::tpy::ReferenceType T>
 ::tpy::val_or_ref_t<T> relay(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpyapp::main::touch<T>(x);
+    return ::tpyapp::main::touch<::tpy::storage_t<T>>(x);
 }
 // def lesser[T: ComparableRef](a: T, b: T) -> T:
 //     if b < a:
@@ -127,9 +127,9 @@ template<::tpy::ReferenceType T>
 template<::tpystd::tpy::ComparableRef T>
 ::tpy::val_or_ref_t<T> lesser(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     if ((b < a)) {
-        return ::tpy::param_to_return<T>(b);
+        return ::tpy::param_to_return_last<T>(b);
     }
-    return ::tpy::param_to_return<T>(a);
+    return ::tpy::param_to_return_last<T>(a);
 }
 
 void __tpy_init();

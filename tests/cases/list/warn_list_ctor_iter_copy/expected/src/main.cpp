@@ -44,13 +44,13 @@ int32_t double_(int32_t x) {
 void main() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
     std::vector<int32_t> vals = {1, 2};
-    std::vector<Point> a = ::tpy::construct<std::vector<Point>>(::tpy::builtin_map<::tpy::val_or_ref<Point>>(identity, pts));
+    std::vector<Point> a = ::tpy::construct<std::vector<Point>>(::tpy::builtin_map<Point>(identity, pts));
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> b = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t>(double_, vals));
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
-    std::vector<Point> c = ::tpy::construct<std::vector<Point>>(::tpy::builtin_map<Point>(clone_point, pts));
+    std::vector<Point> c = ::tpy::construct<std::vector<Point>>(::tpy::builtin_map<::tpy::own_arg<Point>>(clone_point, pts));
     std::cout << ::tpy::__len__(c) << "\n" << ::tpy::check_signals;
-    std::vector<Point> d = ::tpy::construct<std::vector<Point>>(::tpy::copy_iter(::tpy::builtin_map<::tpy::val_or_ref<Point>>(identity, pts)));
+    std::vector<Point> d = ::tpy::construct<std::vector<Point>>(::tpy::copy_iter(::tpy::builtin_map<Point>(identity, pts)));
     std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 

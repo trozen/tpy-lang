@@ -18,7 +18,7 @@ void main();
 template<typename T>
 struct Processor {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, val: T):
     Processor() = default;
@@ -50,7 +50,7 @@ inline Processor<T>::Processor(::tpy::readonly_form_t<T> val) : val(val) {}
 template<typename T>
 template<typename U>
 inline ::tpy::val_or_ref_t<U> Processor<T>::wrap(::tpy::param_val_or_ref_t<U> x) const {
-    return ::tpy::param_to_return<U>(x);
+    return ::tpy::param_to_return_last<U>(x);
 }
 
 // def process(self) -> int32:

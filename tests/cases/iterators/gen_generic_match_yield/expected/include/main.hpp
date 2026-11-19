@@ -37,8 +37,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, ::tpy::yield_slot
 
     __gen_gen(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_, ::tpy::BigInt tag_)
         : __state(S_INITIAL),
-          a(a_),
-          b(b_),
+          a(::tpy::param_pass_last<T>(a_)),
+          b(::tpy::param_pass_last<T>(b_)),
           tag(std::move(tag_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -63,17 +63,17 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_gen<T>::__next
         auto& __match_subject_1 = tag;
         if (__match_subject_1 == 0) {
             __state = S_RESUME_0;
-            return a;
+            return ::tpy::yield_from_local<T>(a);
         } else {
             __state = S_RESUME_2;
-            return a;
+            return ::tpy::yield_from_local<T>(a);
         }
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {  // after: yield a
         __state = S_RESUME_1;
-        return b;
+        return ::tpy::yield_from_local<T>(b);
     }
     case S_RESUME_1:  // after: yield b
     case S_RESUME_2:  // after: yield a
@@ -90,7 +90,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_gen<T>::__next
 // def gen[T](a: T, b: T, tag: int) -> Iterator[T]:
 template <typename T>
 __gen_gen<T> gen(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b, ::tpy::BigInt tag) {
-    return __gen_gen<T>(a, b, tag);
+    return __gen_gen<T>(::tpy::param_pass_last<T>(a), ::tpy::param_pass_last<T>(b), tag);
 }
 
 void __tpy_init();

@@ -140,7 +140,7 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 template<typename T>
 struct G {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: Own[T]) -> None:
     G() = default;

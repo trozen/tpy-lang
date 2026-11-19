@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Counter(Protocol):
 template<typename T>
-concept Counter = requires(T& t) {
+concept Counter = requires(::tpy::storage_t<T>& t) {
     { t.step(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 

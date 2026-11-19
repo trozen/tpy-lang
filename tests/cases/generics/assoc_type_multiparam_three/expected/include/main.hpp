@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Triple[A, B, C](Protocol):
 template<typename T, typename _T0, typename _T1, typename _T2>
-concept Triple = requires(T& t) {
+concept Triple = requires(::tpy::storage_t<T>& t) {
     { t.a() } -> ::tpy::proto_result<_T0>;
     { t.b() } -> ::tpy::proto_result<_T1>;
     { t.c() } -> ::tpy::proto_result<_T2>;

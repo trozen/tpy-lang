@@ -32,7 +32,7 @@ struct StorageIter {
     auto& __iter__() { return *this; }
 
     // def __next__(self) -> Own[T]:
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.StorageIter";
 };
 
@@ -96,7 +96,7 @@ inline StorageIter<T, N>::StorageIter(::tpy::UninitArrayStorage<T, N>* storage, 
 //         return val  # tpyc: warning(/may copy T into owned storage/)
 //     raise StopIteration
 template<typename T, std::size_t N>
-inline std::expected<T, ::tpy::StopIteration> StorageIter<T, N>::__next__() {
+inline std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> StorageIter<T, N>::__next__() {
     if ((this->_index < this->_size)) {
         ::tpy::val_or_ref_t<T> val = ::tpy::none_attr(this->_storage, "load").load(::tpy::int_cast_check<uint32_t>(this->_index));
         this->_index = ::tpy::add_check<int32_t>(this->_index, 1);

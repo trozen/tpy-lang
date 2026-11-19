@@ -38,7 +38,7 @@ struct __coro_ident {
     __coro_ident(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -56,7 +56,7 @@ template <typename T>
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x);
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(x));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -68,7 +68,7 @@ template <typename T>
 // async def ident[T](x: T) -> T:
 template <typename T>
 __coro_ident<T> ident(::tpy::param_val_or_ref_t<T> x) {
-    return __coro_ident<T>(x);
+    return __coro_ident<T>(::tpy::param_pass_last<T>(x));
 }
 
 // async def main_coro() -> None:

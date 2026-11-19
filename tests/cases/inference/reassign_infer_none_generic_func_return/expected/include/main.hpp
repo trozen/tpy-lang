@@ -12,12 +12,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def first[T](items: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> first(std::vector<T>& items);
+::tpy::val_or_ref_t<T> first(std::vector<::tpy::storage_t<T>>& items);
 
 // def first[T](items: list[T]) -> T:
 //     return items[0]
 template<typename T>
-::tpy::val_or_ref_t<T> first(std::vector<T>& items) {
+::tpy::val_or_ref_t<T> first(std::vector<::tpy::storage_t<T>>& items) {
     return ::tpy::__getitem__(items, 0);
 }
 

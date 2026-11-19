@@ -14,7 +14,7 @@ from ..parse.nodes import (TpyDictComprehension, TpyForEach, TpyFunction,
 from ..thir.testutil import _compile, _entry
 from .read_binding import ReadKind
 from .binding_ownership import (Acquired, CompMove,
-                                frame_field_ownership,
+                                frame_field_ownership, open_result_local,
                                 lambda_param_ownership, local_ownership,
                                 param_ownership, read_ownership,
                                 receiver_ownership, site_ownership)
@@ -526,14 +526,21 @@ def callable_value[T](f: Fn[[T], T], xs: list[T], x: T) -> None:
     for fn in ("single", "callable_value"):
         assert decls(fn)[0] in ctx.val_or_ref_decls, fn
         assert not local_ownership(ctx, f[fn], "y"), fn
-    # A slot of its own takes the result as its own: a reassigned or
-    # hoisted local, and a resumable frame's field. (A moved-through local
-    # rebound off the call is a shape the lowering refuses.)
-    for fn in ("reassigned", "returned", "hoisted"):
+    # A rebound local holding a lending call's result borrows it at a
+    # reference `T`, whatever else binds it (`open_result_local`).
+    for fn in ("reassigned", "returned"):
         assert not any(d in ctx.val_or_ref_decls for d in decls(fn)), fn
-        assert local_ownership(ctx, f[fn], "y"), fn
+        assert not local_ownership(ctx, f[fn], "y"), fn
+        assert open_result_local(ctx, f[fn], "y"), fn
+    # A hoisted local and a resumable frame's field read the result the
+    # same way: a borrow at a reference `T` (the pointer over a slot of its
+    # own, the frame's `val_or_ref_t<T>` field).
+    assert not any(d in ctx.val_or_ref_decls for d in decls("hoisted"))
+    assert not local_ownership(ctx, f["hoisted"], "y")
+    assert open_result_local(ctx, f["hoisted"], "y")
     assert not any(d in ctx.val_or_ref_decls for d in decls("frame"))
-    assert frame_field_ownership(ctx, f["frame"], "y")
+    assert not frame_field_ownership(ctx, f["frame"], "y")
+    assert open_result_local(ctx, f["frame"], "y")
 
 
 def test_binders_open_and_close_with_their_block() -> None:
@@ -638,8 +645,9 @@ def capture_global(k: str, xs: list[str], out: list[str]) -> None:
     for G in xs:
         out.append(G)
 """)
-    # A coroutine's field holds its own slot, as a generator's does.
-    assert frame_field_ownership(ctx, f["async_slot"], "y")
+    # A coroutine's field reads an open result as a generator's does: a
+    # borrow at a reference `T`.
+    assert not frame_field_ownership(ctx, f["async_slot"], "y")
     # A loop's `else` block is no pass of it: its rebind is not the site's.
     loop = _nodes(f["loop_else"], TpyForEach)[0]
     assert site_ownership(ctx, loop, "a").acquired is Acquired.OWN_ELEMENT
@@ -951,9 +959,7 @@ def test_written_type_arguments_count_as_the_signature() -> None:
     # A type argument counts as the declared return does, written
     # (`gen[Own[A]]`, a free function or a generic record's method) or
     # inferred; one binding a CLASS type parameter substitutes nothing.
-    # The inferred row takes the tuple shape: a scalar
-    # `gen(ys)` over `list[Own[A]]` is refused
-    # (BUGS.md#generic-call-own-list-arg-infers-bare).
+    # The inferred row takes the tuple shape.
     ctx, fns = _module("""\
 class It[U]:
     xs: list[U]

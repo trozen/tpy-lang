@@ -11,7 +11,7 @@ struct Point;
 
 // class Holder(Protocol):
 template<typename T>
-concept Holder = requires(T& t) {
+concept Holder = requires(::tpy::storage_t<T>& t) {
     { t.store(std::declval<Point>()) } -> std::convertible_to<void>;
 };
 

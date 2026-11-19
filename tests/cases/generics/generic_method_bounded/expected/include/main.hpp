@@ -18,7 +18,7 @@ void main();
 template<typename T>
 struct Wrapper {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, val: T):
     Wrapper() = default;

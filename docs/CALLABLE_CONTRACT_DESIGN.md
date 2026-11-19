@@ -18,6 +18,17 @@ form-neutral result of an open type parameter) are deferred to unit 2 (TODO.md
 "Callable contract unit 2"); MIR coverage of calls through a callable value is
 unit 3. The sections below are kept as the design record.
 
+**Status (2026-11-17), unit 2a.** A generic's function and generator type
+arguments take a callable argument's DECLARED form: `app(identity, p)` binds
+`R = P` and lends, `app(mk, q)` binds `R = Own[P]` (C++ `::tpy::own_arg<P>`) and
+hands over, a lambda binds its body's result form; `Own[X]` as a type argument
+is literal substitution, spelled and inferred alike. A substituted open
+callable return is what its type argument says (`CallableType.open_return` is
+gone), so a call through `Fn[[T], U]` lends at `U = P` and owns at
+`U = Own[P]`. `functools.reduce` has a lending and an owning form per arity.
+User class type arguments are unit 2b (`docs/LANGUAGE_FEATURES.md`, "Generic
+Functions").
+
 **Re-plan (2026-11-05, user decision "A": only signatures decide).** This
 supersedes the unit-1 design's "`__call__(self, x) -> P: return x` fits" and
 its tracing of the nested defs a closure's result reaches. At a `Callable`

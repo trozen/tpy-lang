@@ -1,2 +1,0 @@
-main.py:17: warning: Own[Box] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:22: error: No matching overload for 'map' with argument types (Fn[[Own[Box]], int32], Iterable[Own[Box]]): 'Iterable[Own[Box]]' hands over its steps; collect them first (list(...))

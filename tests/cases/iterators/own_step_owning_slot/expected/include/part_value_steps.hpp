@@ -16,7 +16,7 @@ struct PlainText;
 // @dynamic
 // class PlainText(Protocol):
 template<typename T>
-concept __PlainText_Concept__ = requires(T& t) {
+concept __PlainText_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.f() } -> std::convertible_to<std::string_view>;
 };
 
@@ -29,7 +29,7 @@ struct OwnText;
 // @dynamic
 // class OwnText(Protocol):
 template<typename T>
-concept __OwnText_Concept__ = requires(T& t) {
+concept __OwnText_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.f() } -> std::convertible_to<std::string>;
 };
 
@@ -40,32 +40,32 @@ struct OwnText {
 
 // class PlainFirst(PlainText, OwnText, Protocol):
 template<typename T>
-concept PlainFirst = requires(T& t) {
+concept PlainFirst = requires(::tpy::storage_t<T>& t) {
     { t.f() } -> std::convertible_to<std::string_view>;
 };
 
 // class OwnFirst(OwnText, PlainText, Protocol):
 template<typename T>
-concept OwnFirst = requires(T& t) {
+concept OwnFirst = requires(::tpy::storage_t<T>& t) {
     { t.f() } -> std::convertible_to<std::string>;
 };
 
 // class Runner[R](Protocol):
 template<typename T, typename _T0>
-concept Runner = requires(T& t) {
+concept Runner = requires(::tpy::storage_t<T>& t) {
     { t.run() } -> ::tpy::proto_result<_T0>;
 };
 
 // class ValueSteps[T: ValueType](Iterator[T], Protocol):
 template<typename T, typename _T0>
-concept ValueSteps = requires(T& t) {
+concept ValueSteps = requires(::tpy::storage_t<T>& t) {
     t.__next__();
     ::tpy::__iter__(t);
 };
 
 // class Mixed[T](Protocol):
 template<typename T, typename _T0>
-concept Mixed = requires(T& t) {
+concept Mixed = requires(::tpy::storage_t<T>& t) {
     { t.token() } -> ::tpy::proto_result<_T0>;
     ::tpy::__iter__(t);
 };

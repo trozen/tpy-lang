@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Pair[K, V](Protocol):
 template<typename T, typename _T0, typename _T1>
-concept Pair = requires(T& t) {
+concept Pair = requires(::tpy::storage_t<T>& t) {
     { t.first() } -> ::tpy::proto_result<_T0>;
     { t.second() } -> ::tpy::proto_result<_T1>;
 };

@@ -27,7 +27,7 @@ void main();
 //     return x
 template<typename U>
 ::tpy::val_or_ref_t<U> pick__U__U(::tpy::param_val_or_ref_t<U> x, ::tpy::param_val_or_ref_t<U> y) {
-    return ::tpy::param_to_return<U>(x);
+    return ::tpy::param_to_return_last<U>(x);
 }
 // def use[T](a: T, b: T) -> T:
 //     # Bare TPRef LHS. Both overloads might appear viable, but the generic
@@ -40,7 +40,7 @@ template<typename U>
 //     return r
 template<typename T>
 ::tpy::val_or_ref_t<T> use(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    ::tpy::val_or_ref_t<T> r = ::tpyapp::main::pick__U__U<T>(a, b);
+    ::tpy::val_or_ref_t<T> r = ::tpyapp::main::pick__U__U<::tpy::storage_t<T>>(a, b);
     return r;
 }
 

@@ -76,7 +76,7 @@ inline std::ostream& operator<<(std::ostream& os, const Filler& obj) {
 template<typename T>
 struct GR {
     // t: T
-    T t;
+    ::tpy::storage_t<T> t;
 
     // def __init__(self, t: Own[T]) -> None:
     GR() = default;

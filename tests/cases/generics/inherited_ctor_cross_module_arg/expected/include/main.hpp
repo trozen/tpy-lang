@@ -22,9 +22,9 @@ void main();
 template<typename K, typename V>
 struct Holder {
     // _k: K
-    K _k;
+    ::tpy::storage_t<K> _k;
     // _v: V
-    V _v;
+    ::tpy::storage_t<V> _v;
 
     // def __init__(self, k: K, v: V):
     Holder() = default;

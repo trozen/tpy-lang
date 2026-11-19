@@ -170,7 +170,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 template<typename T>
 struct Box {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Box() = default;
@@ -745,7 +745,7 @@ struct __coro_GenManager___aenter____T {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          extra(extra_) {}
+          extra(::tpy::param_pass_last<T>(extra_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -778,12 +778,12 @@ template <typename T>
 
 template <typename T>
 inline __coro_GenManager___aenter____T<T> GenManager<T>::__aenter____T(::tpy::param_val_or_ref_t<T> extra) {
-    return __coro_GenManager___aenter____T<T>(*this, extra);
+    return __coro_GenManager___aenter____T<T>(*this, ::tpy::param_pass_last<T>(extra));
 }
 
 template <typename T>
 inline __coro_GenManager___aenter____T<T> GenManager<T>::__aenter__(::tpy::param_val_or_ref_t<T> extra) {
-    return __coro_GenManager___aenter____T<T>(*this, extra);
+    return __coro_GenManager___aenter____T<T>(*this, ::tpy::param_pass_last<T>(extra));
 }
 
 // @dispatch
@@ -917,7 +917,7 @@ struct __coro_Steps___anext____T {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          skip(skip_) {}
+          skip(::tpy::param_pass_last<T>(skip_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -949,12 +949,12 @@ template <typename T>
 
 template <typename T>
 inline __coro_Steps___anext____T<T> Steps<T>::__anext____T(::tpy::param_val_or_ref_t<T> skip) const {
-    return __coro_Steps___anext____T<T>(*this, skip);
+    return __coro_Steps___anext____T<T>(*this, ::tpy::param_pass_last<T>(skip));
 }
 
 template <typename T>
 inline __coro_Steps___anext____T<T> Steps<T>::__anext__(::tpy::param_val_or_ref_t<T> skip) const {
-    return __coro_Steps___anext____T<T>(*this, skip);
+    return __coro_Steps___anext____T<T>(*this, ::tpy::param_pass_last<T>(skip));
 }
 
 // @dispatch
@@ -1459,7 +1459,7 @@ struct __gen_rep__T : public ::tpy::next_iter_mixin<__gen_rep__T<T>, ::tpy::yiel
 
     __gen_rep__T(::tpy::param_val_or_ref_t<T> obj_)
         : __state(S_INITIAL),
-          obj(obj_) {}
+          obj(::tpy::param_pass_last<T>(obj_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_rep__T& __iter__() { return *this; }
@@ -1477,7 +1477,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_rep__T<T>::__n
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return obj;
+        return ::tpy::yield_from_local<T>(obj);
     }
     case S_RESUME_0: {  // after: yield obj
         __state = S_DONE;
@@ -1493,7 +1493,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_rep__T<T>::__n
 // def rep[T](obj: T) -> Iterator[T]:
 template <typename T>
 __gen_rep__T<T> rep__T(::tpy::param_val_or_ref_t<T> obj) {
-    return __gen_rep__T<T>(obj);
+    return __gen_rep__T<T>(::tpy::param_pass_last<T>(obj));
 }
 
 // @dispatch
@@ -1514,7 +1514,7 @@ struct __gen_rep__T__int32 : public ::tpy::next_iter_mixin<__gen_rep__T__int32<T
 
     __gen_rep__T__int32(::tpy::param_val_or_ref_t<T> obj_, int32_t n_)
         : __state(S_INITIAL),
-          obj(obj_),
+          obj(::tpy::param_pass_last<T>(obj_)),
           n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -1563,7 +1563,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_rep__T__int32<
 // def rep[T](obj: T, n: int32) -> Iterator[T]:
 template <typename T>
 __gen_rep__T__int32<T> rep__T__int32(::tpy::param_val_or_ref_t<T> obj, int32_t n) {
-    return __gen_rep__T__int32<T>(obj, n);
+    return __gen_rep__T__int32<T>(::tpy::param_pass_last<T>(obj), n);
 }
 
 // def chain() -> Iterator[int32]:

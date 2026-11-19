@@ -9,7 +9,7 @@ namespace tpyapp::m {
 
 // class HasV(Protocol):
 template<typename T>
-concept HasV = requires(T& t) {
+concept HasV = requires(::tpy::storage_t<T>& t) {
     { t.get_v() } -> std::convertible_to<::tpy::BigInt>;
 };
 
@@ -110,7 +110,7 @@ Outer::Inner make_inner(const ::tpy::BigInt& v);
 template<typename T>
 struct Box {
     // self.v = v
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: Own[T]) -> None:
     Box() = default;

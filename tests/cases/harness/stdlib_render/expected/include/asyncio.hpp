@@ -43,7 +43,7 @@ inline auto& SOCK_STREAM = ::tpystd::socket::SOCK_STREAM;
 
 // class _Parking(Protocol):
 template<typename T>
-concept _Parking = requires(T& t) {
+concept _Parking = requires(::tpy::storage_t<T>& t) {
     { t._ready(std::declval<int32_t>()) } -> std::convertible_to<bool>;
     { t._take(std::declval<int32_t>()) } -> std::convertible_to<void>;
 };
@@ -150,7 +150,7 @@ template <typename T>
 __coro_gather_list<T> gather_list(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks);
 // def gather[T](*tasks: Task[T]) -> Own[_GatherFuture[T]]:
 template<typename T>
-_GatherFuture<T> gather(::tpy::varargs<::tpystd::asyncio::_executor::Task<T>> tasks);
+_GatherFuture<T> gather(::tpy::varargs<::tpystd::asyncio::_executor::Task<::tpy::storage_t<T>>> tasks);
 // async def gather_list_settled[T](
 //         tasks: list[Task[T]]) -> Own[list[Settled[T]]]:
 template <typename T>
@@ -438,7 +438,7 @@ struct _GatherFuture {
     void cancel();
 
     // def __poll__(self, waker: Waker) -> Own[Poll[list[T]]]:
-    ::tpystd::tpy::Poll<std::vector<T>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<std::vector<::tpy::storage_t<T>>> __poll__(::tpystd::coro::Waker waker);
 
     // def _propagate_cancel(self) -> None:
     void _propagate_cancel();
@@ -677,7 +677,7 @@ inline std::ostream& operator<<(std::ostream& os, const _WaitQueue& obj) {
 template<::tpystd::asyncio::_Parking P>
 struct _PrimitiveWait {
     // _owner: Ptr[P]
-    P* _owner;
+    ::tpy::storage_t<P>* _owner;
     // _kind: int32
     int32_t _kind;
     // _queue: Ptr[_WaitQueue]
@@ -690,7 +690,7 @@ struct _PrimitiveWait {
     // def __init__(self, owner: Ptr[P], kind: int32,
     //              queue: Ptr[_WaitQueue]) -> None:
     _PrimitiveWait() = default;
-    explicit _PrimitiveWait(P* owner, int32_t kind, _WaitQueue* queue);
+    explicit _PrimitiveWait(::tpy::storage_t<P>* owner, int32_t kind, _WaitQueue* queue);
     // non-copyable (@nocopy)
     _PrimitiveWait(const _PrimitiveWait&) = delete;
     _PrimitiveWait& operator=(const _PrimitiveWait&) = delete;
@@ -832,7 +832,7 @@ inline std::ostream& operator<<(std::ostream& os, const QueueFull& obj) {
 template<typename T>
 struct Queue {
     // _items: list[T]
-    std::vector<T> _items;
+    std::vector<::tpy::storage_t<T>> _items;
     // maxsize: int32
     int32_t maxsize;
     // _getters: _WaitQueue
@@ -867,7 +867,7 @@ struct Queue {
     // def get_nowait(self) -> Own[T]:
     ::tpy::own_return_t<T> get_nowait();
 
-    __coro_Queue_put<T> put(T item);
+    __coro_Queue_put<T> put(::tpy::storage_t<T> item);
 
     __coro_Queue_get<T> get();
 
@@ -1332,7 +1332,7 @@ struct __coro_Queue_put {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     Queue<T>& __self;
-    T item;
+    ::tpy::storage_t<T> item;
     std::optional<_PrimitiveWait<Queue<T>>> __sub_0;
 
     enum : int32_t {
@@ -1341,7 +1341,7 @@ struct __coro_Queue_put {
         S_DONE = 2,
     };
 
-    __coro_Queue_put(Queue<T>& __self, T&& item_)
+    __coro_Queue_put(Queue<T>& __self, ::tpy::storage_t<T>&& item_)
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
@@ -1383,7 +1383,7 @@ template <typename T>
 
 
 template <typename T>
-inline __coro_Queue_put<T> Queue<T>::put(T item) {
+inline __coro_Queue_put<T> Queue<T>::put(::tpy::storage_t<T> item) {
     return __coro_Queue_put<T>(*this, std::move(item));
 }
 
@@ -1406,7 +1406,7 @@ struct __coro_Queue_get {
           __cancel_pending(false),
           __self(__self) {}
 
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::storage_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_Queue_get<T>&) {
@@ -1418,7 +1418,7 @@ struct __coro_Queue_get {
 //     await _PrimitiveWait[Queue[T]](self, _QUEUE_GET, self._getters)  # -> S_RESUME_0
 //     return self.get_nowait()
 template <typename T>
-::tpystd::tpy::Poll<T> __coro_Queue_get<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::storage_t<T>> __coro_Queue_get<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -1428,12 +1428,12 @@ template <typename T>
     }
     case S_RESUME_0: {  // after: await _PrimitiveWait[Queue[T]](self, _QUEUE_GET, self._getters)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<T>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        T __tpy_async_ret = __self.get_nowait();
-        return ::tpystd::tpy::Poll<T>::ready(std::move(__tpy_async_ret));
+        ::tpy::storage_t<T> __tpy_async_ret = __self.get_nowait();
+        return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -1875,7 +1875,7 @@ struct __coro_wait_for {
           coro(std::move(coro_)),
           timeout(std::move(timeout_)) {}
 
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::storage_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_wait_for<T>&) {
@@ -1902,7 +1902,7 @@ struct __coro_wait_for {
 // async def wait_for[T](coro: Own[Cancellable[T]], timeout: float) -> Own[T]:
 //     return await _WaitForFuture[T](coro, timeout)                            # -> S_RESUME_0
 template <typename T>
-::tpystd::tpy::Poll<T> __coro_wait_for<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::storage_t<T>> __coro_wait_for<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -1912,11 +1912,11 @@ template <typename T>
     }
     case S_RESUME_0: {  // after: return await _WaitForFuture[T](coro, timeout)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<T>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::pending();
         auto __ret0 = std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        return ::tpystd::tpy::Poll<T>::ready(std::move(__ret0));
+        return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::ready(std::move(__ret0));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -1949,7 +1949,7 @@ struct __coro_gather_list {
           __cancel_pending(false),
           tasks(tasks) {}
 
-    ::tpystd::tpy::Poll<std::vector<T>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<std::vector<::tpy::storage_t<T>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_gather_list<T>&) {
@@ -1971,7 +1971,7 @@ struct __coro_gather_list {
 // async def gather_list[T](tasks: list[Task[T]]) -> Own[list[T]]:
 //     return await _GatherFuture[T](tasks)                         # -> S_RESUME_0
 template <typename T>
-::tpystd::tpy::Poll<std::vector<T>> __coro_gather_list<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<std::vector<::tpy::storage_t<T>>> __coro_gather_list<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -1981,11 +1981,11 @@ template <typename T>
     }
     case S_RESUME_0: {  // after: return await _GatherFuture[T](tasks)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<T>>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<::tpy::storage_t<T>>>::pending();
         auto __ret0 = std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        return ::tpystd::tpy::Poll<std::vector<T>>::ready(std::move(__ret0));
+        return ::tpystd::tpy::Poll<std::vector<::tpy::storage_t<T>>>::ready(std::move(__ret0));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -2917,11 +2917,11 @@ inline void _GatherFuture<T>::cancel() {
 //         orig_i += 1
 //     return poll_ready(result)
 template<typename T>
-inline ::tpystd::tpy::Poll<std::vector<T>> _GatherFuture<T>::__poll__(::tpystd::coro::Waker waker) {
+inline ::tpystd::tpy::Poll<std::vector<::tpy::storage_t<T>>> _GatherFuture<T>::__poll__(::tpystd::coro::Waker waker) {
     int32_t n = ::tpy::__len__(this->_tasks);
     if ((n == 0)) {
-        std::vector<T> empty = std::vector<T>{};
-        return ::tpystd::coro::poll_ready<std::vector<T>>(std::move(empty));
+        std::vector<::tpy::storage_t<T>> empty = std::vector<::tpy::storage_t<T>>{};
+        return ::tpystd::coro::poll_ready<std::vector<::tpy::storage_t<T>>>(std::move(empty));
     }
     bool was_canceling = this->_cancel_pending;
     this->_cancel_pending = false;
@@ -2941,7 +2941,7 @@ inline ::tpystd::tpy::Poll<std::vector<T>> _GatherFuture<T>::__poll__(::tpystd::
                         if (this->_cleanup) {
                         } else {
                             this->_completion_indices.push_back(i);
-                            this->_completion_boxes.push_back(::tpystd::tplib::box::Box<T>(std::move(p).value()));
+                            this->_completion_boxes.push_back(::tpystd::tplib::box::Box<::tpy::storage_t<T>>(std::move(p).value()));
                         }
                     }
                 } catch (const ::tpy::SystemExit&) {
@@ -2967,19 +2967,19 @@ inline ::tpystd::tpy::Poll<std::vector<T>> _GatherFuture<T>::__poll__(::tpystd::
         this->_exc = ::tpystd::tplib::box::Box<::tpy::CancelledError>(::tpy::CancelledError(""));
     }
     if ((this->_completed < n)) {
-        return ::tpystd::coro::poll_pending<std::vector<T>>();
+        return ::tpystd::coro::poll_pending<std::vector<::tpy::storage_t<T>>>();
     }
     if ((this->_exc.has_value())) {
         (*this->_exc).__deref__().__raise__();
     }
-    std::vector<T> result = std::vector<T>{};
+    std::vector<::tpy::storage_t<T>> result = std::vector<::tpy::storage_t<T>>{};
     int32_t orig_i = 0;
     while ((orig_i < n)) {
         int32_t k = 0;
         int32_t kn = ::tpy::__len__(this->_completion_indices);
         while ((k < kn)) {
             if ((::tpy::__getitem__(this->_completion_indices, k) == orig_i)) {
-                ::tpystd::tplib::box::Box<T> box = ::tpy::list_pop_at(this->_completion_boxes, k);
+                ::tpystd::tplib::box::Box<::tpy::storage_t<T>> box = ::tpy::list_pop_at(this->_completion_boxes, k);
                 ::tpy::list_pop_at(this->_completion_indices, k);
                 result.push_back(std::move(box).take());
                 break;
@@ -2988,7 +2988,7 @@ inline ::tpystd::tpy::Poll<std::vector<T>> _GatherFuture<T>::__poll__(::tpystd::
         }
         orig_i = ::tpy::add_check<int32_t>(orig_i, 1);
     }
-    return ::tpystd::coro::poll_ready<std::vector<T>>(std::move(result));
+    return ::tpystd::coro::poll_ready<std::vector<::tpy::storage_t<T>>>(std::move(result));
 }
 
 // def _propagate_cancel(self) -> None:
@@ -3169,7 +3169,7 @@ inline ::tpystd::tpy::Poll<std::vector<Settled<T>>> _GatherSettledFuture<T>::__p
                         ::tpy::__setitem__(this->_settled, i, true);
                         this->_completed = ::tpy::add_check<int32_t>(this->_completed, 1);
                         this->_result_indices.push_back(i);
-                        this->_result_boxes.push_back(::tpystd::tplib::box::Box<T>(std::move(p).value()));
+                        this->_result_boxes.push_back(::tpystd::tplib::box::Box<::tpy::storage_t<T>>(std::move(p).value()));
                     }
                 } catch (const ::tpy::SystemExit&) {
                     throw;
@@ -3200,7 +3200,7 @@ inline ::tpystd::tpy::Poll<std::vector<Settled<T>>> _GatherSettledFuture<T>::__p
         while ((k < kn)) {
             if ((::tpy::__getitem__(this->_result_indices, k) == orig_i)) {
                 ::tpy::list_pop_at(this->_result_indices, k);
-                ::tpystd::tplib::box::Box<T> box = ::tpy::list_pop_at(this->_result_boxes, k);
+                ::tpystd::tplib::box::Box<::tpy::storage_t<T>> box = ::tpy::list_pop_at(this->_result_boxes, k);
                 entry = &*(__slot_1 = Settled<T>());
                 entry->value = std::move(box);
                 result.push_back(std::move((*entry)));
@@ -3386,14 +3386,14 @@ inline ::tpystd::tpy::Poll<T> Future<T>::__poll__(::tpystd::coro::Waker waker) {
         if ((!(this->_result.has()))) {
             throw ::tpy::ValueError("Future done with no result and no exception");
         }
-        return ::tpystd::coro::poll_ready<T>(this->_result.take());
+        return ::tpystd::coro::poll_ready<::tpy::storage_t<T>>(this->_result.take());
     }
     if ((this->_has_waiter && (!(::tpystd::coro::same_task(this->_waiter, waker))))) {
         throw ::tpy::ValueError("Future already has a waiter (single-awaiter v1)");
     }
     this->_waiter = waker;
     this->_has_waiter = true;
-    return ::tpystd::coro::poll_pending<T>();
+    return ::tpystd::coro::poll_pending<::tpy::storage_t<T>>();
 }
 
 // def __init__(self, owner: Ptr[P], kind: int32,
@@ -3404,7 +3404,7 @@ inline ::tpystd::tpy::Poll<T> Future<T>::__poll__(::tpystd::coro::Waker waker) {
 //     self._ticket = 0
 //     self._cancelled = False
 template<::tpystd::asyncio::_Parking P>
-inline _PrimitiveWait<P>::_PrimitiveWait(P* owner, int32_t kind, _WaitQueue* queue)
+inline _PrimitiveWait<P>::_PrimitiveWait(::tpy::storage_t<P>* owner, int32_t kind, _WaitQueue* queue)
     : _owner(owner),
       _kind(kind),
       _queue(queue),
@@ -3476,7 +3476,7 @@ inline ::tpystd::tpy::Poll<std::monostate> _PrimitiveWait<P>::__poll__(::tpystd:
 //     self._unfinished = 0
 template<typename T>
 inline Queue<T>::Queue(int32_t maxsize)
-    : _items(std::vector<T>{}),
+    : _items(std::vector<::tpy::storage_t<T>>{}),
       maxsize(maxsize),
       _getters(_WaitQueue()),
       _putters(_WaitQueue()),
@@ -3605,7 +3605,7 @@ template<typename T>
     if ((::tpystd::asyncio::_executor::_get_current_executor() != nullptr)) {
         throw ::tpy::RuntimeError("asyncio.run() cannot be called from a running event loop");
     }
-    ::tpystd::asyncio::_executor::Task<T> task = ::tpystd::asyncio::_executor::make_executor_owned_task<T>(std::move(coro));
+    ::tpystd::asyncio::_executor::Task<::tpy::storage_t<T>> task = ::tpystd::asyncio::_executor::make_executor_owned_task<T>(std::move(coro));
     ::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::AnyTask> box = ::tpystd::asyncio::_executor::task_to_any_box<T>(task);
     bool interrupted = ::tpystd::asyncio::_run_drain_main_task(std::move(box));
     {
@@ -3650,7 +3650,7 @@ template<typename T>
     if ((handle == nullptr)) {
         throw ::tpy::RuntimeError("asyncio.create_task: no running event loop (call asyncio.run(coro) to drive it)");
     }
-    ::tpystd::asyncio::_executor::Task<T> task = ::tpystd::asyncio::_executor::make_executor_owned_task<T>(std::move(coro));
+    ::tpystd::asyncio::_executor::Task<::tpy::storage_t<T>> task = ::tpystd::asyncio::_executor::make_executor_owned_task<T>(std::move(coro));
     ::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::AnyTask> box = ::tpystd::asyncio::_executor::task_to_any_box<T>(task);
     int32_t slot_id = handle->spawn(std::move(box));
     task._waker = handle->make_waker_for_slot(slot_id, ::tpy::__getitem__(handle->slots, slot_id).generation);
@@ -3675,7 +3675,7 @@ template<typename T>
 //         task_list.append(t.clone())
 //     return _GatherFuture[T](task_list)
 template<typename T>
-_GatherFuture<T> gather(::tpy::varargs<::tpystd::asyncio::_executor::Task<T>> tasks) {
+_GatherFuture<T> gather(::tpy::varargs<::tpystd::asyncio::_executor::Task<::tpy::storage_t<T>>> tasks) {
     std::vector<::tpystd::asyncio::_executor::Task<T>> task_list = std::vector<::tpystd::asyncio::_executor::Task<T>>{};
     auto& __obj_0 = tasks;
     auto __beg_0 = __obj_0.begin();

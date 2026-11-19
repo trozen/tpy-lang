@@ -16,7 +16,7 @@ using Three = ::tpyapp::t2::B;
 
 // class Sink(Protocol):
 template<typename T>
-concept Sink = requires(T& t) {
+concept Sink = requires(::tpy::storage_t<T>& t) {
     { t.put(std::declval<::tpyapp::a::Item&>()) } -> std::convertible_to<void>;
     { t.last } -> std::convertible_to<::tpyapp::a::Item>;
 };

@@ -12,7 +12,7 @@ namespace tpyapp::ea {
 
 // class Proto(Protocol):
 template<typename T>
-concept Proto = requires(T& t) {
+concept Proto = requires(::tpy::storage_t<T>& t) {
     { t.f() } -> std::convertible_to<::tpy::BigInt>;
 };
 

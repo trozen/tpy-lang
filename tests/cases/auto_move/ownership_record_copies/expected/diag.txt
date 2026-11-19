@@ -20,6 +20,8 @@ main.py:187: warning: copies A into owned storage; use copy() to make this expli
 main.py:192: warning: copies A into owned storage; use copy() to make this explicit
 main.py:199: warning: lambda at line 199 may keep its own copy of 'q'; changes made after it is created may not be seen
 main.py:199: warning: copies A into owned storage; use copy() to make this explicit ('q' is bound to existing storage at line 196)
+main.py:206: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:208: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 main.py:219: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 main.py:228: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit
 main.py:238: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit ('t' is bound to existing storage at line 235)

@@ -9,26 +9,26 @@ namespace tpyapp::main {
 
 // class Printable(Protocol):
 template<typename T>
-concept Printable = requires(T& t) {
+concept Printable = requires(::tpy::storage_t<T>& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
 // class PrintableAndSized(Printable, Sized, Protocol):
 template<typename T>
-concept PrintableAndSized = requires(T& t) {
+concept PrintableAndSized = requires(::tpy::storage_t<T>& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
     { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
 // class OrdVal(Comparable, ValueType, Protocol): ...
 template<typename T>
-concept OrdVal = requires(const T& t) {
+concept OrdVal = requires(const ::tpy::storage_t<T>& t) {
     { t < std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<bool>;
 };
 
 // class SendSized(Send, Sized, Protocol): ...
 template<typename T>
-concept SendSized = requires(const T& t) {
+concept SendSized = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
@@ -39,7 +39,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def top[T: OrdVal](xs: list[T]) -> T:  # tpyc: ok
 template<OrdVal T>
-::tpy::val_or_ref_t<T> top(std::vector<T>& xs);
+::tpy::val_or_ref_t<T> top(std::vector<::tpy::storage_t<T>>& xs);
 // def size_of[T: SendSized](x: T) -> int:  # tpyc: ok
 template<SendSized T>
 ::tpy::BigInt size_of(::tpy::param_val_or_ref_t<T> x);
@@ -74,7 +74,7 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 template<PrintableAndSized T>
 struct Container {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Container() = default;
@@ -137,8 +137,8 @@ inline void Container<T>::describe() {
 //             best = x
 //     return best
 template<OrdVal T>
-::tpy::val_or_ref_t<T> top(std::vector<T>& xs) {
-    T* best = &(::tpy::__getitem__(xs, 0));
+::tpy::val_or_ref_t<T> top(std::vector<::tpy::storage_t<T>>& xs) {
+    ::tpy::storage_t<T>* best = &(::tpy::__getitem__(xs, 0));
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

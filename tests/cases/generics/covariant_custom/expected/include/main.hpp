@@ -11,7 +11,7 @@ struct Animal;
 // @dynamic
 // class Animal(Protocol):
 template<typename T>
-concept __Animal_Concept__ = requires(T& t) {
+concept __Animal_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 
@@ -81,9 +81,9 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 template<typename T, typename N>
 struct Tagged {
     // _ptr: Ptr[T]
-    T* _ptr;
+    ::tpy::storage_t<T>* _ptr;
     // _tag: N
-    N _tag;
+    ::tpy::storage_t<N> _tag;
     // _owned: bool
     bool _owned;
     bool __tpy_owned_ = true;
@@ -169,8 +169,8 @@ inline std::string Cat::name() {
 //     self._owned = True
 template<typename T, typename N>
 inline Tagged<T, N>::Tagged(::tpy::own_param_t<T> val, ::tpy::readonly_form_t<N> tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))) {
-    ::new(static_cast<void*>(this->_ptr)) T(std::move(val));
-    this->_tag = ::tpy::param_to_storage<N>(tag);
+    ::new(static_cast<void*>(this->_ptr)) ::tpy::storage_t<T>(std::move(val));
+    this->_tag = ::tpy::param_consume<N>(tag);
     this->_owned = true;
 }
 
@@ -199,7 +199,7 @@ inline Tagged<T, N>::~Tagged() {
     if (!this->__tpy_owned_) return;
     if (this->_owned) {
         ::tpy::destroy_at(this->_ptr);
-        ::operator delete(this->_ptr, std::align_val_t(alignof(T)));
+        ::operator delete(this->_ptr, std::align_val_t(alignof(::tpy::storage_t<T>)));
     }
 }
 

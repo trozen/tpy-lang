@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 template<typename T>
 struct H {
     // p: T
-    T p;
+    ::tpy::storage_t<T> p;
 
     // def __init__(self, p: T) -> None:
     H() = default;

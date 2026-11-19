@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Builder& obj) {
 template<typename T>
 struct Stack {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
     // label: str
     std::string label;
 
@@ -138,7 +138,7 @@ inline const Builder* Builder::find_match(int32_t target) const {
 //     self.label = label
 template<typename T>
 inline Stack<T>::Stack(std::string_view label)
-    : items(std::vector<T>{}),
+    : items(std::vector<::tpy::storage_t<T>>{}),
       label(label) {}
 
 // def push(self, item: T) -> Self:
@@ -146,7 +146,7 @@ inline Stack<T>::Stack(std::string_view label)
 //     return self
 template<typename T>
 inline Stack<T>& Stack<T>::push(::tpy::param_val_or_ref_t<T> item) {
-    this->items.push_back(::tpy::param_to_storage<T>(item));
+    this->items.push_back(::tpy::param_consume<T>(item));
     return (*this);
 }
 

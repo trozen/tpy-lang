@@ -20,7 +20,7 @@ void main();
 template<typename T>
 struct Box {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };

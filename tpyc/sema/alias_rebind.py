@@ -73,7 +73,7 @@ from .elem_paths import (
     leaves_at, paths_at, reference_paths,
 )
 from .dyn_erasure import DynEntry, dyn_binding_owns, dyn_entry
-from ..value_category import (binds_owned_value, call_operands,
+from ..value_category import (binds_owned_value, call_operands, origin_open,
                               declared_result_paths, leaves_hold_no_pointer,
                               may_hold_pointer, peel_coerce,
                               tuple_subscript_index)
@@ -1160,7 +1160,10 @@ def bind_kind_of(ctx: 'SemanticContext', value: TpyExpr | None,
         return BindKind.NONE
     if owned is not None:
         return BindKind.RVALUE if any(owned) else BindKind.LVALUE
-    return (BindKind.RVALUE if binds_owned_value(ctx, value)
+    # An open `T` result is a value of its own at a value instantiation,
+    # which needs the slot a fresh value takes.
+    return (BindKind.RVALUE if (binds_owned_value(ctx, value)
+                                or origin_open(ctx, value))
             else BindKind.LVALUE)
 
 

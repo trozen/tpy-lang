@@ -734,6 +734,10 @@ class Slot:
     # a protocol parameter whose type C++ deduces from the argument, handed a
     # prvalue where its concrete twin holds a value.
     materializer: 'Materializer | None' = None
+    # An argument slot of sema's `OPEN_SAME_T` class
+    # (`SemanticContext.open_same_t_args`), the body's own open `T` the
+    # callee parameter is at: borrowed at `T = P`, owned at `T = Own[P]`.
+    open_same_t: 'TpyType | None' = None
 
 
 def lends_elements(slot: Slot) -> bool:
@@ -994,9 +998,10 @@ def _slot_holds(declared: TpyType, st: TpyType, cls: SlotClass,
             # A parameter of any other value type (a view, a value
             # record) is copy-initialized from its argument as it renders.
             return SlotHolds.VALUE
-        if element and stored and isinstance(unwrap_readonly(st),
-                                             TypeParamRef):
-            # A tuple holds an open `T` element inline, as its own storage.
+        if ((element and stored) or position is SlotPosition.STORE) and (
+                isinstance(unwrap_readonly(st), TypeParamRef)):
+            # A tuple holds an open `T` element inline, and a container
+            # element or a field holds one, as its own storage.
             return SlotHolds.OWNS
         if isinstance(unwrap_readonly(st), TypeParamRef) and st.is_value_type():
             # A value-bounded open `T` is a value at every instantiation:

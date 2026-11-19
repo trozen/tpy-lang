@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 template<typename T>
 struct Container {
     // _value: T
-    T _value;
+    ::tpy::storage_t<T> _value;
     // _has: bool
     bool _has;
 
@@ -51,7 +51,7 @@ struct Container {
     explicit Container(::tpy::own_param_t<T> value);
 
     // def get(self) -> T | None:
-    T* get();
+    ::tpy::storage_t<T>* get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -88,7 +88,7 @@ inline Container<T>::Container(::tpy::own_param_t<T> value)
 //         return self._value
 //     return None
 template<typename T>
-inline T* Container<T>::get() {
+inline ::tpy::storage_t<T>* Container<T>::get() {
     if (this->_has) {
         return &(this->_value);
     }

@@ -29,9 +29,8 @@ frame-local-src 102
 shadow-local 101 102
 shadow-global 30 31
 named-fn 101 102
-fn 1
-fn 2
-own-fn 1
-own-fn 2
+fn 101 102
+own-fn 101
+own-fn 102
 relay-src 101 102
 mixed 101 102 105

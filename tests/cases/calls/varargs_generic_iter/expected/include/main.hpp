@@ -14,7 +14,7 @@ template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::varargs<T> args);
 // def count_rest[T](*args: T) -> int:
 template<typename T>
-::tpy::BigInt count_rest(::tpy::varargs<const T> args);
+::tpy::BigInt count_rest(::tpy::varargs<const ::tpy::storage_t<T>> args);
 // def main() -> None:
 void main();
 
@@ -41,7 +41,7 @@ template<typename T>
 //         n += 1
 //     return n
 template<typename T>
-::tpy::BigInt count_rest(::tpy::varargs<const T> args) {
+::tpy::BigInt count_rest(::tpy::varargs<const ::tpy::storage_t<T>> args) {
     int32_t n = 0;
     auto __obj_0 = ::tpy::list_slice(args, ::tpy::BasicSlice{1, std::nullopt});
     auto __beg_0 = __obj_0.begin();

@@ -22,7 +22,7 @@ Box passthrough(Box&& b);
 int32_t copy_store(Box&& b);
 // def value_type_borrow[T: ValueType](x: Own[T]) -> T:  # tpyc: ok
 template<::tpy::ValueType T>
-T value_type_borrow(T x);
+::tpy::storage_t<T> value_type_borrow(::tpy::storage_t<T> x);
 // def partial_consume(b: Own[Box], cond: bool) -> int32:  # tpyc: warning(/never consumed/)
 int32_t partial_consume(Box&& b, bool cond);
 // def both_branches(b: Own[Box], cond: bool) -> int32:
@@ -82,7 +82,7 @@ inline Holder::Holder(Box&& item) : item(std::move(item)) {}
 // def value_type_borrow[T: ValueType](x: Own[T]) -> T:  # tpyc: ok
 //     return x
 template<::tpy::ValueType T>
-T value_type_borrow(T x) {
+::tpy::storage_t<T> value_type_borrow(::tpy::storage_t<T> x) {
     return x;
 }
 

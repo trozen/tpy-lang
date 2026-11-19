@@ -9,8 +9,8 @@ namespace tpyapp::main {
 
 // class ItemsProvider[T](Protocol):
 template<typename T, typename _T0>
-concept ItemsProvider = requires(T& t) {
-    { t.items() } -> std::convertible_to<std::vector<_T0>>;
+concept ItemsProvider = requires(::tpy::storage_t<T>& t) {
+    { t.items() } -> std::convertible_to<std::vector<::tpy::storage_t<_T0>>>;
 };
 
 struct IntListHolder;
@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const IntListHolder& obj) {
 template<ItemsProvider<int32_t> V>
 struct Wrapper {
     // holder: V
-    V holder;
+    ::tpy::storage_t<V> holder;
 
     // def __init__(self, holder: V) -> None:
     Wrapper() = default;

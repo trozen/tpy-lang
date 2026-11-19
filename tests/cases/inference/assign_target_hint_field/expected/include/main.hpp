@@ -21,7 +21,7 @@ void main();
 template<typename T, std::size_t N>
 struct WithArray {
     // data: Array[T, N]
-    std::array<T, N> data;
+    std::array<::tpy::storage_t<T>, N> data;
 
     // def __init__(self):
     WithArray();
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const WithArray<T, N>& obj) {
 template<typename T>
 struct WithList {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self):
     WithList();
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const WithList<T>& obj) {
 template<typename K, typename V>
 struct WithDict {
     // data: dict[K, V]
-    ::tpy::ordered_map<K, V> data;
+    ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>> data;
 
     // def __init__(self):
     WithDict();
@@ -101,17 +101,17 @@ inline std::ostream& operator<<(std::ostream& os, const WithHeapStorage<T>& obj)
 // def __init__(self):
 //     self.data = Array()  # tpyc: ok -- infer Array[T, N]
 template<typename T, std::size_t N>
-inline WithArray<T, N>::WithArray() : data(std::array<T, N>()) {}
+inline WithArray<T, N>::WithArray() : data(std::array<::tpy::storage_t<T>, N>()) {}
 
 // def __init__(self):
 //     self.items = list()  # tpyc: ok -- infer list[T]
 template<typename T>
-inline WithList<T>::WithList() : items(std::vector<T>()) {}
+inline WithList<T>::WithList() : items(std::vector<::tpy::storage_t<T>>()) {}
 
 // def __init__(self):
 //     self.data = dict()  # tpyc: ok -- infer dict[K, V]
 template<typename K, typename V>
-inline WithDict<K, V>::WithDict() : data(::tpy::ordered_map<K, V>()) {}
+inline WithDict<K, V>::WithDict() : data(::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>()) {}
 
 // def __init__(self, val: Own[T]):
 //     self._storage = UninitHeapStorage(1)  # tpyc: ok -- infer UninitHeapStorage[T]

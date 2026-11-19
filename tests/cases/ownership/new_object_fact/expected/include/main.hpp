@@ -21,7 +21,7 @@ struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>
-concept __Pet_Concept__ = requires(T& t) {
+concept __Pet_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.bump() } -> std::convertible_to<void>;
     { t.val() } -> std::convertible_to<int32_t>;
 };
@@ -36,7 +36,7 @@ struct Named;
 // @dynamic
 // class Named(Protocol):
 template<typename T>
-concept __Named_Concept__ = requires(T& t) {
+concept __Named_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.label() } -> std::convertible_to<std::string_view>;
 };
 
@@ -49,7 +49,7 @@ struct Tagged;
 // @dynamic
 // class Tagged(Protocol):
 template<typename T>
-concept __Tagged_Concept__ = requires(T& t) {
+concept __Tagged_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.tag() } -> std::convertible_to<std::string_view>;
 };
 
@@ -206,7 +206,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 template<typename T>
 struct Shelf {
     // box: Box[T]
-    ::tpystd::tplib::box::Box<T> box;
+    ::tpystd::tplib::box::Box<::tpy::storage_t<T>> box;
 
     // def __init__(self, box: Own[Box[T]]) -> None:
     Shelf() = default;
@@ -899,7 +899,7 @@ inline ::tpy::val_or_ref_t<T> Shelf<T>::get() {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> gen_id(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 void __tpy_init();

@@ -15,7 +15,7 @@ struct Conn;
 // @dynamic
 // class Conn(Protocol):
 template<typename T>
-concept __Conn_Concept__ = requires(T& t) {
+concept __Conn_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.port() } -> std::convertible_to<int32_t>;
 };
 

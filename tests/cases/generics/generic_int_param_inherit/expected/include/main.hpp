@@ -20,7 +20,7 @@ void main();
 template<typename T, std::size_t N>
 struct Base {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, v: T) -> None:
     Base() = default;

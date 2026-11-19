@@ -19,7 +19,7 @@ void main();
 template<typename T>
 struct Box {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: T) -> None:
     Box() = default;

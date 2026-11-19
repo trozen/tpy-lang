@@ -11,7 +11,7 @@ namespace tpyapp::eb {
 
 // class Sink(Protocol):
 template<typename T>
-concept Sink = requires(T& t) {
+concept Sink = requires(::tpy::storage_t<T>& t) {
     { t.put(std::declval<::tpyapp::ea::Item&>()) } -> std::convertible_to<void>;
     { t.last } -> std::convertible_to<::tpyapp::ea::Item>;
 };

@@ -11,7 +11,7 @@ struct Cloneable;
 // @dynamic
 // class Cloneable(Protocol):
 template<typename T>
-concept __Cloneable_Concept__ = requires(const T& t) {
+concept __Cloneable_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t.replicate() } -> std::convertible_to<std::unique_ptr<Cloneable>>;
     { t.label() } -> std::convertible_to<std::string_view>;
 };

@@ -100,11 +100,6 @@ _DIAGNOSTIC_DISAGREEMENTS: dict[tuple[str, str], str] = {
      "lambda p: p",
      "h: Callable[[tuple[A, int32]], Own[tuple[A, int32]]] = lambda q: q"):
         "BUGS.md#lambda-own-result-borrowed-param-copies-unwarned",
-    # A generic local bound from a lending call copies, unwarned.
-    ("def keep_rebound[T](xs: list[T], x: T, z: T) -> None:",
-     "y = ident(x)"): "BUGS.md#generic-lending-local-copies-unwarned",
-    ("def keep_rebound[T](xs: list[T], x: T, z: T) -> None:",
-     "y = ident(z)"): "BUGS.md#generic-lending-local-copies-unwarned",
 }
 _RENDER_DISAGREEMENTS: dict[tuple[str, str], str] = {
     # A `@dynamic` local moves in the record; its move has no well-formed
@@ -5722,37 +5717,35 @@ def keep(a: A, xs: list[A]) -> None:
         _assert_records_agree_with_warnings(entry, [], source)
 
 
-_FILED_SILENT_HEDGES = """\
+_HOISTED_OPEN_RESULT = """\
 from typing import Iterator
 from tpy import int32
 def ident[T](a: T) -> T:
     return a
-def keep_rebound[T](xs: list[T], x: T, z: T) -> None:
-    y = ident(x)
-    xs.append(y)
-    y = ident(z)
+def keep_hoisted[T](xs: list[T], x: T) -> None:
+    try:
+        y = ident(x)
+    finally:
+        print("f")
     xs.append(y)
 """
 
 
-def test_filed_hedged_copies_without_a_diagnostic_are_the_only_exemptions(
-        ) -> None:
-    # Each record here copies a leaf (HEDGED) that no diagnostic names: the
-    # filed silent copies `_DIAGNOSTIC_DISAGREEMENTS` names. Without that
-    # entry the agreement check fails them, as any other silent copy.
-    compiler, modules = _compile(_FILED_SILENT_HEDGES)
+def test_a_hoisted_open_result_local_warns_its_hedged_copy() -> None:
+    # A try-predeclared local bound off a lending call borrows, as a plain
+    # one does: the append's copy is HEDGED and the hedge names it, so the
+    # records agree with the diagnostics with no filed exemption.
+    compiler, modules = _compile(_HOISTED_OPEN_RESULT)
     ctx = _entry(modules).analyzer.ctx
     hedged = sorted(e.loc.line for e, rec in ctx.source_records.items()
                     if e.loc is not None and any(
                         leaf.permission is P.HEDGED
                         for leaf in rec.leaves.values()))
-    assert hedged == [6, 8]
-    assert not [d for d in ctx.diagnostics if "cop" in d.message]
-    renamed = _FILED_SILENT_HEDGES.replace("def keep_rebound[T]",
-                                           "def keep_rebound2[T]")
-    _c, modules2 = _compile_program(renamed)
-    with pytest.raises(AssertionError):
-        _assert_records_agree_with_warnings(_entry(modules2), [], renamed)
+    assert hedged == [10]
+    assert [d.loc.line for d in ctx.diagnostics
+            if "may copy T" in d.message] == [10]
+    _assert_records_agree_with_warnings(_entry(modules), [],
+                                        _HOISTED_OPEN_RESULT)
 
 
 def test_a_none_member_records_no_copied_leaf() -> None:

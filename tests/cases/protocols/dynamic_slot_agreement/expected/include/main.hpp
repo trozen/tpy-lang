@@ -13,7 +13,7 @@ struct Mirror;
 // @dynamic
 // class Mirror(Protocol):
 template<typename T>
-concept __Mirror_Concept__ = requires(T& t) {
+concept __Mirror_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.reflect(std::declval<Ray&>()) } -> std::convertible_to<double>;
 };
 
@@ -26,7 +26,7 @@ struct Lens;
 // @dynamic
 // class Lens(Protocol):
 template<typename T>
-concept __Lens_Concept__ = requires(const T& t) {
+concept __Lens_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t.focus(std::declval<const Ray&>()) } -> std::convertible_to<double>;
 };
 
@@ -37,7 +37,7 @@ struct Lens {
 
 // class Shape(Protocol):
 template<typename T>
-concept Shape = requires(T& t) {
+concept Shape = requires(::tpy::storage_t<T>& t) {
     { t.area() } -> std::convertible_to<int32_t>;
 };
 
@@ -45,7 +45,7 @@ struct ReadShape;
 // @dynamic
 // class ReadShape(Shape, Protocol):
 template<typename T>
-concept __ReadShape_Concept__ = requires(const T& t) {
+concept __ReadShape_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t.area() } -> std::convertible_to<int32_t>;
 };
 
@@ -56,7 +56,7 @@ struct ReadShape {
 
 // class Source[T](Protocol):
 template<typename T, typename _T0>
-concept Source = requires(T& t) {
+concept Source = requires(::tpy::storage_t<T>& t) {
     { t.read() } -> ::tpy::proto_result<_T0>;
 };
 
@@ -64,7 +64,7 @@ struct ReadSource;
 // @dynamic
 // class ReadSource(Source[int32], Protocol):
 template<typename T>
-concept __ReadSource_Concept__ = requires(const T& t) {
+concept __ReadSource_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t.read() } -> std::convertible_to<int32_t>;
 };
 
@@ -77,7 +77,7 @@ struct Pump;
 // @dynamic
 // class Pump(Protocol):
 template<typename T>
-concept __Pump_Concept__ = requires(T& t) {
+concept __Pump_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.push(std::declval<Ray&>()) } -> std::convertible_to<double>;
 };
 
@@ -90,7 +90,7 @@ struct LoudPump;
 // @dynamic
 // class LoudPump(Pump, Protocol):
 template<typename T>
-concept __LoudPump_Concept__ = requires(T& t) {
+concept __LoudPump_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.push(std::declval<Ray&>()) } -> std::convertible_to<double>;
 };
 
@@ -102,7 +102,7 @@ struct Pusher;
 // @dynamic
 // class Pusher(Protocol):
 template<typename T>
-concept __Pusher_Concept__ = requires(T& t) {
+concept __Pusher_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.push(std::declval<Ray&>()) } -> std::convertible_to<double>;
 };
 
@@ -115,7 +115,7 @@ struct Shover;
 // @dynamic
 // class Shover(Protocol):
 template<typename T>
-concept __Shover_Concept__ = requires(T& t) {
+concept __Shover_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.push(std::declval<Ray&>()) } -> std::convertible_to<double>;
 };
 
@@ -128,7 +128,7 @@ struct Mover;
 // @dynamic
 // class Mover(Pusher, Shover, Protocol):
 template<typename T>
-concept __Mover_Concept__ = requires(T& t) {
+concept __Mover_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.push(std::declval<Ray&>()) } -> std::convertible_to<double>;
 };
 
@@ -141,7 +141,7 @@ struct Ticker;
 // @dynamic
 // class Ticker(Protocol):
 template<typename T>
-concept __Ticker_Concept__ = requires(T& t) {
+concept __Ticker_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.ticks() } -> std::convertible_to<int32_t>;
 };
 
@@ -154,7 +154,7 @@ struct OwnTicker;
 // @dynamic
 // class OwnTicker(Protocol):
 template<typename T>
-concept __OwnTicker_Concept__ = requires(T& t) {
+concept __OwnTicker_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.ticks() } -> std::convertible_to<int32_t>;
 };
 
@@ -167,7 +167,7 @@ struct Probe;
 // @dynamic
 // class Probe(Protocol):
 template<typename T>
-concept __Probe_Concept__ = requires(T& t) {
+concept __Probe_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.sample() } -> std::convertible_to<int32_t>;
 };
 
@@ -180,13 +180,13 @@ template<typename T> struct Gauge;
 // @dynamic
 // class Gauge[T](Protocol):
 template<typename T, typename _T0>
-concept __Gauge_Concept__ = requires(T& t) {
+concept __Gauge_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.gauge() } -> ::tpy::proto_result<_T0>;
 };
 
 template<typename T>
 struct Gauge {
-    virtual T gauge() = 0;
+    virtual ::tpy::storage_t<T> gauge() = 0;
     virtual ~Gauge() = default;
 };
 
@@ -194,7 +194,7 @@ struct IntGauge;
 // @dynamic
 // class IntGauge(Protocol):
 template<typename T>
-concept __IntGauge_Concept__ = requires(T& t) {
+concept __IntGauge_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.gauge() } -> std::convertible_to<int32_t>;
 };
 
@@ -207,13 +207,13 @@ template<typename T> struct Peek;
 // @dynamic
 // class Peek[T](Protocol):
 template<typename T, typename _T0>
-concept __Peek_Concept__ = requires(T& t) {
+concept __Peek_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.peek() } -> ::tpy::proto_result<_T0>;
 };
 
 template<typename T>
 struct Peek {
-    virtual T peek() = 0;
+    virtual ::tpy::storage_t<T> peek() = 0;
     virtual ~Peek() = default;
 };
 
@@ -221,13 +221,13 @@ template<typename T> struct OwnPeek;
 // @dynamic
 // class OwnPeek[T](Protocol):
 template<typename T, typename _T0>
-concept __OwnPeek_Concept__ = requires(T& t) {
-    { t.peek() } -> std::convertible_to<_T0>;
+concept __OwnPeek_Concept__ = requires(::tpy::storage_t<T>& t) {
+    { t.peek() } -> std::convertible_to<::tpy::storage_t<_T0>>;
 };
 
 template<typename T>
 struct OwnPeek {
-    virtual T peek() = 0;
+    virtual ::tpy::storage_t<T> peek() = 0;
     virtual ~OwnPeek() = default;
 };
 
@@ -235,7 +235,7 @@ struct Label;
 // @dynamic
 // class Label(Protocol):
 template<typename T>
-concept __Label_Concept__ = requires(const T& t) {
+concept __Label_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t.text() } -> std::convertible_to<std::string_view>;
 };
 
@@ -248,7 +248,7 @@ struct Counter;
 // @dynamic
 // class Counter(Protocol):
 template<typename T>
-concept __Counter_Concept__ = requires(T& t) {
+concept __Counter_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.tick() } -> std::convertible_to<int32_t>;
 };
 
@@ -261,7 +261,7 @@ struct OwnName;
 // @dynamic
 // class OwnName(Protocol):
 template<typename T>
-concept __OwnName_Concept__ = requires(T& t) {
+concept __OwnName_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string>;
 };
 
@@ -274,7 +274,7 @@ struct PlainName;
 // @dynamic
 // class PlainName(Protocol):
 template<typename T>
-concept __PlainName_Concept__ = requires(T& t) {
+concept __PlainName_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 
@@ -287,7 +287,7 @@ struct OwnFirst;
 // @dynamic
 // class OwnFirst(OwnName, PlainName, Protocol):  # tpyc: ok
 template<typename T>
-concept __OwnFirst_Concept__ = requires(T& t) {
+concept __OwnFirst_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string>;
 };
 
@@ -300,7 +300,7 @@ struct PlainFirst;
 // @dynamic
 // class PlainFirst(PlainName, OwnName, Protocol):  # tpyc: ok
 template<typename T>
-concept __PlainFirst_Concept__ = requires(T& t) {
+concept __PlainFirst_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 
@@ -311,7 +311,7 @@ struct PlainFirst : PlainName, OwnName {
 
 // class OwnLabel(Protocol):
 template<typename T>
-concept OwnLabel = requires(T& t) {
+concept OwnLabel = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string>;
 };
 
@@ -319,7 +319,7 @@ struct Steer;
 // @dynamic
 // class Steer(Protocol):
 template<typename T>
-concept __Steer_Concept__ = requires(T& t) {
+concept __Steer_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.turn(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
@@ -332,7 +332,7 @@ struct Helm;
 // @dynamic
 // class Helm(Protocol):
 template<typename T>
-concept __Helm_Concept__ = requires(T& t) {
+concept __Helm_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.turn(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
@@ -343,19 +343,19 @@ struct Helm {
 
 // class LeftBridge(Steer, Protocol):
 template<typename T>
-concept LeftBridge = requires(T& t) {
+concept LeftBridge = requires(::tpy::storage_t<T>& t) {
     { t.turn(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
 // class RightBridge(Helm, Protocol):
 template<typename T>
-concept RightBridge = requires(T& t) {
+concept RightBridge = requires(::tpy::storage_t<T>& t) {
     { t.turn(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
 // class Bridges(LeftBridge, RightBridge, Protocol):
 template<typename T>
-concept Bridges = requires(T& t) {
+concept Bridges = requires(::tpy::storage_t<T>& t) {
     { t.trim() } -> std::convertible_to<int32_t>;
     { t.turn(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
@@ -364,7 +364,7 @@ struct Rudder;
 // @dynamic
 // class Rudder(Bridges, Protocol):
 template<typename T>
-concept __Rudder_Concept__ = requires(T& t) {
+concept __Rudder_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.keel() } -> std::convertible_to<int32_t>;
     { t.trim() } -> std::convertible_to<int32_t>;
     { t.turn(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
@@ -381,7 +381,7 @@ struct Mixer;
 // @dynamic
 // class Mixer(Protocol):
 template<typename T>
-concept __Mixer_Concept__ = requires(T& t) {
+concept __Mixer_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.mix(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
@@ -394,7 +394,7 @@ struct SwapMixer;
 // @dynamic
 // class SwapMixer(Mixer, Protocol):
 template<typename T>
-concept __SwapMixer_Concept__ = requires(T& t) {
+concept __SwapMixer_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.mix(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
@@ -406,7 +406,7 @@ struct Caption;
 // @dynamic
 // class Caption(Protocol):
 template<typename T>
-concept __Caption_Concept__ = requires(T& t) {
+concept __Caption_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.text() } -> std::convertible_to<std::string_view>;
 };
 
@@ -419,7 +419,7 @@ struct OwnCaption;
 // @dynamic
 // class OwnCaption(Caption, Protocol):
 template<typename T>
-concept __OwnCaption_Concept__ = requires(T& t) {
+concept __OwnCaption_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.text() } -> std::convertible_to<std::string>;
 };
 
@@ -776,7 +776,7 @@ struct Dial : Gauge<T> {
     // n: int32
     int32_t n;
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Dial() = default;
@@ -797,7 +797,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dial<T>& obj) {
 template<::tpy::ValueType T>
 struct Cell : Peek<T>, OwnPeek<T> {
     // x: T
-    T x;
+    ::tpy::storage_t<T> x;
     // reads: int32
     int32_t reads;
 
@@ -1231,14 +1231,14 @@ struct tpy::Adapter<tpyapp::main::Gauge<T>, __tpy_Impl> : tpyapp::main::Gauge<T>
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T gauge() override { return inner.gauge(); }
+    ::tpy::storage_t<T> gauge() override { return inner.gauge(); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__Gauge_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::Gauge<T>, __tpy_Impl> : tpyapp::main::Gauge<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T gauge() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.gauge(); }
+    ::tpy::storage_t<T> gauge() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.gauge(); }
 };
 
 template<tpyapp::main::__IntGauge_Concept__ T>
@@ -1261,14 +1261,14 @@ struct tpy::Adapter<tpyapp::main::Peek<T>, __tpy_Impl> : tpyapp::main::Peek<T> {
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T peek() override { return inner.peek(); }
+    ::tpy::storage_t<T> peek() override { return inner.peek(); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__Peek_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::Peek<T>, __tpy_Impl> : tpyapp::main::Peek<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T peek() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.peek(); }
+    ::tpy::storage_t<T> peek() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.peek(); }
 };
 
 template<typename T, tpyapp::main::__OwnPeek_Concept__<T> __tpy_Impl>
@@ -1276,14 +1276,14 @@ struct tpy::Adapter<tpyapp::main::OwnPeek<T>, __tpy_Impl> : tpyapp::main::OwnPee
     __tpy_Impl inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T peek() override { return inner.peek(); }
+    ::tpy::storage_t<T> peek() override { return inner.peek(); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__OwnPeek_Concept__<std::remove_const_t<__tpy_Impl>, T>
 struct tpy::RefAdapter<tpyapp::main::OwnPeek<T>, __tpy_Impl> : tpyapp::main::OwnPeek<T> {
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T peek() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.peek(); }
+    ::tpy::storage_t<T> peek() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.peek(); }
 };
 
 template<tpyapp::main::__Label_Concept__ T>

@@ -11,7 +11,7 @@ struct Eventful;
 // @dynamic
 // class Eventful(Protocol):
 template<typename T>
-concept __Eventful_Concept__ = requires(T& t) {
+concept __Eventful_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.kind() } -> std::convertible_to<std::string_view>;
 };
 

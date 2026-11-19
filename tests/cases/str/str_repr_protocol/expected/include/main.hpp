@@ -14,19 +14,19 @@ struct J;
 
 // class Bumpable(Protocol):
 template<typename T>
-concept Bumpable = requires(T& t) {
+concept Bumpable = requires(::tpy::storage_t<T>& t) {
     { t.bump() } -> std::convertible_to<void>;
 };
 
 // class Touchable(Protocol):
 template<typename T>
-concept Touchable = requires(T& t) {
+concept Touchable = requires(::tpy::storage_t<T>& t) {
     { t.touch() } -> std::convertible_to<int32_t>;
 };
 
 // class Text(Stringable, Protocol):
 template<typename T>
-concept Text = requires(const T& t) {
+concept Text = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__str__(t) } -> std::convertible_to<std::string_view>;
 };
 

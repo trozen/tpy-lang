@@ -18,7 +18,7 @@ void main();
 template<typename T>
 struct Container {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, val: T) -> None:
     Container() = default;
@@ -45,7 +45,7 @@ inline Container<T>::Container(::tpy::readonly_form_t<T> val) : val(val) {}
 //     return fallback
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Container<T>::get_or_default(::tpy::param_val_or_ref_t<T> fallback) const {
-    return ::tpy::param_to_return<T>(fallback);
+    return ::tpy::param_to_return_last<T>(fallback);
 }
 
 void __tpy_init();

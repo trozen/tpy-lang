@@ -20,11 +20,11 @@ struct W {
     // tag: int32
     int32_t tag;
     // via_union: int32 | T
-    ::tpy::Union<T, int32_t> via_union;
+    ::tpy::Union<::tpy::storage_t<T>, int32_t> via_union;
     // via_callable: Callable[[T], int32]
     std::function<int32_t(::tpy::param_val_or_ref_t<T>)> via_callable;
     // direct: T
-    T direct;
+    ::tpy::storage_t<T> direct;
 
     // def __init__(self, t: int32) -> None:
     W() = default;

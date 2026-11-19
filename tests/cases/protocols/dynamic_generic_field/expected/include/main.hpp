@@ -11,7 +11,7 @@ struct Greeter;
 // @dynamic
 // class Greeter(Protocol):
 template<typename T>
-concept __Greeter_Concept__ = requires(T& t) {
+concept __Greeter_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.greet() } -> std::convertible_to<std::string_view>;
 };
 

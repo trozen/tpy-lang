@@ -16,7 +16,7 @@ using ::tpyapp::fixtures::Tok;
 
 // class WithArg(Protocol):
 template<typename T>
-concept WithArg = requires(T& t) {
+concept WithArg = requires(::tpy::storage_t<T>& t) {
     t.__next__();
 };
 

@@ -100,11 +100,11 @@ inline std::ostream& operator<<(std::ostream& os, const Counts& obj) {
 template<typename T>
 struct GenCounts {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
     GenCounts() = default;
-    explicit GenCounts(std::vector<T>&& items);
+    explicit GenCounts(std::vector<::tpy::storage_t<T>>&& items);
 
     __gen_GenCounts___iter__<T> __iter__() &&;
     static constexpr std::string_view __tpy_class_name__ = "part_record_frames.GenCounts";
@@ -348,7 +348,7 @@ inline __gen_Counts___iter__ Counts::__iter__() && {
 
 // def __iter__(self: Own[Self]) -> Iterator[Own[T]]:  # tpyc: frame_send(no)
 template <typename T>
-struct __gen_GenCounts___iter__ : public ::tpy::next_iter_mixin<__gen_GenCounts___iter__<T>, T> {
+struct __gen_GenCounts___iter__ : public ::tpy::next_iter_mixin<__gen_GenCounts___iter__<T>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
     GenCounts<T> __self;
 
@@ -363,7 +363,7 @@ struct __gen_GenCounts___iter__ : public ::tpy::next_iter_mixin<__gen_GenCounts_
         : __state(S_INITIAL),
           __self(std::move(__self_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_GenCounts___iter__& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_GenCounts___iter__<T>&) {
@@ -377,7 +377,7 @@ struct __gen_GenCounts___iter__ : public ::tpy::next_iter_mixin<__gen_GenCounts_
 //     while self.items:
 //         yield self.items.pop(0)                                             # -> S_RESUME_0
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_GenCounts___iter__<T>::__next__() {
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_GenCounts___iter__<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -405,10 +405,10 @@ inline __gen_GenCounts___iter__<T> GenCounts<T>::__iter__() && {
 
 // def gen_owned_box[T](b: Own[GenCounts[T]]) -> Iterator[Own[T]]:  # tpyc: frame_send(no)
 template <typename T>
-struct __gen_gen_owned_box : public ::tpy::next_iter_mixin<__gen_gen_owned_box<T>, T> {
+struct __gen_gen_owned_box : public ::tpy::next_iter_mixin<__gen_gen_owned_box<T>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
     GenCounts<T> b;
-    ::tpy::frame_slot<T> x;
+    ::tpy::frame_slot<::tpy::storage_t<T>> x;
     using __for_src_0_t = decltype((::tpy::own_iter(std::move(b))));
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
@@ -424,7 +424,7 @@ struct __gen_gen_owned_box : public ::tpy::next_iter_mixin<__gen_gen_owned_box<T
         : __state(S_INITIAL),
           b(std::move(b_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_owned_box& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen_owned_box<T>&) {
@@ -436,7 +436,7 @@ struct __gen_gen_owned_box : public ::tpy::next_iter_mixin<__gen_gen_owned_box<T
 //     for x in b:
 //         yield x                                                                          # -> S_RESUME_0
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_gen_owned_box<T>::__next__() {
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_gen_owned_box<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -514,7 +514,7 @@ inline SizedIter SizedBag::__iter__() && {
 // def __init__(self, items: Own[list[T]]) -> None:
 //     self.items = items
 template<typename T>
-inline GenCounts<T>::GenCounts(std::vector<T>&& items) : items(std::move(items)) {}
+inline GenCounts<T>::GenCounts(std::vector<::tpy::storage_t<T>>&& items) : items(std::move(items)) {}
 
 void __tpy_init();
 } // namespace tpyapp::part_record_frames

@@ -89,7 +89,7 @@ std::tuple<::tpy::own_return_t<T>, int32_t> first(const std::tuple<::tpy::val_or
 std::tuple<std::string, int32_t> first_str();
 // def own_own[T](t: tuple[T, int32]) -> Own[tuple[Own[T], int32]]:
 template<typename T>
-std::tuple<T, int32_t> own_own(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& t);
+std::tuple<::tpy::storage_t<T>, int32_t> own_own(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& t);
 // def first_a(t: tuple[A, int32]) -> tuple[Own[A], int32]:
 std::tuple<A, int32_t> first_a(const std::tuple<const A*, int32_t>& t);
 // def cget(h: readonly[H]) -> tuple[readonly[A], int32]:
@@ -1255,8 +1255,8 @@ std::tuple<::tpy::own_return_t<T>, int32_t> first(const std::tuple<::tpy::val_or
 //     # open T at a wholly owned result: the hedged copy
 //     return t  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 template<typename T>
-std::tuple<T, int32_t> own_own(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& t) {
-    return std::tuple<T, int32_t>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(t))), std::get<1>(t)};
+std::tuple<::tpy::storage_t<T>, int32_t> own_own(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& t) {
+    return std::tuple<::tpy::storage_t<T>, int32_t>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(t))), std::get<1>(t)};
 }
 
 void __tpy_init();

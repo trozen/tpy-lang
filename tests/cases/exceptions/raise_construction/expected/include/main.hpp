@@ -118,7 +118,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer::Dflt& obj) {
 template<::tpystd::typing::Sized T>
 struct Boxed : ::tpyapp::errs::Carrier {
     // self.v = v
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: Own[T]) -> None:
     Boxed() = default;

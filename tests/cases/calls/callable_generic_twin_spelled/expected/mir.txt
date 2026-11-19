@@ -1,0 +1,96 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@23:0: uncovered (generic body)
+main::store2@27:0: uncovered (generic body)
+main::outer_own@32:0: uncovered (generic body)
+main::first@36:0: uncovered (generic body)
+main::identity@40:0: certified, summary: known
+main::main@44:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::P.__init__@19:4: covered (storage: no_proof_required), summary: known
+part_forms::__tpy_init: uncovered (module initialization)
+part_forms::ident@26:0: certified, summary: known
+part_forms::grow_it@30:0: uncovered (generic body)
+part_forms::opt_mut@35:0: uncovered (generic body)
+part_forms::pick_a@42:0: uncovered (generic body)
+part_forms::pick_b@48:0: uncovered (generic body)
+part_forms::cyc_a@55:0: uncovered (generic body)
+part_forms::cyc_b@61:0: uncovered (generic body)
+part_forms::cyc_c@65:0: uncovered (generic body)
+part_forms::f8_a@70:0: uncovered (generic body)
+part_forms::f8_b@76:0: uncovered (generic body)
+part_forms::f8_c@82:0: uncovered (generic body)
+part_forms::lit@87:0: uncovered (generic body)
+part_forms::main@92:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_forms::P.grow@21:4: covered (storage: no_proof_required), summary: known
+part_forms::P.__init__@18:4: covered (storage: no_proof_required), summary: known
+part_frames_own::__tpy_init: uncovered (module initialization)
+part_frames_own::own_id@17:0: covered (storage: no_proof_required), summary: known
+part_frames_own::gen_rebind@21:0: uncovered (generic body)
+part_frames_own::gen_walrus@28:0: uncovered (generic body)
+part_frames_own::walrus_once@35:0: uncovered (generic body)
+part_frames_own::gen_walrus_once@40:0: uncovered (generic body)
+part_frames_own::main@45:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_frames_own::P.__init__@13:4: covered (storage: no_proof_required), summary: known
+part_last::__tpy_init: uncovered (module initialization)
+part_last::ident@16:0: certified, summary: known
+part_last::sid@20:0: covered (storage: no_proof_required), summary: known
+part_last::own_id@24:0: covered (storage: no_proof_required), summary: known
+part_last::twice@29:0: uncovered (generic body)
+part_last::gen_again@36:0: uncovered (generic body)
+part_last::gen_twice@45:0: uncovered (generic body)
+part_last::main@51:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_last::Q.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_open::__tpy_init: uncovered (module initialization)
+part_open::identity@16:0: certified, summary: known
+part_open::own_id@20:0: covered (storage: no_proof_required), summary: known
+part_open::add_o@24:0: covered (storage: no_proof_required), summary: known
+part_open::keep@28:0: uncovered (generic body)
+part_open::red@36:0: uncovered (generic body)
+part_open::store1@43:0: uncovered (generic body)
+part_open::twice_own@47:0: uncovered (generic body)
+part_open::sel@53:0: uncovered (generic body)
+part_open::each@58:0: uncovered (generic body)
+part_open::fin@64:0: uncovered (generic body)
+part_open::main@72:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_open::P.__init__@11:4: covered (storage: no_proof_required), summary: known
+part_sinks::__tpy_init: uncovered (module initialization)
+part_sinks::gen_step@18:0: uncovered (generic body)
+part_sinks::lend_pair@22:0: uncovered (generic body)
+part_sinks::via_lend@26:0: uncovered (generic body)
+part_sinks::main@33:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_sinks::N.__init__@13:4: covered (storage: no_proof_required), summary: known
+part_store::__tpy_init: uncovered (module initialization)
+part_store::identity@26:0: certified, summary: known
+part_store::mk@30:0: covered (storage: no_proof_required), summary: known
+part_store::mk0@34:0: covered (storage: no_proof_required), summary: known
+part_store::dup@38:0: uncovered (generic body)
+part_store::table@44:0: uncovered (generic body)
+part_store::keyed@51:0: uncovered (generic body)
+part_store::ident@56:0: uncovered (generic body)
+part_store::relay@60:0: uncovered (generic body)
+part_store::twice@66:0: uncovered (generic body)
+part_store::inspect@73:0: uncovered (generic body)
+part_store::fwd@77:0: uncovered (generic body)
+part_store::touch@82:0: uncovered (generic body)
+part_store::fill@89:0: uncovered (generic body)
+part_store::get_or_make@93:0: uncovered (generic body)
+part_store::peek@99:0: uncovered (generic body)
+part_store::main@108:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_store::Ops.take@104:4: uncovered (generic body)
+part_store::P.__init__@13:4: covered (storage: no_proof_required), summary: known
+part_store::N.__init__@22:4: covered (storage: no_proof_required), summary: known
+part_tuple_copy::__tpy_init: uncovered (module initialization)
+part_tuple_copy::pair@29:0: uncovered (generic body)
+part_tuple_copy::two@37:0: uncovered (generic body)
+part_tuple_copy::second@41:0: uncovered (generic body)
+part_tuple_copy::grow_all@45:0: uncovered (generic body)
+part_tuple_copy::main@68:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+part_tuple_copy::P.grow@24:4: covered (storage: no_proof_required), summary: known
+part_tuple_copy::Box.pair@64:4: uncovered (generic body)
+part_tuple_copy::P.__init__@21:4: covered (storage: no_proof_required), summary: known
+part_tuple_copy::Box.__init__@60:4: uncovered (generic constructor)
+part_unowned::__tpy_init: uncovered (module initialization)
+part_unowned::store1@15:0: uncovered (generic body)
+part_unowned::gen@19:0: uncovered (generic body)
+part_unowned::both@23:0: uncovered (generic body)
+part_unowned::main@32:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_unowned::Q.__init__@11:4: covered (storage: no_proof_required), summary: known

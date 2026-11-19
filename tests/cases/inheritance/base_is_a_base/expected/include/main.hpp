@@ -86,7 +86,7 @@ void main();
 template<::tpystd::tpy::Hashable K, typename V>
 struct Base {
     // _d: dict[K, V]
-    ::tpy::ordered_map<K, V> _d;
+    ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>> _d;
 
     // def __init__(self) -> None:
     Base();
@@ -121,7 +121,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base<K, V>& obj) {
 
 // class GDict[K: Hashable, V](dict[K, V]):
 template<::tpystd::tpy::Hashable K, typename V>
-struct GDict : ::tpy::ordered_map<K, V> {
+struct GDict : ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>> {
 
     // def __init__(self) -> None:
     GDict();
@@ -130,7 +130,7 @@ struct GDict : ::tpy::ordered_map<K, V> {
     bool put(::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> v);
 
     void __repr_into__(std::ostream& os) const {
-        ::tpy::print_base_of<::tpy::ordered_map<K, V>>(os, "GDict", *this);
+        ::tpy::print_base_of<::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>>(os, "GDict", *this);
     }
 
     std::string __repr__() const {
@@ -267,7 +267,7 @@ inline CSub2::CSub2() : CSub() {}
 // def __init__(self) -> None:
 //     self._d = {}
 template<::tpystd::tpy::Hashable K, typename V>
-inline Base<K, V>::Base() : _d(::tpy::ordered_map<K, V>()) {}
+inline Base<K, V>::Base() : _d(::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>()) {}
 
 // def __len__(self) -> int32:
 //     return len(self._d)
@@ -281,7 +281,7 @@ inline int32_t Base<K, V>::__len__() const {
 //     self._d[k] = v  # tpyc: warning(/may copy V/)
 template<::tpystd::tpy::Hashable K, typename V>
 inline void Base<K, V>::__setitem__(::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> v) {
-    ::tpy::__setitem__(this->_d, k, v);
+    ::tpy::__setitem__(this->_d, k, ::tpy::param_consume<V>(v));
 }
 
 // def __getitem__(self, k: K) -> V:
@@ -318,14 +318,14 @@ inline size_t Base<K, V>::size() const {
 // def __init__(self) -> None:
 //     super().__init__()
 template<::tpystd::tpy::Hashable K, typename V>
-inline GDict<K, V>::GDict() : ::tpy::ordered_map<K, V>() {}
+inline GDict<K, V>::GDict() : ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>() {}
 
 // def put(self, k: K, v: V) -> bool:
 //     self[k] = v  # tpyc: warning(/may copy V/)
 //     return k in self  # tpyc: ok
 template<::tpystd::tpy::Hashable K, typename V>
 inline bool GDict<K, V>::put(::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> v) {
-    ::tpy::__setitem__((*this), k, ::tpy::param_to_storage<V>(v));
+    ::tpy::__setitem__((*this), k, ::tpy::param_consume<V>(v));
     return ((*this).contains(k));
 }
 

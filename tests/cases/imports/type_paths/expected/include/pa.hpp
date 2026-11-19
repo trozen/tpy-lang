@@ -11,7 +11,7 @@ struct P;
 // @dynamic
 // class P(Protocol):
 template<typename T>
-concept __P_Concept__ = requires(T& t) {
+concept __P_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.value() } -> std::convertible_to<::tpy::BigInt>;
     { t.bump() } -> std::convertible_to<void>;
 };

@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const Opt& obj) {
 template<typename U>
 struct Holder {
     // item: U
-    U item;
+    ::tpy::storage_t<U> item;
 
     // def __init__(self, item: U) -> None:
     Holder() = default;
@@ -137,9 +137,9 @@ inline std::ostream& operator<<(std::ostream& os, const OptMid& obj) {
 
 // class ListHolder[T](Holder[list[T]]):
 template<typename T>
-struct ListHolder : Holder<std::vector<T>> {
+struct ListHolder : Holder<std::vector<::tpy::storage_t<T>>> {
 
-    using Holder<std::vector<T>>::Holder;
+    using Holder<std::vector<::tpy::storage_t<T>>>::Holder;
     static constexpr std::string_view __tpy_class_name__ = "__main__.ListHolder";
 };
 

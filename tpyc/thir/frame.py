@@ -146,11 +146,16 @@ class FrameLocalLayout:
     `effective_type` is the local's tuple type with per-element ownership made
     explicit (`Own[...]` on the elements the frame owns) for a tuple whose
     declared type cannot say so -- a literal-bound owning local. None whenever
-    the declared type is already the whole story."""
+    the declared type is already the whole story.
+
+    `open_result`: the local is an open-result local the plain body's way
+    (`holds_open_result`, not bound once off a call): a REBIND_PTR pointer
+    over a slot of each binding site's own."""
     kind: FrameLocalKind
     const: bool = False
     payload: 'str | None' = None
     effective_type: 'TpyType | None' = None
+    open_result: bool = False
 
 
 class LeafRole(Enum):

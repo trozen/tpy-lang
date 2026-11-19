@@ -12,14 +12,14 @@ namespace tpyapp::part_nocopy {
 
 // class Counted[T](Iterable[T], Protocol):
 template<typename T, typename _T0>
-concept Counted = requires(T& t) {
+concept Counted = requires(::tpy::storage_t<T>& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
     ::tpy::handover_iter<T>(t);
 };
 
 // class Rows(Iterable[Own[N]], Protocol):
 template<typename T>
-concept Rows = requires(T& t) {
+concept Rows = requires(::tpy::storage_t<T>& t) {
     ::tpy::handover_iter<T>(t);
 };
 

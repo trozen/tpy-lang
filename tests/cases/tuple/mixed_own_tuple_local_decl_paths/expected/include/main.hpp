@@ -62,7 +62,7 @@ inline Box::Box(int32_t val) : val(val) {}
 //     return t  # tpyc: ok
 template<typename T>
 std::tuple<::tpy::own_return_t<T>, Box*> own_separate(::tpy::own_param_t<T> q, Box& b) {
-    auto t = std::tuple<T, Box*>{std::move(q), &(b)};
+    auto t = std::tuple<::tpy::storage_t<T>, Box*>{std::move(q), &(b)};
     return t;
 }
 // def mixed_param[T](q: tuple[Own[T], Box]) -> tuple[Own[T], Box]:

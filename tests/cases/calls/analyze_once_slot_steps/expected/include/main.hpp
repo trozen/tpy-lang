@@ -52,7 +52,7 @@ int32_t apply__Callable_int32_int32(const std::function<int32_t(int32_t)>& f);
 int32_t apply__Callable_str_int32(const std::function<int32_t(std::string_view)>& f);
 // def apply_to[T](fn: Callable[[T], T], v: T) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> apply_to(const std::function<T(::tpy::param_val_or_ref_t<T>)>& fn, ::tpy::param_val_or_ref_t<T> v);
+::tpy::val_or_ref_t<T> apply_to(const std::function<::tpy::val_or_ref_t<T>(::tpy::param_val_or_ref_t<T>)>& fn, ::tpy::param_val_or_ref_t<T> v);
 // def show[T](xs: list[int32], tag: T) -> int32:
 template<typename T>
 int32_t show(const std::vector<int32_t>& xs, ::tpy::param_val_or_ref_t<T> tag);
@@ -74,8 +74,8 @@ int8_t t8(const std::tuple<int8_t>& x, ::tpy::param_val_or_ref_t<T> y) {
 // def apply_to[T](fn: Callable[[T], T], v: T) -> T:
 //     return fn(v)
 template<typename T>
-::tpy::val_or_ref_t<T> apply_to(const std::function<T(::tpy::param_val_or_ref_t<T>)>& fn, ::tpy::param_val_or_ref_t<T> v) {
-    return fn(v);
+::tpy::val_or_ref_t<T> apply_to(const std::function<::tpy::val_or_ref_t<T>(::tpy::param_val_or_ref_t<T>)>& fn, ::tpy::param_val_or_ref_t<T> v) {
+    return fn(::tpy::param_pass_last<T>(v));
 }
 // def show[T](xs: list[int32], tag: T) -> int32:
 //     return xs[0] * 10 + xs[1]

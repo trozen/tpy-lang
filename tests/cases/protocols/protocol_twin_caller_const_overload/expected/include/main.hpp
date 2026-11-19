@@ -9,19 +9,19 @@ namespace tpyapp::main {
 
 // class Feed(Protocol):
 template<typename T>
-concept Feed = requires(T& t) {
+concept Feed = requires(::tpy::storage_t<T>& t) {
     { t.feed(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
 };
 
 // class Feed0(Protocol):
 template<typename T>
-concept Feed0 = requires(T& t) {
+concept Feed0 = requires(::tpy::storage_t<T>& t) {
     { t.feed() } -> std::convertible_to<int32_t>;
 };
 
 // class FeedList(Protocol):
 template<typename T>
-concept FeedList = requires(T& t) {
+concept FeedList = requires(::tpy::storage_t<T>& t) {
     { t.feed(std::declval<std::vector<int32_t>&>()) } -> std::convertible_to<int32_t>;
 };
 

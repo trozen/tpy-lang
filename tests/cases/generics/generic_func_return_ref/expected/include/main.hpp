@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Mutable(Protocol):
 template<typename T>
-concept Mutable = requires(T& t) {
+concept Mutable = requires(::tpy::storage_t<T>& t) {
     { t.mutate() } -> std::convertible_to<void>;
 };
 
@@ -19,10 +19,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def first[T](items: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> first(std::vector<T>& items);
+::tpy::val_or_ref_t<T> first(std::vector<::tpy::storage_t<T>>& items);
 // def process[T: Mutable](items: list[T]) -> None:
 template<Mutable T>
-void process(std::vector<T>& items);
+void process(std::vector<::tpy::storage_t<T>>& items);
 // def test() -> None:
 void test();
 
@@ -58,15 +58,15 @@ inline void Point::mutate() {
 // def first[T](items: list[T]) -> T:
 //     return items[0]
 template<typename T>
-::tpy::val_or_ref_t<T> first(std::vector<T>& items) {
+::tpy::val_or_ref_t<T> first(std::vector<::tpy::storage_t<T>>& items) {
     return ::tpy::__getitem__(items, 0);
 }
 // def process[T: Mutable](items: list[T]) -> None:
 //     item = first(items)  # tpyc: type(T)  -- val_or_ref_t<T>: Point& for records
 //     item.mutate()        # mutation through the reference
 template<Mutable T>
-void process(std::vector<T>& items) {
-    ::tpy::val_or_ref_t<T> item = ::tpyapp::main::first<T>(items);
+void process(std::vector<::tpy::storage_t<T>>& items) {
+    ::tpy::val_or_ref_t<::tpy::storage_t<T>> item = ::tpyapp::main::first<::tpy::storage_t<T>>(items);
     item.mutate();
 }
 

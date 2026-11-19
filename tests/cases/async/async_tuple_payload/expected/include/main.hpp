@@ -211,7 +211,7 @@ struct __coro_Holder_wrap {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -240,7 +240,7 @@ template <typename T>
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        std::tuple<int32_t, ::tpy::val_or_ptr_t<T>> __tpy_async_ret = std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{4, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};
+        std::tuple<int32_t, ::tpy::val_or_ptr_t<T>> __tpy_async_ret = std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{4, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(x))};
         return ::tpystd::tpy::Poll<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -251,7 +251,7 @@ template <typename T>
 
 template <typename T>
 inline __coro_Holder_wrap<T> Holder::wrap(::tpy::param_val_or_ref_t<T> x) const {
-    return __coro_Holder_wrap<T>(*this, x);
+    return __coro_Holder_wrap<T>(*this, ::tpy::param_pass_last<T>(x));
 }
 
 // async def __anext__(self) -> tuple[int32, Box]:
@@ -391,7 +391,7 @@ struct __coro_solo {
     __coro_solo(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>, int32_t>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -419,7 +419,7 @@ template <typename T>
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        std::tuple<::tpy::val_or_ptr_t<T>, int32_t> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x), 1};
+        std::tuple<::tpy::val_or_ptr_t<T>, int32_t> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(x)), 1};
         return ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>, int32_t>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -431,7 +431,7 @@ template <typename T>
 // async def solo[T](x: T) -> tuple[T, int32]:
 template <typename T>
 __coro_solo<T> solo(::tpy::param_val_or_ref_t<T> x) {
-    return __coro_solo<T>(x);
+    return __coro_solo<T>(::tpy::param_pass_last<T>(x));
 }
 
 // async def mk_fn(c: Callable[[int32], int32]) -> Callable[[int32], int32]:
@@ -554,7 +554,7 @@ struct __coro_fin_suspend {
     __coro_fin_suspend(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>, int32_t>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -642,7 +642,7 @@ template <typename T>
 // async def fin_suspend[T](x: T) -> tuple[T, int32]:
 template <typename T>
 __coro_fin_suspend<T> fin_suspend(::tpy::param_val_or_ref_t<T> x) {
-    return __coro_fin_suspend<T>(x);
+    return __coro_fin_suspend<T>(::tpy::param_pass_last<T>(x));
 }
 
 // async def fwd(b: Box) -> tuple[int32, Box]:
@@ -729,8 +729,8 @@ struct __coro_task_fwd {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_ref_t<T> x;
-    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::tuple<T, int32_t>>> tk;
-    ::tpystd::asyncio::_executor::Task<std::tuple<T, int32_t>>* __sub_0 = nullptr;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::tuple<::tpy::storage_t<T>, int32_t>>> tk;
+    ::tpystd::asyncio::_executor::Task<std::tuple<::tpy::storage_t<T>, int32_t>>* __sub_0 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -741,7 +741,7 @@ struct __coro_task_fwd {
     __coro_task_fwd(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>, int32_t>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -759,7 +759,7 @@ template <typename T>
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        tk.emplace(::tpystd::asyncio::create_task<std::tuple<T, int32_t>>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::tuple<T, int32_t>>>(::tpyapp::main::solo<T>(x))));
+        tk.emplace(::tpystd::asyncio::create_task<std::tuple<::tpy::storage_t<T>, int32_t>>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::tuple<::tpy::storage_t<T>, int32_t>>>(::tpyapp::main::solo<::tpy::storage_t<T>>(x))));
         __sub_0 = &((*tk));
         __state = S_RESUME_0;
         continue;
@@ -781,7 +781,7 @@ template <typename T>
 // async def task_fwd[T](x: T) -> tuple[T, int32]:
 template <typename T>
 __coro_task_fwd<T> task_fwd(::tpy::param_val_or_ref_t<T> x) {
-    return __coro_task_fwd<T>(x);
+    return __coro_task_fwd<T>(::tpy::param_pass_last<T>(x));
 }
 
 // async def wait_fwd[T](x: T) -> tuple[T, int32]:
@@ -790,7 +790,7 @@ struct __coro_wait_fwd {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_ref_t<T> x;
-    std::optional<::tpystd::asyncio::__coro_wait_for<std::tuple<T, int32_t>>> __sub_0;
+    std::optional<::tpystd::asyncio::__coro_wait_for<std::tuple<::tpy::storage_t<T>, int32_t>>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -801,7 +801,7 @@ struct __coro_wait_fwd {
     __coro_wait_fwd(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>, int32_t>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -818,7 +818,7 @@ template <typename T>
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<std::tuple<T, int32_t>>>(::tpyapp::main::solo<T>(x)), 1.0);
+        __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<std::tuple<::tpy::storage_t<T>, int32_t>>>(::tpyapp::main::solo<::tpy::storage_t<T>>(x)), 1.0);
         __state = S_RESUME_0;
         continue;
     }
@@ -839,7 +839,7 @@ template <typename T>
 // async def wait_fwd[T](x: T) -> tuple[T, int32]:
 template <typename T>
 __coro_wait_fwd<T> wait_fwd(::tpy::param_val_or_ref_t<T> x) {
-    return __coro_wait_fwd<T>(x);
+    return __coro_wait_fwd<T>(::tpy::param_pass_last<T>(x));
 }
 
 // async def lit() -> tuple[Literal["abc"], int32]:
@@ -883,9 +883,9 @@ struct __coro_opt_solo {
     __coro_opt_solo(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
-    ::tpystd::tpy::Poll<std::tuple<T, std::optional<int32_t>>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<std::tuple<::tpy::storage_t<T>, std::optional<int32_t>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_opt_solo<T>&) {
@@ -897,7 +897,7 @@ struct __coro_opt_solo {
 //     await asyncio.sleep(0)                              # -> S_RESUME_0
 //     return (x, None)
 template <typename T>
-::tpystd::tpy::Poll<std::tuple<T, std::optional<int32_t>>> __coro_opt_solo<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<std::tuple<::tpy::storage_t<T>, std::optional<int32_t>>> __coro_opt_solo<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -907,12 +907,12 @@ template <typename T>
     }
     case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::tuple<T, std::optional<int32_t>>>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::tuple<::tpy::storage_t<T>, std::optional<int32_t>>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        std::tuple<T, std::optional<int32_t>> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<T>, std::optional<int32_t>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x), std::nullopt};
-        return ::tpystd::tpy::Poll<std::tuple<T, std::optional<int32_t>>>::ready(std::move(__tpy_async_ret));
+        std::tuple<::tpy::storage_t<T>, std::optional<int32_t>> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<T>, std::optional<int32_t>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(x)), std::nullopt};
+        return ::tpystd::tpy::Poll<std::tuple<::tpy::storage_t<T>, std::optional<int32_t>>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -923,7 +923,7 @@ template <typename T>
 // async def opt_solo[T](x: T) -> tuple[T, int32 | None]:
 template <typename T>
 __coro_opt_solo<T> opt_solo(::tpy::param_val_or_ref_t<T> x) {
-    return __coro_opt_solo<T>(x);
+    return __coro_opt_solo<T>(::tpy::param_pass_last<T>(x));
 }
 
 // async def amain() -> None:

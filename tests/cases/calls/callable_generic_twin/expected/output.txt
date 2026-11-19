@@ -1,0 +1,82 @@
+app-lend 11
+app-own 2 13
+app-lambda 2 7
+pick 6
+pick-cb 13
+pick-cb-value 20
+fill-own 20 121
+gen-lend 11 12
+gen-local 12 13
+gen-own 12 113
+map-lend 62
+map-only [5, 6]
+red-int 6
+red-str abc
+red-ref 105
+red-snap-int 3
+red-fin finally
+red-fin 5
+bind-branch 4
+bind-branch-store 4 1
+bind-try 5
+bind-gen 7
+bind-dict 7 7
+bind-red-str abc
+bind-fwd 1
+bind-method 8
+bind-own-list 6
+mixed-ref 2 2
+mixed-str a
+mixed-own 2
+branch-ref-t 3 3
+branch-ref-f 4 4
+branch-str b c
+branch-own-t 2
+branch-own-f 2
+try-ref-t 5 5
+try-ref-f 6 6
+try-str d e
+try-own-t 2
+try-own-f 2
+walrus-ref 7 7
+walrus-str f
+walrus-own 2
+walrus-once-ref 2 2
+walrus-once-str k
+unpack-ref 8 8
+unpack-str g
+unpack-own 2
+method-ref 9 9
+method-str j
+method-own 2
+literal-own 2
+gen-rebind-ref 3
+gen-rebind-str a
+gen-rebind-str a
+gen-rebind-own 2
+gen-rebind-own 2
+gen-branch-ref 5
+gen-branch-str-t b
+gen-branch-str-f b
+gen-branch-own-t 1
+gen-branch-own-f 1
+gen-pair-ref 6
+gen-pair-str a long string to leave the small buffer 1
+async-str c
+er-first 2 2
+er-first long string to leave the small buffer
+er-rebind 2 2
+er-rebind long string to leave the small buffer
+frame-er-ref 2 2
+frame-er-str a long string to leave the small buffer
+frame-er-str b long string to leave the small buffer
+co-er-str d long string to leave the small buffer
+frame-try-ref 4
+frame-try-str e
+frame-try-own 2
+frame-walrus-ref 6
+frame-walrus-str f
+frame-walrus-str f
+frame-walrus-once-ref 7
+frame-walrus-once-str h
+co-er-ref 1 2 True

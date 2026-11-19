@@ -1,3 +1,16 @@
 main::__tpy_init: uncovered (module initialization)
-main::add@8:0: covered (storage: no_proof_required), summary: known
-main::main@12:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::add@9:0: covered (storage: no_proof_required), summary: known
+main::main@13:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_ref::__tpy_init: uncovered (module initialization)
+part_ref::bigger@16:0: certified, summary: known
+part_ref::add_p@20:0: covered (storage: no_proof_required), summary: known
+part_ref::concat@26:0: covered (storage: no_proof_required), summary: known
+part_ref::lend2@30:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_ref::own2@38:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_ref::fresh_lambda@45:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_ref::pick_lambda@52:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_ref::last_lambda@60:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_ref::lend3@67:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_ref::empty@76:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_ref::main@86:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_ref::P.__init__@12:4: covered (storage: no_proof_required), summary: known

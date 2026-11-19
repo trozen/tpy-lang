@@ -19,7 +19,7 @@ void main();
 
 template<typename T>
 struct Tree {
-    using variant_type = ::tpy::Union<T, std::vector<Tree<T>>>;
+    using variant_type = ::tpy::Union<::tpy::storage_t<T>, std::vector<Tree<::tpy::storage_t<T>>>>;
     variant_type value;
 
     Tree() requires std::default_initializable<variant_type> = default;

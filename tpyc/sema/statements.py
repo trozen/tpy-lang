@@ -210,7 +210,7 @@ from .local_deduction import (
 from tpyc import modules as builtin_modules
 from tpyc import qnames
 from ..type_def_registry import (
-    is_iterator_adapter,
+    is_iterator_adapter, is_varargs,
     is_span, is_list,
     is_char_type, is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
@@ -1719,6 +1719,15 @@ class StatementAnalyzer:
             return
         if self._mark_finally_deferred_tuple_name(stmt, value, expected):
             return
+        if (value in self.ctx.finally_return_candidates
+                and self.ctx.open_t_param_read(value)
+                and self.compat.own_same_t_slot(expected)):
+            # A bare `x: T` parameter at `-> T` owns only at `T = Own[X]`:
+            # the capture is conditional, and the lowering resolves it per
+            # instantiation (moved after the chain there, lent at `T = P`).
+            self._defer_finally_capture(stmt, value,
+                                        DeferredCapture.OWN_STORAGE)
+            return
         if not (value in self.ctx.finally_return_candidates
                 and self._defers_to_settlement(value.name)):
             return
@@ -1751,14 +1760,20 @@ class StatementAnalyzer:
                   and holds_result_member(declared, exp)):
                 shape = DeferredCapture.OWN_STORAGE
         if shape is not None:
-            restored = value not in self.ctx.all_last_uses
-            self.ctx.all_last_uses.add(value)
-            stmt.finally_deferred_capture = True
-            stmt.finally_deferred_name = value
-            stmt.finally_deferred_shape = shape
-            self.compat.record_owning_read(FinallyCapture(
-                value.name, value, stmt, None,
-                restored_last_use=restored))
+            self._defer_finally_capture(stmt, value, shape)
+
+    def _defer_finally_capture(self, stmt: TpyReturn, value: TpyName,
+                               shape: DeferredCapture) -> None:
+        """Stamp `return <value>` finally-deferred with recipe `shape`,
+        settled once the body is read (`_settle_finally_capture`)."""
+        restored = value not in self.ctx.all_last_uses
+        self.ctx.all_last_uses.add(value)
+        stmt.finally_deferred_capture = True
+        stmt.finally_deferred_name = value
+        stmt.finally_deferred_shape = shape
+        self.compat.record_owning_read(FinallyCapture(
+            value.name, value, stmt, None,
+            restored_last_use=restored))
 
     def _defers_to_settlement(self, name: str) -> bool:
         """A returned name whose finally-deferred capture is marked now: a
@@ -4778,6 +4793,14 @@ class StatementAnalyzer:
         caller binds as `nonlocal` names.
         """
         module_init = self.ctx.is_top_level
+        for pname, ptype in params:
+            # A `*args` parameter is noted as written: its element type.
+            self.ctx.note_composite_leaves(
+                unwrap_ref_type(ptype).type_args[0]
+                if pname == func.vararg_name and is_varargs(
+                    unwrap_ref_type(ptype))
+                else ptype)
+        self.ctx.note_composite_leaves(func.return_type)
         # Bind params to scope with Ref for non-value types.
         # analyze_expr strips Ref from return values, so downstream sema
         # sees bare types.  Ref on scope types enables provenance-aware

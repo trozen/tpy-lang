@@ -207,7 +207,8 @@ from ..param_contract import (Adapts, Materializer, ParamContract, arg_retention
                               protocol_slot)
 from ...sema.call_lends import Retention, TempLend, callee_retains_arg
 from ...sema.own_copy import contains_reference_type
-from ...typesys import contains_type_kind_param
+from ...typesys import (TypeParamKind, contains_type_kind_param,
+                        type_arg_cpp)
 from ...sema.local_deduction import (leaf_is_temporary,
                                      view_slot_source_is_temporary,
                                      view_source_is_temporary)
@@ -655,7 +656,8 @@ from .context import (FrameLocalClass, _call_arg_forms,
                       _POS_FORMS, storage_type)
 from .generics import expand_fi_template
 from .convert import (Effect, Refuse, _existing_object, _lendable, as_base,
-                      open_param_convert,
+                      open_param_convert, open_trait_lift,
+                      is_open_t_binding,
                       convert, held_object_type, landing, spelled)
 
 
@@ -921,8 +923,8 @@ def lower_copy_construct(src: TpyExpr, payload: TpyType, lc: '_LowerCtx',
                if is_rvalue_source(lc.analyzer, src) else _COPY_SRC_USE)
     return THIRCopy(result_type=payload if slot_type is None else slot_type,
                     value=_lower_expr(src, lc, declared, use=src_use),
-                    cpp_type=lc.render_type(payload), form=Form.STORAGE,
-                    loc=loc)
+                    cpp_type=lc.render_type(payload),
+                    form=Form.STORAGE, loc=loc)
 
 
 # The callee forms whose lowering admits every use itself.
@@ -6478,6 +6480,20 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
                                else _temporary(e, lowered, lc)),
                     elems=elems, binding=binding,
                     captured=captured,
+                    # A local lending at some binding hands nothing on.
+                    open_last=(isinstance(e, TpyName) and not captured
+                               and lc.analyzer.ctx.is_last_use(e)
+                               and not (binding is not None
+                                        and binding.open_result
+                                        and not binding.open_owning)),
+                    open_result=(binding is not None and binding.open_result
+                                 and not captured),
+                    slot_last=(isinstance(e, TpyName) and not captured
+                               and binding is not None
+                               and binding.open_result
+                               and lc.analyzer.ctx.is_last_use(e)),
+                    open_type=(binding.type if binding is not None
+                               and binding.open_result else None),
                     named_type=named_type,
                     analyzed_type=(lc.analyzer.get_expr_type(e)
                                    if e is not None else None),
@@ -6488,6 +6504,8 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
                     narrowed=isinstance(e, TpyName) and (
                         e.name in lc.narrow.narrowed
                         or e.name in lc.inline_narrowed))
+    if is_open_t_binding(source):
+        source = replace(source, open_t_binding=True)
     layout_elems = (_tuple_layout_elems(e, rec, lc, source)
                     if rec is not None else None)
     if layout_elems is not None:
@@ -6634,7 +6652,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 cpp = escape_cpp_name(variant or e.name)
             if e.function_ref_type_args:
                 cpp += "<" + ", ".join(
-                    lc.render_type(unwrap_ref_type(t))
+                    type_arg_cpp(unwrap_ref_type(t), lc.render_type)
                     for t in e.function_ref_type_args) + ">"
                 _witness("name.func_ref_targs")
             _witness("name.func_ref")
@@ -8622,8 +8640,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # below is wrong for it -- their pre-declaration would put a
             # case-block local in front of the field and the write would die
             # at the next suspension.
-            return _lower_frame_walrus(e, vtu, lc, declared, loc)
+            return _lower_frame_walrus(e, vtu, lc, declared, loc, use)
         rung_dyn = False
+        if need_predecl and wrec.construct is BindingConstruct.OPEN_RESULT:
+            return _open_result_walrus(e, vtu, wrec, lc, declared, loc, use)
         if need_predecl:
             wform = wrec.form
             wal_value_opt = wrec.value_opt
@@ -10887,7 +10907,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 callee_cpp = (lc.self_cpp
                               + ("->" if lc.self_is_pointer else ".")
                               + callee_cpp)
-            mk_targs = (tuple(lc.render_type(unwrap_ref_type(t))
+            mk_targs = (tuple(type_arg_cpp(unwrap_ref_type(t), lc.render_type)
                               for t in e.inferred_type_args)
                         if mk[0] in ("generic_qualified", "super_generic")
                         else None)
@@ -11221,7 +11241,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         if (e.inferred_type_args and not e.user_module_call
                 and not e.is_static_call):
             method_targs = tuple(
-                lc.render_type(unwrap_ref_type(t))
+                type_arg_cpp(unwrap_ref_type(t), lc.render_type)
                 for t in e.inferred_type_args)
         _mnu = (_assign_narrowed_union_recv(e.obj, declared, lc)
                 if isinstance(e.obj, TpyName) else None)
@@ -11766,6 +11786,29 @@ def _plain_assign(node: THIRAssign) -> bool:
     return True
 
 
+def _open_result_walrus(e: 'TpyNamedExpr', vtu: TpyType, wrec, lc: '_LowerCtx',
+                        declared: dict[str, TpyType], loc,
+                        use: _ExprUse) -> THIRWalrus:
+    """A walrus declaring an open-result local (`BC.OPEN_RESULT`): the
+    pointer pre-declared, then the local's one write
+    (`open_result_write`), read back out."""
+    from .statements import open_result_write
+    vtype = wrec.type
+    open_t = unwrap_readonly(unwrap_ref_type(vtype))
+    declared[e.target] = vtype
+    write = open_result_write(e.target, e.value, e, vtype, lc, declared, loc,
+                              "expr.walrus", walrus=True, binding=wrec,
+                              allow_temps=use.allow_temps)
+    _witness("expr.walrus_open_result")
+    walrus = THIRWalrus(
+        result_type=vtu, name=e.target, cpp_name=escape_cpp_name(e.target),
+        value=write.value, write=write,
+        cpp_type=lc.render_type(open_t) + "*",
+        init="nullptr", tail="deref", loc=loc, binding=wrec)
+    lc.storage_slots.stamp(write, e)
+    return walrus
+
+
 def _walrus_existing_binding(e: 'TpyNamedExpr', vtu: TpyType,
                              lc: '_LowerCtx', declared: dict[str, TpyType],
                              loc) -> 'THIRWalrus | None':
@@ -11804,7 +11847,8 @@ def _walrus_existing_binding(e: 'TpyNamedExpr', vtu: TpyType,
 
 
 def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
-                        declared: dict[str, TpyType], loc) -> THIRExpr:
+                        declared: dict[str, TpyType], loc,
+                        use: _ExprUse) -> THIRExpr:
     """Walrus whose target is a resumable-frame FIELD: write the field,
     declare nothing.
 
@@ -11912,6 +11956,21 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         _witness("expr.walrus_frame_btuple")
         return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
                           value=value, tail="name", loc=loc)
+    if (lc.frame_local(e.target, FrameLocalClass.REBIND_PTR)
+            and lc.binding(e.target).construct is BindingConstruct.OPEN_RESULT):
+        # A frame's open-result local: its one write over this walrus's
+        # frame field.
+        from .statements import open_result_write
+        write = open_result_write(e.target, e.value, e,
+                                  lc.binding(e.target).type, lc, declared,
+                                  loc, "expr.walrus", walrus=True,
+                                  binding=lc.binding(e.target),
+                                  allow_temps=use.allow_temps)
+        declared[e.target] = vtu
+        _witness("expr.walrus_open_result")
+        return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
+                          value=write.value, write=write, tail="deref",
+                          loc=loc, binding=lc.binding(e.target))
     if (lc.frame_local(e.target, FrameLocalClass.REBIND_PTR)
             and is_rvalue_source(analyzer, e.value)):
         # A rebound reference local's binding takes storage of its own: the
@@ -14162,10 +14221,8 @@ def _lower_generic_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 # `T` PARAM is read in its parameter form (a view at `str`).
                 lowered.append(built)
                 continue
-            lowered.append(THIRFormConvert(
-                result_type=et, value=elem_lowered, form=Form.BORROW,
-                trait=TraitAbi.VAL_OR_PTR,
-                loc=getattr(elem, "loc", None)))
+            lowered.append(open_trait_lift(elem_lowered, et,
+                                           TraitAbi.VAL_OR_PTR))
             continue
         if _value_tuple_element_ok(et, analyzer):
             lowered.append(_lower_container_elem(elem, et, lc, declared,
@@ -14231,7 +14288,7 @@ def _compose_static_targs(cpp_class: str, record_info, cpp_method: str,
     targs = (tuple(
         repr_cpp[method_names[j]]
         if j < len(method_names) and method_names[j] in repr_cpp
-        else lc.render_type(unwrap_ref_type(t))
+        else type_arg_cpp(unwrap_ref_type(t), lc.render_type)
         for j, t in enumerate(method_args)) or None)
     return (f"{cpp_class}::{template_kw}{cpp_method}", targs)
 
@@ -14589,7 +14646,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
         callee=e.func_name,
         args=tuple(args),
         callee_cpp=callee_cpp,
-        template_args_cpp=tuple(lc.render_type_stored(t)
+        template_args_cpp=tuple(type_arg_cpp(t, lc.render_type_stored)
                                 for t in e.inferred_type_args),
         form=form,
         loc=loc,
@@ -14849,6 +14906,59 @@ def _native_iterable_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.ITERABLE,
                                         allow_temps=allow_temps))
+    return None
+
+
+def _owns_at_substitution(declared: 'TpyType | None',
+                          substituted: 'TpyType | None') -> bool:
+    """Whether a callee's bare `x: T` (`x: readonly[T]`, `x: T | None`)
+    is, as this call substitutes it, the twin's owned parameter
+    `x: Own[X]` (`readonly[Own[X]]`, `Own[X] | None`; `X` not of plain
+    value form)."""
+    sub = (unwrap_readonly(unwrap_ref_type(substituted))
+           if isinstance(substituted, TpyType) else None)
+    decl = (unwrap_readonly(unwrap_ref_type(declared))
+            if isinstance(declared, TpyType) else None)
+    # `x: T | None` at `T = Own[X]` is the twin's `x: Own[X] | None`.
+    if isinstance(sub, OptionalType) and isinstance(decl, OptionalType):
+        sub, decl = sub.inner, decl.inner
+    return (isinstance(sub, OwnType) and not sub.is_plain()
+            and type(decl) is TypeParamRef)
+
+
+def _arg_slot_type(ptype: TpyType, declared_ptype: 'TpyType | None',
+                   instantiated: 'TpyType | None',
+                   instantiation_storage: bool, lc: '_LowerCtx') -> TpyType:
+    """The type an argument's slot holds at a generic callee's parameter:
+    `x: T` at `T = Own[X]` is the twin's `x: Own[X]` (a move, or the warned
+    copy); an owned open parameter (`own_param_t<T>`, a `T&&` whatever `T`
+    is) and an open parameter taking a record or container through `T`'s
+    trait are passed as declared; any other is `ptype`."""
+    if _owns_at_substitution(ptype, instantiated):
+        return instantiated
+    if (instantiated is None and declared_ptype is not None
+            and not _owns_at_substitution(declared_ptype, ptype)
+            and not instantiation_storage
+            and (_owned_open_param(declared_ptype)
+                 or (_open_param(declared_ptype)
+                     and _reference_object_slot(ptype, lc.analyzer)))):
+        return declared_ptype
+    return ptype
+
+
+def _open_same_t_slot(a: TpyExpr, ptype: TpyType,
+                      instantiated: 'TpyType | None',
+                      lc: '_LowerCtx') -> 'TpyType | None':
+    """The body's own open `T` an argument of sema's `OPEN_SAME_T` slot
+    class (`SemanticContext.open_same_t_args`, decided at the call) is
+    passed at -- the parameter as this call instantiates it -- else None."""
+    if _peel_coerce(a) not in lc.analyzer.ctx.open_same_t_args:
+        return None
+    for t in (instantiated, ptype):
+        held = (unwrap_readonly(unwrap_ref_type(t))
+                if isinstance(t, TpyType) else None)
+        if type(held) is TypeParamRef:
+            return held
     return None
 
 
@@ -15732,25 +15842,19 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     if (not isinstance(ptype, TpyType) or isinstance(a, TpyVarargPack)
             or _tuple_param(ptype)):
         return None
+    same_t = _open_same_t_slot(a, ptype, instantiated, lc)
+    if (declared_ptype is None and callee_fi is not None
+            and 0 <= arg_index < len(callee_fi.root.params)):
+        declared_ptype = callee_fi.root.params[arg_index].type
+    inst = instantiated if isinstance(instantiated, TpyType) else ptype
+    ptype = _arg_slot_type(
+        ptype, declared_ptype, instantiated,
+        contract.instantiation_storage if contract is not None
+        else instantiation_storage(callee_fi, arg_index), lc)
     owning = _owning_slot_arg(a, ptype, lc, declared, temps=temps,
                               callee_fi=callee_fi, reason=reason)
     if owning is not None:
         return owning
-    inst = instantiated if isinstance(instantiated, TpyType) else ptype
-    if (declared_ptype is None and callee_fi is not None
-            and 0 <= arg_index < len(callee_fi.root.params)):
-        declared_ptype = callee_fi.root.params[arg_index].type
-    if (instantiated is None and declared_ptype is not None
-            and not (contract.instantiation_storage if contract is not None
-                     else instantiation_storage(callee_fi, arg_index))
-            and (_owned_open_param(declared_ptype)
-                 or (_open_param(declared_ptype)
-                     and _reference_object_slot(inst, lc.analyzer)))):
-        # A generic callee's owned open parameter is `own_param_t<T>` (a
-        # `T&&`) whatever `T` is, and its open parameter takes a record or
-        # container through `T`'s trait: it is passed as declared, holding
-        # the type this call instantiates it at.
-        ptype = declared_ptype
     if contract is None:
         contract = arg_contract(callee_fi, arg_index, ptype, lc,
                                 signature=signature,
@@ -15850,6 +15954,8 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         else:
             slot = deduced_slot(contract, structural, twin,
                                 lc.analyzer, placement=lc.placement)
+        if same_t is not None:
+            slot = replace(slot, open_same_t=same_t)
         return _arg_at_slot(a, slot, ptype, inst, contract, lc, declared,
                              temps=temps, reason=reason, note=note,
                              frame_kept=frame_kept, cls=cls,
@@ -17573,7 +17679,8 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 result_type=open_t,
                 value=_lower_expr(copy_call_arg(a, lc.analyzer), lc,
                                   declared, use=_COPY_SRC_USE),
-                cpp_type=lc.render_type(open_t), form=Form.STORAGE,
+                cpp_type=lc.render_type(open_t),
+                form=Form.STORAGE,
                 loc=getattr(a, "loc", None))
     # The Own-slot copy+move row: `auto __tmp_N = <arg>;` + the move wrap
     # at the arg position -- or the temp-free `std::move(name)` when the
@@ -18295,7 +18402,8 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
         args = ((_lower_expr(src, lc, declared),) if use is None
                 else (_lower_expr(src, lc, declared, use=use),))
         return THIRCall(result_type=rtype, callee=callee, args=args,
-                        cpp_template=f"{stu.to_cpp()}({{0}})", loc=loc)
+                        cpp_template=f"{stu.to_cpp()}({{0}})",
+                        loc=loc)
 
     if (_tparam_value(st)
             and isinstance(src, (TpyName, TpyFieldAccess))

@@ -3,6 +3,7 @@
 # resolution.
 from functools import reduce
 from tpy import int32
+import part_ref
 
 
 def add(a: int32, b: int32) -> int32:
@@ -24,6 +25,7 @@ def main() -> None:
     # Single-element list -- returns that element directly.
     one: list[int32] = [42]
     print(reduce(add, one))                      # 42
+    part_ref.main()
 
 
 main()

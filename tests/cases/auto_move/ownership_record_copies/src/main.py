@@ -200,22 +200,22 @@ def lam_pointer_local(xs: list[A], c: bool) -> Callable[[], Own[A]]:
 
 
 def keep_rebound[T](xs: list[T], x: T, z: T) -> None:
-    # a rebound generic local copies at each bind, unwarned, and each append
-    # moves that copy (BUGS.md#generic-lending-local-copies-unwarned)
+    # a rebound generic local off a lending call borrows what each bind
+    # lends at a reference `T`: each append is the hedged copy
     y = ident(x)
-    xs.append(y)  # tpyc: ok
+    xs.append(y)  # tpyc: warning(/may copy T into owned storage if not a value type/)
     y = ident(z)
-    xs.append(y)  # tpyc: ok
+    xs.append(y)  # tpyc: warning(/may copy T into owned storage if not a value type/)
 
 
 def keep_next[T](it: Iterator[T], xs: list[T]) -> None:
     try:
         r = next(it)
-        # a generic stub's result bound to a hoisted local: the slot holds
-        # a copy made at the bind, which the append moves on; the hedge
-        # speaks for that copy at the read the record keeps
-        # (BUGS.md#generic-lending-local-copies-unwarned: the bind's own
-        # copy is not registered)
+        # a generic stub's result bound to a hoisted local: it points at
+        # the step, as a plain local bound to an open `T` result does
+        # (`reseat_result<T>`), and the append's copy is the hedge, which
+        # speaks for that copy at the read the record keeps; at an `Own`
+        # instantiation the local holds the step in its slot
         xs.append(r)  # tpyc: warning(/may copy T into owned storage if not a value type/)
     except StopIteration:
         pass

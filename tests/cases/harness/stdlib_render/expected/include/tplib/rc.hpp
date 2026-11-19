@@ -11,7 +11,7 @@ struct _RcCellBase;
 // @dynamic
 // class _RcCellBase(Protocol):
 template<typename T>
-concept ___RcCellBase_Concept__ = requires(T& t) {
+concept ___RcCellBase_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.incr_strong() } -> std::convertible_to<void>;
     { t.release_strong() } -> std::convertible_to<bool>;
     { t.try_incr_strong() } -> std::convertible_to<bool>;
@@ -89,11 +89,11 @@ struct Rc {
     // _cell: Ptr[_RcCellBase]
     _RcCellBase* _cell;
     // _payload: Ptr[T]
-    T* _payload;
+    ::tpy::storage_t<T>* _payload;
     bool __tpy_owned_ = true;
 
     // def __init__(self, cell: Ptr[_RcCellBase], payload: Ptr[T]) -> None:
-    explicit Rc(_RcCellBase* cell, T* payload);
+    explicit Rc(_RcCellBase* cell, ::tpy::storage_t<T>* payload);
     // non-copyable (@nocopy)
     Rc(const Rc&) = delete;
     Rc& operator=(const Rc&) = delete;
@@ -137,7 +137,7 @@ struct Rc {
 
     // @auto_readonly
     // def clone(self) -> Own[Rc[auto_readonly[T]]]:
-    Rc<T> clone() const;
+    Rc<::tpy::storage_t<T>> clone() const;
 
     // @auto_readonly
     // def downgrade(self) -> Own[Weak[auto_readonly[T]]]:
@@ -145,7 +145,7 @@ struct Rc {
 
     // @auto_readonly
     // def downgrade(self) -> Own[Weak[auto_readonly[T]]]:
-    Weak<T> downgrade() const;
+    Weak<::tpy::storage_t<T>> downgrade() const;
 
     // def __str__(self) -> str:
     std::string __str__() const;
@@ -216,11 +216,11 @@ struct Weak {
     // _cell: Ptr[_RcCellBase]
     _RcCellBase* _cell;
     // _payload: Ptr[T]
-    T* _payload;
+    ::tpy::storage_t<T>* _payload;
     bool __tpy_owned_ = true;
 
     // def __init__(self, cell: Ptr[_RcCellBase], payload: Ptr[T]) -> None:
-    explicit Weak(_RcCellBase* cell, T* payload);
+    explicit Weak(_RcCellBase* cell, ::tpy::storage_t<T>* payload);
     // non-copyable (@nocopy)
     Weak(const Weak&) = delete;
     Weak& operator=(const Weak&) = delete;
@@ -236,7 +236,7 @@ struct Weak {
 
     // @auto_readonly
     // def upgrade(self) -> Own[Rc[auto_readonly[T]]] | None:
-    std::optional<Rc<T>> upgrade() const;
+    std::optional<Rc<::tpy::storage_t<T>>> upgrade() const;
 
     // @auto_readonly
     // def clone(self) -> Own[Weak[auto_readonly[T]]]:
@@ -244,7 +244,7 @@ struct Weak {
 
     // @auto_readonly
     // def clone(self) -> Own[Weak[auto_readonly[T]]]:
-    Weak<T> clone() const;
+    Weak<::tpy::storage_t<T>> clone() const;
     static constexpr std::string_view __tpy_class_name__ = "tplib.rc.Weak";
 };
 
@@ -369,7 +369,7 @@ inline bool _RcCell<U>::release_weak() {
 //     self._cell = cell
 //     self._payload = payload
 template<typename T>
-inline Rc<T>::Rc(_RcCellBase* cell, T* payload)
+inline Rc<T>::Rc(_RcCellBase* cell, ::tpy::storage_t<T>* payload)
     : _cell(cell),
       _payload(payload) {}
 
@@ -480,9 +480,9 @@ inline Rc<T> Rc<T>::clone() {
 //     self._cell.incr_strong()
 //     return Rc[auto_readonly[T]](self._cell, self._payload)
 template<typename T>
-inline Rc<T> Rc<T>::clone() const {
+inline Rc<::tpy::storage_t<T>> Rc<T>::clone() const {
     ::tpy::none_attr(this->_cell, "incr_strong").incr_strong();
-    return Rc<T>(this->_cell, this->_payload);
+    return Rc<::tpy::storage_t<T>>(this->_cell, this->_payload);
 }
 
 // @auto_readonly
@@ -500,9 +500,9 @@ inline Weak<T> Rc<T>::downgrade() {
 //     self._cell.incr_weak()
 //     return Weak[auto_readonly[T]](self._cell, self._payload)
 template<typename T>
-inline Weak<T> Rc<T>::downgrade() const {
+inline Weak<::tpy::storage_t<T>> Rc<T>::downgrade() const {
     ::tpy::none_attr(this->_cell, "incr_weak").incr_weak();
-    return Weak<T>(this->_cell, this->_payload);
+    return Weak<::tpy::storage_t<T>>(this->_cell, this->_payload);
 }
 
 // # Equality and ordering delegate to T (content, matching Rust's
@@ -585,7 +585,7 @@ inline auto Rc<T>::operator*() const -> decltype(__deref__()) {
 //     self._cell = cell
 //     self._payload = payload
 template<typename T>
-inline Weak<T>::Weak(_RcCellBase* cell, T* payload)
+inline Weak<T>::Weak(_RcCellBase* cell, ::tpy::storage_t<T>* payload)
     : _cell(cell),
       _payload(payload) {}
 
@@ -641,11 +641,11 @@ inline std::optional<Rc<T>> Weak<T>::upgrade() {
 //         return None
 //     return Rc[auto_readonly[T]](self._cell, self._payload)
 template<typename T>
-inline std::optional<Rc<T>> Weak<T>::upgrade() const {
+inline std::optional<Rc<::tpy::storage_t<T>>> Weak<T>::upgrade() const {
     if ((!(::tpy::none_attr(this->_cell, "try_incr_strong").try_incr_strong()))) {
         return std::nullopt;
     }
-    return Rc<T>(this->_cell, this->_payload);
+    return Rc<::tpy::storage_t<T>>(this->_cell, this->_payload);
 }
 
 // @auto_readonly
@@ -663,9 +663,9 @@ inline Weak<T> Weak<T>::clone() {
 //     self._cell.incr_weak()
 //     return Weak[auto_readonly[T]](self._cell, self._payload)
 template<typename T>
-inline Weak<T> Weak<T>::clone() const {
+inline Weak<::tpy::storage_t<T>> Weak<T>::clone() const {
     ::tpy::none_attr(this->_cell, "incr_weak").incr_weak();
-    return Weak<T>(this->_cell, this->_payload);
+    return Weak<::tpy::storage_t<T>>(this->_cell, this->_payload);
 }
 
 void __tpy_init();

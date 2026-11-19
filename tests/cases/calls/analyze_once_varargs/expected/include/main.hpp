@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t total(::tpy::varargs<const int32_t> xs);
 // def count[T](*xs: T) -> int32:
 template<typename T>
-int32_t count(::tpy::varargs<const T> xs);
+int32_t count(::tpy::varargs<const ::tpy::storage_t<T>> xs);
 // def main() -> None:
 void main();
 
@@ -51,7 +51,7 @@ inline B B::take() && {
 // def count[T](*xs: T) -> int32:
 //     return len(xs)
 template<typename T>
-int32_t count(::tpy::varargs<const T> xs) {
+int32_t count(::tpy::varargs<const ::tpy::storage_t<T>> xs) {
     return ::tpy::__len__(xs);
 }
 

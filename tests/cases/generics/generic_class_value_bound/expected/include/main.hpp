@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def identity[T: ValueType](v: T) -> T:
 template<::tpy::ValueType T>
-T identity(::tpy::param_val_or_ref_t<T> v);
+::tpy::storage_t<T> identity(::tpy::param_val_or_ref_t<T> v);
 // def main() -> None:
 void main();
 
@@ -22,14 +22,14 @@ void main();
 template<::tpy::ValueType T>
 struct Box {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> value);
 
     // def get(self) -> T:
-    T get() const;
+    ::tpy::storage_t<T> get() const;
 
     // def set(self, value: T) -> None:
     void set(::tpy::param_val_or_ref_t<T> value);
@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 template<::tpy::ValueType T>
 struct Ring {
     // data: Array[T, 4]
-    std::array<T, 4> data;
+    std::array<::tpy::storage_t<T>, 4> data;
     // size: int32
     int32_t size;
 
@@ -58,10 +58,10 @@ struct Ring {
     void put(::tpy::param_val_or_ref_t<T> v);
 
     // def get(self, i: int32) -> T:
-    T get(int32_t i) const;
+    ::tpy::storage_t<T> get(int32_t i) const;
 
     // def pop(self) -> T:
-    T pop();
+    ::tpy::storage_t<T> pop();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ring";
 };
 
@@ -80,7 +80,7 @@ inline Box<T>::Box(::tpy::readonly_form_t<T> value) : value(value) {}
 // def get(self) -> T:
 //     return self.value
 template<::tpy::ValueType T>
-inline T Box<T>::get() const {
+inline ::tpy::storage_t<T> Box<T>::get() const {
     return this->value;
 }
 
@@ -88,7 +88,7 @@ inline T Box<T>::get() const {
 //     self.value = value  # tpyc: ok
 template<::tpy::ValueType T>
 inline void Box<T>::set(::tpy::param_val_or_ref_t<T> value) {
-    this->value = ::tpy::param_to_storage<T>(value);
+    this->value = ::tpy::param_consume<T>(value);
 }
 
 // def __init__(self, fill: T) -> None:
@@ -96,7 +96,7 @@ inline void Box<T>::set(::tpy::param_val_or_ref_t<T> value) {
 //     self.size = 0
 template<::tpy::ValueType T>
 inline Ring<T>::Ring(::tpy::readonly_form_t<T> fill)
-    : data(std::array<T, 4>{::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill)}),
+    : data(std::array<::tpy::storage_t<T>, 4>{::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill)}),
       size(0) {}
 
 // def put(self, v: T) -> None:
@@ -104,14 +104,14 @@ inline Ring<T>::Ring(::tpy::readonly_form_t<T> fill)
 //     self.size += 1
 template<::tpy::ValueType T>
 inline void Ring<T>::put(::tpy::param_val_or_ref_t<T> v) {
-    ::tpy::__setitem__(this->data, this->size, v);
+    ::tpy::__setitem__(this->data, this->size, ::tpy::param_consume<T>(v));
     this->size = ::tpy::add_check<int32_t>(this->size, 1);
 }
 
 // def get(self, i: int32) -> T:
 //     return self.data[i]
 template<::tpy::ValueType T>
-inline T Ring<T>::get(int32_t i) const {
+inline ::tpy::storage_t<T> Ring<T>::get(int32_t i) const {
     return ::tpy::__getitem__(this->data, i);
 }
 
@@ -121,7 +121,7 @@ inline T Ring<T>::get(int32_t i) const {
 //     self.size -= 1
 //     return self.data[self.size]
 template<::tpy::ValueType T>
-inline T Ring<T>::pop() {
+inline ::tpy::storage_t<T> Ring<T>::pop() {
     this->size = ::tpy::sub_check<int32_t>(this->size, 1);
     return ::tpy::__getitem__(this->data, this->size);
 }
@@ -129,8 +129,8 @@ inline T Ring<T>::pop() {
 // def identity[T: ValueType](v: T) -> T:
 //     return v
 template<::tpy::ValueType T>
-T identity(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_to_return<T>(v);
+::tpy::storage_t<T> identity(::tpy::param_val_or_ref_t<T> v) {
+    return ::tpy::param_to_return_last<T>(v);
 }
 
 void __tpy_init();

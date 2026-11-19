@@ -842,14 +842,25 @@ auto builtin_reversed(Seq&& seq) {
 
 // -- map --
 //
-// `U` is what the callable hands back, in the step form the compiler
-// declares for it: the callable's signature is the compiler's fact (a borrow
-// return is `val_or_ref<T>`, a borrow-form tuple has `val_or_ref` members
-// where its C++ spelling has pointers), unlike a source's element, which
-// only the source itself can name.
+// `U` is what the callable hands back, as the compiler declares it: the
+// callable's signature is the compiler's fact, unlike a source's element,
+// which only the source itself can name. A reference `U` is lent through
+// the step (`val_or_ref<U>`), an owned one (`own_arg<X>`) handed over, a
+// value one stepped as it is: the generator step form (`yield_slot_t`) but
+// for its value arm; a borrow-form tuple has `val_or_ref` members where its
+// C++ spelling has pointers.
+namespace detail {
+    template<typename U> struct map_step {
+        using type = std::conditional_t<is_value_type_v<U>, U, yield_slot_t<U>>;
+    };
+    template<typename X> struct map_step<own_arg<X>> {
+        using type = yield_slot_t<own_arg<X>>;
+    };
+    template<typename U> using map_step_t = typename map_step<U>::type;
+}
 
 template<typename U, typename Iter, typename Fn>
-class map_iter : public next_iter_mixin<map_iter<U, Iter, Fn>, U> {
+class map_iter : public next_iter_mixin<map_iter<U, Iter, Fn>, detail::map_step_t<U>> {
     Iter iter_;
     Fn fn_;
 public:
@@ -858,7 +869,7 @@ public:
     map_iter(It&& iter, Fn fn)
         : iter_(std::forward<It>(iter)), fn_(std::move(fn)) {}
 
-    std::expected<U, StopIteration> __next__() {
+    std::expected<detail::map_step_t<U>, StopIteration> __next__() {
         auto r = iter_.__next__();
         if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
         return fn_(unwrap_ref(*r));
@@ -874,14 +885,14 @@ public:
 // Owning variant: moves the container in so rvalue arguments don't dangle.
 template<typename U, typename Container, typename Fn>
 class owning_map_iter
-    : public next_iter_mixin<owning_map_iter<U, Container, Fn>, U> {
+    : public next_iter_mixin<owning_map_iter<U, Container, Fn>, detail::map_step_t<U>> {
     detail::owned_iter_source<Container> src_;
     Fn fn_;
 public:
     owning_map_iter(Fn fn, Container&& c)
         : src_(std::move(c)), fn_(std::move(fn)) { src_.start(); }
 
-    std::expected<U, StopIteration> __next__() {
+    std::expected<detail::map_step_t<U>, StopIteration> __next__() {
         auto r = src_.__next__();
         if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
         // A callable taking its element over (an `Own[X]` parameter, `X&&`)
@@ -920,12 +931,12 @@ auto builtin_map(Fn&& fn, Iterable&& iterable) {
 // -- map_multi (N-iterable, variadic) --
 
 template<typename U, typename Fn, typename IterTuple>
-class map_multi_iter : public next_iter_mixin<map_multi_iter<U, Fn, IterTuple>, U> {
+class map_multi_iter : public next_iter_mixin<map_multi_iter<U, Fn, IterTuple>, detail::map_step_t<U>> {
     IterTuple iters_;
     Fn fn_;
 
     template<size_t... Is>
-    std::expected<U, StopIteration> call_next(std::index_sequence<Is...>) {
+    std::expected<detail::map_step_t<U>, StopIteration> call_next(std::index_sequence<Is...>) {
         // Brace-init guarantees left-to-right evaluation order
         auto results = std::tuple{std::get<Is>(iters_).__next__()...};
         if ((!std::get<Is>(results).has_value() || ...))
@@ -939,7 +950,7 @@ public:
     map_multi_iter(IterTuple&& iters, Fn fn)
         : iters_(std::move(iters)), fn_(std::move(fn)) {}
 
-    std::expected<U, StopIteration> __next__() {
+    std::expected<detail::map_step_t<U>, StopIteration> __next__() {
         return call_next(std::make_index_sequence<std::tuple_size_v<IterTuple>>{});
     }
 
@@ -952,12 +963,12 @@ public:
 
 template<typename U, typename Fn, typename... Containers>
 class owning_map_multi_iter
-    : public next_iter_mixin<owning_map_multi_iter<U, Fn, Containers...>, U> {
+    : public next_iter_mixin<owning_map_multi_iter<U, Fn, Containers...>, detail::map_step_t<U>> {
     std::tuple<detail::arg_source_t<Containers>...> srcs_;
     Fn fn_;
 
     template<size_t... Is>
-    std::expected<U, StopIteration> call_next(std::index_sequence<Is...>) {
+    std::expected<detail::map_step_t<U>, StopIteration> call_next(std::index_sequence<Is...>) {
         auto results = std::tuple{std::get<Is>(srcs_).__next__()...};
         if ((!std::get<Is>(results).has_value() || ...))
             return tpy::make_unexpected(StopIteration{});
@@ -978,7 +989,7 @@ public:
         requires (std::move_constructible<detail::arg_source_t<Containers>> && ...)
         = default;
 
-    std::expected<U, StopIteration> __next__() {
+    std::expected<detail::map_step_t<U>, StopIteration> __next__() {
         return call_next(std::index_sequence_for<Containers...>{});
     }
 

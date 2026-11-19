@@ -14,14 +14,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def first[T](items: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> first(std::vector<T>& items);
+::tpy::val_or_ref_t<T> first(std::vector<::tpy::storage_t<T>>& items);
 // def test_borrow_warn() -> None:
 void test_borrow_warn();
 // def get_first_concrete(items: list[Point]) -> Point:
 Point& get_first_concrete(std::vector<Point>& items);
 // def get_first_generic[T](items: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> get_first_generic(std::vector<T>& items);
+::tpy::val_or_ref_t<T> get_first_generic(std::vector<::tpy::storage_t<T>>& items);
 // def test_return_through_local() -> None:
 void test_return_through_local();
 // def test_method_ref_semantics() -> None:
@@ -56,11 +56,11 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 template<typename T>
 struct Box {
     // _items: list[T]
-    std::vector<T> _items;
+    std::vector<::tpy::storage_t<T>> _items;
 
     // def __init__(self, items: list[T]) -> None:
     Box() = default;
-    explicit Box(const std::vector<T>& items);
+    explicit Box(const std::vector<::tpy::storage_t<T>>& items);
 
     // def first(self) -> T:
     ::tpy::val_or_ref_t<T> first();
@@ -84,7 +84,7 @@ inline Point::Point(int32_t x, int32_t y)
 // def __init__(self, items: list[T]) -> None:
 //     self._items = items
 template<typename T>
-inline Box<T>::Box(const std::vector<T>& items) : _items(items) {}
+inline Box<T>::Box(const std::vector<::tpy::storage_t<T>>& items) : _items(items) {}
 
 // def first(self) -> T:
 //     return self._items[0]  # borrows from self
@@ -96,7 +96,7 @@ inline ::tpy::val_or_ref_t<T> Box<T>::first() {
 // def first[T](items: list[T]) -> T:
 //     return items[0]
 template<typename T>
-::tpy::val_or_ref_t<T> first(std::vector<T>& items) {
+::tpy::val_or_ref_t<T> first(std::vector<::tpy::storage_t<T>>& items) {
     return ::tpy::__getitem__(items, 0);
 }
 // # (c) Return-through-local: generic caller -- p is val_or_ref_t<T>, param-derived.
@@ -104,8 +104,8 @@ template<typename T>
 //     p = first(items)
 //     return p  # tpyc: ok
 template<typename T>
-::tpy::val_or_ref_t<T> get_first_generic(std::vector<T>& items) {
-    ::tpy::val_or_ref_t<T> p = ::tpyapp::main::first<T>(items);
+::tpy::val_or_ref_t<T> get_first_generic(std::vector<::tpy::storage_t<T>>& items) {
+    ::tpy::val_or_ref_t<::tpy::storage_t<T>> p = ::tpyapp::main::first<::tpy::storage_t<T>>(items);
     return p;
 }
 // # (d2) Return-through-local: generic method caller (TpyMethodCall in is_param_derived_expr).

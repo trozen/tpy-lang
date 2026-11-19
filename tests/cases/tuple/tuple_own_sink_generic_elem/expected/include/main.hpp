@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 template<typename T>
 struct Tally {
     // _items: list[T]
-    std::vector<T> _items;
+    std::vector<::tpy::storage_t<T>> _items;
 
     // def __init__(self) -> None:
     Tally();
@@ -47,7 +47,7 @@ struct Tally {
     ::tpy::val_or_ref_t<T> get(int32_t i);
 
     // def pairs(self) -> Own[list[tuple[T, int32]]]:
-    std::vector<std::tuple<T, int32_t>> pairs() const;
+    std::vector<std::tuple<::tpy::storage_t<T>, int32_t>> pairs() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tally";
 };
 
@@ -65,7 +65,7 @@ inline Item::Item(int32_t n) : n(n) {}
 // def __init__(self) -> None:
 //     self._items = []
 template<typename T>
-inline Tally<T>::Tally() : _items(std::vector<T>{}) {}
+inline Tally<T>::Tally() : _items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def add(self, x: Own[T]) -> None:
 //     self._items.append(x)
@@ -90,15 +90,15 @@ inline ::tpy::val_or_ref_t<T> Tally<T>::get(int32_t i) {
 //         i += 1
 //     return out
 template<typename T>
-inline std::vector<std::tuple<T, int32_t>> Tally<T>::pairs() const {
-    std::vector<std::tuple<T, int32_t>> out = std::vector<std::tuple<T, int32_t>>{};
+inline std::vector<std::tuple<::tpy::storage_t<T>, int32_t>> Tally<T>::pairs() const {
+    std::vector<std::tuple<::tpy::storage_t<T>, int32_t>> out = std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>{};
     int32_t i = 0;
     auto& __obj_0 = this->_items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& it = *__beg_0;
-        out.push_back(std::tuple<T, int32_t>{T(it), i});
+        out.push_back(std::tuple<::tpy::storage_t<T>, int32_t>{::tpy::storage_t<T>(it), i});
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     return out;

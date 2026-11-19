@@ -20,7 +20,7 @@ using ::tpyapp::kin::Wing;
 
 // class Adder(Protocol):
 template<typename T>
-concept Adder = requires(T& t) {
+concept Adder = requires(::tpy::storage_t<T>& t) {
     { t.add(std::declval<int32_t>()) } -> std::convertible_to<void>;
 };
 

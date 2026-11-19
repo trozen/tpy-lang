@@ -12,7 +12,7 @@ namespace tpyapp::main {
 
 // class HasValue(Protocol):
 template<typename T>
-concept HasValue = requires(T& t) {
+concept HasValue = requires(::tpy::storage_t<T>& t) {
     { t.value() } -> std::convertible_to<int32_t>;
 };
 
@@ -20,7 +20,7 @@ struct DynValued;
 // @dynamic
 // class DynValued(HasValue, Protocol):
 template<typename T>
-concept __DynValued_Concept__ = requires(T& t) {
+concept __DynValued_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.value() } -> std::convertible_to<int32_t>;
 };
 

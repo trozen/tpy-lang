@@ -163,12 +163,12 @@ Point& ident(Point& p) {
 //         p.x += 100
 //     print("named-fn", ns[0].x, ns[1].x)
 //
-//     # a LAMBDA callee returns its own value (the named form above lends), so
-//     # the frame local holds a copy -- read-only, since a write through it
-//     # would not reach the source (BUGS.md#generic-yield-fn-result-copies)
+//     # a LAMBDA callee returning its parameter lends it, as the named form
+//     # above does: the frame local refers to the element
 //     ms = [Point(1), Point(2)]
-//     for p in mapped(lambda q: q, ms):  # tpyc: warning(/copies Point into owned storage/)
-//         print("fn", p.x)
+//     for p in mapped(lambda q: q, ms):  # tpyc: ok
+//         p.x += 100
+//     print("fn", ms[0].x, ms[1].x)
 //
 //     # ... and an `Own`-returning named callee behind the same param: a fresh
 //     # value the frame local owns
@@ -440,7 +440,7 @@ void main() {
     std::cout << "shadow-global" << " " << ::tpy::__getitem__((*shadowed_src), 0).x << " " << ::tpy::__getitem__((*shadowed_src), 1).x << "\n" << ::tpy::check_signals;
     std::array<Point, 2> ns = {Point(1), Point(2)};
     {
-        auto __src_42 = ::tpyapp::main::mapped<Point, ::tpy::val_or_ref<Point>>(ident, ns);
+        auto __src_42 = ::tpyapp::main::mapped<Point, Point>(ident, ns);
         auto&& __itr_42 = ::tpy::__iter__(__src_42);
         for (;;) {
             auto __r_43 = __itr_42.__next__();
@@ -452,22 +452,23 @@ void main() {
     std::cout << "named-fn" << " " << ::tpy::__getitem__(ns, 0).x << " " << ::tpy::__getitem__(ns, 1).x << "\n" << ::tpy::check_signals;
     std::array<Point, 2> ms = {Point(1), Point(2)};
     {
-        auto __src_44 = ::tpyapp::main::mapped<Point, Point>([](Point& q) -> Point { return q; }, ms);
+        auto __src_44 = ::tpyapp::main::mapped<Point, Point>([](Point& q) -> Point& { return q; }, ms);
         auto&& __itr_44 = ::tpy::__iter__(__src_44);
         for (;;) {
             auto __r_45 = __itr_44.__next__();
             if (!__r_45.has_value()) break;
-            const auto& p = ::tpy::unwrap_ref(*__r_45);
-            std::cout << "fn" << " " << p.x << "\n" << ::tpy::check_signals;
+            auto&& p = ::tpy::unwrap_ref(*__r_45);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
+    std::cout << "fn" << " " << ::tpy::__getitem__(ms, 0).x << " " << ::tpy::__getitem__(ms, 1).x << "\n" << ::tpy::check_signals;
     {
-        auto __src_46 = ::tpyapp::main::mapped<Point, Point>(fresh, ms);
+        auto __src_46 = ::tpyapp::main::mapped<Point, ::tpy::own_arg<Point>>(fresh, ms);
         auto&& __itr_46 = ::tpy::__iter__(__src_46);
         for (;;) {
             auto __r_47 = __itr_46.__next__();
             if (!__r_47.has_value()) break;
-            const auto& p = ::tpy::unwrap_ref(*__r_47);
+            auto&& p = ::tpy::own_bind(*__r_47);
             std::cout << "own-fn" << " " << p.x << "\n" << ::tpy::check_signals;
         }
     }

@@ -11,7 +11,7 @@ struct DynBase;
 // @dynamic
 // class DynBase(Protocol):
 template<typename T>
-concept __DynBase_Concept__ = requires(T& t) {
+concept __DynBase_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.base_method() } -> std::convertible_to<std::string_view>;
 };
 
@@ -22,7 +22,7 @@ struct DynBase {
 
 // class Mid(DynBase, Protocol):
 template<typename T>
-concept Mid = requires(T& t) {
+concept Mid = requires(::tpy::storage_t<T>& t) {
     { t.mid_method() } -> std::convertible_to<::tpy::BigInt>;
     { t.base_method() } -> std::convertible_to<std::string_view>;
 };

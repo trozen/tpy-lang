@@ -18,7 +18,7 @@ struct _Connection;
 // @dynamic
 // class _Connection(Protocol):
 template<typename T>
-concept ___Connection_Concept__ = requires(T& t) {
+concept ___Connection_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.connect() } -> std::convertible_to<void>;
     { t.request(std::declval<std::string>(), std::declval<std::string>(), std::declval<std::optional<::tpy::Bytes>>(), std::declval<::tpy::ordered_map<std::string, std::string>*>()) } -> std::convertible_to<void>;
     { t.getresponse() } -> std::convertible_to<HTTPResponse>;

@@ -339,7 +339,7 @@ inline void _ChanState<T>::_push(::tpy::own_param_t<T> value) {
 //     return value
 template<typename T>
 inline ::tpy::own_return_t<T> _ChanState<T>::_pop() {
-    T value = this->_buf.take(this->_head);
+    ::tpy::storage_t<T> value = this->_buf.take(this->_head);
     this->_head = (::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, 1)), this->_cap));
     this->_count = ::tpy::sub_check<uint32_t>(this->_count, 1);
     if (this->_has_send_waiter) {
@@ -412,14 +412,14 @@ inline ::tpystd::tpy::Poll<T> _Recv<T>::__poll__(::tpystd::coro::Waker waker) {
         throw ::tpy::CancelledError("");
     }
     if ((!(this->_state.__deref__()._is_empty()))) {
-        return ::tpystd::coro::poll_ready<T>(this->_state.__deref__()._pop());
+        return ::tpystd::coro::poll_ready<::tpy::storage_t<T>>(this->_state.__deref__()._pop());
     }
     if (this->_state.__deref__()._closed) {
         throw ChannelClosed("recv on closed channel");
     }
     this->_state.__deref__()._recv_waker = waker;
     this->_state.__deref__()._has_recv_waiter = true;
-    return ::tpystd::coro::poll_pending<T>();
+    return ::tpystd::coro::poll_pending<::tpy::storage_t<T>>();
 }
 
 // def __init__(self, state: Own[Rc[_ChanState[T]]], value: Own[T]) -> None:

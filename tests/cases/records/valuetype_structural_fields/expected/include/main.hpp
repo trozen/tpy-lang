@@ -72,7 +72,7 @@ inline std::ostream& operator<<(std::ostream& os, const Keeper& obj) {
 template<::tpy::ValueType T>
 struct Slot {
     // x: T | None  # tpyc: ok
-    std::optional<T> x;
+    std::optional<::tpy::storage_t<T>> x;
 
     // def __init__(self, x: T | None) -> None:
     Slot() = default;
@@ -152,7 +152,7 @@ inline std::string P::__str__() const {
 // def __init__(self, x: T | None) -> None:
 //     self.x = x
 template<::tpy::ValueType T>
-inline Slot<T>::Slot(::tpy::opt_cparam_t<T> x) : x(::tpy::to_opt_storage<std::optional<T>>(x)) {}
+inline Slot<T>::Slot(::tpy::opt_cparam_t<T> x) : x(::tpy::to_opt_storage<std::optional<::tpy::storage_t<T>>>(x)) {}
 
 // def show_slot[T: ValueType](tag: str, s: Slot[T]) -> None:
 //     if s.x is None:
@@ -164,7 +164,7 @@ void show_slot(std::string_view tag, Slot<T> s) {
     if ((!s.x.has_value())) {
         std::cout << tag << " " << "none" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << tag << " " << ::tpy::print_optional_val<::tpy::ValuePrinter<T>, T>(s.x) << "\n" << ::tpy::check_signals;
+        std::cout << tag << " " << ::tpy::print_optional_val<::tpy::ValuePrinter<::tpy::storage_t<T>>, ::tpy::storage_t<T>>(s.x) << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "collections";
 template<::tpystd::tpy::Hashable T>
 struct Counter {
     // _data: dict[T, int]
-    ::tpy::ordered_map<T, ::tpy::BigInt> _data;
+    ::tpy::ordered_map<::tpy::storage_t<T>, ::tpy::BigInt> _data;
 
     // def __init__(self, items: Iterable[T] | None = None) -> None:
     Counter();
@@ -39,7 +39,7 @@ struct Counter {
     ::tpy::BigInt total() const;
 
     // def most_common(self, n: int32) -> Own[list[tuple[T, int]]]:
-    std::vector<std::tuple<T, ::tpy::BigInt>> most_common(int32_t n) const;
+    std::vector<std::tuple<::tpy::storage_t<T>, ::tpy::BigInt>> most_common(int32_t n) const;
 
     // def update(self, other: Counter[T]) -> None:
     void update(const Counter<T>& other);
@@ -71,7 +71,7 @@ inline Counter<T>::Counter() : Counter(static_cast<std::nullptr_t*>(nullptr)) {}
 template<::tpystd::tpy::Hashable T>
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, T>)
-inline Counter<T>::Counter(const T_items* items) : _data(::tpy::ordered_map<T, ::tpy::BigInt>()) {
+inline Counter<T>::Counter(const T_items* items) : _data(::tpy::ordered_map<::tpy::storage_t<T>, ::tpy::BigInt>()) {
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
         auto& __src_0 = (*items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -144,16 +144,16 @@ inline ::tpy::BigInt Counter<T>::total() const {
 //         del out[len(out) - 1]
 //     return out
 template<::tpystd::tpy::Hashable T>
-inline std::vector<std::tuple<T, ::tpy::BigInt>> Counter<T>::most_common(int32_t n) const {
-    std::vector<std::tuple<T, ::tpy::BigInt>> pairs = std::vector<std::tuple<T, ::tpy::BigInt>>{};
+inline std::vector<std::tuple<::tpy::storage_t<T>, ::tpy::BigInt>> Counter<T>::most_common(int32_t n) const {
+    std::vector<std::tuple<::tpy::storage_t<T>, ::tpy::BigInt>> pairs = std::vector<std::tuple<::tpy::storage_t<T>, ::tpy::BigInt>>{};
     auto& __obj_0 = this->_data;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& k = *__beg_0;
-        pairs.push_back(std::tuple<T, ::tpy::BigInt>{T(k), ::tpy::__getitem__(this->_data, k)});
+        pairs.push_back(std::tuple<::tpy::storage_t<T>, ::tpy::BigInt>{::tpy::storage_t<T>(k), ::tpy::__getitem__(this->_data, k)});
     }
-    std::vector<std::tuple<T, ::tpy::BigInt>> out = ::tpy::builtin_sorted_key<std::tuple<T, ::tpy::BigInt>>(::tpy::own_iter(std::move(pairs)), [](const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt>& kv) -> ::tpy::BigInt { return std::get<1>(kv); }, true);
+    std::vector<std::tuple<::tpy::storage_t<T>, ::tpy::BigInt>> out = ::tpy::builtin_sorted_key<std::tuple<::tpy::storage_t<T>, ::tpy::BigInt>>(::tpy::own_iter(std::move(pairs)), [](const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt>& kv) -> ::tpy::BigInt { return std::get<1>(kv); }, true);
     while (((::tpy::__len__(out) > 0) && (::tpy::__len__(out) > n))) {
         ::tpy::__delitem__(out, (::tpy::sub_check<int32_t>(::tpy::__len__(out), 1)));
     }
@@ -170,7 +170,7 @@ inline void Counter<T>::update(const Counter<T>& other) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& k = *__beg_0;
-        ::tpy::__setitem__(this->_data, T(k), ((::tpy::dict_get_default(this->_data, k, ::tpy::BigInt(0))) + (::tpy::__getitem__(other._data, k))));
+        ::tpy::__setitem__(this->_data, ::tpy::storage_t<T>(k), ((::tpy::dict_get_default(this->_data, k, ::tpy::BigInt(0))) + (::tpy::__getitem__(other._data, k))));
     }
 }
 
@@ -184,7 +184,7 @@ inline void Counter<T>::subtract(const Counter<T>& other) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& k = *__beg_0;
-        ::tpy::__setitem__(this->_data, T(k), ((::tpy::dict_get_default(this->_data, k, ::tpy::BigInt(0))) - (::tpy::__getitem__(other._data, k))));
+        ::tpy::__setitem__(this->_data, ::tpy::storage_t<T>(k), ((::tpy::dict_get_default(this->_data, k, ::tpy::BigInt(0))) - (::tpy::__getitem__(other._data, k))));
     }
 }
 

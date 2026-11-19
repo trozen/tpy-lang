@@ -46,7 +46,7 @@ int64_t pair_sum(const std::tuple<std::vector<int64_t>*, int64_t>& t);
 std::vector<int64_t> pick(bool f);
 // def has_item[T: Equatable](xs: list[T], v: T) -> bool:
 template<::tpystd::tpy::Equatable T>
-bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+bool has_item(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v);
 // @dispatch
 // def total(v: Span[int32]) -> int64:
 int64_t total__Span_int32(std::span<int32_t> v);
@@ -341,7 +341,7 @@ inline bool Scope::__exit__(std::monostate et, const ::tpy::BaseException* ev, s
 //             return True
 //     return False
 template<::tpystd::tpy::Equatable T>
-bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
+bool has_item(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

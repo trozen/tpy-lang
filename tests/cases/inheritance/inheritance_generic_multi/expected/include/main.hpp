@@ -18,9 +18,9 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T, typename U>
 struct Base {
     // first: T
-    T first;
+    ::tpy::storage_t<T> first;
     // second: U
-    U second;
+    ::tpy::storage_t<U> second;
 
     // def __init__(self, first: T, second: U) -> None:
     Base() = default;
@@ -93,7 +93,7 @@ inline Base<T, U>::Base(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<
 //     self.first = v
 template<typename T, typename U>
 inline void Base<T, U>::set_first(::tpy::param_val_or_ref_t<T> v) {
-    this->first = ::tpy::param_to_storage<T>(v);
+    this->first = ::tpy::param_consume<T>(v);
 }
 
 // def get_first(self) -> T:

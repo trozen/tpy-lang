@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class HasN(Protocol):
 template<typename T>
-concept HasN = requires(T& t) {
+concept HasN = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> std::convertible_to<int32_t>;
 };
 

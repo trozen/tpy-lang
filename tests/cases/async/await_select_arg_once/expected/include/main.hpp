@@ -452,7 +452,7 @@ inline std::string P::__repr__() const {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> gsink(::tpy::param_val_or_ref_t<T> x, int32_t k) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 
 void __tpy_init();

@@ -20,14 +20,14 @@ void main();
 template<typename T>
 struct Container {
     // _val: T | None
-    std::optional<T> _val;
+    std::optional<::tpy::storage_t<T>> _val;
 
     // def __init__(self, val: T | None):
     Container() = default;
     explicit Container(::tpy::opt_cparam_t<T> val);
 
     // def get(self) -> T | None:
-    T* get();
+    ::tpy::storage_t<T>* get();
 
     // def set(self, val: T | None) -> None:
     void set(::tpy::opt_cparam_t<T> val);
@@ -44,12 +44,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // def __init__(self, val: T | None):
 //     self._val = val
 template<typename T>
-inline Container<T>::Container(::tpy::opt_cparam_t<T> val) : _val(::tpy::to_opt_storage<std::optional<T>>(val)) {}
+inline Container<T>::Container(::tpy::opt_cparam_t<T> val) : _val(::tpy::to_opt_storage<std::optional<::tpy::storage_t<T>>>(val)) {}
 
 // def get(self) -> T | None:
 //     return self._val
 template<typename T>
-inline T* Container<T>::get() {
+inline ::tpy::storage_t<T>* Container<T>::get() {
     return ::tpy::optional_to_ptr(this->_val);
 }
 
@@ -57,7 +57,7 @@ inline T* Container<T>::get() {
 //     self._val = val
 template<typename T>
 inline void Container<T>::set(::tpy::opt_cparam_t<T> val) {
-    this->_val = ::tpy::to_opt_storage<std::optional<T>>(val);
+    this->_val = ::tpy::to_opt_storage<std::optional<::tpy::storage_t<T>>>(val);
 }
 
 void __tpy_init();

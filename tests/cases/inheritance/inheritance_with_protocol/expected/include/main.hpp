@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Printable(Protocol):
 template<typename T>
-concept Printable = requires(const T& t) {
+concept Printable = requires(const ::tpy::storage_t<T>& t) {
     { ::tpy::__str__(t) } -> std::convertible_to<std::string_view>;
 };
 

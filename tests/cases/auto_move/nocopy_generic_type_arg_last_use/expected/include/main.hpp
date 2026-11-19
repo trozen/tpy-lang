@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 template<typename T>
 struct Holder {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: Own[T]):
     Holder() = default;

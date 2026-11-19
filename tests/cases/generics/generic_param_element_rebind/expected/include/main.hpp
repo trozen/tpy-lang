@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def last[T](a: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> last(std::vector<T>& a);
+::tpy::val_or_ref_t<T> last(std::vector<::tpy::storage_t<T>>& a);
 // def main() -> None:
 void main();
 
@@ -43,8 +43,8 @@ inline Point::Point(int32_t x) : x(x) {}
 //         result = a[i]
 //     return result
 template<typename T>
-::tpy::val_or_ref_t<T> last(std::vector<T>& a) {
-    T* result = &(::tpy::__getitem__(a, 0));
+::tpy::val_or_ref_t<T> last(std::vector<::tpy::storage_t<T>>& a) {
+    ::tpy::storage_t<T>* result = &(::tpy::__getitem__(a, 0));
     int32_t __stop_0 = ::tpy::__len__(a);
     for (int32_t i = 1; i < __stop_0; ++i) {
         result = &(::tpy::__getitem__(a, i));

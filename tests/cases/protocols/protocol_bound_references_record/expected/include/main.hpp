@@ -11,7 +11,7 @@ struct Foo;
 
 // class FooMaker(Protocol):
 template<typename T>
-concept FooMaker = requires(T& t) {
+concept FooMaker = requires(::tpy::storage_t<T>& t) {
     { t.make() } -> std::convertible_to<Foo>;
 };
 
@@ -49,7 +49,7 @@ template<FooMaker T> struct Bar;
 
 // class BarUser(Protocol):
 template<typename T>
-concept BarUser = requires(T& t) {
+concept BarUser = requires(::tpy::storage_t<T>& t) {
     { t.use_bar(std::declval<Bar<DefaultFooMaker>&>()) } -> std::convertible_to<int32_t>;
 };
 
@@ -63,7 +63,7 @@ void main();
 template<FooMaker T>
 struct Bar {
     // factory: T
-    T factory;
+    ::tpy::storage_t<T> factory;
 
     // def __init__(self, factory: T) -> None:
     Bar() = default;

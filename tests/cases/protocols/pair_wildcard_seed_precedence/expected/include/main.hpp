@@ -15,7 +15,7 @@ struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>
-concept __Pet_Concept__ = requires(T& t) {
+concept __Pet_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 
@@ -61,9 +61,9 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 template<typename A, typename B>
 struct Pair {
     // a: A
-    A a;
+    ::tpy::storage_t<A> a;
     // b: B
-    B b;
+    ::tpy::storage_t<B> b;
 
     // def __init__(self, a: Own[A], b: Own[B]) -> None:
     Pair() = default;

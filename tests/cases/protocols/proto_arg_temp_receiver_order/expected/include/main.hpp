@@ -11,7 +11,7 @@ struct SP;
 // @dynamic
 // class SP(Protocol):
 template<typename T>
-concept __SP_Concept__ = requires(T& t) {
+concept __SP_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.put(std::declval<std::string>()) } -> std::convertible_to<void>;
 };
 

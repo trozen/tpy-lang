@@ -23,7 +23,7 @@ struct ArrayList {
     // def __init__(self, items: Spannable[T] | Iterable[Own[T]] | None = None) -> None:
     ArrayList();
     template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, T> || ::tpystd::tpy::Spannable<T_items, T>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, ::tpy::storage_t<T>> || ::tpystd::tpy::Spannable<T_items, T>)
     explicit ArrayList(const T_items* items = nullptr);
     // copyable via __copy__
     ArrayList(const ArrayList& other);
@@ -104,8 +104,8 @@ struct ArrayList {
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
-    std::span<const T> __getitem____basic_slice(::tpy::BasicSlice index) const;
-    std::span<const T> __getitem__(::tpy::BasicSlice index) const;
+    std::span<const ::tpy::storage_t<T>> __getitem____basic_slice(::tpy::BasicSlice index) const;
+    std::span<const ::tpy::storage_t<T>> __getitem__(::tpy::BasicSlice index) const;
 
     // def __setitem__(self, index: int32, value: Own[T]) -> None:
     void __setitem__(int32_t index, ::tpy::own_param_t<T> value);
@@ -127,7 +127,7 @@ struct ArrayList {
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[T]]:
-    std::span<const T> __span__() const;
+    std::span<const ::tpy::storage_t<T>> __span__() const;
 
     // @auto_readonly
     // def __iter__(self) -> SpanIter[auto_readonly[T]]:
@@ -135,11 +135,11 @@ struct ArrayList {
 
     // @auto_readonly
     // def __iter__(self) -> SpanIter[auto_readonly[T]]:
-    ::tpy::SpanIter<const T> __iter__() const;
+    ::tpy::SpanIter<const ::tpy::storage_t<T>> __iter__() const;
 
     // def extend(self, items: Spannable[T] | Iterable[Own[T]]) -> None:
     template<typename T_items>
-  requires (::tpystd::typing::Iterable<T_items, T> || ::tpystd::tpy::Spannable<T_items, T>)
+  requires (::tpystd::typing::Iterable<T_items, ::tpy::storage_t<T>> || ::tpystd::tpy::Spannable<T_items, T>)
     void extend(T_items&& items);
 
     // def clear(self) -> None:
@@ -155,7 +155,7 @@ struct ArrayList {
 
     ::tpy::val_or_ref_t<T> operator[](int32_t index);
 
-    std::span<const T> operator[](::tpy::BasicSlice index) const;
+    std::span<const ::tpy::storage_t<T>> operator[](::tpy::BasicSlice index) const;
 
     std::span<T> operator[](::tpy::BasicSlice index);
 
@@ -184,7 +184,7 @@ inline ArrayList<T, N>::ArrayList() : ArrayList(static_cast<std::nullptr_t*>(nul
 //         self.extend(items)
 template<typename T, std::size_t N>
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, T> || ::tpystd::tpy::Spannable<T_items, T>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, ::tpy::storage_t<T>> || ::tpystd::tpy::Spannable<T_items, T>)
 inline ArrayList<T, N>::ArrayList(const T_items* items)
     : _storage(::tpy::UninitArrayStorage<T, N>()),
       _size(0) {
@@ -238,7 +238,7 @@ inline ArrayList<T, N> ArrayList<T, N>::__copy__() const {
     ArrayList<T, N> result = ArrayList<T, N>();
     uint32_t __stop_0 = this->_size;
     for (uint32_t ui = 0; ui < __stop_0; ++ui) {
-        result.append(T(this->_storage.load(ui)));
+        result.append(::tpy::storage_t<T>(this->_storage.load(ui)));
     }
     return result;
 }
@@ -259,7 +259,7 @@ inline void ArrayList<T, N>::append(::tpy::own_param_t<T> value) {
 template<typename T, std::size_t N>
 inline void ArrayList<T, N>::append_default()
   requires ::std::default_initializable<T> {
-    this->append(T{});
+    this->append(::tpy::storage_t<T>{});
 }
 
 // def pop(self, index: int32 | None = None) -> Own[T]:
@@ -282,7 +282,7 @@ inline ::tpy::own_return_t<T> ArrayList<T, N>::pop(std::optional<int32_t> index)
     }
     uint32_t ui = static_cast<uint32_t>((*index));
     if (!((ui < this->_size))) ::tpy::raise_assertion_error();
-    T result = this->_storage.take(ui);
+    ::tpy::storage_t<T> result = this->_storage.take(ui);
     this->_storage.shift((::tpy::add_check<uint32_t>(ui, 1)), ui, (::tpy::sub_check<uint32_t>((::tpy::sub_check<uint32_t>(this->_size, ui)), 1)));
     this->_size = ::tpy::sub_check<uint32_t>(this->_size, 1);
     return result;
@@ -346,7 +346,7 @@ inline int32_t ArrayList<T, N>::count(::tpy::readonly_form_t<T> value) const
 template<typename T, std::size_t N>
 inline void ArrayList<T, N>::remove(::tpy::param_val_or_ref_t<T> value)
   requires ::tpystd::tpy::Equatable<T> {
-    this->pop(this->index(value));
+    this->pop(this->index(::tpy::param_pass_last<T>(value)));
 }
 
 // def reverse(self) -> None:
@@ -369,8 +369,8 @@ inline void ArrayList<T, N>::reverse() {
     uint32_t lo = 0;
     uint32_t hi = (::tpy::sub_check<uint32_t>(this->_size, 1));
     while ((lo < hi)) {
-        T a = this->_storage.take(lo);
-        T b = this->_storage.take(hi);
+        ::tpy::storage_t<T> a = this->_storage.take(lo);
+        ::tpy::storage_t<T> b = this->_storage.take(hi);
         this->_storage.init(lo, std::move(b));
         this->_storage.init(hi, std::move(a));
         lo = ::tpy::add_check<uint32_t>(lo, 1);
@@ -398,8 +398,8 @@ inline void ArrayList<T, N>::swap(int32_t i, int32_t j) {
     if ((ui == uj)) {
         return;
     }
-    T a = this->_storage.take(ui);
-    T b = this->_storage.take(uj);
+    ::tpy::storage_t<T> a = this->_storage.take(ui);
+    ::tpy::storage_t<T> b = this->_storage.take(uj);
     this->_storage.init(ui, std::move(b));
     this->_storage.init(uj, std::move(a));
 }
@@ -490,12 +490,12 @@ inline std::span<T> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) {
 // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
 //     return self.__span__()[index]
 template<typename T, std::size_t N>
-inline std::span<const T> ArrayList<T, N>::__getitem____basic_slice(::tpy::BasicSlice index) const {
+inline std::span<const ::tpy::storage_t<T>> ArrayList<T, N>::__getitem____basic_slice(::tpy::BasicSlice index) const {
     return ::tpy::list_slice(this->__span__(), index);
 }
 
 template<typename T, std::size_t N>
-inline std::span<const T> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) const {
+inline std::span<const ::tpy::storage_t<T>> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) const {
     return this->__getitem____basic_slice(index);
 }
 
@@ -578,7 +578,7 @@ inline std::span<T> ArrayList<T, N>::__span__() {
 // def __span__(self) -> Span[auto_readonly[T]]:
 //     return self._storage.ptr().span(int32.wrap(self._size))
 template<typename T, std::size_t N>
-inline std::span<const T> ArrayList<T, N>::__span__() const {
+inline std::span<const ::tpy::storage_t<T>> ArrayList<T, N>::__span__() const {
     return std::span(this->_storage.ptr(), static_cast<size_t>(static_cast<int32_t>(this->_size)));
 }
 
@@ -594,8 +594,8 @@ inline ::tpy::SpanIter<T> ArrayList<T, N>::__iter__() {
 // def __iter__(self) -> SpanIter[auto_readonly[T]]:
 //     return SpanIter(self.__span__())
 template<typename T, std::size_t N>
-inline ::tpy::SpanIter<const T> ArrayList<T, N>::__iter__() const {
-    return ::tpy::SpanIter<const T>(this->__span__());
+inline ::tpy::SpanIter<const ::tpy::storage_t<T>> ArrayList<T, N>::__iter__() const {
+    return ::tpy::SpanIter<const ::tpy::storage_t<T>>(this->__span__());
 }
 
 // def extend(self, items: Spannable[T] | Iterable[Own[T]]) -> None:
@@ -611,15 +611,15 @@ inline ::tpy::SpanIter<const T> ArrayList<T, N>::__iter__() const {
 //             self.append(item)
 template<typename T, std::size_t N>
 template<typename T_items>
-  requires (::tpystd::typing::Iterable<T_items, T> || ::tpystd::tpy::Spannable<T_items, T>)
+  requires (::tpystd::typing::Iterable<T_items, ::tpy::storage_t<T>> || ::tpystd::tpy::Spannable<T_items, T>)
 inline void ArrayList<T, N>::extend(T_items&& items) {
     if constexpr (::tpystd::tpy::Spannable<std::remove_cvref_t<T_items>, T>) {
-        std::span<const T> items_span = ::tpy::as_span(items);
+        std::span<const ::tpy::storage_t<T>> items_span = ::tpy::as_span(items);
         uint32_t u_size = static_cast<uint32_t>(::tpy::__len__(items_span));
         if (!(((::tpy::add_check<uint32_t>(this->_size, u_size)) <= this->_storage.capacity()))) ::tpy::raise_assertion_error();
         this->_storage.init_from_span(this->_size, items_span);
         this->_size = ::tpy::add_check<uint32_t>(this->_size, u_size);
-    } else if constexpr (::tpystd::typing::Iterable<std::remove_cvref_t<T_items>, T>) {
+    } else if constexpr (::tpystd::typing::Iterable<std::remove_cvref_t<T_items>, ::tpy::storage_t<T>>) {
         auto& __src_0 = items;
         auto&& __itr_0 = ::tpy::handover_iter<decltype(items)>(__src_0);
         for (;;) {
@@ -690,7 +690,7 @@ inline ::tpy::val_or_ref_t<T> ArrayList<T, N>::operator[](int32_t index) {
 }
 
 template<typename T, std::size_t N>
-inline std::span<const T> ArrayList<T, N>::operator[](::tpy::BasicSlice index) const {
+inline std::span<const ::tpy::storage_t<T>> ArrayList<T, N>::operator[](::tpy::BasicSlice index) const {
     return __getitem__(index);
 }
 

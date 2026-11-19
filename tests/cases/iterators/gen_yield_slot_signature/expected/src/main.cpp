@@ -376,7 +376,7 @@ void main() {
     std::cout << "unpack" << " " << std::get<1>(::tpy::__getitem__(g, 0)).n << " " << std::get<1>(::tpy::__getitem__(g, 1)).n << "\n" << ::tpy::check_signals;
     std::array<P, 2> h = {P(1), P(2)};
     {
-        auto __src_18 = ::tpyapp::main::my_map<P, ::tpy::val_or_ref<P>>(identity, h);
+        auto __src_18 = ::tpyapp::main::my_map<P, P>(identity, h);
         auto&& __itr_18 = ::tpy::__iter__(__src_18);
         for (;;) {
             auto __r_19 = __itr_18.__next__();
@@ -491,7 +491,7 @@ void main() {
         }
     }
     {
-        auto __src_36 = ::tpyapp::main::ro_map<P, ::tpy::val_or_ref<P>>(identity, rp);
+        auto __src_36 = ::tpyapp::main::ro_map<P, P>(identity, rp);
         auto&& __itr_36 = ::tpy::__iter__(__src_36);
         for (;;) {
             auto __r_37 = __itr_36.__next__();

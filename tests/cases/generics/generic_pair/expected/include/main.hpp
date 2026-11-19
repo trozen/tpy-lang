@@ -18,9 +18,9 @@ void main();
 template<typename A, typename B>
 struct Pair {
     // first: A
-    A first;
+    ::tpy::storage_t<A> first;
     // second: B
-    B second;
+    ::tpy::storage_t<B> second;
 
     // def __init__(self, first: A, second: B) -> None:
     Pair() = default;

@@ -9,9 +9,9 @@ namespace tpyapp::main {
 
 // class HasPair[T](Protocol):
 template<typename T, typename _T0>
-concept HasPair = requires(T& t) {
-    { t.pair() } -> std::convertible_to<std::tuple<_T0, int32_t>>;
-    { t.consume(std::declval<std::tuple<_T0, int32_t>>()) } -> std::convertible_to<int32_t>;
+concept HasPair = requires(::tpy::storage_t<T>& t) {
+    { t.pair() } -> std::convertible_to<std::tuple<::tpy::storage_t<_T0>, int32_t>>;
+    { t.consume(std::declval<std::tuple<::tpy::storage_t<_T0>, int32_t>>()) } -> std::convertible_to<int32_t>;
 };
 
 template<typename T> struct Cell;
@@ -31,7 +31,7 @@ void main();
 template<typename T>
 struct Cell {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Cell() = default;
@@ -85,7 +85,7 @@ int32_t second_of(T_s&& s) {
 //     return s.consume((v, int32(2)))
 template<typename T, HasPair<T> T_s>
 int32_t use_consume(T_s&& s, ::tpy::param_val_or_ref_t<T> v) {
-    return s.consume(std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(v), 2});
+    return s.consume(std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(v)), 2});
 }
 
 void __tpy_init();

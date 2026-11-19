@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Printable(Protocol):
 template<typename T>
-concept Printable = requires(T& t) {
+concept Printable = requires(::tpy::storage_t<T>& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
@@ -36,7 +36,7 @@ template<Printable T> struct Wrapper;
 
 // class WrapperMaker(Protocol):
 template<typename T>
-concept WrapperMaker = requires(T& t) {
+concept WrapperMaker = requires(::tpy::storage_t<T>& t) {
     { t.make(std::declval<std::string>()) } -> std::convertible_to<Wrapper<Message>>;
 };
 
@@ -52,7 +52,7 @@ void main();
 template<Printable T>
 struct Wrapper {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Wrapper() = default;
@@ -87,7 +87,7 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultWrapperMaker& obj
 template<WrapperMaker T>
 struct Container {
     // factory: T
-    T factory;
+    ::tpy::storage_t<T> factory;
 
     // def __init__(self, factory: T) -> None:
     Container() = default;

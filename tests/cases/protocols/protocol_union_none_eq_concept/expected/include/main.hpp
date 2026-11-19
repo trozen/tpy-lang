@@ -9,14 +9,14 @@ namespace tpyapp::main {
 
 // class HasA(Protocol):
 template<typename T>
-concept HasA = requires(T& t) {
+concept HasA = requires(::tpy::storage_t<T>& t) {
     { t.a() } -> std::convertible_to<int32_t>;
 };
 
 // @runtime_checkable
 // class Eq(Protocol):
 template<typename T>
-concept Eq = requires(const T& t) {
+concept Eq = requires(const ::tpy::storage_t<T>& t) {
     { t == std::declval<T&>() } -> std::convertible_to<bool>;
 };
 

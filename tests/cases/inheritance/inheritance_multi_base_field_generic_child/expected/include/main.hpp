@@ -20,7 +20,7 @@ void main();
 template<typename T>
 struct Box {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -71,7 +71,7 @@ template<typename U>
 inline Container<U>::Container(::tpy::readonly_form_t<U> v, std::string_view label)
     : Box<U>(),
       Label() {
-    this->Box<U>::value = ::tpy::param_to_storage<U>(v);
+    this->Box<U>::value = ::tpy::param_consume<U>(v);
     this->Label::value = label;
 }
 

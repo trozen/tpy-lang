@@ -18,7 +18,7 @@ void main();
 template<typename T, std::size_t N>
 struct Container {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, v: T) -> None:
     Container() = default;

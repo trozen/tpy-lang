@@ -14,7 +14,7 @@ template<typename T, ::tpystd::typing::Iterable<T> T_items>
 ::tpy::own_return_t<T> first(T_items&& items);
 // def to_list[T](items: Own[Iterable[T]]) -> Own[list[T]]:  # tpyc: warning(/never consumed/)
 template<typename T, ::tpystd::typing::Iterable<T> T_items>
-std::vector<T> to_list(T_items&& items);
+std::vector<::tpy::storage_t<T>> to_list(T_items&& items);
 // def main() -> None:
 void main();
 
@@ -41,8 +41,8 @@ template<typename T, ::tpystd::typing::Iterable<T> T_items>
 //         result.append(x)
 //     return result
 template<typename T, ::tpystd::typing::Iterable<T> T_items>
-std::vector<T> to_list(T_items&& items) {
-    std::vector<T> result = std::vector<T>{};
+std::vector<::tpy::storage_t<T>> to_list(T_items&& items) {
+    std::vector<::tpy::storage_t<T>> result = std::vector<::tpy::storage_t<T>>{};
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

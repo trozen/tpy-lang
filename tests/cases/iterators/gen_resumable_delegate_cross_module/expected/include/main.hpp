@@ -68,11 +68,11 @@ void main();
 template<typename T>
 struct LocalBox {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
     LocalBox() = default;
-    explicit LocalBox(std::vector<T>&& items);
+    explicit LocalBox(std::vector<::tpy::storage_t<T>>&& items);
 
     __gen_LocalBox_two<T> two();
     static constexpr std::string_view __tpy_class_name__ = "__main__.LocalBox";
@@ -445,7 +445,7 @@ struct __gen_generic_owner_local : public ::tpy::next_iter_mixin<__gen_generic_o
 // def __init__(self, items: Own[list[T]]) -> None:
 //     self.items = items
 template<typename T>
-inline LocalBox<T>::LocalBox(std::vector<T>&& items) : items(std::move(items)) {}
+inline LocalBox<T>::LocalBox(std::vector<::tpy::storage_t<T>>&& items) : items(std::move(items)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

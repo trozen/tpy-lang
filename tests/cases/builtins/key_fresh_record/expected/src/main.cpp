@@ -56,10 +56,13 @@ std::vector<int32_t> ns(const std::vector<Rec>& rs) {
 //     print("free min3_cls", min(a, b, c, key=Key).n)  # tpyc: ok
 //     print("free max3_own", max(a, b, c, key=lambda r: make_key(r)).n)  # tpyc: ok
 //     print("free max3_cls", max(a, b, c, key=Key).n)  # tpyc: ok
-//     # an identity key copies the element (warned, as at a plain Callable
-//     # parameter; BUGS.md#identity-key-lambda-copies-element); non-mutating calls on the const param
-//     print("free sorted_id", ns(sorted(rs, key=lambda r: r)))  # tpyc: warning(/copies Rec into owned storage/)
-//     print("free min_id", min(a, b, key=lambda r: r).n)  # tpyc: warning(/copies Rec into owned storage/)
+//     # an identity key returns its parameter, a borrow: the key copies
+//     # nothing (the sorted list copies the elements, as above); non-mutating
+//     # calls on the const param
+//     print("free sorted_id", ns(sorted(rs, key=lambda r: r)))  # tpyc: warning(/copies Rec elements/)
+//     # the result is `a` or `b` itself: a write through it reaches it
+//     min(a, b, key=lambda r: r).n += 10  # tpyc: ok
+//     print("free min_id", a.n, b.n)
 //     print("free min_method", min(a, b, key=lambda r: r.score()).n)  # tpyc: ok
 //     print("free max_helper", max(a, b, key=lambda r: helper(r)).n)  # tpyc: ok
 void free(std::vector<Rec>& rs) {
@@ -80,9 +83,13 @@ void free(std::vector<Rec>& rs) {
     std::cout << "free min3_cls" << " " << ::tpy::assert_lent(::tpy::min3_key(a, b, c, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); })).n << "\n" << ::tpy::check_signals;
     std::cout << "free max3_own" << " " << ::tpy::assert_lent(::tpy::max3_key(a, b, c, [](const Rec& r) -> Key { return ::tpyapp::main::make_key(r); })).n << "\n" << ::tpy::check_signals;
     std::cout << "free max3_cls" << " " << ::tpy::assert_lent(::tpy::max3_key(a, b, c, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); })).n << "\n" << ::tpy::check_signals;
-    std::vector<Rec> __tmp_4 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Rec { return r; });
+    std::vector<Rec> __tmp_4 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> const Rec& { return r; });
     std::cout << "free sorted_id" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_4)) << "\n" << ::tpy::check_signals;
-    std::cout << "free min_id" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& r) -> Rec { return r; })).n << "\n" << ::tpy::check_signals;
+    {
+        auto&& __tmp_5 = ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& r) -> const Rec& { return r; }));
+        __tmp_5.n = ::tpy::add_check<int32_t>(__tmp_5.n, 10);
+    }
+    std::cout << "free min_id" << " " << a.n << " " << b.n << "\n" << ::tpy::check_signals;
     std::cout << "free min_method" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& r) -> int32_t { return r.score(); })).n << "\n" << ::tpy::check_signals;
     std::cout << "free max_helper" << " " << ::tpy::assert_lent(::tpy::max_key(a, b, [](const Rec& r) -> int32_t { return ::tpyapp::main::helper(r); })).n << "\n" << ::tpy::check_signals;
 }

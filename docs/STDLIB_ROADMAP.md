@@ -825,8 +825,8 @@ BUGS.md / TODO.md, not on macro or closure infrastructure:
 
 | Item | Status | Notes |
 |---|---|---|
-| `reduce(func, a, initial)` | Done | Pure TPy. Takes `Iterable[T]` -- accepts list literals, `range()`, bound list/iter vars |
-| `reduce(func, a)` | Done | Pure TPy. Takes `list[T]` (random-access; raises on empty). Restricted to list rather than `Iterable[T]` because TPy doesn't have CPython's iter/next + StopIteration pattern |
+| `reduce(func, a, initial)` | Done | Pure TPy, two forms picked by the combiner's declared return: a combiner returning one of its arguments (`-> P`) lends the chosen object back, as CPython; one building a value (`-> Own[P]`, or any value type) moves each result into the accumulator. The owning form takes `Iterable[T]` (list literals, `range()`, bound list/iter vars); the lending form takes a `list` -- bind `list(...)` of another iterable to a local first |
+| `reduce(func, a)` | Done | Pure TPy, the same two forms. Takes `list[T]` (random-access; an empty list raises `TypeError`, as CPython). Restricted to list rather than `Iterable[T]` because TPy doesn't have CPython's iter/next + StopIteration pattern |
 | `cmp_to_key` | Blocked | Pure TPy; blocked on readonly-through-generics. See BUGS.md |
 | `total_ordering` | Done | Class macro in `lib/tpy/_functools_macros.py`, re-exported via `lib/tpy/functools.py`. Synthesizes the missing comparison ops from any one of `__lt__` / `__le__` / `__gt__` / `__ge__` plus `__eq__`. Defers synthesis via `ClassInfo.defer_until_macros_complete` so it composes with `@dataclass` regardless of decorator order -- dataclass adds `__eq__` (and optionally `__lt__`/`__le__`/`__gt__`/`__ge__`), total_ordering then picks an anchor and fills in the rest |
 | `wraps`, `update_wrapper` | Blocked | CPython's `@wraps(f)` is a decorator factory (`wraps(f)` returns a decorator that takes the wrapper). TPy macro_api has no "decorator factory that's identity" form; would need new infrastructure separate from class/call/builder macros |

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Container[T](Protocol):
 template<typename T, typename _T0>
-concept Container = requires(T& t) {
+concept Container = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> ::tpy::proto_result<_T0>;
     { t.set(std::declval<::tpy::param_val_or_ref_t<_T0>>()) } -> std::convertible_to<void>;
 };

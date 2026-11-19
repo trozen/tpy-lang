@@ -46,7 +46,7 @@ template<typename T, ::tpystd::typing::Iterable<T> T_xs>
         auto&& x = ::tpy::unwrap_ref(*__r_1);
         return x;
     }
-    return ::tpy::param_to_return<T>(fallback);
+    return ::tpy::param_to_return_last<T>(fallback);
 }
 // # Two iterables of the same T -- exercises both directions of the
 // # UnknownElementType placeholder rule in match_type_with_inference. Either

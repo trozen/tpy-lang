@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Printable(typing.Protocol):
 template<typename T>
-concept Printable = requires(T& t) {
+concept Printable = requires(::tpy::storage_t<T>& t) {
     { t.get_val() } -> std::convertible_to<int32_t>;
 };
 

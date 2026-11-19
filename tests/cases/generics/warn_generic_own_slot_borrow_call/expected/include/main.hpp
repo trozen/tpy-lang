@@ -17,7 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def collect_generic[T](h: GHolder[T], xs: list[T]) -> None:
 template<typename T>
-void collect_generic(GHolder<T>& h, std::vector<T>& xs);
+void collect_generic(GHolder<T>& h, std::vector<::tpy::storage_t<T>>& xs);
 // def collect_twin(h: Twin, xs: list[Cell]) -> None:
 void collect_twin(Twin& h, std::vector<Cell>& xs);
 // def dup_return[T](h: GHolder[T]) -> Own[T]:
@@ -58,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 template<typename T>
 struct GHolder {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, v: Own[T]) -> None:
     GHolder() = default;
@@ -98,7 +98,7 @@ inline std::ostream& operator<<(std::ostream& os, const Twin& obj) {
 template<typename T>
 struct GRelay {
     // kept: list[T]
-    std::vector<T> kept;
+    std::vector<::tpy::storage_t<T>> kept;
 
     // def __init__(self) -> None:
     GRelay();
@@ -118,7 +118,7 @@ inline std::ostream& operator<<(std::ostream& os, const GRelay<T>& obj) {
 template<typename T>
 struct GBox {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, v: Own[T]) -> None:
     GBox() = default;
@@ -174,7 +174,7 @@ inline ::tpy::val_or_ref_t<T> GHolder<T>::borrow() {
 // def __init__(self) -> None:
 //     self.kept = []
 template<typename T>
-inline GRelay<T>::GRelay() : kept(std::vector<T>{}) {}
+inline GRelay<T>::GRelay() : kept(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def take(self, h: GHolder[T]) -> None:
 //     self.kept.append(h.borrow())  # tpyc: warning(/copy T into owned storage/)
@@ -223,7 +223,7 @@ inline GBox<T> GBox<T>::dup() const {
 // def collect_generic[T](h: GHolder[T], xs: list[T]) -> None:
 //     xs.append(h.borrow())  # tpyc: warning(/copy T into owned storage/)
 template<typename T>
-void collect_generic(GHolder<T>& h, std::vector<T>& xs) {
+void collect_generic(GHolder<T>& h, std::vector<::tpy::storage_t<T>>& xs) {
     xs.push_back(h.borrow());
 }
 // # Own[T] return: the same borrow at the return slot, the other owning-slot

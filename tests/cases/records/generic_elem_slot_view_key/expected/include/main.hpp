@@ -34,7 +34,7 @@ void drop_bytes(::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>& al, ::t
 bool has_str(const Labels<std::string, 4>& box, std::string_view k);
 // def has_item[T: Equatable](xs: list[T], v: T) -> bool:
 template<::tpystd::tpy::Equatable T>
-bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+bool has_item(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v);
 // def has_item_str(xs: list[str], v: str) -> bool:
 bool has_item_str(const std::vector<std::string>& xs, std::string_view v);
 // def main() -> None:
@@ -44,7 +44,7 @@ void main();
 template<::tpystd::tpy::Equatable T, std::size_t N>
 struct Labels {
     // items: ArrayList[T, N]
-    ::tpystd::tplib::array_list::ArrayList<T, N> items;
+    ::tpystd::tplib::array_list::ArrayList<::tpy::storage_t<T>, N> items;
 
     // def __init__(self) -> None:
     Labels();
@@ -132,13 +132,13 @@ inline bool StrLabels::has(std::string_view value) const {
 // def __init__(self) -> None:
 //     self.items = ArrayList[T, N]()
 template<::tpystd::tpy::Equatable T, std::size_t N>
-inline Labels<T, N>::Labels() : items(::tpystd::tplib::array_list::ArrayList<T, N>()) {}
+inline Labels<T, N>::Labels() : items(::tpystd::tplib::array_list::ArrayList<::tpy::storage_t<T>, N>()) {}
 
 // def add(self, value: T) -> None:
 //     self.items.append(value)  # tpyc: warning(/may copy T into owned storage/)
 template<::tpystd::tpy::Equatable T, std::size_t N>
 inline void Labels<T, N>::add(::tpy::param_val_or_ref_t<T> value) {
-    this->items.append(::tpy::param_to_storage<T>(value));
+    this->items.append(::tpy::param_consume<T>(value));
 }
 
 // def drop(self, value: T) -> None:
@@ -185,7 +185,7 @@ inline int32_t Labels<T, N>::tag_len(std::string_view tag) const {
 //             return True
 //     return False
 template<::tpystd::tpy::Equatable T>
-bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
+bool has_item(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

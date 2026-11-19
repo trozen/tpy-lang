@@ -56,7 +56,7 @@ from ..parse.nodes import (ResultForm, TpyCall, TpyDictComprehension,
                            TpyComprehensionGenerator,
                            TpySetComprehension, TpyStmt, TpyTry,
                            TpyTupleUnpack, TpyVarDecl, TpyWith, TpyAssign,
-                           iter_capture_bindings, walk_body_stmts,
+                           iter_capture_bindings,
                            walk_expr_tree, written_names)
 from .. import modules as builtin_modules
 from ..typesys import (OptionalType, OwnType,
@@ -67,7 +67,7 @@ from ..typesys import (OptionalType, OwnType,
                        unwrap_readonly,
                        unwrap_ref_type, unwrap_send_sync,
                        view_family_for_type)
-from ..value_category import (own_iter_source, peel_coerce,
+from ..value_category import (origin_open, own_iter_source, peel_coerce,
                               peel_value_wrappers, peeled_read)
 from .elem_paths import ElemPath, bare_tuple, leaf_paths, owned_leaf_paths
 from .iter_loans import IterElementSource, iter_element_source
@@ -158,6 +158,88 @@ class BodyOwnership:
         default_factory=dict)
     generator_objects: frozenset[str] = frozenset()
     hoisted: frozenset[str] = frozenset()
+    # The locals some binding binds to an open `T` result
+    # (`origin_open`), and of those the ones no binding binds to existing
+    # storage: they own what they hold where `T` is `Own[X]`
+    # (`open_owning_names`).
+    open_results: frozenset[str] = frozenset()
+    open_owning: frozenset[str] = frozenset()
+
+
+def open_owning_names(ctx: 'SemanticContext', fs: 'FunctionTrackingState'
+                      ) -> tuple[frozenset[str], frozenset[str]]:
+    """The locals bound so far to an open `T` result, and the subset whose
+    every non-owning binding is one: a borrow at a reference instantiation,
+    the value of their own at `T = Own[X]` -- the open-`T` parameter's
+    reading, for a local (its last use hands the value on there)."""
+    func = fs.current_function
+    params = (frozenset(p for p, _t in func.params)
+              if isinstance(func, TpyFunction) else frozenset())
+    results: set[str] = set()
+    owning: set[str] = set()
+    for name in fs.nonowning_sites:
+        if name in params:
+            continue
+        some, _every, owns = _open_bindings(ctx, fs, name)
+        if some:
+            results.add(name)
+            if owns:
+                owning.add(name)
+    return frozenset(results), frozenset(owning)
+
+
+def _open_bindings(ctx: 'SemanticContext', fs: 'FunctionTrackingState',
+                   name: str) -> tuple[bool, bool, bool]:
+    """Of the non-owning bindings of `name` recorded so far: whether some
+    binds an open `T` result, whether every one does, and whether every
+    one binds an open result of `T` itself -- not of its storage form
+    (`storage_t<T>`, a nested call's inferred `Unowned(T)`), which lends
+    at `T = Own[X]` too."""
+    entry = fs.nonowning_sites.get(name)
+    if entry is None or not entry.notes:
+        return False, False, False
+    some, every, owning = False, True, True
+    for at, elems, _source in entry.notes:
+        opened = (isinstance(at, TpyExpr) and elems is None
+                  and origin_open(ctx, at))
+        some = some or opened
+        every = every and opened
+        t = ctx.get_expr_type(at) if opened else None
+        owning = owning and opened and type(unwrap_readonly(unwrap_ref_type(
+            t))) is TypeParamRef
+    return some, every, owning
+
+
+def open_owning_so_far(ctx: 'SemanticContext', name: str) -> bool:
+    """`open_owning_local` as far as the body being walked has been read."""
+    return _open_bindings(ctx, ctx.func, name)[2]
+
+
+def open_result_local(ctx: 'SemanticContext', func: object,
+                      name: str) -> bool:
+    """Whether local `name` of `func` holds an open `T` result at some
+    binding (`BodyOwnership.open_results`)."""
+    body = ctx.body_ownership.get(func)
+    return body is not None and name in body.open_results
+
+
+def holds_open_result(ctx: 'SemanticContext', func: object, name: str,
+                      typ: object) -> bool:
+    """THE decision that local `name` of `func` is an open-result local:
+    declared as a bare open `T` (or its storage form) and bound to an open
+    `T` result at some binding (`open_result_local`)."""
+    return (isinstance(typ, TpyType)
+            and isinstance(unwrap_readonly(unwrap_ref_type(typ)),
+                           TypeParamRef)
+            and open_result_local(ctx, func, name))
+
+
+def open_owning_local(ctx: 'SemanticContext', func: object,
+                      name: str) -> bool:
+    """Whether local `name` of `func` owns what it holds where its open
+    `T` is `Own[X]` (`BodyOwnership.open_owning`)."""
+    body = ctx.body_ownership.get(func)
+    return body is not None and name in body.open_owning
 
 
 def param_ownership(func: TpyFunction, name: str,
@@ -644,6 +726,15 @@ class _BodyWalk:
             if lending:
                 self.lending.add(s.name)
                 self.ctx.val_or_ref_decls.add(s)
+            elif (s.name in self.slots["frame_fields"]
+                  and binds_val_or_ref(
+                      s.name, s.init, declared_bound_type(
+                          s, self.ctx.var_types,
+                          self.ctx.get_expr_type(s.init)),
+                      **{**self.slots, "frame_fields": frozenset()})):
+                func = self.ctx.func.current_function
+                self.ctx.val_or_ref_frame_locals.setdefault(
+                    func, set()).add(s.name)
             self._bind_site(s, s.name, s.init, lending=lending)
         elif isinstance(s, TpyAssign) and isinstance(s.target, TpyName):
             self._bind_site(s, s.target.name, s.value)
@@ -808,6 +899,7 @@ def record_body_ownership(ctx: 'SemanticContext',
             locals_[name] = entry
     loop_only = {n: tuple(sites) for n, sites in loop_bound.items()
                  if n not in walk.non_loop}
+    open_results, open_owning = open_owning_names(ctx, fs)
     ctx.body_ownership[func] = BodyOwnership(
         locals_, loop_only, frozenset(fs.owned_generator_locals),
-        frozenset(fs.hoisted_vars))
+        frozenset(fs.hoisted_vars), open_results, open_owning)

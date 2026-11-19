@@ -22,7 +22,7 @@ bool lacks(const ::tpy::ordered_set<int32_t>& s, int32_t k);
 bool in_list(const std::vector<int32_t>& xs, int32_t k);
 // def gfind[T: Hashable](s: readonly[set[T]], v: T) -> bool:
 template<::tpystd::tpy::Hashable T>
-bool gfind(const ::tpy::ordered_set<T>& s, ::tpy::param_val_or_ref_t<T> v);
+bool gfind(const ::tpy::ordered_set<::tpy::storage_t<T>>& s, ::tpy::param_val_or_ref_t<T> v);
 // def user_recv(p: readonly[Pos]) -> bool:
 bool user_recv(const Pos& p);
 // def each(d: readonly[dict[str, int32]], ks: list[str]) -> Iterator[bool]:
@@ -38,7 +38,7 @@ void main();
 template<::tpystd::tpy::Hashable K, typename V>
 struct Bag {
     // _data: dict[K, V]
-    ::tpy::ordered_map<K, V> _data;
+    ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>> _data;
 
     // def __init__(self) -> None:
     Bag();
@@ -115,7 +115,7 @@ inline bool Pos::__contains__(int32_t k) const {
 // def __init__(self) -> None:
 //     self._data = {}
 template<::tpystd::tpy::Hashable K, typename V>
-inline Bag<K, V>::Bag() : _data(::tpy::ordered_map<K, V>()) {}
+inline Bag<K, V>::Bag() : _data(::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>()) {}
 
 // # Method: `__contains__` is readonly, so `self._data` is a readonly dict.
 // def __contains__(self, key: K) -> bool:
@@ -139,7 +139,7 @@ inline bool Bag<K, V>::has(::tpy::readonly_form_t<K> key) const {
 template<::tpystd::tpy::Hashable K, typename V>
 inline void Bag<K, V>::add(::tpy::param_val_or_ref_t<K> key, ::tpy::param_val_or_ref_t<V> v) {
     if ((!(this->_data.contains(key)))) {
-        ::tpy::__setitem__(this->_data, key, V(v));
+        ::tpy::__setitem__(this->_data, key, ::tpy::storage_t<V>(v));
     }
 }
 
@@ -147,7 +147,7 @@ inline void Bag<K, V>::add(::tpy::param_val_or_ref_t<K> key, ::tpy::param_val_or
 // def gfind[T: Hashable](s: readonly[set[T]], v: T) -> bool:
 //     return v in s  # tpyc: ok
 template<::tpystd::tpy::Hashable T>
-bool gfind(const ::tpy::ordered_set<T>& s, ::tpy::param_val_or_ref_t<T> v) {
+bool gfind(const ::tpy::ordered_set<::tpy::storage_t<T>>& s, ::tpy::param_val_or_ref_t<T> v) {
     return (s.contains(v));
 }
 

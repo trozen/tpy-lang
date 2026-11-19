@@ -11,7 +11,7 @@ struct Sizes;
 // @dynamic
 // class Sizes(Protocol):
 template<typename T>
-concept __Sizes_Concept__ = requires(const T& t) {
+concept __Sizes_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t.size() } -> std::convertible_to<int32_t>;
 };
 
@@ -135,7 +135,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bump& obj) {
 template<::tpystd::typing::Sized T>
 struct GenOwn : Carrier {
     // self.x = x
-    T x;
+    ::tpy::storage_t<T> x;
 
     // def __init__(self, x: Own[T]) -> None:
     GenOwn() = default;

@@ -11,7 +11,7 @@ namespace tpyapp::bnd_cyc_q {
 
 // class Counted[U: ValueType](bnd_cyc_p.Sized[U], Protocol):  # tpyc: ok
 template<typename T, typename _T0>
-concept Counted = requires(T& t) {
+concept Counted = requires(::tpy::storage_t<T>& t) {
     { t.count() } -> std::convertible_to<int32_t>;
     { t.size() } -> std::convertible_to<int32_t>;
 };

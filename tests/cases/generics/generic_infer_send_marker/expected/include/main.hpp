@@ -50,7 +50,7 @@ template<typename T>
 //     return sink(item)   # tpyc: ok
 template<typename T>
 ::tpy::own_return_t<T> fwd(::tpy::own_param_t<T> item) {
-    return ::tpyapp::main::sink<T>(std::move(item));
+    return ::tpyapp::main::sink<::tpy::storage_t<T>>(std::move(item));
 }
 
 void __tpy_init();

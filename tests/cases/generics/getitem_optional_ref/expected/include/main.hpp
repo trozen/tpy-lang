@@ -65,23 +65,23 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 template<typename K, typename V>
 struct GenBox {
     // _k: K
-    K _k;
+    ::tpy::storage_t<K> _k;
     // _v: V
-    V _v;
+    ::tpy::storage_t<V> _v;
 
     // def __init__(self, k: K, v: V):
     GenBox() = default;
     explicit GenBox(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v);
 
     // def __getitem__(self, want: int32) -> V | None:
-    V* __getitem__(int32_t want);
+    ::tpy::storage_t<V>* __getitem__(int32_t want);
 
     // def __getitem__(self, want: int32) -> V | None:
-    const V* __getitem__(int32_t want) const;
+    const ::tpy::storage_t<V>* __getitem__(int32_t want) const;
 
-    const V* operator[](int32_t want) const;
+    const ::tpy::storage_t<V>* operator[](int32_t want) const;
 
-    V* operator[](int32_t want);
+    ::tpy::storage_t<V>* operator[](int32_t want);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenBox";
 };
 
@@ -155,7 +155,7 @@ inline GenBox<K, V>::GenBox(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<
 //         return self._v
 //     return None
 template<typename K, typename V>
-inline V* GenBox<K, V>::__getitem__(int32_t want) {
+inline ::tpy::storage_t<V>* GenBox<K, V>::__getitem__(int32_t want) {
     if ((want > 0)) {
         return &(this->_v);
     }
@@ -167,7 +167,7 @@ inline V* GenBox<K, V>::__getitem__(int32_t want) {
 //         return self._v
 //     return None
 template<typename K, typename V>
-inline const V* GenBox<K, V>::__getitem__(int32_t want) const {
+inline const ::tpy::storage_t<V>* GenBox<K, V>::__getitem__(int32_t want) const {
     if ((want > 0)) {
         return &(this->_v);
     }
@@ -175,12 +175,12 @@ inline const V* GenBox<K, V>::__getitem__(int32_t want) const {
 }
 
 template<typename K, typename V>
-inline const V* GenBox<K, V>::operator[](int32_t want) const {
+inline const ::tpy::storage_t<V>* GenBox<K, V>::operator[](int32_t want) const {
     return __getitem__(want);
 }
 
 template<typename K, typename V>
-inline V* GenBox<K, V>::operator[](int32_t want) {
+inline ::tpy::storage_t<V>* GenBox<K, V>::operator[](int32_t want) {
     return __getitem__(want);
 }
 

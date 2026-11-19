@@ -19,7 +19,7 @@ void main();
 template<typename T>
 struct Inner {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Inner() = default;
@@ -67,7 +67,7 @@ inline Inner<T>::Inner(::tpy::readonly_form_t<T> v) : v(v) {}
 //     self.v = value  # tpyc: warning(/may copy T into field/)
 template<typename T>
 inline void Inner<T>::put(::tpy::param_val_or_ref_t<T> value) {
-    this->v = ::tpy::param_to_storage<T>(value);
+    this->v = ::tpy::param_consume<T>(value);
 }
 
 // def __init__(self, v: T) -> None:

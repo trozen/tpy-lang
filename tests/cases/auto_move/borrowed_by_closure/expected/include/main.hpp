@@ -462,7 +462,7 @@ template<typename T>
         return ::tpy::__len__(std::string(::tpy::__str__(x)));
     };
     Holder h = Holder([g]() -> int32_t { return g(); });
-    return T(x);
+    return ::tpy::storage_t<T>(x);
 }
 
 void __tpy_init();

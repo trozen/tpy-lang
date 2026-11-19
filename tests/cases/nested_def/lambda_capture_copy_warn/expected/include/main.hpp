@@ -14,7 +14,7 @@ struct Shape;
 // @dynamic
 // class Shape(Protocol):
 template<typename T>
-concept __Shape_Concept__ = requires(T& t) {
+concept __Shape_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.area() } -> std::convertible_to<int32_t>;
 };
 
@@ -100,7 +100,7 @@ void rebind_after();
 void while_unpack(const std::vector<std::tuple<int32_t, int32_t>>& pairs);
 // def keep_t[T](xs: list[T]) -> Callable[[], int32]:
 template<typename T>
-std::function<int32_t()> keep_t(const std::vector<T>& xs);
+std::function<int32_t()> keep_t(const std::vector<::tpy::storage_t<T>>& xs);
 // def cost(k: int) -> Callable[[], int]:
 std::function<::tpy::BigInt()> cost(const ::tpy::BigInt& k);
 // def rebound_param(p: Own[P], c: bool) -> None:  # tpyc: warning(/never consumed/)
@@ -446,7 +446,7 @@ inline int32_t Counter::operator()(const std::vector<int32_t>& xs) {
 // def keep_t[T](xs: list[T]) -> Callable[[], int32]:
 //     return lambda: len(xs)  # tpyc: warning(/may keep its own copy of 'xs'/)
 template<typename T>
-std::function<int32_t()> keep_t(const std::vector<T>& xs) {
+std::function<int32_t()> keep_t(const std::vector<::tpy::storage_t<T>>& xs) {
     return [xs]() -> int32_t { return ::tpy::__len__(xs); };
 }
 

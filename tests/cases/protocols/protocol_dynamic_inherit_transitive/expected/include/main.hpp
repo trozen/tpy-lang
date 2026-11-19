@@ -11,7 +11,7 @@ struct Throwable;
 // @dynamic
 // class Throwable(Protocol):
 template<typename T>
-concept __Throwable_Concept__ = requires(T& t) {
+concept __Throwable_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.what() } -> std::convertible_to<std::string_view>;
 };
 

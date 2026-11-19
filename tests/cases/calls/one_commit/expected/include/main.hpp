@@ -138,7 +138,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 template<typename T>
 struct G {
     // a: T
-    T a;
+    ::tpy::storage_t<T> a;
     // b: int32
     int32_t b;
 
@@ -190,7 +190,7 @@ struct Cb {
 
     // def __init__(self, cb: Callable[[T], T], x: T) -> None:
     Cb() = default;
-    explicit Cb(std::function<T(::tpy::param_val_or_ref_t<T>)> cb, ::tpy::param_val_or_ref_t<T> x);
+    explicit Cb(std::function<::tpy::storage_t<T>(::tpy::param_val_or_ref_t<T>)> cb, ::tpy::param_val_or_ref_t<T> x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cb";
 };
 
@@ -258,7 +258,7 @@ struct Ap {
 
     // def ap[T, U](self, f: Callable[[T], U], v: T) -> U:
     template<typename T, typename U>
-    ::tpy::val_or_ref_t<U> ap(std::function<U(::tpy::param_val_or_ref_t<T>)> f, ::tpy::param_val_or_ref_t<T> v) const;
+    ::tpy::val_or_ref_t<U> ap(std::function<::tpy::val_or_ref_t<U>(::tpy::param_val_or_ref_t<T>)> f, ::tpy::param_val_or_ref_t<T> v) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ap";
 };
 
@@ -271,9 +271,9 @@ inline std::ostream& operator<<(std::ostream& os, const Ap& obj) {
 template<typename T>
 struct DBag {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, v: T = 0) -> None:
     explicit DBag(::tpy::readonly_form_t<T> v = 0);
@@ -303,7 +303,7 @@ inline std::ostream& operator<<(std::ostream& os, const DBag<T>& obj) {
 template<typename T>
 struct Wipe {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, xs: list[Sink]) -> None:
     Wipe() = default;
@@ -324,7 +324,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wipe<T>& obj) {
 template<typename T>
 struct WipeKw {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, k: int32 = 0, *, xs: list[Sink]) -> None:
     WipeKw() = default;
@@ -588,7 +588,7 @@ inline G<T>::G(::tpy::readonly_form_t<T> a, int32_t b)
 // def __init__(self, cb: Callable[[T], T], x: T) -> None:
 //     self.r = f"{cb(x)}"
 template<typename T>
-inline Cb<T>::Cb(std::function<T(::tpy::param_val_or_ref_t<T>)> cb, ::tpy::param_val_or_ref_t<T> x) : r(std::format("{}", ::tpy::__str__(cb(x)))) {}
+inline Cb<T>::Cb(std::function<::tpy::storage_t<T>(::tpy::param_val_or_ref_t<T>)> cb, ::tpy::param_val_or_ref_t<T> x) : r(std::format("{}", ::tpy::__str__(cb(x)))) {}
 
 // def __init__(self, cb: Callable[[int32], int32], x: T) -> None:
 //     self.r = f"{cb(5)}:{x}"
@@ -598,8 +598,8 @@ inline CbFixed<T>::CbFixed(std::function<int32_t(int32_t)> cb, ::tpy::readonly_f
 // def ap[T, U](self, f: Callable[[T], U], v: T) -> U:
 //     return f(v)
 template<typename T, typename U>
-inline ::tpy::val_or_ref_t<U> Ap::ap(std::function<U(::tpy::param_val_or_ref_t<T>)> f, ::tpy::param_val_or_ref_t<T> v) const {
-    return f(v);
+inline ::tpy::val_or_ref_t<U> Ap::ap(std::function<::tpy::val_or_ref_t<U>(::tpy::param_val_or_ref_t<T>)> f, ::tpy::param_val_or_ref_t<T> v) const {
+    return f(::tpy::param_pass_last<T>(v));
 }
 
 // def __init__(self, v: T = 0) -> None:
@@ -608,13 +608,13 @@ inline ::tpy::val_or_ref_t<U> Ap::ap(std::function<U(::tpy::param_val_or_ref_t<T
 template<typename T>
 inline DBag<T>::DBag(::tpy::readonly_form_t<T> v)
     : v(v),
-      items(std::vector<T>{}) {}
+      items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def put(self, x: T) -> None:
 //     self.items.append(copy(x))
 template<typename T>
 inline void DBag<T>::put(::tpy::param_val_or_ref_t<T> x) {
-    this->items.push_back(T(x));
+    this->items.push_back(::tpy::storage_t<T>(x));
 }
 
 // def touch(self, xs: list[int32]) -> None:
@@ -650,14 +650,14 @@ inline std::expected<int32_t, Bad> DBag<T>::check(int32_t n) const {
 template<typename T>
 inline Wipe<T>::Wipe(std::vector<Sink>& xs) {
     xs.clear();
-    this->items = std::vector<T>{};
+    this->items = std::vector<::tpy::storage_t<T>>{};
 }
 
 // def put(self, v: T) -> None:
 //     self.items.append(copy(v))
 template<typename T>
 inline void Wipe<T>::put(::tpy::param_val_or_ref_t<T> v) {
-    this->items.push_back(T(v));
+    this->items.push_back(::tpy::storage_t<T>(v));
 }
 
 // def __init__(self, k: int32 = 0, *, xs: list[Sink]) -> None:
@@ -667,14 +667,14 @@ inline void Wipe<T>::put(::tpy::param_val_or_ref_t<T> v) {
 template<typename T>
 inline WipeKw<T>::WipeKw(int32_t k, std::vector<Sink>& xs) {
     ::tpy::__delitem__(xs, (::tpy::sub_check<int32_t>(::tpy::__len__(xs), 1)));
-    this->items = std::vector<T>{};
+    this->items = std::vector<::tpy::storage_t<T>>{};
 }
 
 // def put(self, v: T) -> None:
 //     self.items.append(copy(v))
 template<typename T>
 inline void WipeKw<T>::put(::tpy::param_val_or_ref_t<T> v) {
-    this->items.push_back(T(v));
+    this->items.push_back(::tpy::storage_t<T>(v));
 }
 
 // def __init__(self, **kw: Unpack[Num]) -> None:

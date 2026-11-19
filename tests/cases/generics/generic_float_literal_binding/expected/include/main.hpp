@@ -20,7 +20,7 @@ struct __coro_co;
 
 // def first_of[T](xs: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> first_of(std::vector<T>& xs);
+::tpy::val_or_ref_t<T> first_of(std::vector<::tpy::storage_t<T>>& xs);
 // def ident[T](x: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> ident(::tpy::param_val_or_ref_t<T> x);
@@ -29,7 +29,7 @@ template<typename A, typename B>
 ::tpy::val_or_ref_t<A> pair_first(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b);
 // def apply[T](x: T, f: Callable[[T], T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> apply(::tpy::param_val_or_ref_t<T> x, const std::function<T(::tpy::param_val_or_ref_t<T>)>& f);
+::tpy::val_or_ref_t<T> apply(::tpy::param_val_or_ref_t<T> x, const std::function<::tpy::val_or_ref_t<T>(::tpy::param_val_or_ref_t<T>)>& f);
 // def swap(t: tuple[int32, int32]) -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> swap(const std::tuple<int32_t, int32_t>& t);
 // def triple(v: int32) -> int32:
@@ -53,7 +53,7 @@ struct C {
 
     // def pick[T](self, xs: list[T]) -> T:
     template<typename T>
-    ::tpy::val_or_ref_t<T> pick(std::vector<T>& xs) const;
+    ::tpy::val_or_ref_t<T> pick(std::vector<::tpy::storage_t<T>>& xs) const;
 
     // def body(self) -> float:
     double body() const;
@@ -69,7 +69,7 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 template<typename T>
 struct Bag {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Bag();
@@ -144,14 +144,14 @@ inline double C::body() const {
 // def pick[T](self, xs: list[T]) -> T:
 //     return xs[0]
 template<typename T>
-inline ::tpy::val_or_ref_t<T> C::pick(std::vector<T>& xs) const {
+inline ::tpy::val_or_ref_t<T> C::pick(std::vector<::tpy::storage_t<T>>& xs) const {
     return ::tpy::__getitem__(xs, 0);
 }
 
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T>
-inline Bag<T>::Bag() : items(std::vector<T>{}) {}
+inline Bag<T>::Bag() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def add(self, v: T) -> None:
 //     # right: at a reference-type T the list stores a copy where CPython
@@ -159,32 +159,32 @@ inline Bag<T>::Bag() : items(std::vector<T>{}) {}
 //     self.items.append(v)  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
 inline void Bag<T>::add(::tpy::param_val_or_ref_t<T> v) {
-    this->items.push_back(::tpy::param_to_storage<T>(v));
+    this->items.push_back(::tpy::param_consume<T>(v));
 }
 
 // def first_of[T](xs: list[T]) -> T:
 //     return xs[0]
 template<typename T>
-::tpy::val_or_ref_t<T> first_of(std::vector<T>& xs) {
+::tpy::val_or_ref_t<T> first_of(std::vector<::tpy::storage_t<T>>& xs) {
     return ::tpy::__getitem__(xs, 0);
 }
 // def ident[T](x: T) -> T:
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> ident(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 // def pair_first[A, B](a: A, b: B) -> A:
 //     return a
 template<typename A, typename B>
 ::tpy::val_or_ref_t<A> pair_first(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b) {
-    return ::tpy::param_to_return<A>(a);
+    return ::tpy::param_to_return_last<A>(a);
 }
 // def apply[T](x: T, f: Callable[[T], T]) -> T:
 //     return f(x)
 template<typename T>
-::tpy::val_or_ref_t<T> apply(::tpy::param_val_or_ref_t<T> x, const std::function<T(::tpy::param_val_or_ref_t<T>)>& f) {
-    return f(x);
+::tpy::val_or_ref_t<T> apply(::tpy::param_val_or_ref_t<T> x, const std::function<::tpy::val_or_ref_t<T>(::tpy::param_val_or_ref_t<T>)>& f) {
+    return f(::tpy::param_pass_last<T>(x));
 }
 
 void __tpy_init();

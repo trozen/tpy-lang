@@ -13,16 +13,16 @@ inline constexpr std::string_view __name__ = "__main__";
 // def reduce[T, U](xs: list[T], func: Fn[[U, T], U], init: U) -> U:  # tpyc: ok
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<U>;
   }
-::tpy::val_or_ref_t<U> reduce__list_T__Fn_U_T_U__U(const std::vector<T>& xs, __F0&& func, ::tpy::param_val_or_ref_t<U> init);
+::tpy::val_or_ref_t<U> reduce__list_T__Fn_U_T_U__U(const std::vector<::tpy::storage_t<T>>& xs, __F0&& func, ::tpy::param_val_or_ref_t<U> init);
 // @dispatch
 // def reduce[T](xs: list[T], func: Fn[[T, T], T]) -> T:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<T>;
   }
-::tpy::val_or_ref_t<T> reduce__list_T__Fn_T_T_T(std::vector<T>& xs, __F0&& func);
+::tpy::val_or_ref_t<T> reduce__list_T__Fn_T_T_T(std::vector<::tpy::storage_t<T>>& xs, __F0&& func);
 // def main() -> None:
 void main();
 
@@ -31,19 +31,19 @@ void main();
 //     return init
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<U>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<U>;
   }
-::tpy::val_or_ref_t<U> reduce__list_T__Fn_U_T_U__U(const std::vector<T>& xs, __F0&& func, ::tpy::param_val_or_ref_t<U> init) {
-    return ::tpy::param_to_return<U>(init);
+::tpy::val_or_ref_t<U> reduce__list_T__Fn_U_T_U__U(const std::vector<::tpy::storage_t<T>>& xs, __F0&& func, ::tpy::param_val_or_ref_t<U> init) {
+    return ::tpy::param_to_return_last<U>(init);
 }
 // @dispatch
 // def reduce[T](xs: list[T], func: Fn[[T, T], T]) -> T:  # tpyc: ok
 //     return xs[0]
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<T>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<T>;
   }
-::tpy::val_or_ref_t<T> reduce__list_T__Fn_T_T_T(std::vector<T>& xs, __F0&& func) {
+::tpy::val_or_ref_t<T> reduce__list_T__Fn_T_T_T(std::vector<::tpy::storage_t<T>>& xs, __F0&& func) {
     return ::tpy::__getitem__(xs, 0);
 }
 

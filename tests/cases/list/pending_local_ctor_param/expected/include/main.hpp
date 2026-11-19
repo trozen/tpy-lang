@@ -38,11 +38,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 template<typename T>
 struct Wrap {
     // self.xs = xs
-    std::vector<T> xs;
+    std::vector<::tpy::storage_t<T>> xs;
 
     // def __init__(self, xs: Own[list[T]]):
     Wrap() = default;
-    explicit Wrap(std::vector<T>&& xs);
+    explicit Wrap(std::vector<::tpy::storage_t<T>>&& xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrap";
 };
 
@@ -127,7 +127,7 @@ inline DataError::DataError(const std::vector<int32_t>& xs)
 // def __init__(self, xs: Own[list[T]]):
 //     self.xs = xs
 template<typename T>
-inline Wrap<T>::Wrap(std::vector<T>&& xs) : xs(std::move(xs)) {}
+inline Wrap<T>::Wrap(std::vector<::tpy::storage_t<T>>&& xs) : xs(std::move(xs)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

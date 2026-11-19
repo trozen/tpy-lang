@@ -17,7 +17,7 @@ struct DynP;
 // @dynamic
 // class DynP(Protocol):
 template<typename T>
-concept __DynP_Concept__ = requires(T& t) {
+concept __DynP_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.ping() } -> std::convertible_to<int32_t>;
 };
 

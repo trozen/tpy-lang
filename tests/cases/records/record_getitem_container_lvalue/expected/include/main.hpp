@@ -46,13 +46,13 @@ void main();
 template<::tpystd::tpy::Hashable K, typename V>
 struct DefaultDict {
     // factory: Callable[[], V]
-    std::function<V()> factory;
+    std::function<::tpy::storage_t<V>()> factory;
     // _data: dict[K, V]
-    ::tpy::ordered_map<K, V> _data;
+    ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>> _data;
 
     // def __init__(self, factory: Callable[[], V]) -> None:
     DefaultDict() = default;
-    explicit DefaultDict(std::function<V()> factory);
+    explicit DefaultDict(std::function<::tpy::storage_t<V>()> factory);
 
     // @readonly(False)
     // def __getitem__(self, key: K) -> V:
@@ -105,7 +105,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rows& obj) {
 template<typename T>
 struct Box {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Box();
@@ -197,7 +197,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grouper& obj) {
 template<::tpy::ValueType T>
 struct Holder {
     // box: Box[list[T]]
-    Box<std::vector<T>> box;
+    Box<std::vector<::tpy::storage_t<T>>> box;
 
     // def __init__(self) -> None:
     Holder();
@@ -315,9 +315,9 @@ inline int32_t Grouper::size(int32_t i) const {
 //     self.factory = factory
 //     self._data = {}
 template<::tpystd::tpy::Hashable K, typename V>
-inline DefaultDict<K, V>::DefaultDict(std::function<V()> factory)
+inline DefaultDict<K, V>::DefaultDict(std::function<::tpy::storage_t<V>()> factory)
     : factory(factory),
-      _data(::tpy::ordered_map<K, V>()) {}
+      _data(::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>>()) {}
 
 // # Inserts on a miss, so it mutates the receiver.
 // @readonly(False)
@@ -328,7 +328,7 @@ inline DefaultDict<K, V>::DefaultDict(std::function<V()> factory)
 template<::tpystd::tpy::Hashable K, typename V>
 inline ::tpy::val_or_ref_t<V> DefaultDict<K, V>::__getitem__(::tpy::param_val_or_ref_t<K> key) {
     if ((!(this->_data.contains(key)))) {
-        ::tpy::__setitem__(this->_data, K(key), (*this).factory());
+        ::tpy::__setitem__(this->_data, ::tpy::storage_t<K>(key), (*this).factory());
     }
     return ::tpy::__getitem__(this->_data, key);
 }
@@ -362,7 +362,7 @@ inline size_t DefaultDict<K, V>::size() const {
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T>
-inline Box<T>::Box() : items(std::vector<T>{}) {}
+inline Box<T>::Box() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def add(self, v: Own[T]) -> None:
 //     self.items.append(v)
@@ -398,7 +398,7 @@ inline ::tpy::val_or_ref_t<T> Box<T>::operator[](int32_t i) {
 // def __init__(self) -> None:
 //     self.box = Box()
 template<::tpy::ValueType T>
-inline Holder<T>::Holder() : box(Box<std::vector<T>>()) {}
+inline Holder<T>::Holder() : box(Box<std::vector<::tpy::storage_t<T>>>()) {}
 
 // # Generic class method: the element is `list[T]`.
 // def first(self, v: T) -> int32:
@@ -408,9 +408,9 @@ inline Holder<T>::Holder() : box(Box<std::vector<T>>()) {}
 //     return len(self.box[0])  # tpyc: ok
 template<::tpy::ValueType T>
 inline int32_t Holder<T>::first(::tpy::param_val_or_ref_t<T> v) {
-    this->box.add(::tpy::make_vector<T>(::tpy::param_to_storage<T>(v)));
-    std::vector<T>& row = this->box[0];
-    row.push_back(::tpy::param_to_storage<T>(v));
+    this->box.add(::tpy::make_vector<::tpy::storage_t<T>>(::tpy::param_to_storage<T>(v)));
+    std::vector<::tpy::storage_t<T>>& row = this->box[0];
+    row.push_back(::tpy::param_consume<T>(v));
     return ::tpy::__len__(this->box[0]);
 }
 

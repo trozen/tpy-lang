@@ -2,3 +2,11 @@
 5
 120
 42
+ref-lend2 105 105
+ref-own2 2010 1001
+ref-lambda 10 1
+ref-pick 12 12
+ref-last 4 4
+ref-lend3 10 10 5
+ref-str abc
+ref-empty TypeError

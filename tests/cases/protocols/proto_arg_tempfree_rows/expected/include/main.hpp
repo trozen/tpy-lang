@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Reader(Protocol):
 template<typename T>
-concept Reader = requires(T& t) {
+concept Reader = requires(::tpy::storage_t<T>& t) {
     { t.take_str(std::declval<std::string>()) } -> std::convertible_to<int32_t>;
     { t.take_union(std::declval<::tpy::Union<int32_t, std::string>>()) } -> std::convertible_to<int32_t>;
     { t.take_ro_list(std::declval<const std::vector<int32_t>&>()) } -> std::convertible_to<int32_t>;

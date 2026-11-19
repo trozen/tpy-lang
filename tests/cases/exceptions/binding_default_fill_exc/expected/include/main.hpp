@@ -113,7 +113,7 @@ inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
 template<typename U>
 struct GE : ::tpy::Exception {
     // a: U
-    U a;
+    ::tpy::storage_t<U> a;
 
     // def __init__(self, a: Own[U]) -> None:
     GE() = default;
@@ -138,7 +138,7 @@ inline std::ostream& operator<<(std::ostream& os, const GE<U>& obj) {
 template<typename T>
 struct EB : ::tpy::Exception {
     // x: T
-    T x;
+    ::tpy::storage_t<T> x;
 
     // def __init__(self, x: Own[T]) -> None:
     EB() = default;
@@ -175,9 +175,9 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
 
 // class HE[W](GE[list[W]]):
 template<typename W>
-struct HE : GE<std::vector<W>> {
+struct HE : GE<std::vector<::tpy::storage_t<W>>> {
 
-    using GE<std::vector<W>>::GE;
+    using GE<std::vector<::tpy::storage_t<W>>>::GE;
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<HE>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -193,9 +193,9 @@ inline std::ostream& operator<<(std::ostream& os, const HE<W>& obj) {
 
 // class ME[T](HE[tuple[T, T]]):
 template<typename T>
-struct ME : HE<std::tuple<T, T>> {
+struct ME : HE<std::tuple<::tpy::storage_t<T>, ::tpy::storage_t<T>>> {
 
-    using HE<std::tuple<T, T>>::HE;
+    using HE<std::tuple<::tpy::storage_t<T>, ::tpy::storage_t<T>>>::HE;
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<ME>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }

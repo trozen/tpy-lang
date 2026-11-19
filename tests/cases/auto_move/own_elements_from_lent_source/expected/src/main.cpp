@@ -232,12 +232,12 @@ void main() {
     std::cout << "comp dead" << " " << ::tpy::ListPrinter(::tpyapp::main::cell_ns(std::move(dead_for_comp))) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> rows = {{7}};
     {
-        auto __src_2 = ::tpy::builtin_map_n<std::vector<int32_t>>(take, std::array<int32_t, 1>{0}, rows);
+        auto __src_2 = ::tpy::builtin_map_n<::tpy::own_arg<std::vector<int32_t>>>(take, std::array<int32_t, 1>{0}, rows);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
-            const auto& zs = ::tpy::unwrap_ref(*__r_3);
+            auto&& zs = ::tpy::own_bind(*__r_3);
             std::cout << "map live" << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
         }
     }
@@ -265,24 +265,24 @@ void main() {
     }
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> d = ::tpy::ordered_map<int32_t, std::vector<int32_t>>({{0, {7}}});
     {
-        auto __src_8 = ::tpy::builtin_map_n<std::vector<int32_t>>(take, std::array<int32_t, 1>{0}, ::tpy::dict_values(d));
+        auto __src_8 = ::tpy::builtin_map_n<::tpy::own_arg<std::vector<int32_t>>>(take, std::array<int32_t, 1>{0}, ::tpy::dict_values(d));
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
-            const auto& zs = ::tpy::unwrap_ref(*__r_9);
+            auto&& zs = ::tpy::own_bind(*__r_9);
             std::cout << "map view" << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
         }
     }
     std::cout << "map view after" << " " << ::tpy::__len__(::tpy::__getitem__(d, 0)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {7};
     {
-        auto __src_10 = ::tpy::builtin_map_n<std::vector<int32_t>>(take, std::array<int32_t, 2>{0, 1}, ::tpyapp::main::repeat(xs));
+        auto __src_10 = ::tpy::builtin_map_n<::tpy::own_arg<std::vector<int32_t>>>(take, std::array<int32_t, 2>{0, 1}, ::tpyapp::main::repeat(xs));
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
-            const auto& zs = ::tpy::unwrap_ref(*__r_11);
+            auto&& zs = ::tpy::own_bind(*__r_11);
             std::cout << "map gen" << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
         }
     }

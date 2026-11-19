@@ -1,0 +1,55 @@
+take 1 6
+take-str abc
+store2 3 2
+outer-own 7 8
+first 3 4
+map-list 3 1003
+unowned 8 1 2
+open-keep-lend 2 1 12
+open-keep-own 4 1
+open-red-own 109 1 1
+open-twice 2 8 7
+open-sel 101 1
+open-each 3 1001 1
+open-fin finally
+open-fin 8 1
+store-dup 2
+store-dict 4
+store-keyed hello
+store-relay 5
+store-twice 2
+store-twice 2
+store-fwd 1
+store-method 6 7
+store-touch 1 5
+store-fill 3 103
+store-gom 8 7
+store-nocopy 4
+twice-ref 1 1 2
+twice-str ['a', 'a']
+twice-own 1 2
+gen-again-own 2
+gen-again-own 2
+gen-twice-own 2
+gen-twice-own 2
+forms-opt-lend 2 [6, 9]
+forms-cycle [1] [1, 10]
+forms-cycle-a [2] [2, 11]
+forms-cycle-lend [2, 12]
+forms-cycle-3 [1] [1, 13]
+forms-cycle-8 [1] [1, 14]
+forms-lit-lend [4] [4, 11]
+frame-rebind-own 2
+frame-rebind-own 2
+frame-walrus-own 2
+frame-walrus-own 2
+walrus-once-own [7, 8]
+frame-walrus-once-own [9, 10]
+sink-lend 1
+sink-step [5, 6]
+tuple-pair-lend [1, 2] 1 1
+tuple-two-lend [7, 8] [7, 8]
+tuple-plain-own 1
+tuple-class-own 2
+tuple-enum-lend 4
+tuple-enum-after [30, 0] [40, 1]

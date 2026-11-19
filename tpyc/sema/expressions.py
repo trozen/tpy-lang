@@ -126,7 +126,7 @@ from .local_deduction import (collect_pending_source_types,
                               note_pending_elem_read, pending_elem_read)
 from .operators import OperatorAmbiguity
 from .overloads import CallShape, OverloadAmbiguityError, pins_const_receiver
-from .type_ops import frame_yield_may_borrow
+from .type_ops import frame_yield_may_borrow, settle_inferred
 from .registration import referent_type
 from .own_copy import warn_value_call_binding
 from .scope_tracker import lend_places
@@ -7672,7 +7672,8 @@ class ExpressionAnalyzer:
     def _analyze_lambda_with_fn_hint(self, expr: TpyLambda,
                                      fn_hint: SlotHint | CallableType,
                                      *, as_class: str | None = None,
-                                     factory_of: str | None = None
+                                     factory_of: str | None = None,
+                                     open_result: bool = False
                                      ) -> CallableType:
         """Analyze a lambda with a Fn/Callable type hint providing parameter types.
 
@@ -7682,7 +7683,9 @@ class ExpressionAnalyzer:
         deferred borrow-result check (`LambdaResultCheck`). Where the
         hint's return is inferred (`SlotHint`), the parameters still type the
         lambda's, but a body that returns an int where the hint returns a
-        float keeps its int return.
+        float keeps its int return. `open_result`: the body runs with its
+        result open whatever the hint's return, and the lambda hands back
+        its own result form (`lambda_result_form`).
         """
         fn_slot = SlotHint.of(fn_hint)
         fn_type = fn_slot.type
@@ -7690,7 +7693,8 @@ class ExpressionAnalyzer:
             origin = f"'{as_class}' used as a '{fn_type}'"
             try:
                 return self._analyze_lambda_with_fn_hint(
-                    expr, fn_slot, factory_of=as_class)
+                    expr, fn_slot, factory_of=as_class,
+                    open_result=open_result)
             except _LambdaResultMismatch as e:
                 raise SemanticError(
                     f"{origin} constructs a '{e.body_type}', which is not "
@@ -7732,7 +7736,7 @@ class ExpressionAnalyzer:
             ret_hint = fn_type.return_type
             ret_slot = fn_slot.map(callable_return)
             if (ret_hint is None or isinstance(ret_hint, VoidType)
-                    or contains_type_param(ret_hint)):
+                    or open_result or contains_type_param(ret_hint)):
                 body_type = self.analyze_expr(expr.body)
             else:
                 body_type = self.analyze_expr_with_hint(expr.body, ret_slot)
@@ -7763,8 +7767,8 @@ class ExpressionAnalyzer:
         ])
 
         # Check return type compatibility (allow implicit coercions like int literal -> int32)
-        if (isinstance(fn_type.return_type, TypeParamRef)
-                or self._hint_converts_int(body_type, ret_slot)):
+        open_ret = open_result or isinstance(fn_type.return_type, TypeParamRef)
+        if open_ret or self._hint_converts_int(body_type, ret_slot):
             # Hint has unresolved type param (e.g. from generic builtin map[T,U]):
             # use the body's inferred type and return a concrete CallableType.
             # An inferred hint's float return does not convert an int body
@@ -7772,7 +7776,10 @@ class ExpressionAnalyzer:
             # Resolve IntLiteralType so overload resolution sees a concrete int type.
             if isinstance(body_type, IntLiteralType):
                 body_type = self.ctx.default_int_for_literal(body_type)
-            elif not isinstance(fn_type.return_type, TypeParamRef):
+            elif open_ret:
+                body_type = self.lambda_result_form(expr, body_type,
+                                                    factory_of)
+            else:
                 # A literal body takes the return hint where that converts
                 # nothing, its default elsewhere; a pending literal returns
                 # the container it resolves to.
@@ -7784,10 +7791,8 @@ class ExpressionAnalyzer:
             self._queue_lambda_borrow_check(expr, body_type, None,
                                             factory_of)
             self._lambda_result_sink(expr, body_type)
-            # The slot's return stays declared open: each instantiation's
-            # convention answers it, not the def rule.
             return CallableType(tuple(fn_type.param_types), body_type,
-                                fn_type.is_template, fn_type.returns_open())
+                                fn_type.is_template)
         if body_type != fn_type.return_type:
             try:
                 self.compat.check_type_compatible(
@@ -7978,6 +7983,23 @@ class ExpressionAnalyzer:
         if own_tuple_target(slot) is not None:
             return
         self.compat.check_own_lvalue_into_own(slot, expr.body, "return type")
+
+    def lambda_result_form(self, expr: TpyLambda, body_type: TpyType,
+                           factory_of: str | None) -> TpyType:
+        """What a lambda hands back at an open result slot -- the one fact
+        inference, overload candidates and the deferred result check read:
+        a body that builds its value (a class used as a callable included)
+        is `Own[R]` (just `R` when that is a by-value scalar), one that
+        returns a parameter or a part of one is `R`; a body mixing both is
+        `Own[R]`, the lent branch copying into it."""
+        if isinstance(unwrap_readonly(body_type), OwnType):
+            return body_type
+        bare = unwrap_readonly(unwrap_ref_type(body_type))
+        if bare.is_value_type() or isinstance(bare, (VoidType, NoneType)):
+            return body_type
+        if factory_of is None and self.compat.borrow_temp_root(expr.body) is None:
+            return body_type
+        return OwnType(bare)
 
     def _queue_lambda_borrow_check(self, expr: TpyLambda,
                                    result: TpyType | None,
@@ -8289,12 +8311,36 @@ class ExpressionAnalyzer:
         if probing:
             return None
         for fi, fi_fit in misfits:
+            concrete = self._hint_at_callable(hint, fi, wildcards)
+            if concrete is not hint:
+                refit = callable_fit(self.fit_signature(fi, None), concrete,
+                                     inherits=self.type_ops.inherits_in_cpp,
+                                     owning=owning)
+                if refit.misfit is not None:
+                    fi_fit = refit
             refusal = self.compat.callable_ref_refusal(
-                name, fi, self.fit_signature(fi, None), hint, fi_fit)
+                name, fi, self.fit_signature(fi, None), concrete, fi_fit)
             if refusal is not None:
                 raise self.ctx.error(refusal, err_node)
         # Return None to fall through (might be a variable, not a function)
         return None
+
+    def _hint_at_callable(self, hint: CallableType, fi: FunctionInfo,
+                          wildcards: frozenset[str]) -> CallableType:
+        """An open slot `hint` at the type arguments named callable `fi`'s
+        own signature binds it to -- the slot the call would instantiate,
+        which a refusal names (`Fn[[P], Own[P]]`, not `Fn[[T], Own[T]]`)."""
+        if not contains_type_param(hint):
+            return hint
+        trial: dict[str, TpyType] = {}
+        self.type_ops.match_type_with_inference(
+            hint, self.fit_signature(fi, None), trial)
+        settle_inferred(trial)
+        bound = {n: t for n, t in trial.items()
+                 if n in wildcards and isinstance(t, TpyType)
+                 and not contains_type_param(t)}
+        return (self.type_ops.substitute_types(hint, bound) if bound
+                else hint)
 
     def _infer_generic_ref_type_args(
         self, fi: FunctionInfo, hint: CallableType,
@@ -8323,6 +8369,7 @@ class ExpressionAnalyzer:
                 and not self.type_ops.match_type_with_inference(
                     fi.return_type, hint.return_type, inferred)):
             return None, None
+        settle_inferred(inferred)
         unresolved = [tp for tp in fi.type_params if tp not in inferred]
         if unresolved:
             return None, (

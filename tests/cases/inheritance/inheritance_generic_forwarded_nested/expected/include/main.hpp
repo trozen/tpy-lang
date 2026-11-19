@@ -19,7 +19,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T>
 struct Container {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Container() = default;
@@ -38,13 +38,13 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 
 // class Child[T](Container[list[T]]):
 template<typename T>
-struct Child : Container<std::vector<T>> {
+struct Child : Container<std::vector<::tpy::storage_t<T>>> {
     // extra: int32
     int32_t extra;
 
     // def __init__(self, value: list[T], extra: int32) -> None:
     Child() = default;
-    explicit Child(std::vector<T>& value, int32_t extra);
+    explicit Child(std::vector<::tpy::storage_t<T>>& value, int32_t extra);
 
     // def get_extra(self) -> int32:
     int32_t get_extra() const;
@@ -74,8 +74,8 @@ inline ::tpy::val_or_ref_t<T> Container<T>::get_value() {
 //     super().__init__(value)
 //     self.extra = extra
 template<typename T>
-inline Child<T>::Child(std::vector<T>& value, int32_t extra)
-    : Container<std::vector<T>>(value),
+inline Child<T>::Child(std::vector<::tpy::storage_t<T>>& value, int32_t extra)
+    : Container<std::vector<::tpy::storage_t<T>>>(value),
       extra(extra) {}
 
 // def get_extra(self) -> int32:

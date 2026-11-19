@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def take_optional[T](item: Own[T] | None, fallback: int32) -> int32:
 template<typename T>
-int32_t take_optional(std::optional<T> item, int32_t fallback);
+int32_t take_optional(std::optional<::tpy::storage_t<T>> item, int32_t fallback);
 // def main():
 void main();
 
@@ -33,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def take_optional[T](item: Own[T] | None, fallback: int32) -> int32:
 //     return fallback
 template<typename T>
-int32_t take_optional(std::optional<T> item, int32_t fallback) {
+int32_t take_optional(std::optional<::tpy::storage_t<T>> item, int32_t fallback) {
     return fallback;
 }
 

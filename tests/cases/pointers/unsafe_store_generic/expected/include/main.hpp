@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def store_at[T](p: Ptr[T], idx: uint32, val: Own[T]) -> None:
 template<typename T>
-void store_at(T* p, uint32_t idx, ::tpy::own_param_t<T> val);
+void store_at(::tpy::storage_t<T>* p, uint32_t idx, ::tpy::own_param_t<T> val);
 // def main() -> None:
 void main();
 
@@ -47,7 +47,7 @@ inline Point::Point(int32_t x, int32_t y)
 // def store_at[T](p: Ptr[T], idx: uint32, val: Own[T]) -> None:
 //     unsafe_store(p, idx, val)
 template<typename T>
-void store_at(T* p, uint32_t idx, ::tpy::own_param_t<T> val) {
+void store_at(::tpy::storage_t<T>* p, uint32_t idx, ::tpy::own_param_t<T> val) {
     p[idx] = std::move(val);
 }
 

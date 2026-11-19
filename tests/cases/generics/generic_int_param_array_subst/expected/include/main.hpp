@@ -23,16 +23,16 @@ void main();
 template<typename T, std::size_t N>
 struct Buffer {
     // data: Array[T, N]
-    std::array<T, N> data;
+    std::array<::tpy::storage_t<T>, N> data;
 
     // def __init__(self) -> None:
     Buffer();
 
     // def get_data(self) -> Array[T, N]:
-    std::array<T, N>& get_data();
+    std::array<::tpy::storage_t<T>, N>& get_data();
 
     // def set_data(self, arr: Array[T, N]) -> None:
-    void set_data(const std::array<T, N>& arr);
+    void set_data(const std::array<::tpy::storage_t<T>, N>& arr);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
 
@@ -52,14 +52,14 @@ inline Buffer<T, N>::Buffer() {
 // def get_data(self) -> Array[T, N]:
 //     return self.data
 template<typename T, std::size_t N>
-inline std::array<T, N>& Buffer<T, N>::get_data() {
+inline std::array<::tpy::storage_t<T>, N>& Buffer<T, N>::get_data() {
     return this->data;
 }
 
 // def set_data(self, arr: Array[T, N]) -> None:
 //     self.data = arr
 template<typename T, std::size_t N>
-inline void Buffer<T, N>::set_data(const std::array<T, N>& arr) {
+inline void Buffer<T, N>::set_data(const std::array<::tpy::storage_t<T>, N>& arr) {
     this->data = arr;
 }
 

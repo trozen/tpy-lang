@@ -751,6 +751,7 @@ class LocalTypeDeduction:
     def set_authoritative_annotation(self, name: str, typ: TpyType, line: int | None = None) -> None:
         """Store explicit annotation as authoritative and clear pending inference seeds."""
         self.ctx.func.authoritative_types[name] = typ
+        self.ctx.note_composite_leaves(typ)
         if line is not None:
             self.ctx.func.authoritative_type_lines[name] = line
         self.ctx.func.unresolved_none_vars.discard(name)

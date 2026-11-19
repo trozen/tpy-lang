@@ -167,7 +167,7 @@ std::string two__list_int32__list_int32(const std::vector<int32_t>& xs, const st
 // @dispatch
 // def gen_or_str[T](xs: list[T], v: T) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> gen_or_str__list_T__T(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+::tpy::val_or_ref_t<T> gen_or_str__list_T__T(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v);
 // @dispatch
 // def gen_or_str(xs: str, v: str) -> str:
 std::string gen_or_str__str__str(std::string_view xs, std::string_view v);
@@ -201,7 +201,7 @@ std::string joint_wide__list_int32__list_int64(const std::vector<int32_t>& a, co
 // @dispatch
 // def gen_kw[T](xs: list[T], v: T) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> gen_kw__list_T__T(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+::tpy::val_or_ref_t<T> gen_kw__list_T__T(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v);
 // @dispatch
 // def gen_kw(xs: str) -> str:
 std::string gen_kw__str(std::string_view xs);
@@ -357,7 +357,7 @@ struct Acc {
 
     // def push[T](self, xs: list[T], v: T) -> T:
     template<typename T>
-    ::tpy::val_or_ref_t<T> push(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) const;
+    ::tpy::val_or_ref_t<T> push(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v) const;
 
     // @dispatch
     // def __add__(self, o: list[int64]) -> int32:
@@ -391,11 +391,11 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 template<typename T>
 struct Holder {
     // first: T
-    T first;
+    ::tpy::storage_t<T> first;
 
     // def __init__(self, xs: list[T], v: T) -> None:
     Holder() = default;
-    explicit Holder(std::vector<T>& xs, ::tpy::readonly_form_t<T> v);
+    explicit Holder(std::vector<::tpy::storage_t<T>>& xs, ::tpy::readonly_form_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -565,9 +565,9 @@ inline void Acc::in_method() const {
 //     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
 //     return v
 template<typename T>
-inline ::tpy::val_or_ref_t<T> Acc::push(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) const {
+inline ::tpy::val_or_ref_t<T> Acc::push(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v) const {
     xs.push_back(::tpy::param_to_storage<T>(v));
-    return ::tpy::param_to_return<T>(v);
+    return ::tpy::param_to_return_last<T>(v);
 }
 
 // def __init__(self, xs: list[T], v: T) -> None:
@@ -576,8 +576,8 @@ inline ::tpy::val_or_ref_t<T> Acc::push(std::vector<T>& xs, ::tpy::param_val_or_
 //     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
 //     self.first = xs[0]  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline Holder<T>::Holder(std::vector<T>& xs, ::tpy::readonly_form_t<T> v) {
-    xs.push_back(::tpy::param_to_storage<T>(v));
+inline Holder<T>::Holder(std::vector<::tpy::storage_t<T>>& xs, ::tpy::readonly_form_t<T> v) {
+    xs.push_back(::tpy::param_consume<T>(v));
     this->first = ::tpy::__getitem__(xs, 0);
 }
 
@@ -587,9 +587,9 @@ inline Holder<T>::Holder(std::vector<T>& xs, ::tpy::readonly_form_t<T> v) {
 //     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
 //     return v
 template<typename T>
-::tpy::val_or_ref_t<T> gen_or_str__list_T__T(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
+::tpy::val_or_ref_t<T> gen_or_str__list_T__T(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v) {
     xs.push_back(::tpy::param_to_storage<T>(v));
-    return ::tpy::param_to_return<T>(v);
+    return ::tpy::param_to_return_last<T>(v);
 }
 // # A declared view decides nothing; the list candidate would widen the
 // # list, so the view wins (declared first, as CPython's dispatch tries it).
@@ -621,9 +621,9 @@ std::string joint_views__Iterable_int32__Iterable_int32(const T_a& a, const T_b&
 //     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
 //     return v
 template<typename T>
-::tpy::val_or_ref_t<T> gen_kw__list_T__T(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
+::tpy::val_or_ref_t<T> gen_kw__list_T__T(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v) {
     xs.push_back(::tpy::param_to_storage<T>(v));
-    return ::tpy::param_to_return<T>(v);
+    return ::tpy::param_to_return_last<T>(v);
 }
 // @dispatch
 // def two_names(a: list[int64], b: Iterable[int64]) -> str:

@@ -5,11 +5,14 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "tpystd/functools.hpp"
+#include "part_ref.hpp"
 
 namespace tpyapp::main {
 
-using ::tpystd::functools::reduce__Fn_U_T_U__Iterable_T__U;
+using ::tpystd::functools::reduce__Fn_U_T_U__list_T__U;
+using ::tpystd::functools::reduce__Fn_U_T_Own_U__Iterable_T__U;
 using ::tpystd::functools::reduce__Fn_T_T_T__list_T;
+using ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T;
 
 inline constexpr std::string_view __name__ = "__main__";
 

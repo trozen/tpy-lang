@@ -37,7 +37,7 @@ void main() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
     std::vector<int32_t> vals = {10, 20};
     {
-        auto __src_0 = ::tpy::builtin_enumerate(::tpy::builtin_map<::tpy::val_or_ref<Point>>(identity, pts));
+        auto __src_0 = ::tpy::builtin_enumerate(::tpy::builtin_map<Point>(identity, pts));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -61,7 +61,7 @@ void main() {
         }
     }
     {
-        auto __src_4 = ::tpy::builtin_enumerate(::tpy::builtin_map<::tpy::val_or_ref<Point>>(identity, pts));
+        auto __src_4 = ::tpy::builtin_enumerate(::tpy::builtin_map<Point>(identity, pts));
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();

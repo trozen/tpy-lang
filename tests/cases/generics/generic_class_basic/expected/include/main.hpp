@@ -18,7 +18,7 @@ void main();
 template<typename T>
 struct Box {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Box() = default;
@@ -55,7 +55,7 @@ inline ::tpy::val_or_ref_t<T> Box<T>::get() {
 //     self.value = value
 template<typename T>
 inline void Box<T>::set(::tpy::param_val_or_ref_t<T> value) {
-    this->value = ::tpy::param_to_storage<T>(value);
+    this->value = ::tpy::param_consume<T>(value);
 }
 
 void __tpy_init();

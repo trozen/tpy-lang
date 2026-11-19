@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 template<typename T>
 struct Box {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: Own[T]):
     Box() = default;

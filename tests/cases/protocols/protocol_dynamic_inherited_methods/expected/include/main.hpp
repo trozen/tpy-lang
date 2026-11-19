@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class HasName(Protocol):
 template<typename T>
-concept HasName = requires(T& t) {
+concept HasName = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 
@@ -17,7 +17,7 @@ struct DynNamed;
 // @dynamic
 // class DynNamed(HasName, Protocol):
 template<typename T>
-concept __DynNamed_Concept__ = requires(T& t) {
+concept __DynNamed_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 

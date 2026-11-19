@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Converter& obj) {
 //     return val
 template<typename U>
 inline ::tpy::val_or_ref_t<U> Converter::identity(::tpy::param_val_or_ref_t<U> val) const {
-    return ::tpy::param_to_return<U>(val);
+    return ::tpy::param_to_return_last<U>(val);
 }
 
 // def pair[T](a: T, b: T) -> None:

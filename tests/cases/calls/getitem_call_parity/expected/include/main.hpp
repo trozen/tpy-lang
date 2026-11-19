@@ -197,7 +197,7 @@ inline std::ostream& operator<<(std::ostream& os, const Shelf& obj) {
 template<typename T>
 struct Pair {
     // x: T
-    T x;
+    ::tpy::storage_t<T> x;
 
     // def __init__(self, x: Own[T]) -> None:
     Pair() = default;

@@ -40,7 +40,7 @@ void main();
 template<typename T>
 struct Box {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Box() = default;
@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 template<typename T>
 struct Guard {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
     // entered: int32
     int32_t entered;
 
@@ -91,7 +91,7 @@ struct Counter {
     // limit: int32
     int32_t limit;
     // seed: T
-    T seed;
+    ::tpy::storage_t<T> seed;
 
     // def __init__(self, limit: int32, seed: T) -> None:
     Counter() = default;
@@ -512,7 +512,7 @@ inline Box<T>::Box(::tpy::readonly_form_t<T> v) : v(v) {}
 //     self.v = v
 template<typename T>
 inline void Box<T>::put(::tpy::param_val_or_ref_t<T> v) {
-    this->v = ::tpy::param_to_storage<T>(v);
+    this->v = ::tpy::param_consume<T>(v);
 }
 
 // def __init__(self, val: T) -> None:

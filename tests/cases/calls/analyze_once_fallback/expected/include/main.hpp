@@ -18,11 +18,11 @@ int64_t val(B&& b);
 // @dispatch
 // def kw[T](xs: list[T], v: str) -> str:
 template<typename T>
-std::string kw__list_T__str(const std::vector<T>& xs, std::string_view v);
+std::string kw__list_T__str(const std::vector<::tpy::storage_t<T>>& xs, std::string_view v);
 // @dispatch
 // def kw[T](xs: list[T], v: T) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> kw__list_T__T(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+::tpy::val_or_ref_t<T> kw__list_T__T(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v);
 // def main() -> None:
 void main();
 
@@ -60,7 +60,7 @@ inline B B::take() && {
 // def kw[T](xs: list[T], v: str) -> str:
 //     return "str"
 template<typename T>
-std::string kw__list_T__str(const std::vector<T>& xs, std::string_view v) {
+std::string kw__list_T__str(const std::vector<::tpy::storage_t<T>>& xs, std::string_view v) {
     return "str";
 }
 // @dispatch
@@ -68,9 +68,9 @@ std::string kw__list_T__str(const std::vector<T>& xs, std::string_view v) {
 //     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
 //     return v
 template<typename T>
-::tpy::val_or_ref_t<T> kw__list_T__T(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
+::tpy::val_or_ref_t<T> kw__list_T__T(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v) {
     xs.push_back(::tpy::param_to_storage<T>(v));
-    return ::tpy::param_to_return<T>(v);
+    return ::tpy::param_to_return_last<T>(v);
 }
 
 void __tpy_init();

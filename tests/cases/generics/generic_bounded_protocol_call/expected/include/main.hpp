@@ -9,20 +9,20 @@ namespace tpyapp::main {
 
 // class Stringable(Protocol):
 template<typename T>
-concept Stringable = requires(T& t) {
+concept Stringable = requires(::tpy::storage_t<T>& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
 // class MultiMethod(Protocol):
 template<typename T>
-concept MultiMethod = requires(T& t) {
+concept MultiMethod = requires(::tpy::storage_t<T>& t) {
     { t.get_name() } -> std::convertible_to<std::string_view>;
     { t.get_value() } -> std::convertible_to<int32_t>;
 };
 
 // class Clonable(Protocol):
 template<typename T>
-concept Clonable = requires(T& t) {
+concept Clonable = requires(::tpy::storage_t<T>& t) {
     { t.clone() } -> std::convertible_to<std::remove_cvref_t<T>>;
 };
 
@@ -280,7 +280,7 @@ int32_t inner_len(::tpy::param_val_or_ref_t<T> x) {
 //     return inner_len(x)
 template<::tpystd::typing::Sized T>
 int32_t outer_len(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpyapp::main::inner_len<T>(x);
+    return ::tpyapp::main::inner_len<::tpy::storage_t<T>>(x);
 }
 // def clone_it[T: Clonable](item: T) -> Own[T]:
 //     return item.clone()  # Return type should be Own[T], not Own[Clonable]

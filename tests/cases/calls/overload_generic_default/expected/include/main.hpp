@@ -72,7 +72,7 @@ template<typename T>
 inline ::tpy::val_or_ref_t<T> Bin<T>::take__int32__T(int32_t x, ::tpy::param_val_or_ref_t<T> y) const {
     if (false) {
     }
-    return ::tpy::param_to_return<T>(y);
+    return ::tpy::param_to_return_last<T>(y);
 }
 
 template<typename T>
@@ -85,7 +85,7 @@ inline ::tpy::val_or_ref_t<T> Bin<T>::take(int32_t x, ::tpy::param_val_or_ref_t<
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Bin<T>::take__str__T(std::string_view x, ::tpy::param_val_or_ref_t<T> y) const {
     if (true) {
-        return ::tpy::param_to_return<T>(y);
+        return ::tpy::param_to_return_last<T>(y);
     }
 }
 
@@ -100,18 +100,18 @@ template<typename T>
 ::tpy::val_or_ref_t<T> pick__T__T(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y) {
     int32_t z = 0;
     if ((z > 0)) {
-        return ::tpy::param_to_return<T>(x);
+        return ::tpy::param_to_return_last<T>(x);
     }
-    return ::tpy::param_to_return<T>(y);
+    return ::tpy::param_to_return_last<T>(y);
 }
 // @overload
 // def pick[T](x: T, y: T, z: int32) -> T: ...
 template<typename T>
 ::tpy::val_or_ref_t<T> pick__T__T__int32(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y, int32_t z) {
     if ((z > 0)) {
-        return ::tpy::param_to_return<T>(x);
+        return ::tpy::param_to_return_last<T>(x);
     }
-    return ::tpy::param_to_return<T>(y);
+    return ::tpy::param_to_return_last<T>(y);
 }
 // # posonly: a later parameter's default ranks the call, `T()` stays C++'s
 // @overload
@@ -119,14 +119,14 @@ template<typename T>
 template<typename T>
 ::tpy::val_or_ref_t<T> posonly__T__T__int32(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y, int32_t z) {
     std::cout << "posonly z" << " " << z << "\n" << ::tpy::check_signals;
-    return ::tpy::param_to_return<T>(y);
+    return ::tpy::param_to_return_last<T>(y);
 }
 // @overload
 // def posonly[T](x: T, y: T, z: str, /) -> T: ...
 template<typename T>
 ::tpy::val_or_ref_t<T> posonly__T__T__str(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y, std::string_view z) {
     std::cout << "posonly z" << " " << z << "\n" << ::tpy::check_signals;
-    return ::tpy::param_to_return<T>(y);
+    return ::tpy::param_to_return_last<T>(y);
 }
 
 void __tpy_init();

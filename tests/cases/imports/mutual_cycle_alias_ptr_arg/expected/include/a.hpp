@@ -16,7 +16,7 @@ inline constexpr std::string_view __name__ = "a";
 
 template<typename T>
 struct Tree {
-    using variant_type = ::tpy::Union<T*, int32_t, std::vector<Tree<T>>>;
+    using variant_type = ::tpy::Union<::tpy::storage_t<T>*, int32_t, std::vector<Tree<::tpy::storage_t<T>>>>;
     variant_type value;
 
     Tree() requires std::default_initializable<variant_type> = default;

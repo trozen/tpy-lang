@@ -13,7 +13,7 @@ struct Awaker;
 // @dynamic
 // class Awaker(Protocol):
 template<typename T>
-concept __Awaker_Concept__ = requires(T& t) {
+concept __Awaker_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.mark_runnable(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<void>;
 };
 
@@ -24,7 +24,7 @@ struct Awaker {
 
 // class Awaitable[T](Protocol):
 template<typename T, typename _T0>
-concept Awaitable = requires(T& t) {
+concept Awaitable = requires(::tpy::storage_t<T>& t) {
     { t.__poll__(std::declval<::tpystd::coro::Waker>()) } -> std::convertible_to<::tpystd::tpy::Poll<_T0>>;
 };
 
@@ -32,7 +32,7 @@ template<typename T> struct Cancellable;
 // @dynamic
 // class Cancellable[T](Protocol):
 template<typename T, typename _T0>
-concept __Cancellable_Concept__ = requires(T& t) {
+concept __Cancellable_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.__poll__(std::declval<::tpystd::coro::Waker>()) } -> std::convertible_to<::tpystd::tpy::Poll<_T0>>;
     { t.cancel() } -> std::convertible_to<void>;
 };
@@ -180,13 +180,13 @@ inline void Waker::wake() const {
 //     return Poll[T].ready(value)
 template<typename T>
 ::tpystd::tpy::Poll<T> poll_ready(::tpy::own_param_t<T> value) {
-    return ::tpystd::tpy::Poll<T>::ready(std::move(value));
+    return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::ready(std::move(value));
 }
 // def poll_pending[T]() -> Own[Poll[T]]:
 //     return Poll[T].pending()
 template<typename T>
 ::tpystd::tpy::Poll<T> poll_pending() {
-    return ::tpystd::tpy::Poll<T>::pending();
+    return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::pending();
 }
 // # Synchronous one-step driver. Calls `__poll__(Waker())` once and
 // # returns the Poll[T] for the caller to inspect. Useful for tests and

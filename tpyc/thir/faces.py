@@ -163,6 +163,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # (optional_to_ptr / nullptr / bare ptr)
     "expr.walrus_btuple_emplace",   # hoisted borrow-tuple walrus with an
                                     # owning-call value: emplace + name tail
+    "expr.walrus_open_result",      # walrus declaring an open-result local
     "expr.walrus_rebind",           # walrus writing a binding declared
                                     # ahead of it (a `try` hoist): the plain
                                     # assignment's write, read back out
@@ -1254,6 +1255,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # A tuple LITERAL at a value-tuple-resolved T slot: the inline spelled
     # brace prvalue (`push_t<...>(pq, std::tuple<...>{2, "second"})`).
     "call.generic_tuple_literal",
+    "call.open_same_t_arg",
+    # A rebound local holding an open `T` result: its binding decided per
+    # instantiation (`init_result<T>`).
+    "decl.open_result_local",
     # A conformer NAME into a still-open single structural protocol slot
     # (`drive_implicit(t)` at `Awaitable[T]`): binds the template param bare.
     "call.generic_open_proto_name",
@@ -1783,6 +1788,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # Slotless pointer reseat: the source converted at the LOCAL slot
     # (`x = &(h.a);`, `y = ::tpy::optional_to_ptr(h.o);`).
     "reseat.convert",
+    "reseat.open_result",
     # Ptr-variant union local from a concrete-member rvalue: value-variant
     # `__slot_N` + `to_ptr_variant(__slot_N)`.
     "decl.union_slot_rvalue",

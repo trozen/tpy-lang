@@ -18,7 +18,7 @@ void main();
 template<typename T, std::size_t N>
 struct Grid {
     // _value: T
-    T _value;
+    ::tpy::storage_t<T> _value;
 
     // def __init__(self, value: T) -> None:
     Grid() = default;

@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def grab[T](src: list[T]) -> Own[Owned[T]]:
 template<typename T>
-Owned<T> grab(const std::vector<T>& src);
+Owned<T> grab(const std::vector<::tpy::storage_t<T>>& src);
 // def main() -> None:
 void main();
 
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const R& obj) {
 template<typename T>
 struct Owned {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: Own[T]) -> None:
     Owned() = default;
@@ -66,8 +66,8 @@ inline Owned<T>::Owned(::tpy::own_param_t<T> v) : v(std::move(v)) {}
 //     o = Owned(copy(src[0]))  # tpyc: type(/Owned\[T\]/)
 //     return o
 template<typename T>
-Owned<T> grab(const std::vector<T>& src) {
-    Owned<T> o = Owned<T>(T(::tpy::__getitem__(src, 0)));
+Owned<T> grab(const std::vector<::tpy::storage_t<T>>& src) {
+    Owned<T> o = Owned<T>(::tpy::storage_t<T>(::tpy::__getitem__(src, 0)));
     return o;
 }
 

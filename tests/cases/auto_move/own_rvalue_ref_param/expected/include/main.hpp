@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 template<typename T>
 struct Container {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Container();
@@ -63,7 +63,7 @@ inline Box::Box(int32_t value) : value(value) {}
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T>
-inline Container<T>::Container() : items(std::vector<T>{}) {}
+inline Container<T>::Container() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def push(self, item: Own[T]) -> None:
 //     self.items.append(item)

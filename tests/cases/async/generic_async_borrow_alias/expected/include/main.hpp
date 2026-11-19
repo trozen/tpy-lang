@@ -57,7 +57,7 @@ struct __coro_identity {
     __coro_identity(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -84,7 +84,7 @@ template <typename T>
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x);
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(x));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -96,7 +96,7 @@ template <typename T>
 // async def identity[T](x: T) -> T:
 template <typename T>
 __coro_identity<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    return __coro_identity<T>(x);
+    return __coro_identity<T>(::tpy::param_pass_last<T>(x));
 }
 
 // async def main() -> None:

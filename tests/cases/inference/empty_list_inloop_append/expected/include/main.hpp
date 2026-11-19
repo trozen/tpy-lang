@@ -21,7 +21,7 @@ std::vector<int32_t> collect_while(int32_t n);
 std::vector<int32_t> collect_cond(const std::vector<int32_t>& xs);
 // def generic_collect[T](xs: list[T]) -> Own[list[T]]:
 template<typename T>
-std::vector<T> generic_collect(const std::vector<T>& xs);
+std::vector<::tpy::storage_t<T>> generic_collect(const std::vector<::tpy::storage_t<T>>& xs);
 // def total(ys: list[int32]) -> int32:
 int32_t total(const std::vector<int32_t>& ys);
 // def collect_refs(src: list[Counter]) -> Own[list[Counter]]:
@@ -55,8 +55,8 @@ inline Counter::Counter(int32_t n) : n(n) {}
 //         out.append(x)
 //     return out
 template<typename T>
-std::vector<T> generic_collect(const std::vector<T>& xs) {
-    std::vector<T> out = std::vector<T>{};
+std::vector<::tpy::storage_t<T>> generic_collect(const std::vector<::tpy::storage_t<T>>& xs) {
+    std::vector<::tpy::storage_t<T>> out = std::vector<::tpy::storage_t<T>>{};
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Container[X](Protocol):
 template<typename T, typename _T0>
-concept Container = requires(T& t) {
+concept Container = requires(::tpy::storage_t<T>& t) {
     { t.get() } -> ::tpy::proto_result<_T0>;
 };
 
@@ -18,7 +18,7 @@ struct IntListBox;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def first[R, T: Container[list[R]]](x: T) -> R:
-template<typename R, Container<std::vector<R>> T>
+template<typename R, Container<std::vector<::tpy::storage_t<R>>> T>
 ::tpy::val_or_ref_t<R> first(::tpy::param_val_or_ref_t<T> x);
 // def main() -> None:
 void main();
@@ -54,7 +54,7 @@ inline std::vector<::tpy::BigInt>& IntListBox::get() {
 }
 // def first[R, T: Container[list[R]]](x: T) -> R:
 //     return x.get()[0]
-template<typename R, Container<std::vector<R>> T>
+template<typename R, Container<std::vector<::tpy::storage_t<R>>> T>
 ::tpy::val_or_ref_t<R> first(::tpy::param_val_or_ref_t<T> x) {
     return ::tpy::__getitem__(x.get(), 0);
 }

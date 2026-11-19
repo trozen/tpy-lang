@@ -30,32 +30,32 @@ template<typename T>
 std::tuple<::tpy::val_or_ptr_t<T>, int32_t> mk(::tpy::param_val_or_ref_t<T> a);
 // def mk_own[T](a: Own[T]) -> Own[tuple[T, int32]]:
 template<typename T>
-std::tuple<T, int32_t> mk_own(::tpy::own_param_t<T> a);
+std::tuple<::tpy::storage_t<T>, int32_t> mk_own(::tpy::own_param_t<T> a);
 // def mko[T](a: Own[T]) -> Own[T]:
 template<typename T>
 ::tpy::own_return_t<T> mko(::tpy::own_param_t<T> a);
 // def s_param[T](x: tuple[T, int32], f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_param(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f);
 // def s_call[T](a: T, f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_call(::tpy::param_val_or_ref_t<T> a, __F0&& f);
 // def s_one[T](x: tuple[T], f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_one(const std::tuple<::tpy::val_or_ptr_t<T>>& x, __F0&& f);
 // def s_two[T](x: tuple[T, T], f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_two(const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<T>>& x, __F0&& f);
 // def s_ro[T](x: tuple[readonly[T], int32]) -> None:
@@ -64,21 +64,21 @@ void s_ro(const std::tuple<::tpy::val_or_cptr_t<T>, int32_t>& x);
 // def s_closure[T](x: tuple[T, int32], f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_closure(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f);
 // def s_escape[T](x: tuple[T, int32], b: Own[T], flag: bool,
 //                 f: Fn[[T], None]) -> Callable[[], None]:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 std::function<void()> s_escape(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> b, bool flag, __F0&& f);
 // def s_escape_lam[T](x: tuple[T, int32], b: Own[T], flag: bool,
 //                     f: Fn[[T], int32]) -> Callable[[], int32]:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> std::convertible_to<int32_t>;
   }
 std::function<int32_t()> s_escape_lam(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> b, bool flag, __F0&& f);
 // def s_escape_lam_store[T](x: tuple[T, int32], b: Own[T], flag: bool,
@@ -86,70 +86,70 @@ std::function<int32_t()> s_escape_lam(const std::tuple<::tpy::val_or_ptr_t<T>, i
 //                           out: list[Callable[[], int32]]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> std::convertible_to<int32_t>;
   }
 void s_escape_lam_store(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> b, bool flag, __F0&& f, std::vector<std::function<int32_t()>>& out);
 // @error_return(Neg)
 // def s_er[T](x: tuple[T, int32], f: Fn[[T], None]) -> int32:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 std::expected<int32_t, Neg> s_er(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f);
 // def s_if[T](x: tuple[T, int32], flag: bool, f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_if(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, bool flag, __F0&& f);
 // def s_match[T](x: tuple[T, int32], k: int32, f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_match(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, int32_t k, __F0&& f);
 // def s_reseat[T](x: tuple[T, int32], z: tuple[T, int32],
 //                 f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_reseat(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& z, __F0&& f);
 // def s_hoist[T](x: tuple[T, int32], z: tuple[T, int32], flag: bool,
 //                f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_hoist(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& z, bool flag, __F0&& f);
 // def s_residue[T](x: tuple[T, int32], a: T, b: Own[T],
 //                  xs: list[tuple[T, int32]], flag: bool) -> int32:
 template<typename T>
-int32_t s_residue(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::param_val_or_ref_t<T> a, ::tpy::own_param_t<T> b, const std::vector<std::tuple<T, int32_t>>& xs, bool flag);
+int32_t s_residue(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::param_val_or_ref_t<T> a, ::tpy::own_param_t<T> b, const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& xs, bool flag);
 // def s_move_last[T](x: tuple[T, int32], c: Own[T], f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_move_last(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> c, __F0&& f);
 // def s_move_loop[T](x: tuple[T, int32], c: Own[T], f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_move_loop(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> c, __F0&& f);
 // def s_move_continue[T](x: tuple[T, int32], c: Own[T],
 //                        f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_move_continue(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> c, __F0&& f);
 // def s_move_branch[T](x: tuple[T, int32], c: Own[T], flag: bool,
 //                      f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_move_branch(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> c, bool flag, __F0&& f);
 // def s_str_elem[T](x: tuple[T, str]) -> int32:
@@ -158,20 +158,20 @@ int32_t s_str_elem(const std::tuple<::tpy::val_or_ptr_t<T>, std::string>& x);
 // def s_store[T](a: Own[T], f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_store(::tpy::own_param_t<T> a, __F0&& f);
 // def s_loop[T](xs: list[tuple[T, int32]], f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-void s_loop(std::vector<std::tuple<T, int32_t>>& xs, __F0&& f);
+void s_loop(std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& xs, __F0&& f);
 // def s_sel[T](x: tuple[T, int32], z: tuple[T, int32], flag: bool,
 //              f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_sel(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& z, bool flag, __F0&& f);
 // def s_sel_storage[T](x: tuple[T, int32], z: tuple[T, int32], b: Own[T],
@@ -182,7 +182,7 @@ int32_t s_sel_storage(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, cons
 //              f: Fn[[T], None]) -> None:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_try(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& z, int32_t k, __F0&& f);
 // def s_nocopy[T](a: Own[T]) -> int32:
@@ -290,7 +290,7 @@ struct K {
     // def g(self, x: tuple[T, int32], f: Fn[[T], None]) -> None:
     template<typename __F0>
       requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-          __fn(__a0);
+          __fn(static_cast<decltype(__a0)&&>(__a0));
       }
     void g(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.K";
@@ -308,7 +308,7 @@ struct V {
 
 
     // def g(self, x: tuple[T, int32]) -> int32:
-    int32_t g(const std::tuple<T, int32_t>& x) const;
+    int32_t g(const std::tuple<::tpy::storage_t<T>, int32_t>& x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.V";
 };
 
@@ -351,7 +351,7 @@ inline K<T>::K(const std::tuple<::tpy::val_or_cptr_t<T>, int32_t>& x) {
 template<typename T>
 template<typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 inline void K<T>::g(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f) const {
     auto y = x;
@@ -363,8 +363,8 @@ inline void K<T>::g(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&&
 //     y = x  # tpyc: ok
 //     return y[1]
 template<::tpy::ValueType T>
-inline int32_t V<T>::g(const std::tuple<T, int32_t>& x) const {
-    std::tuple<T, int32_t> y = x;
+inline int32_t V<T>::g(const std::tuple<::tpy::storage_t<T>, int32_t>& x) const {
+    std::tuple<::tpy::storage_t<T>, int32_t> y = x;
     return std::get<1>(y);
 }
 
@@ -372,13 +372,13 @@ inline int32_t V<T>::g(const std::tuple<T, int32_t>& x) const {
 //     return (a, 1)
 template<typename T>
 std::tuple<::tpy::val_or_ptr_t<T>, int32_t> mk(::tpy::param_val_or_ref_t<T> a) {
-    return std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(a), 1};
+    return std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(a)), 1};
 }
 // def mk_own[T](a: Own[T]) -> Own[tuple[T, int32]]:
 //     return (a, 2)
 template<typename T>
-std::tuple<T, int32_t> mk_own(::tpy::own_param_t<T> a) {
-    return std::tuple<T, int32_t>{std::move(a), 2};
+std::tuple<::tpy::storage_t<T>, int32_t> mk_own(::tpy::own_param_t<T> a) {
+    return std::tuple<::tpy::storage_t<T>, int32_t>{std::move(a), 2};
 }
 // def mko[T](a: Own[T]) -> Own[T]:
 //     return a
@@ -395,11 +395,11 @@ template<typename T>
 //     print("param", y[0] == x[0], y[1])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_param(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f) {
     auto y = x;
-    f(::tpy::tuple_elem_ref(std::get<0>(y)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
     std::cout << "param" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(x)))) << " " << std::get<1>(y) << "\n" << ::tpy::check_signals;
 }
 // # borrow-returning call source
@@ -409,10 +409,10 @@ void s_param(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f) {
 //     print("call", c[0] == a, c[1])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_call(::tpy::param_val_or_ref_t<T> a, __F0&& f) {
-    auto c = ::tpyapp::main::mk<T>(a);
+    auto c = ::tpyapp::main::mk<::tpy::storage_t<T>>(a);
     f(::tpy::tuple_elem_ref(std::get<0>(c)));
     std::cout << "call" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(c)), a)) << " " << std::get<1>(c) << "\n" << ::tpy::check_signals;
 }
@@ -423,11 +423,11 @@ void s_call(::tpy::param_val_or_ref_t<T> a, __F0&& f) {
 //     print("one", y[0] == x[0])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_one(const std::tuple<::tpy::val_or_ptr_t<T>>& x, __F0&& f) {
     auto y = x;
-    f(::tpy::tuple_elem_ref(std::get<0>(y)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
     std::cout << "one" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(x)))) << "\n" << ::tpy::check_signals;
 }
 // def s_two[T](x: tuple[T, T], f: Fn[[T], None]) -> None:
@@ -436,11 +436,11 @@ void s_one(const std::tuple<::tpy::val_or_ptr_t<T>>& x, __F0&& f) {
 //     print("two", y[0] == x[0], y[1] == x[1])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_two(const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<T>>& x, __F0&& f) {
     auto y = x;
-    f(::tpy::tuple_elem_ref(std::get<1>(y)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<1>(y))));
     std::cout << "two" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(x)))) << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<1>(y)), ::tpy::tuple_elem_ref(std::get<1>(x)))) << "\n" << ::tpy::check_signals;
 }
 // # readonly element
@@ -462,7 +462,7 @@ void s_ro(const std::tuple<::tpy::val_or_cptr_t<T>, int32_t>& x) {
 //     inner()
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_closure(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f) {
     auto inner = [&f, &x]() {
@@ -489,13 +489,13 @@ void s_closure(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f) {
 //     return h
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 std::function<void()> s_escape(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> b, bool flag, __F0&& f) {
-    T o = ::tpyapp::main::mko<T>(std::move(b));
-    auto p = ::tpyapp::main::mk<T>(o);
-    std::tuple<T, int32_t> y = ((flag) ? (p) : (x));
-    std::tuple<T, int32_t> u = p;
+    ::tpy::storage_t<T> o = ::tpyapp::main::mko<::tpy::storage_t<T>>(std::move(b));
+    auto p = ::tpyapp::main::mk<::tpy::storage_t<T>>(o);
+    std::tuple<::tpy::storage_t<T>, int32_t> y = ((flag) ? (p) : (x));
+    std::tuple<::tpy::storage_t<T>, int32_t> u = p;
     auto h = [f, u, y]() {
         f(::tpy::tuple_elem_ref(std::get<0>(y)));
         f(::tpy::tuple_elem_ref(std::get<0>(u)));
@@ -512,12 +512,12 @@ std::function<void()> s_escape(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>
 //     return lambda: f(y[0])  # tpyc: warning(/may keep its own copy of 'y'/)
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> std::convertible_to<int32_t>;
   }
 std::function<int32_t()> s_escape_lam(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> b, bool flag, __F0&& f) {
-    T o = ::tpyapp::main::mko<T>(std::move(b));
-    auto p = ::tpyapp::main::mk<T>(o);
-    std::tuple<T, int32_t> y = ((flag) ? (p) : (x));
+    ::tpy::storage_t<T> o = ::tpyapp::main::mko<::tpy::storage_t<T>>(std::move(b));
+    auto p = ::tpyapp::main::mk<::tpy::storage_t<T>>(o);
+    std::tuple<::tpy::storage_t<T>, int32_t> y = ((flag) ? (p) : (x));
     return [f, y]() -> int32_t { return f(::tpy::tuple_elem_ref(std::get<0>(y))); };
 }
 // def s_escape_lam_store[T](x: tuple[T, int32], b: Own[T], flag: bool,
@@ -530,12 +530,12 @@ std::function<int32_t()> s_escape_lam(const std::tuple<::tpy::val_or_ptr_t<T>, i
 //     out.append(lambda: f(y[0]))  # tpyc: warning(/may keep its own copy of 'y'/)
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
+      { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> std::convertible_to<int32_t>;
   }
 void s_escape_lam_store(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> b, bool flag, __F0&& f, std::vector<std::function<int32_t()>>& out) {
-    T o = ::tpyapp::main::mko<T>(std::move(b));
-    auto p = ::tpyapp::main::mk<T>(o);
-    std::tuple<T, int32_t> y = ((flag) ? (p) : (x));
+    ::tpy::storage_t<T> o = ::tpyapp::main::mko<::tpy::storage_t<T>>(std::move(b));
+    auto p = ::tpyapp::main::mk<::tpy::storage_t<T>>(o);
+    std::tuple<::tpy::storage_t<T>, int32_t> y = ((flag) ? (p) : (x));
     out.push_back([f, y]() -> int32_t { return f(::tpy::tuple_elem_ref(std::get<0>(y))); });
 }
 // # @error_return body
@@ -549,11 +549,11 @@ void s_escape_lam_store(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::
 //     return y[1]
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 std::expected<int32_t, Neg> s_er(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f) {
     auto y = x;
-    f(::tpy::tuple_elem_ref(std::get<0>(y)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
     std::cout << "er" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(x)))) << "\n" << ::tpy::check_signals;
     if ((std::get<1>(y) < 0)) {
         return ::tpy::make_unexpected(Neg{});
@@ -568,12 +568,12 @@ std::expected<int32_t, Neg> s_er(const std::tuple<::tpy::val_or_ptr_t<T>, int32_
 //         print("if", y[0] == x[0])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_if(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, bool flag, __F0&& f) {
     if (flag) {
         auto y = x;
-        f(::tpy::tuple_elem_ref(std::get<0>(y)));
+        f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
         std::cout << "if" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(x)))) << "\n" << ::tpy::check_signals;
     }
 }
@@ -587,14 +587,14 @@ void s_if(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, bool flag, __F0&
 //             print("match none")
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_match(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, int32_t k, __F0&& f) {
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 1: {
         auto y = x;
-        f(::tpy::tuple_elem_ref(std::get<0>(y)));
+        f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
         std::cout << "match" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(x)))) << "\n" << ::tpy::check_signals;
         break;
     }
@@ -614,13 +614,13 @@ void s_match(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, int32_t k, __
 //     print("reseat", y[0] == z[0], y[1])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_reseat(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& z, __F0&& f) {
     std::tuple<::tpy::val_or_ptr_t<T>, int32_t> y = x;
-    f(::tpy::tuple_elem_ref(std::get<0>(y)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
     y = z;
-    f(::tpy::tuple_elem_ref(std::get<0>(y)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
     std::cout << "reseat" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(z)))) << " " << std::get<1>(y) << "\n" << ::tpy::check_signals;
 }
 // def s_hoist[T](x: tuple[T, int32], z: tuple[T, int32], flag: bool,
@@ -633,7 +633,7 @@ void s_reseat(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::t
 //     print("hoist", y[0] == x[0], y[0] == z[0])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_hoist(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& z, bool flag, __F0&& f) {
     std::tuple<::tpy::val_or_ptr_t<T>, int32_t> y;
@@ -642,7 +642,7 @@ void s_hoist(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tu
     } else {
         y = z;
     }
-    f(::tpy::tuple_elem_ref(std::get<0>(y)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
     std::cout << "hoist" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(x)))) << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(z)))) << "\n" << ::tpy::check_signals;
 }
 // # a reseat from a borrow call, a storage local, a loop variable or a select
@@ -667,11 +667,11 @@ void s_hoist(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tu
 //     v = y if flag else x  # tpyc: ok
 //     return n + u[1] + v[1]
 template<typename T>
-int32_t s_residue(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::param_val_or_ref_t<T> a, ::tpy::own_param_t<T> b, const std::vector<std::tuple<T, int32_t>>& xs, bool flag) {
-    std::tuple<T, int32_t> w = ::tpyapp::main::mk_own<T>(std::move(b));
-    std::tuple<T, int32_t> y = x;
+int32_t s_residue(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::param_val_or_ref_t<T> a, ::tpy::own_param_t<T> b, const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& xs, bool flag) {
+    std::tuple<::tpy::storage_t<T>, int32_t> w = ::tpyapp::main::mk_own<::tpy::storage_t<T>>(std::move(b));
+    std::tuple<::tpy::storage_t<T>, int32_t> y = x;
     int32_t n = std::get<1>(y);
-    y = ::tpyapp::main::mk<T>(a);
+    y = ::tpyapp::main::mk<::tpy::storage_t<T>>(a);
     n = ::tpy::add_check<int32_t>(n, std::get<1>(y));
     y = w;
     n = ::tpy::add_check<int32_t>(n, std::get<1>(y));
@@ -685,8 +685,8 @@ int32_t s_residue(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::p
     }
     y = ((flag) ? (x) : (w));
     n = ::tpy::add_check<int32_t>(n, std::get<1>(y));
-    std::tuple<T, int32_t> u = y;
-    std::tuple<T, int32_t> v = ((flag) ? (y) : (x));
+    std::tuple<::tpy::storage_t<T>, int32_t> u = y;
+    std::tuple<::tpy::storage_t<T>, int32_t> v = ((flag) ? (y) : (x));
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(n, std::get<1>(u))), std::get<1>(v)));
 }
 // # a reseat from a storage local at its last use moves it in; one a later loop
@@ -698,13 +698,13 @@ int32_t s_residue(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::p
 //     f(y[0])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_move_last(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> c, __F0&& f) {
-    std::tuple<T, int32_t> w = ::tpyapp::main::mk_own<T>(std::move(c));
-    std::tuple<T, int32_t> y = x;
+    std::tuple<::tpy::storage_t<T>, int32_t> w = ::tpyapp::main::mk_own<::tpy::storage_t<T>>(std::move(c));
+    std::tuple<::tpy::storage_t<T>, int32_t> y = x;
     y = std::move(w);
-    f(::tpy::tuple_elem_ref(std::get<0>(y)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
 }
 // def s_move_loop[T](x: tuple[T, int32], c: Own[T], f: Fn[[T], None]) -> None:
 //     w = mk_own(c)
@@ -714,14 +714,14 @@ void s_move_last(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::ow
 //         f(y[0])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_move_loop(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> c, __F0&& f) {
-    std::tuple<T, int32_t> w = ::tpyapp::main::mk_own<T>(std::move(c));
-    std::tuple<T, int32_t> y = x;
+    std::tuple<::tpy::storage_t<T>, int32_t> w = ::tpyapp::main::mk_own<::tpy::storage_t<T>>(std::move(c));
+    std::tuple<::tpy::storage_t<T>, int32_t> y = x;
     for (int32_t i = 0; i < 2; ++i) {
         y = w;
-        f(::tpy::tuple_elem_ref(std::get<0>(y)));
+        f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
     }
 }
 // def s_move_continue[T](x: tuple[T, int32], c: Own[T],
@@ -734,14 +734,14 @@ void s_move_loop(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::ow
 //         continue
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_move_continue(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> c, __F0&& f) {
-    std::tuple<T, int32_t> w = ::tpyapp::main::mk_own<T>(std::move(c));
-    std::tuple<T, int32_t> y = x;
+    std::tuple<::tpy::storage_t<T>, int32_t> w = ::tpyapp::main::mk_own<::tpy::storage_t<T>>(std::move(c));
+    std::tuple<::tpy::storage_t<T>, int32_t> y = x;
     for (int32_t i = 0; i < 2; ++i) {
         y = w;
-        f(::tpy::tuple_elem_ref(std::get<0>(y)));
+        f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
         continue;
     }
 }
@@ -755,15 +755,15 @@ void s_move_continue(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy
 //     f(w[0])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_move_branch(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::own_param_t<T> c, bool flag, __F0&& f) {
-    std::tuple<T, int32_t> w = ::tpyapp::main::mk_own<T>(std::move(c));
-    std::tuple<T, int32_t> y = x;
+    std::tuple<::tpy::storage_t<T>, int32_t> w = ::tpyapp::main::mk_own<::tpy::storage_t<T>>(std::move(c));
+    std::tuple<::tpy::storage_t<T>, int32_t> y = x;
     if (flag) {
         y = w;
     }
-    f(::tpy::tuple_elem_ref(std::get<0>(y)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
     f(::tpy::tuple_elem_ref(std::get<0>(w)));
 }
 // # an open T beside a str keeps the storage copy, which builds at a value T
@@ -773,7 +773,7 @@ void s_move_branch(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, ::tpy::
 //     return len(y[1])
 template<typename T>
 int32_t s_str_elem(const std::tuple<::tpy::val_or_ptr_t<T>, std::string>& x) {
-    std::tuple<T, std::string> y = x;
+    std::tuple<::tpy::storage_t<T>, std::string> y = x;
     return ::tpy::__len__(std::get<1>(y));
 }
 // # storage source bound to a second name, and a loop variable over storage
@@ -784,10 +784,10 @@ int32_t s_str_elem(const std::tuple<::tpy::val_or_ptr_t<T>, std::string>& x) {
 //     print("store", c[0] == d[0], d[1])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_store(::tpy::own_param_t<T> a, __F0&& f) {
-    std::tuple<T, int32_t> c = ::tpyapp::main::mk_own<T>(std::move(a));
+    std::tuple<::tpy::storage_t<T>, int32_t> c = ::tpyapp::main::mk_own<::tpy::storage_t<T>>(std::move(a));
     auto&& d = c;
     f(::tpy::tuple_elem_ref(std::get<0>(d)));
     std::cout << "store" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(c)), ::tpy::tuple_elem_ref(std::get<0>(d)))) << " " << std::get<1>(d) << "\n" << ::tpy::check_signals;
@@ -799,16 +799,16 @@ void s_store(::tpy::own_param_t<T> a, __F0&& f) {
 //         print("loop", z[0] == q[0], z[1])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
-void s_loop(std::vector<std::tuple<T, int32_t>>& xs, __F0&& f) {
+void s_loop(std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& xs, __F0&& f) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& q = *__beg_0;
         auto&& z = q;
-        f(::tpy::tuple_elem_ref(std::get<0>(z)));
+        f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(z))));
         std::cout << "loop" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(z)), ::tpy::tuple_elem_ref(std::get<0>(q)))) << " " << std::get<1>(z) << "\n" << ::tpy::check_signals;
     }
 }
@@ -820,11 +820,11 @@ void s_loop(std::vector<std::tuple<T, int32_t>>& xs, __F0&& f) {
 //     print("sel", y[0] == x[0], y[0] == z[0])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_sel(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& z, bool flag, __F0&& f) {
     auto y = ((flag) ? (x) : (z));
-    f(::tpy::tuple_elem_ref(std::get<0>(y)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
     std::cout << "sel" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(x)))) << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(z)))) << "\n" << ::tpy::check_signals;
 }
 // # every other select keeps the storage copy -- a storage arm, a nested
@@ -840,11 +840,11 @@ void s_sel(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tupl
 //     return m[1] + s[1] + n[1]
 template<typename T>
 int32_t s_sel_storage(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& z, ::tpy::own_param_t<T> b, ::tpy::own_param_t<T> c, bool flag, bool other) {
-    std::tuple<T, int32_t> w = ::tpyapp::main::mk_own<T>(std::move(b));
-    std::tuple<T, int32_t> w2 = ::tpyapp::main::mk_own<T>(std::move(c));
-    std::tuple<T, int32_t> m = ((flag) ? (x) : (w));
-    std::tuple<T, int32_t> s = ((flag) ? (w) : (w2));
-    std::tuple<T, int32_t> n = ((flag) ? (x) : (((other) ? (z) : (x))));
+    std::tuple<::tpy::storage_t<T>, int32_t> w = ::tpyapp::main::mk_own<::tpy::storage_t<T>>(std::move(b));
+    std::tuple<::tpy::storage_t<T>, int32_t> w2 = ::tpyapp::main::mk_own<::tpy::storage_t<T>>(std::move(c));
+    std::tuple<::tpy::storage_t<T>, int32_t> m = ((flag) ? (x) : (w));
+    std::tuple<::tpy::storage_t<T>, int32_t> s = ((flag) ? (w) : (w2));
+    std::tuple<::tpy::storage_t<T>, int32_t> n = ((flag) ? (x) : (((other) ? (z) : (x))));
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(std::get<1>(m), std::get<1>(s))), std::get<1>(n)));
 }
 // # a branch-bound local under try / finally and try / except
@@ -865,7 +865,7 @@ int32_t s_sel_storage(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, cons
 //     print("try", y[0] == x[0], u[0] == x[0], u[0] == z[0])
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      __fn(__a0);
+      __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 void s_try(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& z, int32_t k, __F0&& f) {
     std::tuple<::tpy::val_or_ptr_t<T>, int32_t> y;
@@ -878,7 +878,7 @@ void s_try(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tupl
         }
         std::cout << "try fin" << "\n" << ::tpy::check_signals;
     }
-    f(::tpy::tuple_elem_ref(std::get<0>(y)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
     std::tuple<::tpy::val_or_ptr_t<T>, int32_t> u;
     {
         try {
@@ -890,7 +890,7 @@ void s_try(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tupl
             u = z;
         }
     }
-    f(::tpy::tuple_elem_ref(std::get<0>(u)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(u))));
     std::cout << "try" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(x)))) << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(u)), ::tpy::tuple_elem_ref(std::get<0>(x)))) << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(u)), ::tpy::tuple_elem_ref(std::get<0>(z)))) << "\n" << ::tpy::check_signals;
 }
 // # a @nocopy element: the storage alias is no copy
@@ -900,7 +900,7 @@ void s_try(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tupl
 //     return d[1]
 template<typename T>
 int32_t s_nocopy(::tpy::own_param_t<T> a) {
-    std::tuple<T, int32_t> c = ::tpyapp::main::mk_own<T>(std::move(a));
+    std::tuple<::tpy::storage_t<T>, int32_t> c = ::tpyapp::main::mk_own<::tpy::storage_t<T>>(std::move(a));
     auto&& d = c;
     return std::get<1>(d);
 }
@@ -932,7 +932,7 @@ std::tuple<::tpy::val_or_ptr_t<T>, int32_t> r_sel(const std::tuple<::tpy::val_or
 //     return c  # tpyc: ok
 template<typename T>
 std::tuple<::tpy::val_or_ptr_t<T>, int32_t> r_call_local(::tpy::param_val_or_ref_t<T> a) {
-    auto c = ::tpyapp::main::mk<T>(a);
+    auto c = ::tpyapp::main::mk<::tpy::storage_t<T>>(a);
     return c;
 }
 

@@ -17,24 +17,24 @@ struct __gen_some;
 
 // def pick[T: ValueType](x: T | None, d: T) -> T:
 template<::tpy::ValueType T>
-T pick(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d);
+::tpy::storage_t<T> pick(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d);
 // def some[T: ValueType](x: T | None) -> Iterator[T]:
 template <typename T>
-__gen_some<T> some(std::optional<T> x);
+__gen_some<T> some(std::optional<::tpy::storage_t<T>> x);
 // def idt[T: ValueType](x: T) -> T:
 template<::tpy::ValueType T>
-T idt(::tpy::param_val_or_ref_t<T> x);
+::tpy::storage_t<T> idt(::tpy::param_val_or_ref_t<T> x);
 // def reassigned_backing() -> None:
 void reassigned_backing();
 // def describe[T: ValueType](x: T | None, d: T) -> T:
 template<::tpy::ValueType T>
-T describe(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d);
+::tpy::storage_t<T> describe(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d);
 // def first[T: ValueType](*xs: T) -> T | None:
 template<::tpy::ValueType T>
-std::optional<T> first(::tpy::varargs<const T> xs);
+std::optional<::tpy::storage_t<T>> first(::tpy::varargs<const ::tpy::storage_t<T>> xs);
 // def via[T: ValueType](x: T) -> T | None:
 template<::tpy::ValueType T>
-std::optional<T> via(::tpy::param_val_or_ref_t<T> x);
+std::optional<::tpy::storage_t<T>> via(::tpy::param_val_or_ref_t<T> x);
 // def locals_into_optional() -> None:
 void locals_into_optional();
 // def main() -> None:
@@ -48,10 +48,10 @@ struct P {
     P();
 
     // def m(self, x: T | None, d: T) -> T:
-    T m(::tpy::opt_cparam_t<T> x, ::tpy::readonly_form_t<T> d) const;
+    ::tpy::storage_t<T> m(::tpy::opt_cparam_t<T> x, ::tpy::readonly_form_t<T> d) const;
 
     // def opt(self, x: T) -> T | None:
-    std::optional<T> opt(::tpy::readonly_form_t<T> x) const;
+    std::optional<::tpy::storage_t<T>> opt(::tpy::readonly_form_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "part_optional.P";
 };
 
@@ -81,9 +81,9 @@ inline std::ostream& operator<<(std::ostream& os, const Show<T>& obj) {
 
 // def some[T: ValueType](x: T | None) -> Iterator[T]:
 template <typename T>
-struct __gen_some : public ::tpy::next_iter_mixin<__gen_some<T>, T> {
+struct __gen_some : public ::tpy::next_iter_mixin<__gen_some<T>, ::tpy::storage_t<T>> {
     ::tpy::frame_state __state;
-    std::optional<T> x;
+    std::optional<::tpy::storage_t<T>> x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -92,11 +92,11 @@ struct __gen_some : public ::tpy::next_iter_mixin<__gen_some<T>, T> {
         S_DONE = 3,
     };
 
-    __gen_some(std::optional<T> x_)
+    __gen_some(std::optional<::tpy::storage_t<T>> x_)
         : __state(S_INITIAL),
           x(std::move(x_)) {}
 
-    std::expected<T, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_some& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_some<T>&) {
@@ -108,7 +108,7 @@ struct __gen_some : public ::tpy::next_iter_mixin<__gen_some<T>, T> {
 //     if x is not None:  # tpyc: ok
 //         yield x                                      # -> S_RESUME_0
 template <typename T>
-std::expected<T, ::tpy::StopIteration> __gen_some<T>::__next__() {
+std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __gen_some<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -133,7 +133,7 @@ std::expected<T, ::tpy::StopIteration> __gen_some<T>::__next__() {
 
 // def some[T: ValueType](x: T | None) -> Iterator[T]:
 template <typename T>
-__gen_some<T> some(std::optional<T> x) {
+__gen_some<T> some(std::optional<::tpy::storage_t<T>> x) {
     return __gen_some<T>(x);
 }
 
@@ -149,9 +149,9 @@ inline P<T>::P() {
 //         return d
 //     return x
 template<::tpy::ValueType T>
-inline T P<T>::m(::tpy::opt_cparam_t<T> x, ::tpy::readonly_form_t<T> d) const {
+inline ::tpy::storage_t<T> P<T>::m(::tpy::opt_cparam_t<T> x, ::tpy::readonly_form_t<T> d) const {
     if ((!::tpy::opt_has_value(x))) {
-        return ::tpy::param_to_return<T>(d);
+        return ::tpy::param_to_return_last<T>(d);
     }
     return (*x);
 }
@@ -159,8 +159,8 @@ inline T P<T>::m(::tpy::opt_cparam_t<T> x, ::tpy::readonly_form_t<T> d) const {
 // def opt(self, x: T) -> T | None:
 //     return x
 template<::tpy::ValueType T>
-inline std::optional<T> P<T>::opt(::tpy::readonly_form_t<T> x) const {
-    return ::tpy::param_to_storage<T>(x);
+inline std::optional<::tpy::storage_t<T>> P<T>::opt(::tpy::readonly_form_t<T> x) const {
+    return ::tpy::param_consume<T>(x);
 }
 
 // def __init__(self) -> None:
@@ -173,7 +173,7 @@ inline Show<T>::Show() {
 //     print("show", x)  # tpyc: ok
 template<::tpy::ValueType T>
 inline void Show<T>::show(::tpy::opt_cparam_t<T> x) const {
-    std::cout << "show" << " " << ::tpy::print_optional_val<::tpy::ValuePrinter<T>, T>(x) << "\n" << ::tpy::check_signals;
+    std::cout << "show" << " " << ::tpy::print_optional_val<::tpy::ValuePrinter<::tpy::storage_t<T>>, ::tpy::storage_t<T>>(x) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: `is None` on the parameter
@@ -182,9 +182,9 @@ inline void Show<T>::show(::tpy::opt_cparam_t<T> x) const {
 //         return d
 //     return x
 template<::tpy::ValueType T>
-T pick(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d) {
+::tpy::storage_t<T> pick(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d) {
     if ((!::tpy::opt_has_value(x))) {
-        return ::tpy::param_to_return<T>(d);
+        return ::tpy::param_to_return_last<T>(d);
     }
     return (*x);
 }
@@ -192,8 +192,8 @@ T pick(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d) {
 // def idt[T: ValueType](x: T) -> T:
 //     return x
 template<::tpy::ValueType T>
-T idt(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+::tpy::storage_t<T> idt(::tpy::param_val_or_ref_t<T> x) {
+    return ::tpy::param_to_return_last<T>(x);
 }
 // # `match` on the parameter
 // def describe[T: ValueType](x: T | None, d: T) -> T:
@@ -203,10 +203,10 @@ T idt(::tpy::param_val_or_ref_t<T> x) {
 //         case _:
 //             return x
 template<::tpy::ValueType T>
-T describe(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d) {
+::tpy::storage_t<T> describe(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d) {
     auto& __match_subject_1 = x;
     if (!__match_subject_1.has_value()) {
-        return ::tpy::param_to_return<T>(d);
+        return ::tpy::param_to_return_last<T>(d);
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
         {
@@ -221,7 +221,7 @@ T describe(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d) {
 //         return x  # tpyc: ok
 //     return None
 template<::tpy::ValueType T>
-std::optional<T> first(::tpy::varargs<const T> xs) {
+std::optional<::tpy::storage_t<T>> first(::tpy::varargs<const ::tpy::storage_t<T>> xs) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -235,8 +235,8 @@ std::optional<T> first(::tpy::varargs<const T> xs) {
 // def via[T: ValueType](x: T) -> T | None:
 //     return x  # tpyc: ok
 template<::tpy::ValueType T>
-std::optional<T> via(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_storage<T>(x);
+std::optional<::tpy::storage_t<T>> via(::tpy::param_val_or_ref_t<T> x) {
+    return ::tpy::param_consume<T>(x);
 }
 
 void __tpy_init();

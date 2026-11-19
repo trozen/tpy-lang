@@ -67,7 +67,7 @@ std::function<int32_t()> escaping_copy(std::tuple<std::optional<P>, int32_t>&& t
 int32_t shadowed(std::tuple<std::optional<P>, int32_t>&& t);
 // def marked[T](t: tuple[Send[Own[T]] | None, int32]) -> None:
 template<typename T>
-void marked(std::tuple<std::optional<T>, int32_t>&& t);
+void marked(std::tuple<std::optional<::tpy::storage_t<T>>, int32_t>&& t);
 // def main() -> None:
 void main();
 
@@ -168,7 +168,7 @@ inline void H::put(std::tuple<std::optional<P>, int32_t>&& t) {
 // def marked[T](t: tuple[Send[Own[T]] | None, int32]) -> None:
 //     pass
 template<typename T>
-void marked(std::tuple<std::optional<T>, int32_t>&& t) {
+void marked(std::tuple<std::optional<::tpy::storage_t<T>>, int32_t>&& t) {
 }
 
 void __tpy_init();

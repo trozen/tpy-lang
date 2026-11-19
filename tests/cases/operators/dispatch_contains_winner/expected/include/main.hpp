@@ -753,7 +753,7 @@ bool via(const G<T>& g, int8_t n8) {
 //     return x in g  # tpyc: ok
 template<typename T>
 bool via_t(const OneT<T>& g, ::tpy::param_val_or_ref_t<T> x) {
-    return g.__contains__(x);
+    return g.__contains__(::tpy::param_pass_last<T>(x));
 }
 
 void __tpy_init();

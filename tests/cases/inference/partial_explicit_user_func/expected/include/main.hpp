@@ -22,7 +22,7 @@ void main();
 template<typename T>
 struct Box {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, val: Own[T]) -> None:
     Box() = default;
@@ -40,9 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 template<typename A, typename B>
 struct Wrapper {
     // inner: A
-    A inner;
+    ::tpy::storage_t<A> inner;
     // tag: B
-    B tag;
+    ::tpy::storage_t<B> tag;
 
     // def __init__(self, inner: Own[A], tag: Own[B]) -> None:
     Wrapper() = default;

@@ -23,7 +23,7 @@ template<typename T>
 void wrapper(::tpy::own_param_t<T> x);
 // def wrap_list[T](items: list[T]) -> list[T]:
 template<typename T>
-std::vector<T>& wrap_list(std::vector<T>& items);
+std::vector<::tpy::storage_t<T>>& wrap_list(std::vector<::tpy::storage_t<T>>& items);
 // def multi[A, B](a: A, b: B) -> A:
 template<typename A, typename B>
 ::tpy::val_or_ref_t<A> multi(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b);
@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 template<typename T>
 struct Container {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
 
     // def forward_val(self) -> T:
@@ -78,7 +78,7 @@ void sink(::tpy::own_param_t<T> x) {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 // # Forward T as explicit type arg
 // def wrapper[T](x: Own[T]) -> None:
@@ -91,15 +91,15 @@ void wrapper(::tpy::own_param_t<T> x) {
 // def wrap_list[T](items: list[T]) -> list[T]:
 //     return identity[list[T]](items)  # tpyc: ok
 template<typename T>
-std::vector<T>& wrap_list(std::vector<T>& items) {
-    return ::tpyapp::main::identity<std::vector<T>>(items);
+std::vector<::tpy::storage_t<T>>& wrap_list(std::vector<::tpy::storage_t<T>>& items) {
+    return ::tpyapp::main::identity<std::vector<::tpy::storage_t<T>>>(items);
 }
 // # Multi-param forward
 // def multi[A, B](a: A, b: B) -> A:
 //     return identity[A](a)  # tpyc: ok
 template<typename A, typename B>
 ::tpy::val_or_ref_t<A> multi(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b) {
-    return ::tpyapp::main::identity<A>(a);
+    return ::tpyapp::main::identity<A>(::tpy::param_pass_last<A>(a));
 }
 
 void __tpy_init();

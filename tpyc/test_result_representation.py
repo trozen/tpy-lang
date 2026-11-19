@@ -51,22 +51,25 @@ def _recursive_alias_render_context(monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.param(VOID, False, STORAGE, "void", id="void"),
     pytest.param(OwnType(CELL), False, STORAGE, "Cell", id="owned-reference"),
     pytest.param(RefType(CELL), True, BORROW, "Cell&", id="explicit-ref"),
-    pytest.param(GENERIC, False, TRAIT, "T", id="generic"),
-    pytest.param(OwnType(GENERIC), False, STORAGE, "T", id="owned-generic"),
+    pytest.param(GENERIC, False, TRAIT, "::tpy::val_or_ref_t<T>", id="generic"),
+    pytest.param(OwnType(GENERIC), False, STORAGE, "::tpy::storage_t<T>",
+                 id="owned-generic"),
     pytest.param(RefType(GENERIC), False, TRAIT, "::tpy::val_or_ref_t<T>",
                  id="ref-generic"),
     # A value-bounded `T` is a value at every instantiation: its async
-    # payload is the storage `T`, as a concrete value's.
+    # payload is the storage `T`, as a concrete value's, spelled in its
+    # storage form (`std::string` at `V = Own[str]`).
     pytest.param(TypeParamRef("V", bound=NominalType(
         "ValueType", is_protocol=True, _module_qname="tpy.ValueType")),
-        False, STORAGE, "V", id="value-bounded-generic"),
+        False, STORAGE, "::tpy::storage_t<V>", id="value-bounded-generic"),
     pytest.param(OptionalType(INT32), False, STORAGE, "std::optional<int32_t>",
                  id="optional-value"),
     pytest.param(OptionalType(CELL), False, BORROW, "std::optional<Cell>",
                  id="optional-reference"),
     pytest.param(OptionalType(INT32, force_pointer_repr=True), False, BORROW,
                  "std::optional<int32_t>", id="forced-pointer-optional"),
-    pytest.param(OptionalType(GENERIC), False, BORROW, "std::optional<T>",
+    pytest.param(OptionalType(GENERIC), False, BORROW,
+                 "std::optional<::tpy::storage_t<T>>",
                  id="optional-generic"),
     pytest.param(UnionType((CELL, OTHER)), False, STORAGE,
                  "::tpy::Union<Cell, Other>", id="reference-union"),
@@ -84,7 +87,7 @@ def _recursive_alias_render_context(monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.param(TupleType((RefType(CELL),)), False, TUPLE,
                  "std::tuple<Cell&>", id="tuple-preserves-raw-ref"),
     pytest.param(TupleType((GENERIC, INT32)), False, TUPLE,
-                 "std::tuple<T, int32_t>", id="generic-tuple"),
+                 "std::tuple<::tpy::storage_t<T>, int32_t>", id="generic-tuple"),
     # An owned element, or one with a form of its own beside a reference,
     # keeps the storage tuple.
     pytest.param(TupleType((OwnType(CELL), INT32)), False, STORAGE,
@@ -97,24 +100,29 @@ def _recursive_alias_render_context(monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.param(ReadonlyType(CELL), True, BORROW, "const Cell&",
                  id="readonly"),
     # Qualifier order is observable today; erasure must not normalize it away.
-    pytest.param(ReadonlyType(GENERIC), False, TRAIT, "T", id="readonly-generic"),
+    pytest.param(ReadonlyType(GENERIC), False, TRAIT, "::tpy::val_or_cref_t<T>",
+                 id="readonly-generic"),
     # Readonly is access, never shape: the readonly Optional / union returns
     # by value like its mutable twin.
     pytest.param(ReadonlyType(OptionalType(CELL)), False, BORROW,
                  "std::optional<Cell>", id="readonly-optional"),
     pytest.param(ReadonlyType(UnionType((CELL, OTHER))), False, STORAGE,
                  "::tpy::Union<Cell, Other>", id="readonly-union"),
-    pytest.param(RefType(ReadonlyType(GENERIC)), False, TRAIT, "T&",
+    pytest.param(RefType(ReadonlyType(GENERIC)), False, TRAIT,
+                 "::tpy::storage_t<T>&",
                  id="ref-readonly-generic"),
     pytest.param(ReadonlyType(RefType(GENERIC)), False, BORROW,
-                 "::tpy::val_or_ref_t<T>", id="readonly-ref-generic"),
+                 "::tpy::val_or_cref_t<T>", id="readonly-ref-generic"),
     pytest.param(SendType(SyncType(RefType(GENERIC))), False, TRAIT,
                  "::tpy::val_or_ref_t<T>", id="markers-outside-ref"),
-    pytest.param(RefType(SendType(GENERIC)), False, BORROW, "T&",
+    pytest.param(RefType(SendType(GENERIC)), False, BORROW,
+                 "::tpy::storage_t<T>&",
                  id="marker-inside-ref"),
-    pytest.param(SyncType(ReadonlyType(GENERIC)), False, TRAIT, "T",
+    pytest.param(SyncType(ReadonlyType(GENERIC)), False, TRAIT,
+                 "::tpy::storage_t<T>",
                  id="marker-outside-readonly"),
-    pytest.param(ReadonlyType(SyncType(GENERIC)), False, BORROW, "T",
+    pytest.param(ReadonlyType(SyncType(GENERIC)), False, BORROW,
+                 "::tpy::storage_t<T>",
                  id="marker-inside-readonly"),
     pytest.param(STR, False, STORAGE, "std::string", id="string"),
     pytest.param(BYTES, False, STORAGE, "::tpy::Bytes", id="bytes"),
@@ -132,6 +140,8 @@ def _recursive_alias_render_context(monkeypatch: pytest.MonkeyPatch) -> None:
                             is_dynamic_protocol=True),
                  True, STORAGE, "Dynamic&", id="dynamic-protocol"),
 ])
+# The erased (`std::function`) spelling of an open result is the result an
+# instantiation hands back: a borrow at a reference `T`, its value at `Own[X]`.
 def test_result_consumers(
         result: TpyType, call_ref: bool, payload: AsyncReturnForm,
         erased: str) -> None:

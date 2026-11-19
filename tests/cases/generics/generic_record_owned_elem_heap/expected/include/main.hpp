@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def heap_sort[T: Comparable](src: list[T]) -> Own[list[T]]:
 template<::tpystd::tpy::Comparable T>
-std::vector<T> heap_sort(const std::vector<T>& src);
+std::vector<::tpy::storage_t<T>> heap_sort(const std::vector<::tpy::storage_t<T>>& src);
 // def main() -> None:
 void main();
 
@@ -22,7 +22,7 @@ void main();
 template<::tpystd::tpy::Comparable T>
 struct Entry {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
     // idx: int
     ::tpy::BigInt idx;
 
@@ -74,17 +74,17 @@ inline bool Entry<T>::__lt__(const Entry<T>& other) const {
 //         out.append(copy(top.val))
 //     return out
 template<::tpystd::tpy::Comparable T>
-std::vector<T> heap_sort(const std::vector<T>& src) {
+std::vector<::tpy::storage_t<T>> heap_sort(const std::vector<::tpy::storage_t<T>>& src) {
     std::vector<Entry<T>> heap = std::vector<Entry<T>>{};
     int32_t i = 0;
     while ((i < ::tpy::__len__(src))) {
-        ::tpystd::heapq::heappush<Entry<T>>(heap, Entry<T>(T(src[static_cast<std::size_t>(i)]), ::tpy::BigInt(i)));
+        ::tpystd::heapq::heappush<Entry<T>>(heap, Entry<T>(::tpy::storage_t<T>(src[static_cast<std::size_t>(i)]), ::tpy::BigInt(i)));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::vector<T> out = std::vector<T>{};
+    std::vector<::tpy::storage_t<T>> out = std::vector<::tpy::storage_t<T>>{};
     while ((::tpy::__len__(heap) > 0)) {
         Entry<T> top = ::tpystd::heapq::heappop<Entry<T>>(heap);
-        out.push_back(T(top.val));
+        out.push_back(::tpy::storage_t<T>(top.val));
     }
     return out;
 }

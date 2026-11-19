@@ -18,7 +18,7 @@ void main();
 template<typename T>
 struct Stack {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Stack();
@@ -44,13 +44,13 @@ inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
 // def __init__(self) -> None:
 //     self.items = list[T]()
 template<typename T>
-inline Stack<T>::Stack() : items(std::vector<T>()) {}
+inline Stack<T>::Stack() : items(std::vector<::tpy::storage_t<T>>()) {}
 
 // def push(self, value: T) -> None:
 //     self.items.append(value)
 template<typename T>
 inline void Stack<T>::push(::tpy::param_val_or_ref_t<T> value) {
-    this->items.push_back(::tpy::param_to_storage<T>(value));
+    this->items.push_back(::tpy::param_consume<T>(value));
 }
 
 // def pop(self) -> T:

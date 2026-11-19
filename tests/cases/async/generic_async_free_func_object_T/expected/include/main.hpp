@@ -11,7 +11,7 @@ namespace tpyapp::main {
 
 // class Bumpable(Protocol):
 template<typename T>
-concept Bumpable = requires(T& t) {
+concept Bumpable = requires(::tpy::storage_t<T>& t) {
     { t.bump() } -> std::convertible_to<void>;
 };
 
@@ -65,7 +65,7 @@ struct __coro_increment {
     __coro_increment(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -97,7 +97,7 @@ template <typename T>
 // async def increment[T: Bumpable](x: T) -> int32:
 template <typename T>
 __coro_increment<T> increment(::tpy::param_val_or_ref_t<T> x) {
-    return __coro_increment<T>(x);
+    return __coro_increment<T>(::tpy::param_pass_last<T>(x));
 }
 
 // async def main_coro() -> None:

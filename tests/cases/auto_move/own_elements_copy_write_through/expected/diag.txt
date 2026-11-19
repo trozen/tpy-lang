@@ -8,3 +8,8 @@ main.py:207: warning: copies list[int32] elements; use copy_iter() to make this 
 main.py:208: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:209: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:227: warning: copies H elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:134: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:139: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:144: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:151: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:156: warning: copies Item into owned storage; use copy() to make this explicit

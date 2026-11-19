@@ -18,7 +18,7 @@ void main();
 template<typename T>
 struct MyBag {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     MyBag();
@@ -42,13 +42,13 @@ inline std::ostream& operator<<(std::ostream& os, const MyBag<T>& obj) {
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T>
-inline MyBag<T>::MyBag() : items(std::vector<T>{}) {}
+inline MyBag<T>::MyBag() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def add(self, value: T) -> None:
 //     self.items.append(value)
 template<typename T>
 inline void MyBag<T>::add(::tpy::param_val_or_ref_t<T> value) {
-    this->items.push_back(::tpy::param_to_storage<T>(value));
+    this->items.push_back(::tpy::param_consume<T>(value));
 }
 
 // def __contains__[T: Equatable](self, value: T) -> bool:

@@ -10,9 +10,9 @@ free min3_cls 3
 free max3_own 1
 free max3_cls 1
 free sorted_id [1, 2, 3]
-free min_id 1
-free min_method 3
-free max_helper 3
+free min_id 11 3
+free min_method 11
+free max_helper 11
 method sorted_lam [3, 2, 1]
 method sorted_cls [3, 2, 1]
 method min_cls 3

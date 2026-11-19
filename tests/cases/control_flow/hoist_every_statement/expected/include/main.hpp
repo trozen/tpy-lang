@@ -11,7 +11,7 @@ struct Grower;
 // @dynamic
 // class Grower(Protocol):
 template<typename T>
-concept __Grower_Concept__ = requires(T& t) {
+concept __Grower_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.grow() } -> std::convertible_to<void>;
     { t.size() } -> std::convertible_to<int32_t>;
 };

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Mixed(Protocol):
 template<typename T>
-concept Mixed = requires(T& t) {
+concept Mixed = requires(::tpy::storage_t<T>& t) {
     { t.read() } -> std::convertible_to<int32_t>;
     { t.write(std::declval<int32_t>()) } -> std::convertible_to<void>;
 };

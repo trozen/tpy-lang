@@ -76,7 +76,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 template<typename T>
 struct Holder {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
 
     // def set_value(self, v: T) -> None:
@@ -153,7 +153,7 @@ inline void OptHolder::set_value(const Point* p) {
 template<typename T>
 inline void Holder<T>::set_value(::tpy::param_val_or_ref_t<T> v) {
     this->value = ::tpy::param_to_storage<T>(v);
-    this->value = T(v);
+    this->value = ::tpy::storage_t<T>(v);
 }
 
 void __tpy_init();

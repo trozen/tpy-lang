@@ -19,9 +19,9 @@ void main();
 template<typename T>
 struct Pair {
     // first: T
-    T first;
+    ::tpy::storage_t<T> first;
     // second: T
-    T second;
+    ::tpy::storage_t<T> second;
 
     // def __init__(self, first: T = T(), second: T = T()) -> None:
     explicit Pair(::tpy::readonly_form_t<T> first = T{}, ::tpy::readonly_form_t<T> second = T{});

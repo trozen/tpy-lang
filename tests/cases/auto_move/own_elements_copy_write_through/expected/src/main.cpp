@@ -33,21 +33,21 @@ __gen_fresh_hs fresh_hs() {
 
 // # A type argument the call writes (`each[Own[Item]]`, free function, method
 // # and a generic record's method) is the value's own type: the loop variable
-// # owns the step and moves on, no copy. The step itself is an unwarned copy of the lent element
-// # (BUGS.md#lent-list-at-own-iterable-param-copies).
+// # owns the step and moves on, no copy. The step itself is a copy of the lent
+// # element, which the yield makes at `T = Own[Item]` only, warned at the call.
 // def explicit_type_arg(items: list[Own[Item]]) -> None:
 //     keep: list[Item] = []
-//     for x in each[Own[Item]](items):
+//     for x in each[Own[Item]](items):  # tpyc: warning(/copies Item into owned storage/)
 //         keep.append(x)  # tpyc: ok
 //     keep[0].value = 99
 //     print("explicit type arg", items[0].value, keep[0].value)
 //     mkeep: list[Item] = []
-//     for y in Each().each[Own[Item]](items):
+//     for y in Each().each[Own[Item]](items):  # tpyc: warning(/copies Item into owned storage/)
 //         mkeep.append(y)  # tpyc: ok
 //     mkeep[0].value = 77
 //     print("explicit method type arg", items[0].value, mkeep[0].value)
 //     gkeep: list[Item] = []
-//     for z in GEach[int32]().each[Own[Item]](items):
+//     for z in GEach[int32]().each[Own[Item]](items):  # tpyc: warning(/copies Item into owned storage/)
 //         gkeep.append(z)  # tpyc: ok
 //     gkeep[0].value = 55
 //     print("explicit generic record method type arg", items[0].value,
@@ -76,7 +76,7 @@ __gen_fresh_hs fresh_hs() {
 void explicit_type_arg(std::vector<Item>& items) {
     std::vector<Item> keep = std::vector<Item>{};
     {
-        auto __src_0 = ::tpyapp::main::each<Item>(items);
+        auto __src_0 = ::tpyapp::main::each<::tpy::own_arg<Item>>(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -90,7 +90,7 @@ void explicit_type_arg(std::vector<Item>& items) {
     std::vector<Item> mkeep = std::vector<Item>{};
     {
         Each __tmp_1 = Each();
-        auto __src_2 = __tmp_1.each<Item>(items);
+        auto __src_2 = __tmp_1.each<::tpy::own_arg<Item>>(items);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -104,7 +104,7 @@ void explicit_type_arg(std::vector<Item>& items) {
     std::vector<Item> gkeep = std::vector<Item>{};
     {
         GEach<int32_t> __tmp_2 = GEach<int32_t>();
-        auto __src_4 = __tmp_2.each<Item>(items);
+        auto __src_4 = __tmp_2.each<::tpy::own_arg<Item>>(items);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -116,7 +116,7 @@ void explicit_type_arg(std::vector<Item>& items) {
     ::tpy::__getitem__(gkeep, 0).value = 55;
     std::cout << "explicit generic record method type arg" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(gkeep, 0).value << "\n" << ::tpy::check_signals;
     std::vector<Item> nkeep = std::vector<Item>{};
-    __gen_each<Item> it = ::tpyapp::main::each<Item>(items);
+    __gen_each<::tpy::own_arg<Item>> it = ::tpyapp::main::each<::tpy::own_arg<Item>>(items);
     auto& __src_6 = it;
     auto&& __itr_6 = ::tpy::__iter__(__src_6);
     for (;;) {
@@ -128,7 +128,7 @@ void explicit_type_arg(std::vector<Item>& items) {
     ::tpy::__getitem__(nkeep, 0).value = 33;
     std::cout << "named type arg" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(nkeep, 0).value << "\n" << ::tpy::check_signals;
     Each __tmp_3 = Each();
-    __gen_Each_each<Item> mt = __tmp_3.each<Item>(items);
+    __gen_Each_each<::tpy::own_arg<Item>> mt = __tmp_3.each<::tpy::own_arg<Item>>(items);
     auto& __src_8 = mt;
     auto&& __itr_8 = ::tpy::__iter__(__src_8);
     for (;;) {

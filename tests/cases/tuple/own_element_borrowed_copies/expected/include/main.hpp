@@ -106,7 +106,7 @@ std::tuple<P*, P*> mk2(P& p);
 void insert_call_local(std::vector<std::tuple<P, P>>& xs, P& p);
 // def gtake[T](t: Own[tuple[T, T]]) -> int32:
 template<typename T>
-int32_t gtake(std::tuple<T, T> t);
+int32_t gtake(std::tuple<::tpy::storage_t<T>, ::tpy::storage_t<T>> t);
 // @error_return(Big)
 // def arg_error_return(p: P) -> int32:
 std::expected<int32_t, Big> arg_error_return(const P& p);
@@ -480,7 +480,7 @@ inline PairBox::PairBox(P& p) : pair([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { re
 // def gtake[T](t: Own[tuple[T, T]]) -> int32:
 //     return 0
 template<typename T>
-int32_t gtake(std::tuple<T, T> t) {
+int32_t gtake(std::tuple<::tpy::storage_t<T>, ::tpy::storage_t<T>> t) {
     return 0;
 }
 

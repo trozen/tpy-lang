@@ -167,7 +167,7 @@ from ...prescan import (
     match_is_none,
     scope_bound_names,
 )
-from ...typesys import (NONE, contains_type_param, open_type_param,
+from ...typesys import (NONE, type_arg_cpp, contains_type_param, open_type_param,
                         protocol_param_alternatives, type_alternatives)
 from ...typesys import (is_polymorphic_subclass_fact,
                         polymorphic_source_inner,
@@ -354,7 +354,8 @@ from ..source import (BindingConstruct, BindingForm, BindingRepr, Held,
 from .bindings import rebind_ptr_frame_field, rebind_ptr_frame_value
 from .convert import (
     ElemRead, Plan, Refuse, borrowed_path_element_message, convert,
-    layout_tuple, open_param_convert, spelled, to_local)
+    converted, layout_tuple, open_param_convert, spelled, store_slot,
+    to_local)
 from .expressions import (
     _lower_into_dyn, forwarded, as_base_of_read,
     _dunder_arg, _spell_brace, stamped, slot_payload_lent, lent_holder, _hoisted,
@@ -3188,6 +3189,9 @@ def _error_return_value_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
     rvalue-slot reseat arm); slot-less pointer targets and alias / tuple /
     value-opt / frame targets reject."""
     analyzer = lc.analyzer
+    if lc.declaring(name).construct is BindingConstruct.OPEN_RESULT:
+        return open_result_write(name, init, stmt, declared.get(name, vtype),
+                                 lc, declared, loc, stmt_reject_reason(stmt))
     # A rebind-slot pointer local reseats through its own optional slot --
     # the same `p = &*(__slot_N = <rvalue>)` render THIRAssign emits, with
     # the unwrap as the rvalue. Emit reads the slot off `rebind_slots`, so
@@ -8219,8 +8223,13 @@ def _finally_deferred_recipe(
             return None
         return THIRFinallyDeferredReturn(capture=base, optional_move=True,
                                          loc=loc)
-    return THIRFinallyDeferredReturn(capture=base, indirect=indirect,
-                                     optional_move=False, loc=loc)
+    open_t = (unwrap_readonly(unwrap_ref_type(lc.binding(value.name).param_type))
+              if lc.binding(value.name).param_type is not None else None)
+    return THIRFinallyDeferredReturn(
+        capture=base, indirect=indirect, optional_move=False,
+        open_t=(type_arg_cpp(open_t, lc.render_type)
+                if type(open_t) is TypeParamRef else None),
+        loc=loc)
 
 
 def _deferred_self_base(value: TpyName, lc: _LowerCtx,
@@ -8835,6 +8844,87 @@ def _lower_first_decl(stmt: TpyVarDecl, vtype: TpyType,
     return builder(stmt, vtype, rec, scope, loc)
 
 
+def _decl_open_result_local(stmt, vtype, rec, scope, loc):
+    """`acc = xs[0]` / `y = f(a)` of a local holding an open `T` result:
+    `std::optional<storage_t<T>> __slot_N; storage_t<T>* acc =
+    ::tpy::init_result<T>(__slot_N, <init>);` -- the twin's `P*` local at
+    a reference instantiation, its snapshot (`int32_t acc`) at a value
+    one."""
+    lc, declared = scope.lc, scope.declared
+    if _error_return_stmt_fi(stmt.init, lc.analyzer) is not None:
+        # The unwrap is statement-scoped, so the pointer is predeclared
+        # and the write fills it.
+        return open_result_write(stmt.name, stmt.init, stmt, vtype, lc,
+                                 declared, loc, stmt_reject_reason(stmt))
+    # Not `open_result_write`: the pointer is declared initialized
+    # (`init_result`), which a write to a declared local cannot spell.
+    open_t = unwrap_readonly(unwrap_ref_type(vtype))
+    init = _lower_expr(stmt.init, lc, declared,
+                       use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                                    allow_temps=True))
+    declared[stmt.name] = vtype
+    _witness("decl.open_result_local")
+    return THIRPtrLocalDecl(
+        name=stmt.name, resolved_type=vtype, kind=PtrSlotKind.PTR_ADDR,
+        init=init, cpp_type=lc.render_type(open_t),
+        is_const=_record_facts(rec)["is_const"],
+        open_t=type_arg_cpp(open_t, lc.render_type), loc=loc)
+
+
+def open_result_write(name: str, value: TpyExpr, site: object,
+                      vtype: TpyType, lc: '_LowerCtx',
+                      declared: dict[str, TpyType], loc, reason: str, *,
+                      walrus: bool = False, binding=None,
+                      allow_temps: bool = True) -> THIRStmt:
+    """THE write of an open-result local (`BC.OPEN_RESULT`), in a plain
+    body and a resumable frame, at a statement and a walrus:
+    `::tpy::reseat_result<T>(name, <slot>, <value>)` -- a reference result
+    re-points the local, a by-value one fills the slot it points at. The
+    slot is the site's own: a plain body's `__slot_N`, a frame's field
+    the ptr-slot prescan reserved for `site`. A direct @error_return call
+    is unwrapped statement-scoped (`__try_tmp_N`), so the result lives
+    until the write has taken it; a statement first declaring the local
+    predeclares its pointer before the unwrap block. A walrus `name` is
+    already declared (its pointer predeclared, or a frame field), and its
+    write carries the walrus's `binding`."""
+    open_t = unwrap_readonly(unwrap_ref_type(vtype))
+    reseat = type_arg_cpp(open_t, lc.render_type)
+    frame_slot = (rebind_ptr_frame_field(lc, site, reason)
+                  if lc.frame_local(name, FrameLocalClass.REBIND_PTR)
+                  else None)
+    er_fi = _error_return_stmt_fi(value, lc.analyzer)
+    if er_fi is not None and not walrus:
+        _check_error_return_init(site, value, lc.analyzer)
+        decl_cpp = None
+        if name not in declared:
+            decl_cpp = lc.render_type(open_t) + "*"
+            declared[name] = vtype
+        call = _lower_expr(value, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                        allow_temps=True),
+                           error_return_raw=True)
+        _witness("reseat.open_result")
+        return THIRErrorReturnBind(
+            name=name, call=call, decl_cpp=decl_cpp, ptr_rebind=True,
+            open_reseat=reseat, rebind_storage=RebindStorage.OWN,
+            slot_cpp=lc.render_type(open_t), frame_slot=frame_slot,
+            staged=lc.exit_staged, loc=loc)
+    lowered = _lower_expr(value, lc, declared,
+                          use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                                       allow_temps=allow_temps))
+    _witness("reseat.open_result")
+    if frame_slot is not None:
+        return THIRPtrLocalRebind(
+            name=name, kind=PtrSlotKind.FRAME_RVALUE, value=lowered,
+            val_cpp=frame_slot, rebind_storage=RebindStorage.OWN,
+            open_reseat=reseat, loc=loc, binding=binding)
+    return THIRAssign(
+        target=THIRName(result_type=vtype, name=name, loc=loc),
+        value=lowered, rebind_storage=RebindStorage.OWN,
+        slot_cpp=lc.render_type(open_t), open_reseat=reseat, loc=loc,
+        binding=binding)
+
+
 def _decl_er_bind(stmt, vtype, rec, scope, loc):
     lc = scope.lc
     _check_error_return_init(stmt, stmt.init, lc.analyzer)
@@ -9041,7 +9131,8 @@ def _decl_tparam_call(stmt, vtype, rec, scope, loc):
     _witness("decl.tparam_call")
     return THIRVarDecl(
         name=stmt.name, resolved_type=vtype, init=init,
-        cpp_type=f"{trait}<{lc.render_type(vtype)}>", loc=loc)
+        cpp_type=f"{trait}<{type_arg_cpp(unwrap_readonly(vtype), lc.render_type)}>",
+        loc=loc)
 
 
 def _decl_ptr_variant(stmt, vtype, rec, scope, loc):
@@ -9316,6 +9407,7 @@ def _decl_tuple_literal_record(stmt, vtype, rec, scope, loc):
 
 _FIRST_DECL_BUILDERS: dict[BindingConstruct, _DeclBuilder] = {
     BindingConstruct.ER_ALIAS: _decl_er_bind,
+    BindingConstruct.OPEN_RESULT: _decl_open_result_local,
     BindingConstruct.ER_BIND: _decl_er_bind,
     BindingConstruct.RECORD_SLOT: _decl_record_slot,
     BindingConstruct.RECORD_HOISTED_SLOT: _decl_record_slot,
@@ -9445,6 +9537,13 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
     it (hoisted out of a `try`, or a branch-first binding). None where the
     binding is none of those forms."""
     analyzer = lc.analyzer
+    if (lc.declaring(stmt.name).construct is BindingConstruct.OPEN_RESULT
+            and stmt.name in declared):
+        # A later binding: a branch arm, a rebind, a predeclared `try`
+        # body's or handler's write.
+        return open_result_write(stmt.name, stmt.init, stmt,
+                                 declared[stmt.name], lc, declared, loc,
+                                 stmt_reject_reason(stmt))
     # OPTIONAL_STORAGE branch-hoist assign: the single-bind non-value's
     # in-branch decl writes PLAIN into the if-head `std::optional<T>`
     # (`name = <storage rvalue>;` -- the OPTIONAL_STORAGE decl arm).
@@ -9868,6 +9967,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             and (rebound in lc.prescan.nonlocal_names
                  or _written_ptr_tuple(rebound, lc) is None)):
         _reject_tuple_site_own(stmt, rebound, analyzer)
+    if (isinstance(stmt, TpyVarDecl) and stmt.init is not None
+            and lc.frame_local(stmt.name, FrameLocalClass.REBIND_PTR)
+            and lc.binding(stmt.name).construct is BindingConstruct.OPEN_RESULT):
+        # The frame declares the field, so its first binding is a write.
+        return open_result_write(stmt.name, stmt.init, stmt,
+                                 declared[stmt.name], lc, declared,
+                                 getattr(stmt, "loc", None),
+                                 stmt_reject_reason(stmt))
     if (isinstance(stmt, TpyVarDecl) and stmt.init is not None
             and lc.frame_local(stmt.name, FrameLocalClass.REBIND_PTR)
             and is_rvalue_source(analyzer, stmt.init)):
@@ -11672,7 +11779,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                        field_owned_str_ok=isinstance(
                                            stmt.value, TpyFieldAccess))),
                     elem_t, lc)
-                if (_is_any_type(eu) and isinstance(stmt.value, TpyCoerce)
+                elem_u = unwrap_readonly(unwrap_ref_type(elem_t))
+                if (isinstance(elem_u, TypeParamRef)
+                        and value.source is not None
+                        and value.source.open_t_form):
+                    # An open-`T` read into the element: the owning store
+                    # an append is, through the one conversion.
+                    value = converted(value, store_slot(elem_u, analyzer),
+                                      analyzer)
+                elif (_is_any_type(eu) and isinstance(stmt.value, TpyCoerce)
                         and stmt.value.coercion.name == "into_any"
                         # A `copy(name)` source lowers to the same coerced
                         # name node but copies; only a bare name moves.

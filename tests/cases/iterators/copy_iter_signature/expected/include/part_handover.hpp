@@ -190,7 +190,7 @@ inline std::expected<::tpyapp::fixtures::Cell, ::tpy::StopIteration> CellCursor:
 //     return v
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_to_return<T>(v);
+    return ::tpy::param_to_return_last<T>(v);
 }
 // def keep_tokens(xs: Iterable[Own[Token]]) -> Own[list[Token]]:
 //     out: list[Token] = []

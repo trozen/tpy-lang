@@ -165,6 +165,11 @@ class BindingConstruct(Enum):
     STORAGE_TUPLE_CHAIN = "storage_tuple_chain"
     COMPREHENSION = "comprehension"
     TPARAM_CALL = "tparam_call"
+    # A local some binding binds to an open `T` result, held as a pointer
+    # over a `storage_t<T>` slot: every binding of it -- the declaration, a
+    # branch- or try-predeclared arm, a rebind -- goes through
+    # `init_result<T>` / `reseat_result<T>`.
+    OPEN_RESULT = "open_result"
     PTR_VARIANT = "ptr_variant"
     PTR_VARIANT_SLOT = "ptr_variant_slot"
     STORAGE_CALL_TUPLE = "storage_call_tuple"
@@ -316,6 +321,13 @@ class BindingRepr:
     # parameters and, inside a lambda, the lambda's; a nested def's
     # parameters are bound as its locals.
     param_type: TpyType | None = None
+    # A local some binding binds to an open `T` result (sema's
+    # `open_result_local`): its reads convert through the open-`T` sinks
+    # as a bare `x: T` parameter's do; `open_owning` (`open_owning_local`)
+    # where every binding of it does, so its last use hands the value on
+    # at `T = Own[X]`.
+    open_result: bool = False
+    open_owning: bool = False
     # `T*`: a read without a deref is the raw pointer, which only a whole
     # lift consumes.
     pointer: bool = False
@@ -600,6 +612,24 @@ class Source:
     # A NAME read of an enclosing body's binding (a nested def's or a
     # lambda's capture): no object of the frame the read sits in.
     captured: bool = False
+    # A NAME read of a bare open-`T` parameter at its last use (sema's
+    # `is_last_use`): an instantiation at `T = Own[X]` hands its value on.
+    open_last: bool = False
+    # A NAME read of a local holding an open `T` result
+    # (`BindingRepr.open_result`): read as a bare `x: T` parameter is, in
+    # the type its binding holds (`open_type`).
+    open_result: bool = False
+    open_type: TpyType | None = None
+    # A NAME read whose binding is held in an open-`T` parameter form: a
+    # bare `x: T` parameter's (`param_val_or_ref_t<T>`, a view at a
+    # view-family instantiation) or an open-result local's -- borrowed at a
+    # reference instantiation, the value of its own at `T = Own[X]`. Set
+    # once, by `stamp_source`; `open_t_form` reads it for this node.
+    open_t_binding: bool = False
+    # A NAME read of an open-result local (`open_result`) at its last use,
+    # owning or not: at a value storage type what it reads is the local's
+    # own value (its slot's snapshot, or its `val_or_ref_t<T>` value).
+    slot_last: bool = False
     # The declared type of the storage a NAME or FIELD read names, before
     # flow narrowing (a narrowed Optional member's whole Optional); None
     # for every other expression.
@@ -679,6 +709,14 @@ class Source:
     def param_type(self) -> TpyType | None:
         """The declared type of the parameter a NAME read reads."""
         return self.binding.param_type if self.binding is not None else None
+
+    @property
+    def open_t_form(self) -> bool:
+        """The read is held in its binding's open-`T` parameter form: an
+        open-result local's any read, a parameter's id-expression read as
+        the projection holds it (a resumable frame's copy is `T` storage)."""
+        return self.open_t_binding and (
+            self.open_result or (self.id_read and self.held is Held.BORROWED))
 
     @property
     def owned_param(self) -> bool:

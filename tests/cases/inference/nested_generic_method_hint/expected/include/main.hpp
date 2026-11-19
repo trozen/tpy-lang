@@ -17,7 +17,7 @@ struct Greeter;
 // @dynamic
 // class Greeter(Protocol):
 template<typename T>
-concept __Greeter_Concept__ = requires(T& t) {
+concept __Greeter_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.greet() } -> std::convertible_to<std::string_view>;
 };
 
@@ -108,7 +108,7 @@ inline std::string Frog::greet() const {
 //     return Rc.new(value)
 template<typename T>
 inline ::tpystd::tplib::rc::Rc<T> Wrapper::wrap(::tpy::own_param_t<T> value) const {
-    return Rc<T>::template new_<T>(std::move(value));
+    return Rc<::tpy::storage_t<T>>::template new_<::tpy::storage_t<T>>(std::move(value));
 }
 
 void __tpy_init();

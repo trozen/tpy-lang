@@ -105,11 +105,11 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 template<typename T>
 struct Box2 {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
     Box2() = default;
-    explicit Box2(std::vector<T>&& items);
+    explicit Box2(std::vector<::tpy::storage_t<T>>&& items);
 
     __gen_Box2_take<T> take(int32_t n = 2);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box2";
@@ -501,7 +501,7 @@ inline Box::Box() : base(0) {}
 // def __init__(self, items: Own[list[T]]) -> None:
 //     self.items = items
 template<typename T>
-inline Box2<T>::Box2(std::vector<T>&& items) : items(std::move(items)) {}
+inline Box2<T>::Box2(std::vector<::tpy::storage_t<T>>&& items) : items(std::move(items)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -19,7 +19,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T>
 struct Inner {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Inner() = default;
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Inner<T>& obj) {
 template<typename T>
 struct Outer {
     // inner: T
-    T inner;
+    ::tpy::storage_t<T> inner;
 
     // def __init__(self, inner: T) -> None:
     Outer() = default;

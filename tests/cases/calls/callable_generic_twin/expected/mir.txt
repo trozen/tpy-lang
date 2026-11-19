@@ -1,0 +1,81 @@
+fixtures::__tpy_init: uncovered (module initialization)
+fixtures::identity@12:0: certified, summary: known
+fixtures::mk@16:0: covered (storage: no_proof_required), summary: known
+fixtures::bigger@20:0: certified, summary: known
+fixtures::add@24:0: covered (storage: no_proof_required), summary: known
+fixtures::P.__init__@8:4: covered (storage: no_proof_required), summary: known
+fixtures_q::__tpy_init: uncovered (module initialization)
+fixtures_q::ident@13:0: certified, summary: known
+fixtures_q::sid@17:0: covered (storage: no_proof_required), summary: known
+fixtures_q::own_id@21:0: covered (storage: no_proof_required), summary: known
+fixtures_q::mk0@25:0: covered (storage: no_proof_required), summary: known
+fixtures_q::Q.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::app@15:0: uncovered (generic body)
+main::pick@19:0: uncovered (generic body)
+main::pick_cb@23:0: uncovered (generic body)
+main::fill@27:0: uncovered (generic body)
+main::main@31:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_bind::__tpy_init: uncovered (module initialization)
+part_bind::ident@16:0: certified, summary: known
+part_bind::concat@20:0: covered (storage: no_proof_required), summary: known
+part_bind::branch@24:0: uncovered (generic body)
+part_bind::branch_store@33:0: uncovered (generic body)
+part_bind::tried@42:0: uncovered (generic body)
+part_bind::gen_y@51:0: uncovered (generic body)
+part_bind::stored@58:0: uncovered (generic body)
+part_bind::red@63:0: uncovered (generic body)
+part_bind::count@71:0: uncovered (generic body)
+part_bind::fwd@75:0: uncovered (generic body)
+part_bind::each@80:0: uncovered (generic body)
+part_bind::walk@85:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_bind::main@103:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+part_bind::Ops.via@96:4: uncovered (generic body)
+part_bind::Q.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_frames::__tpy_init: uncovered (module initialization)
+part_frames::gen_rebind@19:0: uncovered (generic body)
+part_frames::gen_make@28:0: uncovered (generic body)
+part_frames::gen_branch@36:0: uncovered (generic body)
+part_frames::er_relay@45:0: uncovered (generic body)
+part_frames::er_bind@53:0: uncovered (generic body)
+part_frames::gen_pair@62:0: uncovered (generic body)
+part_frames::co_rebind@70:0: uncovered (async body)
+part_frames::er_main@77:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_frames::main@88:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_frames_er::__tpy_init: uncovered (module initialization)
+part_frames_er::er_relay@19:0: uncovered (generic body)
+part_frames_er::gen_er@26:0: uncovered (generic body)
+part_frames_er::co_er@41:0: uncovered (async body)
+part_frames_er::gen_tried@52:0: uncovered (generic body)
+part_frames_er::gen_walrus@63:0: uncovered (generic body)
+part_frames_er::gen_walrus_once@71:0: uncovered (generic body)
+part_frames_er::co_er_ref@77:0: uncovered (async body)
+part_frames_er::main@83:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_iter::__tpy_init: uncovered (module initialization)
+part_iter::my_map@9:0: uncovered (generic body)
+part_iter::my_map_local@14:0: uncovered (generic body)
+part_iter::main@20:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_iter::take@54:0: covered (storage: no_proof_required), summary: known
+part_iter::only_main@58:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_iter::Only.__iter__@49:4: uncovered (unsupported expression)
+part_iter::Only.__init__@46:4: covered (storage: no_proof_required), summary: known
+part_paths::__tpy_init: uncovered (module initialization)
+part_paths::mixed@14:0: uncovered (generic body)
+part_paths::branch@21:0: uncovered (generic body)
+part_paths::tried@30:0: uncovered (generic body)
+part_paths::walrus@41:0: uncovered (generic body)
+part_paths::walrus_once@48:0: uncovered (generic body)
+part_paths::unpacked@54:0: uncovered (generic body)
+part_paths::via_method@61:0: uncovered (generic body)
+part_paths::lit@69:0: uncovered (generic body)
+part_paths::show@74:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_paths::own@79:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_paths::main@84:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_paths::Relay.relay@9:4: uncovered (generic body)
+part_red::__tpy_init: uncovered (module initialization)
+part_red::red@8:0: uncovered (generic body)
+part_red::red_touch@15:0: uncovered (unsupported parameter type)
+part_red::red_snapshot@19:0: uncovered (generic body)
+part_red::concat@28:0: covered (storage: no_proof_required), summary: known
+part_red::fin@32:0: uncovered (generic body)
+part_red::main@40:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)

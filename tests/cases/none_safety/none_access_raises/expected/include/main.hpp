@@ -128,11 +128,11 @@ int32_t read_x(const R* r);
 // @dispatch
 // def apply[T, U](f: Callable[[T | None], U], xs: list[T]) -> U:
 template<typename T, typename U>
-::tpy::val_or_ref_t<U> apply__Callable_T_None_U__list_T(const std::function<U(::tpy::opt_param_t<T>)>& f, std::vector<T>& xs);
+::tpy::val_or_ref_t<U> apply__Callable_T_None_U__list_T(const std::function<::tpy::val_or_ref_t<U>(::tpy::opt_param_t<T>)>& f, std::vector<::tpy::storage_t<T>>& xs);
 // @dispatch
 // def apply[T, U](f: Callable[[T], U], xs: list[T]) -> U:
 template<typename T, typename U>
-::tpy::val_or_ref_t<U> apply__Callable_T_U__list_T(const std::function<U(::tpy::param_val_or_ref_t<T>)>& f, std::vector<T>& xs);
+::tpy::val_or_ref_t<U> apply__Callable_T_U__list_T(const std::function<::tpy::val_or_ref_t<U>(::tpy::param_val_or_ref_t<T>)>& f, std::vector<::tpy::storage_t<T>>& xs);
 // def overload_trial() -> None:
 void overload_trial();
 // def main() -> None:
@@ -781,15 +781,15 @@ inline int32_t R::get() const {
 // def apply[T, U](f: Callable[[T | None], U], xs: list[T]) -> U:
 //     return f(xs[0])
 template<typename T, typename U>
-::tpy::val_or_ref_t<U> apply__Callable_T_None_U__list_T(const std::function<U(::tpy::opt_param_t<T>)>& f, std::vector<T>& xs) {
+::tpy::val_or_ref_t<U> apply__Callable_T_None_U__list_T(const std::function<::tpy::val_or_ref_t<U>(::tpy::opt_param_t<T>)>& f, std::vector<::tpy::storage_t<T>>& xs) {
     return f(::tpy::to_val_or_ptr<::tpy::opt_param_t<T>>(::tpy::__getitem__(xs, 0)));
 }
 // @dispatch
 // def apply[T, U](f: Callable[[T], U], xs: list[T]) -> U:
 //     return f(xs[0])
 template<typename T, typename U>
-::tpy::val_or_ref_t<U> apply__Callable_T_U__list_T(const std::function<U(::tpy::param_val_or_ref_t<T>)>& f, std::vector<T>& xs) {
-    return f(::tpy::__getitem__(xs, 0));
+::tpy::val_or_ref_t<U> apply__Callable_T_U__list_T(const std::function<::tpy::val_or_ref_t<U>(::tpy::param_val_or_ref_t<T>)>& f, std::vector<::tpy::storage_t<T>>& xs) {
+    return f(::tpy::param_pass<T>(::tpy::__getitem__(xs, 0)));
 }
 
 void __tpy_init();

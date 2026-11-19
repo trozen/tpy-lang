@@ -21,13 +21,13 @@ std::tuple<::tpy::val_or_ptr_t<U>, ::tpy::val_or_ptr_t<T>> swap(::tpy::param_val
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 // def swap[T, U](a: T, b: U) -> tuple[U, T]:
 //     return (b, a)
 template<typename T, typename U>
 std::tuple<::tpy::val_or_ptr_t<U>, ::tpy::val_or_ptr_t<T>> swap(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
-    return std::tuple<::tpy::val_or_ptr_t<U>, ::tpy::val_or_ptr_t<T>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(b), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(a)};
+    return std::tuple<::tpy::val_or_ptr_t<U>, ::tpy::val_or_ptr_t<T>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(::tpy::param_pass_last<U>(b)), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(a))};
 }
 
 void __tpy_init();

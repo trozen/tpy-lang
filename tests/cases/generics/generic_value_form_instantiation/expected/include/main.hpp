@@ -49,7 +49,7 @@ template<typename T>
 ::tpy::val_or_ref_t<T> echo(::tpy::param_val_or_ref_t<T> v);
 // def has_item[T](xs: list[T], v: T) -> bool:
 template<typename T>
-bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+bool has_item(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v);
 // def hold[T](x: T) -> Iterator[T]:
 template <typename T>
 __gen_hold<T> hold(::tpy::param_val_or_ref_t<T> x);
@@ -73,7 +73,7 @@ void main();
 template<typename T>
 struct Cell {
     // self.v = v  # tpyc: warning(/may copy T into field/)
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     Cell() = default;
@@ -83,7 +83,7 @@ struct Cell {
     ::tpy::val_or_ref_t<T> get();
 
     // def find(self, v: T) -> T | None:
-    T* find(::tpy::param_val_or_ref_t<T> v);
+    ::tpy::storage_t<T>* find(::tpy::param_val_or_ref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -110,7 +110,7 @@ struct __coro_held {
     __coro_held(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -137,7 +137,7 @@ template <typename T>
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x);
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(x));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -149,7 +149,7 @@ template <typename T>
 // async def held[T](x: T) -> T:
 template <typename T>
 __coro_held<T> held(::tpy::param_val_or_ref_t<T> x) {
-    return __coro_held<T>(x);
+    return __coro_held<T>(::tpy::param_pass_last<T>(x));
 }
 
 // async def async_frame() -> None:
@@ -194,7 +194,7 @@ struct __gen_hold : public ::tpy::next_iter_mixin<__gen_hold<T>, ::tpy::yield_sl
 
     __gen_hold(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
-          x(x_) {}
+          x(::tpy::param_pass_last<T>(x_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_hold& __iter__() { return *this; }
@@ -223,7 +223,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_hold<T>::__nex
             total = ::tpy::add_check<int32_t>(total, 1);
         }
         __state = S_RESUME_1;
-        return x;
+        return ::tpy::yield_from_local<T>(x);
     }
     case S_RESUME_1: {  // after: yield x
         __state = S_DONE;
@@ -238,7 +238,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_hold<T>::__nex
 // def hold[T](x: T) -> Iterator[T]:
 template <typename T>
 __gen_hold<T> hold(::tpy::param_val_or_ref_t<T> x) {
-    return __gen_hold<T>(x);
+    return __gen_hold<T>(::tpy::param_pass_last<T>(x));
 }
 
 
@@ -259,7 +259,7 @@ inline ::tpy::val_or_ref_t<T> Cell<T>::get() {
 //         return self.v
 //     return None
 template<typename T>
-inline T* Cell<T>::find(::tpy::param_val_or_ref_t<T> v) {
+inline ::tpy::storage_t<T>* Cell<T>::find(::tpy::param_val_or_ref_t<T> v) {
     if (::tpy::eq(this->v, v)) {
         return &(this->v);
     }
@@ -270,7 +270,7 @@ inline T* Cell<T>::find(::tpy::param_val_or_ref_t<T> v) {
 //     return v
 template<typename T>
 ::tpy::val_or_ref_t<T> echo(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_to_return<T>(v);
+    return ::tpy::param_to_return_last<T>(v);
 }
 // def has_item[T](xs: list[T], v: T) -> bool:
 //     for x in xs:
@@ -278,7 +278,7 @@ template<typename T>
 //             return True
 //     return False
 template<typename T>
-bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
+bool has_item(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

@@ -22,7 +22,7 @@ void main();
 template<typename T, std::size_t N>
 struct Bag {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self) -> None:
     Bag();
@@ -86,9 +86,9 @@ inline std::ostream& operator<<(std::ostream& os, const DeepBag& obj) {
 
 // class WiderBag[V](WideBag[tuple[V, V]]):
 template<typename V>
-struct WiderBag : WideBag<std::tuple<V, V>> {
+struct WiderBag : WideBag<std::tuple<::tpy::storage_t<V>, ::tpy::storage_t<V>>> {
 
-    using WideBag<std::tuple<V, V>>::WideBag;
+    using WideBag<std::tuple<::tpy::storage_t<V>, ::tpy::storage_t<V>>>::WideBag;
     static constexpr std::string_view __tpy_class_name__ = "__main__.WiderBag";
 };
 
@@ -102,13 +102,13 @@ inline std::ostream& operator<<(std::ostream& os, const WiderBag<V>& obj) {
 // def __init__(self) -> None:
 //     self.items = []
 template<typename T, std::size_t N>
-inline Bag<T, N>::Bag() : items(std::vector<T>{}) {}
+inline Bag<T, N>::Bag() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def add(self, value: T) -> None:
 //     self.items.append(value)
 template<typename T, std::size_t N>
 inline void Bag<T, N>::add(::tpy::param_val_or_ref_t<T> value) {
-    this->items.push_back(::tpy::param_to_storage<T>(value));
+    this->items.push_back(::tpy::param_consume<T>(value));
 }
 
 // def contains[T: Equatable](self, value: T) -> bool:

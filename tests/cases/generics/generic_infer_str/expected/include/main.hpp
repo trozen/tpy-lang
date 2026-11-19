@@ -30,13 +30,13 @@ void test_non_literal_str();
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return<T>(x);
+    return ::tpy::param_to_return_last<T>(x);
 }
 // def first[T](a: T, b: T) -> T:
 //     return a
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    return ::tpy::param_to_return<T>(a);
+    return ::tpy::param_to_return_last<T>(a);
 }
 
 void __tpy_init();

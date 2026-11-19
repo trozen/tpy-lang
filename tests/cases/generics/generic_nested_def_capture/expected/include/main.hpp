@@ -44,7 +44,7 @@ void main();
 //     return g
 template<typename T>
 std::function<void(std::string_view)> mk(::tpy::param_val_or_ref_t<T> x) {
-    auto g = [__cap_x = ::tpy::capture_slot<T, decltype(x)>(x)](std::string_view tag) {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)](std::string_view tag) {
         auto& x = __cap_x.v;
         std::cout << tag << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
     };
@@ -56,7 +56,7 @@ std::function<void(std::string_view)> mk(::tpy::param_val_or_ref_t<T> x) {
 //     return g
 template<::tpy::ValueType T>
 std::function<void(std::string_view)> mkv(::tpy::param_val_or_ref_t<T> x) {
-    auto g = [__cap_x = ::tpy::capture_slot<T, decltype(x)>(x)](std::string_view tag) {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)](std::string_view tag) {
         auto& x = __cap_x.v;
         std::cout << tag << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
     };
@@ -68,7 +68,7 @@ std::function<void(std::string_view)> mkv(::tpy::param_val_or_ref_t<T> x) {
 //     return g
 template<::tpyapp::fixtures::HasGet T>
 std::function<void(std::string_view)> mkp(::tpy::param_val_or_ref_t<T> x) {
-    auto g = [__cap_x = ::tpy::capture_slot<T, decltype(x)>(x)](std::string_view tag) {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)](std::string_view tag) {
         auto& x = __cap_x.v;
         std::cout << tag << " " << x.get() << "\n" << ::tpy::check_signals;
     };
@@ -80,7 +80,7 @@ std::function<void(std::string_view)> mkp(::tpy::param_val_or_ref_t<T> x) {
 //     return g
 template<typename T>
 std::function<void(std::string_view)> mkr(::tpy::readonly_form_t<T> x) {
-    auto g = [__cap_x = ::tpy::capture_slot<T, decltype(x)>(x)](std::string_view tag) {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)](std::string_view tag) {
         auto& x = __cap_x.v;
         std::cout << tag << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
     };

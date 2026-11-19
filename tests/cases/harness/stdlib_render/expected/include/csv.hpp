@@ -28,7 +28,7 @@ struct __gen_DictReader___iter__;
 //     skipinitialspace: bool,
 // ) -> Iterator[Own[list[str]]]:
 template <typename R>
-__gen__parse_rows<R> _parse_rows(R* fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, bool skipinitialspace);
+__gen__parse_rows<R> _parse_rows(::tpy::storage_t<R>* fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, bool skipinitialspace);
 // def reader(
 //     fp: Readable,
 //     *,
@@ -64,7 +64,7 @@ _Writer<W> writer(::tpy::param_val_or_ref_t<W> fp, std::string_view delimiter = 
 template<::tpystd::tpy::Writable W>
 struct _Writer {
     // _fp: Ptr[W]
-    W* _fp;
+    ::tpy::storage_t<W>* _fp;
     // _delimiter: str
     std::string _delimiter;
     // _quotechar: str
@@ -103,7 +103,7 @@ inline std::ostream& operator<<(std::ostream& os, const _Writer<W>& obj) {
 template<::tpystd::tpy::Readable W>
 struct DictReader {
     // _fp: Ptr[W]
-    W* _fp;
+    ::tpy::storage_t<W>* _fp;
     // _delimiter: str
     std::string _delimiter;
     // _quotechar: str
@@ -189,7 +189,7 @@ inline std::ostream& operator<<(std::ostream& os, const DictWriter<W>& obj) {
 template <typename R>
 struct __gen__parse_rows : public ::tpy::next_iter_mixin<__gen__parse_rows<R>, std::vector<std::string>> {
     ::tpy::frame_state __state;
-    R* fp;
+    ::tpy::storage_t<R>* fp;
     std::string delimiter;
     std::string quotechar;
     bool doublequote;
@@ -214,7 +214,7 @@ struct __gen__parse_rows : public ::tpy::next_iter_mixin<__gen__parse_rows<R>, s
         S_DONE = 3,
     };
 
-    __gen__parse_rows(R* fp_, std::string_view delimiter_, std::string_view quotechar_, bool doublequote_, bool skipinitialspace_)
+    __gen__parse_rows(::tpy::storage_t<R>* fp_, std::string_view delimiter_, std::string_view quotechar_, bool doublequote_, bool skipinitialspace_)
         : __state(S_INITIAL),
           fp(std::move(fp_)),
           delimiter(std::string(delimiter_)),
@@ -413,7 +413,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
 //     skipinitialspace: bool,
 // ) -> Iterator[Own[list[str]]]:
 template <typename R>
-__gen__parse_rows<R> _parse_rows(R* fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, bool skipinitialspace) {
+__gen__parse_rows<R> _parse_rows(::tpy::storage_t<R>* fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, bool skipinitialspace) {
     return __gen__parse_rows<R>(fp, delimiter, quotechar, doublequote, skipinitialspace);
 }
 
@@ -666,7 +666,7 @@ struct __gen_DictReader___iter__ : public ::tpy::next_iter_mixin<__gen_DictReade
     ::tpy::frame_slot<::tpy::ordered_map<std::string, std::string>> out;
     int32_t i;
     int32_t m;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpystd::csv::_parse_rows<W>(__self._fp, __self._delimiter, __self._quotechar, __self._doublequote, __self._skipinitialspace)))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpystd::csv::_parse_rows<::tpy::storage_t<W>>(__self._fp, __self._delimiter, __self._quotechar, __self._doublequote, __self._skipinitialspace)))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
@@ -724,7 +724,7 @@ std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         first = true;
-        __for_src_0.emplace(::tpystd::csv::_parse_rows<W>(__self._fp, __self._delimiter, __self._quotechar, __self._doublequote, __self._skipinitialspace));
+        __for_src_0.emplace(::tpystd::csv::_parse_rows<::tpy::storage_t<W>>(__self._fp, __self._delimiter, __self._quotechar, __self._doublequote, __self._skipinitialspace));
         __state = S_JOIN_0;
         continue;
     }
@@ -943,7 +943,7 @@ inline void DictWriter<W>::writerows(const std::vector<::tpy::ordered_map<std::s
 //     return _Writer(fp, delimiter, quotechar, doublequote, lineterminator)
 template<::tpystd::tpy::Writable W>
 _Writer<W> writer(::tpy::param_val_or_ref_t<W> fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, std::string_view lineterminator) {
-    return _Writer<W>(fp, delimiter, quotechar, doublequote, lineterminator);
+    return _Writer<W>(::tpy::param_pass_last<W>(fp), delimiter, quotechar, doublequote, lineterminator);
 }
 
 void __tpy_init();

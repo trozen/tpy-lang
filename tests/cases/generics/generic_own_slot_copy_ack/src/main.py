@@ -73,14 +73,15 @@ def sec_value_bound() -> None:
     print("value-bound:", dup_bounded(b), dup_bounded_twin(t))
 
 
-# inverse: a call through a callable VALUE declared to return an open K reads
-# as an rvalue whatever K resolves to, and the body that runs builds a fresh
-# value. The generic must stay as silent as the monomorphic twin below it,
-# which spells the fresh value `Own[Cell]`. This pins ONLY the absence of a
-# false positive for a FRESH-value callable.
+# inverse: a call through a callable VALUE declared to return an open K
+# returns what K says at each instantiation -- a borrow at `K = P`, a fresh
+# value at `K = Own[P]` -- so the generic body hedges the copy it makes at the
+# lending instantiation, while the twin below, which spells the fresh value
+# `Own[Cell]`, stays silent. The call passes a fresh-value lambda (K = Own[Cell]).
 def apply_generic[T, K](xs: list[T], f: Fn[[T], K], out: list[K]) -> None:
     for x in xs:
-        out.append(f(x))  # tpyc: ok
+        # copies at a K a callable lends (`K = P`), moves at `K = Own[P]`
+        out.append(f(x))  # tpyc: warning(/may copy K into owned storage/)
 
 
 def apply_twin(xs: list[int32], f: Fn[[int32], Own[Cell]], out: list[Cell]) -> None:
@@ -89,7 +90,8 @@ def apply_twin(xs: list[int32], f: Fn[[int32], Own[Cell]], out: list[Cell]) -> N
 
 
 def ret_generic[T, K](x: T, f: Fn[[T], K]) -> Own[K]:
-    return f(x)  # tpyc: ok
+    # copies at a K a callable lends (`K = P`) into the owned result
+    return f(x)  # tpyc: warning(/may copy K into owned storage/)
 
 
 def ret_twin(x: int32, f: Fn[[int32], Own[Cell]]) -> Own[Cell]:

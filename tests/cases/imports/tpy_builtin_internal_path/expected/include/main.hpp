@@ -46,7 +46,7 @@ void main();
 template<typename T>
 struct Holder {
     // value: T
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: T) -> None:
     Holder() = default;
@@ -76,14 +76,14 @@ inline Holder<T>::Holder(::tpy::readonly_form_t<T> value) : value(value) {}
 //     return copy(self.value)  # tpyc: ok
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Holder<T>::dup() const {
-    return T(this->value);
+    return ::tpy::storage_t<T>(this->value);
 }
 
 // def dup_via_module(self) -> T:
 //     return t.copy(self.value)  # tpyc: ok
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Holder<T>::dup_via_module() const {
-    return T(this->value);
+    return ::tpy::storage_t<T>(this->value);
 }
 
 void __tpy_init();

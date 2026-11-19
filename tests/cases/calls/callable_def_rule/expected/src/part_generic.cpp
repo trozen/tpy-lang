@@ -15,10 +15,9 @@ namespace tpyapp::part_generic {
 //     fill2(out, mk, p)  # tpyc: ok
 //     fill2(out, g, P(1))  # tpyc: ok
 //     out[0].n += 10
-//     # The lending legs copy where CPython aliases
-//     # (BUGS.md#generic-spelled-type-args-copy-where-inferred-lend); their
-//     # sources are temporaries, so the output cannot show it: the C++
-//     # snapshot pins the copy.
+//     # The lending legs copy where CPython aliases, hedged in the generic
+//     # body (`may copy U`); their sources are temporaries, so the output
+//     # cannot show it: the C++ snapshot pins the copy.
 //     out[1].n += 10
 //     out[2].n += 20
 //     print("generic:", p.n, out[0].n, out[1].n, out[2].n, out[3].n, len(out))
@@ -30,13 +29,13 @@ namespace tpyapp::part_generic {
 void sec_generic() {
     ::tpyapp::fixtures::P p = ::tpyapp::fixtures::P(1);
     std::vector<::tpyapp::fixtures::P> out = std::vector<::tpyapp::fixtures::P>{};
-    ::tpyapp::part_generic::fill<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(::tpyapp::fixtures::mk, p, out);
+    ::tpyapp::part_generic::fill<::tpyapp::fixtures::P, ::tpy::own_arg<::tpyapp::fixtures::P>>(::tpyapp::fixtures::mk, p, out);
     ::tpyapp::fixtures::P __tmp_1 = ::tpyapp::fixtures::P(1);
     ::tpyapp::part_generic::fill<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(::tpyapp::fixtures::ident, __tmp_1, out);
     std::function<::tpyapp::fixtures::P&(::tpyapp::fixtures::P&)> g = ::tpyapp::fixtures::ident;
     ::tpyapp::fixtures::P __tmp_2 = ::tpyapp::fixtures::P(1);
     ::tpyapp::part_generic::fill<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(g, __tmp_2, out);
-    ::tpyapp::part_generic::fill2<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(out, ::tpyapp::fixtures::mk, p);
+    ::tpyapp::part_generic::fill2<::tpyapp::fixtures::P, ::tpy::own_arg<::tpyapp::fixtures::P>>(out, ::tpyapp::fixtures::mk, p);
     ::tpyapp::fixtures::P __tmp_3 = ::tpyapp::fixtures::P(1);
     ::tpyapp::part_generic::fill2<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(out, g, __tmp_3);
     ::tpy::__getitem__(out, 0).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(out, 0).n, 10);
@@ -50,12 +49,18 @@ void sec_generic() {
 
 // def sec_generic_lambda() -> None:
 //     p = P(1)
-//     h = pick_cb(lambda q: q, p)  # tpyc: warning(/copies P into owned storage/)
-//     print("generic lambda:", h(p).n)
+//     # the lambda returns its parameter: U = P, the result lends (no copy)
+//     h = pick_cb(lambda q: q, p)  # tpyc: ok
+//     h(p).n += 5
+//     print("generic lambda:", p.n)
 void sec_generic_lambda() {
     ::tpyapp::fixtures::P p = ::tpyapp::fixtures::P(1);
-    std::function<::tpyapp::fixtures::P(::tpyapp::fixtures::P&)> h = ::tpyapp::part_generic::pick_cb<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>([](::tpyapp::fixtures::P& q) -> ::tpyapp::fixtures::P { return q; }, p);
-    std::cout << "generic lambda:" << " " << h(p).n << "\n" << ::tpy::check_signals;
+    std::function<::tpyapp::fixtures::P&(::tpyapp::fixtures::P&)> h = ::tpyapp::part_generic::pick_cb<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>([](::tpyapp::fixtures::P& q) -> ::tpyapp::fixtures::P& { return q; }, p);
+    {
+        auto&& __tmp_1 = h(p);
+        __tmp_1.n = ::tpy::add_check<int32_t>(__tmp_1.n, 5);
+    }
+    std::cout << "generic lambda:" << " " << p.n << "\n" << ::tpy::check_signals;
 }
 
 // def sec_map() -> None:
@@ -68,7 +73,7 @@ void sec_map() {
     std::array<::tpyapp::fixtures::P, 2> qs = {::tpyapp::fixtures::P(0), ::tpyapp::fixtures::P(0)};
     std::function<::tpyapp::fixtures::P&(::tpyapp::fixtures::P&)> f = [](::tpyapp::fixtures::P& q) -> ::tpyapp::fixtures::P& { return q; };
     {
-        auto __src_0 = ::tpy::builtin_map<::tpy::val_or_ref<::tpyapp::fixtures::P>>(f, qs);
+        auto __src_0 = ::tpy::builtin_map<::tpyapp::fixtures::P>(f, qs);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -117,11 +122,11 @@ void sec_identity() {
     std::array<std::function<int32_t()>, 2> fs = {a, ::tpyapp::part_generic::pick0<int32_t>(a)};
     std::function<::tpyapp::fixtures::P(::tpyapp::fixtures::P&)> cm = ::tpyapp::fixtures::mk;
     ::tpyapp::fixtures::P seed = ::tpyapp::fixtures::P(0);
-    ::tpy::ordered_map<std::string, std::function<::tpyapp::fixtures::P(::tpyapp::fixtures::P&)>> ms = ::tpy::ordered_map<std::string, std::function<::tpyapp::fixtures::P(::tpyapp::fixtures::P&)>>({{"m", cm}, {"g", ::tpyapp::part_generic::pick_cb<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(::tpyapp::fixtures::mk, seed)}});
+    ::tpy::ordered_map<std::string, std::function<::tpyapp::fixtures::P(::tpyapp::fixtures::P&)>> ms = ::tpy::ordered_map<std::string, std::function<::tpyapp::fixtures::P(::tpyapp::fixtures::P&)>>({{"m", cm}, {"g", ::tpyapp::part_generic::pick_cb<::tpyapp::fixtures::P, ::tpy::own_arg<::tpyapp::fixtures::P>>(::tpyapp::fixtures::mk, seed)}});
     std::function<std::tuple<::tpyapp::fixtures::P, int32_t>()> t = mk_pair;
-    std::array<std::function<std::tuple<::tpyapp::fixtures::P, int32_t>()>, 2> ts = {t, ::tpyapp::part_generic::pick0<std::tuple<::tpyapp::fixtures::P, int32_t>>(t)};
+    std::array<std::function<std::tuple<::tpyapp::fixtures::P, int32_t>()>, 2> ts = {t, ::tpyapp::part_generic::pick0<::tpy::own_arg<std::tuple<::tpyapp::fixtures::P, int32_t>>>(t)};
     std::function<std::optional<::tpyapp::fixtures::P>()> o = mk_opt;
-    std::array<std::function<std::optional<::tpyapp::fixtures::P>()>, 2> opts = {o, ::tpyapp::part_generic::pick0<std::optional<::tpyapp::fixtures::P>>(o)};
+    std::array<std::function<std::optional<::tpyapp::fixtures::P>()>, 2> opts = {o, ::tpyapp::part_generic::pick0<::tpy::own_arg<std::optional<::tpyapp::fixtures::P>>>(o)};
     std::optional<::tpyapp::fixtures::P> __slot_1 = (::tpy::__getitem__(opts, 1))();
     ::tpyapp::fixtures::P* ov = ::tpy::optional_to_ptr(__slot_1);
     ::tpyapp::fixtures::P __tmp_1 = ::tpyapp::fixtures::P(1);
@@ -147,11 +152,11 @@ void sec_identity() {
 void sec_hatches() {
     ::tpyapp::fixtures::P p = ::tpyapp::fixtures::P(1);
     std::function<::tpyapp::fixtures::P(::tpyapp::fixtures::P&)> c = [](::tpyapp::fixtures::P& q) -> ::tpyapp::fixtures::P { return ::tpyapp::fixtures::P(::tpyapp::fixtures::ident(q)); };
-    std::function<::tpyapp::fixtures::P(::tpyapp::fixtures::P&)> h = ::tpyapp::part_generic::pick_cb<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(c, p);
+    std::function<::tpyapp::fixtures::P(::tpyapp::fixtures::P&)> h = ::tpyapp::part_generic::pick_cb<::tpyapp::fixtures::P, ::tpy::own_arg<::tpyapp::fixtures::P>>(c, p);
     ::tpyapp::fixtures::P r = h(p);
     r.n = ::tpy::add_check<int32_t>(r.n, 5);
     std::function<::tpyapp::fixtures::P()> m = mk0;
-    std::function<::tpyapp::fixtures::P()> k = ::tpyapp::part_generic::pick0<::tpyapp::fixtures::P>(m);
+    std::function<::tpyapp::fixtures::P()> k = ::tpyapp::part_generic::pick0<::tpy::own_arg<::tpyapp::fixtures::P>>(m);
     std::function<::tpyapp::fixtures::P()> g = ::tpyapp::part_generic::lend_owned<::tpyapp::fixtures::P>(mk0, p);
     std::cout << "hatches:" << " " << p.n << " " << r.n << " " << k().n << " " << g().n << "\n" << ::tpy::check_signals;
 }

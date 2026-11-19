@@ -214,7 +214,7 @@ inline ::tpy::BigInt K::run() const {
 //     return x, m.v
 template<typename T>
 std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt> gv(const M& m, ::tpy::param_val_or_ref_t<T> x) {
-    return std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x), m.v};
+    return std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_pass_last<T>(x)), m.v};
 }
 
 void __tpy_init();

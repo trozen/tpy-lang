@@ -11,7 +11,7 @@ namespace tpyapp::main {
 
 // class Walker(Protocol):
 template<typename T>
-concept Walker = requires(T& t) {
+concept Walker = requires(::tpy::storage_t<T>& t) {
     { t.walk() } -> std::convertible_to<::tpy::BigInt>;
 };
 

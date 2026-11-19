@@ -105,7 +105,7 @@ inline std::ostream& operator<<(std::ostream& os, const K& obj) {
 template<typename T>
 struct G {
     // tag: T
-    T tag;
+    ::tpy::storage_t<T> tag;
 
     // def __init__(self, tag: T) -> None:
     G() = default;
@@ -203,7 +203,7 @@ inline const Rec& K::peek(const B& other) const {
 //     return v
 template<typename U>
 inline ::tpy::val_or_ref_t<U> K::echo(::tpy::param_val_or_ref_t<U> v) const {
-    return ::tpy::param_to_return<U>(v);
+    return ::tpy::param_to_return_last<U>(v);
 }
 
 // def __init__(self, tag: T) -> None:

@@ -10,7 +10,7 @@ namespace tpystd::tpy::thread {
 
 // class ThreadTask[R](Protocol):
 template<typename T, typename _T0>
-concept ThreadTask = requires(T& t) {
+concept ThreadTask = requires(::tpy::storage_t<T>& t) {
     { t.run() } -> ::tpy::proto_result<_T0>;
 };
 

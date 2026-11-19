@@ -18,14 +18,14 @@ void main();
 template<::tpy::ValueType T>
 struct Cell {
     // item: T
-    T item;
+    ::tpy::storage_t<T> item;
 
     // def __init__(self, item: Own[T]) -> None:
     Cell() = default;
-    explicit Cell(T item);
+    explicit Cell(::tpy::storage_t<T> item);
 
     // def replace(self, item: Own[T]) -> int32:
-    int32_t replace(T item);
+    int32_t replace(::tpy::storage_t<T> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -39,13 +39,13 @@ inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
 // def __init__(self, item: Own[T]) -> None:
 //     self.item = item  # tpyc: ok
 template<::tpy::ValueType T>
-inline Cell<T>::Cell(T item) : item(std::move(item)) {}
+inline Cell<T>::Cell(::tpy::storage_t<T> item) : item(std::move(item)) {}
 
 // def replace(self, item: Own[T]) -> int32:
 //     self.item = item  # tpyc: ok
 //     return 1
 template<::tpy::ValueType T>
-inline int32_t Cell<T>::replace(T item) {
+inline int32_t Cell<T>::replace(::tpy::storage_t<T> item) {
     this->item = std::move(item);
     return 1;
 }

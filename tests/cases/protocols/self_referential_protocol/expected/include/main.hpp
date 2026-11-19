@@ -9,27 +9,27 @@ namespace tpyapp::main {
 
 // class Addable(Protocol):
 template<typename T>
-concept Addable = requires(T& t) {
+concept Addable = requires(::tpy::storage_t<T>& t) {
     t + std::declval<T&>();
     { t.value() } -> std::convertible_to<::tpy::BigInt>;
 };
 
 // class Chainable(Protocol):
 template<typename T>
-concept Chainable = requires(T& t) {
+concept Chainable = requires(::tpy::storage_t<T>& t) {
     t.half();
     { t.value() } -> std::convertible_to<::tpy::BigInt>;
 };
 
 // class AProto(Protocol):
 template<typename T>
-concept AProto = requires(T& t) {
+concept AProto = requires(::tpy::storage_t<T>& t) {
     t.to_b();
 };
 
 // class BProto(Protocol):
 template<typename T>
-concept BProto = requires(T& t) {
+concept BProto = requires(::tpy::storage_t<T>& t) {
     { t.tag() } -> std::convertible_to<std::string_view>;
     t.to_a();
 };

@@ -23,7 +23,7 @@ void main();
 template<typename T>
 struct Box {
     // val: T
-    T val;
+    ::tpy::storage_t<T> val;
 
     // def __init__(self, v: T) -> None:
     Box() = default;
@@ -57,7 +57,7 @@ struct __coro_Box_with_label {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          label(label_) {}
+          label(::tpy::param_pass_last<U>(label_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -76,7 +76,7 @@ template <typename T, typename U>
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<U> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(label);
+        ::tpy::val_or_ptr_t<U> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(::tpy::param_pass_last<U>(label));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -88,7 +88,7 @@ template <typename T, typename U>
 template <typename T>
 template <typename U>
 inline __coro_Box_with_label<T, U> Box<T>::with_label(::tpy::param_val_or_ref_t<U> label) const {
-    return __coro_Box_with_label<T, U>(*this, label);
+    return __coro_Box_with_label<T, U>(*this, ::tpy::param_pass_last<U>(label));
 }
 
 

@@ -28,7 +28,7 @@ struct __coro_amain;
 R* getm(H& h);
 // def first[T](xs: list[T]) -> Optional[T]:
 template<typename T>
-T* first(std::vector<T>& xs);
+::tpy::storage_t<T>* first(std::vector<::tpy::storage_t<T>>& xs);
 // def pick(a: R, b: S, c: bool) -> R | S:
 ::tpy::Union<R*, S*> pick(R& a, S& b, bool c);
 // def take(r: Own[R]) -> Own[R]:
@@ -375,7 +375,7 @@ inline void Cm::__exit__(std::monostate exc_type, const ::tpy::BaseException* ex
 //         return xs[0]
 //     return None
 template<typename T>
-T* first(std::vector<T>& xs) {
+::tpy::storage_t<T>* first(std::vector<::tpy::storage_t<T>>& xs) {
     if ((::tpy::__len__(xs) > 0)) {
         return &(::tpy::__getitem__(xs, 0));
     }

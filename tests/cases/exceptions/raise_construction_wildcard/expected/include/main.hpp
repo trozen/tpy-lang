@@ -11,7 +11,7 @@ struct Shows;
 // @dynamic
 // class Shows(Protocol):
 template<typename T>
-concept __Shows_Concept__ = requires(const T& t) {
+concept __Shows_Concept__ = requires(const ::tpy::storage_t<T>& t) {
     { t.show() } -> std::convertible_to<std::string_view>;
 };
 
@@ -65,9 +65,9 @@ struct Outer {
     template<typename T, typename U>
     struct Pair : ::tpyapp::main::Carrier {
         // self.a = a
-        T a;
+        ::tpy::storage_t<T> a;
         // self.b = b
-        U b;
+        ::tpy::storage_t<U> b;
 
         // def __init__(self, a: Own[T], b: Own[U]) -> None:
         Pair() = default;
@@ -102,9 +102,9 @@ inline std::ostream& operator<<(std::ostream& os, const Outer::Pair<T, U>& obj) 
 template<typename T, typename U>
 struct Pair : Carrier {
     // self.a = a
-    T a;
+    ::tpy::storage_t<T> a;
     // self.b = b
-    U b;
+    ::tpy::storage_t<U> b;
 
     // def __init__(self, a: Own[T], b: Own[U]) -> None:
     Pair() = default;

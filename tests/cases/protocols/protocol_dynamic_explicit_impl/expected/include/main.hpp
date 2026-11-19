@@ -11,7 +11,7 @@ struct Describable;
 // @dynamic
 // class Describable(Protocol):
 template<typename T>
-concept __Describable_Concept__ = requires(T& t) {
+concept __Describable_Concept__ = requires(::tpy::storage_t<T>& t) {
     { t.describe() } -> std::convertible_to<std::string_view>;
     { t.id() } -> std::convertible_to<int32_t>;
 };

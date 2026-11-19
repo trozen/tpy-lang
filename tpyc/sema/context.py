@@ -52,9 +52,11 @@ from ..typesys import (
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
     unwrap_own, unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
+    resolve_int_literals,
     FunctionInfo, MutationCallEdge, ParamInfo, RecordInfo,
     is_dyn_protocol, contains_pending_leaf, TypeParamRef,
     is_indirection_type, record_owner, is_protocol_type, contains_type_param,
+    inner_type_param_names,
 )
 from ..modules.type_resolution import traversed_once
 from ..compilation_context import get_current_compiler
@@ -96,7 +98,7 @@ from .storage_walk import (
     storage_roots, ternary_operands,
 )
 from ..storage_trace import StepKind, trace
-from .read_binding import resolve_read
+from .read_binding import ReadKind, resolve_read
 
 # Tuple of all pending container types -- use in isinstance checks so adding
 # a new container type requires updating only this one constant.
@@ -1528,6 +1530,15 @@ class UnpackClaim(OwningRead):
     which targets own the element they bind (`stmt.is_owned`), taken
     before the body settles. Settlement holds it to the source's record."""
     stmt: Any
+
+
+@dataclass(eq=False)
+class OpenResultCopy(OwningRead):
+    """A last-use read of an open-result local at a slot that owns only
+    where `T` is `Own[X]`: it hands its value on iff the settled fact says
+    the local owns there (`BodyOwnership.open_owning`); otherwise the read
+    copies at an `Own` instantiation and `obligation` is recorded."""
+    obligation: Any
 
 
 @dataclass(eq=False)
@@ -3158,6 +3169,11 @@ class SemanticContext:
     # in the middle of an enclosing body: that function drained them already,
     # so the enclosing body's drain leaves them out.
     own_copy_inner_spans: list = field(default_factory=list)
+    # Per body collecting them, the type parameters already recorded as a
+    # composite leaf (`note_composite_leaves`): the first composite names
+    # the refusal.
+    composite_leaves_noted: 'IdentityMap[TpyFunction, set[str]]' = field(
+        default_factory=IdentityMap)
 
     # Top-level names `register_globals` put in `global_scope` from their
     # ANNOTATION, before any statement was analyzed. Distinct from the
@@ -3233,6 +3249,10 @@ class SemanticContext:
 
     # --- Last-use tracking (shared with codegen, persists across functions) ---
     all_last_uses: IdentitySet = field(default_factory=IdentitySet)
+    # The committed arguments of the `OPEN_SAME_T` slot class
+    # (`TypeCompatibility.note_open_same_t_arg`): a read of a body's own
+    # open `T` at a callee parameter of that `T`.
+    open_same_t_args: IdentitySet = field(default_factory=IdentitySet)
     # Last-use reads whose active alias is read in the same statement (any
     # order), with those aliases: a by-VALUE owning slot moves the name while
     # binding, which C++ may sequence before the alias read, so such a slot
@@ -3276,6 +3296,10 @@ class SemanticContext:
     # The declarations that bind a call's `val_or_ref_t` result itself
     # (`binding_ownership.binds_val_or_ref`), decided once at settlement.
     val_or_ref_decls: IdentitySet = field(default_factory=IdentitySet)
+    # The resumable frame locals declared off such a call (their one
+    # binding): the frame field holds the call's `val_or_ref_t` result, a
+    # reference at a reference instantiation. Keyed by the frame's function.
+    val_or_ref_frame_locals: IdentityMap = field(default_factory=IdentityMap)
     # Every name read's binding identity (`read_binding.ReadBinding`),
     # recorded where the read is analyzed.
     read_bindings: IdentityMap = field(default_factory=IdentityMap)
@@ -3814,8 +3838,36 @@ class SemanticContext:
             display, target, dest, kind, hint = entry.hedge
             self.own_copy_obligations.append(own_copy.OwnCopyObligation(
                 display_type=display, target_type=target, dest=dest,
-                kind=kind, hint=hint, diag=diag))
+                kind=kind, hint=hint, diag=diag,
+                hands_on=self.hands_on_at_own(entry.source)))
         return diag
+
+    def hands_on_at_own(self, read: object) -> bool:
+        """Whether `read` is the last use of a bare `x: T` parameter or of
+        a local holding only open `T` results (`BodyOwnership.open_owning`,
+        settled with the body): borrowed in sema, it hands its value on
+        where `T` is `Own[X]` (`param_consume<T>`), so a copy obligation
+        recorded at it is no copy there."""
+        if not (isinstance(read, TpyName) and read in self.all_last_uses):
+            return False
+        binding = self.read_bindings.get(read)
+        if binding is not None and binding.kind is ReadKind.LOCAL:
+            body = self.body_ownership.get(self.func.current_function)
+            return body is not None and read.name in body.open_owning
+        return self.open_t_param_read(read)
+
+    def open_t_param_read(self, read: object) -> bool:
+        """A read of a parameter of this body declared a bare open type
+        parameter (`x: T`)."""
+        binding = (self.read_bindings.get(read)
+                   if isinstance(read, TpyName) else None)
+        if binding is None or binding.kind is not ReadKind.PARAM:
+            return False
+        ptype = next((t for p, t in binding.node.params
+                      if p == binding.name), None)
+        ptype = unwrap_ref_type(ptype) if isinstance(ptype, TpyType) else None
+        return (type(ptype) is TypeParamRef
+                and ptype.kind is TypeParamKind.TYPE)
 
     def type_param_bound(self, type_param_name: str) -> 'TpyType | None':
         """The declared bound for a type parameter in the current context.
@@ -3927,7 +3979,8 @@ class SemanticContext:
 
     def record_own_copy_instantiation(
         self, callee: object, subst: 'dict[str, TpyType | int]',
-        is_record: bool = False,
+        is_record: bool = False, at: 'TpyExpr | None' = None,
+        sources: tuple = (),
     ) -> None:
         """Note that `callee` (a FunctionInfo, or a RecordInfo when
         `is_record`) was instantiated under `subst`.
@@ -3935,7 +3988,8 @@ class SemanticContext:
         A substitution that still names a type parameter is the enclosing
         generic body's to forward: it is re-composed when that body is
         itself instantiated. A concrete one is a root the discharge starts
-        from.
+        from. `sources` names what inferred a non-plain `Own[X]` binding
+        (`own_copy.binding_sources`).
         """
         if not subst:
             return
@@ -3946,7 +4000,11 @@ class SemanticContext:
         if not pairs:
             return
         self.assert_slot_effect("a copy-verdict instantiation root")
-        edge = own_copy.OwnCopyEdge(callee, pairs, is_record)
+        inferred = at is not None and not getattr(at, "type_args", None)
+        edge = own_copy.OwnCopyEdge(
+            callee, pairs, is_record,
+            self._resolve_loc(at) if at is not None else None,
+            inferred=inferred, sources=sources if inferred else ())
         if any(own_copy.type_has_type_param(value) for _, value in pairs):
             self.own_copy_forwards.append(edge)
             return
@@ -3955,7 +4013,7 @@ class SemanticContext:
             # a substituted RecordInfo that dies cannot have its address
             # recycled into a false hit (see tpyc/identity_map.py).
             seen = self._own_copy_seen_roots.setdefault(callee, set())
-            key = (pairs, is_record)
+            key = (pairs, is_record, own_copy.loc_key(edge.loc))
             if key in seen:
                 return
             seen.add(key)
@@ -3964,6 +4022,35 @@ class SemanticContext:
             # twice only costs a repeated (idempotent) discharge.
             pass
         self.own_copy_roots.append(edge)
+
+    def note_composite_leaves(self, typ: 'TpyType | None') -> None:
+        """Record each type parameter the enclosing generic declares itself
+        that `typ` holds as a tuple or Optional / union leaf
+        (`own_copy.OwnCompositeLeaf`)."""
+        func = self.func.current_function
+        if typ is None or not isinstance(func, TpyFunction):
+            return
+        root = self.func.body_root
+        if not isinstance(root, TpyFunction) or not root.type_params:
+            return
+        # A generator expression's function forwards its own.
+        collector = func if func.is_genexpr else root
+        noted = self.composite_leaves_noted.setdefault(collector, set())
+        if noted.issuperset(root.type_params):
+            return
+        leaves = own_copy.composite_leaves(typ, root.type_params)
+        if not leaves:
+            return
+        display = None
+        for param in leaves:
+            if param.name in noted:
+                continue
+            noted.add(param.name)
+            if display is None:
+                display = resolve_int_literals(own_copy.shown_type(typ),
+                                               self.default_int_for_literal)
+            self.own_copy_obligations.append(
+                own_copy.OwnCompositeLeaf(param, display, root.name))
 
     def own_copy_mark(self) -> tuple[int, int, int]:
         """Where the body about to be analyzed starts contributing."""
@@ -4270,6 +4357,7 @@ class SemanticContext:
     def set_expr_type(self, expr: TpyExpr, typ: TpyType) -> None:
         """Cache the type of an expression."""
         self.expr_types[expr] = typ
+        self.note_composite_leaves(typ)
         # A COMPOSITE carrying a Pending* leaf (a non-array comprehension's
         # `list[Pending]`, a tuple of list literals) is read straight off this
         # cache by the var-decl codegen fallback; record it so resolve_all can
@@ -4636,6 +4724,10 @@ class SemanticContext:
         saved_bytes_var_counter = self.bytes_var_counter
         saved_bytes_vars = dict(self.bytes_vars)
         saved_diagnostics_len = len(self.diagnostics)
+        saved_obligations_len = len(self.own_copy_obligations)
+        saved_noted = IdentityMap(
+            (k, set(self.composite_leaves_noted[k]))
+            for k in self.composite_leaves_noted)
         saved_lambda_checks_len = len(self.pending_lambda_borrow_checks)
         saved_binding_lens = (len(self.loop_binders), len(self.binding_writes),
                               len(self.binding_edges))
@@ -4668,6 +4760,27 @@ class SemanticContext:
             self.bytes_vars.clear()
             self.bytes_vars.update(saved_bytes_vars)
             del self.diagnostics[saved_diagnostics_len:]
+            self._drop_composite_leaves_since(saved_obligations_len)
+            self.composite_leaves_noted = saved_noted
+
+    def _drop_composite_leaves_since(self, start: int) -> None:
+        """Drop the composite-leaf refusals recorded from obligation `start`
+        on (a rolled-back trial's), re-pointing the inner spans past it."""
+        tail = self.own_copy_obligations[start:]
+        kept = [not isinstance(o, own_copy.OwnCompositeLeaf) for o in tail]
+        if all(kept):
+            return
+        new_index = [start]
+        for keep in kept:
+            new_index.append(new_index[-1] + keep)
+
+        def moved(i: int) -> int:
+            return i if i < start else new_index[i - start]
+        self.own_copy_obligations[start:] = [
+            o for o, keep in zip(tail, kept) if keep]
+        self.own_copy_inner_spans[:] = [
+            ((moved(a), moved(b)), fw)
+            for (a, b), fw in self.own_copy_inner_spans]
 
     def binding_site(self, name: str) -> object:
         """`FunctionTrackingState.binding_site` of the live function."""

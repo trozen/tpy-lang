@@ -18,7 +18,7 @@ void main();
 template<typename T>
 struct Container {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self):
     Container();
@@ -42,13 +42,13 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // def __init__(self):
 //     self.items = []
 template<typename T>
-inline Container<T>::Container() : items(std::vector<T>{}) {}
+inline Container<T>::Container() : items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def add(self, item: T) -> None:
 //     self.items.append(item)
 template<typename T>
 inline void Container<T>::add(::tpy::param_val_or_ref_t<T> item) {
-    this->items.push_back(::tpy::param_to_storage<T>(item));
+    this->items.push_back(::tpy::param_consume<T>(item));
 }
 
 // def is_sorted[T: Comparable](self) -> bool:

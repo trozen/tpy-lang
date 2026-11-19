@@ -78,11 +78,11 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 template<typename T>
 struct Box {
     // items: list[T]
-    std::vector<T> items;
+    std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
     Box() = default;
-    explicit Box(std::vector<T>&& items);
+    explicit Box(std::vector<::tpy::storage_t<T>>&& items);
 
     __gen_Box_two<T> two();
     static constexpr std::string_view __tpy_class_name__ = "gensrc.Box";
@@ -155,8 +155,8 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, ::tpy::yield_sl
 
     __gen_pair(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_)
         : __state(S_INITIAL),
-          a(a_),
-          b(b_) {}
+          a(::tpy::param_pass_last<T>(a_)),
+          b(::tpy::param_pass_last<T>(b_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_pair& __iter__() { return *this; }
@@ -174,11 +174,11 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_pair<T>::__nex
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return a;
+        return ::tpy::yield_from_local<T>(a);
     }
     case S_RESUME_0: {  // after: yield a
         __state = S_RESUME_1;
-        return b;
+        return ::tpy::yield_from_local<T>(b);
     }
     case S_RESUME_1: {  // after: yield b
         __state = S_DONE;
@@ -193,7 +193,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_pair<T>::__nex
 // def pair[T](a: T, b: T) -> Iterator[T]:
 template <typename T>
 __gen_pair<T> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    return __gen_pair<T>(a, b);
+    return __gen_pair<T>(::tpy::param_pass_last<T>(a), ::tpy::param_pass_last<T>(b));
 }
 
 // def chatty() -> Iterator[int32]:
@@ -386,7 +386,7 @@ inline void Bag::bump() {
 // def __init__(self, items: Own[list[T]]) -> None:
 //     self.items = items
 template<typename T>
-inline Box<T>::Box(std::vector<T>&& items) : items(std::move(items)) {}
+inline Box<T>::Box(std::vector<::tpy::storage_t<T>>&& items) : items(std::move(items)) {}
 
 void __tpy_init();
 } // namespace tpyapp::gensrc

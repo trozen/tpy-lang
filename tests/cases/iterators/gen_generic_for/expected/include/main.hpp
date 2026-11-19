@@ -14,7 +14,7 @@ struct __gen_doubled;
 
 // def doubled[T](xs: list[T]) -> Iterator[T]:  # tpyc: ok
 template <typename T>
-__gen_doubled<T> doubled(std::vector<T>& xs);
+__gen_doubled<T> doubled(std::vector<::tpy::storage_t<T>>& xs);
 // def main() -> None:
 void main();
 
@@ -22,7 +22,7 @@ void main();
 template <typename T>
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T>, ::tpy::yield_slot_t<T>> {
     ::tpy::frame_state __state;
-    std::vector<T>& xs;
+    std::vector<::tpy::storage_t<T>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -36,7 +36,7 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T>, ::tpy::yi
         S_DONE = 4,
     };
 
-    __gen_doubled(std::vector<T>& xs)
+    __gen_doubled(std::vector<::tpy::storage_t<T>>& xs)
         : __state(S_INITIAL),
           xs(xs) {}
 
@@ -84,7 +84,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_doubled<T>::__
 
 // def doubled[T](xs: list[T]) -> Iterator[T]:  # tpyc: ok
 template <typename T>
-__gen_doubled<T> doubled(std::vector<T>& xs) {
+__gen_doubled<T> doubled(std::vector<::tpy::storage_t<T>>& xs) {
     return __gen_doubled<T>(xs);
 }
 

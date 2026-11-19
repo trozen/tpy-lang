@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // class Readable(Protocol):
 template<typename T>
-concept Readable = requires(const T& t) {
+concept Readable = requires(const ::tpy::storage_t<T>& t) {
     { t.read() } -> std::convertible_to<int32_t>;
 };
 

@@ -211,7 +211,7 @@ inline std::ostream& operator<<(std::ostream& os, const RoCtx& obj) {
 template<typename T>
 struct GCtx {
     // v: T
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: Own[T]) -> None:
     GCtx() = default;

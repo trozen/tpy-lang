@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def collect[T](a: T, b: T) -> Own[list[T]]:
 template<typename T>
-std::vector<T> collect(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+std::vector<::tpy::storage_t<T>> collect(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 // def main() -> None:
 void main();
 
@@ -43,10 +43,10 @@ inline Box::Box(int32_t value) : value(value) {}
 //     result.append(b)
 //     return result
 template<typename T>
-std::vector<T> collect(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    std::vector<T> result = std::vector<T>{};
-    result.push_back(::tpy::param_to_storage<T>(a));
-    result.push_back(::tpy::param_to_storage<T>(b));
+std::vector<::tpy::storage_t<T>> collect(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
+    std::vector<::tpy::storage_t<T>> result = std::vector<::tpy::storage_t<T>>{};
+    result.push_back(::tpy::param_consume<T>(a));
+    result.push_back(::tpy::param_consume<T>(b));
     return result;
 }
 

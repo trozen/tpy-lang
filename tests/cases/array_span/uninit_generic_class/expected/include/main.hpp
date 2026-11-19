@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 //     self._storage.init0(value)
 template<typename T>
 inline Holder<T>::Holder(::tpy::readonly_form_t<T> value) : _storage(::tpy::UninitHeapStorage<T>(1)) {
-    this->_storage.init0(::tpy::param_to_storage<T>(value));
+    this->_storage.init0(::tpy::param_consume<T>(value));
 }
 
 // def get(self) -> T:
@@ -67,7 +67,7 @@ inline ::tpy::val_or_ref_t<T> Holder<T>::get() {
 template<typename T>
 inline void Holder<T>::set(::tpy::param_val_or_ref_t<T> value) {
     this->_storage.drop0();
-    this->_storage.init0(::tpy::param_to_storage<T>(value));
+    this->_storage.init0(::tpy::param_consume<T>(value));
 }
 
 // def take(self) -> Own[T]:

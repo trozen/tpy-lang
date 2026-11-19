@@ -230,7 +230,7 @@ inline std::ostream& operator<<(std::ostream& os, const K& obj) {
 template<typename T>
 struct Holder {
     // self.value = value
-    T value;
+    ::tpy::storage_t<T> value;
 
     // def __init__(self, value: Own[T]) -> None:
     Holder() = default;

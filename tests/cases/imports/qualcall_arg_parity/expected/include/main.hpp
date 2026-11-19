@@ -64,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 template<typename T>
 struct GBox {
     // self.v = v  # tpyc: warning(/may copy T into field/)
-    T v;
+    ::tpy::storage_t<T> v;
 
     // def __init__(self, v: T) -> None:
     GBox() = default;
