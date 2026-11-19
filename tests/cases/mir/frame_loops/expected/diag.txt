@@ -1,0 +1,1 @@
+main.py:49: warning: this assignment frees the old value of 's', but the iteration over 's' still walks it and continues on line 47; make the change after the loop, or iterate over a copy under another name

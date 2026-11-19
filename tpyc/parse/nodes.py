@@ -2427,6 +2427,10 @@ class TpyFunction:
     # The function the genexpr is written in (None at module level): what a
     # diagnostic about the body names, since the user never wrote this one.
     genexpr_owner: str | None = None
+    # Set by sema on a genexpr's function: per source parameter (`__src`, a
+    # range bound's `__r<i>`), the expression it stands for where the genexpr
+    # is written -- the only spelling the user knows it by.
+    genexpr_source_spans: 'dict[str, SourceLocation]' = field(default_factory=dict)
     # Set by sema on a genexpr's function: what each step of its source
     # hands over, as its first clause reads the source where it is written
     # (`step_handover_paths`) -- the source param's type is the clause's

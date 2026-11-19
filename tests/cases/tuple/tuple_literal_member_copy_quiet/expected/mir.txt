@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::yield_copy@26:0: uncovered (reference yield)
 main::yield_fresh@31:0: uncovered (reference yield)
-main::yield_last_use@36:0: uncovered (loop across a suspension)
+main::yield_last_use@36:0: uncovered (unsupported hoisted value)
 main::yield_mixed_borrow@43:0: uncovered (reference yield)
 main::yield_values@48:0: uncovered (reference yield)
 main::take@53:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

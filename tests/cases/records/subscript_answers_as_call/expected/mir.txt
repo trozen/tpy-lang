@@ -52,7 +52,7 @@ main::rank@1137:0: covered (storage: no_proof_required), summary: known
 main::empty_label@1141:0: covered (storage: no_proof_required), summary: known
 main::long_label@1145:0: covered (storage: no_proof_required), summary: known
 main::facts@1149:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::<genexpr>@889:10: uncovered (generator expression)
+main::<genexpr>@889:10: uncovered (unsupported capture of an enclosing local)
 main::Table.__getitem__@24:4: uncovered (no body to lower)
 main::Table.__getitem__@28:4: uncovered (no body to lower)
 main::Table.__setitem__@32:4: uncovered (no body to lower)

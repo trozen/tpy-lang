@@ -99,8 +99,8 @@ async def not_async(n: int32) -> int32:  # tpyc: mir(uncovered /^async body$/)
     return n
 
 
-# not covered: a `for` loop whose body suspends
-def not_for(xs: list[int32]) -> Iterator[int32]:  # tpyc: mir(uncovered /^loop across a suspension$/)
+# not proven: a `for` loop whose body suspends holds the caller's list across the yield
+def not_for(xs: list[int32]) -> Iterator[int32]:  # tpyc: mir(incomplete /^suspension: loan of caller storage held across a suspension$/)
     for x in xs:
         yield x
 

@@ -1,0 +1,27 @@
+range_stop: [-1, 0, 1, 4, 9]
+range_start_stop: [2, 3, 4]
+str_copy: 3
+method_range: [0, 3, 6]
+rebind: 1
+nested: [0, 1, 10, 11]
+reused_name: [0, 1, 100, 101]
+continue_else: [0, 2, 4, -1]
+var_written: [100, 101, 102]
+inner_plain: [0, 6]
+dead_cursor: [3] [2, -1]
+break_return: [0, 1, 50, 51]
+param_list: [2, 4, 6]
+receiver_field: [4, 5]
+stored_loan: [1, 5]
+stored_literal: [1, 7]
+widened_target: [98, 99]
+range_step: [0, 2, 4]
+tuple_head: [3, 7]
+frame_list: [1, 2]
+global_source: [7, 8]
+owned_receiver: 2
+genexpr_range: 14
+genexpr_bytes: 6
+genexpr_param_list: 12
+genexpr_filter: 6
+genexpr_two_clauses: 9

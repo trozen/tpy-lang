@@ -14,7 +14,7 @@ main::main@246:0: uncovered (print argument needs a scalar leaf), summary: opaqu
 main::Bag.__iter__@15:4: uncovered (unsupported return type)
 main::Cnt.__iter__@25:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Cnt.__next__@28:4: uncovered (error-return body)
-main::GBag.__iter__@41:4: uncovered (loop across a suspension)
+main::GBag.__iter__@41:4: incomplete (suspension: loan of caller storage held across a suspension)
 main::Rec.bump@52:4: covered (storage: no_proof_required), summary: known
 main::RBag.__iter__@63:4: uncovered (unsupported return type)
 main::PBag.__iter__@73:4: uncovered (unsupported return type)
@@ -31,7 +31,7 @@ main::Holder.values@152:4: uncovered (unsupported statement), summary: opaque (u
 main::Holder.any_a@156:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::Holder.listed@161:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::Holder.make@165:4: covered (storage: no_proof_required), summary: known
-main::Letters.__iter__@175:4: uncovered (loop across a suspension)
+main::Letters.__iter__@175:4: uncovered (unsupported hoisted value)
 main::Letters.upper@179:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::Letters.listed@183:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::Bag.__init__@12:4: covered (storage: no_proof_required), summary: known

@@ -21,7 +21,7 @@ cz::one@10:0: covered (storage: no_proof_required), summary: known
 ga::__tpy_init: uncovered (module initialization)
 ga::total@8:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 ga::one@12:0: covered (storage: no_proof_required), summary: known
-ga::<genexpr>@9:14: uncovered (generator expression)
+ga::<genexpr>@9:14: uncovered (unsupported hoisted value)
 gb::__tpy_init: uncovered (module initialization)
 gb::size@5:0: covered (storage: no_proof_required), summary: known
 gb::back@9:0: covered (storage: no_proof_required), summary: known
@@ -31,7 +31,7 @@ gy::back@11:0: covered (storage: no_proof_required), summary: known
 gz::__tpy_init: uncovered (module initialization)
 gz::total@5:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 gz::one@9:0: covered (storage: no_proof_required), summary: known
-gz::<genexpr>@6:14: uncovered (generator expression)
+gz::<genexpr>@6:14: uncovered (unsupported hoisted value)
 item::__tpy_init: uncovered (module initialization)
 item::Item.__init__@7:4: covered (storage: no_proof_required), summary: known
 item::Bag.__init__@14:4: covered (storage: no_proof_required), summary: known

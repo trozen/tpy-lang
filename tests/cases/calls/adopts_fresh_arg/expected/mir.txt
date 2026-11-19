@@ -10,7 +10,7 @@ main::word@94:0: covered (storage: no_proof_required), summary: known
 main::mk_ba@98:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::gen_adopt@102:0: uncovered (argument held across a suspension)
 main::main@108:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::<genexpr>@178:34: uncovered (generator expression)
+main::<genexpr>@178:34: incomplete (suspension: loan of caller storage held across a suspension)
 main::P.__copy__@13:4: uncovered (custom record special member)
 main::Cur.__iter__@54:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
 main::Cur.__next__@58:4: uncovered (error-return body)

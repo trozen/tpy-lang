@@ -37,7 +37,7 @@ main::M.peek@111:4: uncovered (unsupported local type or form), summary: opaque 
 main::M.own_ro@117:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: record member holds a borrow)
 main::M.own_pure@122:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: record member holds a borrow)
 main::M.via_closure@126:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::M.bump_each@132:4: uncovered (loop across a suspension)
+main::M.bump_each@132:4: uncovered (unsupported expression type)
 main::M.tick_async@138:4: uncovered (async body)
 main::M.get_or_fail@144:4: uncovered (error-return body)
 main::Fixed.poke@200:4: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)

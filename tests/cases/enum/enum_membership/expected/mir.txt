@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::get_color@62:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
-main::gen@66:0: uncovered (loop across a suspension)
+main::gen@66:0: uncovered (container source needs a place)
 main::main@72:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::Palette.has@34:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::Bag.__contains__@40:4: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)

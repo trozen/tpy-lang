@@ -19,7 +19,7 @@ main::err_ret@176:0: uncovered (error-return body)
 main::coro@183:0: uncovered (async body)
 main::call_rebinds@190:0: uncovered (unsupported stub result type), summary: opaque (unsupported stub result type)
 main::main@199:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@195:13: uncovered (generator expression)
+main::<genexpr>@195:13: incomplete (suspension: loan of caller storage held across a suspension)
 main::Guard.__enter__@18:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Guard.__exit__@21:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::C.bump@36:4: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known

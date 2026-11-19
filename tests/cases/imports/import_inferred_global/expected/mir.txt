@@ -5,7 +5,7 @@ consts::Counter.__init__@9:4: covered (storage: no_proof_required), summary: kno
 main::__tpy_init: uncovered (module initialization)
 main::free_fn@20:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)
 main::comp_total@36:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
-main::gen_sizes@45:0: uncovered (loop across a suspension)
+main::gen_sizes@45:0: uncovered (container source needs a place)
 main::closure_sum@51:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::block_shadow@59:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::shadows@72:0: covered (storage: no_proof_required), summary: opaque (summary output effect)

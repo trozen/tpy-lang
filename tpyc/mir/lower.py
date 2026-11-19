@@ -13,10 +13,10 @@ from ..type_def_registry import is_array
 from ..parse import ResultForm, RebindStorage
 from ..thir import nodes as th
 from ..thir.frame import (
-    FrameCaptureKind, THIRBranch, THIRFall, THIRFallOff, THIRFinallyExit, THIRForAdvance, THIRForIterSetup,
-    THIRFrameReturn,
-    THIRLeafSlot, THIRLoopSourceRegion, THIRMatchDispatch, THIRRegion, THIRSuspend, THIRWithRegion,
-    THIRYieldSuspension, terminator_targets,
+    FrameCaptureKind, FrameLocalKind, THIRBranch, THIRFall, THIRFallOff, THIRFinallyExit, THIRForAdvance,
+    THIRForIterSetup, THIRFrameReturn,
+    THIRFrameLocal, THIRLeafSlot, THIRLoopSourceRegion, THIRMatchDispatch, THIRRegion, THIRSuspend,
+    THIRWithRegion, THIRYieldSuspension, terminator_targets,
 )
 from ..thir.source import BindingConstruct, BindingRepr, Held
 from ..thir.temp_plan import if_chain, validate_plan
@@ -365,7 +365,7 @@ def _region_feature(region: THIRRegion) -> str:
     if isinstance(region, THIRWithRegion):
         return "with across a suspension"
     if isinstance(region, THIRLoopSourceRegion):
-        return "loop across a suspension"
+        return "loop source release across a suspension"
     return "try across a suspension"
 
 
@@ -378,6 +378,68 @@ _SCALAR_PRINT_FORMS = frozenset({th.PrintForm.RAW, th.PrintForm.INT8, th.PrintFo
 # The print forms that stream an owned leaf through the runtime: its own
 # `operator<<`, or the bytes printer.
 _OWNED_PRINT_FORMS = frozenset({th.PrintForm.RAW, th.PrintForm.BYTES})
+
+
+@dataclass(frozen=True)
+class _LoopTarget:
+    """MIR's own input for binding a loop's variable, whatever decided it:
+    its name, the type it binds at, how it binds the element, whether it is
+    declared before the loop (`hoisted`) and bound readonly (`const`). One
+    adapter per producer builds it (`_structured_target`, `_frame_target`)."""
+    var: str
+    elem_type: TpyType
+    binding: LoopBinding
+    hoisted: bool
+    const: bool
+
+
+def _structured_target(stmt: th.THIRForEach) -> _LoopTarget:
+    """A structured loop's target, as the binding planner decided it."""
+    binding = stmt.binding.loop_binding
+    if binding is LoopBinding.CONST_TYPED_REFERENCE:
+        binding = LoopBinding.CONST_REFERENCE
+    return _LoopTarget(stmt.var, stmt.elem_type, binding, stmt.hoist_loop_var, stmt.const_loop_var)
+
+
+def _frame_target(local: THIRFrameLocal, shape: MIRShape) -> _LoopTarget | None:
+    """A frame local as a decomposed loop's target: the hoisted slot the
+    frame lays out for it, bound by value where the frame's placement holds
+    the element itself; None for any other placement (a pointer or slot
+    field), which no decomposed loop binds yet."""
+    if local.placement.kind is not FrameLocalKind.VALUE:
+        return None
+    return _LoopTarget(local.name, shape.type, LoopBinding.VALUE, True, local.placement.const)
+
+
+@dataclass(frozen=True)
+class _CursorSource:
+    """What a cursor loop walks: the place lending its elements, the
+    cursor's shape over it, the element it yields and whether the source is
+    a str / bytes leaf walked one scalar at a time."""
+    place: Fragment
+    iterator: MIRShape
+    element: MIRShape
+    leaf: bool
+
+
+@dataclass(frozen=True)
+class _CursorBinding:
+    """How a cursor loop's variable binds each element (`cursor_target`):
+    over its container's region (`reference`), through a view, as a copy of
+    an owned leaf; `typ` the type it binds at."""
+    reference: MIRShape | None
+    view: bool
+    copied: bool
+    typ: TpyType
+
+
+@dataclass(frozen=True)
+class _FrameLoop:
+    """A decomposed loop's state from its setup to its advances: a cursor
+    over `source`, or a counted range's counter and stop."""
+    cursor: MIRSlotId
+    source: _CursorSource | None = None
+    stop: MIRSlotId | None = None
 
 
 class _Lowering:
@@ -448,6 +510,10 @@ class _Lowering:
         # An `Own[...]` record or container result: the body's own storage moved out.
         self.owned_aggregate_result: NominalType | None = None
         self.iteration_references: set[str] = set()
+        # A frame's decomposed loops by their uid, and the frame locals a loop
+        # advance may bind, laid out at the frame's entry.
+        self.frame_loops: dict[int, _FrameLoop] = {}
+        self.frame_targets: dict[str, _LoopTarget | None] = {}
         self.summaries = summaries if summaries is not None else {}
         self.calls: IdentityMap[th.THIRCall | th.THIRMethodCall, MIRCallSummary] = IdentityMap()
         # Each user call's borrowed result, at the access its receiver is bound at.
@@ -1543,6 +1609,8 @@ class _Lowering:
         leaves = self.frame
         frame, node = leaves.frame, self.node
         _require(node, not frame.nested_defs, "nested def")
+        # A consuming method's frame owns its receiver, as an owned-value capture owns its parameter.
+        _require(node, not frame.owns_receiver, "unsupported owned_value capture")
         _require(node, not frame.arg_lifts, "argument held across a suspension")
         _require(node, leaves.yield_hosts_temps, "reference yield")
         reached: set[int] = set()
@@ -1559,19 +1627,23 @@ class _Lowering:
             for region in block.region_stack:
                 raise MIRUnsupported(node, _region_feature(region))
             for s in block.stmts:
-                _require(node, not isinstance(s, THIRForIterSetup), "loop across a suspension")
+                if isinstance(s, THIRForIterSetup):
+                    continue
                 _require(node, not isinstance(s, THIRFinallyExit), "try across a suspension")
                 _require(node, isinstance(s, THIRLeafSlot), "with across a suspension")
                 leaf = leaves.leaves.get(s)
                 _require(node, isinstance(leaf, th.THIRStmt), "missing frame leaf")
                 statements.extend(leaf.stmts if isinstance(leaf, th.THIRStmtSeq) else (leaf,))
-            _require(node, not isinstance(block.terminator, THIRForAdvance), "loop across a suspension")
             _require(node, not isinstance(block.terminator, THIRMatchDispatch), "match across a suspension")
         loc = node.loc
         f = self.fragment()
-        for p, capture in zip(self.header.params, frame.captures, strict=True):
+        for p, published, capture in zip(self.header.params, frame.params, frame.captures, strict=True):
             _require(node, capture in (FrameCaptureKind.REF, FrameCaptureKind.VALUE, FrameCaptureKind.OWNED_COPY),
-                     f"unsupported {capture.name.lower()} capture")
+                     "unsupported capture of an enclosing local" if capture is FrameCaptureKind.CAPTURE
+                     else f"unsupported {capture.name.lower()} capture")
+            if published.source_span is not None:
+                # A compiler-made parameter is spelled by the expression it stands for.
+                self.mir.records[self.slot_of(p.name)].span = published.source_span
             shape = self.bound(p.name)
             if capture is FrameCaptureKind.REF or shape.is_scalar or shape.is_storage:
                 continue
@@ -1580,19 +1652,26 @@ class _Lowering:
             _require(node, self.owned_leaf_bound(p.name) is False, "by-value capture of a borrowed parameter")
             parameter = self.name_place(p.name, loc)
             copy = value_shape(shape.type)
-            f.splice(self.put_param_copy(loc, self.bind(p.name, copy, loc=loc).slot, parameter.sink(copy)))
+            owned = self.bind(p.name, copy, loc=loc).slot
+            self.mir.records[owned].span = published.source_span
+            f.splice(self.put_param_copy(loc, owned, parameter.sink(copy)))
         declared = _leaf_declarations(tuple(statements))
         for local in frame.locals:
             if local.name in declared:
                 continue
             _require(node, local.type is not None, "untyped frame local")
-            self.place_hoists(f, [self.hoisted_binding(node, local.name, local.type, local)], loc)
+            hoisted = self.hoisted_binding(node, local.name, local.type, local)
+            self.place_hoists(f, [hoisted], loc)
+            self.frame_targets[local.name] = _frame_target(local, self.mir.records[hoisted[0]].shape)
         blocks = {bid: f.block() for bid in order}
         f.end(MIRGoto(blocks[frame.entry_block].id, loc))
         for bid in order:
             block = frame.blocks[bid]
             f.current = blocks[bid]
             for s in block.stmts:
+                if isinstance(s, THIRForIterSetup):
+                    self.frame_loop_setup(f, s)
+                    continue
                 leaf = leaves.leaves[s]
                 self.sequence(f, self.declarations(leaf.stmts if isinstance(leaf, th.THIRStmtSeq) else (leaf,), 0,
                                                    top=True))
@@ -1617,9 +1696,64 @@ class _Lowering:
                     f.splice(self.stmt(leaf, 0))
                 case THIRFallOff():
                     f.end(MIRReturn(None, None))
+                case THIRForAdvance():
+                    self.frame_loop_advance(f, t, blocks)
                 case _:
                     raise MIRUnsupported(node, f"unsupported frame terminator {type(t).__name__}")
         return f
+
+    def frame_loop_setup(self, f: Fragment, s: THIRForIterSetup) -> None:
+        """A decomposed loop's head, the structured loop's own: a counted
+        range's bounds and counter, or a cursor over its source. Its
+        advances read it by the loop's uid."""
+        node = self.node
+        _require(node, not s.consuming and not s.iter_borrow_unplaceable and not s.is_async, "unsupported metadata")
+        loc = s.source.loc if s.source is not None else node.loc
+        if s.iterable is None:
+            # The step a third bound gives is not published with the setup.
+            _require(node, len(s.bounds) in (1, 2), "range step across a suspension")
+            _require(node, s.elem_type == INT32, "range needs int32 unit step")
+            bounds: list[Fragment | None] = [None] if len(s.bounds) == 1 else []
+            for slot in s.bounds:
+                bound = self.frame.leaves.get(slot)
+                _require(node, isinstance(bound, th.THIRExpr), "missing frame leaf")
+                bounds.append(self.range_bound(bound))
+            start, stop = self.range_limits(f, bounds, loc)
+            counter = f.slot(scalar_shape(INT32), MIRSlotKind.LOCAL)
+            self.range_head(f, counter, start, loc)
+            self.frame_loops[s.uid] = _FrameLoop(counter, stop=stop)
+            return
+        expr = self.frame.leaves.get(s.iterable)
+        _require(node, isinstance(expr, th.THIRExpr), "missing frame leaf")
+        # Any place the source names is a container place: no lvalue fact gates it.
+        source = self.cursor_source(expr, expr, True, True)
+        self.frame_loops[s.uid] = _FrameLoop(self.cursor_head(f, source, loc), source)
+
+    def frame_loop_advance(self, f: Fragment, t: THIRForAdvance, blocks: Mapping[int, object]) -> None:
+        """A decomposed loop's advance, the structured loop's own test, bind
+        and step: into the frame local the frame laid out for its variable,
+        on to the body (`has_value_bb`) or past the loop (`exhausted_bb`)."""
+        node = self.node
+        loop = self.frame_loops.get(t.uid)
+        _require(node, loop is not None, "missing frame leaf")
+        target = self.frame_targets.get(t.var)
+        _require(node, target is not None, "unsupported native target binding")
+        loc = t.stmt.loc
+        then = f.block()
+        if loop.source is None:
+            slot = self.range_variable(node, target.var, target.hoisted)
+            self.range_test(f, loop.cursor, loop.stop, 1, then.id, blocks[t.exhausted_bb].id, loc)
+            f.current = then
+            self.range_bind(f, slot, loop.cursor, loc)
+            self.range_step(f, loop.cursor, 1, loc)
+        else:
+            bound = self.cursor_target(node, target, loop.source)
+            slot = self.cursor_variable(node, target, loop.source, bound)
+            self.cursor_test(f, loop.cursor, then.id, blocks[t.exhausted_bb].id, loc)
+            f.current = then
+            self.cursor_bind(f, loop.cursor, slot, loop.source.element, bound.copied, target.hoisted, loc)
+            self.cursor_step(f, loop.cursor, loc)
+        f.end(MIRGoto(blocks[t.has_value_bb].id, loc))
 
     def suspension(self, f: Fragment, t: THIRSuspend, resume: MIRBlockId) -> None:
         """A `yield`: its value built in a scope of its own -- an inert leaf,
@@ -4827,20 +4961,10 @@ class _Lowering:
         for bound, literal in ((stmt.start, stmt.start_is_literal), (stmt.stop, stmt.stop_is_literal)):
             _require(stmt, type(literal) is bool and literal is (bound is None or _literal(bound)),
                      "range bound capture disagrees with expression")
-            plan = None
-            if bound is not None:
-                admitted = _literal(bound) or isinstance(bound, (th.THIRName, th.THIRFieldAccess, th.THIRSubscript))
-                plan = self.expr(bound, INT32) if admitted else None
-                _require(bound, plan is not None and plan.shape_of().type == INT32, "unsupported range bound")
-            bounds.append(plan)
+            bounds.append(self.range_bound(bound) if bound is not None else None)
         # Entered after the bounds, which read an enclosing binding of the target's name.
         with self.nested(hide=self.own_scope_target(stmt)):
-            _require(stmt, stmt.var not in self.range_counters, "nested range target changes outer induction")
-            _require(stmt, self.bound(stmt.var) is not None and self.bound(stmt.var).type == INT32
-                     if stmt.hoist_loop_var else stmt.var not in self.scope,
-                     "range target residence mismatch")
-            slot = (self.slot_of(stmt.var) if stmt.hoist_loop_var
-                    else self.bind(stmt.var, scalar_shape(INT32), loc=stmt.loc).slot)
+            slot = self.range_variable(stmt, stmt.var, stmt.hoist_loop_var)
             # An unwritten, unhoisted target is the counter itself; any other is
             # a copy of it per iteration.
             direct = not stmt.hoist_loop_var and not stmt.target_written
@@ -4858,30 +4982,28 @@ class _Lowering:
         loc = stmt.loc
         step = 1 if stmt.step_kind == "plus_one" else -1
         self.place_hoists(f, hoists, loc)
-        start = f.splice(bounds[0]) if bounds[0] is not None else f.leaf(INT32, MIRConstant(0), loc)
-        stop = f.splice(bounds[1])
+        start, stop = self.range_limits(f, bounds, loc)
         f.end(MIRGoto(entry.id, loc))
         f.current = entry
         with f.scope():
             # The counter's own blocks are its scope's.
             head.region = then.region = advance.region = f.region
             counter = f.adopt(slot) if direct else f.slot(scalar_shape(INT32), MIRSlotKind.LOCAL)
-            f.write(counter, MIRRead(MIRPlace(start)), loc)
+            self.range_head(f, counter, start, loc)
             f.end(MIRGoto(head.id, loc))
             f.current = head
-            cond = f.leaf(BOOL, MIRCompare("<" if step == 1 else ">", counter, stop), loc)
-            f.branch(cond, then.id, normal.id, loc)
+            self.range_test(f, counter, stop, step, then.id, normal.id, loc)
             f.current = then
             with f.scope():
                 if not direct:
                     if not stmt.hoist_loop_var:
                         f.adopt(slot)
-                    f.write(slot, MIRRead(MIRPlace(counter)), loc)
+                    self.range_bind(f, slot, counter, loc)
                 self.sequence(f, body)
             if f.current is not None:
                 f.end(MIRGoto(advance.id, loc, _last_loc(stmt.body)))
             f.current = advance
-            f.write(counter, MIRRangeAdvance(counter, step), loc)
+            self.range_step(f, counter, step, loc)
             f.end(MIRGoto(head.id, loc))
         f.current = normal
         self.scoped_into(f, orelse)
@@ -4890,83 +5012,179 @@ class _Lowering:
         f.current = after
         return f
 
-    def native_loop(self, stmt: th.THIRForEach, loops: int) -> Fragment:
-        _plain(stmt, {"var", "elem_type", "iterable", "body", "const_loop_var", "iterable_lvalue",
-                      "orelse", "hoist_loop_var", "hoist_decls", "hoisted_bindings", "presize",
-                      "source_in_enclosing"})
+    # --- the loop operations: one counted loop and one cursor loop, whose
+    # head, test, bind and step a structured loop and a frame's decomposed
+    # loop both build.
+
+    def range_bound(self, bound: th.THIRExpr) -> Fragment:
+        """One bound of a counted loop: a literal or a place, read at int32."""
+        admitted = _literal(bound) or isinstance(bound, (th.THIRName, th.THIRFieldAccess, th.THIRSubscript))
+        plan = self.expr(bound, INT32) if admitted else None
+        _require(bound, plan is not None and plan.shape_of().type == INT32, "unsupported range bound")
+        return plan
+
+    def range_limits(self, f: Fragment, bounds: list[Fragment | None], loc: object) -> tuple[MIRSlotId, MIRSlotId]:
+        """A counted loop's start (0 when omitted) and stop, evaluated once."""
+        start = f.splice(bounds[0]) if bounds[0] is not None else f.leaf(INT32, MIRConstant(0), loc)
+        return start, f.splice(bounds[1])
+
+    def range_head(self, f: Fragment, counter: MIRSlotId, start: MIRSlotId, loc: object) -> None:
+        f.write(counter, MIRRead(MIRPlace(start)), loc)
+
+    def range_test(self, f: Fragment, counter: MIRSlotId, stop: MIRSlotId, step: int, then: MIRBlockId,
+                   exhausted: MIRBlockId, loc: object) -> None:
+        cond = f.leaf(BOOL, MIRCompare("<" if step == 1 else ">", counter, stop), loc)
+        f.branch(cond, then, exhausted, loc)
+
+    def range_variable(self, node: object, var: str, hoisted: bool) -> MIRSlotId:
+        """The slot a counted loop binds `var` in: its int32 binding declared
+        before the loop (`hoisted`), or a new one in the loop's own scope."""
+        _require(node, var not in self.range_counters, "nested range target changes outer induction")
+        _require(node, self.bound(var) is not None and self.bound(var).type == INT32
+                 if hoisted else var not in self.scope,
+                 "range target residence mismatch")
+        slot = self.slot_of(var) if hoisted else self.bind(var, scalar_shape(INT32), loc=node.loc).slot
+        self.mir.records[slot].loop_variable = True
+        return slot
+
+    def range_bind(self, f: Fragment, slot: MIRSlotId, counter: MIRSlotId, loc: object) -> None:
+        f.write(slot, MIRRead(MIRPlace(counter)), loc)
+
+    def range_step(self, f: Fragment, counter: MIRSlotId, step: int, loc: object) -> None:
+        f.write(counter, MIRRangeAdvance(counter, step), loc)
+
+    def cursor_source(self, node: object, iterable: th.THIRExpr, lvalue: bool, facts: bool) -> _CursorSource:
+        """What a cursor loop over `iterable` walks: `lvalue`, the source may
+        be any place; `facts`, the loop's own iteration facts are valid."""
         # A container view a stub returns, or a container a user call returns
         # by reference, is a call result the loop holds.
-        view = isinstance(stmt.iterable, (th.THIRCall, th.THIRMethodCall))
+        view = isinstance(iterable, (th.THIRCall, th.THIRMethodCall))
         # An unstepped list slice is the Span it renders, which the loop holds.
-        sliced = isinstance(stmt.iterable, th.THIRStrSlice) and region_view(stmt.iterable.result_type)
-        _require(stmt, (stmt.iterable_lvalue is True or view or sliced)
-                 and type(stmt.const_loop_var) is bool and type(stmt.hoist_loop_var) is bool
-                 and isinstance(stmt.var, str) and bool(stmt.var), "missing or invalid native iteration facts")
-        leaf = leaf_element(stmt.iterable.result_type) is not None
+        sliced = isinstance(iterable, th.THIRStrSlice) and region_view(iterable.result_type)
+        _require(node, (lvalue or view or sliced) and facts, "missing or invalid native iteration facts")
+        leaf = leaf_element(iterable.result_type) is not None
         if leaf:
             # A str / bytes binding or field: its cursor walks the buffer the
             # place's borrow or view lends, one scalar at a time.
-            _require(stmt, self.admitted_place(stmt.iterable, (_Place.NAME, _Place.FIELD)) is not None,
+            _require(node, self.admitted_place(iterable, (_Place.NAME, _Place.FIELD)) is not None,
                      "leaf iteration needs a named place")
-            place = self.operand(stmt.iterable, self.lent_value(stmt.iterable))
+            place = self.operand(iterable, self.lent_value(iterable))
         else:
             if sliced:
                 # Held in a Span holder the cursor walks, as a Span local is.
-                place = self.span_value(stmt.iterable, unwrap_readonly(stmt.iterable.result_type))
+                place = self.span_value(iterable, unwrap_readonly(iterable.result_type))
             else:
                 # Any container place: a borrowed, owned or viewed binding, a field, or a view a stub returns.
-                place = self.container_place(stmt.iterable)
+                place = self.container_place(iterable)
             shape = place.shape_of()
             # A cursor binds the source's declared element, one at a time.
-            _require(stmt, binds_cursor(shape.type), "missing or invalid native iteration facts")
+            _require(node, binds_cursor(shape.type), "missing or invalid native iteration facts")
         # The iterator walks the slot holding the place: a binding's own, or a holder of a field or a call result.
         holder = place.holder_shape_of()
         iterator = value_shape(holder.type, access=holder.readonly, role=MIRRole.CURSOR)
         # A leaf's cursor yields the scalar its type iterates.
-        element = iterator.element if leaf else shape.element
+        return _CursorSource(place, iterator, iterator.element if leaf else shape.element, leaf)
+
+    def cursor_target(self, node: object, target: _LoopTarget, source: _CursorSource) -> _CursorBinding:
+        """How `target` binds each element `source` yields; a binding MIR
+        does not model -- an element of another type included: no
+        conversion is modeled -- refuses."""
+        element = source.element
         # An aggregate element is bound over its container's region, at the
         # access the element has there; a write through a loop variable
         # bound readonly is a store through readonly storage, which the
         # validator refuses.
         reference = (value_shape(element.type, access=loan_access(
-            element.type, element.cls, Local(const=stmt.const_loop_var, source_readonly=element.readonly)),
+            element.type, element.cls, Local(const=target.const, source_readonly=element.readonly)),
                                  role=MIRRole.LOAN)
                      if element.cls in AGGREGATE_CLASSES else None)
         # An owned-leaf element is read through a view of it, a readonly
         # borrow, or a borrow copied into the loop variable's own storage.
-        binding = stmt.binding.loop_binding
-        if binding is LoopBinding.CONST_TYPED_REFERENCE:
-            binding = LoopBinding.CONST_REFERENCE
-        view = element.cls is MIRClass.OWNED_LEAF and view_leaf(stmt.elem_type)
+        binding = target.binding
+        view = element.cls is MIRClass.OWNED_LEAF and view_leaf(target.elem_type)
         copied = element.cls is MIRClass.OWNED_LEAF and not view and binding is LoopBinding.VALUE
-        typ = stmt.elem_type if view else element.type
-        _require(stmt, (view_compatible(stmt.elem_type, element.type) if view
-                        else unwrap_readonly(stmt.elem_type) == typ)
+        typ = target.elem_type if view else element.type
+        _require(node, (view_compatible(target.elem_type, element.type) if view
+                        else unwrap_readonly(target.elem_type) == typ)
                  and binding in (LoopBinding.VALUE, LoopBinding.ASSIGN, LoopBinding.REFERENCE,
                                  LoopBinding.CONST_REFERENCE)
-                 and (reference is None or not stmt.hoist_loop_var)
-                 and (element.cls is not MIRClass.OWNED_LEAF or not stmt.hoist_loop_var and (
+                 and (reference is None or not target.hoisted)
+                 and (element.cls is not MIRClass.OWNED_LEAF or not target.hoisted and (
                      view or copied or binding is LoopBinding.CONST_REFERENCE)),
                  "unsupported native target binding")
+        return _CursorBinding(reference, view, copied, typ)
+
+    def cursor_head(self, f: Fragment, source: _CursorSource, loc: object) -> MIRSlotId:
+        """The cursor over the slot holding the source."""
+        holder = f.splice(self.holding(source.place))
+        cursor = f.slot(source.iterator)
+        f.write(cursor, MIRIteratorInit(holder), loc)
+        return cursor
+
+    def cursor_test(self, f: Fragment, cursor: MIRSlotId, then: MIRBlockId, exhausted: MIRBlockId,
+                    loc: object) -> None:
+        f.branch(f.leaf(BOOL, MIRIteratorHasNext(cursor), loc), then, exhausted, loc)
+
+    def cursor_variable(self, node: object, target: _LoopTarget, source: _CursorSource,
+                        bound: _CursorBinding) -> MIRSlotId:
+        """The slot a cursor loop binds its variable in: the binding declared
+        before the loop (`hoisted`), or a new one in the loop's own scope at
+        the shape `bound` gives it."""
+        var, element = target.var, source.element
+        _require(node, var not in self.range_counters and var not in self.iteration_references,
+                 "nested loop replaces outer iteration binding")
+        _require(node, self.bound(var) is not None and self.bound(var).type == bound.typ
+                 if target.hoisted else var not in self.scope,
+                 "native target residence mismatch")
+        # A variable lending the source's storage pins it for the loop's nested
+        # scope; `cursor_target` refuses a hoisted one that would, so a frame's
+        # decomposed loop, whose variable is hoisted, registers nothing.
+        if bound.reference is not None or bound.view or element.cls is MIRClass.OWNED_LEAF and not bound.copied:
+            self.iteration_references.add(var)
+        if target.hoisted:
+            slot = self.slot_of(var)
+        else:
+            slot = self.bind(var, bound.reference if bound.reference is not None
+                             else view_holder_shape(target.elem_type) if bound.view
+                             else owned_leaf_shape(element.type, MIRRole.STORAGE if bound.copied else MIRRole.LOAN)
+                             if element.cls is MIRClass.OWNED_LEAF else scalar_shape(target.elem_type),
+                             loc=node.loc).slot
+        self.mir.records[slot].loop_variable = True
+        return slot
+
+    def cursor_bind(self, f: Fragment, cursor: MIRSlotId, slot: MIRSlotId, element: MIRShape, copied: bool,
+                    hoisted: bool, loc: object) -> None:
+        """The variable bound to the cursor's element, in the scope `f` has open."""
+        if copied:
+            # The element's loan, copied into the variable's storage of the pass.
+            element_loan = f.slot(owned_leaf_shape(element.type, MIRRole.LOAN))
+            f.write(element_loan, MIRIteratorRead(cursor), loc)
+            read = self.fragment()
+            read.value = MIRValue(element_loan, loc=loc)
+            f.adopt(slot, f.scoped_duration())
+            f.write(slot, f.splice(read.sink(self.mir.records[slot].shape)), loc,
+                    MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
+        else:
+            if not hoisted:
+                f.adopt(slot)
+            f.write(slot, MIRIteratorRead(cursor), loc)
+
+    def cursor_step(self, f: Fragment, cursor: MIRSlotId, loc: object) -> None:
+        f.write(cursor, MIRIteratorAdvance(cursor), loc)
+
+    def native_loop(self, stmt: th.THIRForEach, loops: int) -> Fragment:
+        _plain(stmt, {"var", "elem_type", "iterable", "body", "const_loop_var", "iterable_lvalue",
+                      "orelse", "hoist_loop_var", "hoist_decls", "hoisted_bindings", "presize",
+                      "source_in_enclosing"})
+        source = self.cursor_source(stmt, stmt.iterable, stmt.iterable_lvalue is True,
+                                    type(stmt.const_loop_var) is bool and type(stmt.hoist_loop_var) is bool
+                                    and isinstance(stmt.var, str) and bool(stmt.var))
+        target = _structured_target(stmt)
+        bound = self.cursor_target(stmt, target, source)
         hoists = self.hoists(stmt)
         # Entered after the source, which reads an enclosing binding of the target's name.
         with self.nested(hide=self.own_scope_target(stmt)):
-            _require(stmt, stmt.var not in self.range_counters and stmt.var not in self.iteration_references,
-                     "nested loop replaces outer iteration binding")
-            _require(stmt, self.bound(stmt.var) is not None and self.bound(stmt.var).type == typ
-                     if stmt.hoist_loop_var else stmt.var not in self.scope,
-                     "native target residence mismatch")
-            if reference is not None or view or element.cls is MIRClass.OWNED_LEAF and not copied:
-                self.iteration_references.add(stmt.var)
-            if stmt.hoist_loop_var:
-                slot = self.slot_of(stmt.var)
-            else:
-                slot = self.bind(stmt.var, reference if reference is not None
-                                 else view_holder_shape(stmt.elem_type) if view
-                                 else owned_leaf_shape(element.type, MIRRole.STORAGE if copied else MIRRole.LOAN)
-                                 if element.cls is MIRClass.OWNED_LEAF else scalar_shape(stmt.elem_type),
-                                 loc=stmt.loc).slot
-            self.mir.records[slot].loop_variable = True
+            slot = self.cursor_variable(stmt, target, source, bound)
             f = self.fragment()
             head, then, advance, normal, after = (f.block() for _ in range(5))
             with self.temp_in(self.temp_scope(stmt, "loop")):
@@ -4977,32 +5195,18 @@ class _Lowering:
             orelse = self.scoped(stmt.orelse, loops)
         loc = stmt.loc
         self.place_hoists(f, hoists, loc)
-        holder = f.splice(self.holding(place))
-        cursor = f.slot(iterator)
-        f.write(cursor, MIRIteratorInit(holder), loc)
+        cursor = self.cursor_head(f, source, loc)
         f.end(MIRGoto(head.id, loc))
         f.current = head
-        f.branch(f.leaf(BOOL, MIRIteratorHasNext(cursor), loc), then.id, normal.id, loc)
+        self.cursor_test(f, cursor, then.id, normal.id, loc)
         f.current = then
         with f.scope():
-            if copied:
-                # The element's loan, copied into the variable's storage of the pass.
-                element_loan = f.slot(owned_leaf_shape(element.type, MIRRole.LOAN))
-                f.write(element_loan, MIRIteratorRead(cursor), loc)
-                read = self.fragment()
-                read.value = MIRValue(element_loan, loc=loc)
-                f.adopt(slot, f.scoped_duration())
-                f.write(slot, f.splice(read.sink(self.mir.records[slot].shape)), loc,
-                        MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
-            else:
-                if not stmt.hoist_loop_var:
-                    f.adopt(slot)
-                f.write(slot, MIRIteratorRead(cursor), loc)
+            self.cursor_bind(f, cursor, slot, source.element, bound.copied, target.hoisted, loc)
             self.sequence(f, body)
         if f.current is not None:
             f.end(MIRGoto(advance.id, loc, _last_loc(stmt.body)))
         f.current = advance
-        f.write(cursor, MIRIteratorAdvance(cursor), loc)
+        self.cursor_step(f, cursor, loc)
         f.end(MIRGoto(head.id, loc))
         f.current = normal
         self.scoped_into(f, orelse)

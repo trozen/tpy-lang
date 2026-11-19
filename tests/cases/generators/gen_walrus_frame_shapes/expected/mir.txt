@@ -14,7 +14,7 @@ main::own_pair@118:0: uncovered (unsupported return type), summary: opaque (unsu
 main::own_tuple@125:0: uncovered (unsupported hoisted value)
 main::raiser@142:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::exc_binding@151:0: uncovered (try across a suspension)
-main::exc_binding_for@166:0: uncovered (loop across a suspension)
+main::exc_binding_for@166:0: uncovered (try across a suspension)
 main::main@193:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::Src.gen@184:4: covered (storage: no_facts: storage facts have not been published)
 main::Node.__init__@13:4: covered (storage: no_proof_required), summary: known

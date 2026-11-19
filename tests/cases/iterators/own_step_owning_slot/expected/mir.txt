@@ -1,12 +1,12 @@
 fixtures::__tpy_init: uncovered (module initialization)
-fixtures::make@14:0: uncovered (loop across a suspension)
+fixtures::make@14:0: uncovered (reference yield)
 fixtures::take@71:0: uncovered (unsupported parameter type)
 fixtures::take_tok@80:0: uncovered (unsupported parameter type)
 fixtures::sum_lent@87:0: uncovered (unsupported parameter type)
 fixtures::Counter.__iter__@25:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 fixtures::Counter.__next__@28:4: uncovered (error-return body)
-fixtures::Bag.__iter__@36:4: uncovered (loop across a suspension)
-fixtures::TokBag.__iter__@50:4: uncovered (loop across a suspension)
+fixtures::Bag.__iter__@36:4: uncovered (reference yield)
+fixtures::TokBag.__iter__@50:4: uncovered (reference yield)
 fixtures::TokCursor.__iter__@61:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 fixtures::TokCursor.__next__@64:4: uncovered (error-return body)
 fixtures::Cell.__init__@10:4: covered (storage: no_proof_required), summary: known

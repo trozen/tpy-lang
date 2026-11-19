@@ -253,10 +253,10 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_owned::__next_
     __builtin_unreachable();
 }
 
-// # not covered: a `for` loop whose body suspends
-// def not_for(xs: list[int32]) -> Iterator[int32]:  # tpyc: mir(uncovered /^loop across a suspension$/)
+// # not proven: a `for` loop whose body suspends holds the caller's list across the yield
+// def not_for(xs: list[int32]) -> Iterator[int32]:  # tpyc: mir(incomplete /^suspension: loan of caller storage held across a suspension$/)
 //     for x in xs:
-//         yield x                                                                                        # -> S_RESUME_0
+//         yield x                                                                                                                            # -> S_RESUME_0
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_not_for::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry

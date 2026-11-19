@@ -14,8 +14,8 @@ main::later_clause@178:0: uncovered (unsupported statement), summary: opaque (un
 main::two_ptrs@187:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::global_name@201:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::main@208:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-main::<genexpr>@19:9: uncovered (generator expression)
-main::<genexpr>@84:10: uncovered (generator expression)
+main::<genexpr>@19:9: uncovered (unsupported parameter type)
+main::<genexpr>@84:10: uncovered (unsupported hoisted value)
 main::Items.__enter__@36:4: covered (storage: no_proof_required), summary: known
 main::Items.__exit__@39:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Meth.method@144:4: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)

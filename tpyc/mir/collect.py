@@ -20,8 +20,8 @@ from .call_contract import MIRAliasObligation, MIRSummaryResult, MIRSummaryState
 from .call_effects import MIRCallEffects, analyze_call_effects, dump_call_effects
 from .definitions import MIRDefinitions, view_members
 from .dependencies import (
-    MIRDependencies, MIRReferent, MIRUnseededLoan, _leaves, dump_dependencies,
-    resolve_referents,
+    MIRDependencies, MIRReferent, MIRSuspensionLoans, MIRUnseededLoan, _leaves, dump_dependencies,
+    dump_suspensions, resolve_referents, suspension_loans,
 )
 from .dump import dump_function
 from .liveness import MIRLiveness, MIRPoint, dump_liveness
@@ -182,6 +182,22 @@ class MIRAnalyses:
     # beside their conflicts (`witness.MIRHazard`): what the witness reads.
     prepared: MIRPrepared | None = None
     hazards: tuple[MIRHazard, ...] = ()
+    # The loans of caller storage held across each suspension
+    # (`suspension_loans`); any is a gap, since no caller's half checks
+    # them yet.
+    suspensions: tuple[MIRSuspensionLoans, ...] | MIRNotCovered = ()
+
+    @property
+    def suspension(self) -> MIRNotCovered | None:
+        if isinstance(self.suspensions, MIRNotCovered):
+            return self.suspensions
+        if not self.suspensions:
+            return None
+        point = self.suspensions[0].point
+        blocks = {block.id: block for block in self.prepared.function.blocks}
+        loc = blocks[point.block].statements[point.index].loc
+        return MIRNotCovered(self.prepared.function.id, "suspension",
+                             "loan of caller storage held across a suspension", loc)
 
     @property
     def retention_classes(self) -> MIRRetentionClasses | None:
@@ -207,7 +223,8 @@ class MIRAnalyses:
                   ("scope conflicts", self.scope.conflicts),
                   ("payload conflicts", self.payload.conflicts), ("storage", self.events),
                   ("call effects", self.effects), ("retention", self.retention),
-                  ("return escapes", self.escapes), ("store escapes", self.store_escapes))
+                  ("return escapes", self.escapes), ("store escapes", self.store_escapes),
+                  ("suspension", self.suspension))
         return tuple((name, result) for name, result in staged if isinstance(result, MIRNotCovered))
 
     @property
@@ -246,8 +263,10 @@ def analyze_body(fn: MIRFunction, prepared: MIRPrepared | MIRNotCovered,
     escapes = analyze_escapes(prepared)
     hazards = (*(retention.hazards if isinstance(retention, MIRRetention) else ()), *scope.hazards,
                *payload.hazards, *escapes.hazards)
+    suspensions = (suspension_loans(prepared.presence, prepared.dependencies)
+                   if isinstance(prepared.dependencies, MIRDependencies) else prepared.dependencies)
     return MIRAnalyses(prepared.liveness, prepared.dependencies, events, scope, effects, retention, payload,
-                       escapes.returns, escapes.stores, obligations, prepared, hazards)
+                       escapes.returns, escapes.stores, obligations, prepared, hazards, suspensions)
 
 
 def published_obligations(summary: MIRSummaryResult | None) -> frozenset[MIRAliasObligation]:
@@ -399,8 +418,6 @@ def enumerate_body_sources(module: TpyModule, analyzer: SemanticAnalyzer, ctx: C
             refusal = missing(func)
         elif func.is_async:
             refusal = refused("async body")
-        elif func.is_genexpr:
-            refusal = refused("generator expression")
         elif func.is_generator:
             # A generator's body is the frame its emission published, read, never built here.
             source = ctx.thir_resumables.get(func)
@@ -745,5 +762,6 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
         lines.append(dump_payload_ends(analyses.prepared if analyses.prepared is not None else analyses.dependencies))
         lines.append(dump_payload_inspection(analyses.payload))
         lines.append(dump_escapes(analyses.escapes, analyses.store_escapes))
+        lines.append(dump_suspensions(analyses.suspensions))
         lines.append(dump_witness_cap(analyses.witnesses))
     return "\n".join(lines) if lines else "(no emitted bodies in this module)\n"

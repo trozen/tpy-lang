@@ -798,7 +798,8 @@ class FrameBuilder:
         # like the body's definition and its callers, reads each passing.
         passings = body_passings(
             func, _owning_fi(func, self.analyzer, self.record_name))
-        params = tuple(THIRParam(name=pname, type=ptype, passing=passing)
+        params = tuple(THIRParam(name=pname, type=ptype, passing=passing,
+                                 source_span=func.genexpr_source_spans.get(pname))
                        for (pname, ptype), passing in zip(func.params, passings))
         captures = tuple(capture_kind(func, pname, ptype, self.deps.is_static_protocol_param)
                          for pname, ptype in func.params)

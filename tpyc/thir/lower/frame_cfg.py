@@ -579,7 +579,8 @@ class CFGBuilder:
             has_value_bb=body_bb, exhausted_bb=exit_bb,
             iterable=iterable,
             step=(THIRLeafSlot(LeafRole.LOOP_STEP, stmt)
-                  if stmt.var in self._lent_step_vars else None)))
+                  if stmt.var in self._lent_step_vars else None),
+            var=stmt.var))
         after_bb = self._new_bb() if stmt.orelse else exit_bb
         # body: continue=cond_bb, break=after_bb (skips the else).
         self._loop_stack.append(_LoopCtx(

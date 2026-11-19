@@ -22,7 +22,7 @@ main::nonlocal_rebind@310:0: uncovered (unsupported metadata: optional_read), su
 main::pair@332:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::mkd@336:0: covered (storage: no_proof_required), summary: known
 main::ltake@349:0: covered (storage: no_proof_required), summary: known
-main::lsteps@353:0: uncovered (loop across a suspension)
+main::lsteps@353:0: uncovered (reference yield)
 main::with_lent@388:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::loop_escape_hoist@399:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::ref_sink_forms@426:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

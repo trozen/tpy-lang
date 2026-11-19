@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::tail@11:0: uncovered (loop across a suspension)
+main::tail@11:0: incomplete (suspension: loan of caller storage held across a suspension)
 main::amain@32:0: uncovered (async body)
 main::main@39:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::Holder.total@23:4: uncovered (async body)

@@ -20,7 +20,7 @@ main::take@159:0: uncovered (unsupported parameter type), summary: opaque (unsup
 main::keep@164:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::values@170:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::lend_list@174:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::frame_for@178:0: uncovered (loop across a suspension)
+main::frame_for@178:0: uncovered (container source needs a place)
 main::first_of@186:0: uncovered (async body)
 main::await_arg@192:0: uncovered (async body)
 main::mut_first@197:0: covered (storage: no_proof_required), summary: known
@@ -65,7 +65,7 @@ main::mk_ab@514:0: uncovered (unsupported return type), summary: opaque (unsuppo
 main::lend_union@518:0: uncovered (reference yield)
 main::make_s@523:0: uncovered (unsupported form conversion), summary: opaque (unsupported form conversion)
 main::count_to@527:0: covered (storage: no_facts: storage facts have not been published)
-main::frame_select@531:0: uncovered (loop across a suspension)
+main::frame_select@531:0: uncovered (container source needs a place)
 main::pair_s@538:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::first_s@542:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::generic_dyn@546:0: uncovered (unsupported return type), summary: opaque (unsupported return type)

@@ -11,7 +11,7 @@ main::comp_elem@75:0: uncovered (unsupported native container element), summary:
 main::return_list@81:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::nested_list@87:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::nested_tuple@93:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::gen@114:0: uncovered (loop across a suspension)
+main::gen@114:0: uncovered (unsupported hoisted value)
 main::coro@123:0: uncovered (async body)
 main::closure@130:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::in_finally@138:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

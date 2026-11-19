@@ -2001,15 +2001,24 @@ form facts, never on lists of accepted kinds.
   are declared at entry by the hoist helper (MIR's type vocabulary:
   inert leaves); a by-value capture of a lent parameter is the frame's
   own copy. The verdict is `covered` at best (frames publish no storage
-  facts) and the body publishes no summary. Remaining, each refused by
-  name: decomposed `for` loops (a loop whose body suspends; waits for the
-  one loop-binding record), `async def` bodies, generator expressions
-  (their source's display name), try/except/finally/with regions,
+  facts) and the body publishes no summary. Second slice (2026-11-19): a
+  decomposed `for` loop (a loop whose body suspends) lowers with the
+  structured loop's own head / test / bind / step operations, binding the
+  frame local the frame laid out (its published placement), and
+  generator expressions take the same path, their source parameter
+  spelled by the source expression; a staged `suspension` analysis makes a
+  body that holds a loan of caller storage across a suspension (a cursor
+  over a parameter's container, a loan stored in a parameter's object)
+  `incomplete` until the caller's half checks it. Remaining, each refused
+  by name: `async def` bodies, try/except/finally/with regions,
   suspending `match`, nested defs, module globals read or written by a
   frame, reference yields, owned-leaf and aggregate frame locals, an
   argument the frame holds across a suspension (a handle built over a
-  temporary), a by-value capture of an explicit `StrView` parameter, and
-  the caller's half (a generator handle's summary).
+  temporary), a by-value capture of an explicit `StrView` parameter, a
+  loop's held source released on exit (`loop source release across a
+  suspension`), a stepped `range`, iterator-protocol loop sources, a
+  generator expression's `Iterable[T]` source and its enclosing-local
+  captures, and the caller's half (a generator handle's summary).
 - **B5: remaining general call summaries** (pending callee facts, globals,
   callbacks) proceed alongside B1-B4 as each step needs them.
 - **B6: advisory checker and authority transition.** Whether authority moves

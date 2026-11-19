@@ -6,7 +6,7 @@ main::find@29:0: uncovered (unsupported range bound), summary: opaque (unsupport
 main::count@38:0: covered (storage: no_proof_required), summary: known
 main::as_span@48:0: covered (storage: no_proof_required), summary: known
 main::push@54:0: covered (storage: no_proof_required), summary: known
-main::gen@58:0: uncovered (loop across a suspension)
+main::gen@58:0: covered (storage: no_facts: storage facts have not been published)
 main::comp@64:0: covered (storage: no_proof_required), summary: known
 main::closure@73:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::recurse@80:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)

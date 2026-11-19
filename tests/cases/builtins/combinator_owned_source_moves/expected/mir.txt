@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::gen@144:0: covered (storage: no_facts: storage facts have not been published)
-main::ranged@151:0: uncovered (loop across a suspension)
+main::ranged@151:0: covered (storage: no_facts: storage facts have not been published)
 main::make_list@156:0: covered (storage: no_proof_required), summary: known
 main::make_set@160:0: covered (storage: no_proof_required), summary: known
 main::add@164:0: covered (storage: no_proof_required), summary: known
@@ -13,9 +13,9 @@ main::dbl@199:0: covered (storage: no_proof_required), summary: known
 main::odd@203:0: covered (storage: no_proof_required), summary: known
 main::pairs@210:0: uncovered (argument held across a suspension)
 main::main@221:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::<genexpr>@251:61: uncovered (generator expression)
-main::<genexpr>@251:33: uncovered (generator expression)
-main::<genexpr>@339:31: uncovered (generator expression)
+main::<genexpr>@251:61: uncovered (unsupported parameter type)
+main::<genexpr>@251:33: uncovered (unsupported parameter type)
+main::<genexpr>@339:31: uncovered (unsupported parameter type)
 main::Cur.__iter__@21:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
 main::Cur.__next__@25:4: uncovered (error-return body)
 main::Deleg.__iter__@47:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known

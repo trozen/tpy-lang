@@ -25,8 +25,8 @@ main::ret_local@182:0: uncovered (reference needs local name), summary: opaque (
 main::unpack_call@188:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::unpack_borrowed@194:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::main@233:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@148:18: uncovered (generator expression)
-main::<genexpr>@154:14: uncovered (generator expression)
+main::<genexpr>@148:18: uncovered (unsupported parameter type)
+main::<genexpr>@154:14: uncovered (unsupported parameter type)
 main::Box.inc@24:4: covered (storage: no_proof_required), summary: known
 main::Box.get@28:4: covered (storage: no_proof_required), summary: known
 main::Box.bump@31:4: covered (storage: no_proof_required), summary: known

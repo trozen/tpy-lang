@@ -28,7 +28,7 @@ part_comp_lent::rebound_for@74:0: uncovered (unsupported native container elemen
 part_comp_lent::in_loop@84:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 part_comp_lent::keys_only@92:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 part_comp_lent::main@99:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-part_comp_lent::<genexpr>@96:39: uncovered (generator expression)
+part_comp_lent::<genexpr>@96:39: uncovered (unsupported native container element)
 part_comp_lent::R.fin@11:4: uncovered (missing receiver fact)
 part_comp_lent::R.__hash__@14:4: covered (storage: no_proof_required), summary: known
 part_comp_lent::R.__eq__@17:4: covered (storage: no_proof_required)
@@ -48,7 +48,7 @@ part_consuming::R.__repr__@14:4: uncovered (unsupported owned-leaf expression), 
 part_consuming::R.__hash__@17:4: covered (storage: no_proof_required), summary: known
 part_consuming::R.__eq__@20:4: covered (storage: no_proof_required)
 part_consuming::Sevens.__iter__@27:4: uncovered (unmodeled record)
-part_consuming::Only.__iter__@39:4: uncovered (unsupported expression)
+part_consuming::Only.__iter__@39:4: uncovered (unsupported owned_value capture)
 part_consuming::R.__init__@11:4: covered (storage: no_proof_required), summary: known
 part_consuming::Only.__init__@36:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 part_dispatch_order::__tpy_init: uncovered (module initialization)
@@ -92,8 +92,8 @@ part_own_param::for_copy@25:0: uncovered (unsupported metadata: consuming), summ
 part_own_param::for_copy_body_credit@34:0: uncovered (unsupported metadata: consuming), summary: opaque (unsupported metadata: consuming)
 part_own_param::async_owned@46:0: uncovered (async body)
 part_own_param::comp_copy@54:0: uncovered (unsupported metadata: presize_if_sized), summary: opaque (unsupported metadata: presize_if_sized)
-part_own_param::gen_owned@61:0: uncovered (loop across a suspension)
-part_own_param::gen_read@67:0: uncovered (loop across a suspension)
+part_own_param::gen_owned@61:0: uncovered (unsupported owned_value capture)
+part_own_param::gen_read@67:0: uncovered (unsupported owned_value capture)
 part_own_param::main@73:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 part_own_param::R.__init__@10:4: covered (storage: no_proof_required), summary: known
 part_record_consumers::__tpy_init: uncovered (module initialization)
@@ -121,8 +121,8 @@ part_record_consumers::Walk.__init__@53:4: covered (storage: no_proof_required),
 part_record_consumers::Holder.__init__@68:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 part_record_frames::__tpy_init: uncovered (module initialization)
 part_record_frames::gen_owned_box@50:0: uncovered (generic body)
-part_record_frames::gen_fresh@55:0: uncovered (loop across a suspension)
-part_record_frames::gen_dead@61:0: uncovered (loop across a suspension)
+part_record_frames::gen_fresh@55:0: uncovered (unsupported hoisted value)
+part_record_frames::gen_dead@61:0: uncovered (unsupported hoisted value)
 part_record_frames::a_dead@70:0: uncovered (async body)
 part_record_frames::gen_comp@80:0: uncovered (unsupported hoisted value)
 part_record_frames::a_comp@89:0: uncovered (async body)
@@ -132,8 +132,8 @@ part_record_frames::explicit@142:0: uncovered (unsupported metadata: consuming),
 part_record_frames::dead_comprehension@150:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 part_record_frames::send_frame@159:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 part_record_frames::main@167:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-part_record_frames::Pairs.__iter__@19:4: uncovered (unsupported expression)
-part_record_frames::Counts.__iter__@31:4: uncovered (unsupported expression)
+part_record_frames::Pairs.__iter__@19:4: uncovered (unsupported owned_value capture)
+part_record_frames::Counts.__iter__@31:4: uncovered (unsupported owned_value capture)
 part_record_frames::GenCounts.__iter__@44:4: uncovered (generic body)
 part_record_frames::SizedIter.__iter__@101:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 part_record_frames::SizedIter.__next__@104:4: uncovered (error-return body)
@@ -162,7 +162,7 @@ part_records::BagIter.__iter__@42:4: covered (storage: not_covered: borrow evide
 part_records::BagIter.__next__@45:4: uncovered (error-return body)
 part_records::IterBag.__iter__@58:4: uncovered (no body to lower)
 part_records::IterBag.__iter__@62:4: uncovered (no body to lower)
-part_records::Only.__iter__@72:4: uncovered (unsupported expression)
+part_records::Only.__iter__@72:4: uncovered (unsupported owned_value capture)
 part_records::NBag.__iter__@92:4: uncovered (no body to lower)
 part_records::NBag.__iter__@97:4: uncovered (no body to lower)
 part_records::R.__init__@11:4: covered (storage: no_proof_required), summary: known

@@ -5,7 +5,7 @@ main::make_c@356:0: uncovered (unsupported metadata: is_arrow), summary: opaque 
 main::lit34@361:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::lit_slots@367:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::scaled_later@375:0: uncovered (async body)
-main::gen@381:0: uncovered (loop across a suspension)
+main::gen@381:0: uncovered (uncertified binary operation)
 main::main@387:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::B.__mul__@14:4: uncovered (no body to lower)
 main::B.__mul__@18:4: uncovered (no body to lower)

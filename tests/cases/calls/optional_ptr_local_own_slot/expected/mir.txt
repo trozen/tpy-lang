@@ -8,7 +8,7 @@ main::append_branch_reassigned@85:0: uncovered (unsupported native container ele
 main::append_none_declared@96:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::other_slots@104:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::setdefault_slot@133:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::gen@148:0: uncovered (loop across a suspension)
+main::gen@148:0: uncovered (unsupported hoisted value)
 main::async_body@163:0: uncovered (async body)
 main::main@185:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Bag.add@34:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

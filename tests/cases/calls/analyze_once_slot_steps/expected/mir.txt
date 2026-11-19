@@ -19,4 +19,4 @@ main::steps@86:0: uncovered (unsupported metadata: template_args_cpp), summary: 
 main::carriers@110:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::escapes@119:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::main@129:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@107:31: uncovered (generator expression)
+main::<genexpr>@107:31: uncovered (unsupported parameter type)

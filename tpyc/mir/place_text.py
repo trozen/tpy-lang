@@ -282,8 +282,9 @@ def spoken_place(place: MIRPlace, names: MIRStorageNames, source: Source | None 
     the source names it: no `%N`, no region token, no `@line`, no owner
     qualification. A temporary holder defined once by a borrow or an alias
     is spelled by what it borrows; a loop cursor by the container it walks;
-    other temporary storage by its expression's source text (`source`,
-    over `MIRSlot.span`)."""
+    other temporary storage, and a compiler-made binding standing for an
+    expression, by that expression's source text (`source`, over
+    `MIRSlot.span`)."""
     slot = names.slots.get(place.root)
     if slot is None or _depth > 8:
         return None
@@ -314,8 +315,10 @@ def spoken_place(place: MIRPlace, names: MIRStorageNames, source: Source | None 
             if inner.region is not None or not projections:
                 return inner if not projections else MIRSpokenPlace(inner.name, inner.origin, inner.region)
             return _with_steps(inner.name, inner.origin, projections)
-        if slot.span is not None and source is not None and (text := source(slot.span)):
-            root, origin = text, "temporary"
+    if root is None and slot.span is not None and source is not None and (text := source(slot.span)):
+        # A compiler-made binding (a generator expression's source) is the
+        # storage of the expression it stands for.
+        root, origin = text, "temporary" if slot.kind is MIRSlotKind.TEMPORARY else "named"
     if root is None:
         return None
     return _with_steps(root, origin, projections)

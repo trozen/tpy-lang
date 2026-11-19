@@ -4521,6 +4521,10 @@ class THIRParam:
     # How the signature passes it (`TpyType.param_passing` at the param's
     # const verdict); None when unpublished (a hand-built body).
     passing: ParamPassing | None = None
+    # The source expression a compiler-made parameter stands for (a
+    # generator expression's source, built where the expression is
+    # written), which a diagnostic spells it by; None for a declared one.
+    source_span: SourceLocation | None = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)

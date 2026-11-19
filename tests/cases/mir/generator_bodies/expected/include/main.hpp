@@ -50,7 +50,7 @@ __gen_last_use_hazard last_use_hazard(std::vector<std::string>& xs);
 __gen_gen_owned gen_owned(std::string_view s);
 // async def not_async(n: int32) -> int32:  # tpyc: mir(uncovered /^async body$/)
 __coro_not_async not_async(int32_t n);
-// def not_for(xs: list[int32]) -> Iterator[int32]:  # tpyc: mir(uncovered /^loop across a suspension$/)
+// def not_for(xs: list[int32]) -> Iterator[int32]:  # tpyc: mir(incomplete /^suspension: loan of caller storage held across a suspension$/)
 __gen_not_for not_for(const std::vector<int32_t>& xs);
 // def not_try(n: int32) -> Iterator[int32]:  # tpyc: mir(uncovered /^try across a suspension$/)
 __gen_not_try not_try(int32_t n);
@@ -315,7 +315,7 @@ struct __gen_gen_owned : public ::tpy::next_iter_mixin<__gen_gen_owned, std::str
     }
 };
 
-// def not_for(xs: list[int32]) -> Iterator[int32]:  # tpyc: mir(uncovered /^loop across a suspension$/)
+// def not_for(xs: list[int32]) -> Iterator[int32]:  # tpyc: mir(incomplete /^suspension: loan of caller storage held across a suspension$/)
 struct __gen_not_for : public ::tpy::next_iter_mixin<__gen_not_for, int32_t> {
     ::tpy::frame_state __state;
     const std::vector<int32_t>& xs;

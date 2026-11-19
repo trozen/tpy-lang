@@ -37,8 +37,10 @@ namespace tpy {
 // the old storage. The entry case stores a non-zero state before running
 // any code (INITIAL is always 0), so "never entered" is the state reading
 // INITIAL. (A generator expression whose constructor seeds its loop keeps
-// INITIAL while it runs; nothing in it points into the frame.) A moved-from frame reads MOVED_FROM (no state enumerator is
-// negative), so its destructor does not re-run pending cleanup.
+// INITIAL while it runs; a cursor it seeds over its own copied source does
+// point into the frame, BUGS.md#frame-self-cursor-moved-before-entry.) A
+// moved-from frame reads MOVED_FROM (no state enumerator is negative), so its
+// destructor does not re-run pending cleanup.
 class frame_state {
 public:
     static constexpr int32_t INITIAL = 0;

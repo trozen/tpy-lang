@@ -6,7 +6,7 @@ main::sec_gen@118:0: uncovered (unsupported hoisted value)
 main::sec_comp@129:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
 main::sec_blocks@144:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::main@168:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@134:21: uncovered (generator expression)
+main::<genexpr>@134:21: uncovered (container holds a borrow)
 main::Gate.__enter__@36:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Gate.__exit__@39:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Runner.run@96:4: covered (storage: no_proof_required), summary: opaque (summary output effect)

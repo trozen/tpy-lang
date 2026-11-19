@@ -7,7 +7,7 @@ main::g8@45:0: covered (storage: no_proof_required), summary: known
 main::take64@49:0: covered (storage: no_proof_required), summary: known
 main::apply@53:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::free_fn@92:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::gen@100:0: uncovered (loop across a suspension)
+main::gen@100:0: covered (storage: no_facts: storage facts have not been published)
 main::async_fn@108:0: uncovered (async body)
 main::comp@119:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::closure@130:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -53,7 +53,7 @@ main::first_match@582:0: uncovered (unsupported statement), summary: opaque (uns
 main::gen_yield@594:0: covered (storage: no_facts: storage facts have not been published)
 main::literal_only@602:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::main@609:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@145:11: uncovered (generator expression)
+main::<genexpr>@145:11: uncovered (unsupported parameter type)
 main::Ctx.__enter__@22:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
 main::Ctx.__exit__@25:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Box.run@76:4: covered (storage: no_proof_required), summary: opaque (summary output effect)

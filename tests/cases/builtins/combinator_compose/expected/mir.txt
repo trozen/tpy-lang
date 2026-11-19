@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
 main::double@7:0: covered (storage: no_proof_required), summary: known
 main::is_positive@10:0: covered (storage: no_proof_required), summary: known
-main::triple_gen@13:0: uncovered (loop across a suspension)
+main::triple_gen@13:0: uncovered (by-value capture of a borrowed parameter)
 main::main@17:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

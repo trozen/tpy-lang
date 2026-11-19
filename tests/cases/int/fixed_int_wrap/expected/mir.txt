@@ -7,7 +7,7 @@ main::take@90:0: covered (storage: no_proof_required), summary: known
 main::shift_operand_order@97:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::operand_out_of_range@106:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::method@129:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::wrapped_sums@137:0: uncovered (loop across a suspension)
+main::wrapped_sums@137:0: uncovered (unsupported metadata: cpp_template)
 main::generator@142:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::comprehension@147:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::main@153:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

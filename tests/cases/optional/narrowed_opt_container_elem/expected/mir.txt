@@ -25,7 +25,7 @@ main::elem_field_print_len@250:0: uncovered (missing alias binding), summary: op
 main::elem_field_setitem@258:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
 main::elem_field_nested@265:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
 main::elem_opt_field_write@274:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
-main::gen@284:0: uncovered (loop across a suspension)
+main::gen@284:0: uncovered (unsupported hoisted value)
 main::with_body@292:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
 main::coro@300:0: uncovered (async body)
 main::main@315:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

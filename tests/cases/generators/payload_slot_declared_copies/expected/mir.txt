@@ -15,7 +15,7 @@ main::to_call@105:0: uncovered (reference yield)
 main::mixed_fin_yield@110:0: uncovered (reference yield)
 main::g_mixed@119:0: uncovered (generic body)
 main::main@126:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::<genexpr>@94:13: uncovered (generator expression)
+main::<genexpr>@94:13: uncovered (unsupported parameter type)
 main::Holds.borrow@35:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::A.__init__@11:4: covered (storage: no_proof_required), summary: known
 main::B.__init__@18:4: covered (storage: no_proof_required), summary: known

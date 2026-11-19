@@ -29,7 +29,7 @@ main::del_with@316:0: uncovered (unsupported statement), summary: opaque (unsupp
 main::del_except@325:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::del_walrus@335:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::coro@344:0: uncovered (async body)
-main::gen_del@357:0: uncovered (loop across a suspension)
+main::gen_del@357:0: uncovered (unsupported pointer capture)
 main::gen_except@372:0: uncovered (try across a suspension)
 main::opt_reseat@382:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
 main::single@393:0: uncovered (tuple borrow needs parameter capture), summary: opaque (tuple borrow needs parameter capture)

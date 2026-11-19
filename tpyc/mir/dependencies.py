@@ -19,7 +19,7 @@ from .nodes import (
     MIRAlias, MIRAssign, MIRCallStmt, MIRStatement, MIRBlockId, MIRBorrow, MIRCall, MIRCompare, MIRConstant,
     MIRConstruct, MIRCopy, MIRFunction, MIRIsAlternative, MIRMove, MIRNot, MIRNotCovered, MIRPlace, MIRRead, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
-    MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRReturn, statement_target, call_place, place_walk, view_member,
+    MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRReturn, MIRSuspend, statement_target, call_place, place_walk, view_member,
     MIRWrap, place_shape, MIRPresentCall, transfer_member,
 )
 from .value import (
@@ -108,6 +108,9 @@ class MIRDependencies:
     # strong write, a whole write of record storage): what they held before
     # the statement is gone after it.
     overwritten: Mapping[MIRPoint, frozenset[MIRPlace]] = MappingProxyType({})
+    # What each entry holds at entry (`entry_seed`): a parameter's or a
+    # global's own outside object, the caller's loan a parameter's object stores.
+    seeds: MIRReferents = MappingProxyType({})
 
     def live(self, state: MIRReferents, live: frozenset[MIRSlotId]) -> dict[MIRPlace, frozenset[MIRReferent]]:
         """`live_entries` of a state of this body."""
@@ -805,9 +808,22 @@ def _dependencies(presence: MIRPresence, liveness: MIRLiveness, regions: MIRRegi
         # A whole write of record storage replaces every stored loan of the old value.
         return frozenset(leaf for leaf in leaves[target.root] if leaf in stored_loans)
 
+    seed = entry_seed(fn, slots, objects)
+    try:
+        flow = _flow(fn, liveness, regions, slots, seed, transfer, MappingProxyType(objects), stored_loans,
+                     caller_keys(fn, objects))
+    except _DependencyRefusal as refused:
+        return MIRNotCovered(fn.id, "dependencies", refused.reason, refused.loc)
+    return replace(flow, caller_stores=caller_stores(presence, flow), seeds=MappingProxyType(seed))
+
+
+def entry_seed(fn: MIRFunction, slots: Mapping[MIRSlotId, MIRSlot],
+               objects: Mapping[MIRSlotId, tuple[MIRPlace, ...]]) -> dict[MIRPlace, frozenset[MIRReferent]]:
+    """What each dependency entry holds at the body's entry."""
     # A parameter holder borrows storage outside the body; an owned-leaf
     # global's handle names the global itself (`global:<module>.<name>` by its
-    # slot's identity), external and static. External origins may alias.
+    # slot's identity), external but not static, so a loan of it is caller
+    # storage. External origins may alias.
     seed = {leaf: frozenset({MIRReferent(origin(leaf, slots).place, external=True)})
             for slot in fn.slots if slot.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)
             for leaf in _leaves(slot, slots)}
@@ -816,12 +832,47 @@ def _dependencies(presence: MIRPresence, liveness: MIRLiveness, regions: MIRRegi
     # outside the body.
     seed.update((key, frozenset({seeded_loan(key)}))
                 for slot in fn.slots if slot.kind is MIRSlotKind.PARAMETER for key in objects[slot.id])
-    try:
-        flow = _flow(fn, liveness, regions, slots, seed, transfer, MappingProxyType(objects), stored_loans,
-                     caller_keys(fn, objects))
-    except _DependencyRefusal as refused:
-        return MIRNotCovered(fn.id, "dependencies", refused.reason, refused.loc)
-    return replace(flow, caller_stores=caller_stores(presence, flow))
+    return seed
+
+
+@dataclass(frozen=True)
+class MIRSuspensionLoans:
+    """The loans into storage a caller reaches that the entries live
+    across one suspension (`suspension`) hold, apart from the one each
+    entry was seeded with: what the caller may invalidate between two steps
+    while the body still uses it."""
+    point: MIRPoint
+    loans: Mapping[MIRPlace, frozenset[MIRReferent]]
+
+
+def _caller_storage(ref: MIRReferent, pinned: frozenset[MIRPlace]) -> bool:
+    """Storage a caller reaches: outside the body (a literal's immortal
+    storage is no one's), or inside an object a parameter lends."""
+    if ref.external:
+        return not ref.static
+    return any(ref.place.lies_under(key) for key in pinned)
+
+
+def suspension_loans(presence: MIRPresence, dependencies: MIRDependencies) -> tuple[MIRSuspensionLoans, ...]:
+    """At each feasible suspension, the loans of caller storage the
+    entries live across it hold (`MIRSuspensionLoans`): a capture holding
+    its own object is none, a cursor or alias into it, or a loan the body
+    stored in a parameter's object, is. Empty for a body that never
+    suspends."""
+    found: list[MIRSuspensionLoans] = []
+    for block in presence.function.blocks:
+        for index, stmt in enumerate(block.statements):
+            point = MIRPoint(block.id, index)
+            if not isinstance(stmt, MIRSuspend) or point not in presence.points:
+                continue
+            # What lives past the suspension is held across it; the suspension writes nothing.
+            after = dependencies.active.get(MIRPoint(block.id, index + 1), {})
+            loans = {entry: held for entry, refs in after.items()
+                     if (held := frozenset(ref for ref in refs - dependencies.seeds.get(entry, frozenset())
+                                           if _caller_storage(ref, dependencies.pinned)))}
+            if loans:
+                found.append(MIRSuspensionLoans(point, MappingProxyType(loans)))
+    return tuple(found)
 
 
 def feasible_returns(presence: MIRPresence, dependencies: MIRDependencies
@@ -928,4 +979,17 @@ def dump_dependencies(result: MIRDependencies | MIRNotCovered) -> str:
     for point, refs in result.referents.items():
         lines.append(f"  bb{point.block.index} before {point.index}: {format_refs(refs)}")
         lines.append("    active: " + format_refs(result.active[point]))
+    return "\n".join(lines) + "\n"
+
+
+def dump_suspensions(result: tuple[MIRSuspensionLoans, ...] | MIRNotCovered) -> str:
+    if isinstance(result, MIRNotCovered):
+        return f"suspensions not covered: {result.reason}\n"
+    lines = ["suspensions (loans of caller storage held across each suspension)"]
+    for held in result:
+        loans = "; ".join(f"{_place(entry)} -> {{" + ", ".join(sorted(_referent(ref) for ref in refs)) + "}"
+                          for entry, refs in sorted(held.loans.items(), key=lambda item: _place(item[0])))
+        lines.append(f"  bb{held.point.block.index} at {held.point.index}: {loans}")
+    if not result:
+        lines.append("  none")
     return "\n".join(lines) + "\n"

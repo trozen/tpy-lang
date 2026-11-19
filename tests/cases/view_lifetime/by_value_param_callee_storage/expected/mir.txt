@@ -26,7 +26,7 @@ part_frames::in_block@13:0: uncovered (unsupported reference parameter passing),
 part_frames::after_loop@22:0: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)
 part_frames::captured@29:0: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)
 part_frames::main@34:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-part_frames::<genexpr>@30:13: uncovered (generator expression)
+part_frames::<genexpr>@30:13: uncovered (unsupported reference parameter passing)
 part_inverse::__tpy_init: uncovered (module initialization)
 part_inverse::opt_str@9:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 part_inverse::opt_view@15:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

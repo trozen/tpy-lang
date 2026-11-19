@@ -31,7 +31,7 @@ main::local_defaults@302:0: uncovered (unsupported owned-leaf expression), summa
 main::local_inner@307:0: covered (storage: no_proof_required), summary: known
 main::mk@339:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::shadow@366:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
-main::gen@378:0: uncovered (loop across a suspension)
+main::gen@378:0: uncovered (unsupported hoisted value)
 main::positions@383:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::total@418:0: uncovered (generic body)
 main::both@422:0: uncovered (generic body)

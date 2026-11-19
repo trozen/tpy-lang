@@ -6114,6 +6114,9 @@ class ExpressionAnalyzer:
             is_generator=True, is_genexpr=True, loc=loc)
         func.genexpr_container_by_protocol = by_protocol
         func.genexpr_owner = owner if outer is not None else None
+        sources = range_args if range_args else [gen.iterable]
+        func.genexpr_source_spans = {name: src_expr.loc for (name, _), src_expr in zip(source_params, sources)
+                                     if src_expr.loc is not None}
         func.genexpr_step_handover = gen.step_handover
         self.ctx.genexpr_roots[func] = self.ctx.func.body_root
         # Every type param in scope where the expression is written is one of

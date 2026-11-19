@@ -11,7 +11,7 @@ main::control_edges@314:0: uncovered (unsupported statement), summary: opaque (u
 main::parameter_target@355:0: covered (storage: no_proof_required), summary: known
 main::bound@362:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::bound_order@367:0: uncovered (unsupported metadata: step), summary: opaque (unsupported metadata: step)
-main::generator@377:0: uncovered (loop across a suspension)
+main::generator@377:0: covered (storage: no_facts: storage facts have not been published)
 main::async_body@388:0: uncovered (async body)
 main::error_body@405:0: uncovered (error-return body)
 main::match_body@414:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

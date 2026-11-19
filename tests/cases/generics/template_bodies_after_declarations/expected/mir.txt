@@ -6,7 +6,7 @@ cyc_a::use_groups@126:0: uncovered (unmodeled record), summary: opaque (unmodele
 cyc_a::use_cycle@139:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
 cyc_a::use_operators@180:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
 cyc_a::use_passing@238:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
-cyc_a::<genexpr>@122:22: uncovered (generator expression)
+cyc_a::<genexpr>@122:22: uncovered (unsupported reference parameter passing)
 cyc_a::Plain.f@11:4: uncovered (no body to lower)
 cyc_a::Plain.f@13:4: uncovered (no body to lower)
 cyc_a::Merger.merge@46:4: uncovered (no body to lower)

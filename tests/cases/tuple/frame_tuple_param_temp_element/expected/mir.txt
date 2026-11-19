@@ -23,7 +23,7 @@ main::edge_free@189:0: uncovered (call needs finalized known summary), summary: 
 main::edge_gen@202:0: uncovered (call needs finalized known summary)
 main::edge_frame@208:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::mutation_edge@213:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::loop_gen@222:0: uncovered (loop across a suspension)
+main::loop_gen@222:0: uncovered (unsupported hoisted value)
 main::loop_var_element@231:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::abump@250:0: uncovered (async body)
 main::meth_callee@255:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

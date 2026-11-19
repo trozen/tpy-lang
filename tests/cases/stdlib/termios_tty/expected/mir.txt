@@ -9,7 +9,7 @@ main::tcsetattr_errors@173:0: uncovered (unsupported statement), summary: opaque
 main::icrnl@197:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::negative_fd@213:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::main@233:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@157:17: uncovered (generator expression)
+main::<genexpr>@157:17: uncovered (unsupported hoisted value)
 main::RawSession.restore@87:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::CbreakMode.__enter__@126:4: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)
 main::CbreakMode.__exit__@130:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

@@ -11,9 +11,9 @@ main::tagged@81:0: covered (storage: no_proof_required), conflicts: alias_obliga
 main::last_use_hazard@86:0: covered (storage: no_facts: storage facts have not been published), conflicts: argument_alias
 main::gen_owned@93:0: covered (storage: no_facts: storage facts have not been published)
 main::not_async@98:0: uncovered (async body)
-main::not_for@103:0: uncovered (loop across a suspension)
+main::not_for@103:0: incomplete (suspension: loan of caller storage held across a suspension)
 main::not_try@109:0: uncovered (try across a suspension)
 main::main@116:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::<genexpr>@159:29: uncovered (generator expression)
+main::<genexpr>@159:29: uncovered (unsupported parameter type)
 main::Counter.ticks@34:4: covered (storage: no_facts: storage facts have not been published)
 main::Counter.__init__@30:4: covered (storage: no_proof_required), summary: known

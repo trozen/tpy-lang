@@ -10,7 +10,7 @@ main::take_nested@52:0: covered (storage: no_proof_required), summary: known
 main::take_dict@57:0: covered (storage: no_proof_required), summary: known
 main::take_set@62:0: covered (storage: no_proof_required), summary: known
 main::take_any@67:0: uncovered (generic body)
-main::gen@71:0: uncovered (loop across a suspension)
+main::gen@71:0: incomplete (suspension: loan of caller storage held across a suspension)
 main::free_call@106:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::user_ctor@110:0: uncovered (unsupported metadata: lhs_cast), summary: opaque (unsupported metadata: lhs_cast)
 main::generic_ctor@114:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
@@ -36,7 +36,7 @@ main::chained@208:0: uncovered (named argument needs complete temporary plan), s
 main::relocated_decl@213:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::side_effect@223:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::main@229:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Bx.gen@98:4: uncovered (loop across a suspension)
+main::Bx.gen@98:4: incomplete (suspension: loan of caller storage held across a suspension)
 main::Tally.__init__@12:4: covered (storage: no_proof_required), summary: known
 main::Holder.__init__@79:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
 main::Boxed.__init__@87:4: uncovered (generic constructor)

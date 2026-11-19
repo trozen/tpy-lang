@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::mk@13:0: covered (storage: no_proof_required), summary: known
-main::make_steps@19:0: uncovered (loop across a suspension)
+main::make_steps@19:0: uncovered (reference yield)
 main::total@25:0: uncovered (unsupported parameter type)
 main::gen_ns@55:0: uncovered (unsupported parameter type)
 main::async_total@61:0: uncovered (async body)

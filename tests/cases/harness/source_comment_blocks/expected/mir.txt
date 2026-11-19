@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::shaped@11:0: covered (storage: no_proof_required), summary: known
 main::quoted@21:0: covered (storage: no_proof_required), summary: known
-main::upto@43:0: uncovered (loop across a suspension)
+main::upto@43:0: covered (storage: no_facts: storage facts have not been published)
 main::pair@49:0: covered (storage: no_facts: storage facts have not been published)
 main::doubled@56:0: uncovered (async body)
 main::helper@62:0: covered (storage: no_proof_required), summary: known

@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::comp_method@26:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::literal_param@35:0: uncovered (unsupported container element), summary: opaque (unsupported container element)
-main::gen_params@41:0: uncovered (loop across a suspension)
+main::gen_params@41:0: uncovered (unsupported hoisted value)
 main::pick@46:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::empty_seeded@53:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::main@60:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

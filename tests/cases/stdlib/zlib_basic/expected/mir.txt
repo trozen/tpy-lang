@@ -5,7 +5,7 @@ main::checksums@42:0: uncovered (call needs resolved ordinary callee), summary: 
 main::errors@51:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::method_streaming@94:0: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)
 main::objects@101:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
-main::chunks_of@185:0: uncovered (loop across a suspension)
+main::chunks_of@185:0: uncovered (unsupported hoisted value)
 main::generator_body@193:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::comprehension@200:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::with_body@206:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

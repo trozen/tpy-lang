@@ -46,7 +46,7 @@ main::overload_args_pick@340:0: uncovered (call needs resolved ordinary callee),
 main::overload_fills@362:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::pack@403:0: uncovered (container name type mismatch)
 main::main@420:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@358:17: uncovered (generator expression)
+main::<genexpr>@358:17: uncovered (unsupported parameter type)
 main::Maker.make_list@19:4: uncovered (generic body)
 main::Holder.rebind@247:4: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::PackUser.run@413:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)

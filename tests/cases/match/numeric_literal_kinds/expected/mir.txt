@@ -11,7 +11,7 @@ main::guarded_label@108:0: uncovered (unsupported statement), summary: opaque (u
 main::guard_default@120:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::or_overlap_int@132:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::or_overlap_folded@144:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::gen@172:0: uncovered (loop across a suspension)
+main::gen@172:0: uncovered (match across a suspension)
 main::in_with@190:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::checked@206:0: uncovered (error-return body)
 main::nested@215:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

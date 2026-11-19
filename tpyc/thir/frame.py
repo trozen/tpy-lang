@@ -602,13 +602,15 @@ class THIRForAdvance:
     `iterable` is the loop setup's source slot (the `next` strategy names
     the source again at each advance; None for a counted `range` loop);
     `step` is the position a borrow-form tuple loop var's lent step renders
-    at."""
+    at; `var` is the frame local the advance binds (its layout is the
+    frame's `local(var).placement`)."""
     uid: int
     stmt: TpyForEach
     has_value_bb: int
     exhausted_bb: int
     iterable: 'THIRLeafSlot | None' = None
     step: 'THIRLeafSlot | None' = None
+    var: 'str | None' = None
 
 
 @dataclass(frozen=True)

@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::widths@20:0: covered (storage: no_proof_required), summary: known
 main::same@31:0: uncovered (generic body)
-main::bytes_of@36:0: uncovered (loop across a suspension)
+main::bytes_of@36:0: covered (storage: no_facts: storage facts have not been published)
 main::shadowed@42:0: covered (storage: no_proof_required), summary: known
 main::shadowed_local@47:0: covered (storage: no_proof_required), summary: known
 main::shadowed_unpack@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

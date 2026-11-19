@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::bump_chain@52:0: covered (storage: no_proof_required), summary: known
-main::bump_one_hop@58:0: uncovered (loop across a suspension)
+main::bump_one_hop@58:0: uncovered (unsupported hoisted value)
 main::gen_nosusp@66:0: covered (storage: no_facts: storage facts have not been published)
 main::tick@74:0: uncovered (async body)
 main::bump_await@80:0: uncovered (async body)

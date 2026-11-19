@@ -17,7 +17,7 @@ main::copies@274:0: covered (storage: no_proof_required), summary: opaque (summa
 main::escape_copy@294:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::position_aliases@305:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::closure_controls@347:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::frame_aliases@369:0: uncovered (loop across a suspension)
+main::frame_aliases@369:0: uncovered (unsupported hoisted value)
 main::resumed_value@385:0: uncovered (async body)
 main::async_aliases@389:0: uncovered (async body)
 main::take_cell@405:0: covered (storage: no_proof_required), summary: known

@@ -21,7 +21,7 @@ main::optional_view@258:0: uncovered (unsupported parameter type), summary: opaq
 main::aliases@265:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::plain_views@281:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
 main::plain_pack@288:0: uncovered (call needs resolved ordinary callee)
-main::relay@293:0: uncovered (loop across a suspension)
+main::relay@293:0: uncovered (loop source release across a suspension)
 main::coros@306:0: uncovered (async body)
 main::main@375:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::R.__repr__@18:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)

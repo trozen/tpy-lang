@@ -5,7 +5,7 @@ main::membership@201:0: uncovered (call needs finalized known summary), summary:
 main::generic@206:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::generic_alias@211:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::comprehension@220:0: uncovered (unsupported metadata: record_getitem), summary: opaque (unsupported metadata: record_getitem)
-main::walk@225:0: uncovered (loop across a suspension)
+main::walk@225:0: uncovered (unsupported hoisted value)
 main::closure@231:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::loop_receiver@238:0: uncovered (unsupported metadata: record_getitem), summary: opaque (unsupported metadata: record_getitem)
 main::element_alias@246:0: uncovered (unsupported metadata: record_getitem), summary: opaque (unsupported metadata: record_getitem)

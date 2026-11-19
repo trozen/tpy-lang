@@ -7,7 +7,7 @@ main::bump_any@49:0: uncovered (no body to lower)
 main::bump_any@54:0: uncovered (no body to lower)
 main::free_fn@77:0: covered (storage: no_proof_required), summary: known
 main::arun@106:0: uncovered (async body)
-main::gen@113:0: uncovered (loop across a suspension)
+main::gen@113:0: uncovered (unsupported hoisted value)
 main::genexpr@120:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::nested@125:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::closure_loop@133:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -68,8 +68,8 @@ main::rebind_zip@618:0: uncovered (unsupported statement), summary: opaque (unsu
 main::via_below@625:0: covered (storage: no_proof_required), summary: known
 main::bump_below@629:0: covered (storage: no_proof_required), summary: known
 main::main@633:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-main::<genexpr>@121:14: uncovered (generator expression)
-main::<genexpr>@327:16: uncovered (generator expression)
+main::<genexpr>@121:14: uncovered (unsupported hoisted value)
+main::<genexpr>@327:16: uncovered (unsupported hoisted value)
 main::P.inc@13:4: covered (storage: no_proof_required), summary: known
 main::P.inc_get@16:4: covered (storage: no_proof_required), summary: known
 main::P.peek@20:4: covered (storage: no_proof_required), summary: known

@@ -29,7 +29,7 @@ main::nested_break@351:0: uncovered (call needs finalized known summary), summar
 main::zero_trip_for@361:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::zero_trip_while@369:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::while_true_rebind@379:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::gen_break@389:0: uncovered (loop across a suspension)
+main::gen_break@389:0: uncovered (unsupported hoisted value)
 main::async_break@399:0: uncovered (async body)
 main::iterable_consumed@429:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::iterable_consumed_return@438:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

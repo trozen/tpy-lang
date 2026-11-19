@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::gen_snapshot@43:0: uncovered (loop across a suspension)
+main::gen_snapshot@43:0: uncovered (container source needs a place)
 main::tick@48:0: uncovered (async body)
 main::drain@53:0: uncovered (async body)
 main::main@94:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

@@ -89,7 +89,6 @@ def test_lines_name_every_body_of_every_local_module(tmp_path):
     assert [line.split(": ", 1)[0] for line in lines] == NAMES
     verdicts = dict(line.split(": ", 1) for line in lines)
     assert verdicts["main::__tpy_init"] == "uncovered (module initialization)"
-    assert verdicts["main::<genexpr>@28:14"] == "uncovered (generator expression)"
 
 
 def test_snapshotted_library_modules_follow_in_name_order(tmp_path):

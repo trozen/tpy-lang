@@ -32,7 +32,7 @@ main::async_body@330:0: uncovered (async body)
 main::empty_fn@338:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::values_fn@347:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::main@353:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@132:12: uncovered (generator expression)
+main::<genexpr>@132:12: uncovered (unsupported native container element)
 main::P.__lt__@18:4: covered (storage: no_proof_required)
 main::P.inc@21:4: covered (storage: no_proof_required), summary: known
 main::Counter.__iter__@54:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known

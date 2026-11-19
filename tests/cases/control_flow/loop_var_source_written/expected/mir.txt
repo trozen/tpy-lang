@@ -83,7 +83,7 @@ main::comp_own_arg@803:0: uncovered (call needs finalized known summary), summar
 main::head_move@810:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::getitem_ref_writes@834:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::main@840:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@765:16: uncovered (generator expression)
+main::<genexpr>@765:16: uncovered (unsupported parameter type)
 main::Holder.reset@124:4: covered (storage: no_proof_required), summary: known
 main::Holder.run@127:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::K.__eq__@254:4: uncovered (element write needs a container place)

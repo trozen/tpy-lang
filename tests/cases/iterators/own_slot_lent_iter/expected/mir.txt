@@ -15,7 +15,7 @@ main::free_function@191:0: uncovered (call needs resolved ordinary callee), summ
 main::gen_body@256:0: uncovered (call needs resolved ordinary callee)
 main::async_body@264:0: uncovered (async body)
 main::main@272:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@245:25: uncovered (generator expression)
+main::<genexpr>@245:25: uncovered (reference yield)
 main::View.__iter__@11:4: uncovered (reference yield)
 main::Ints.__iter__@22:4: covered (storage: no_facts: storage facts have not been published)
 main::Bag.push@33:4: uncovered (generic body)

@@ -31,7 +31,7 @@ main::capture_of_call@371:0: uncovered (missing or inconsistent hoisted binding 
 main::nested_loop_in_arm@381:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::shadows_global@400:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::qualified_call@415:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
-main::uppers@422:0: uncovered (loop across a suspension)
+main::uppers@422:0: uncovered (unsupported hoisted value)
 main::generator_heads@430:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::implicit_iter_heads@482:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::list_param_head@505:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
@@ -41,15 +41,15 @@ main::loop_durable_source@537:0: uncovered (missing or invalid layout fact), sum
 main::branch_durable_source@545:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::leaked_head@555:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::main@563:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@433:17: uncovered (generator expression)
-main::<genexpr>@443:18: uncovered (generator expression)
+main::<genexpr>@433:17: uncovered (unsupported hoisted value)
+main::<genexpr>@443:18: uncovered (unsupported hoisted value)
 main::Box.hoist@176:4: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::Ctx.__enter__@238:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Ctx.__exit__@241:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::P.nm@276:4: uncovered (missing receiver fact)
 main::M.nv@329:4: covered (storage: no_proof_required), summary: known
 main::Util.head@409:4: covered (storage: no_proof_required)
-main::Bag.__iter__@456:4: uncovered (loop across a suspension)
+main::Bag.__iter__@456:4: uncovered (unsupported hoisted value)
 main::Counter.__iter__@469:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Counter.__next__@472:4: uncovered (error-return body)
 main::H.__init__@16:4: covered (storage: no_proof_required), summary: known

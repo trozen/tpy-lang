@@ -2721,19 +2721,38 @@ alongside related feature work; only the big-rock deferrals live here.
   - **MIR lowers generator bodies: the gaps after the first slice**
     (2026-10-29, docs/MIR_ANALYSIS_PLAN.md B4). A `def` generator's frame
     lowers when it has none of these; each is refused by name:
-    - Decomposed `for` loops (`loop across a suspension`): a `for` whose
-      body suspends splits into `THIRForIterSetup` / `THIRForAdvance`, whose
-      loop binding exists only as the printer's `GeneratorForInfo`. Waits
-      for the one loop-binding record (decided in `_loop_row` /
-      `classify_binding`, keyed on the THIR node, carried by structured and
-      decomposed loops) -- the tuples line's one-binder step 5 ("loop heads
-      join the binder"). MIR needs on the setup and advance nodes what a
-      structured loop carries (loop binding, element type, the iterable or
-      the range bounds with their counter) to share `native_loop` /
-      `range_loop`'s cursor operations.
+    - Decomposed `for` loops lower (2026-11-19) with `native_loop` /
+      `range_loop`'s own head / test / bind / step operations. The bind
+      reads the loop variable's frame placement (`THIRResumableFrame.local
+      (var).placement`, where the frame decides the C++ binding), never
+      `GeneratorForInfo` or the AST; only a VALUE placement binds yet. The
+      tuples line's one-binder record (step 5, "loop heads join the binder")
+      becomes the producer of that same placement, changing MIR's
+      `_frame_target` adapter only. A tuple head (`for a, b in ...`) is
+      refused at its element today; when it lowers, its bind needs the
+      frame layout's unpack-holder vs member answer, not `stmt.var` (thir
+      2026-11-19). Still refused by name: a stepped
+      `range` (`range step across a suspension`: its step kind is not
+      published with the setup, so even `range(n, 0, -1)`, which the
+      structured `range_loop` takes, is refused -- 6 bodies; publishing
+      `_range_step_kind` on `THIRForIterSetup` is one frozen field, as
+      `var` was), a held loop source released on exit
+      (`loop source release across a suspension`: one generic `region_stack
+      -> MIRRegion` mapping when such sources lower), iterator-protocol
+      sources (`container source needs a place`, as `THIRForIterProto` in
+      plain bodies), owning iteration (`unsupported metadata`), and a
+      global source (no global binding in frames, below).
     - `async def` bodies (`async body`): await suspensions, lifted awaits.
-    - Generator expressions (`generator expression`): THIR must publish the
-      source's user-facing name (the frame reads it as `__src`).
+    - Generator expressions lower as generators (2026-11-19); the source
+      parameter is spelled by the source expression (`THIRParam.source_span`).
+      Still refused: a source typed `Iterable[T]` (`unsupported parameter
+      type`, the non-lvalue sources) and enclosing locals the frame captures
+      (`unsupported capture of an enclosing local`). So no end-to-end MIR
+      warning inside a genexpr frame can be built yet: every writer such a
+      frame could hold is an enclosing-local capture or a global, both
+      refused. The spelling of its source by the user's expression is pinned
+      by `tpyc/mir/test_generator_bodies.py`; the end-to-end case lands with
+      the unit lowering genexpr CAPTURE captures.
     - try/except/finally/with regions around a suspension (`try across a
       suspension`, `with across a suspension`), a suspending `match`
       (`match across a suspension`), nested defs (`nested def`).
@@ -2746,14 +2765,18 @@ alongside related feature work; only the big-rock deferrals live here.
     - Owned-leaf (`int`, `str`) and aggregate frame locals (`unsupported
       hoisted value`): entry declarations of owned storage and
       borrow-then-copy iteration, which plain functions lack too. ORDER: a
-      suspension writes nothing because no admitted frame local holds a loan
-      across it (only REF captures and the receiver do, and those are the
-      caller's half). A frame local that can hold a loan -- an aggregate, a
-      view -- lands only with the caller's half below, or with a suspension
-      that writes everything reachable from the REF captures and the
-      receiver; otherwise MIR calls a loan-holding frame `covered` that is
-      not. `mir(covered)` on a generator means no conflict inside the body,
-      not safety between two steps.
+      suspension writes nothing. A loop's cursor is the first frame local
+      that holds a loan across one; the staged `suspension` analysis
+      (`dependencies.suspension_loans`) keeps `covered` honest: a body with
+      a live entry holding a loan of caller storage at a suspension, other
+      than the one it was seeded with (a cursor over a parameter's
+      container or the receiver's field, a loan stored into a parameter's
+      object), is `incomplete (suspension: ...)` until the caller's half
+      below checks it. An aggregate or view frame local lands under the same
+      analysis. A suspension that writes everything reachable from the REF
+      captures stays rejected (~400 false warnings at the frame).
+      `mir(covered)` on a generator means no conflict inside the body and no
+      caller storage held across a suspension.
     - Argument lifts a frame holds (`argument held across a suspension`).
     - Which frame locals a C++ local inside a leaf shadows (a non-hoisted
       loop variable, a narrowing alias, a hoisted declaration -- the
@@ -2771,12 +2794,16 @@ alongside related feature work; only the big-rock deferrals live here.
     - The caller's half: a generator handle's summary (the parameters whose
       loans the handle holds), so a caller mutating a lent argument between
       steps is judged by MIR rather than by sema's coarse retention.
-      **Deferred (user 2026-10-30) until decomposed loops lower in generator
-      bodies** (the first gap above): the 42 generator bodies that lower hold
-      no loan across a suspension, so the half would catch no filed bug
-      (`BUGS.md#frame-iter-loan-blind-to-caller`'s generator is refused
-      `loop across a suspension`). Order: loops in generator bodies, then
-      this. Two design rounds settled what it must meet:
+      Deferred (user 2026-10-30) until decomposed loops lower in generator
+      bodies, which they now do (2026-11-19): next. Its derived-loan input
+      is the `suspension` analysis's per-suspension result
+      (`MIRSuspensionLoans`), the captures themselves the other half, at
+      creation; the 116 bodies the suite's mir.txt call `incomplete
+      (suspension: ...)` (53 generators and 63 genexpr frames, in 56 cases;
+      cursors over `items`, `xs`, `self.xs`, a genexpr's source) are what
+      it converts. A generator expression's cursor opens at creation: its
+      frame's constructor runs the loop setup. Two design rounds settled
+      what it must meet:
       - Source: the generator's covered body, through the one summary
         derivation (a frame gets a summary identity; the suspension set is
         read at the `MIRSuspend` arm of `summaries`, from `MIRLiveness`).
@@ -4445,7 +4472,7 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
     - `del` reads the planner's own slot decision. `BindingRepr.fresh_only` (`_non_fresh_names`, `tpyc/thir/lower/bindings.py`) gates the `del` move-sink of a pointer local on every binding of the name being sema's `BindKind.RVALUE` -- a second derivation of "this local owns what it holds" beside sema's `BindingOwnership` (whose `nonowning_sites` cover different binding kinds) and the planner's REBIND_SLOT / POINTER choice. The sink is sound only while the planner and `bind_kind_of` ask the same rvalue predicate (`is_rvalue_source`). One fact -- every binding of the name emplaces into a slot the local owns, recorded where the planner picks the slot -- replaces it.
   - The Optional tuple element's admission folds into the one conversion. The decl re-tag (`_borrow_local_binding`), the reseat arm, the argument face (`_optional_ptr_arg_face` 'tuple_elem', deferred with the tuple arguments, S3), the ternary arm (`_lower_ptr_opt_ternary_arm`), the match subject (`_lower_optional_subject`), the is-None arm and the read gate each gate on `_tuple_opt_elem_subscript` (`tpyc/thir/lower/predicates.py`) and then convert the lowered read to the pointer: seven arms of one rule. Each becomes the sink's own conversion of the element source; the call-argument sink's tuple slice (S3) absorbs the argument face.
 - **[THIR] Under "One conversion boundary for every value sink": a container literal's element converts at its element slot.** `_lower_container_elem` (`tpyc/thir/lower/expressions.py`) applies `convert.as_base` to the lowered element itself, a second site of the upcast rule outside `_convert`: the element is lowered by its own arms and only the base-part copy is borrowed from the conversion. Once the container element sink takes its value from `convert` at the element's STORE slot, the upcast is the conversion's and the call there goes. Filed by the S3 round-1 review (2026-10-25).
-- **[THIR] New sema->THIR facts on parse nodes (the per-target unpack).** CLAUDE.md puts a new sema->codegen fact on a THIR node or the lowering context, not on a parse node. The per-target unpack added `step_handover` on `TpyForEach`, `TpyTupleUnpack` and `TpyComprehensionGenerator` (`tpyc/parse/nodes.py`, stamped by `step_handover_paths`), and a comprehension clause's `head` (`TpyTupleUnpack`) that sema builds (`_comp_clause_head`, `tpyc/sema/expressions.py`) and stamps with the per-target lists (`is_owned`, `is_ref`, `is_new`, `is_const_ref`, `is_rebound`) in a loop parallel to the statement unpack's. The per-target record (`unpack_target_records`) is the one fact: one record per target, published to the lowering (the binding table or the head's THIR node) rather than spread over parallel parse-node lists, would leave one reader path. Filed by the S3 round-1 review (2026-10-25). One more was added in the same unit: `TpyFunction.genexpr_step_handover` (a generator expression's source takes its clause's handover, `tpyc/sema/expressions.py`); it is sema->sema today but belongs to the same move.
+- **[THIR] New sema->THIR facts on parse nodes (the per-target unpack).** CLAUDE.md puts a new sema->codegen fact on a THIR node or the lowering context, not on a parse node. The per-target unpack added `step_handover` on `TpyForEach`, `TpyTupleUnpack` and `TpyComprehensionGenerator` (`tpyc/parse/nodes.py`, stamped by `step_handover_paths`), and a comprehension clause's `head` (`TpyTupleUnpack`) that sema builds (`_comp_clause_head`, `tpyc/sema/expressions.py`) and stamps with the per-target lists (`is_owned`, `is_ref`, `is_new`, `is_const_ref`, `is_rebound`) in a loop parallel to the statement unpack's. The per-target record (`unpack_target_records`) is the one fact: one record per target, published to the lowering (the binding table or the head's THIR node) rather than spread over parallel parse-node lists, would leave one reader path. Filed by the S3 round-1 review (2026-10-25). One more was added in the same unit: `TpyFunction.genexpr_step_handover` (a generator expression's source takes its clause's handover, `tpyc/sema/expressions.py`); it is sema->sema today but belongs to the same move. And `TpyFunction.genexpr_source_spans` (2026-11-19, MIR frame loops): the source span of each compiler-made genexpr parameter, which THIR copies onto `THIRParam.source_span`; its home is a sema-context table like `ctx.genexpr_roots`, read by the frame builder.
 - **[THIR] Under "One conversion boundary for every value sink": landing 2 U2 (resumable payload through convert) -- the lowering owner's unit.** The yield is the same owning result sink as the return. U2a (the generator yield) lowers the yield value through the return's sink (`result_value`) with the yield slot the GENERATOR_YIELD classification gives; what is left of it: the nested / generic owned member and the OT unpack consumer (BUGS.md#own-tuple-yield-member-unchecked). U2b (the async return payload) is done (2026-10-31): an async `return` converts its value through `result_value` at the slot `async_payload_slot` builds from the ASYNC_PAYLOAD classification; `_lower_resumable_return_value` and its rows are gone.
 - **[THIR] The whole-tuple finally-deferred return still decides in the lowering.** The scalar `return <name>` ahead of a finally takes its capture shape from sema's stamp (`TpyReturn.finally_deferred_shape`, `_mark_finally_deferred_return`, `tpyc/sema/statements.py`). The whole-tuple `return t` (`_mark_finally_deferred_tuple_name`) is stamped `((),)` and the lowering's `_finally_deferred_tuple_recipe` (`tpyc/thir/lower/statements.py`) re-decides whether the recipe applies by comparing rendered types and `_mixed_local_is_result_form`. Give it the same stamp. While there, fold the return's deferral fields (`finally_deferred_capture` / `_name` / `_shape` / `_leaves`) into one stamp object: two sites reset them by hand (`tpyc/sema/compatibility.py`, `tpyc/sema/statements.py`) and must stay in step.
 - **[THIR] Under "One conversion boundary for every value sink": the async payload-type gate.** Since U2b every async return value converts through the one result sink, and since 2026-10-31 a tuple holding a reference or open-`T` element takes the sync tuple return's form (`RESULT_TUPLE`) and a `Callable` payload is admitted. What `res.return_type` (`_async_payload_refused`, `tpyc/thir/lower/resumable.py`) still refuses is a payload whose form no await consumer holds yet: union payloads (value and pointer variant), `Own[X | None]`, value Optionals of anything but a scalar (`str | None`, `tuple[...] | None`), a tuple with a nested tuple, union or Optional element beside a reference (`tuple[Rec, int32 | None]`, `tuple[tuple[Box, int32], int32]`), and a reference-free tuple with a union element (`tuple[int32 | str, int32]`); a generic `T` beside an Optional is admitted (`BUGS.md#async-generic-opt-tuple-ref-t-cxx-error`). Sync returns each of them. They go with the awaited result as a THIR value (the "Local binding" item above), after which the gate is deleted; until then it still keys on three clauses beside the classification -- the storage-tuple allow helpers `_value_tuple_return`, `_generic_value_tuple_return` and the gate-only `TupleType.all_elements_plain_values()`, all deleted with it.

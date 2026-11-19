@@ -7,7 +7,7 @@ main::deep_dict_inner@86:0: covered (storage: no_proof_required), conflicts: ali
 main::deep_readonly@92:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::deep_loop_root@97:0: covered (storage: no_proof_required), summary: known
 main::deep_control@106:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::deep_gen@122:0: uncovered (loop across a suspension)
+main::deep_gen@122:0: uncovered (unsupported hoisted value)
 main::deep_async@134:0: uncovered (async body)
 main::main@151:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::Grid.fill@44:4: certified, summary: known

@@ -7,4 +7,4 @@ main::genexpr@31:0: uncovered (stub protocol argument is not a builtin leaf), su
 main::filtered@37:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::walrus_owned@43:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
 main::main@52:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@34:13: uncovered (generator expression)
+main::<genexpr>@34:13: uncovered (call needs finalized known summary)

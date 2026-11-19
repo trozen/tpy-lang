@@ -1,10 +1,10 @@
 main::__tpy_init: uncovered (module initialization)
 main::main@35:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::gen@99:0: uncovered (loop across a suspension)
-main::kwgen@107:0: uncovered (loop across a suspension)
+main::gen@99:0: uncovered (by-value capture of a borrowed parameter)
+main::kwgen@107:0: uncovered (by-value capture of a borrowed parameter)
 main::first@115:0: covered (storage: no_proof_required)
 main::forward@119:0: uncovered (call needs resolved ordinary callee)
 main::forward2@123:0: uncovered (call needs resolved ordinary callee)
 main::drop@127:0: covered (storage: no_proof_required), summary: known
 main::Caller.run@12:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
-main::Collector.sizes@27:4: uncovered (loop across a suspension)
+main::Collector.sizes@27:4: uncovered (by-value capture of a borrowed parameter)

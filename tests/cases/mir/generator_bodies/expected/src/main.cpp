@@ -100,7 +100,7 @@ __coro_not_async not_async(int32_t n) {
 }
 
 
-// def not_for(xs: list[int32]) -> Iterator[int32]:  # tpyc: mir(uncovered /^loop across a suspension$/)
+// def not_for(xs: list[int32]) -> Iterator[int32]:  # tpyc: mir(incomplete /^suspension: loan of caller storage held across a suspension$/)
 __gen_not_for not_for(const std::vector<int32_t>& xs) {
     return __gen_not_for(xs);
 }

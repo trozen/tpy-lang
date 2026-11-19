@@ -26,7 +26,7 @@ main::mixed_truth_arms@285:0: uncovered (unsupported metadata: wrap), summary: o
 main::not_or@295:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::readonly_join@302:0: certified, summary: opaque (summary output effect)
 main::main@311:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::<genexpr>@276:35: uncovered (generator expression)
+main::<genexpr>@276:35: uncovered (unsupported parameter type)
 main::F.__bool__@19:4: covered (storage: no_proof_required), summary: known
 main::C.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::F.__init__@16:4: covered (storage: no_proof_required), summary: known
