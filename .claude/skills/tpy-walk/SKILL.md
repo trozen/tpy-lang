@@ -97,7 +97,19 @@ code, moves a reference type across a boundary (alias vs copy), adds a
 copy / allocation / runtime check, or diverges from CPython; a churn
 kind with any of these is ordered as a behavior change.
 
-## Step 3: Opening message -- summary + item list
+## Step 3: Build every probe before the opening message
+
+The user should not wait between items, so every item's probe is
+written, built and checked now (Step 5 "Evidence rules"): base and
+branch C++, the CPython run, the snapshot match. Then each item message
+is written in full to `/tmp/agents/walk/<branch>/p<k>/item.md`. A probe
+that changes the item (no difference from base, a different diagnostic
+than expected, an unexpected CPython result) changes the grouping and
+the summary before they are shown. Builds stay serial; for a long walk,
+the probes may go to one agent with the item list and the layout, and
+you check its outputs against the snapshots.
+
+## Step 4: Opening message -- summary + item list
 
 ```
 # <branch>: <one-line gist>
@@ -105,6 +117,8 @@ kind with any of these is ordered as a behavior change.
 Branch: <branch> @ <sha> (<worktree path>) | <master: up to date | N commits behind> | reviewed up to <sha, if known> (<N> commits unreviewed) | suite green @ <sha> | <diffstat one-liner>
 
 ## Summary
+<2-4 sentences, no bullets: what the branch is for and what it delivers, in user terms -- the problem or request it started from (the BUGS.md / TODO.md entry, or the user's ask), what now works, compiles or is refused that did not before, and what it deliberately leaves out. A reader who stops here knows what the branch is.>
+
 - Flagged: <each [flag]: what was decided, by whom (autonomous / reviewer X vs Y), the alternative, its effect on the compiler or on user code; "-> item k" when walked> (omit if none)
 - Compiler: <2-5 bullets, mechanism level: what path now handles what; shared generic path or special case (why); net lines in tpyc/ (+a/-b)>
 - CPython divergence introduced or kept: <with its warning and escape hatch, or "none">
@@ -120,9 +134,10 @@ Branch: <branch> @ <sha> (<worktree path>) | <master: up to date | N commits beh
 Say next for item 1.
 ```
 
-## Step 4: One item per message
+## Step 5: One item per message
 
-Wait for "next" (or an item number) before each. An item message:
+Wait for "next" (or an item number) before each, then show its prepared
+`item.md` without rebuilding. An item message:
 
 ````
 ## Item <k>/<N>: <effect>  [risk] [flag]
