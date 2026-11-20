@@ -50,7 +50,7 @@ from .nodes import (
     TpyPattern, TpyWildcardPattern, TpyCapturePattern, TpyClassPattern,
     TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
     TpyMatchCase, TpyMatch,
-    RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyEnum, TpyModule,
+    RelativeImportKey, TpyImport, ContractMap, TpyFunction, TpyRecord, TpyProtocol, TpyEnum, TpyModule,
     AllUpdate, RunNode, RunStatement, ModuleDirectives, stamp_stands_for,
 )
 from .imports import (
@@ -282,6 +282,16 @@ class _NameArg:
 
     def __init__(self, name: str) -> None:
         self.name = name
+
+
+class _DictArg(dict):
+    """A dict-literal decorator keyword value. `written` keeps every
+    (key, value) pair as written, a repeated key included, which the dict
+    itself would silently collapse to its last value."""
+
+    def __init__(self, written: list[tuple[object, object]]) -> None:
+        super().__init__(written)
+        self.written = written
 
 
 class _UnreadArg:
@@ -1176,7 +1186,8 @@ class Parser:
     @staticmethod
     def _decorator_kwarg_values(dec: ast.Call) -> dict[str, object]:
         """The literal keyword values of a decorator call: a constant, a
-        name (`_NameArg`), or a tuple of constants. Any other value is an
+        name (`_NameArg`), a tuple of constants or a dict of constants. Any
+        other value is an
         `_UnreadArg`, which no schema type accepts."""
         kw_dict: dict[str, object] = {}
         for kw in dec.keywords:
@@ -1187,6 +1198,12 @@ class Parser:
             elif (isinstance(kw.value, ast.Tuple)
                   and all(isinstance(e, ast.Constant) for e in kw.value.elts)):
                 kw_dict[kw.arg] = tuple(e.value for e in kw.value.elts)
+            elif (isinstance(kw.value, ast.Dict)
+                  and all(isinstance(e, ast.Constant)
+                          for e in (*kw.value.keys, *kw.value.values))):
+                kw_dict[kw.arg] = _DictArg(
+                    [(k.value, v.value)
+                     for k, v in zip(kw.value.keys, kw.value.values)])
             else:
                 kw_dict[kw.arg] = _UnreadArg()
         return kw_dict
@@ -1252,51 +1269,88 @@ class Parser:
             result[kw.arg] = self._qualify(resolved)
         return result
 
-    def _parse_borrow_facts(
-            self, qname: str, kw: dict[str, object], dec: ast.expr
-    ) -> 'tuple[tuple[str, ...], tuple[str, ...]] | None':
-        """The parameter names a binding's `borrows=(...)` / `element_of=(...)`
-        keywords declare its result borrows, or None when it declares
-        neither; which parameters they name is checked at registration,
-        against the resolved signature."""
-        if "borrows" not in kw and "element_of" not in kw:
-            return None
-        borrows = kw.get("borrows", ())
-        element_of = kw.get("element_of", ())
-        name = bare_name(qname)
-        if not borrows and not element_of:
-            raise ParseError(
-                f"@{name}(borrows=..., element_of=...) must name at least "
-                f"one parameter the result borrows", dec)
-        both = [n for n in borrows if n in element_of]
-        if both:
-            raise ParseError(
-                f"@{name} names '{both[0]}' in both borrows= and "
-                f"element_of=; the result is either that argument or one of "
-                f"its elements", dec)
-        return tuple(borrows), tuple(element_of)
+    _BINDING_DECORATORS = frozenset(
+        {qnames.NATIVE, qnames.CPP_TEMPLATE, qnames.EXPORT})
 
-    def _parse_adopts(self, qname: str, kw: dict[str, object],
-                      dec: ast.expr) -> tuple[str, ...]:
-        """The parameter names a binding's `adopts=(...)` keyword declares
-        its result takes over when handed a fresh argument; which parameters
-        they name is checked at registration, against the resolved
-        signature."""
-        adopts = tuple(kw.get("adopts", ()))
+    @staticmethod
+    def _one_binding(earlier: str | None, qname: str, what: str,
+                     node: ast.AST) -> str:
+        """The name of the one binding decorator (`_BINDING_DECORATORS`) a
+        function or method carries, given the one an earlier decorator
+        wrote. A second is refused: its native name, call form and contract
+        keywords would silently replace the first's."""
         name = bare_name(qname)
-        if "adopts" in kw and not adopts:
+        if earlier is not None:
             raise ParseError(
-                f"@{name}(adopts=...) must name at least one parameter the "
-                f"result takes over", dec)
-        declared = (tuple(kw.get("borrows", ()))
-                    + tuple(kw.get("element_of", ())))
-        both = [n for n in adopts if n in declared]
-        if both:
-            raise ParseError(
-                f"@{name} names '{both[0]}' in both adopts= and borrows= / "
-                f"element_of=; the result either takes the argument over or "
-                f"borrows it", dec)
-        return adopts
+                f"{what} cannot have both @{earlier} and @{name}", node)
+        return name
+
+    _RESULT_RELATIONS = ("borrow", "element", "adopts", "none")
+    _ARG_EFFECTS = ("writes", "compared", "stored")
+
+    def _parse_contract(
+            self, qname: str, kw: dict[str, object], dec: ast.expr, *,
+            method: bool,
+    ) -> 'tuple[ContractMap | None, ContractMap | None]':
+        """A binding's `result=` / `args=` maps, as (parameter name,
+        relation) pairs in written order, each None when the keyword is
+        absent. The values are checked here; which parameters the keys name
+        is checked at registration, against the resolved signature."""
+        name = bare_name(qname)
+        result: ContractMap | None = None
+        args: ContractMap | None = None
+        if "result" in kw:
+            result = tuple(kw["result"].items())
+            if not result:
+                raise ParseError(
+                    f"@{name}(result=...) must name at least one parameter",
+                    dec)
+            for key, rel in result:
+                if rel not in self._RESULT_RELATIONS:
+                    raise ParseError(
+                        f"@{name}(result=...) gives '{key}' the relation "
+                        f"'{rel}'; a result relation is \"borrow\", "
+                        f"\"element\", \"adopts\" or \"none\"", dec)
+                if rel == "adopts" and method:
+                    raise ParseError(
+                        f"@{name}(result=...) gives '{key}' \"adopts\", which "
+                        f"is only valid on a free function stub: it declares "
+                        f"what a bound C++ call's result takes over", dec)
+        if "args" in kw:
+            if not method:
+                raise ParseError(
+                    f"@{name}(args=...) is only valid on a method stub: a "
+                    f"free function has no receiver whose elements it acts "
+                    f"on", dec)
+            args = tuple(kw["args"].items())
+            if not args:
+                raise ParseError(
+                    f"@{name}(args=...) must name at least one parameter",
+                    dec)
+            for key, eff in args:
+                if eff not in self._ARG_EFFECTS:
+                    raise ParseError(
+                        f"@{name}(args=...) gives '{key}' the effect "
+                        f"'{eff}'; an argument effect is \"writes\", "
+                        f"\"compared\" or \"stored\"", dec)
+                if (eff == "writes") != (key == "self"):
+                    raise ParseError(
+                        f"@{name}(args=...) gives '{key}' \"{eff}\": "
+                        + ("only the receiver, 'self', is declared written "
+                           "(its elements replaced in place)"
+                           if eff == "writes" else
+                           "the receiver is declared \"writes\"; "
+                           "\"compared\" / \"stored\" name an argument the "
+                           "method compares with or stores into its "
+                           "elements"), dec)
+            effects = {eff for _, eff in args}
+            if {"compared", "stored"} <= effects:
+                raise ParseError(
+                    f"@{name}(args=...) declares both \"compared\" and "
+                    f"\"stored\" arguments; the method either holds its "
+                    f"element arguments from then on or only compares them",
+                    dec)
+        return result, args
 
     def _parse_readonly_arg(self, arg: object, dec: ast.expr) -> tuple[bool, bool]:
         """Parse @readonly validated arg -> (is_readonly, readonly_opt_out).
@@ -1318,7 +1372,8 @@ class Parser:
         takes no positional arg. Type mapping: bool->bool, str->str,
         type->_NameArg (type name reference), Callable->_NameArg (a method
         named by reference), a tuple of str -> a tuple of names (any
-        length), `bool | str` -> either.
+        length), a dict of str to str -> a dict of names, `bool | str` ->
+        either.
         """
         if not func.params:
             return _DecoratorArgSchema()  # bare only
@@ -1350,6 +1405,10 @@ class Parser:
             if (isinstance(ptype, TupleType)
                     and all(is_str_type(e) for e in ptype.element_types)):
                 return (tuple, "tuple of names")
+            if (isinstance(ptype, NominalType)
+                    and ptype.qualified_name() == qnames.DICT
+                    and all(is_str_type(a) for a in ptype.type_args)):
+                return (dict, "a dict of names to strings")
             return None
 
         kwarg_descs: dict[str, str] = {}
@@ -1392,7 +1451,7 @@ class Parser:
     def _reject_free_function_method_kwargs(
         qname: str, kw: dict[str, object], dec: ast.expr,
     ) -> None:
-        for method_kw in ("mutates", "element_effect", "element_access"):
+        for method_kw in ("element_access",):
             if method_kw in kw:
                 raise ParseError(
                     f"@{bare_name(qname)}({method_kw}=...) is only valid "
@@ -1487,6 +1546,20 @@ class Parser:
                     raise ParseError(
                         f"@{dec_name}({key}=...) expects a tuple of names, "
                         f"e.g. {key}=(\"a\", \"b\")", dec)
+                if expected_type is dict and not all(
+                        isinstance(e, str) for e in (*val, *val.values())):
+                    raise ParseError(
+                        f"@{dec_name}({key}=...) expects a dict of names to "
+                        f"strings, e.g. {key}={{\"a\": \"b\"}}", dec)
+                if expected_type is dict:
+                    seen: set[object] = set()
+                    for name, _ in (val.written if isinstance(val, _DictArg)
+                                    else ()):
+                        if name in seen:
+                            raise ParseError(
+                                f"@{dec_name}({key}=...): {key}= names "
+                                f"'{name}' twice", dec)
+                        seen.add(name)
 
         validated_kwargs = raw_kwargs if schema.kwargs else {}
         return (pos_arg, validated_kwargs)
@@ -1673,19 +1746,14 @@ class Parser:
                         f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
                 linkage = new_linkage
                 native_name = pos
-                if "adopts" in kw:
-                    raise ParseError(
-                        f"@{bare_name(qname)}(adopts=...) is only valid on a "
-                        f"free function stub: it declares what a bound C++ "
-                        f"call's result takes over", dec)
-                for call_kw in ("transient", "checks_signals", "borrows",
-                                "element_of"):
+                for call_kw in ("transient", "checks_signals", "result",
+                                "args"):
                     if call_kw in kw:
                         raise ParseError(
                             f"@{bare_name(qname)}({call_kw}=...) is only valid on a "
                             f"function or method stub: it declares what a bound C++ "
                             f"call does", dec)
-                for method_kw in ("mutates", "element_effect", "element_access"):
+                for method_kw in ("element_access",):
                     if method_kw in kw:
                         raise ParseError(
                             f"@{bare_name(qname)}({method_kw}=...) is only valid "
@@ -2525,10 +2593,10 @@ class Parser:
         method_linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         native_function: bool = False
-        native_mutates: str | None = None
-        mutates_dec: ast.expr | None = None
-        borrow_facts: 'tuple[tuple[str, ...], tuple[str, ...]] | None' = None
-        element_effect: str | None = None
+        declared_result: ContractMap | None = None
+        declared_args: ContractMap | None = None
+        args_dec: ast.expr | None = None
+        binding_name: str | None = None
         element_access: bool | str | None = None
         cpp_template: str | None = None
         is_property_getter = False
@@ -2553,16 +2621,15 @@ class Parser:
                     raise ParseError(f"@property deleter is not supported", dec)
             qname, arg = self._require_decorator(dec, f"method '{node.name}'")
             pos, kw = self._validate_decorator_args(qname, arg, dec)
+            if qname in self._BINDING_DECORATORS:
+                binding_name = self._one_binding(
+                    binding_name, qname, f"Method '{node.name}'", node)
             if qname in (qnames.NATIVE, qnames.CPP_TEMPLATE):
-                if "adopts" in kw:
-                    raise ParseError(
-                        f"@{bare_name(qname)}(adopts=...) is only valid on a "
-                        f"free function stub: it declares what a bound C++ "
-                        f"call's result takes over", dec)
-                borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
-                                or borrow_facts)
-                element_access = (self._parse_element_access(kw)
-                                  or element_access)
+                declared_result, declared_args = self._parse_contract(
+                    qname, kw, dec, method=True)
+                if declared_args is not None:
+                    args_dec = dec
+                element_access = self._parse_element_access(kw)
             if qname == qnames.STATICMETHOD:
                 is_staticmethod = True
             elif qname == qnames.CLASSMETHOD:
@@ -2616,21 +2683,6 @@ class Parser:
                 native_name = pos
                 native_function = kw.get("function", False)
                 self._reject_type_fact_kwargs(qname, kw, dec)
-                if "mutates" in kw:
-                    if kw["mutates"] != "elements":
-                        raise ParseError(
-                            f"@{bare_name(qname)}(mutates=...) only supports "
-                            f"mutates=\"elements\" (a mutating method that "
-                            f"declares nothing may move or free every element)",
-                            dec)
-                    native_mutates = "elements"
-                    mutates_dec = dec
-                if "element_effect" in kw:
-                    if kw["element_effect"] not in ("insert", "lookup"):
-                        raise ParseError(
-                            f"@{bare_name(qname)}(element_effect=...) is "
-                            f"\"insert\" or \"lookup\"", dec)
-                    element_effect = kw["element_effect"]
                 if kw.get("transient"):
                     transient_dec = dec
                 if kw.get("checks_signals"):
@@ -2690,17 +2742,20 @@ class Parser:
                 raise ParseError(f"@auto_readonly cannot be combined with @staticmethod on method '{node.name}'", auto_readonly_dec)
             if node.name in ("__init__", "__del__"):
                 raise ParseError(f"@auto_readonly is not valid on '{node.name}'", auto_readonly_dec)
-        if native_mutates is not None:
+        if declared_args is not None and ("self", "writes") in declared_args:
             # Checked after every decorator is read, so their order cannot matter.
+            dec_name = self._decorator_local_name(args_dec) or "native"
             if is_staticmethod or is_classmethod:
                 raise ParseError(
-                    f"@native(mutates=...) on '{node.name}': a method without a "
-                    f"receiver has no elements to write", mutates_dec)
+                    f"@{dec_name}(args={{\"self\": \"writes\"}}) on "
+                    f"'{node.name}': a method without a receiver has no "
+                    f"elements to write", args_dec)
             if is_readonly or is_pure or auto_readonly:
                 raise ParseError(
-                    f"@native(mutates=...) on '{node.name}': the method declares "
-                    f"that it does not write its receiver (@readonly, @pure or "
-                    f"@auto_readonly)", mutates_dec)
+                    f"@{dec_name}(args={{\"self\": \"writes\"}}) on "
+                    f"'{node.name}': the method declares that it does not "
+                    f"write its receiver (@readonly, @pure or "
+                    f"@auto_readonly)", args_dec)
 
         # Extract method-level type parameters (e.g. def foo[T](self, x: T) -> T:)
         method_type_params, _, method_type_param_bounds = self._parse_type_params(
@@ -2925,13 +2980,11 @@ class Parser:
             linkage=method_linkage,
             native_name=native_name,
             native_function=native_function,
-            native_mutates=native_mutates,
-            native_element_effect=element_effect,
             element_access=element_access,
             native_cpp_return_type=native_cpp_return_type,
             cpp_template=cpp_template,
-            declared_borrows=borrow_facts[0] if borrow_facts else None,
-            declared_element_of=borrow_facts[1] if borrow_facts else (),
+            declared_result=declared_result,
+            declared_args=declared_args,
             type_params=method_type_params,
             type_param_bounds=method_type_param_bounds,
             defaults=defaults,
@@ -2981,8 +3034,8 @@ class Parser:
         checks_signals_dec: ast.expr | None = None
         overload_form: OverloadForm | None = None
         value_ptr_coercion = False
-        borrow_facts: tuple[tuple[str, ...], tuple[str, ...]] | None = None
-        adopts: tuple[str, ...] = ()
+        declared_result: ContractMap | None = None
+        binding_name: str | None = None
         error_return: str | None = None
         builtin_decorator_key: str | None = None
         builtin_function_key: str | None = None
@@ -3001,6 +3054,9 @@ class Parser:
                 type_param_defaults = self._parse_type_param_default(dec)
                 continue
             pos, kw = self._validate_decorator_args(qname, arg, dec)
+            if qname in self._BINDING_DECORATORS:
+                binding_name = self._one_binding(
+                    binding_name, qname, f"Function '{node.name}'", node)
             if qname == qnames.NOALLOC:
                 is_noalloc = True
             elif qname == qnames.HOTPATH:
@@ -3032,9 +3088,8 @@ class Parser:
                     transient_dec = dec
                 if kw.get("checks_signals"):
                     checks_signals_dec = dec
-                borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
-                                or borrow_facts)
-                adopts = self._parse_adopts(qname, kw, dec) or adopts
+                declared_result = self._parse_contract(
+                    qname, kw, dec, method=False)[0]
                 self._reject_free_function_method_kwargs(qname, kw, dec)
             elif qname == qnames.BUILTIN_DECORATOR:
                 builtin_decorator_key = pos
@@ -3062,11 +3117,6 @@ class Parser:
                     exposed_to_host = True
                     continue
                 new_linkage = self._FUNCTION_LINKAGE_MAP[qname]
-                if linkage != FunctionLinkage.DEFAULT:
-                    old_name = self._LINKAGE_DISPLAY_NAMES.get(linkage, linkage.value)
-                    new_name = self._LINKAGE_DISPLAY_NAMES.get(new_linkage, new_linkage.value)
-                    raise ParseError(
-                        f"Function '{node.name}' cannot have both @{old_name} and @{new_name}", node)
                 if kw.get("function"):
                     dec_name = self._decorator_local_name(dec)
                     raise ParseError(f"@{dec_name}(function=...) is only valid on methods, not free functions", dec)
@@ -3090,9 +3140,8 @@ class Parser:
                         f"before modules that use decorator kwargs)", dec)
                 native_name = pos
                 self._reject_type_fact_kwargs(qname, kw, dec)
-                borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
-                                or borrow_facts)
-                adopts = self._parse_adopts(qname, kw, dec) or adopts
+                declared_result = self._parse_contract(
+                    qname, kw, dec, method=False)[0]
                 self._reject_free_function_method_kwargs(qname, kw, dec)
                 if kw.get("transient"):
                     transient_dec = dec
@@ -3302,9 +3351,7 @@ class Parser:
             cpp_template=cpp_template,
             is_stub=is_stub,
             value_ptr_coercion=value_ptr_coercion,
-            declared_borrows=borrow_facts[0] if borrow_facts else None,
-            declared_element_of=borrow_facts[1] if borrow_facts else (),
-            declared_adopts=adopts,
+            declared_result=declared_result,
             type_params=type_params,
             type_param_kinds=type_param_kinds,
             type_param_bounds=type_param_bounds,

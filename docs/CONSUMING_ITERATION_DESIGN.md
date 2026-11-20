@@ -119,7 +119,7 @@ the borrowing overload is used and a warning is emitted.
 
 ```python
 @readonly
-@cpp_template("::tpy::copy_iter({0})", adopts=("iterable",))
+@cpp_template("::tpy::copy_iter({0})", result={"iterable": "adopts"})
 def copy_iter[T](iterable: readonly[Iterable[T]], /) -> Iterator[Own[T]]: ...
 ```
 
@@ -489,7 +489,7 @@ for x in span(b):    # always borrows, x is Node reference
 - **`copy_iter()`**: An ordinary call of its stub, rendering
   `::tpy::copy_iter(b)` (the `CopyIter` C++ adapter) for element-by-element
   copy. Works inline in `extend(copy_iter(b))`. Borrow-tracked as the
-  `map` / `enumerate` combinators are (its stub's `adopts=` parameter).
+  `map` / `enumerate` combinators are (its stub's `"adopts"` parameter).
 - **Container-level move for-loops**: `for x in b` at last use on `list[T]` moves
   the vector into `OwnIter` (source freed early). Overload dispatch selects
   consuming `__iter__` based on liveness.

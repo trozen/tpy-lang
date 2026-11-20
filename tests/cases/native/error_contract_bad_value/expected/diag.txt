@@ -1,0 +1,1 @@
+main.py:11: error: @native(result=...) gives 'a' the relation 'borrows'; a result relation is "borrow", "element", "adopts" or "none"

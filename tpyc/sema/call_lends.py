@@ -584,9 +584,9 @@ def borrow_declared_sources(call: TpyCallLike,
                             declared_of: 'DeclaredOf | None'
                             ) -> list[LendSource] | None:
     """The operands a call to a binding that DECLARES its result's borrow
-    sources (`borrows=` / `element_of=`) lends by that declaration -- what
-    `stamp_result_borrow` decides the call's result form from; None for a
-    call whose result is already decided fresh."""
+    sources (`result=` "borrow" / "element") lends by that declaration --
+    what `stamp_result_borrow` decides the call's result form from; None for
+    a call whose result is already decided fresh."""
     lend = callee_lend_fact(call)
     if lend.kind is CalleeFact.UNRESOLVED or lend.fresh:
         return None
@@ -810,8 +810,8 @@ def _stub_result_retains(fi: FunctionInfo, index: int, slot: TpyType | None,
                          call: TpyExpr | None,
                          type_of: ExprTypeOf | None) -> bool:
     """The RESULT channel of a body-less binding: whether its result may
-    keep operand `index`. What the binding declares (`borrows=` /
-    `element_of=`, stamped with the iterator and receiver conventions at
+    keep operand `index`. What the binding declares (`result=` "borrow" /
+    "element", stamped with the iterator and receiver conventions at
     registration) holds first; a declared borrow at a value-shaped
     instantiation is a fresh value (`declared_result_is_value`) unless the
     value may hold a pointer (a view result). A borrowing constructor keeps
@@ -922,7 +922,7 @@ class Retention(Flag):
     MEASURED = auto()
     # A body-less binding's result keeps it.
     RESULT = auto()
-    # A body-less binding's DECLARED borrow (`borrows=` / `element_of=`)
+    # A body-less binding's DECLARED borrow (`result=` "borrow"/"element")
     # whose value form holds no pointer keeps it: the result binds as a
     # borrow only where every argument it names lends (`ResultForm`), so
     # an argument that lends nothing is not held past the call.
@@ -984,8 +984,8 @@ def retention_channel(fi: 'FunctionInfo | None', index: int,
 def _adopts_fresh(fi: FunctionInfo, index: int, arg: TpyExpr | None,
                   analyzer: 'ValueCategoryAnalyzer | None') -> bool:
     """Whether the binding's result takes over argument `arg` at parameter
-    `index` (`adopts=`): a fresh one is moved into the result, so the
-    result channel keeps nothing of its storage -- the loans the argument
+    `index` (`result=` "adopts"): a fresh one is moved into the result, so
+    the result channel keeps nothing of its storage -- the loans the argument
     itself carries are its own operands' and stay with it. Without an
     analyzer to tell a fresh argument from a named one it fails closed."""
     return (index in fi.root.adopted_params and arg is not None

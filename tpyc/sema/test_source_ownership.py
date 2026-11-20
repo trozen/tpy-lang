@@ -1844,9 +1844,9 @@ LENDING_DECLS = """\
 from typing import Iterator
 from tpy import NativeIterable, pure, readonly
 from tpy.extern import native
-@native(borrows=("a", "b"))
+@native(result={"a": "borrow", "b": "borrow"})
 def upick[T](a: tuple[T, int32], b: tuple[T, int32]) -> tuple[T, int32]: ...
-@native(element_of=("items",))
+@native(result={"items": "element"})
 def ufirst[T](items: list[tuple[T, int32]]) -> tuple[T, int32]: ...
 @native("::Bag", elements=True)
 class Bag[T](NativeIterable[T]):
@@ -1855,7 +1855,7 @@ class Bag[T](NativeIterable[T]):
     @pure
     @readonly
     def __iter__(self) -> Iterator[T]: ...
-    @native("first", element_of=("self",))
+    @native("first", result={"self": "element"})
     @readonly
     def first(self) -> T: ...
 class HT[T]:
@@ -1881,7 +1881,7 @@ _HEDGE_0 = ("may copy T into owned storage (tuple element 0) if not a value "
 ])
 def test_stamped_generic_lending_call_hedges_each_leaf(call: str,
                                                        params: str) -> None:
-    # A call with a lend contract (`borrows=` / `element_of=`, a builtin's
+    # A call with a lend contract (`result=` "borrow" / "element", a builtin's
     # or a user binding's) hands its open `T` leaf to every owning sink as
     # its scalar twin does: hedged per leaf, never undecided.
     arg = ("" if call.startswith("min(") else
@@ -2030,7 +2030,7 @@ def test_stamped_call_of_fresh_operands_moves() -> None:
 def own_a[T](x: T) -> Own[tuple[T, int32]]: ...
 @native
 def fresh2[T](x: T) -> Own[tuple[tuple[T, int32], int32]]: ...
-@native(borrows=("a", "b"))
+@native(result={"a": "borrow", "b": "borrow"})
 def choose[T](a: tuple[tuple[T, int32], int32], b: tuple[tuple[T, int32], int32]) -> tuple[tuple[T, int32], int32]: ...
 def fresh_ops[T](x: T, y: T, xs: list[tuple[T, int32]]) -> Own[tuple[T, int32]]:
     xs.append(min(own_a(x), own_a(y), key=lambda p: p[1]))
@@ -2102,7 +2102,7 @@ def lookr(a: A) -> R: ...
 def mkr2(a: A) -> Own[tuple[R, int32]]: ...
 @native
 def fresh2[T](x: T) -> Own[tuple[tuple[T, int32], int32]]: ...
-@native(borrows=("a", "b"))
+@native(result={"a": "borrow", "b": "borrow"})
 def choose[T](a: tuple[tuple[T, int32], int32], b: tuple[tuple[T, int32], int32]) -> tuple[tuple[T, int32], int32]: ...
 def app(a: A, xs: list[tuple[A, int32]]) -> Own[tuple[A, int32]]:
     xs.append(make(a)[0])

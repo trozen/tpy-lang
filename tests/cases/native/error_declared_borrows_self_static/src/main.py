@@ -1,5 +1,5 @@
-# `borrows=("self",)` on a static method stub names no parameter: a static
-# method has no receiver for its result to borrow.
+# `result={"self": "borrow"}` on a static method stub names no parameter:
+# a static method has no receiver for its result to borrow.
 from tpy import int32
 from tpy.extern import native
 
@@ -10,7 +10,7 @@ class Node:
 
     # the declaration names a receiver the method does not have
     @staticmethod
-    @native(borrows=("self",))
+    @native(result={"self": "borrow"})
     def make(other: Node) -> Node: ...  # tpyc: error(/'self', which names no parameter of the static method/)
 
 

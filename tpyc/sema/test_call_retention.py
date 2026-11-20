@@ -53,7 +53,7 @@ class Tok(ValueType):
 
 
 @pure
-@native("pick", borrows=("a",))
+@native("pick", result={"a": "borrow", "b": "none"})
 def pick_a(a: StrView, b: StrView) -> StrView: ...
 
 
@@ -61,11 +61,11 @@ def pick_a(a: StrView, b: StrView) -> StrView: ...
 def pick_any(a: StrView, b: StrView) -> StrView: ...
 
 
-@native("pick_box", borrows=("a",))
+@native("pick_box", result={"a": "borrow", "b": "none"})
 def pick_box(a: Box, b: Box) -> Box: ...
 
 
-@native("span_of", borrows=("xs",))
+@native("span_of", result={"xs": "borrow"})
 def span_of(xs: readonly[list[int32]]) -> Span[readonly[int32]]: ...
 
 
@@ -176,7 +176,7 @@ def _retains(case, label: str, index: int) -> bool:
     ("sum", 0, False),
     # A declared borrow at a value-shaped instantiation is a fresh value.
     ("min", 0, False),
-    # The result channel is never suppressed: `borrows=` names `a` alone.
+    # The result channel is never suppressed: `result=` borrows `a` alone.
     ("pick_a", 0, True),
     ("pick_a", 1, False),
     # An undeclared free view result may read either operand.
@@ -273,7 +273,7 @@ class Sink:
     @native("push_back")
     def stash(self, text: StrView) -> None: ...
 
-    @native("emplace_back", borrows=("text",))
+    @native("emplace_back", result={"text": "borrow"})
     def echo(self, text: StrView) -> StrView: ...
 
     @native("push_all")
@@ -625,7 +625,7 @@ class Box:
     p: Ptr[readonly[P]] = None
 
 
-@cpp_template("::tpy::builtin_enumerate({0})", adopts=("items",))
+@cpp_template("::tpy::builtin_enumerate({0})", result={"items": "adopts"})
 def walk[T](items: Iterable[T]) -> Iterator[tuple[int32, T]]: ...
 
 
@@ -646,7 +646,7 @@ def subject(xs: list[P], box: Box) -> None:
 
 
 def test_adopted_fresh_argument_drops_the_result_channel() -> None:
-    # `adopts=`: the result takes a fresh argument over, so the call keeps
+    # `result=` "adopts": the result takes a fresh argument over, so the call keeps
     # nothing of its storage; a named argument stays lent through the result.
     compiler, modules = _compile(_ADOPT_SRC)
     entry = _entry(modules)

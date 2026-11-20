@@ -1,4 +1,4 @@
-# `borrows=(...)` names the parameters a native result borrows; a name that
+# `result={...: "borrow"}` names what a native result borrows; a name that
 # is not a parameter of the binding is an error, not silently dropped.
 from tpy.extern import native
 
@@ -8,7 +8,7 @@ class Node:
     v: int
 
 
-@native(borrows=("nope",))
+@native(result={"nope": "borrow"})
 def pick(a: Node, b: Node) -> Node: ...  # tpyc: error(/'nope', which is not a parameter of 'pick'/)
 
 

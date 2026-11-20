@@ -15,7 +15,7 @@ def span[T](x: Spannable[T]) -> Span[readonly[T]]: ...
 
 @pure
 @readonly
-@native("tpy::deref_check", borrows=("x",))
+@native("tpy::deref_check", result={"x": "borrow"})
 def deref[T](x: Deref[T]) -> T: ...
 
 @value_ptr_coercion
@@ -26,7 +26,7 @@ def take_ptr[T](p: Ptr[T]) -> Ptr[T]: ...
 def make_default[T: Default]() -> Own[T]: ...
 
 @readonly
-@cpp_template("::tpy::copy_iter({0})", adopts=("iterable",))
+@cpp_template("::tpy::copy_iter({0})", result={"iterable": "adopts"})
 def copy_iter[T](iterable: readonly[Iterable[T]], /) -> Iterator[Own[T]]: ...
 
 

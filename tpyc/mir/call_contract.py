@@ -620,7 +620,7 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     result is fresh unless its declaration says where it comes from
     (`THIRStubCallee.result_origins`): an owned-leaf result borrows the
     lent arguments named there -- `min(a, b)` over `int` binds `std::min`, a
-    reference to an argument, and declares `borrows=` for it -- and with
+    reference to an argument, and declares a `result=` borrow of it -- and with
     none it is fresh; a constructed result (`constructs_result`, an
     initializer) borrows no argument. A view result borrows the named lent
     arguments, or, with none named, every argument the call lends."""
@@ -724,7 +724,7 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     container view by value. The receiver effect is derived from the
     declaration, first match wins: a `@pure` method (an `@auto_readonly`
     mutable clone included) and a `@readonly` one only read it; a method
-    declaring `mutates="elements"`, and any mutating method through a view
+    declaring `args={"self": "writes"}`, and any mutating method through a view
     (which cannot change a container's shape), write its elements; any
     other method writes its structure. The other parameters follow the
     free-stub rule, plus an `Own[...]` element handed over by value or by

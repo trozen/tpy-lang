@@ -1,4 +1,4 @@
-# `adopts=`: iter() and the combinators take a fresh argument over (no hold, no
+# `result=` adopts: iter() and the combinators take a fresh argument over (no hold, no
 # element copy -- P's __copy__ prints), while a named or by-reference one stays lent.
 from typing import Iterator, Self
 from tpy import char, int32, Own, Ptr, readonly

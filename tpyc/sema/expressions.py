@@ -6955,7 +6955,7 @@ class ExpressionAnalyzer:
 
     def _warn_narrowed_lookup_arg(self, call: TpyMethodCall) -> None:
         """`warn_narrowed_lookup_key` at a container lookup method (the
-        stub's `element_effect="lookup"`): its first parameter is the
+        stub's `args=` "compared"): its first parameter is the
         compared one; a default value is stored, not compared."""
         if call.args:
             self._warn_narrowed_lookup(call.resolved_function_info,

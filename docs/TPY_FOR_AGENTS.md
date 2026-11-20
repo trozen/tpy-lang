@@ -240,7 +240,7 @@ source of:
 - An argument passed into an `Own[T]` parameter.
 - A global assignment.
 - A LOCAL bound to `min` / `max` / `next(it, d)` (or another
-  `borrows=` / `element_of=` binding) whose result cannot be a borrow -- an operand
+  `result=` "borrow" / "element" binding) whose result cannot be a borrow -- an operand
   is a temporary, or the source is an iterator
   (`m = max(walk(ps), key=f)`): `copies P into local 'm'`. Reading the
   result in place (`max(walk(ps), key=f).v`) copies nothing and is silent,

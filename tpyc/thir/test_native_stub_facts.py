@@ -1,5 +1,5 @@
 """The element-storage facts a native stub declares: `@native(...,
-elements=True)` on a class and `@native(..., mutates="elements")` on a
+elements=True)` on a class and `@native(..., args={"self": "writes"})` on a
 method -- where the parser accepts them, what registration reads off the
 stub (`TypeDef.native_members`), the THIR stub callee fact, and sema's
 iterator-invalidation check, for the builtin stubs and a user binding."""
@@ -39,7 +39,7 @@ class Ring[T](NativeIterable[T]):
     @pure
     @readonly
     def __getitem__(self, i: int32) -> T: ...
-    @native("put", mutates="elements")
+    @native("put", args={"self": "writes"})
     def put(self, i: int32, v: Own[T]) -> None: ...
     @native("push")
     def push(self, v: Own[T]) -> None: ...
@@ -177,10 +177,13 @@ def test_declared_members_read_the_instantiated_type_arguments():
 
 # --- parse rejections ---------------------------------------------------------
 
-_NOT_ON_CLASS = r"@native\(mutates=\.\.\.\) is only valid on a method stub"
+_NOT_ON_CLASS = r"@native\(args=\.\.\.\) is only valid on a function or method stub"
 _NOT_ON_METHOD = r"@native\(elements=\.\.\.\) is only valid on a class"
-_DECLARES_NO_WRITE = r"@native\(mutates=\.\.\.\) on 'at': the method declares that it does not write its receiver"
-_NO_RECEIVER = r"@native\(mutates=\.\.\.\) on 'make': a method without a receiver has no elements to write"
+_WRITES = '@native("at", args={"self": "writes"})'
+_DECLARES_NO_WRITE = (r'@native\(args=\{"self": "writes"\}\) on \'at\': the method declares '
+                      r"that it does not write its receiver")
+_NO_RECEIVER = (r'@native\(args=\{"self": "writes"\}\) on \'make\': a method without a '
+                r"receiver has no elements to write")
 
 
 def _method(*decorators: str, signature: str = "def at(self, i: int32) -> T: ...") -> str:
@@ -189,41 +192,43 @@ def _method(*decorators: str, signature: str = "def at(self, i: int32) -> T: ...
 
 
 @pytest.mark.parametrize("source, message", [
-    (HEADER + '@native("my::Ring", mutates="elements")\nclass Ring[T]:\n    pass\n', _NOT_ON_CLASS),
+    (HEADER + '@native("my::Ring", args={"self": "writes"})\nclass Ring[T]:\n    pass\n', _NOT_ON_CLASS),
     (_method('@native("put", elements=True)', signature="def put(self, v: Own[T]) -> None: ..."),
      _NOT_ON_METHOD),
     (HEADER + '@native("put", elements=True)\ndef put(v: int32) -> None: ...\n', _NOT_ON_METHOD),
-    (HEADER + '@native("put", mutates="elements")\ndef put(v: int32) -> None: ...\n',
-     r"@native\(mutates=\.\.\.\) is only valid on a method stub: a free function has no receiver"),
-    # "structure" is what an undeclared mutating method already means.
-    (_method('@native("put", mutates="shape")', signature="def put(self, v: Own[T]) -> None: ..."),
-     r'@native\(mutates=\.\.\.\) only supports mutates="elements"'),
-    (_method('@native("put", mutates="structure")', signature="def put(self, v: Own[T]) -> None: ..."),
-     r'@native\(mutates=\.\.\.\) only supports mutates="elements"'),
-    # The conflict is checked after every decorator is read, so either order rejects.
-    (_method('@native("at", mutates="elements")', "@readonly"), _DECLARES_NO_WRITE),
-    (_method("@readonly", '@native("at", mutates="elements")'), _DECLARES_NO_WRITE),
-    (_method('@native("at", mutates="elements")', "@pure"), _DECLARES_NO_WRITE),
-    (_method('@native("at", mutates="elements")', "@auto_readonly"), _DECLARES_NO_WRITE),
-    (_method("@staticmethod", '@native("make", mutates="elements")',
-             signature="def make(n: int32) -> None: ..."), _NO_RECEIVER),
-    (_method("@classmethod", '@native("make", mutates="elements")',
-             signature="def make(cls, n: int32) -> None: ..."), _NO_RECEIVER),
-    # A template binding's mutating method stays a structure write.
-    (_method('@cpp_template("put({self}, {v})", mutates="elements")',
+    (HEADER + '@native("put", args={"v": "writes"})\ndef put(v: int32) -> None: ...\n',
+     r"@native\(args=\.\.\.\) is only valid on a method stub: a free function has no receiver"),
+    # A structure write is what an undeclared mutating method already means.
+    (_method('@native("put", args={"self": "structure"})',
              signature="def put(self, v: Own[T]) -> None: ..."),
-     r"@cpp_template\(\) got unexpected keyword argument 'mutates'"),
+     r"gives 'self' the effect 'structure'; an argument effect is"),
+    # The conflict is checked after every decorator is read, so either order rejects.
+    (_method(_WRITES, "@readonly"), _DECLARES_NO_WRITE),
+    (_method("@readonly", _WRITES), _DECLARES_NO_WRITE),
+    (_method(_WRITES, "@pure"), _DECLARES_NO_WRITE),
+    (_method(_WRITES, "@auto_readonly"), _DECLARES_NO_WRITE),
+    (_method("@staticmethod", '@native("make", args={"self": "writes"})',
+             signature="def make(n: int32) -> None: ..."), _NO_RECEIVER),
+    (_method("@classmethod", '@native("make", args={"self": "writes"})',
+             signature="def make(cls, n: int32) -> None: ..."), _NO_RECEIVER),
+    # @cpp_template takes the same schema, so the same conflicts.
+    (_method('@cpp_template("at({self}, {0})", args={"self": "writes"})', "@readonly"),
+     _DECLARES_NO_WRITE.replace("@native", "@cpp_template")),
+    (_method("@staticmethod", '@cpp_template("make({0})", args={"self": "writes"})',
+             signature="def make(n: int32) -> None: ..."),
+     _NO_RECEIVER.replace("@native", "@cpp_template")),
     # What a method does with its parts is a method's declaration.
-    (HEADER + '@native("my::Ring", element_effect="insert")\nclass Ring[T]:\n    pass\n',
-     r"@native\(element_effect=\.\.\.\) is only valid on a method stub"),
-    (HEADER + '@native("put", element_effect="insert")\ndef put(v: int32) -> None: ...\n',
-     r"@native\(element_effect=\.\.\.\) is only valid on a method stub: a free function"),
-    (_method('@native("put", element_effect="store")', signature="def put(self, v: Own[T]) -> None: ..."),
-     r'@native\(element_effect=\.\.\.\) is "insert" or "lookup"'),
-], ids=["mutates-on-class", "elements-on-method", "elements-on-function", "mutates-on-function",
-        "mutates-shape", "mutates-structure", "mutates-then-readonly", "readonly-then-mutates",
-        "mutates-pure", "mutates-auto-readonly", "mutates-staticmethod", "mutates-classmethod",
-        "cpp-template-mutates", "effect-on-class", "effect-on-function", "effect-unknown"])
+    (HEADER + '@native("my::Ring", args={"v": "stored"})\nclass Ring[T]:\n    pass\n',
+     _NOT_ON_CLASS),
+    (HEADER + '@native("put", args={"v": "stored"})\ndef put(v: int32) -> None: ...\n',
+     r"@native\(args=\.\.\.\) is only valid on a method stub: a free function"),
+    (_method('@native("put", args={"v": "store"})', signature="def put(self, v: Own[T]) -> None: ..."),
+     r"gives 'v' the effect 'store'; an argument effect is"),
+], ids=["writes-on-class", "elements-on-method", "elements-on-function", "writes-on-function",
+        "writes-structure", "writes-then-readonly", "readonly-then-writes",
+        "writes-pure", "writes-auto-readonly", "writes-staticmethod", "writes-classmethod",
+        "cpp-template-writes-readonly", "cpp-template-writes-staticmethod",
+        "effect-on-class", "effect-on-function", "effect-unknown"])
 def test_the_parser_rejects_a_misplaced_storage_declaration(source, message):
     with pytest.raises(ParseError, match=message):
         _compile(source)
@@ -337,7 +342,7 @@ class Bag(NativeIterable[int32]):
     @pure
     @readonly
     def __iter__(self) -> Iterator[int32]: ...
-    @native("put", mutates="elements")
+    @native("put", args={"self": "writes"})
     def put(self, i: int32, v: int32) -> None: ...
     @native("push")
     def push(self, v: int32) -> None: ...
@@ -353,3 +358,20 @@ def test_an_element_write_is_trusted_on_a_class_that_declares_no_elements(write,
     with activate_compiler(compiler):
         bag = get_type_def("__main__.Bag")
         assert not bag.owns_elements and bag.native_members is None
+
+
+# The same Ring with `put` bound by a template instead of a C++ name.
+TEMPLATE_RING = RING.replace('@native("put", args={"self": "writes"})',
+                             '@cpp_template("{self}.put({0}, {1})", args={"self": "writes"})')
+
+
+def test_a_template_method_declares_an_element_write_as_a_native_one_does():
+    assert TEMPLATE_RING != RING
+    compiler, modules = _compile(HEADER + TEMPLATE_RING + LOOP.replace("WRITE", "put(0, v)"))
+    entry = _entry(modules)
+    warnings = [d.message for d in entry.analyzer.diagnostics if d.level is DiagnosticLevel.WARNING]
+    # The loop's iterator over the receiver stays valid across the write.
+    assert not any("Mutation of 'r' while iterating" in w for w in warnings), warnings
+    with activate_compiler(compiler):
+        put, = entry.exports.records["Ring"].methods["put"]
+        assert put.cpp_template is not None and put.native_mutates == "elements"

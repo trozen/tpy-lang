@@ -1124,7 +1124,7 @@ class THIRStubCallee:
     A method stub (`receiver`) binds the call's INSTANTIATED receiver as
     parameter 0 (`readonly[0]` is the method's `@readonly`), followed by
     the declared parameters substituted at the receiver's type arguments.
-    `mutates_elements` is the method's `@native(mutates="elements")`: it
+    `mutates_elements` is the method's `@native(args={"self": "writes"})`: it
     replaces elements in place and moves none; a mutating method without
     it may move or free every element. Never set on a method that declares
     no write.
@@ -1137,7 +1137,7 @@ class THIRStubCallee:
     Never set on a method stub.
     `result_origins` are the parameters (indices into `signature`, so the
     receiver of a method stub is 0) whose storage the result may be or
-    lie in, as the declaration says: `borrows=` / `element_of=`, the
+    lie in, as the declaration says: `result=` "borrow" / "element", the
     native accessor's receiver borrow, or a template rendering its one
     argument (`int(x)` renders `x`). With none the result is fresh. The
     declaration is published as written (`stub_result_origins`); MIR's

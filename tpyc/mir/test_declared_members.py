@@ -62,10 +62,10 @@ class Ring[T](NativeIterable[T]):
     @readonly
     def __getitem__(self, i: int32) -> T: ...
 
-    @native("put", mutates="elements")
+    @native("put", args={"self": "writes"})
     def __setitem__(self, i: int32, v: Own[T]) -> None: ...
 
-    @native("put", mutates="elements")
+    @native("put", args={"self": "writes"})
     def put(self, i: int32, v: Own[T]) -> None: ...
 
     @native("push")

@@ -70,12 +70,12 @@ def first(t: T) -> StrView:
 
 
 @pure
-@native("pick", borrows=("a", "b"))
+@native("pick", result={"a": "borrow", "b": "borrow"})
 def pick(a: String, b: String) -> String: ...
 
 
 @pure
-@native("pick_view", borrows=("a", "b"))
+@native("pick_view", result={"a": "borrow", "b": "borrow"})
 def pick_view(a: str, b: str) -> str: ...
 
 

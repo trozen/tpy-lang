@@ -42,7 +42,7 @@ void repr_bound(std::string_view p) {
     std::cout << "repr_bound" << " " << h.v << "\n" << ::tpy::check_signals;
 }
 
-// # min_alias: `min` over int declares `borrows=`, so its result is `r.n` while `set_and_read` writes `r`
+// # min_alias: `min` over int declares `result=` borrows, so its result is `r.n` while `set_and_read` writes `r`
 // # (the run writes the value `r.n` already holds, so its output matches CPython;
 // # the call-site copy that would make it exact: BUGS.md#borrowed-arg-into-mutated-storage)
 // def min_alias(r: Box, b: int) -> int:
@@ -207,7 +207,7 @@ void main() {
     ::tpy::stdlib::os::rmdir("origin_target");
 }
 
-// # A stub's result is fresh unless its declaration names where it comes from (`borrows=`):
+// # A stub's result is fresh unless its declaration names where it comes from (`result=`):
 // # a fresh temporary kept by a view dangles, a declared origin aliases, an undeclared one does not.
 // import os
 //

@@ -431,6 +431,19 @@ def _check_member_default(
     return True
 
 
+@dataclass(frozen=True)
+class _ResultContract:
+    """A binding's `result=` map resolved to parameter indices, one set per
+    relation that stamps a fact ("none" stamps nothing)."""
+    borrows: frozenset[int]
+    elements: frozenset[int]
+    adopts: frozenset[int]
+
+    @property
+    def declares_borrow(self) -> bool:
+        return bool(self.borrows or self.elements)
+
+
 @dataclass
 class _DefaultSite:
     """One registered signature's defaults, queued for `resolve_defaults`:
@@ -2445,6 +2458,8 @@ class TypeRegistrar:
             shared_spelling = (DUNDER_CPP_TEMPLATES.get(method.name)
                                if not (method.cpp_template or method.native_function)
                                else None)
+            native_mutates, element_effect = self._declared_arg_effects(
+                method, method_param_infos)
             func_info = FunctionInfo(
                 name=method.name,
                 body=method,
@@ -2470,8 +2485,8 @@ class TypeRegistrar:
                 linkage=method.linkage,
                 native_name=method.native_name,
                 native_function=method.native_function,
-                native_mutates=method.native_mutates,
-                native_element_effect=method.native_element_effect,
+                native_mutates=native_mutates,
+                native_element_effect=element_effect,
                 element_access=method.element_access,
                 # Only `__enter__` needs it, and only it pays the body walk.
                 returns_self_borrow=(
@@ -2499,15 +2514,17 @@ class TypeRegistrar:
             if compiler is not None and not method.is_stub:
                 compiler.method_bodies.setdefault(
                     (owning_type_qname, method.name), []).append(method)
+            contract = (None if method.is_generator
+                        else self._resolve_result_contract(method, func_info))
             if method.is_generator:
                 # The frame also stores the receiver by reference, but -1 is
                 # not stamped yet; the receiver borrow is tracked in BUGS.md.
                 # (Const inference reads `return_lends_self_storage`, so a -1
                 # here would no longer flip the method non-readonly.)
                 self._stamp_iterator_retention(method, func_info)
-            elif method.declared_borrows is not None:
+            elif contract is not None and contract.declares_borrow:
                 # What the stub declares replaces the signature inference.
-                self._stamp_declared_borrow(method, func_info)
+                self._stamp_declared_borrow(func_info, contract)
             elif ((func_info.native_name is not None
                        or func_info.is_native
                        or func_info.cpp_template is not None)
@@ -4608,64 +4625,60 @@ class TypeRegistrar:
 
     def _stamp_result_borrows(self, func: TpyFunction, info: FunctionInfo) -> None:
         """The registration-time `return_borrows_from` of a free function:
-        what `borrows=` / `element_of=` declare, else the frame / combinator
-        retention."""
-        if func.declared_borrows is not None:
-            self._stamp_declared_borrow(func, info)
+        what `result=` declares, else the frame / combinator retention."""
+        contract = self._resolve_result_contract(func, info)
+        if contract is not None and contract.declares_borrow:
+            self._stamp_declared_borrow(info, contract)
         else:
             self._stamp_iterator_retention(func, info)
-        if func.declared_adopts:
-            self._stamp_adopts(func, info)
+        if contract is not None and contract.adopts:
+            info.adopted_params = contract.adopts
 
-    @staticmethod
-    def _stamp_adopts(func: TpyFunction, info: FunctionInfo) -> None:
-        """Stamp a binding's `adopts=(...)` keyword: the parameters whose
-        fresh argument its result takes over (`FunctionInfo.adopted_params`),
-        each a parameter of the signature that can hold storage."""
+    def _resolve_result_contract(self, func: TpyFunction,
+                                 info: FunctionInfo) -> '_ResultContract | None':
+        """A binding's `result=` map read against its resolved signature:
+        the parameter indices (positions in `info.params`, the call's
+        argument list; a method's `self` is the receiver, -1) of each
+        relation. None when the binding has no `result=`.
+
+        "borrow" names parameters the result IS (or lies inside the storage
+        of) -- also an owned leaf the C++ passes by reference (`int`,
+        `String`) when the result is an owned value: `std::min` over
+        `const BigInt&` hands back one of its arguments; a view result over
+        one, or a leaf passed by value, has no storage to borrow. "element"
+        names parameters the result is an ELEMENT of, which lend only as a
+        container does (`CallAnalyzer._lent_operand_verdict`). "adopts"
+        names parameters whose fresh argument the result takes over. A map
+        declaring a "borrow" or "element" names every parameter that can
+        lend, "none" when the result holds nothing of it, so a binding never
+        declares part of what its result borrows; "none" is refused in a map
+        declaring neither, where nothing reads it."""
+        if func.declared_result is None:
+            return None
         where = f"'{func.name}'"
-        out: set[int] = set()
-        for name in func.declared_adopts:
-            idx = next((i for i, p in enumerate(info.params)
-                        if p.name == name), None)
-            if idx is None:
+        declared = dict(func.declared_result)
+        declares_borrow = any(rel in ("borrow", "element")
+                              for rel in declared.values())
+        if not declares_borrow:
+            # "none" is read only against a declared borrow (an unlisted
+            # argument is then not borrowed); elsewhere it would claim a
+            # fact nothing checks or uses.
+            unread = next((name for name, rel in declared.items()
+                           if rel == "none"), None)
+            if unread is not None:
                 raise SemanticError(
-                    f"adopts= names '{name}', which is not a parameter of "
-                    f"{where}", func.loc)
-            if not param_type_can_lend(info.params[idx].type,
-                                       callables=False):
+                    f"result= gives '{unread}' \"none\" on {where}, which "
+                    f"has no effect unless the map also declares a "
+                    f"\"borrow\" or \"element\"", func.loc)
+        if declares_borrow:
+            if not is_bodyless_binding(func):
                 raise SemanticError(
-                    f"adopts= names '{name}', whose type "
-                    f"'{info.params[idx].type}' holds no storage the result "
-                    f"could take over", func.loc)
-            if idx in out:
-                raise SemanticError(
-                    f"adopts= names '{name}' twice", func.loc)
-            out.add(idx)
-        info.adopted_params = frozenset(out)
-
-    def _stamp_declared_borrow(self, func: TpyFunction, info: FunctionInfo) -> None:
-        """Stamp a binding's `borrows=(...)` / `element_of=(...)` keywords:
-        `return_borrows_from` holds every named parameter -- the fact a def
-        body returning one of them records, so every provenance consumer
-        reads one field whether the callee has a body or not -- and
-        `element_borrows_from` the ones the result is an ELEMENT of, which
-        lend only as a container does (`CallAnalyzer._lent_operand_verdict`).
-
-        Indices are positions in `info.params` (the call's argument list);
-        a method's `self` is the receiver, index -1.
-
-        `borrows=` may also name an owned leaf the C++ passes by reference
-        (`int`, `String`) when the result is an owned value: `std::min`
-        over `const BigInt&` hands back one of its arguments. A view result
-        over one, or a leaf passed by value, has no storage to borrow."""
-        where = f"'{func.name}'"
-        if not is_bodyless_binding(func):
-            raise SemanticError(
-                f"borrows= / element_of= are for a function without a body; {where} "
-                f"has one, and what it returns already says what the result "
-                f"borrows", func.loc)
-        if func.is_method:
-            self._check_method_borrow_position(func)
+                    f"result= declares what the result borrows for a "
+                    f"function without a body; {where} has one, and what it "
+                    f"returns already says what the result borrows",
+                    func.loc)
+            if func.is_method:
+                self._check_method_borrow_position(func)
 
         owned_result = info.return_type is not None and is_owned_leaf(info.return_type)
 
@@ -4674,54 +4687,90 @@ class TypeRegistrar:
             return (owned_result and is_owned_leaf(bare)
                     and bare.param_passing() is not ParamPassing.VALUE)
 
-        def indices_of(names: tuple[str, ...], *, element: bool) -> set[int]:
-            out: set[int] = set()
-            for name in names:
-                if name == "self" and func.is_method:
-                    if func.is_staticmethod or func.is_classmethod:
-                        kind = ("class" if func.is_classmethod
-                                else "static")
-                        raise SemanticError(
-                            f"borrows= / element_of= name 'self', which names "
-                            f"no parameter of the {kind} method {where}",
-                            func.loc)
-                    if func.is_consuming:
-                        raise SemanticError(
-                            f"borrows= / element_of= name 'self', but {where} "
-                            f"consumes its receiver: the receiver is moved "
-                            f"into the call, so the result cannot borrow it",
-                            func.loc)
-                    if -1 in out:
-                        raise SemanticError(
-                            f"borrows= / element_of= name 'self' twice",
-                            func.loc)
-                    # The receiver is the owning record: it always lends.
-                    out.add(-1)
-                    continue
-                idx = next((i for i, p in enumerate(info.params)
-                            if p.name == name), None)
-                if idx is None:
+        by_relation: dict[str, set[int]] = {
+            "borrow": set(), "element": set(), "adopts": set(), "none": set()}
+        for name, rel in declared.items():
+            if name == "self" and func.is_method:
+                if func.is_staticmethod or func.is_classmethod:
+                    kind = "class" if func.is_classmethod else "static"
                     raise SemanticError(
-                        f"borrows= / element_of= name '{name}', which is not a "
-                        f"parameter of {where}", func.loc)
-                ptype = info.params[idx].type
-                if not (param_type_can_lend(ptype)
-                        or not element and lends_owned_leaf(ptype)):
+                        f"result= names 'self', which names no parameter of "
+                        f"the {kind} method {where}", func.loc)
+                if func.is_consuming and rel != "none":
                     raise SemanticError(
-                        f"borrows= / element_of= name '{name}', whose type "
-                        f"'{info.params[idx].type}' holds no storage the "
-                        f"result could borrow", func.loc)
-                if idx in out:
+                        f"result= names 'self', but {where} consumes its "
+                        f"receiver: the receiver is moved into the call, so "
+                        f"the result cannot borrow it", func.loc)
+                # The receiver is the owning record: it always lends.
+                by_relation[rel].add(-1)
+                continue
+            idx = next((i for i, p in enumerate(info.params)
+                        if p.name == name), None)
+            if idx is None:
+                raise SemanticError(
+                    f"result= names '{name}', which is not a parameter of "
+                    f"{where}", func.loc)
+            ptype = info.params[idx].type
+            if rel == "adopts":
+                if not param_type_can_lend(ptype, callables=False):
                     raise SemanticError(
-                        f"borrows= / element_of= name '{name}' twice", func.loc)
-                out.add(idx)
-            return out
+                        f"result= names '{name}' \"adopts\", whose type "
+                        f"'{ptype}' holds no storage the result could take "
+                        f"over", func.loc)
+            elif rel != "none" and not (
+                    param_type_can_lend(ptype)
+                    or rel == "borrow" and lends_owned_leaf(ptype)):
+                raise SemanticError(
+                    f"result= names '{name}', whose type '{ptype}' holds no "
+                    f"storage the result could borrow", func.loc)
+            by_relation[rel].add(idx)
+        for p in info.params if declares_borrow else ():
+            if param_type_can_lend(p.type) and p.name not in declared:
+                raise SemanticError(
+                    f"result= does not say what the result holds of "
+                    f"'{p.name}' ({p.type}); add \"{p.name}\": \"none\" if "
+                    f"nothing", func.loc)
+        return _ResultContract(
+            borrows=frozenset(by_relation["borrow"]),
+            elements=frozenset(by_relation["element"]),
+            adopts=frozenset(by_relation["adopts"]))
 
-        returns = indices_of(func.declared_borrows or (), element=False)
-        elements = indices_of(func.declared_element_of, element=True)
-        info.return_borrows_from = frozenset(returns | elements)
-        info.element_borrows_from = frozenset(elements)
+    @staticmethod
+    def _stamp_declared_borrow(info: FunctionInfo,
+                               contract: '_ResultContract') -> None:
+        """Stamp a binding's declared "borrow" / "element" parameters:
+        `return_borrows_from` holds every one -- the fact a def body
+        returning one of them records, so every provenance consumer reads
+        one field whether the callee has a body or not -- and
+        `element_borrows_from` the ones the result is an ELEMENT of."""
+        info.return_borrows_from = contract.borrows | contract.elements
+        info.element_borrows_from = contract.elements
         info.borrow_declared = True
+
+    @staticmethod
+    def _declared_arg_effects(
+            method: TpyFunction, params: 'list[ParamInfo]',
+    ) -> tuple[str | None, str | None]:
+        """`FunctionInfo.native_mutates` / `native_element_effect` from a
+        method binding's `args=` map: "writes" on `self` replaces elements
+        in place ("elements"); "compared" / "stored" name the arguments the
+        method compares with what it holds ("lookup") or holds from then on
+        ("insert")."""
+        if method.declared_args is None:
+            return None, None
+        names = {p.name for p in params}
+        mutates: str | None = None
+        effect: str | None = None
+        for name, eff in method.declared_args:
+            if name != "self" and name not in names:
+                raise SemanticError(
+                    f"args= names '{name}', which is not a parameter of "
+                    f"'{method.name}'", method.loc)
+            if eff == "writes":
+                mutates = "elements"
+            else:
+                effect = "lookup" if eff == "compared" else "insert"
+        return mutates, effect
 
     @staticmethod
     def _check_method_borrow_position(func: TpyFunction) -> None:
@@ -4731,14 +4780,14 @@ class TypeRegistrar:
         name = func.name
         if name.startswith("__") and name.endswith("__"):
             raise SemanticError(
-                f"borrows= / element_of= on '{name}': an operator method is "
-                f"reached through its own syntax, which does not take the "
+                f"result= declares a borrow on '{name}': an operator method "
+                f"is reached through its own syntax, which does not take the "
                 f"declaration yet", func.loc)
         if func.is_property_getter or func.is_property_setter:
             raise SemanticError(
-                f"borrows= / element_of= on '{name}': a property is reached "
-                f"through its own syntax, which does not take the declaration "
-                f"yet", func.loc)
+                f"result= declares a borrow on '{name}': a property is "
+                f"reached through its own syntax, which does not take the "
+                f"declaration yet", func.loc)
 
     def _stamp_iterator_retention(self, func: TpyFunction, info: FunctionInfo) -> None:
         """Set `return_borrows_from` at registration for a callee whose result

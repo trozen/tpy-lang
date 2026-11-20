@@ -1,0 +1,1 @@
+main.py:13: error: Method 'g' cannot have both @native and @native

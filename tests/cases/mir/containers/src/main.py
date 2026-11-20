@@ -354,7 +354,7 @@ def span_write_in_loop(xs: list[int32], flag: bool) -> int32:  # tpyc: mir(cover
 
 
 # free function: an Array element write -- an Array never moves its elements (its `__setitem__`
-# declares mutates="elements"), so the write replaces an element in place, as on a list
+# declares args={"self": "writes"}), so the write replaces an element in place, as on a list
 def arr_write(a: Array[int32, 3]) -> int32:  # tpyc: mir(covered)
     a[1] = 9  # tpyc: mir_write(a[elements])
     return a[1]

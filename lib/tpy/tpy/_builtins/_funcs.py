@@ -101,13 +101,13 @@ def min[T: AnyFixedInt](arg1: T, arg2: T, arg3: T, /) -> T: ...
 @dispatch
 @pure
 @readonly
-@native("std::min", borrows=("arg1", "arg2"))
+@native("std::min", result={"arg1": "borrow", "arg2": "borrow"})
 def min(arg1: int, arg2: int, /) -> int: ...
 
 @dispatch
 @pure
 @readonly
-@native("tpy::min3", borrows=("arg1", "arg2", "arg3"))
+@native("tpy::min3", result={"arg1": "borrow", "arg2": "borrow", "arg3": "borrow"})
 def min(arg1: int, arg2: int, arg3: int, /) -> int: ...
 
 @dispatch
@@ -125,13 +125,13 @@ def min(arg1: float, arg2: float, arg3: float, /) -> float: ...
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::min_key({0}, {1}, {2})", borrows=("arg1", "arg2"))
+@cpp_template("::tpy::min_key({0}, {1}, {2})", result={"arg1": "borrow", "arg2": "borrow", "key": "none"})
 def min[T, K: Comparable](arg1: T, arg2: T, /, *, key: Fn[[T], K]) -> T: ...
 
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::min3_key({0}, {1}, {2}, {3})", borrows=("arg1", "arg2", "arg3"))
+@cpp_template("::tpy::min3_key({0}, {1}, {2}, {3})", result={"arg1": "borrow", "arg2": "borrow", "arg3": "borrow", "key": "none"})
 def min[T, K: Comparable](arg1: T, arg2: T, arg3: T, /, *, key: Fn[[T], K]) -> T: ...
 
 @dispatch
@@ -154,13 +154,13 @@ def min[T: ValueType, K: Comparable](iterable: Iterable[T], /, *, key: Fn[[T], K
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::builtin_min_elem({0})", element_of=("iterable",))
+@cpp_template("::tpy::builtin_min_elem({0})", result={"iterable": "element"})
 def min[T: ComparableRef](iterable: readonly[Iterable[T]], /) -> T: ...
 
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::builtin_min_elem_key({0}, {1})", element_of=("iterable",))
+@cpp_template("::tpy::builtin_min_elem_key({0}, {1})", result={"iterable": "element", "key": "none"})
 def min[T: ReferenceType, K: Comparable](iterable: readonly[Iterable[T]], /, *, key: Fn[[T], K]) -> T: ...
 
 
@@ -179,13 +179,13 @@ def max[T: AnyFixedInt](arg1: T, arg2: T, arg3: T, /) -> T: ...
 @dispatch
 @pure
 @readonly
-@native("std::max", borrows=("arg1", "arg2"))
+@native("std::max", result={"arg1": "borrow", "arg2": "borrow"})
 def max(arg1: int, arg2: int, /) -> int: ...
 
 @dispatch
 @pure
 @readonly
-@native("tpy::max3", borrows=("arg1", "arg2", "arg3"))
+@native("tpy::max3", result={"arg1": "borrow", "arg2": "borrow", "arg3": "borrow"})
 def max(arg1: int, arg2: int, arg3: int, /) -> int: ...
 
 @dispatch
@@ -203,13 +203,13 @@ def max(arg1: float, arg2: float, arg3: float, /) -> float: ...
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::max_key({0}, {1}, {2})", borrows=("arg1", "arg2"))
+@cpp_template("::tpy::max_key({0}, {1}, {2})", result={"arg1": "borrow", "arg2": "borrow", "key": "none"})
 def max[T, K: Comparable](arg1: T, arg2: T, /, *, key: Fn[[T], K]) -> T: ...
 
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::max3_key({0}, {1}, {2}, {3})", borrows=("arg1", "arg2", "arg3"))
+@cpp_template("::tpy::max3_key({0}, {1}, {2}, {3})", result={"arg1": "borrow", "arg2": "borrow", "arg3": "borrow", "key": "none"})
 def max[T, K: Comparable](arg1: T, arg2: T, arg3: T, /, *, key: Fn[[T], K]) -> T: ...
 
 @dispatch
@@ -232,13 +232,13 @@ def max[T: ValueType, K: Comparable](iterable: Iterable[T], /, *, key: Fn[[T], K
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::builtin_max_elem({0})", element_of=("iterable",))
+@cpp_template("::tpy::builtin_max_elem({0})", result={"iterable": "element"})
 def max[T: ComparableRef](iterable: readonly[Iterable[T]], /) -> T: ...
 
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::builtin_max_elem_key({0}, {1})", element_of=("iterable",))
+@cpp_template("::tpy::builtin_max_elem_key({0}, {1})", result={"iterable": "element", "key": "none"})
 def max[T: ReferenceType, K: Comparable](iterable: readonly[Iterable[T]], /, *, key: Fn[[T], K]) -> T: ...
 
 
@@ -383,14 +383,14 @@ def next[T: ValueType](iterator: Iterator[T], default: T, /) -> T: ...
 # valid only until the next one, so a result that may come from it is a value
 # wherever it is held (`element_of`), and lives only through an in-place use.
 @dispatch
-@native("tpy::next_or", borrows=("default",), element_of=("iterator",))
+@native("tpy::next_or", result={"default": "borrow", "iterator": "element"})
 def next[T: ReferenceType](iterator: Iterator[T], default: T, /) -> T: ...
 
 
 # TODO: make non-native once regular functions can return protocol types
 @readonly
 @type_param_default(T=DefaultInt)
-@native("tpy::__iter__", adopts=("object",))
+@native("tpy::__iter__", result={"object": "adopts"})
 def iter[T](object: Iterable[T], /) -> Iterator[T]: ...
 
 
@@ -500,7 +500,7 @@ def round(number: uint64, ndigits: int32) -> uint64: ...
 @dispatch
 @pure
 @readonly
-@cpp_template("({0})", borrows=("number",))
+@cpp_template("({0})", result={"number": "borrow"})
 def round(number: int) -> int: ...
 @dispatch
 @pure
@@ -662,13 +662,13 @@ def oct(number: int, /) -> str: ...
 @dispatch
 @readonly
 @type_param_default(T=DefaultInt)
-@cpp_template("::tpy::builtin_enumerate({0})", adopts=("iterable",))
+@cpp_template("::tpy::builtin_enumerate({0})", result={"iterable": "adopts"})
 def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[int32, T]]: ...
 
 @dispatch
 @readonly
 @type_param_default(T=DefaultInt)
-@cpp_template("::tpy::builtin_enumerate({0}, {1})", adopts=("iterable",))
+@cpp_template("::tpy::builtin_enumerate({0}, {1})", result={"iterable": "adopts"})
 def enumerate[T](iterable: Iterable[T], start: int32) -> Iterator[tuple[int32, T]]: ...
 
 
@@ -676,7 +676,7 @@ def enumerate[T](iterable: Iterable[T], start: int32) -> Iterator[tuple[int32, T
 
 @readonly
 @type_param_default(T=DefaultInt)
-@cpp_template("::tpy::builtin_reversed({0})", adopts=("sequence",))
+@cpp_template("::tpy::builtin_reversed({0})", result={"sequence": "adopts"})
 def reversed[T](sequence: Sequence[T], /) -> Iterator[T]: ...
 
 
@@ -684,22 +684,22 @@ def reversed[T](sequence: Sequence[T], /) -> Iterator[T]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_zip({0}, {1})", adopts=("iter1", "iter2"))
+@cpp_template("::tpy::builtin_zip({0}, {1})", result={"iter1": "adopts", "iter2": "adopts"})
 def zip[T1, T2](iter1: Iterable[T1], iter2: Iterable[T2], /) -> Iterator[tuple[T1, T2]]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_zip({0}, {1}, {2})", adopts=("iter1", "iter2", "iter3"))
+@cpp_template("::tpy::builtin_zip({0}, {1}, {2})", result={"iter1": "adopts", "iter2": "adopts", "iter3": "adopts"})
 def zip[T1, T2, T3](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], /) -> Iterator[tuple[T1, T2, T3]]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_zip({0}, {1}, {2}, {3})", adopts=("iter1", "iter2", "iter3", "iter4"))
+@cpp_template("::tpy::builtin_zip({0}, {1}, {2}, {3})", result={"iter1": "adopts", "iter2": "adopts", "iter3": "adopts", "iter4": "adopts"})
 def zip[T1, T2, T3, T4](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], /) -> Iterator[tuple[T1, T2, T3, T4]]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_zip({0}, {1}, {2}, {3}, {4})", adopts=("iter1", "iter2", "iter3", "iter4", "iter5"))
+@cpp_template("::tpy::builtin_zip({0}, {1}, {2}, {3}, {4})", result={"iter1": "adopts", "iter2": "adopts", "iter3": "adopts", "iter4": "adopts", "iter5": "adopts"})
 def zip[T1, T2, T3, T4, T5](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], iter5: Iterable[T5], /) -> Iterator[tuple[T1, T2, T3, T4, T5]]: ...
 
 
@@ -707,27 +707,27 @@ def zip[T1, T2, T3, T4, T5](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Ite
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_map<{U}>({0}, {1})", adopts=("iterable",))
+@cpp_template("::tpy::builtin_map<{U}>({0}, {1})", result={"iterable": "adopts"})
 def map[T, U](function: Fn[[T], U], iterable: Iterable[T], /) -> Iterator[U]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2})", adopts=("iterable", "iter2"))
+@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2})", result={"iterable": "adopts", "iter2": "adopts"})
 def map[T1, T2, U](function: Fn[[T1, T2], U], iterable: Iterable[T1], iter2: Iterable[T2], /) -> Iterator[U]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3})", adopts=("iterable", "iter2", "iter3"))
+@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3})", result={"iterable": "adopts", "iter2": "adopts", "iter3": "adopts"})
 def map[T1, T2, T3, U](function: Fn[[T1, T2, T3], U], iterable: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], /) -> Iterator[U]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3}, {4})", adopts=("iterable", "iter2", "iter3", "iter4"))
+@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3}, {4})", result={"iterable": "adopts", "iter2": "adopts", "iter3": "adopts", "iter4": "adopts"})
 def map[T1, T2, T3, T4, U](function: Fn[[T1, T2, T3, T4], U], iterable: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], /) -> Iterator[U]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3}, {4}, {5})", adopts=("iterable", "iter2", "iter3", "iter4", "iter5"))
+@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3}, {4}, {5})", result={"iterable": "adopts", "iter2": "adopts", "iter3": "adopts", "iter4": "adopts", "iter5": "adopts"})
 def map[T1, T2, T3, T4, T5, U](function: Fn[[T1, T2, T3, T4, T5], U], iterable: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], iter5: Iterable[T5], /) -> Iterator[U]: ...
 
 
@@ -735,12 +735,12 @@ def map[T1, T2, T3, T4, T5, U](function: Fn[[T1, T2, T3, T4, T5], U], iterable: 
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_filter({0}, {1})", adopts=("iterable",))
+@cpp_template("::tpy::builtin_filter({0}, {1})", result={"iterable": "adopts"})
 def filter[T](function: Fn[[T], bool], iterable: Iterable[T], /) -> Iterator[T]: ...
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_filter_truthy({1})", adopts=("iterable",))
+@cpp_template("::tpy::builtin_filter_truthy({1})", result={"iterable": "adopts"})
 def filter[T](function: None, iterable: Iterable[T], /) -> Iterator[T]: ...
 
 

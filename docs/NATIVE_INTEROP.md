@@ -28,7 +28,8 @@ from tpy.extern import native, export
 | `@native("MyArena", indirecting=True)` -- attest heap indirection for cycle detection | **Done** |
 | `@native("MyCursor", borrowing_view=True)` -- declare a value type's values borrow handles (lifetime-checked) | **Done** |
 | `@native("MyRing", elements=True)` -- declare a class owns its type arguments' values as elements | **Done** |
-| `@native("put", mutates="elements")` -- declare a native method replaces elements in place and moves none | **Done** |
+| `@native(result={...})` / `@native(args={...})` (and on `@cpp_template`) -- the binding contract: what the result holds of each argument, what a method does with an argument | **Done** |
+| `@native("put", args={"self": "writes"})` -- declare a native method replaces elements in place and moves none | **Done** |
 | `@native("clock", transient=True)` / `@cpp_template("...", transient=True)` -- declare a binding that touches only its arguments and retains nothing | **Done** |
 | `@native("wait", checks_signals=True)` / `@cpp_template("...", checks_signals=True)` -- declare a binding that is a Ctrl-C check point | **Done** |
 | `native_field("cpp_name")` -- per-field C++ rename on `@native` classes | **Done** |
@@ -117,7 +118,7 @@ All methods on a `@native` class must be stubs (`...` body). Non-native methods 
 - `-> V` means the C++ method returns `V&` (a reference into the receiver or other stable storage). A call result bound to a local *aliases* that storage -- `p = obj.get()` binds `V*`/`V&`, and mutations through `p` reach the original (matching `dict.setdefault`, container `__getitem__`).
 - `-> Own[V]` means the C++ method returns a fresh `V` by value (a factory / a moved-out value). The result is owned; binding it copies/moves, no aliasing.
 
-This is the same contract user-defined methods follow, so there is no native special case. The consequence is a hard requirement on the binding author: a method whose C++ returns by value (e.g. a `static Vec2 zero()` factory) **must** be declared `-> Own[V]`. Declaring it bare `-> V` makes codegen bind a reference to a destroyed temporary -- a dangling pointer (or, for a `@nocopy` `V`, a C++ build error). There is currently no compiler check that a bare `-> V` native method actually returns `V&`; it is the author's contract to honor. (Free `@native` *functions* are the exception: without a declaration they take value semantics regardless of the annotation; `borrows=` / `element_of=` (below) declare what the result borrows.)
+This is the same contract user-defined methods follow, so there is no native special case. The consequence is a hard requirement on the binding author: a method whose C++ returns by value (e.g. a `static Vec2 zero()` factory) **must** be declared `-> Own[V]`. Declaring it bare `-> V` makes codegen bind a reference to a destroyed temporary -- a dangling pointer (or, for a `@nocopy` `V`, a C++ build error). There is currently no compiler check that a bare `-> V` native method actually returns `V&`; it is the author's contract to honor. (Free `@native` *functions* are the exception: without a declaration they take value semantics regardless of the annotation; `result=` (below) declares what the result borrows.)
 
 **Construction:**
 - C++ classes: constructor call syntax -- `Vec2(1.0, 2.0)` -> `b2::Vec2(1.0, 2.0)`
@@ -314,7 +315,7 @@ owns any temporary source -- a container, a view, a record or an iterator
 (`copy_iter(make())`, `copy_iter(map(f, xs))`) -- so as a borrowing view it
 would reject or warn about the owning form. That borrow depends on the
 argument's value category and belongs to the producing call -- the
-callable-level borrow annotation below (`borrows=` / `element_of=`), which
+callable-level borrow annotation below (`result=`), which
 `copy_iter()` does not use yet (TODO.md, "Callable-level borrow annotation for
 native stubs").
 
@@ -336,34 +337,64 @@ every other native template keeps `T` (`Bag[readonly[Node]]` renders
 and allocators reject a const element type. The readonly-ness of a storage
 template's element is enforced by sema alone.
 
-### Declaring what a result borrows: `borrows=` / `element_of=`
+### The binding contract: `result=` and `args=`
 
-A binding without a body has no `return` for the compiler to read, so it
-cannot tell on its own whether the C++ hands back one of its arguments. A
-free binding that does says so by naming the parameters its result may come
-from (read as a union -- the result is one of them), with keywords of its
-own `@native` or `@cpp_template`:
+A binding without a body has no code for the compiler to read, so what it
+does with its arguments is declared on its own `@native` or `@cpp_template`,
+one schema for both, keyed by parameter NAME (`"self"` for a method's
+receiver):
+
+| Keyword | Value | Says |
+|---|---|---|
+| `result=` | `"borrow"` | the result IS the argument (or lives inside its storage) |
+| `result=` | `"element"` | the result is handed out by ITERATING the argument |
+| `result=` | `"adopts"` | the result takes a FRESH argument over (free functions only; below) |
+| `result=` | `"none"` | the result holds nothing of the argument |
+| `args=` | `"writes"` | (`self` only) the method replaces elements in place and moves none ("Declaring element storage") |
+| `args=` | `"compared"` / `"stored"` | the method only compares the argument with what it holds, or holds it from then on ("Declaring element storage") |
+
+Any other value, a key that is not a parameter, or a key written twice (a
+dict literal would keep only its last value) is a declaration error. A stub
+carries one binding decorator, `@native` or `@cpp_template`, so its contract
+is written once (*Method 'g' cannot have both @native and @native*): a second
+decorator would replace the first one's name, call form and contract.
+When `result=` declares a `"borrow"` or an `"element"`, it names EVERY
+parameter that can lend storage (a reference type, an open `T`, a view, a
+`str` / `bytes`, a callable whose environment may hold references) --
+`"none"` where the result holds nothing of it -- so a binding never
+declares only part of what its result borrows: *result= does not say what
+the result holds of 'key' (str); add "key": "none" if nothing*. A
+value-type parameter (`int32`, `bool`) is never required. `"none"` is read
+only there (an unlisted argument is not borrowed); in a map declaring
+neither -- only `"adopts"` -- it is refused (*result= gives 'b' "none" on
+'f', which has no effect unless the map also declares a "borrow" or
+"element"*), and such a map names only what it adopts.
+
+### Declaring what a result borrows: `result=` "borrow" / "element"
+
+A free binding whose C++ hands back one of its arguments says so by naming
+the parameters its result may come from (read as a union -- the result is
+one of them):
 
 ```python
 from tpy.extern import native, cpp_template
 
-@native(borrows=("a", "b"))
+@native(result={"a": "borrow", "b": "borrow"})
 def pick(a: Node, b: Node) -> Node: ...      # C++: Node& pick(Node&, Node&)
 
-@native(element_of=("items",))
+@native(result={"items": "element"})
 def first(items: Iterable[Node]) -> Node: ...  # C++: a reference to an element
 
-@cpp_template("::lib::pick({0}, {1})", borrows=("a", "b"))
+@cpp_template("::lib::pick({0}, {1})", result={"a": "borrow", "b": "borrow"})
 def pick2(a: Node, b: Node) -> Node: ...
 ```
 
-`borrows=` names parameters the result IS (or lives inside the storage of);
-`element_of=` names parameters the result is handed out by ITERATING. A
-given keyword must name at least one parameter, and a name may appear in
-only one. (These keywords replaced a separate decorator --
-the facts belong to the binding they describe. `@cpp_template` is to fold
-into `@native` the same way: TODO.md, "`@cpp_template` folds into
-`@native`".)
+`"borrow"` names parameters the result IS (or lives inside the storage of);
+`"element"` names parameters the result is handed out by ITERATING. (These
+values replaced the `borrows=` / `element_of=` keywords, which replaced a
+separate decorator -- the facts belong to the binding they describe.
+`@cpp_template` is to fold into `@native` the same way: TODO.md,
+"`@cpp_template` folds into `@native`".)
 
 The call then behaves as the bodied twin `def pick(a, b): return a` does
 wherever every named argument LENDS: `n = pick(x, y)` binds `Node& n =
@@ -371,19 +402,19 @@ pick(x, y);`, a write through `n` reaches the argument, and a readonly
 argument gives a readonly result. The operands become mutable whenever the
 result is, as a generic returning its parameter does (even `m = pick(a, b);
 return m.v` takes `Node& a, Node& b`); declare them readonly to keep them
-const. A `borrows=` argument lends when its form
+const. A `"borrow"` argument lends when its form
 proves it outlives the call -- a name, a field or subscript of one, a call
 that itself lends, a view a call hands back (`d.values()`); a temporary
 (`pick(x, Node())`) or a method read off a temporary does not, and a
 conditional operand is refused
-(`BUGS.md#borrow-call-walrus-conditional-operand-rejects`). An `element_of=` argument lends only when it is
+(`BUGS.md#borrow-call-walrus-conditional-operand-rejects`). An `"element"` argument lends only when it is
 a CONTAINER (a list, a dict's values, a `Span`): an iterator never lends --
 its step is valid only until the next one, a generator may rebind the object
 it yielded -- and neither does a class whose `__iter__` builds an iterator.
 
 Where an argument does not lend, the result is a fresh value: read in place
 (`pick(x, Node()).v`, an argument) it copies nothing -- except where the
-C++ hands back a copy (an `element_of=` parameter declared `Iterable`,
+C++ hands back a copy (an `"element"` parameter declared `Iterable`,
 given an iterator or a generator: the callee walks it with an iterator of its
 own, gone at the return). Passed to a parameter the callee writes, that copy
 is what the callee writes, and it says so (`copies Node into argument 'p'
@@ -417,13 +448,13 @@ its own (the copied element is refused in words,
 name, `n = pick(x, y)` then `(n, 1)`.
 
 Two refusals key on the declaration, so they hold for EVERY binding that
-declares `borrows=` / `element_of=`, not only the builtin `min` / `max` / `next`: an augmented
+declares a `"borrow"` / `"element"`, not only the builtin `min` / `max` / `next`: an augmented
 assignment whose target holds the call (`pick(x, y).v += 1`) is refused --
 the render would run the call twice -- and where the C++ hands back a copy,
 a write through it in place is the lost-write error.
 
-The C++ must match: a reference into a `borrows=` argument (with a const
-overload for const arguments), and for `element_of=` a reference into a
+The C++ must match: a reference into a `"borrow"` argument (with a const
+overload for const arguments), and for `"element"` a reference into a
 container's element; for a source walked through `__next__`, a value when
 the parameter is an `Iterable` (the builtin `min` / `max` helpers) and a
 reference valid until the caller's next step when it is the caller's
@@ -440,13 +471,13 @@ A bodyless METHOD stub declares the same way, `self` naming the receiver:
 ```python
 @native
 class Node:
-    @native(borrows=("other",))
+    @native(result={"other": "borrow"})
     @readonly
     def pick(self, other: Node) -> Node: ...   # C++: Node& pick(Node&) const
 
 @native("::Bag", elements=True)
 class Bag[T](NativeIterable[T]):
-    @native("first", element_of=("self",))
+    @native("first", result={"self": "element"})
     @readonly
     def first(self) -> T: ...                  # a reference to an element
 ```
@@ -457,15 +488,15 @@ receiver borrow an undeclared native method infers from its signature, so a
 method that names only `other` says its result does not borrow the
 receiver: `ro.pick(x)` on a `readonly` receiver with a mutable `x` is a
 mutable `Node&`. The builtin `dict.get(key, default)` is declared
-`borrows=("default",), element_of=("self",)`: over a reference-type value it
+`result={"default": "borrow", "self": "element", "key": "none"}`: over a reference-type value it
 hands back the stored object or the default itself, as CPython does
 (`m = d.get("a", fb)` binds `P& m`; a temporary default is read in place, and
 a local holding it copies, warned). `self` is refused on a `@staticmethod` /
 `@classmethod` (no receiver) and on a method taking `self: Own[Self]` (the
-receiver is moved into the call); the keywords are refused on an operator
+receiver is moved into the call); a borrow is refused on an operator
 method (`__x__`) and a `@property`, which are reached through syntax of their
-own that does not take the declaration yet. A native method WITHOUT the
-keywords still infers that its result borrows the receiver; requiring a
+own that does not take the declaration yet. A native method WITHOUT a
+`result=` still infers that its result borrows the receiver; requiring a
 declaration where the result could borrow several sources (the ambiguity rule)
 is deferred (TODO.md, "Borrow-declaration elision and the ambiguity rule for
 native stubs"). A declared result that is a value type HOLDING a class
@@ -480,17 +511,17 @@ that copy is certain whatever `T` turns out to be.
 
 Each name must be a parameter of the binding whose argument can hold storage
 the result borrows (a reference type, an open `T`, a view, a `str`, a callable
-whose environment may hold references); an unknown name, a duplicate, a
-scalar parameter, or the decorator on a function with a body is an error.
-`borrows=` may also name an owned value the C++ passes by reference (`int`
+whose environment may hold references); an unknown name, a scalar parameter,
+or the declaration on a function with a body is an error. `"borrow"` may
+also name an owned value the C++ passes by reference (`int`
 as `const BigInt&`, `String`) when the result is an owned value too: `min(a:
 int, b: int) -> int` binds `std::min`, which hands back one of its
 arguments. A view result over such a parameter, and a value passed by copy
 (`int32`), are refused: neither holds storage the result could borrow. The
-builtin `min` / `max` (`borrows=` for two or three operands, over `int` as
-over a reference type, `element_of=` for one iterable), `round(number: int)`
-(`borrows=("number",)`, its template renders the argument) and `next(it,
-default)` (`borrows=("default",)`, `element_of=("it",)`) are declared this
+builtin `min` / `max` (`"borrow"` for two or three operands, over `int` as
+over a reference type, `"element"` for one iterable), `round(number: int)`
+(`result={"number": "borrow"}`, its template renders the argument) and
+`next(it, default)` (`"default": "borrow"`, `"iterator": "element"`) are declared this
 way. The declaration says what the result borrows, not that the borrow is
 sound: as with every native signature, the stub author answers for the C++
 actually returning one of the named arguments.
@@ -502,11 +533,11 @@ for storage IDENTITY: used in place, before any copy, the result IS the named
 argument, so `set_and_read(r, min(r.n, b))`, where the callee writes `r`
 while it reads `k`, warns as passing `r.n` itself would. For MIR a body-less
 binding's result is FRESH unless its declaration says where it comes from:
-`borrows=` / `element_of=`, a native method's inferred receiver borrow, or
+a `result=` "borrow" / "element", a native method's inferred receiver borrow, or
 a template that renders its one argument (`{0}` / `({0})`: `int(x)` renders
 `x`), which is always its argument (at a method, `{0}` is the first
 declared parameter, not `self`). The declaration is believed as written, for
-`@native` and `@cpp_template` alike: `@native("std::min", borrows=("a", "b"))
+`@native` and `@cpp_template` alike: `@native("std::min", result={"a": "borrow", "b": "borrow"})
 def smin(a: str, b: str) -> str` is one of its arguments, and a declaration
 that does not match its C++ is the declaration's defect (nothing checks it
 yet: BUGS.md#undeclared-binding-reference-result-taken-fresh). A native
@@ -522,15 +553,15 @@ a reference into an argument breaks this contract, for sema and MIR alike
 (no render check catches it yet:
 BUGS.md#undeclared-binding-reference-result-taken-fresh).
 
-#### Taking over a fresh argument: `adopts=`
+#### Taking over a fresh argument: `result=` "adopts"
 
 A lazy binding whose result keeps an argument (an iterator over it) may own
 a TEMPORARY argument instead of borrowing it: its C++ has an rvalue overload
-that moves the argument into the result. `adopts=` names those parameters,
+that moves the argument into the result. `"adopts"` names those parameters,
 on a free function's `@native` / `@cpp_template`:
 
 ```python
-@cpp_template("::lib::walk({0})", adopts=("items",))
+@cpp_template("::lib::walk({0})", result={"items": "adopts"})
 def walk[T](items: Iterable[T]) -> Iterator[T]: ...
 ```
 
@@ -542,12 +573,12 @@ while the result is alive warns). A named argument (`walk(xs)`) is lent as
 the signature says. A class instance whose `__iter__` builds a separate
 iterator is still bound to a local first, since the iterator may point into
 it and the result could not move. The builtin `iter`, `enumerate`, `zip`,
-`map`, `filter` and `reversed` declare it on their iterable parameters. A
-name must be a parameter that can hold storage, and may not also appear in
-`borrows=` / `element_of=`; a method stub and a `@native` class refuse the
-keyword.
+`map`, `filter` and `reversed` declare it on their iterable parameters
+(the function argument is not named: the map declares no borrow). A name
+must be a parameter that can hold
+storage; a method stub refuses the value and a `@native` class the keyword.
 
-### Declaring element storage: `elements=True` and `mutates="elements"`
+### Declaring element storage: `elements=True` and `args={"self": "writes"}`
 
 A native container -- a class whose values own the values of its type
 arguments in storage of their own -- declares it on the class, and each
@@ -571,7 +602,7 @@ class Ring[T](NativeIterable[T]):
     @readonly
     def __getitem__(self, i: int32) -> T: ...   # a positional subscript yields the element
 
-    @native("put", mutates="elements")
+    @native("put", args={"self": "writes"})
     def put(self, i: int32, v: Own[T]) -> None: ...   # replaces an element in place
 
     @native("push")
@@ -581,34 +612,36 @@ class Ring[T](NativeIterable[T]):
 `elements=True` says a borrow can point into the type's elements -- a loop
 variable, a reference to a record element -- so the borrow analysis models
 them as storage of their own, apart from the container's structure.
-`mutates="elements"` says the method writes elements in place and moves
+`args={"self": "writes"}` says the method writes elements in place and moves
 none, so iterators and references to the other elements stay valid (the
 element it overwrites is replaced under any reference to it): sema does not warn
 when it is called on a container being iterated, where `push` above warns
 (`Mutation of 'r' while iterating over it ('push' invalidates the
 iterator)`). A mutating method (neither `@readonly` nor `@pure`) that
 declares nothing may replace elements and also move or free every one of
-them; that is what an undeclared method means, so `mutates="structure"` is
-not a spelling -- `"elements"` is the only value. The declaration is trusted
+them; that is what an undeclared method means, so there is no value for a
+structure write -- `"writes"` is the only effect `self` takes. The declaration is trusted
 on a method of any `@native` class, whether or not the class declares
 `elements=True`: a container whose element is no type parameter (a
 `Bag(NativeIterable[int32])`) cannot declare its elements, and this is its
 only way to say a write keeps iterators valid. Each use is an audit of the
 binding: the stdlib declares
 `elements=True` on `list`, `dict`, `set` and `Array`, and
-`mutates="elements"` on `dict.__setitem__` and `list`'s integer-index
+`args={"self": "writes"}` on `dict.__setitem__` and `list`'s integer-index
 `__setitem__` (its slice overloads stay undeclared).
 
-**`element_effect="insert"` / `"lookup"` (stdlib-only).** The builtin
-`list`, `dict` and `set` stubs also declare, per method, what it does with an
-argument naming the container's element, key or value (or a container of
-them): holds it from then on (`insert`: `append`, `add`, `__setitem__`,
-`update`, `setdefault`, ...) or only compares it with what it holds or hands
-it back (`lookup`: `get`, `pop`'s key and default, `discard`,
-`__contains__`, ...). A container literal whose numbers are not decided yet
-(`xs = [1, 2]`) is widened by an inserted value and requires a looked-up one
-to fit; a method without the keyword decides its numbers first. The keyword
-is read only on those three stubs and ignored on any other class.
+**`args=` "stored" / "compared".** A method names, among its arguments
+whose type is one of the container's type parameters (its element, key or
+value) or a container of them, those it holds from then on (`"stored"`:
+`append`, `add`, `__setitem__`, `update`, `setdefault`, ...) or only
+compares with what it holds or hands back (`"compared"`: `get`, `pop`'s key
+and default, `discard`, `__contains__`, ...); one method never declares
+both. A container literal whose numbers are not decided yet (`xs = [1, 2]`)
+is widened by a stored value and requires a compared one to fit; a method
+declaring neither decides its numbers first. The widening reads the builtin
+`list`, `dict` and `set` stubs; a `"compared"` argument also warns when its
+key narrows into the element type (*lookup key narrows from int64 to
+int32*), which the `Span` / `Array` `__contains__` stubs declare too.
 
 **`element_access=True` / `element_access=<twin>` (`@native` and
 `@cpp_template`).** Declared per variant on a `__getitem__`, `__setitem__` or
@@ -707,12 +740,12 @@ without `elements=True` (a view owns nothing): `dict_values[K, V]` yields
 both members and binds no single-element cursor. `SpanIter`, whose
 `__iter__` returns itself, declares none.
 
-**Rejections.** At parse time: `mutates=` on a class or a free function;
-`elements=` on a method or a free function; a `mutates` value other than
-`"elements"`; `mutates="elements"` beside `@readonly`, `@pure` or
-`@auto_readonly` (in any decorator order), or on a `@staticmethod` or
-`@classmethod` (no receiver); `mutates=` on `@cpp_template`, whose mutating
-methods stay undeclared. When the class is registered, `elements=True` is
+**Rejections.** At parse time: `args=` on a class or a free function;
+`elements=` on a method or a free function; an `args=` effect other than
+`"writes"` / `"compared"` / `"stored"`, `"writes"` on an argument other than
+`self`, or `"compared"` and `"stored"` on one method; `args={"self":
+"writes"}` beside `@readonly`, `@pure` or `@auto_readonly` (in any decorator
+order), or on a `@staticmethod` or `@classmethod` (no receiver). When the class is registered, `elements=True` is
 rejected when no readonly `__iter__` yields one of the class's own type
 parameters, together with `borrowing_view=True`, when two readonly `__iter__`
 overloads yield different parameters, when `__getitem__` overloads return
@@ -768,10 +801,10 @@ the statement kills (`mk().data`, a `@property` read off a temporary) may be
 handed to it -- is read off its SIGNATURE and the binding keywords above,
 never off its name. Three channels:
 
-- **The result.** What `borrows=` / `element_of=` declare (a declared borrow
+- **The result.** What `result=` "borrow" / "element" declare (a declared borrow
   at a value-shaped instantiation is a fresh value); an `Iterator[T]` return
-  keeps its reference arguments, except a fresh one at a parameter named in
-  `adopts=`, which it owns (see "Taking over a fresh argument: `adopts=`"
+  keeps its reference arguments, except a fresh one at a parameter named
+  `"adopts"`, which it owns (see "Taking over a fresh argument: `result=` "adopts""
   below); a reference or view result keeps the
   receiver of a method and the lendable arguments of a free binding; a
   borrowing view's constructor keeps its first argument; an owned result
@@ -789,7 +822,7 @@ never off its name. Three channels:
   pointer -- unless it is declared `elements=True`, which says it owns its
   type arguments' values and holds only what they hold. `transient=True` and `pure` promise no copy.
   The channels add up: a binding whose result keeps a view argument
-  (`borrows=("text",)`) may keep a copy of it as well.
+  (`result={"text": "borrow"}`) may keep a copy of it as well.
 - **Addresses: never.** A binding never keeps the address of a plain
   reference parameter (or of any part or backing storage of it), nor the
   view behind a `str` / `bytes` parameter. One that does says so in the
@@ -1219,7 +1252,7 @@ All `@native` function calls (C++ linkage) emit their symbol absolute-qualified 
 |-----------|-------|
 | `@native` with real body | `must have '...' body` |
 | `@export` with `...` body | `must have a body` |
-| Both `@native` and `@export` on same function | `cannot have both @native and @export` |
+| Two binding decorators (`@native`, `@cpp_template`, `@export`) on one function or method, in any pairing | `cannot have both @native and @export` (naming the two decorators) |
 | Same native symbol declared twice | `duplicate extern symbol 'name'` |
 | Non-stub method on `@native` class | `methods on @native class must be stubs` |
 | `native_global()` inside a function | `can only be used at module level` |
@@ -1303,7 +1336,7 @@ These are orthogonal to the import/export system and remain unchanged:
 |-----------|---------|
 | `cpp_template("...")` | Inline C++ template expansion; takes `transient=True` and `checks_signals=True` like `@native` (see "Declaring a transient binding", "Declaring a check point") |
 | `pure` (from `tpy`) | No non-local mutation, no I/O, nothing retained after return or raise; implies `readonly`. Read by sema's borrow-argument check, mutation call edges, the with-exit and loop-hold write checks (`sema/loop_frames.py`) and `sema/receiver_calls.call_mutates_receiver`, and published as a stub callee's `PURE` contract for MIR's stub call contract, which admits it only at inert or owned-leaf arguments of builtin TypeDefs (a protocol or callable parameter bound to user code refuses: `@pure` was never audited for "runs no user code") |
-| `native(..., mutates="elements")` | Marks a native method as replacing elements in place and moving none, so it invalidates no iterator (see "Declaring element storage") |
+| `native(..., args={"self": "writes"})` | Marks a native method as replacing elements in place and moving none, so it invalidates no iterator (see "Declaring element storage") |
 | `value_ptr_coercion` | Type coercion annotation |
 | `virtual_raise` | Class marker: its hand-written C++ `__raise__` dispatches (is not `throw *this`), so `raise X(args)` routes through it instead of the fresh-throw peephole. Not inherited. Used by `OSError`'s errno -> subclass mapping |
 

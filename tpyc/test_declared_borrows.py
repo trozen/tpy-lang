@@ -1,5 +1,5 @@
-"""`borrows=(...)` / `element_of=(...)` on `@native` / `@cpp_template`: the
-declaration a bodyless binding makes about what its result borrows, and the
+"""`result={...}` on `@native` / `@cpp_template`: the declaration a bodyless
+binding makes about what its result borrows, and the
 call-site decision sema stamps from it (`TpyCallLike.result_form`), on a
 free binding and on a method stub alike.
 
@@ -75,12 +75,12 @@ def test_keyed_min_max_stubs_declare_their_operands():
 
 
 def test_element_of_declaration_is_recorded_apart():
-    # A user binding's element_of= names a parameter the result is an
+    # A user binding's result= "element" names a parameter the result is an
     # ELEMENT of: recorded in element_borrows_from, inside the union.
     entry = _entry(
         "from tpy.extern import native\n"
         + _RECORD
-        + "@native(borrows=(\"d\",), element_of=(\"items\",))\n"
+        + "@native(result={\"d\": \"borrow\", \"items\": \"element\"})\n"
         "def first(items: list[P], d: P) -> P: ...\n"
         "\n"
         "\n"
@@ -188,39 +188,51 @@ def test_nocopy_value_result_is_an_error():
             "    return t.v\n")
 
 
-_NATIVE = "from tpy.extern import native, cpp_template\nfrom tpy import int32\n"
+_NATIVE = "from tpy.extern import native, cpp_template, export\nfrom tpy import int32, readonly\n"
 
 
 @pytest.mark.parametrize("decl, message", [
-    ("@native(borrows=(\"nope\",))\n"
+    ("@native(result={\"nope\": \"borrow\"})\n"
      "def f(a: list[int32]) -> list[int32]: ...\n",
-     "name 'nope', which is not a parameter of 'f'"),
-    ("@native(borrows=(\"a\", \"a\"))\n"
-     "def f(a: list[int32]) -> list[int32]: ...\n",
-     "name 'a' twice"),
-    ("@cpp_template(\"f({0}, {1})\", borrows=(\"n\",))\n"
+     "names 'nope', which is not a parameter of 'f'"),
+    ("@cpp_template(\"f({0}, {1})\", result={\"a\": \"none\", \"n\": \"borrow\"})\n"
      "def f(a: list[int32], n: int32) -> list[int32]: ...\n",
-     "name 'n', whose type 'int32' holds no storage"),
-    ("@native(borrows=(\"self\",))\n"
+     "names 'n', whose type 'int32' holds no storage"),
+    ("@native(result={\"self\": \"borrow\"})\n"
      "def f(a: list[int32]) -> list[int32]: ...\n",
-     "name 'self', which is not a parameter of 'f'"),
+     "names 'self', which is not a parameter of 'f'"),
     # A by-value scalar holds no storage, whatever the result.
-    ("@native(\"pick\", borrows=(\"a\", \"b\"))\n"
+    ("@native(\"pick\", result={\"a\": \"borrow\", \"b\": \"borrow\"})\n"
      "def f(a: int32, b: int32) -> int32: ...\n",
-     "name 'a', whose type 'int32' holds no storage"),
+     "names 'a', whose type 'int32' holds no storage"),
     # A view result over a by-reference owned leaf: only an owned result may be the argument.
     ("from tpy import StrView\n"
-     "@native(\"first\", borrows=(\"a\",))\n"
+     "@native(\"first\", result={\"a\": \"borrow\"})\n"
      "def f(a: int) -> StrView: ...\n",
-     "name 'a', whose type 'int' holds no storage"),
+     "names 'a', whose type 'int' holds no storage"),
     ("from tpy import String, StrView\n"
-     "@native(\"first\", borrows=(\"a\",))\n"
+     "@native(\"first\", result={\"a\": \"borrow\"})\n"
      "def f(a: String) -> StrView: ...\n",
-     "name 'a', whose type 'String' holds no storage"),
+     "names 'a', whose type 'String' holds no storage"),
     # An owned leaf has no elements a result could be handed out of.
-    ("@native(\"first\", element_of=(\"a\",))\n"
+    ("@native(\"first\", result={\"a\": \"element\"})\n"
      "def f(a: int) -> int: ...\n",
-     "name 'a', whose type 'int' holds no storage"),
+     "names 'a', whose type 'int' holds no storage"),
+    # A map declaring a borrow names every parameter that can lend: what
+    # the result borrows of each is never left to the reader.
+    ("@native(result={\"a\": \"borrow\"})\n"
+     "def f(a: list[int32], key: str) -> list[int32]: ...\n",
+     "result= does not say what the result holds of 'key' \\(str\\); "
+     "add \"key\": \"none\" if nothing"),
+    # "none" is read only against a declared borrow / element.
+    ("@native(result={\"a\": \"none\"})\n"
+     "def f(a: list[int32], b: list[int32]) -> list[int32]: ...\n",
+     "gives 'a' \"none\" on 'f', which has no effect unless the map also "
+     "declares a \"borrow\" or \"element\""),
+    ("@native(result={\"a\": \"adopts\", \"b\": \"none\"})\n"
+     "def f(a: list[int32], b: list[int32]) -> list[int32]: ...\n",
+     "gives 'b' \"none\" on 'f', which has no effect unless the map also "
+     "declares a \"borrow\" or \"element\""),
 ])
 def test_declaration_errors(decl, message):
     with pytest.raises(SemanticError, match=message):
@@ -232,7 +244,7 @@ def test_owned_leaf_by_reference_with_an_owned_result_is_admitted(ptype):
     # `std::min` over `const BigInt&` hands back one of its arguments.
     entry = _entry(
         _NATIVE + "from tpy import String\n"
-        f"@native(\"pick\", borrows=(\"a\", \"b\"))\n"
+        f"@native(\"pick\", result={{\"a\": \"borrow\", \"b\": \"borrow\"}})\n"
         f"def pick(a: {ptype}, b: {ptype}) -> {ptype}: ...\n"
         "\n\n"
         f"def g(x: {ptype}, y: {ptype}) -> {ptype}:\n"
@@ -283,10 +295,10 @@ def test_method_declaration_stamps_receiver_as_minus_one():
     # receiver inference an undeclared native method gets.
     entry = _entry(
         _NATIVE + _NODE
-        + "    @native(borrows=(\"other\",))\n"
+        + "    @native(result={\"other\": \"borrow\"})\n"
         "    def pick(self, other: Node) -> Node: ...\n"
         "\n"
-        "    @native(element_of=(\"self\",))\n"
+        "    @native(result={\"self\": \"element\"})\n"
         "    def first(self) -> Node: ...\n"
         "\n"
         "    @native\n"
@@ -367,29 +379,41 @@ def test_open_t_composite_result_is_a_hedged_copy():
 
 @pytest.mark.parametrize("decl, message", [
     ("    @staticmethod\n"
-     "    @native(borrows=(\"self\",))\n"
+     "    @native(result={\"self\": \"borrow\", \"other\": \"none\"})\n"
      "    def make(other: Node) -> Node: ...\n",
-     "name 'self', which names no parameter of the static method"),
+     "names 'self', which names no parameter of the static method"),
     ("    @classmethod\n"
-     "    @native(borrows=(\"self\",))\n"
+     "    @native(result={\"self\": \"borrow\", \"other\": \"none\"})\n"
      "    def make(cls, other: Node) -> Node: ...\n",
-     "name 'self', which names no parameter of the class method"),
-    ("    @native(borrows=(\"self\", \"self\"))\n"
-     "    def pick(self, other: Node) -> Node: ...\n",
-     "name 'self' twice"),
-    ("    @native(borrows=(\"self\",))\n"
+     "names 'self', which names no parameter of the class method"),
+    ("    @native(result={\"self\": \"borrow\"})\n"
      "    def take(self: Own[Self]) -> Node: ...\n",
      "consumes its receiver"),
-    ("    @native(borrows=(\"other\",))\n"
+    ("    @native(result={\"other\": \"borrow\"})\n"
      "    def __add__(self, other: Node) -> Node: ...\n",
      "an operator method is reached through its own syntax"),
     ("    @property\n"
-     "    @native(borrows=(\"self\",))\n"
+     "    @native(result={\"self\": \"borrow\"})\n"
      "    def me(self) -> Node: ...\n",
      "a property is reached through its own syntax"),
-    ("    @native(borrows=(\"nope\",))\n"
+    ("    @native(result={\"nope\": \"borrow\"})\n"
      "    def pick(self, other: Node) -> Node: ...\n",
-     "name 'nope', which is not a parameter of 'pick'"),
+     "names 'nope', which is not a parameter of 'pick'"),
+    ("    @native(result={\"self\": \"borrow\"})\n"
+     "    def pick(self, other: Node) -> Node: ...\n",
+     "does not say what the result holds of 'other'"),
+    # "none" says nothing unless the map declares a borrow, on the
+    # receiver as on any parameter.
+    ("    @native(result={\"self\": \"none\", \"other\": \"none\"})\n"
+     "    def pick(self, other: Node) -> Node: ...\n",
+     "gives 'self' \"none\" on 'pick', which has no effect unless the map "
+     "also declares a \"borrow\" or \"element\""),
+    ("    @native(\"size\", result={\"self\": \"none\"})\n"
+     "    def size(self) -> int32: ...\n",
+     "gives 'self' \"none\" on 'size', which has no effect"),
+    ("    @native(args={\"nope\": \"stored\"})\n"
+     "    def put(self, other: Node) -> None: ...\n",
+     "args= names 'nope', which is not a parameter of 'put'"),
 ])
 def test_method_declaration_errors(decl, message):
     with pytest.raises(SemanticError, match=message):
@@ -398,26 +422,106 @@ def test_method_declaration_errors(decl, message):
 
 
 @pytest.mark.parametrize("decl, message", [
-    ("@native(borrows=())\n"
+    ("@native(result={})\n"
      "def f(a: list[int32]) -> list[int32]: ...\n",
      "must name at least one parameter"),
-    ("@native(borrows=\"a\")\n"
+    ("@native(result=\"a\")\n"
      "def f(a: list[int32]) -> list[int32]: ...\n",
-     "expects tuple"),
-    ("@native(borrows=(\"a\",), element_of=(\"a\",))\n"
+     "expects a dict of names to strings"),
+    ("@native(result={\"a\": 1})\n"
      "def f(a: list[int32]) -> list[int32]: ...\n",
-     "names 'a' in both borrows= and element_of="),
-    ("@native(borrows=(1,))\n"
+     "expects a dict of names to strings"),
+    # A dict literal keeps only a repeated key's last value, so a repeat
+    # is refused rather than read as that value alone.
+    ("@native(result={\"a\": \"borrow\", \"b\": \"borrow\", \"a\": \"none\"})\n"
+     "def f(a: list[int32], b: list[int32]) -> list[int32]: ...\n",
+     "result= names 'a' twice"),
+    # Borrow and element on one parameter is only spellable as a repeat.
+    ("@native(result={\"a\": \"borrow\", \"a\": \"element\"})\n"
      "def f(a: list[int32]) -> list[int32]: ...\n",
-     "expects a tuple of names"),
-    ("@native(\"Node\", borrows=(\"a\",))\nclass Node:\n"
-     "    v: int32\n",
-     "only valid on a function or method stub"),
+     "result= names 'a' twice"),
     ("@native(\"Node\")\nclass Node:\n"
      "    v: int32\n"
-     "    @native(borrows=(\"self\",), element_of=(\"self\",))\n"
+     "    @native(result={\"self\": \"borrow\", \"other\": \"none\", \"self\": \"element\"})\n"
      "    def pick(self, other: Node) -> Node: ...\n",
-     "names 'self' in both borrows= and element_of="),
+     "result= names 'self' twice"),
+    ("@native(\"Node\")\nclass Node:\n"
+     "    v: int32\n"
+     "    @native(args={\"n\": \"stored\", \"n\": \"stored\"})\n"
+     "    def put(self, n: Node) -> None: ...\n",
+     "args= names 'n' twice"),
+    # One binding decorator per stub: a second one's name, call form and
+    # contract keywords would replace the first's silently.
+    ("@native(\"f1\", result={\"a\": \"borrow\"})\n"
+     "@cpp_template(\"({0})\", result={\"a\": \"none\"})\n"
+     "def f(a: list[int32]) -> list[int32]: ...\n",
+     "Function 'f' cannot have both @native and @cpp_template"),
+    ("@cpp_template(\"({0})\")\n"
+     "@native(\"f1\")\n"
+     "def f(a: list[int32]) -> list[int32]: ...\n",
+     "Function 'f' cannot have both @cpp_template and @native"),
+    ("@cpp_template(\"ga({0})\")\n"
+     "@cpp_template(\"gb({0})\")\n"
+     "def f(a: int32) -> int32: ...\n",
+     "Function 'f' cannot have both @cpp_template and @cpp_template"),
+    ("@native(\"Node\")\nclass Node:\n"
+     "    v: int32\n"
+     "    @native(\"pick\", result={\"other\": \"borrow\"})\n"
+     "    @cpp_template(\"{self}.pick({0})\", result={\"other\": \"none\"})\n"
+     "    def pick(self, other: Node) -> Node: ...\n",
+     "Method 'pick' cannot have both @native and @cpp_template"),
+    ("@native(\"Node\")\nclass Node:\n"
+     "    v: int32\n"
+     "    @cpp_template(\"{self}.pick({0})\")\n"
+     "    @native(\"pick\")\n"
+     "    def pick(self, other: Node) -> Node: ...\n",
+     "Method 'pick' cannot have both @cpp_template and @native"),
+    ("@export(binding=\"C\")\n"
+     "@cpp_template(\"({0})\")\n"
+     "def f(a: int32) -> int32: ...\n",
+     "Function 'f' cannot have both @export and @cpp_template"),
+    ("@native(\"f1\", binding=\"C\")\n"
+     "@export(binding=\"C\")\n"
+     "def f(a: int32) -> int32: ...\n",
+     "Function 'f' cannot have both @native and @export"),
+    ("@native(\"Node\")\nclass Node:\n"
+     "    v: int32\n"
+     "    @cpp_template(\"{self}.a()\")\n"
+     "    @cpp_template(\"{self}.b()\")\n"
+     "    def g(self) -> int32: ...\n",
+     "Method 'g' cannot have both @cpp_template and @cpp_template"),
+    ("@native(result={\"a\": \"borrows\"})\n"
+     "def f(a: list[int32]) -> list[int32]: ...\n",
+     "gives 'a' the relation 'borrows'; a result relation is"),
+    ("@native(\"Node\", result={\"a\": \"borrow\"})\nclass Node:\n"
+     "    v: int32\n",
+     "only valid on a function or method stub"),
+    ("@native(\"Node\", args={\"self\": \"writes\"})\nclass Node:\n"
+     "    v: int32\n",
+     "only valid on a function or method stub"),
+    ("@native(args={\"a\": \"stored\"})\n"
+     "def f(a: list[int32]) -> None: ...\n",
+     "args=...\\) is only valid on a method stub: a free function"),
+    ("@native(\"Node\")\nclass Node:\n"
+     "    v: int32\n"
+     "    @native(args={\"other\": \"read\"})\n"
+     "    def put(self, other: Node) -> None: ...\n",
+     "gives 'other' the effect 'read'; an argument effect is"),
+    ("@native(\"Node\")\nclass Node:\n"
+     "    v: int32\n"
+     "    @native(args={\"other\": \"writes\"})\n"
+     "    def put(self, other: Node) -> None: ...\n",
+     "only the receiver, 'self', is declared written"),
+    ("@native(\"Node\")\nclass Node:\n"
+     "    v: int32\n"
+     "    @native(args={\"self\": \"stored\"})\n"
+     "    def put(self, other: Node) -> None: ...\n",
+     "the receiver is declared \"writes\""),
+    ("@native(\"Node\")\nclass Node:\n"
+     "    v: int32\n"
+     "    @native(args={\"a\": \"stored\", \"b\": \"compared\"})\n"
+     "    def put(self, a: Node, b: Node) -> None: ...\n",
+     "declares both \"compared\" and \"stored\" arguments"),
 ])
 def test_declaration_spelling_errors(decl, message):
     with pytest.raises(ParseError, match=message):
@@ -425,15 +529,32 @@ def test_declaration_spelling_errors(decl, message):
 
 
 @pytest.mark.parametrize("decl, message", [
-    ("@native(adopts=(\"nope\",))\n"
+    ("@export\n@native(\"abs\", binding=\"C\")\n"
+     "def f(a: int32) -> int32: ...\n",
+     "cannot have both @export and @native"),
+    ("@cpp_template(\"({0})\")\n@export\n"
+     "def f(a: int32) -> int32: ...\n",
+     "cannot have both @cpp_template and @export"),
+    ("@export\n@export\n"
+     "def f(a: int32) -> int32:\n    return a\n",
+     "cannot have both @export and @export"),
+])
+def test_ext_module_export_is_a_binding_decorator(decl, message):
+    # Inside an ext module `@export` exposes the function to CPython, and a
+    # bodyless stub has nothing to expose.
+    with pytest.raises(ParseError, match=message):
+        _entry('__tpy__ = {"mod": "ext"}\n'
+               "from tpy.extern import native, cpp_template, export\n"
+               "from tpy import int32\n" + decl)
+
+
+@pytest.mark.parametrize("decl, message", [
+    ("@native(result={\"nope\": \"adopts\"})\n"
      "def f(a: list[int32]) -> list[int32]: ...\n",
-     "adopts= names 'nope', which is not a parameter of 'f'"),
-    ("@native(adopts=(\"a\", \"a\"))\n"
-     "def f(a: list[int32]) -> list[int32]: ...\n",
-     "adopts= names 'a' twice"),
-    ("@cpp_template(\"f({0}, {1})\", adopts=(\"n\",))\n"
+     "result= names 'nope', which is not a parameter of 'f'"),
+    ("@cpp_template(\"f({0}, {1})\", result={\"n\": \"adopts\"})\n"
      "def f(a: list[int32], n: int32) -> list[int32]: ...\n",
-     "adopts= names 'n', whose type 'int32' holds no storage"),
+     "result= names 'n' \"adopts\", whose type 'int32' holds no storage"),
 ])
 def test_adopts_errors(decl, message):
     with pytest.raises(SemanticError, match=message):
@@ -441,28 +562,16 @@ def test_adopts_errors(decl, message):
 
 
 @pytest.mark.parametrize("decl, message", [
-    ("@native(adopts=())\n"
-     "def f(a: list[int32]) -> list[int32]: ...\n",
-     "must name at least one parameter the result takes over"),
-    ("@native(borrows=(\"a\",), adopts=(\"a\",))\n"
-     "def f(a: list[int32]) -> list[int32]: ...\n",
-     "names 'a' in both adopts= and borrows= / element_of="),
     # A binding with a TPy body declares nothing for it to take over.
-    ("@native(adopts=(\"a\",))\n"
+    ("@native(result={\"a\": \"adopts\"})\n"
      "def f(a: list[int32]) -> list[int32]:\n"
      "    return a\n",
      "must have `...` body"),
-    ("@cpp_template(\"f({0})\", element_of=(\"a\",), adopts=(\"a\",))\n"
-     "def f(a: list[int32]) -> int32: ...\n",
-     "names 'a' in both adopts= and borrows= / element_of="),
     ("@native(\"Node\")\nclass Node:\n"
      "    v: int32\n"
-     "    @native(adopts=(\"other\",))\n"
+     "    @native(result={\"other\": \"adopts\"})\n"
      "    def pick(self, other: Node) -> Node: ...\n",
-     "adopts=...\\) is only valid on a free function stub"),
-    ("@native(\"Node\", adopts=(\"v\",))\nclass Node:\n"
-     "    v: int32\n",
-     "adopts=...\\) is only valid on a free function stub"),
+     "gives 'other' \"adopts\", which is only valid on a free function stub"),
 ])
 def test_adopts_spelling_errors(decl, message):
     with pytest.raises(ParseError, match=message):
@@ -470,8 +579,9 @@ def test_adopts_spelling_errors(decl, message):
 
 
 def test_adopts_stamps_the_parameters():
-    """`adopts=` lands as the binding's adopted parameter indices."""
-    entry = _entry(_NATIVE + "@cpp_template(\"g({0}, {1})\", adopts=(\"b\",))\n"
+    """`result=` "adopts" lands as the binding's adopted parameter indices;
+    a map declaring no borrow need not name the other lendable `a`."""
+    entry = _entry(_NATIVE + "@cpp_template(\"g({0}, {1})\", result={\"b\": \"adopts\"})\n"
                    "def g(a: list[int32], b: list[int32]) -> int32: ...\n"
                    "def f(a: list[int32]) -> int32:\n"
                    "    return g(a, a)\n")
@@ -570,7 +680,7 @@ _BAG = (
     "    @readonly\n"
     "    def __iter__(self) -> Iterator[T]: ...\n"
     "\n"
-    "    @native(\"grow_or\", element_of=(\"self\",), borrows=(\"d\",))\n"
+    "    @native(\"grow_or\", result={\"self\": \"element\", \"d\": \"borrow\"})\n"
     "    def grow_or(self, d: T) -> T: ...\n"
     "\n"
     "\n"
@@ -610,11 +720,11 @@ _TAKER = (
     "@native\n"
     "class Taker:\n"
     "    @readonly\n"
-    "    @native(\"take\", element_of=(\"xs\",), borrows=(\"d\",))\n"
+    "    @native(\"take\", result={\"xs\": \"element\", \"d\": \"borrow\"})\n"
     "    def take(self, xs: list[P], d: P) -> P: ...\n"
     "\n"
     "    @readonly\n"
-    "    @native(\"take_ro\", element_of=(\"xs\",), borrows=(\"d\",))\n"
+    "    @native(\"take_ro\", result={\"xs\": \"element\", \"d\": \"borrow\"})\n"
     "    def take_ro(self, xs: readonly[list[P]], d: P) -> P: ...\n"
     "\n"
     "\n"
@@ -647,3 +757,69 @@ def test_readonly_parameter_container_twice_in_one_statement_is_accepted():
     fn = next(f for f in entry.ast.functions if f.name == "f")
     takes = [c for c in _method_calls(fn.body, []) if c.method == "take_ro"]
     assert [c.result_form for c in takes] == [ResultForm.REFERENCE_VALUE] * 2
+
+
+def test_none_on_a_consuming_receiver_is_accepted_and_stamps_nothing():
+    # A consuming method cannot borrow its receiver, and "none" says so.
+    entry = _entry(
+        _NATIVE + "from tpy import Own\nfrom typing import Self\n" + _NODE
+        + "    @native(result={\"self\": \"none\", \"other\": \"borrow\"})\n"
+        "    def take(self: Own[Self], other: Node) -> Node: ...\n"
+        "\n\n"
+        "def f(b: Node) -> int32:\n"
+        "    return Node(1).take(b).v\n")
+    fn = next(f for f in entry.ast.functions if f.name == "f")
+    take, = [c for c in _method_calls(fn.body, []) if c.method == "take"]
+    root = take.resolved_function_info.root
+    assert root.borrow_declared
+    assert root.return_borrows_from == frozenset({0})
+    assert root.element_borrows_from == frozenset()
+
+
+@pytest.mark.parametrize("relation, elements", [("element", {0}), ("borrow", set())])
+def test_none_on_the_receiver_beside_a_declared_borrow_is_accepted(relation, elements):
+    # The map declares a borrow, so "none" on self says the result holds
+    # nothing of the receiver: only `other` is stamped.
+    entry = _entry(
+        _NATIVE + "from tpy import NativeIterable\nfrom typing import Iterator\n"
+        "@native(\"::Bag\", elements=True)\n"
+        "class Bag[T](NativeIterable[T]):\n"
+        "    def __init__(self) -> None: ...\n"
+        "    @native(\"tpy::__iter__\", function=True)\n"
+        "    @readonly\n"
+        "    def __iter__(self) -> Iterator[T]: ...\n"
+        f"    @native(\"take\", result={{\"self\": \"none\", \"other\": \"{relation}\"}})\n"
+        "    @readonly\n"
+        "    def take(self, other: list[T]) -> T: ...\n"
+        "\n\n"
+        "def f(b: Bag[list[int32]], xs: list[list[int32]]) -> int32:\n"
+        "    return len(b.take(xs))\n")
+    fn = next(f for f in entry.ast.functions if f.name == "f")
+    take, = [c for c in _method_calls(fn.body, []) if c.method == "take"]
+    root = take.resolved_function_info.root
+    assert root.borrow_declared
+    assert root.return_borrows_from == frozenset({0})
+    assert root.element_borrows_from == frozenset(elements)
+
+
+def test_result_and_args_on_one_decorator_both_stamp():
+    entry = _entry(
+        _NATIVE + "from tpy import NativeIterable, Own\nfrom typing import Iterator\n"
+        "@native(\"::Bag\", elements=True)\n"
+        "class Bag[T](NativeIterable[T]):\n"
+        "    def __init__(self) -> None: ...\n"
+        "    @native(\"tpy::__iter__\", function=True)\n"
+        "    @readonly\n"
+        "    def __iter__(self) -> Iterator[T]: ...\n"
+        "    @native(\"swap\", result={\"self\": \"element\", \"v\": \"none\"},\n"
+        "            args={\"self\": \"writes\"})\n"
+        "    def swap(self, v: Own[T]) -> T: ...\n"
+        "\n\n"
+        "def f(b: Bag[list[int32]]) -> int32:\n"
+        "    return len(b.swap([1]))\n")
+    fn = next(f for f in entry.ast.functions if f.name == "f")
+    swap, = [c for c in _method_calls(fn.body, []) if c.method == "swap"]
+    root = swap.resolved_function_info.root
+    assert root.borrow_declared
+    assert root.element_borrows_from == frozenset({-1})
+    assert root.native_mutates == "elements"

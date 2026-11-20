@@ -1,0 +1,8 @@
+borrow_none 5
+borrow_temp 1 5
+element 30
+adopts 0 7
+adopts 1 8
+writes 3
+compared True
+stored 5000000000

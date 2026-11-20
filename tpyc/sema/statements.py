@@ -8365,7 +8365,7 @@ class StatementAnalyzer:
         # Subscript assignment (items[i] = val, d[k] = val) is in-place and does
         # NOT invalidate element references: list element replacement doesn't
         # reallocate, and ordered_map is node-based so insertion is stable
-        # (declared by `mutates="elements"` on dict.__setitem__).
+        # (declared by `args={"self": "writes"}` on dict.__setitem__).
         # It does destroy the element it overwrites, so a loan taken out of an
         # ELEMENT of this container -- index-blind -- is clobbered.
         if isinstance(stmt.target, TpySubscript):

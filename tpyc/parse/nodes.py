@@ -544,8 +544,8 @@ class TpyCallLike(TpyExpr):
     binding: 'ArgBinding | None' = field(default=None, kw_only=True,
                                          compare=False, repr=False)
     # Set by sema on a call to a bodyless binding that declares which
-    # arguments its result borrows (`borrows=` / `element_of=`); NOT_DECLARED for every
-    # other call. Recomputed on each analysis of the node, never re-derived
+    # arguments its result borrows (a `result=` "borrow" / "element");
+    # NOT_DECLARED for every other call. Recomputed on each analysis of the node, never re-derived
     # downstream.
     result_form: ResultForm = field(default=ResultForm.NOT_DECLARED,
                                     kw_only=True)
@@ -2254,6 +2254,10 @@ LIFECYCLE_HOOKS = frozenset({DEL_HOOK, COPY_HOOK, MOVE_HOOK})
 INIT_METHOD = "__init__"
 
 
+# A binding's `result=` / `args=` map: (parameter name, relation) pairs.
+ContractMap = tuple[tuple[str, str], ...]
+
+
 @dataclass
 class TpyFunction:
     """Function definition.
@@ -2357,19 +2361,14 @@ class TpyFunction:
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: str | None = None
     native_function: bool = False
-    # @native / @cpp_template(borrows=(...), element_of=(...)): the parameter
-    # names a bodyless binding's result IS / is an element of, validated and
-    # stamped into FunctionInfo at registration. None = neither keyword.
-    declared_borrows: tuple[str, ...] | None = None
-    declared_element_of: tuple[str, ...] = ()
-    # @native / @cpp_template(adopts=(...)) on a free function: the
-    # parameters whose FRESH argument the result takes over (a named one is
-    # lent as the signature says); stamped into FunctionInfo.adopted_params.
-    declared_adopts: tuple[str, ...] = ()
-    # @native(mutates="elements"): see FunctionInfo.native_mutates.
-    native_mutates: str | None = None
-    # @native(element_effect=...): see FunctionInfo.native_element_effect.
-    native_element_effect: str | None = None
+    # @native / @cpp_template(result={...}) / (args={...}): the binding's
+    # declared contract as (parameter name, relation) pairs, `"self"` for
+    # the receiver. Validated against the signature and stamped into
+    # FunctionInfo (`return_borrows_from`, `element_borrows_from`,
+    # `borrow_declared`, `adopted_params`, `native_mutates`,
+    # `native_element_effect`) at registration. None = the keyword is absent.
+    declared_result: 'ContractMap | None' = None
+    declared_args: 'ContractMap | None' = None
     # @native / @cpp_template(element_access=...): see FunctionInfo.element_access.
     element_access: bool | str | None = None
     # Set when @export is applied inside an ext module: the function

@@ -1,4 +1,4 @@
-# A stub's result is fresh unless its declaration names where it comes from (`borrows=`):
+# A stub's result is fresh unless its declaration names where it comes from (`result=`):
 # a fresh temporary kept by a view dangles, a declared origin aliases, an undeclared one does not.
 import os
 from typing import Iterator
@@ -53,7 +53,7 @@ class Keeper:
         print("repr_method", self.h.v)
 
 
-# min_alias: `min` over int declares `borrows=`, so its result is `r.n` while `set_and_read` writes `r`
+# min_alias: `min` over int declares `result=` borrows, so its result is `r.n` while `set_and_read` writes `r`
 # (the run writes the value `r.n` already holds, so its output matches CPython;
 # the call-site copy that would make it exact: BUGS.md#borrowed-arg-into-mutated-storage)
 def min_alias(r: Box, b: int) -> int:
@@ -120,11 +120,11 @@ def same_s_view(h: H, a: str) -> None:
     print("same_s_view", h.v)
 
 
-# native_min_alias: a free `@native` binding's declaration is believed as written -- `borrows=` over
+# native_min_alias: a free `@native` binding's declaration is believed as written -- `result=` borrows over
 # `str` views names the arguments, so the result is `r.s` while `set_and_len` reassigns it (never run)
 @pure
 @readonly
-@native("std::min", borrows=("a", "b"))
+@native("std::min", result={"a": "borrow", "b": "borrow"})
 def smin(a: str, b: str) -> str: ...
 
 
@@ -150,7 +150,7 @@ def get_dangle(h: H, d: dict[str, str], k: str, fb: str) -> None:
 
 
 # pick_dangle: a template building a fresh string declares no origin, so the view dangles (never run;
-# declaring `borrows=` here would be taken at its word: BUGS.md#undeclared-binding-reference-result-taken-fresh)
+# declaring a `result=` borrow here would be taken at its word: BUGS.md#undeclared-binding-reference-result-taken-fresh)
 @pure
 @cpp_template("(std::string({0}) + std::string({1}))")
 def pick(a: str, b: str) -> str: ...

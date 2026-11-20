@@ -53,7 +53,7 @@ void undeclared() {
     std::cout << "undeclared" << " " << a.v << " " << b.v << " " << c.v << "\n" << ::tpy::check_signals;
 }
 
-// # method, borrows= an argument: a borrow of that argument
+// # method, result= borrows an argument: a borrow of that argument
 // def method_arg() -> None:
 //     a = Node(1)
 //     b = Node(2)
@@ -126,7 +126,7 @@ void method_ro_branch(const ::Node& ro, ::Node& x, ::Node& y, bool c) {
     n->v = 63;
 }
 
-// # method, element_of= the receiver: a borrow of the container's element
+// # method, result= an element of the receiver: a borrow of the container's element
 // def method_elem() -> None:
 //     b = Bag[Node]()
 //     b.push(Node(7))
@@ -190,10 +190,10 @@ void main() {
     ::tpyapp::main::method_elem();
 }
 
-// # `borrows=(...)` on a native function's or method's `@native` says its
-// # result IS one of the named arguments (`self` naming a method's receiver):
-// # the call binds as a borrow (`Node& n`) and a write through it reaches that
-// # argument; `element_of=(...)` says it is an ELEMENT of one, which a
+// # `result={...: "borrow"}` on a native function's or method's `@native` says
+// # its result IS one of the named arguments (`self` naming a method's
+// # receiver): the call binds as a borrow (`Node& n`) and a write through it
+// # reaches that argument; `"element"` says it is an ELEMENT of one, which a
 // # container argument lends. Without the declaration the result is a fresh
 // # value: binding it copies.
 // import asyncio

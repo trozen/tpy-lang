@@ -108,7 +108,7 @@ int32_t ring_push_in_loop(::ProbeRing<int32_t>& r, bool flag) {
     return t;
 }
 
-// # user container: `mutates="elements"` replaces in place, so sema does not warn;
+// # user container: `args={"self": "writes"}` replaces in place, so sema does not warn;
 // # the cursor depends on the structure only, so MIR finds no conflict either
 // def ring_put_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(covered)
 //     t = 0

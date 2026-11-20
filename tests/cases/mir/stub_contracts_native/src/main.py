@@ -1,6 +1,6 @@
 # MIR verdicts for calls to user `@native` stubs: a free stub is admitted only with a
 # declared contract over readonly leaf parameters, and a user container's methods and
-# loops are modeled from its declared element storage (`elements=True`, `mutates=`).
+# loops are modeled from its declared element storage (`elements=True`, `args=` writes).
 __tpy__ = {"includes": ["native_types.hpp"]}
 from typing import Iterator
 from tpy import int32, pure, readonly, Comparable, NativeIterable, Own, StrView, String
@@ -54,7 +54,7 @@ class Ring[T](NativeIterable[T]):
     @readonly
     def __getitem__(self, i: int32) -> T: ...
 
-    @native("put", mutates="elements")
+    @native("put", args={"self": "writes"})
     def put(self, i: int32, v: Own[T]) -> None: ...
 
     @native("push")
@@ -120,7 +120,7 @@ def ring_push_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(conflic
     return t
 
 
-# user container: `mutates="elements"` replaces in place, so sema does not warn;
+# user container: `args={"self": "writes"}` replaces in place, so sema does not warn;
 # the cursor depends on the structure only, so MIR finds no conflict either
 def ring_put_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(covered)
     t = 0

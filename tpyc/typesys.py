@@ -3561,7 +3561,8 @@ def classify_result_representation(
         if fi is None or fi.is_constructor:
             return ResultRepresentation.STORAGE
         # Free native declarations do not establish the C++ reference ABI
-        # unless they declare what their result borrows (`borrows=` / `element_of=`).
+        # unless they declare what their result borrows (`result=` "borrow" /
+        # "element").
         if (fi.is_native_import and not fi.is_method
                 and not fi.root.borrow_declared):
             return ResultRepresentation.STORAGE
@@ -9204,14 +9205,14 @@ class FunctionInfo:
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: Optional[str] = None
     native_function: bool = False  # @native("func", function=True) -> generates func(self, args)
-    # @native(mutates="elements"): the method replaces elements in place and
+    # @native(args={"self": "writes"}): the method replaces elements in place and
     # moves none, so it invalidates no iterator or reference into the
     # receiver's structure. None on a mutating method: it may move or free
     # every element.
     native_mutates: Optional[str] = None
-    # @native(element_effect="insert" | "lookup"): what the method does with
-    # an argument naming its receiver's element, key or value -- holds it
-    # from then on, or only compares it / hands it back
+    # @native(args={...: "stored" | "compared"}) -> "insert" | "lookup": what
+    # the method does with an argument naming its receiver's element, key or
+    # value -- holds it from then on, or only compares it / hands it back
     # (`tpyc/sema/list_elem.py`). None: neither is declared.
     native_element_effect: Optional[str] = None
     # @native / @cpp_template(element_access=...) on a subscript dunder
@@ -9307,17 +9308,17 @@ class FunctionInfo:
     # holding -1 minus what is reached through a `Ptr` / borrowing view the
     # receiver only holds, which a const receiver still lends writable.
     return_lends_self_storage: bool = False
-    # `return_borrows_from` was DECLARED (`borrows=` / `element_of=`) rather than
+    # `return_borrows_from` was DECLARED (`result=` "borrow" / "element") rather than
     # inferred: the result is one of those arguments or an element of one,
     # so its access is theirs at each call (`@readonly` on the stub says only
     # that the call itself mutates nothing), and a mutable result is a
     # mutable use of them (`CallAnalyzer._mark_borrow_result_operands_written`).
     borrow_declared: bool = False
     # The part of a DECLARED return_borrows_from the result is an ELEMENT of
-    # (`element_of=(...)` on `@native` / `@cpp_template`): handed out by iterating the
+    # (`result=` "element" on `@native` / `@cpp_template`): handed out by iterating the
     # argument, so only a container argument lends it.
     element_borrows_from: frozenset[int] = frozenset()
-    # Declared `adopts=(...)`: a FRESH argument at one of these parameters
+    # Declared `result=` "adopts": a FRESH argument at one of these parameters
     # is owned by the result (the binding's rvalue overload moves it in), so
     # the call keeps nothing of its storage; a named one is lent as declared.
     adopted_params: frozenset[int] = frozenset()

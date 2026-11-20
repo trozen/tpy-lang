@@ -191,11 +191,11 @@ def rendered(p: str) -> str:
     return repr(p)
 
 @pure
-@native("probe_sized_view", borrows=("xs",))
+@native("probe_sized_view", result={"xs": "borrow"})
 def probe_sized_view(xs: Sized) -> StrView: ...
 
 @pure
-@native("probe_hash_view", borrows=("x",))
+@native("probe_hash_view", result={"x": "borrow"})
 def probe_hash_view(x: Hashable) -> StrView: ...
 
 def sized_origin(xs: list[int32]) -> int32:
@@ -207,7 +207,7 @@ def hash_origin(n: int32) -> int32:
     return 1
 
 def stored_get(d: dict[str, str], k: str, fb: str) -> str:
-    # `get(k, default)` declares `borrows=("default",), element_of=("self",)`,
+    # `get(k, default)` declares `result={"default": "borrow", "self": "element", ...}`,
     # but at a `str` value the C++ returns a new string.
     return d.get(k, fb)
 
@@ -384,7 +384,7 @@ def test_an_undeclared_owned_result_over_a_view_parameter_is_fresh(active) -> No
 
 
 def test_result_origins_come_from_the_declaration(active) -> None:
-    # borrows=: `min` over int names both operands.
+    # result= borrow: `min` over int names both operands.
     minimum = _thir_calls(active.thir["smaller"])[0].stub_callee
     assert minimum.result_origins == frozenset({0, 1})
     # An identity initializer template is its argument.
@@ -1008,7 +1008,7 @@ class Pass[T]:
     def __iter__(self) -> Iterator[T]: ...
 
     @readonly
-    @cpp_template("({0})", borrows=("x",))
+    @cpp_template("({0})", result={"x": "borrow"})
     def same(self, x: StrView) -> StrView: ...
 
 def f(p: Pass[str], x: StrView) -> int:
@@ -1017,7 +1017,7 @@ def f(p: Pass[str], x: StrView) -> int:
 
 
 IDENTITY_METHOD_OWNED_SOURCE = IDENTITY_METHOD_SOURCE.replace(
-    '@cpp_template("({0})", borrows=("x",))\n    def same(self, x: StrView) -> StrView: ...',
+    '@cpp_template("({0})", result={"x": "borrow"})\n    def same(self, x: StrView) -> StrView: ...',
     '@cpp_template("({0})")\n    def same(self, x: str) -> str: ...').replace(
     "def f(p: Pass[str], x: StrView) -> int:", "def f(p: Pass[str], x: str) -> int:")
 

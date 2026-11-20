@@ -61,10 +61,10 @@ class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     @readonly
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
-    @native("tpy::__setitem__", function=True, mutates="elements", element_access=unchecked_set)
+    @native("tpy::__setitem__", function=True, args={"self": "writes"}, element_access=unchecked_set)
     def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
-    @native("tpy::seq_contains", function=True, element_effect="lookup")
+    @native("tpy::seq_contains", function=True, args={"value": "compared"})
     @pure
     @readonly
     def __contains__[U, T: Equatable](self, value: U, /) -> bool: ...
@@ -165,10 +165,10 @@ class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):
     @readonly
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
-    @native("tpy::__setitem__", function=True, mutates="elements", element_access=unchecked_set)
+    @native("tpy::__setitem__", function=True, args={"self": "writes"}, element_access=unchecked_set)
     def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
-    @native("tpy::seq_contains", function=True, element_effect="lookup")
+    @native("tpy::seq_contains", function=True, args={"value": "compared"})
     @pure
     @readonly
     def __contains__[U, T: Equatable](self, value: U, /) -> bool: ...

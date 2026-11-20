@@ -1939,7 +1939,7 @@ form facts, never on lists of accepted kinds.
   them, each beside a certified safe sibling.
 - **B3, second half: retained loans.** Three items landed. Native types
   declare their storage members and element writes on the stub
-  (`@native(..., elements=True)`, `@native(..., mutates="elements")`), read
+  (`@native(..., elements=True)`, `@native(..., args={"self": "writes"})`), read
   through `scalar_leaves.declared_members`, with no container kind table.
   A user `@native` container lowers from the same two facts where THIR
   lowers the shape (loops, a field read through a subscript, method calls
@@ -2313,7 +2313,7 @@ as the corpus grows).
   result is FRESH unless its declaration says where it comes from
   (since 2026-11-18): it borrows exactly the lent arguments named by
   `THIRStubCallee.result_origins`, published from the binding's stamped
-  `return_borrows_from` (`borrows=` / `element_of=`; a native method's
+  `return_borrows_from` (`result=` "borrow" / "element"; a native method's
   inferred receiver borrow; a template rendering its one argument,
   `{0}` / `({0})`, as `int(x)` renders `x`). One THIR helper,
   `stub_result_origins`, decides the set, so it means "parameters whose
@@ -2330,7 +2330,7 @@ as the corpus grows).
   declares one there, exact at a reference `V` only (TODO.md "Make
   `dict.get(k, default)`'s declaration match its C++"). `min(a, b)` over `int`
   binds `std::min`, a reference to an argument, and declares
-  `borrows=("arg1", "arg2")`; `round(int)` declares its argument. A
+  `result={"arg1": "borrow", "arg2": "borrow"}`; `round(int)` declares its argument. A
   constructed result (`constructs_result`, a builtin type's initializer:
   `str(b.n)`, `String(s)`, `bytes(b)` build a new value) borrows nothing.
   A free stub's view result with no declared origin may borrow every lent
@@ -2606,7 +2606,7 @@ as the corpus grows).
   is `owner.name` plus those types, so `list[int32].pop()`,
   `list[int32].pop(i)` and `list[Point].pop()` are three identities.
   `THIRStubCallee.mutates_elements` carries the stub's
-  `@native(..., mutates="elements")`. The
+  `@native(..., args={"self": "writes"})`. The
   receiver effect is derived from the declaration, first match wins:
   `@pure` -> reads only (this covers the `@auto_readonly` mutable clones of
   `values()` / `items()`); readonly receiver -> reads only;
@@ -2667,7 +2667,7 @@ as the corpus grows).
   `tuple[K, V]`, declares both members and binds no cursor
   (`scalar_leaves.binds_cursor`): `len(d.items())` is covered, iterating
   it refuses. `Span.__setitem__` and `Array.__setitem__` declare
-  `mutates="elements"` since 2026-11-02, as `list.__setitem__` does: a
+  `args={"self": "writes"}` (then `mutates="elements"`) since 2026-11-02, as `list.__setitem__` does: a
   span or a fixed-size array never moves its elements, so `a[i] = v` and
   the explicit `a.__setitem__(i, v)` are element writes. Under a live
   element borrow or loop variable over a record element they warn *may

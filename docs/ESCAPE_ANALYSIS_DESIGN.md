@@ -1309,7 +1309,7 @@ check this section describes, so Extension B's scope is unchanged.
 ### Declarative Borrow Contracts (`@may_reallocate`, `@return_borrows_from`)
 
 (The return half has landed under another spelling:
-`borrows=(...)` / `element_of=(...)` (keywords of `@native` / `@cpp_template`), docs/NATIVE_INTEROP.md --
+`result={...}` "borrow" / "element" (keywords of `@native` / `@cpp_template`), docs/NATIVE_INTEROP.md --
 the stub names the parameters its result IS, or whose element it is, `self`
 naming a method's receiver. It is refused on operator methods for now, so the
 `__getitem__` form below is still a sketch; an undeclared method's receiver

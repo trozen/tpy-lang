@@ -4868,7 +4868,7 @@ class _Lowering:
     def element_write(self, stmt: th.THIRSetItem) -> Fragment:
         """`xs[i] = v`: replaces an element in place -- a weak update of the
         container's element region -- when the receiver's `__setitem__` stub
-        declares it writes elements (`mutates="elements"`: it moves no
+        declares it writes elements (`args={"self": "writes"}`: it moves no
         element) or writes through a view, which cannot change its source's
         shape; otherwise the `__setitem__` call it is, a structure write of
         the receiver derived from the stub like any container method."""

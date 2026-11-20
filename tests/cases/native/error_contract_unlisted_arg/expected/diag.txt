@@ -1,0 +1,1 @@
+main.py:12: error: result= does not say what the result holds of 'label' (str); add "label": "none" if nothing

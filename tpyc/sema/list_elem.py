@@ -14,8 +14,8 @@ map to the container's steps (`PendingContainerType.STEPS`: a list's or set's
 `T` its element, a dict's `K` / `V` its key and value). What the method DOES
 with it -- holds it from then on, or only compares it with what it holds --
 is no fact of the signature (`update` and `intersection_update` are spelled
-alike): it is the stub's own declaration, `@native(..., element_effect=...)`
-(`FunctionInfo.native_element_effect`).
+alike): it is the stub's own declaration, `@native(..., args=...)` naming
+the argument "stored" or "compared" (`FunctionInfo.native_element_effect`).
 """
 
 from __future__ import annotations

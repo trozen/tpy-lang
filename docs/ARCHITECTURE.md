@@ -620,7 +620,7 @@ built from: a readonly return marks no write on the root it borrows
 a parameter the body writes stays mutable even when it is also returned. An
 INFERRED-const method whose mutable return borrows a parameter keeps that
 parameter in the mutated set, so the parameter stays mutable and the borrow
-keeps its declared type. A DECLARED borrow (`borrows=` / `element_of=`) is a mutable use
+keeps its declared type. A DECLARED borrow (`result=` "borrow" / "element") is a mutable use
 instead: a call whose result is a mutable reference into its operands marks
 every lending operand mutated at the call
 (`CallAnalyzer._mark_borrow_result_operands_written`), as an argument at an
@@ -642,7 +642,7 @@ preserves each position's wrapper handling and exclusions; `value_category`
 adapts its answers and `CallableType` renders the erased result. These are
 representation decisions, not ownership, access-permission or provenance proofs.
 
-A bodyless binding's result borrows are DECLARED (`borrows=` / `element_of=`,
+A bodyless binding's result borrows are DECLARED (`result=` "borrow" / "element",
 `FunctionInfo.return_borrows_from` with `element_borrows_from` for the
 element-of parameters, `borrow_declared`), and whether one CALL's result
 binds as a borrow is decided once, in sema (`CallAnalyzer.stamp_result_borrow`,
@@ -1710,7 +1710,7 @@ its pending type for the Array/list decision), and a method on any
 container is resolved at `receiver_form` (the dicts and sets inside it
 spelled), so no consumer needs a pending dict or set arm. What a container
 method does with an argument that names a part -- insert it, or only look
-it up -- is the stub's own declaration, `@native(..., element_effect=...)`
+it up -- is the stub's own declaration, `@native(..., args=...)` "stored" / "compared"
 (`FunctionInfo.native_element_effect`), read by ONE classifier over the
 three stubs (`list_elem.container_call`, parameterised by the stub's
 type-parameter -> step map); a method that names a part -- by an argument,

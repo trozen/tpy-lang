@@ -1539,15 +1539,15 @@ class CallAnalyzer:
     def stamp_result_borrow(self, expr: TpyCallLike,
                             result_type: TpyType) -> bool:
         """Decide, once per analysis, whether a call to a binding that
-        DECLARES its result's borrow sources (`borrows=` / `element_of=`) binds as a
+        DECLARES its result's borrow sources (`result=` "borrow" / "element") binds as a
         borrow of its arguments or is a fresh value, and record it on the
         node (`TpyCallLike.result_form`, `copy_observable`). A method's
         receiver lends as the argument at index -1 does. Every
         reader of the call reads the stamp. Returns whether the result is
         READ-ONLY because what lends it is.
 
-        The result IS a `borrows=` argument, or is handed out by iterating
-        an `element_of=` one. It is a borrow exactly when every lent
+        The result IS a "borrow" argument, or is handed out by iterating
+        an "element" one. It is a borrow exactly when every lent
         argument lends storage that outlives the call
         (`_lent_operand_verdict`); otherwise the C++ reference could dangle
         past the statement and the result is a value. Whether a sink holding
@@ -1631,7 +1631,7 @@ class CallAnalyzer:
         open-`T` parameter of a user generic is (`pick(a, b)` makes its
         caller take `P& a, P& b`). The operands stay const only when they are
         declared readonly, which makes the result read-only. Through an
-        `element_of=` argument the write lands in an element it hands out,
+        "element" argument the write lands in an element it hands out,
         so the mark climbs an iterator to the container it walks
         (`it = iter(ps)` marks `ps`)."""
         for src in lent:
@@ -1648,9 +1648,9 @@ class CallAnalyzer:
 
     def _lent_operand_verdict(self, fi: FunctionInfo, idx: int,
                               operand: TpyExpr) -> '_LentVerdict':
-        """One lent argument of a borrow-declared call. At a `borrows=`
+        """One lent argument of a borrow-declared call. At a "borrow"
         parameter the argument lends when its form proves it outlives the
-        call (`expr_lends_storage`). At an `element_of=` parameter it lends
+        call (`expr_lends_storage`). At an "element" parameter it lends
         only when it is also a CONTAINER (`iter_element_source`): an
         iterator's step is valid only until the next step, and a class whose
         `__iter__` builds an iterator may own what it hands out. A fresh

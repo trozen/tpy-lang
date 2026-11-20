@@ -96,19 +96,19 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
 
     # Pure-READ methods take readonly[K]: the key is only hashed/compared, never
     # stored, so a readonly key is safe. __setitem__/setdefault store K (mutable).
-    @native("tpy::__getitem__", function=True, element_effect="lookup", element_access=True)
+    @native("tpy::__getitem__", function=True, args={"key": "compared"}, element_access=True)
     @pure
     @auto_readonly
     def __getitem__(self, key: readonly[K]) -> auto_readonly[V]: ...
 
-    @native("tpy::__setitem__", function=True, mutates="elements", element_effect="insert",
-            element_access=True)
+    @native("tpy::__setitem__", function=True, element_access=True,
+            args={"self": "writes", "key": "stored", "value": "stored"})
     def __setitem__(self, key: K, value: Own[V]) -> None: ...
 
-    @native("tpy::__delitem__", function=True, element_effect="lookup", element_access=True)
+    @native("tpy::__delitem__", function=True, args={"key": "compared"}, element_access=True)
     def __delitem__(self, key: readonly[K]) -> None: ...
 
-    @native("contains", element_effect="lookup")
+    @native("contains", args={"key": "compared"})
     @pure
     @readonly
     def __contains__(self, key: readonly[K]) -> bool: ...
@@ -129,39 +129,39 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     def __ne__[V: Equatable](self, other: readonly[dict[K, V]]) -> bool: ...
 
     @dispatch
-    @native("tpy::dict_get", function=True, element_effect="lookup")
+    @native("tpy::dict_get", function=True, args={"key": "compared"})
     @pure
     @readonly
     def get(self, key: readonly[K], /) -> V | None: ...
 
     @dispatch
-    @native("tpy::dict_get_default", function=True, element_effect="lookup",
-            borrows=("default",), element_of=("self",))
+    @native("tpy::dict_get_default", function=True, args={"key": "compared", "default": "compared"},
+            result={"default": "borrow", "self": "element", "key": "none"})
     @pure
     @readonly
     def get(self, key: readonly[K], default: V, /) -> V: ...
 
     @dispatch
-    @native("tpy::dict_pop", function=True, element_effect="lookup")
+    @native("tpy::dict_pop", function=True, args={"key": "compared"})
     def pop(self, key: readonly[K], /) -> Own[V]: ...
 
     @dispatch
-    @native("tpy::dict_pop_default", function=True, element_effect="lookup")
+    @native("tpy::dict_pop_default", function=True, args={"key": "compared", "default": "compared"})
     def pop(self, key: readonly[K], default: V, /) -> Own[V]: ...
 
     @native
     def clear(self) -> None: ...
 
-    @native("tpy::dict_update", function=True, element_effect="insert")
+    @native("tpy::dict_update", function=True, args={"other": "stored"})
     def update(self, other: dict[K, Own[V]], /) -> None: ...
 
-    @native("tpy::dict_update", function=True, element_effect="insert")
+    @native("tpy::dict_update", function=True, args={"other": "stored"})
     def __ior__(self, other: dict[K, Own[V]]) -> dict[K, V]: ...
 
     # Returns a borrow of the stored value (CPython returns the stored
     # object), so `d.setdefault(k, []).append(x)` mutates the dict. The
     # bare `-> V` (not `Own[V]`) is what makes the result alias.
-    @native("tpy::dict_setdefault", function=True, element_effect="insert")
+    @native("tpy::dict_setdefault", function=True, args={"key": "stored", "default": "stored"})
     def setdefault(self, key: K, default: Own[V], /) -> V: ...
 
     @native("tpy::dict_keys", function=True)
