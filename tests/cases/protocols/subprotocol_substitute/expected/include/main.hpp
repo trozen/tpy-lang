@@ -113,14 +113,14 @@ concept KwChild = requires(::tpy::storage_t<T>& t) {
 // class Addable(Protocol):
 template<typename T>
 concept Addable = requires(::tpy::storage_t<T>& t) {
-    { t + std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<std::remove_cvref_t<T>>;
+    { t + std::declval<::tpy::storage_t<std::remove_cvref_t<T>>&>() } -> std::convertible_to<::tpy::storage_t<std::remove_cvref_t<T>>>;
     { t.val() } -> std::convertible_to<int32_t>;
 };
 
 // class SubAddable(Addable, Protocol):
 template<typename T>
 concept SubAddable = requires(::tpy::storage_t<T>& t) {
-    { t + std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<std::remove_cvref_t<T>>;
+    { t + std::declval<::tpy::storage_t<std::remove_cvref_t<T>>&>() } -> std::convertible_to<::tpy::storage_t<std::remove_cvref_t<T>>>;
     { t.val() } -> std::convertible_to<int32_t>;
 };
 

@@ -13,18 +13,21 @@ participating in the methods/expressions/operators/protocols import cycle.
 """
 
 from __future__ import annotations
-from typing import Callable, Collection, Optional
+from typing import TYPE_CHECKING, Callable, Collection, Optional
 
 from .. import qnames
-from ..typesys import NominalType, TpyType, FunctionInfo
+from ..typesys import NominalType, TpyType, FunctionInfo, unwrap_own
 from .send_chain import why_not_send, why_not_sync, render_chain
+
+if TYPE_CHECKING:
+    from .protocols import ProtocolChecker
 
 
 def find_method_class_param_bound_violation(
     method_info: FunctionInfo,
     class_type_params: Optional[Collection[str]],
     class_subst: dict[str, 'TpyType | int'],
-    protocol_checker: Callable[[TpyType, TpyType], bool],
+    protocols: 'ProtocolChecker',
 ) -> Optional[tuple[str, TpyType, TpyType]]:
     """Return (param_name, bound, concrete_type) for the first class-shadowed
     method type-param whose bound the receiver instantiation doesn't satisfy,
@@ -44,8 +47,9 @@ def find_method_class_param_bound_violation(
         concrete = class_subst.get(tp)
         if not isinstance(concrete, TpyType):
             continue
-        if not protocol_checker(concrete, bound):
-            return (tp, bound, concrete)
+        if not protocols.satisfies_bound(concrete, bound, class_subst):
+            return (tp, protocols.substituted_bound(bound, class_subst),
+                    concrete)
     return None
 
 
@@ -53,7 +57,7 @@ def raise_if_class_param_bound_violated(
     method_info: FunctionInfo,
     class_type_params: Optional[Collection[str]],
     class_subst: dict[str, 'TpyType | int'],
-    protocol_checker: Callable[[TpyType, TpyType], bool],
+    protocols: 'ProtocolChecker',
     error_fn: Callable[[str, object], Exception],
     loc_node: object,
     builtin_owner: bool = False,
@@ -64,7 +68,7 @@ def raise_if_class_param_bound_violated(
     regardless of which path detected the violation.
     """
     violation = find_method_class_param_bound_violation(
-        method_info, class_type_params, class_subst, protocol_checker,
+        method_info, class_type_params, class_subst, protocols,
     )
     if violation is None:
         return
@@ -97,15 +101,14 @@ def validate_type_param_bounds(
     type_subst: dict[str, TpyType],
     bounds: dict[str, TpyType],
     func_name: str,
-    satisfies_bound,
+    protocols: 'ProtocolChecker',
     error_fn,
-    substitute,
     detail: str = "",
 ) -> None:
     """Validate that resolved type args satisfy their type parameter bounds
     (`type_param_bound_error`), raising `error_fn` of the message."""
-    msg = type_param_bound_error(type_subst, bounds, func_name,
-                                 satisfies_bound, substitute, detail)
+    msg = type_param_bound_error(type_subst, bounds, func_name, protocols,
+                                 detail)
     if msg is not None:
         raise error_fn(msg)
 
@@ -114,15 +117,14 @@ def type_param_bound_error(
     type_subst: dict[str, TpyType],
     bounds: dict[str, TpyType],
     func_name: str,
-    satisfies_bound,
-    substitute,
+    protocols: 'ProtocolChecker',
     detail: str = "",
 ) -> str | None:
     """Why a resolved type arg breaks its type parameter's bound, or None.
 
-    A bound may name sibling type parameters (`[R, T: Proto[R]]`); `substitute`
-    resolves them against `type_subst` before the conformance check so `T`'s
-    bound is checked as `Proto[<resolved R>]`, not the raw `Proto[R]`.
+    A bound may name sibling type parameters (`[R, T: Proto[R]]`);
+    `satisfies_bound` resolves them against `type_subst` so `T`'s bound is
+    checked as `Proto[<resolved R>]`, not the raw `Proto[R]`.
 
     `detail` is appended to the message by a call site whose type args are
     INFERRED from the argument slots, where the reason the bound has to hold is
@@ -130,13 +132,15 @@ def type_param_bound_error(
     """
     for param_name, type_arg in type_subst.items():
         if param_name in bounds:
-            bound = substitute(bounds[param_name], type_subst)
-            if not satisfies_bound(type_arg, bound):
+            if not protocols.satisfies_bound(type_arg, bounds[param_name],
+                                             type_subst):
+                bound = protocols.substituted_bound(bounds[param_name],
+                                                    type_subst)
                 return (
                     f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
                     f"for type parameter '{param_name}' of '{func_name}'"
                     f"{detail}"
-                    f"{_send_sync_bound_detail(bound, type_arg)}")
+                    f"{_send_sync_bound_detail(bound, unwrap_own(type_arg))}")
     return None
 
 

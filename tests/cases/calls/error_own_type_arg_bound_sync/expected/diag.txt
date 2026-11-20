@@ -1,0 +1,3 @@
+main.py:23: error: Type argument 'Own[L]' does not satisfy bound 'Sync' for type parameter 'T' of 'f_sync'
+L is not Sync
++-- field 'items: list[int32]' is not Sync (mutable container, aliased cross-thread mutation is unsynchronized)

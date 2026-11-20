@@ -37,7 +37,6 @@ if TYPE_CHECKING:
 
 from .bound_check import (bound_violation_text, builtin_owned,
                           find_method_class_param_bound_violation)
-from .pending_num import leaves_as_numbers
 
 
 # C++ templates for user-defined dunder methods (used for unified operator resolution)
@@ -248,12 +247,8 @@ class OperatorResolver:
                     class_subst)
         if not record.type_params:
             return None
-        # A part whose numbers are not decided yet meets the bound as every
-        # width it may settle to does, as at the method-call path.
         return find_method_class_param_bound_violation(
-            method, record.type_params, class_subst,
-            lambda t, bound: self.protocols.type_conforms_to_protocol(
-                leaves_as_numbers(t), bound))
+            method, record.type_params, class_subst, self.protocols)
 
     def _resolve_pending_types(self, tpy_type: TpyType) -> TpyType:
         """Resolve pending/structural types (PendingListType, LiteralType).

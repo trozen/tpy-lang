@@ -114,7 +114,7 @@ from .protocols import (
     protocol_methods,
 )
 from .dyn_erasure import erased_source
-from .type_ops import (ConstraintOrigin, ReturnSeed, _fills_none_arm, partial_substitute, settle_inferred,
+from .type_ops import (ConstraintOrigin, ReturnSeed, _fills_none_arm, partial_substitute, settle_class_type_args, settle_inferred,
                        seeded_arg_hint)
 from .expressions import star_source_element_type
 from .slot_hint import SlotHint
@@ -1756,7 +1756,8 @@ class CallAnalyzer:
                 # A builtin type instantiation: only the type arguments' range
                 # and bounds are checked here, not the annotation position
                 # rules (BUGS.md#builtin-ctor-type-args-skip-position-rules).
-                self.type_ops.check_spelled_type(expr.call_type, expr.loc)
+                expr.call_type = self.type_ops.check_spelled_type(
+                    expr.call_type, expr.loc)
                 written = source_view(expr)
                 # Derive per-arg hints from __init__ param types when possible.
                 # e.g. dict[str, str|int32]([("a","b"), ("c",1)]) -> hint list[tuple[str, str|int32]]
@@ -4654,10 +4655,8 @@ class CallAnalyzer:
             if isinstance(slot, TypeParamRef):
                 type_subst.setdefault(slot.name, arg_t)
         validate_type_param_bounds(
-            type_subst, bounds, f"{callee}()",
-            self.protocols.satisfies_bound,
+            type_subst, bounds, f"{callee}()", self.protocols,
             lambda msg: self.ctx.error(msg, node),
-            self.type_ops.substitute_type_params,
             detail=(". The conversion is picked once for the whole generic "
                     "body, so the argument needs a bound satisfying it"),
         )
@@ -4871,8 +4870,10 @@ class CallAnalyzer:
                 f"got {len(expr.type_args)}",
                 expr
             )
+        formed: list['TpyType | None'] = []
         for type_arg in expr.type_args:
             if type_arg is None:  # _ wildcard
+                formed.append(None)
                 continue
             if is_protocol_type(type_arg):
                 raise self.ctx.error(
@@ -4883,7 +4884,10 @@ class CallAnalyzer:
             if isinstance(type_arg, NominalType) and type_arg.is_record and not type_arg.type_args:
                 if self.ctx.registry.get_record_for_type(type_arg) is None:
                     raise self.ctx.error(f"Unknown type: {type_arg.name}", expr)
-            self.type_ops.validate_type(type_arg, allow_type_param_ref=self.ctx.in_generic_scope(), loc=expr.loc, allow_forward_ref=False)
+            formed.append(self.type_ops.validate_type(
+                type_arg, allow_type_param_ref=self.ctx.in_generic_scope(),
+                loc=expr.loc, allow_forward_ref=False))
+        expr.type_args = tuple(formed)
 
     def _infer_arg_types(
         self, func: FunctionInfo,
@@ -5187,7 +5191,7 @@ class CallAnalyzer:
                 if isinstance(evidence, BindReject):
                     continue
                 type_subst = self.type_ops.infer_type_params_for_function(
-                    func, [t for _, t in evidence], self.protocols.satisfies_bound,
+                    func, [t for _, t in evidence],
                     expected_return_type=self.expr.slot_hint_for(expr),
                     explicit_type_args=explicit_type_args,
                     slots=[slot for slot, _ in evidence],
@@ -5736,7 +5740,7 @@ class CallAnalyzer:
         if func.is_generic():
             evidence = bound.evidence(typed)
             type_subst = self.type_ops.infer_type_params_for_function(
-                func, [t for _, t in evidence], self.protocols.satisfies_bound,
+                func, [t for _, t in evidence],
                 expected_return_type=self.expr.slot_hint_for(expr),
                 explicit_type_args=explicit_type_args,
                 slots=[slot for slot, _ in evidence],
@@ -6581,7 +6585,6 @@ class CallAnalyzer:
                                     src: CallSource,
                                     scope: OpenCallArgs | None) -> TpyType:
         """`src`: the arguments as written."""
-        protocol_checker = self.protocols.type_conforms_to_protocol
 
         # Validate explicit type args before generic inference
         if expr.type_args_parse_error:
@@ -6754,12 +6757,16 @@ class CallAnalyzer:
                 self.type_ops.match_type_with_inference(ret, exp, inferred)
             settle_inferred(inferred, frozenset(
                 tp for tp, _ in zip(overload.type_params, explicit or ())))
+            # Recorded as the verdict asked them, so the explanation below
+            # is about the same type and bound.
             failed = [
-                (type_arg, overload.type_param_bounds[name])
+                (unwrap_own(type_arg), self.protocols.substituted_bound(
+                    overload.type_param_bounds[name], inferred))
                 for name, type_arg in inferred.items()
                 if name in (overload.type_param_bounds or {})
                 and not isinstance(type_arg, UnknownElementType)
-                and not protocol_checker(type_arg, overload.type_param_bounds[name])]
+                and not self.protocols.satisfies_bound(
+                    type_arg, overload.type_param_bounds[name], inferred)]
             bound_failures.extend(failed)
             bound_free_fit = bound_free_fit or not failed
         if bound_failures and not bound_free_fit:
@@ -6769,7 +6776,7 @@ class CallAnalyzer:
             type_arg, bound = next(
                 ((t, b) for t, b in bound_failures
                  if (m := self._bound_marker(b)) is None
-                 or self.protocols.type_conforms_to_protocol(t, m)),
+                 or self.protocols.satisfies_bound(t, m)),
                 bound_failures[0])
             raise self.ctx.error(
                 f"Type '{user_type_name(unwrap_own(type_arg))}' does not satisfy "
@@ -6983,7 +6990,7 @@ class CallAnalyzer:
             m.qualified_name() for t, b in failures if t == type_arg
             for m in (self._bound_marker(b),)
             if m is not None
-            and not self.protocols.type_conforms_to_protocol(t, m)}
+            and not self.protocols.satisfies_bound(t, m)}
         if len(missing) > 1:
             # A tuple / Optional / union IS a value type; what neither
             # overload admits is the class instance it holds, which the
@@ -6994,7 +7001,7 @@ class CallAnalyzer:
         marker = self._bound_marker(bound)
         # A bound that IS the marker already says it.
         if (marker is None or marker is bound
-                or self.protocols.type_conforms_to_protocol(type_arg, marker)):
+                or self.protocols.satisfies_bound(type_arg, marker)):
             return ""
         return f": '{type_arg}' is not {_MARKER_NOUNS[marker.qualified_name()]}"
 
@@ -7336,7 +7343,7 @@ class CallAnalyzer:
                 ).with_explicit(func.type_params, expr.type_args)
                 arg_types = self._infer_arg_types(func, evidence, seed)
                 type_subst = self.type_ops.infer_type_params_for_function(
-                    func, arg_types, self.protocols.satisfies_bound,
+                    func, arg_types,
                     expected_return_type=self.expr.slot_hint_for(expr),
                     explicit_type_args=expr.type_args, slots=slots,
                     own_sources=own_sources,
@@ -7348,10 +7355,8 @@ class CallAnalyzer:
                     )
 
             validate_type_param_bounds(
-                type_subst, func.type_param_bounds, func.name,
-                self.protocols.satisfies_bound,
+                type_subst, func.type_param_bounds, func.name, self.protocols,
                 lambda msg: self.ctx.error(msg, expr),
-                self.type_ops.substitute_type_params,
             )
         else:
             # Infer from arguments (seeded with LHS hint for nested-call hints).
@@ -7364,7 +7369,7 @@ class CallAnalyzer:
             arg_types = self._infer_arg_types(func, evidence, seed)
             self.type_ops.last_disagreement = None
             type_subst = self.type_ops.infer_type_params_for_function(
-                func, arg_types, self.protocols.satisfies_bound,
+                func, arg_types,
                 expected_return_type=self.expr.slot_hint_for(expr),
                 slots=slots, own_sources=own_sources,
             )
@@ -7621,9 +7626,10 @@ class CallAnalyzer:
                 # No explicit type args -- fall through to inference section
                 expr.call_type = None
             else:
-                self.type_ops.validate_record_type_args(
+                expr.call_type = self.type_ops.validate_record_type_args(
                     expr.call_type, record, allow_type_param_ref=True,
                     loc=expr.loc)
+                explicit = expr.call_type.type_args
                 bound_error = self.construction_bound_error(
                     record, record.name,
                     dict(zip(record.type_params, explicit)))
@@ -7663,6 +7669,17 @@ class CallAnalyzer:
                         self.type_ops.validate_type(
                             type_arg, allow_type_param_ref=in_generic,
                             loc=expr.loc, allow_forward_ref=False)
+                # The written arguments form the class type as they do with
+                # no wildcard (a `_` stands where inference fills in).
+                formed = self.type_ops.check_type_args(
+                    NominalType(record.name, tuple(
+                        a if a is not None else TypeParamRef("_")
+                        for a in expr.type_args),
+                        _module_qname=record.qualified_name()),
+                    expr.loc, bounds=False)
+                expr.type_args = tuple(
+                    None if a is None else f
+                    for a, f in zip(expr.type_args, formed.type_args))
             return self.infer_generic_construction(expr, record)
         cand = self._construct_at(expr, record, ctors, {})
         # NominalType.name is the canonical declaration name (qname disambiguates
@@ -7868,6 +7885,7 @@ class CallAnalyzer:
                                               scope)
             subst = {tp: self._resolve_inferred_type_arg(cand.subst[tp])
                      for tp in record.type_params if tp in cand.subst}
+            settle_class_type_args(subst, record)
             if len(subst) != len(record.type_params):
                 raise self.ctx.error(
                     f"Cannot infer type arguments for '{record.name}'. "
@@ -7886,8 +7904,7 @@ class CallAnalyzer:
         None."""
         return type_param_bound_error(
             {p: subst[p] for p in record.type_params},
-            record.type_param_bounds, name, self.protocols.satisfies_bound,
-            self.type_ops.substitute_type_params)
+            record.type_param_bounds, name, self.protocols)
 
     def _construction_type(self, expr: TpyCall, record: RecordInfo,
                            subst: dict[str, TpyType]) -> NominalType:

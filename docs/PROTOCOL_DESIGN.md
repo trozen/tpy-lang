@@ -136,7 +136,11 @@ the object itself -- the `returns_cpp_reference_shape` predicate, after
 not value types, `list`, `dict`, `set`, `Array` and `bytearray` conform; value
 types, tuples (even of class instances), `Optional` / unions, `Own[T]`,
 protocol-typed values and callables do not, and a declared `extends` cannot
-change that. An open `T` conforms when its bound does, for both markers. Each
+change that. That is the rule for a VALUE at a protocol-typed parameter; a
+type argument `Own[X]` meets every bound -- these markers included -- as `X`
+does, since a bound constrains the type the instantiation owns
+(`ProtocolChecker.satisfies_bound`, the one bound predicate; the C++ concepts
+test `::tpy::storage_t<T>`). An open `T` conforms when its bound does, for both markers. Each
 has its intersection with `Comparable` -- `ComparableValue` and
 `ComparableRef` -- for a function that returns one of its arguments' elements
 by value or by reference. A composite bound that fails only on its marker

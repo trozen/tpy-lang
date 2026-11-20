@@ -8170,6 +8170,12 @@ class ExpressionAnalyzer:
                 if node is not None and hint.returns_borrow():
                     self._check_callable_result_roots(node, hint, expr)
         if self.ctx.slot_step_commits():
+            if type_args is not None:
+                # The reference instantiates the generic as a call would:
+                # its copy verdicts and composite-leaf refusal are the call's.
+                self.ctx.record_own_copy_instantiation(
+                    matched.root, dict(zip(matched.root.type_params,
+                                           type_args)), at=expr)
             self.compat.warn_callable_upcasts(
                 matched_data.fit.upcasts,
                 lambda i: self.calls.param_label(matched,
@@ -8383,11 +8389,13 @@ class ExpressionAnalyzer:
         for param_name, bound_arg in inferred.items():
             if param_name in fi.type_param_bounds:
                 bound = fi.type_param_bounds[param_name]
-                if not self.protocols.type_conforms_to_protocol(bound_arg, bound):
+                if not self.protocols.satisfies_bound(bound_arg, bound,
+                                                      inferred):
                     return None, (
                         f"Cannot use '{fi.name}' as function reference: "
                         f"inferred type argument {bound_arg} for {param_name} "
-                        f"does not satisfy bound '{bound.name}'"
+                        f"does not satisfy bound "
+                        f"'{self.protocols.substituted_bound(bound, inferred)}'"
                     )
         # A still-OPEN type argument has no C++ parameter form at all, so the
         # Fn/Callable value cannot carry a signature.

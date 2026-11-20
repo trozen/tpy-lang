@@ -1,0 +1,1 @@
+main.py:22: error: Type argument 'Own[P]' does not satisfy bound 'ValueType' for type parameter 'T' of 'f_val'

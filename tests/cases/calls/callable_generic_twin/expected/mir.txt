@@ -11,11 +11,11 @@ fixtures_q::own_id@21:0: covered (storage: no_proof_required), summary: known
 fixtures_q::mk0@25:0: covered (storage: no_proof_required), summary: known
 fixtures_q::Q.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
-main::app@15:0: uncovered (generic body)
-main::pick@19:0: uncovered (generic body)
-main::pick_cb@23:0: uncovered (generic body)
-main::fill@27:0: uncovered (generic body)
-main::main@31:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::app@18:0: uncovered (generic body)
+main::pick@22:0: uncovered (generic body)
+main::pick_cb@26:0: uncovered (generic body)
+main::fill@30:0: uncovered (generic body)
+main::main@34:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 part_bind::__tpy_init: uncovered (module initialization)
 part_bind::ident@16:0: certified, summary: known
 part_bind::concat@20:0: covered (storage: no_proof_required), summary: known
@@ -32,6 +32,40 @@ part_bind::walk@85:0: uncovered (unsupported native container element), summary:
 part_bind::main@103:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 part_bind::Ops.via@96:4: uncovered (generic body)
 part_bind::Q.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_bounds::__tpy_init: uncovered (module initialization)
+part_bounds::make@43:0: covered (storage: no_proof_required), summary: known
+part_bounds::make_k@47:0: covered (storage: no_proof_required), summary: known
+part_bounds::make_der@51:0: covered (storage: no_proof_required), summary: known
+part_bounds::make_s@69:0: covered (storage: no_proof_required), summary: known
+part_bounds::pull@73:0: uncovered (generic body)
+part_bounds::make_list@78:0: covered (storage: no_proof_required), summary: known
+part_bounds::classify@83:0: uncovered (no body to lower)
+part_bounds::classify@88:0: uncovered (no body to lower)
+part_bounds::f_cmp@92:0: uncovered (generic body)
+part_bounds::f_cmp_ref@98:0: uncovered (generic body)
+part_bounds::f_eq@104:0: uncovered (generic body)
+part_bounds::f_self@110:0: uncovered (generic body)
+part_bounds::f_def@116:0: uncovered (generic body)
+part_bounds::f_iter@121:0: uncovered (generic body)
+part_bounds::f_base@126:0: uncovered (generic body)
+part_bounds::f_sync@131:0: uncovered (generic body)
+part_bounds::main@135:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_bounds::X.__lt__@19:4: covered (storage: no_proof_required)
+part_bounds::X.__eq__@22:4: covered (storage: no_proof_required)
+part_bounds::S.get@65:4: covered (storage: no_proof_required), summary: known
+part_bounds::X.__init__@16:4: covered (storage: no_proof_required), summary: known
+part_bounds::Base.__init__@29:4: covered (storage: no_proof_required), summary: known
+part_bounds::Der.__init__@34:4: covered (storage: no_proof_required), summary: known
+part_bounds::S.__init__@62:4: covered (storage: no_proof_required), summary: known
+part_class_args::__tpy_init: uncovered (module initialization)
+part_class_args::mk@38:0: covered (storage: no_proof_required), summary: known
+part_class_args::pending@42:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_class_args::main@52:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_class_args::C.put@26:4: uncovered (generic body)
+part_class_args::C.fill@31:4: uncovered (generic body)
+part_class_args::C.get@34:4: uncovered (generic body)
+part_class_args::P.__init__@16:4: covered (storage: no_proof_required), summary: known
+part_class_args::C.__init__@23:4: uncovered (generic constructor)
 part_frames::__tpy_init: uncovered (module initialization)
 part_frames::gen_rebind@19:0: uncovered (generic body)
 part_frames::gen_make@28:0: uncovered (generic body)
@@ -79,3 +113,13 @@ part_red::red_snapshot@19:0: uncovered (generic body)
 part_red::concat@28:0: covered (storage: no_proof_required), summary: known
 part_red::fin@32:0: uncovered (generic body)
 part_red::main@40:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_reduce::__tpy_init: uncovered (module initialization)
+part_reduce::own_add2@16:0: covered (storage: no_proof_required), summary: known
+part_reduce::own_acc@20:0: covered (storage: no_proof_required), summary: known
+part_reduce::add@25:0: covered (storage: no_proof_required), summary: known
+part_reduce::bigger@29:0: certified, summary: known
+part_reduce::add_p@33:0: covered (storage: no_proof_required), summary: known
+part_reduce::red_b@37:0: uncovered (generic body)
+part_reduce::red_u@45:0: uncovered (generic body)
+part_reduce::main@52:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_reduce::P.__init__@12:4: covered (storage: no_proof_required), summary: known

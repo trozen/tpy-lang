@@ -37,19 +37,19 @@ void poke(A& a) {
     a.x = ::tpy::add_check<int32_t>(a.x, 1);
 }
 
-// def bag_own(b: Bag[Own[A]]) -> Own[A]:
+// def bag_own(b: Bag[A]) -> Own[A]:
 //     return b[0]  # tpyc: warning(/copies A into owned storage/)
 A bag_own(const Bag<A>& b) {
     return A(b[0]);
 }
 
-// def bag_own_call(b: Bag[Own[A]]) -> Own[A]:
+// def bag_own_call(b: Bag[A]) -> Own[A]:
 //     return b.__getitem__(0)  # tpyc: warning(/copies A into owned storage/)
 A bag_own_call(const Bag<A>& b) {
-    return b.__getitem__(0);
+    return A(b.__getitem__(0));
 }
 
-// def bag_ret(b: Bag[Own[A]]) -> A:
+// def bag_ret(b: Bag[A]) -> A:
 //     return b[0]  # tpyc: ok
 A& bag_ret(Bag<A>& b) {
     return b[0];
@@ -64,8 +64,10 @@ void mutate_plain_bag(Bag<A>& b) {
     std::cout << "plain bag mutate" << " " << b[0].x << "\n" << ::tpy::check_signals;
 }
 
-// def mutate_bag(b: Bag[Own[A]]) -> None:
-//     # a user generic __getitem__ -> T at T = Own[A]: the stored element, as at a list.
+// def mutate_bag(b: Bag[A]) -> None:
+//     # a user generic __getitem__ -> T: the stored element, as at a list;
+//     # at a plain `T`, as a class takes no `Own[X]` type argument until unit
+//     # 2b (BUGS.md#class-own-type-arg-method-result-ill-formed).
 //     poke(b[0])  # tpyc: ok
 //     poke(b.__getitem__(0))  # tpyc: ok
 //     print("bag element mutate", b[0].x)

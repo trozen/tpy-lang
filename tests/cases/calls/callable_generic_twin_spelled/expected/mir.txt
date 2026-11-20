@@ -1,11 +1,30 @@
 main::__tpy_init: uncovered (module initialization)
-main::take@23:0: uncovered (generic body)
-main::store2@27:0: uncovered (generic body)
-main::outer_own@32:0: uncovered (generic body)
-main::first@36:0: uncovered (generic body)
-main::identity@40:0: certified, summary: known
-main::main@44:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
-main::P.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::take@25:0: uncovered (generic body)
+main::store2@29:0: uncovered (generic body)
+main::outer_own@34:0: uncovered (generic body)
+main::first@38:0: uncovered (generic body)
+main::identity@42:0: certified, summary: known
+main::ref_n@46:0: uncovered (generic body)
+main::main@50:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::P.__init__@21:4: covered (storage: no_proof_required), summary: known
+part_bounds::__tpy_init: uncovered (module initialization)
+part_bounds::make@16:0: covered (storage: no_proof_required), summary: known
+part_bounds::dep@20:0: uncovered (generic body)
+part_bounds::pick@32:0: uncovered (generic body)
+part_bounds::fold@37:0: uncovered (no body to lower)
+part_bounds::fold@46:0: uncovered (no body to lower)
+part_bounds::keep@54:0: uncovered (generic body)
+part_bounds::collect@68:0: uncovered (generic body)
+part_bounds::own_add2@83:0: covered (storage: no_proof_required), summary: known
+part_bounds::bigger@87:0: certified, summary: known
+part_bounds::main@91:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_bounds::C.test@28:4: uncovered (generic body)
+part_bounds::Q.__eq__@64:4: covered (storage: no_proof_required)
+part_bounds::D.first@79:4: uncovered (generic body)
+part_bounds::P.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_bounds::C.__init__@25:4: uncovered (generic constructor)
+part_bounds::Q.__init__@61:4: covered (storage: no_proof_required), summary: known
+part_bounds::D.__init__@75:4: uncovered (generic constructor)
 part_forms::__tpy_init: uncovered (module initialization)
 part_forms::ident@26:0: certified, summary: known
 part_forms::grow_it@30:0: uncovered (generic body)
@@ -52,6 +71,13 @@ part_open::each@58:0: uncovered (generic body)
 part_open::fin@64:0: uncovered (generic body)
 part_open::main@72:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 part_open::P.__init__@11:4: covered (storage: no_proof_required), summary: known
+part_refs::__tpy_init: uncovered (module initialization)
+part_refs::make@17:0: covered (storage: no_proof_required), summary: known
+part_refs::first_fn@21:0: uncovered (generic body)
+part_refs::first_ref@25:0: uncovered (generic body)
+part_refs::own_acc@29:0: covered (storage: no_proof_required), summary: known
+part_refs::main@34:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_refs::X.__init__@13:4: covered (storage: no_proof_required), summary: known
 part_sinks::__tpy_init: uncovered (module initialization)
 part_sinks::gen_step@18:0: uncovered (generic body)
 part_sinks::lend_pair@22:0: uncovered (generic body)
@@ -83,11 +109,11 @@ part_tuple_copy::pair@29:0: uncovered (generic body)
 part_tuple_copy::two@37:0: uncovered (generic body)
 part_tuple_copy::second@41:0: uncovered (generic body)
 part_tuple_copy::grow_all@45:0: uncovered (generic body)
-part_tuple_copy::main@68:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
+part_tuple_copy::main@67:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
 part_tuple_copy::P.grow@24:4: covered (storage: no_proof_required), summary: known
-part_tuple_copy::Box.pair@64:4: uncovered (generic body)
+part_tuple_copy::Box.pair@63:4: uncovered (generic body)
 part_tuple_copy::P.__init__@21:4: covered (storage: no_proof_required), summary: known
-part_tuple_copy::Box.__init__@60:4: uncovered (generic constructor)
+part_tuple_copy::Box.__init__@59:4: uncovered (generic constructor)
 part_unowned::__tpy_init: uncovered (module initialization)
 part_unowned::store1@15:0: uncovered (generic body)
 part_unowned::gen@19:0: uncovered (generic body)

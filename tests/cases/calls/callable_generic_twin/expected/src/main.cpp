@@ -42,7 +42,10 @@ namespace tpyapp::main {
 //     print("fill-own", b.n, out[0].n)
 //     part_iter.main()
 //     part_red.main()
+//     part_reduce.main()
+//     part_class_args.main()
 //     part_bind.main()
+//     part_bounds.main()
 //     part_paths.main()
 //     part_frames.main()
 //     part_frames_er.main()
@@ -83,7 +86,10 @@ void main() {
     std::cout << "fill-own" << " " << b.n << " " << ::tpy::__getitem__(out, 0).n << "\n" << ::tpy::check_signals;
     ::tpyapp::part_iter::main();
     ::tpyapp::part_red::main();
+    ::tpyapp::part_reduce::main();
+    ::tpyapp::part_class_args::main();
     ::tpyapp::part_bind::main();
+    ::tpyapp::part_bounds::main();
     ::tpyapp::part_paths::main();
     ::tpyapp::part_frames::main();
     ::tpyapp::part_frames_er::main();
@@ -91,11 +97,14 @@ void main() {
 
 // from fixtures import P, identity, mk
 // import part_bind
+// import part_bounds
+// import part_class_args
 // import part_frames
 // import part_frames_er
 // import part_iter
 // import part_paths
 // import part_red
+// import part_reduce
 //
 // main()
 void __tpy_init() {

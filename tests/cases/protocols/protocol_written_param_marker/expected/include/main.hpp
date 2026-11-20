@@ -118,7 +118,7 @@ void copyable(T_p&& p) {
 //         print("not default", p.get())
 template<HasN T_p>
 void default_(T_p&& p) {
-    if constexpr (::std::default_initializable<std::remove_cvref_t<T_p>>) {
+    if constexpr (::tpy::Default<std::remove_cvref_t<T_p>>) {
         std::cout << "default" << " " << p.get() << "\n" << ::tpy::check_signals;
     } else {
         std::cout << "not default" << " " << p.get() << "\n" << ::tpy::check_signals;

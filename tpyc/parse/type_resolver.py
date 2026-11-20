@@ -778,7 +778,8 @@ class TypeResolver:
         for tp_name, arg in zip(alias_info.type_params, resolved_args):
             if isinstance(arg, TpyType):
                 subst[tp_name] = arg
-        return substitute_type_params_structural(alias_info.body, subst)
+        return substitute_type_params_structural(alias_info.body, subst,
+                                                 spelled=True)
 
     # ------------------------------------------------------------------
     # Helpers

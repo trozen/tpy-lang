@@ -29,7 +29,7 @@ struct Bag {
 
     // def resize[T: Default](self, n: int32) -> None:
     void resize(int32_t n)
-      requires ::std::default_initializable<T>;
+      requires ::tpy::Default<T>;
 
     // def get(self, i: int32) -> T:
     ::tpy::val_or_ref_t<T> get(int32_t i);
@@ -74,7 +74,7 @@ inline void Bag<T, N>::add(::tpy::param_val_or_ref_t<T> value) {
 //         self.items.append(make_default())
 template<typename T, std::size_t N>
 inline void Bag<T, N>::resize(int32_t n)
-  requires ::std::default_initializable<T> {
+  requires ::tpy::Default<T> {
     while ((::tpy::__len__(this->items) > n)) {
         ::tpy::pop_back(this->items);
     }

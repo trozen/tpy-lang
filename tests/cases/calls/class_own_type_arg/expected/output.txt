@@ -1,0 +1,16 @@
+ctor 9
+param 9
+return 9
+local 9
+pending 9
+classmethod 9
+method 9
+nested 9
+tuple 9 1
+alias 9
+inferred 9
+builtin 9
+static 9
+own-method 9
+field-before 1
+alias-cp 9

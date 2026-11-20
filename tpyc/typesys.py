@@ -1460,10 +1460,17 @@ class NominalType(TpyType):
         """An instantiation of a generic class TPy emits itself (a user or
         tplib class with type arguments, not a `@native` one): its C++
         declarations are generated, so they may ask about the arguments."""
-        if not (self.type_args and self.is_user_record):
+        if not self.type_args or self.is_protocol:
             return False
         from tpyc.type_def_registry import type_def_of
-        return not type_def_of(self).record.is_native
+        td = type_def_of(self)
+        if td is not None and td.record is not None:
+            return self.is_user_record and not td.record.is_native
+        # Declared in a module whose records are being registered: its
+        # TypeDef comes with its registration.
+        compiler = get_current_compiler()
+        return self.qualified_name() in getattr(
+            compiler, "declared_generic_classes", ())
 
     def to_cpp(self) -> str:
         if self.is_protocol and not self.is_dynamic_protocol:
@@ -1755,7 +1762,7 @@ def same_base_type(a: 'TpyType', b: 'TpyType') -> bool:
 
 
 def substitute_type_params_structural(
-    typ: TpyType, subst: dict[str, TpyType],
+    typ: TpyType, subst: dict[str, TpyType], *, spelled: bool = False,
 ) -> TpyType:
     """Replace TypeParamRef nodes in `typ` with values from `subst`.
 
@@ -1765,9 +1772,13 @@ def substitute_type_params_structural(
     type_ops.py that handles representation choices (e.g. Optional
     pointer repr); this one is for typesys-internal callers that only
     need structural replacement. The result is settled
-    (`settled_substitution`), as every substitution's is.
+    (`settled_substitution`), as every substitution's is, and its class
+    types formed (`without_class_own_args`) -- unless `spelled`: the
+    parser's expansion of a written alias stays as written, for sema's
+    check of the spelling to see (and warn of) what it drops.
     """
-    return settled_substitution(typ, _substitute_structural(typ, subst))
+    settled = settled_substitution(typ, _substitute_structural(typ, subst))
+    return settled if spelled else without_class_own_args(settled)
 
 
 def _substitute_structural(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
@@ -2006,8 +2017,9 @@ class SelfType(TpyType):
 
     def to_cpp(self) -> str:
         # The implementing type a concept checks: a forwarding parameter
-        # deduces `T` as a reference for an lvalue argument.
-        return "std::remove_cvref_t<T>"
+        # deduces `T` as a reference for an lvalue argument, and a bound is
+        # asked of the storage form (`X` at `T = Own[X]`).
+        return "::tpy::storage_t<std::remove_cvref_t<T>>"
 
     def __str__(self) -> str:
         return "Self"
@@ -2404,6 +2416,105 @@ def unwrap_own(typ: 'TpyType') -> 'TpyType':
     if isinstance(typ, OwnType):
         return typ.wrapped
     return typ
+
+
+def without_class_own_args(
+        t: 'TpyType',
+        dropped: 'list[tuple[TpyType, TpyType, OwnType]] | None' = None,
+) -> 'TpyType':
+    """`t` with every non-plain `Own[X]` inside a type argument of a class
+    TPy emits itself (`NominalType.is_emitted_generic_class`), at any depth,
+    replaced by `X`. Until the Callable contract unit 2b gives `C[Own[X]]`
+    a meaning, it is `C[X]` -- what the C++ instantiates
+    (BUGS.md#class-own-type-arg-method-result-ill-formed). The one rule
+    every formation of a class type applies (a written spelling, a
+    substitution, an inference); a plain `Own[int32]` is `int32` already
+    and stays, a callable's `Own` is its contract and stays, and a builtin
+    container's, a `@native` class's or a protocol's arguments are not
+    touched. A generic alias drops it from the arguments that reach such a
+    class in its body (`alias_class_arg_params`). `dropped`, when given,
+    receives `(before, after, own)` per class or alias spelling changed."""
+    def peel(a: 'TpyType', owns: 'list[OwnType]') -> 'TpyType':
+        if isinstance(a, CallableType):
+            return a
+        if isinstance(a, OwnType) and not a.is_plain():
+            owns.append(a)
+            return peel(a.wrapped, owns)
+        return a.map_inner_types(lambda i: peel(i, owns))
+
+    def changed(before: 'TpyType', after: 'TpyType',
+                owns: 'list[OwnType]') -> 'TpyType':
+        if owns and dropped is not None:
+            dropped.append((before, after, owns[0]))
+        return after
+
+    def walk(x: 'TpyType') -> 'TpyType':
+        x = x.map_inner_types(walk)
+        if isinstance(x, NominalType) and x.is_emitted_generic_class():
+            owns: list[OwnType] = []
+            return changed(x, x.map_inner_types(lambda a: peel(a, owns)), owns)
+        if isinstance(x, RecursiveAliasInstanceType) and x.alias_info:
+            reaching = alias_class_arg_params(x.alias_info, x.qname)
+            if reaching:
+                owns = []
+                args = tuple(
+                    peel(a, owns) if p in reaching else a
+                    for p, a in zip(x.alias_info.type_params, x.type_args))
+                if owns:
+                    return changed(x, dc_replace(x, type_args=args), owns)
+        return x
+    return walk(t)
+
+
+def alias_class_arg_params(info: 'TypeAliasInfo',
+                           qname: str = "") -> 'frozenset[str]':
+    """The type parameters of a generic alias its declared body hands to a
+    class TPy emits itself as (part of) a type argument -- directly or
+    through the aliases it names. A fact of the declaration, computed once
+    (`TypeAliasInfo.class_arg_params`)."""
+    if info.class_arg_params is not None:
+        return info.class_arg_params
+    if id(info) in _ALIAS_PARAMS_ASKED:
+        return frozenset()  # a self-reference adds nothing
+    _ALIAS_PARAMS_ASKED.add(id(info))
+    try:
+        return _alias_class_arg_params(info)
+    finally:
+        _ALIAS_PARAMS_ASKED.discard(id(info))
+
+
+# The alias declarations `alias_class_arg_params` is reading, so a body
+# naming its own alias stops there.
+_ALIAS_PARAMS_ASKED: set[int] = set()
+
+
+def _alias_class_arg_params(info: 'TypeAliasInfo') -> 'frozenset[str]':
+    params = set(info.type_params)
+    found: set[str] = set()
+
+    def walk(t: 'TpyType', inside: bool) -> None:
+        if isinstance(t, TypeParamRef):
+            if inside and t.name in params:
+                found.add(t.name)
+            return
+        if isinstance(t, CallableType):
+            return
+        if isinstance(t, RecursiveAliasInstanceType) and t.alias_info:
+            inner = (frozenset(t.alias_info.type_params) if inside
+                     else alias_class_arg_params(t.alias_info, t.qname))
+            for p, a in zip(t.alias_info.type_params, t.type_args):
+                if p in inner and isinstance(a, TpyType):
+                    walk(a, True)
+            return
+        here = inside or (isinstance(t, NominalType)
+                          and t.is_emitted_generic_class())
+        for a in t.inner_types():
+            walk(a, here)
+    walk(info.body, False)
+    # Kept once found: an empty answer may be asked before the classes
+    # the body names are registered, so it is asked again.
+    info.class_arg_params = frozenset(found) if found else None
+    return frozenset(found)
 
 
 def unwrap_value_own(typ: 'TpyType') -> 'TpyType':
@@ -3383,13 +3494,13 @@ def _type_arg_own_peeled(ret_type: TpyType | None,
     # Only a CLASS's type parameter: a function's own (a generic method's
     # `U` included) substitutes literally, `-> T` at `T = Own[P]` handing
     # the value over.
-    if not _class_type_param(fi.root, unwrap_readonly(root_rt.wrapped).name):
+    if not class_type_param(fi.root, unwrap_readonly(root_rt.wrapped).name):
         return ret_type
     rt = unwrap_readonly(ret_type)
     return rt.wrapped if isinstance(rt, OwnType) else ret_type
 
 
-def _class_type_param(fi: FunctionInfo, name: str) -> bool:
+def class_type_param(fi: FunctionInfo, name: str) -> bool:
     """`name` is a type parameter of the class declaring method `fi`."""
     if not fi.is_method:
         return False
@@ -10151,6 +10262,9 @@ class TypeAliasInfo:
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)
     loc: Optional[Any] = None  # SourceLocation from parse.py (avoid circular import)
     is_recursive: bool = False
+    # `alias_class_arg_params`, computed on first ask.
+    class_arg_params: 'frozenset[str] | None' = field(
+        default=None, compare=False, repr=False)
 
 
 @dataclass

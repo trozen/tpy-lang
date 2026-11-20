@@ -8,7 +8,7 @@ operators, calls, methods, and module infrastructure.
 from __future__ import annotations
 from enum import Enum
 from collections.abc import Hashable
-from typing import TYPE_CHECKING, Callable, NamedTuple, Sequence
+from typing import TYPE_CHECKING, Callable, Mapping, NamedTuple, Sequence
 
 from ..typesys import (
     same_class,
@@ -984,6 +984,10 @@ class OverloadFit(NamedTuple):
     narrowing: int
     conversion_widening: int
     per_arg: tuple[tuple[MatchTier, int], ...]
+    # Per argument, how the callable parameter's declared result takes an
+    # owned `Own[X]` result (`_owned_result_spellings`): it breaks a tie
+    # only (`_owned_result_tiebreak`).
+    owned_results: 'tuple[bool | None, ...]' = ()
 
     @property
     def converted(self) -> int:
@@ -997,9 +1001,54 @@ class OverloadFit(NamedTuple):
         widens a container another applicable one takes as it is -- the
         least narrowing, the least conversion widening, then the tier
         counts and the summed cost (`_score`). A strict match converts and
-        narrows nothing, so the strict stage ranks on the rest."""
+        narrows nothing, so the strict stage ranks on the rest. A tie left
+        is broken by the owned callable results (`_owned_result_tiebreak`)."""
         return (self.converted, self.widening, self.narrowing,
                 self.conversion_widening, *_score(self.per_arg))
+
+
+def _owned_result_spellings(overload: FunctionInfo,
+                            evidence: 'Sequence[tuple[int, TpyType]]',
+                            ) -> 'tuple[bool | None, ...]':
+    """Per argument (by its position in `evidence`): for a callable argument
+    returning a non-plain `Own[X]` at a callable parameter, whether the
+    parameter's declared result writes `Own[T]` (True) or is a bare type
+    parameter bound to `Own[X]` (False); None for any other argument."""
+    params = overload.root.params
+    out: list[bool | None] = []
+    for i, arg_t in evidence:
+        found: bool | None = None
+        declared = (unwrap_readonly(unwrap_ref_type(params[i].type))
+                    if i < len(params) else None)
+        arg = unwrap_readonly(unwrap_ref_type(arg_t))
+        if is_callable_type(declared) and is_callable_type(arg):
+            got = unwrap_readonly(arg.return_type)
+            ret = unwrap_readonly(unwrap_ref_type(declared.return_type))
+            if isinstance(got, OwnType) and not got.is_plain():
+                if isinstance(ret, TypeParamRef):
+                    found = False
+                elif (isinstance(ret, OwnType)
+                        and isinstance(ret.wrapped, TypeParamRef)):
+                    found = True
+        out.append(found)
+    return tuple(out)
+
+
+def _owned_result_tiebreak(tied: list[int],
+                           fits: 'Mapping[int, OverloadFit]') -> list[int]:
+    """The tied candidates no other one beats on an owned callable result:
+    a written `Own[T]` taking an owned result is a more specific fit than a
+    bare `T` bound to it -- the bare `T` fallback, one level down inside the
+    callable's type. A candidate is beaten only at a position where another
+    writes `Own[T]` and it is bare, and nowhere the other way round; two
+    that neither write `Own[T]` stay tied."""
+    def beats(a: tuple, b: tuple) -> bool:
+        pairs = list(zip(a, b))
+        return (any(x is True and y is False for x, y in pairs)
+                and not any(x is False and y is True for x, y in pairs))
+    spell = {i: fits[i].owned_results for i in tied}
+    return [i for i in tied
+            if not any(beats(spell[j], spell[i]) for j in tied if j != i)]
 
 
 def _has_type_param_params(overload: FunctionInfo) -> bool:
@@ -1023,8 +1072,8 @@ def _classify_overload(
     any arg rejects (or the container arguments do not fit it together).
 
     Strict (``convert`` off): for a generic overload (``TypeParamRef`` in
-    params) inference runs first (using ``protocol_checker`` to validate
-    type-parameter bounds) and ``_classify_generic_param_match`` gives the
+    params) inference runs first (validating type-parameter bounds through
+    the one bound predicate) and ``_classify_generic_param_match`` gives the
     TPR params their cells; one refused for a joined fixed-int binding
     leaves its bindings in ``joined_out`` for the conversion stage.
 
@@ -1033,7 +1082,6 @@ def _classify_overload(
     Parameters are taken as given -- at ``binding``, a joined fixed-int
     binding, when there is one -- with no inference.
     """
-    protocol_checker = ranking.protocol_checker
     classifier = ranking.classifier
     default_int_type = ranking.default_int_type
     type_ops = ranking.type_ops
@@ -1049,7 +1097,6 @@ def _classify_overload(
         joined: set[str] = set()
         inferred = type_ops.infer_type_params_for_function(
             overload, [t for _, t in evidence],
-            protocol_checker or _always_false_checker,
             joined=joined, slots=[slot for slot, _ in evidence],
             literal=ranking.literal_type,
         )
@@ -1116,7 +1163,8 @@ def _classify_overload(
     widening = _container_fit(meets, default_int_type, type_ops)
     if widening is None:
         return None
-    return OverloadFit(widening, narrowing, conversion_widening, tuple(per_arg))
+    return OverloadFit(widening, narrowing, conversion_widening, tuple(per_arg),
+                       _owned_result_spellings(overload, evidence))
 
 
 class OverloadCandidate(NamedTuple):
@@ -1150,7 +1198,8 @@ class OverloadPick(NamedTuple):
 
 
 def _pick_best(candidates: list[OverloadCandidate],
-               ranked: list[tuple[tuple, int]], converted: bool) -> int:
+               ranked: list[tuple[tuple, int]], converted: bool,
+               fits: 'Mapping[int, OverloadFit]') -> int:
     """The tie rule of every overloaded call: the best-ranked of the
     applicable `(rank, index)` pairs. Candidates of one declaration (its
     `root`: views of it at several substitutions) stand for one; a top tie
@@ -1168,6 +1217,8 @@ def _pick_best(candidates: list[OverloadCandidate],
         if key not in seen:
             seen.add(key)
             tied.append(index)
+    if len(tied) > 1:
+        tied = _owned_result_tiebreak(tied, fits)
     if len(tied) > 1:
         raise OverloadAmbiguityError(
             tuple(candidates[i].overload for i in tied), converted)
@@ -1279,11 +1330,13 @@ def _rank_stages(
                           [(_receiver_ranked(fits[i].rank(), candidates[i],
                                              readonly_tiebreak), i)
                            for i in strict],
-                          converted=False)
+                          converted=False,
+                          fits={i: fits[i] for i in strict})
         return OverloadPick(best, tuple(strict),
                             inferred.get(candidates[best].overload),
                             bindings[best])
     ranked: list[tuple[tuple, int]] = []
+    ranked_fits: dict[int, OverloadFit] = {}
     for index, cand in enumerate(candidates):
         fit = fits[index]
         evidence = evidences[index]
@@ -1293,11 +1346,12 @@ def _rank_stages(
                 binding=joined.get(cand.overload),
             )
         if fit is not None:
+            ranked_fits[index] = fit
             ranked.append((_receiver_ranked(fit.rank(), cand, readonly_tiebreak),
                            index))
     if not ranked:
         return OverloadPick(None)
-    best = _pick_best(candidates, ranked, converted=True)
+    best = _pick_best(candidates, ranked, converted=True, fits=ranked_fits)
     winner = candidates[best].overload
     return OverloadPick(best, (), joined.get(winner) or inferred.get(winner),
                         bindings[best])

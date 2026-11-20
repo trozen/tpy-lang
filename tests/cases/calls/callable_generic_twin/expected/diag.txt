@@ -1,5 +1,6 @@
 part_bind.py:39: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 part_bind.py:60: warning: may copy T into container if not a value type; use copy() to make this explicit
+part_class_args.py:29: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 part_frames.py:108: warning: copies Q into owned storage; use copy() to make this explicit
 part_frames.py:113: warning: copies Q into owned storage; use copy() to make this explicit
 part_frames_er.py:102: warning: copies Q into owned storage; use copy() to make this explicit
@@ -13,4 +14,10 @@ part_paths.py:98: warning: copies Q into owned storage; use copy() to make this 
 part_paths.py:101: warning: copies Q into owned storage; use copy() to make this explicit
 part_paths.py:107: warning: copies Q into owned storage; use copy() to make this explicit
 part_red.py:22: warning: may copy T into container if not a value type; use copy() to make this explicit
-main.py:28: warning: may copy U into owned storage if not a value type; use copy() to make this explicit
+part_reduce.py:16: warning: Own[P] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_reduce.py:16: warning: Own[P] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_reduce.py:56: warning: copies P into owned storage; use copy() to make this explicit
+part_reduce.py:63: warning: copies P into owned storage; use copy() to make this explicit
+part_reduce.py:75: warning: copies P into owned storage; use copy() to make this explicit
+part_reduce.py:77: warning: copies P into owned storage; use copy() to make this explicit
+main.py:31: warning: may copy U into owned storage if not a value type; use copy() to make this explicit

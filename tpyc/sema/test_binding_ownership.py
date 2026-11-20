@@ -958,8 +958,9 @@ def f(xs: list[tuple[Own[A], int32]],
 def test_written_type_arguments_count_as_the_signature() -> None:
     # A type argument counts as the declared return does, written
     # (`gen[Own[A]]`, a free function or a generic record's method) or
-    # inferred; one binding a CLASS type parameter substitutes nothing.
-    # The inferred row takes the tuple shape.
+    # inferred. The inferred row takes the tuple shape. A class type
+    # parameter at `Own[A]` (`G.wrap[Own[A]]`) is refused until unit 2b
+    # (BUGS.md#class-own-type-arg-method-result-ill-formed).
     ctx, fns = _module("""\
 class It[U]:
     xs: list[U]
@@ -994,8 +995,6 @@ def f(ys: list[Own[A]], ps: list[tuple[Own[A], int32]]) -> None:
     g = G(1)
     for e4 in g.each[Own[A]](ys):
         print(e4.v)
-    for e5 in G.wrap[Own[A]](ys):
-        print(e5.v)
 """)
     handed = {}
     for s in _nodes(fns["f"], TpyForEach):
@@ -1008,7 +1007,6 @@ def f(ys: list[Own[A]], ps: list[tuple[Own[A], int32]]) -> None:
                         # copy of the lent element
                         # (BUGS.md#lent-list-at-own-iterable-param-copies)
         "e4": {()},     # a generic record's method's own type parameter
-        "e5": set(),    # a class type parameter stays unsubstituted
     }
 
 

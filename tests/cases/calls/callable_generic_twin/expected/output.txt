@@ -16,6 +16,16 @@ red-ref 105
 red-snap-int 3
 red-fin finally
 red-fin 5
+reduce-own2 6
+reduce-acc-temp 16
+reduce-add 6
+reduce-lend 102
+reduce-build 103 1
+red-bounded 16
+red-unbounded 16
+class-box 1
+class-list-own 5
+class-pending 9
 bind-branch 4
 bind-branch-store 4 1
 bind-try 5
@@ -25,6 +35,16 @@ bind-red-str abc
 bind-fwd 1
 bind-method 8
 bind-own-list 6
+bounds-ref 1
+bounds-cmp 0
+bounds-cmp-ref 0
+bounds-eq 1
+bounds-self 1
+bounds-default 1
+bounds-iter 1
+bounds-class 1
+bounds-assoc 4
+bounds-sync 1
 mixed-ref 2 2
 mixed-str a
 mixed-own 2

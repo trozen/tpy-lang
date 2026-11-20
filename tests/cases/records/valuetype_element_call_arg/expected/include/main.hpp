@@ -41,15 +41,15 @@ int32_t take_own(Color c);
 void bump(P& p);
 // def poke(a: A) -> None:
 void poke(A& a);
-// def bag_own(b: Bag[Own[A]]) -> Own[A]:
+// def bag_own(b: Bag[A]) -> Own[A]:
 A bag_own(const Bag<A>& b);
-// def bag_own_call(b: Bag[Own[A]]) -> Own[A]:
+// def bag_own_call(b: Bag[A]) -> Own[A]:
 A bag_own_call(const Bag<A>& b);
-// def bag_ret(b: Bag[Own[A]]) -> A:
+// def bag_ret(b: Bag[A]) -> A:
 A& bag_ret(Bag<A>& b);
 // def mutate_plain_bag(b: Bag[A]) -> None:
 void mutate_plain_bag(Bag<A>& b);
-// def mutate_bag(b: Bag[Own[A]]) -> None:
+// def mutate_bag(b: Bag[A]) -> None:
 void mutate_bag(Bag<A>& b);
 // def mutate_own(xs: list[Own[A]]) -> None:
 void mutate_own(std::vector<A>& xs);

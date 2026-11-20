@@ -64,7 +64,8 @@ from ..typesys import (
     contains_reference_type, FunctionInfo, NominalType, OptionalType, OwnType,
     PendingViewType, PtrType,
     ReadonlyType, TpyType, TupleType, TypeParamRef, UnionType,
-    contains_type_param, declares_no_writes, held_whole_borrow_sources,
+    class_type_param, contains_type_param, declares_no_writes,
+    held_whole_borrow_sources,
     is_bodyless_binding, is_bufferless_scalar, is_void_like_type,
     is_dyn_protocol, is_open_type_param_return, is_protocol_type,
     recorded_return_borrow_sources, return_borrow_fact_pending,
@@ -512,6 +513,21 @@ def callee_lend_fact(call: TpyExpr) -> CalleeLend:
                       fresh, access)
 
 
+def _owned_at_instantiation(fi: FunctionInfo) -> bool:
+    """A bodied callee's `-> T` result of a type parameter it declares
+    itself, instantiated at `T = Own[X]`: the signature hands the value
+    over (`val_or_ref_t` renders it by value), as a declared `-> Own[X]`
+    does. A method's `T` re-declaring its class's parameter is the
+    class's, and a body-less binding renders its own result."""
+    root = fi.root
+    declared = unwrap_readonly(unwrap_ref_type(root.return_type))
+    return (isinstance(declared, TypeParamRef)
+            and declared.name in (root.type_params or ())
+            and not class_type_param(root, declared.name)
+            and not is_bodyless_binding(root)
+            and isinstance(unwrap_readonly(fi.return_type), OwnType))
+
+
 # The callee facts that record a `return_borrows_from`, empty or not.
 _RECORDS_A_FACT = frozenset({CalleeFact.RECORDED, CalleeFact.KNOWN_EMPTY})
 # No callee body to read a fact off: no callee, or a callable value.
@@ -602,13 +618,19 @@ def _declared_own(t: TpyType | None) -> bool:
         unwrap_readonly(unwrap_send_sync(t)), OwnType)
 
 
+def _owned_whole(fi: FunctionInfo) -> bool:
+    """Whether `fi`'s result is owned whole by its signature: declared
+    `Own[...]`, or instantiated so (`_owned_at_instantiation`)."""
+    return _declared_own(fi.root.return_type) or _owned_at_instantiation(fi)
+
+
 def _carries_nothing(lend: CalleeLend) -> bool:
     """Whether a call's result points into nothing under its contract: a
     fresh one, or one declared owned whole that can carry no pointer
     (`_owned_result_carries` of any operand)."""
     ops = lend.ops
     return lend.fresh or (
-        ops is not None and _declared_own(ops.fi.root.return_type)
+        ops is not None and _owned_whole(ops.fi)
         and not _owned_result_carries(ops.fi.return_type, None))
 
 
@@ -642,7 +664,7 @@ def _contract_sources(call: TpyExpr, lend: CalleeLend, type_of: ExprTypeOf,
     if _carries_nothing(lend):
         return []
     ops = lend.ops
-    owned = ops is not None and _declared_own(ops.fi.root.return_type)
+    owned = ops is not None and _owned_whole(ops.fi)
     result = ops.fi.return_type if ops is not None else None
     if ops is None:
         if not isinstance(call, (TpyCall, TpyMethodCall)):
@@ -1059,7 +1081,9 @@ class MayLend(CallPolicy):
             return []
         lend = callee_lend_fact(call)
         kind = lend.kind
-        if lend.fresh:
+        if lend.fresh or (lend.ops is not None
+                          and _owned_at_instantiation(lend.ops.fi)
+                          and _carries_nothing(lend)):
             return []
         ctor_arg = borrowing_ctor_arg(call)
         if ctor_arg is not None:

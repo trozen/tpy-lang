@@ -1,0 +1,1 @@
+main.py:15: error: Type argument 'Own[str]' does not satisfy bound 'ReferenceType' for type parameter 'T' of 'f_ref'

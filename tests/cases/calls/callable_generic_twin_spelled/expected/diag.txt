@@ -1,3 +1,9 @@
+part_bounds.py:70: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_bounds.py:83: warning: Own[P] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_bounds.py:83: warning: Own[P] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_bounds.py:101: warning: copies P into owned storage; use copy() to make this explicit
+part_bounds.py:128: warning: `Own[P]` in a type argument of class 'D' has no effect yet; write `D[P]`
+part_bounds.py:106: warning: copies P into owned storage; use copy() to make this explicit
 part_forms.py:89: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 part_forms.py:96: warning: copies P into owned storage; use copy() to make this explicit
 part_forms.py:100: warning: copies P into owned storage; use copy() to make this explicit
@@ -14,12 +20,14 @@ part_open.py:24: warning: Own[P] param 'b' is never consumed (not stored in a fi
 part_open.py:33: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 part_open.py:44: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 part_open.py:61: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
-part_open.py:93: warning: Passing borrowed container 'ps' to non-readonly parameter 'xs' (function may invalidate references)
-part_open.py:97: warning: Passing borrowed container 'ps' to non-readonly parameter 'xs' (function may invalidate references)
 part_open.py:86: warning: copies P into owned storage; use copy() to make this explicit
 part_open.py:90: warning: copies P into owned storage; use copy() to make this explicit
 part_open.py:93: warning: copies P into owned storage; use copy() to make this explicit
 part_open.py:97: warning: copies P into owned storage; use copy() to make this explicit
+part_refs.py:50: warning: copies X into owned storage; use copy() to make this explicit
+part_refs.py:36: warning: copies X into owned storage; use copy() to make this explicit, or declare 'f: Callable[[], Own[T]]' so the result is lent
+part_refs.py:42: warning: copies X into owned storage; use copy() to make this explicit, or declare 'f: Callable[[], Own[T]]' so the result is lent
+part_refs.py:50: warning: copies X into owned storage; use copy() to make this explicit
 part_store.py:47: warning: may copy T into container if not a value type; use copy() to make this explicit
 part_store.py:90: warning: may copy U into owned storage if not a value type; use copy() to make this explicit
 part_store.py:95: warning: may copy T into container if not a value type; use copy() to make this explicit
@@ -28,14 +36,14 @@ part_store.py:115: warning: copies P into owned storage; use copy() to make this
 part_store.py:118: warning: copies P into owned storage; use copy() to make this explicit, or declare 'f: Fn[[A], Own[T]]' so the result is lent
 part_store.py:129: warning: copies P into owned storage; use copy() to make this explicit, or declare 'f: Fn[[], Own[T]]' so the result is lent
 part_store.py:140: warning: copies P into owned storage; use copy() to make this explicit, or declare 'make: Fn[[], Own[T]]' so the result is lent
-part_tuple_copy.py:62: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_tuple_copy.py:61: warning: may copy T into field if not a value type; use copy() to make this explicit
 part_tuple_copy.py:32: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 part_unowned.py:16: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 part_unowned.py:27: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 part_unowned.py:29: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 part_unowned.py:36: warning: copies Q into owned storage; use copy() to make this explicit
-main.py:28: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
-main.py:29: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
-main.py:47: warning: copies P into owned storage; use copy() to make this explicit
-main.py:72: warning: copies P elements; use copy_iter() to make this explicit
-main.py:67: warning: copies P into owned storage; use copy() to make this explicit
+main.py:30: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:31: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:53: warning: copies P into owned storage; use copy() to make this explicit
+main.py:78: warning: copies P elements; use copy_iter() to make this explicit
+main.py:73: warning: copies P into owned storage; use copy() to make this explicit

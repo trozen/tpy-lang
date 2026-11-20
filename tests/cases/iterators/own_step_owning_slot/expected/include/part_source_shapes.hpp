@@ -168,7 +168,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 struct HolderBag {
 
 
-    // def __iter__(self) -> Own[Holder[Own[Cell]]]:
+    // def __iter__(self) -> Own[Holder[Cell]]:
     Holder<::tpyapp::fixtures::Cell> __iter__() const;
     static constexpr std::string_view __tpy_class_name__ = "part_source_shapes.HolderBag";
 };
@@ -258,8 +258,8 @@ inline Popper<::tpyapp::fixtures::Tok> PopBag::__iter__() const {
     return Popper<::tpyapp::fixtures::Tok>(std::move(toks));
 }
 
-// def __iter__(self) -> Own[Holder[Own[Cell]]]:
-//     return Holder[Own[Cell]](Cell(3))
+// def __iter__(self) -> Own[Holder[Cell]]:
+//     return Holder[Cell](Cell(3))
 inline Holder<::tpyapp::fixtures::Cell> HolderBag::__iter__() const {
     return Holder<::tpyapp::fixtures::Cell>(::tpyapp::fixtures::Cell(3));
 }

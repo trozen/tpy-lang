@@ -30,6 +30,7 @@ from tpyc.sema.overloads import (
     MatchTier,
     OverloadAmbiguityError,
     OverloadFit,
+    _owned_result_tiebreak,
     _declared_tier,
     _bool_checker_to_classifier,
     _classify_overload,
@@ -692,6 +693,22 @@ def test_strict_fit_converts_nothing_and_ranks_by_tiers():
     assert fit.rank()[:4] == (0, 0, 0, 0)
     assert fit.rank()[4:] == _score(((MatchTier.SUBCLASS, 1),
                                      (MatchTier.EXACT_CONCRETE, 0)))
+
+
+def test_owned_result_tiebreak_needs_a_written_own_t():
+    # Among tied candidates a written `Own[T]` beats a bare `T` at the same
+    # position; with no `Own[T]` written anywhere nothing is ordered.
+    cell = ((MatchTier.EXACT_GENERIC_SHAPE, 0),)
+    spelled = OverloadFit(0, 0, 0, cell, (True,))
+    bare = OverloadFit(0, 0, 0, cell, (False,))
+    other = OverloadFit(0, 0, 0, cell, (None,))
+    assert spelled.rank() == bare.rank()
+    assert _owned_result_tiebreak([0, 1], {0: spelled, 1: bare}) == [0]
+    assert _owned_result_tiebreak([0, 1], {0: bare, 1: other}) == [0, 1]
+    # crossed positions: neither beats the other
+    a = OverloadFit(0, 0, 0, cell * 2, (True, False))
+    b = OverloadFit(0, 0, 0, cell * 2, (False, True))
+    assert _owned_result_tiebreak([0, 1], {0: a, 1: b}) == [0, 1]
 
 
 def test_converted_count_leads_the_rank():

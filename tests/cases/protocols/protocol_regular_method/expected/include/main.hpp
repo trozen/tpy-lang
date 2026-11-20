@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // class Duplicable(Protocol):
 template<typename T>
 concept Duplicable = requires(::tpy::storage_t<T>& t) {
-    { t.duplicate() } -> std::convertible_to<std::remove_cvref_t<T>>;
+    { t.duplicate() } -> std::convertible_to<::tpy::storage_t<std::remove_cvref_t<T>>>;
 };
 
 struct Value;

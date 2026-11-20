@@ -8,9 +8,9 @@ main::make_h_set@77:0: uncovered (unsupported native container element), summary
 main::fresh_hs@83:0: uncovered (reference yield)
 main::each@87:0: uncovered (generic body)
 main::explicit_type_arg@132:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::with_target@185:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::bump@194:0: covered (storage: no_proof_required), summary: known
-main::main@199:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::with_target@186:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::bump@195:0: covered (storage: no_proof_required), summary: known
+main::main@200:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::H.__copy__@60:4: uncovered (custom record special member)
 main::H.__hash__@64:4: covered (storage: no_proof_required), summary: opaque (summary record: custom record special member)
 main::H.__eq__@67:4: covered (storage: no_proof_required)
@@ -19,9 +19,9 @@ main::GEach.each@99:4: uncovered (generic body)
 main::It.__iter__@112:4: uncovered (generic body)
 main::It.__next__@115:4: uncovered (generic body)
 main::G.wrap@124:4: uncovered (generic body)
-main::Holder.__enter__@178:4: covered (storage: no_proof_required), summary: known
-main::Holder.__exit__@181:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::Holder.__enter__@179:4: covered (storage: no_proof_required), summary: known
+main::Holder.__exit__@182:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Item.__init__@16:4: covered (storage: no_proof_required), summary: known
 main::H.__init__@57:4: uncovered (custom record special member), summary: opaque (custom record special member)
 main::It.__init__@108:4: uncovered (generic constructor)
-main::Holder.__init__@175:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@176:4: covered (storage: no_proof_required), summary: known

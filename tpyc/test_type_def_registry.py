@@ -1473,7 +1473,7 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
         name="Default", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,
         is_runtime_checkable=False,
-        cpp_concept="::std::default_initializable",
+        cpp_concept="::tpy::Default",
         type_params=(), parent_protocols=(),
         methods=(),
     ),

@@ -21,7 +21,7 @@ from ..typesys import (param_holds_callee_copy, lands_in_indirection, peel_slot,
                       concrete_owning_slot_fits)
 from ..typesys import (
     contains_reference_type, inner_type_param_names,
-    same_class, stored_element, Representation, return_representation,
+    same_class, Representation, return_representation,
     make_readonly,
     ELEM,
     TpyType, IntLiteralType, FloatLiteralType, ListRepeatType,
@@ -842,8 +842,8 @@ def _owned_elements_peeled(actual: TpyType, expected: TpyType) -> TpyType:
     td = type_def_of(a)
     if td is None or not td.owns_elements:
         return actual
-    peeled = a.map_inner_types(stored_element)
-    return peeled if peeled == e else actual
+    return (strip_own_type_args(a) if concrete_owning_slot_fits(a, e)
+            else actual)
 
 
 class TypeCompatibility:
@@ -4657,7 +4657,7 @@ class TypeCompatibility:
         fi = fis[0]
         try:
             subst = self.type_ops.infer_type_params_for_function(
-                fi, [source], self.protocols.satisfies_bound, slots=[0])
+                fi, [source], slots=[0])
         except SemanticError:
             return None
         if subst is None or not self.protocols.type_conforms_to_protocol(

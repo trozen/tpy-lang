@@ -802,6 +802,11 @@ class Compiler:
         # member list in compile order; `compile_order` is their flattening.
         self.compile_components: list[list[str]] = []
         self.compile_order: list[str] = []
+        # The qnames of the generic classes TPy emits itself, known from
+        # their declarations before their TypeDef is attached
+        # (`NominalType.is_emitted_generic_class`), so a field or signature
+        # validated earlier in the module asks the same as a later one.
+        self.declared_generic_classes: set[str] = set()
         # The program's import run order and the peers suspended while each
         # module runs: what a cycle member may read of a peer at import.
         self.import_order: ImportOrder | None = None

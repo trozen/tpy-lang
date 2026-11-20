@@ -5,11 +5,14 @@ from typing import Callable, Iterable, Iterator
 from tpy import Fn, int32
 from fixtures import P, identity, mk
 import part_bind
+import part_bounds
+import part_class_args
 import part_frames
 import part_frames_er
 import part_iter
 import part_paths
 import part_red
+import part_reduce
 
 
 def app[A, R](f: Fn[[A], R], a: A) -> R:
@@ -63,7 +66,10 @@ def main() -> None:
     print("fill-own", b.n, out[0].n)
     part_iter.main()
     part_red.main()
+    part_reduce.main()
+    part_class_args.main()
     part_bind.main()
+    part_bounds.main()
     part_paths.main()
     part_frames.main()
     part_frames_er.main()

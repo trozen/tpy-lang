@@ -7,11 +7,14 @@
 #include "tpystd/coro.hpp"
 #include "fixtures.hpp"
 #include "part_bind.hpp"
+#include "part_bounds.hpp"
+#include "part_class_args.hpp"
 #include "part_frames.hpp"
 #include "part_frames_er.hpp"
 #include "part_iter.hpp"
 #include "part_paths.hpp"
 #include "part_red.hpp"
+#include "part_reduce.hpp"
 
 namespace tpyapp::main {
 

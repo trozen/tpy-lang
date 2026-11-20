@@ -1,0 +1,4 @@
+main.py:28: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:34: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:44: error: 'make_c_from' infers `T = Own[P]` from 'mk', which is not supported yet: 'T' appears inside 'Own[C[T]]'; pass a function returning `P` or write the function with `Own[P]` in place of 'T', or declare 'f: Fn[[A], Own[T]]' so the result is lent
+main.py:45: error: `Own[P]` as a type argument of 'make_c' is not supported yet: 'T' appears inside 'Own[C[T]]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'

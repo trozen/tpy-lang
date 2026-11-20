@@ -1,0 +1,3 @@
+main.py:29: error: Ambiguous overload for 'g': multiple candidates match equally:
+  g(Fn[[int32], Own[P]])
+  g(Fn[[int32], Own[P]])

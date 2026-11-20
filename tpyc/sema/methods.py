@@ -50,8 +50,8 @@ from .context import (CallOperands, ConsumeCause, CompTarget, GenericMethodRoute
 from .overloads import CallShape, operand_param_type
 from .list_elem import (ContainerCall, Effect, Role, container_call,
                         container_calls, container_overloads)
-from .pending_num import (ContainerCells, Entry,
-                          leaves_as_numbers, root_of, with_container)
+from .pending_num import (ContainerCells, Entry, root_of, with_container)
+from .type_ops import settle_class_type_args
 from .receiver_calls import (call_mutates_receiver, check_receiver_call_loans,
                              credit_receiver_mutation, implicit_readonly_result_hint,
                              receiver_is_readonly, record_protocol_arg_calls)
@@ -1505,6 +1505,17 @@ class MethodAnalyzer:
                     f"'{record_info.display_name}' expects {n_class} type arguments, got {n_given}",
                     expr)
 
+        if expr.type_args and all(isinstance(a, TpyType) for a in
+                                  expr.type_args[:len(record_info.type_params)]):
+            # The class's written type arguments form the class type
+            # (`check_type_args`: an `Own[X]` there is warned and dropped).
+            n_class = len(record_info.type_params)
+            formed = self.type_ops.check_type_args(
+                NominalType(record_info.name, tuple(expr.type_args[:n_class]),
+                            _module_qname=record_info.qualified_name()),
+                expr.loc, bounds=False)
+            expr.type_args = tuple(formed.type_args) + tuple(
+                expr.type_args[n_class:])
         virtual_func = FunctionInfo(
             name=method.name, params=method.params, return_type=method.return_type,
             is_staticmethod=method.is_staticmethod,
@@ -1695,10 +1706,13 @@ class MethodAnalyzer:
                                 expr,
                             )
 
-        # Resolve literal markers in any newly inferred params
+        # Resolve literal markers in any newly inferred params, settled as
+        # a construction's (`infer_type_params_for_record`).
         for k, v in list(info.inferred.items()):
             if isinstance(v, TpyType):
-                info.inferred[k] = resolve_int_literals(v, self.ctx.default_int_for_literal)
+                info.inferred[k] = resolve_int_literals(
+                    v, self.ctx.default_int_for_literal)
+        settle_class_type_args(info.inferred, info.record_info)
 
         # Check if all type params are now resolved
         all_resolved = all(tp in info.inferred for tp in info.type_params)
@@ -2017,12 +2031,8 @@ class MethodAnalyzer:
                     f"Method '{method_info.name}' has bound on class type parameter '{tp}', "
                     f"but the class is not instantiated with a concrete type for '{tp}'",
                     expr)
-        # A part whose numbers are not decided yet meets the bound as every
-        # width it may settle to does (a lookup on a list literal).
         raise_if_class_param_bound_violated(
-            method_info, class_type_params, class_subst,
-            lambda t, bound: self.protocols.type_conforms_to_protocol(
-                leaves_as_numbers(t), bound),
+            method_info, class_type_params, class_subst, self.protocols,
             self.ctx.error, expr,
             builtin_owner=builtin_owned(
                 method_info, self.ctx.registry.find_record_by_qname),
@@ -2084,6 +2094,12 @@ class MethodAnalyzer:
         has_wildcards = expr.type_args and None in expr.type_args
         binding: ArgBinding | None = None
         if expr.type_args:
+            # A written type argument is checked as wherever a type is
+            # written (a class at `Own[X]`, a kind, a range).
+            expr.type_args = tuple(
+                self.type_ops.check_type_args(arg, expr.loc, bounds=False)
+                if isinstance(arg, TpyType) else arg
+                for arg in expr.type_args)
             # Arity already validated before the no-new-params early return.
             if not has_wildcards:
                 # Full explicit -- no seed needed.
@@ -2114,10 +2130,8 @@ class MethodAnalyzer:
                            if k in set(new_params)}
         if new_param_bounds:
             validate_type_param_bounds(
-                full_subst, new_param_bounds, method_info.name,
-                self.protocols.satisfies_bound,
+                full_subst, new_param_bounds, method_info.name, self.protocols,
                 lambda msg: self.ctx.error(msg, expr),
-                self.type_ops.substitute_type_params,
             )
 
         # Store inferred type args (new params only) for codegen
@@ -2164,7 +2178,7 @@ class MethodAnalyzer:
         arg_types = self.calls._infer_arg_types(partial_func, evidence,
                                                 merged_seed)
         method_subst = self.type_ops.infer_type_params_for_function(
-            partial_func, arg_types, self.protocols.satisfies_bound,
+            partial_func, arg_types,
             expected_return_type=self.expr.slot_hint_for(expr),
             explicit_type_args=explicit_type_args,
             slots=[slot for slot, _ in evidence],

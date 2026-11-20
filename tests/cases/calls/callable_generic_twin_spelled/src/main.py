@@ -2,11 +2,13 @@
 # takes ownership (the twin's `x: Own[P]`), a live argument copies (warned),
 # a last use moves on; a spelled nested call passes the same `T`. Also the
 # warned copies whose output differs from CPython's aliasing.
-from tpy import Own, int32
+from tpy import Own, ReferenceType, int32
+import part_bounds
 import part_forms
 import part_frames_own
 import part_last
 import part_open
+import part_refs
 import part_sinks
 import part_store
 import part_tuple_copy
@@ -41,6 +43,10 @@ def identity(p: P) -> P:
     return p
 
 
+def ref_n[T: ReferenceType](x: T) -> int32:
+    return 1
+
+
 def main() -> None:
     # free function: a live `p` copies into the owned parameter (warned)
     p = P(1)
@@ -72,6 +78,8 @@ def main() -> None:
     copied = list(map(identity, ps))  # tpyc: warning(/copies P elements/)
     copied[0].n += 1000
     print("map-list", ps[0].n, copied[0].n)
+    # a bound holds of the type `Own[P]` owns
+    print("ref-bound", ref_n[Own[P]](P(9)))  # tpyc: ok
     part_unowned.main()
     part_open.main()
     part_store.main()
@@ -80,6 +88,8 @@ def main() -> None:
     part_frames_own.main()
     part_sinks.main()
     part_tuple_copy.main()
+    part_bounds.main()
+    part_refs.main()
 
 
 main()

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
 from ..holders import Holder, IterHolder
-from ..typesys import pending_view_of, protocol_param_alternatives
+from ..typesys import pending_view_of, protocol_param_alternatives, without_class_own_args
 from ..typesys import (unwrap_qualifiers, bound_as_spelled, contains_reference_type, unwrap_value_own, drop_own_marker, pointer_repr_optional, pointer_variant_union,
                        holds_result_member,
                        ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
@@ -5119,12 +5119,14 @@ class StatementAnalyzer:
                 stmt)
 
         # Resolve param and return types
-        resolved_params_bare = [(p, self.type_ops.resolve_type(t)) for p, t in func.params]
+        resolved_params_bare = [
+            (p, self.type_ops.check_spelled_type(
+                self.type_ops.resolve_type(t), stmt.loc))
+            for p, t in func.params]
         func.params = [(p, make_ref(t)) for p, t in resolved_params_bare]
         params = resolved_params_bare
-        return_type = self.type_ops.resolve_type(func.return_type)
-        for t in (*(t for _, t in params), return_type):
-            self.type_ops.check_spelled_type(t, stmt.loc)
+        return_type = self.type_ops.check_spelled_type(
+            self.type_ops.resolve_type(func.return_type), stmt.loc)
         func.return_type = make_ref(return_type)
 
         # A nested def emits as a lambda taking the full param list, so a
@@ -6489,7 +6491,10 @@ class StatementAnalyzer:
             # at a local should surface "Own[T] not allowed as variable",
             # not "use Optional[T] or Box[T]" -- the user can't use either
             # in a local context either).
-            if type_contains_own(stmt.type, allow_optional_own=False):
+            # An `Own[X]` a class type argument drops is warned there
+            # (`check_type_args`), not refused here.
+            if type_contains_own(without_class_own_args(stmt.type),
+                                 allow_optional_own=False):
                 raise self.ctx.error(
                     f"Own[T] is redundant in this variable type ('{stmt.type}'): a "
                     f"local owns its value inline and moves it out at its last use "
@@ -6515,7 +6520,7 @@ class StatementAnalyzer:
                 allow_ptr_repr_dyn = (
                     stmt.init is not None
                     and not self.ctx.is_module_slot_stmt(stmt))
-                self.type_ops.validate_type(
+                stmt.type = self.type_ops.validate_type(
                     stmt.type, allow_type_param_ref=self.ctx.in_generic_scope(),
                     loc=stmt.loc,
                     allow_forward_ref=False,

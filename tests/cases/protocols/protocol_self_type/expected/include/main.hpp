@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // class Addable(Protocol):
 template<typename T>
 concept Addable = requires(const ::tpy::storage_t<T>& t) {
-    { t + std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<std::remove_cvref_t<T>>;
+    { t + std::declval<::tpy::storage_t<std::remove_cvref_t<T>>&>() } -> std::convertible_to<::tpy::storage_t<std::remove_cvref_t<T>>>;
 };
 
 inline constexpr std::string_view __name__ = "__main__";

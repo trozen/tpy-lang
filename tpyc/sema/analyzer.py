@@ -9,7 +9,7 @@ from dataclasses import replace as dc_replace
 from contextlib import AbstractContextManager, nullcontext
 from typing import Callable, Iterator, Optional, Sequence
 
-from ..typesys import make_iterator, resolve_int_literals
+from ..typesys import make_iterator, resolve_int_literals, without_class_own_args
 from ..typesys import (
     make_readonly,
     TpyType, TypeRegistry, NominalType, AliasRef, UnionType, FinalType, STR, VoidType, VOID,
@@ -33,6 +33,7 @@ from ..coercions import CoercionContext
 from ..type_def_registry import ParamPassing, is_span, is_varargs, protocol_mro
 from ..identity_map import IdentityMap, IdentitySet
 from ..compilation_context import get_current_compiler
+from ..module_names import public_module_name
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, is_base_init_call, is_init_trivia, init_leading_run_end, ParseError
 from ..parse.nodes import RecordLinkage, value_capture_lambdas
@@ -827,6 +828,14 @@ class SemanticAnalyzer:
         # exist in the sema registry yet.
         for enum in module.all_enums():
             self.registrar.register_enum(enum)
+        compiler = get_current_compiler()
+        if compiler is not None:
+            owner = public_module_name(self.ctx.module_name,
+                                       self.ctx.module_cpp_namespace) or "__main__"
+            compiler.declared_generic_classes.update(
+                f"{owner}.{r.name}" for r in module.all_records()
+                if r.type_params and r.linkage == RecordLinkage.DEFAULT
+                and not r.builtin_type_key)
         for record in module.all_records():
             self.registrar.register_record(record)
 
@@ -913,6 +922,12 @@ class SemanticAnalyzer:
         # Detect mutual recursion cycles and tag recursive union aliases
         self._detect_recursive_unions(module)
         self.ctx.recursive_union_names = module.recursive_union_names
+        # An alias body is a written type: formed (`check_type_args`) before
+        # the union wrappers, the registry and `isinstance` key on it.
+        for name, (typ, loc, type_params, kinds) in list(module.type_aliases.items()):
+            formed = self.type_ops.check_type_args(typ, loc, bounds=False)
+            if formed is not typ:
+                module.type_aliases[name] = (formed, loc, type_params, kinds)
         self._register_union_wrappers(module)
 
         # The parser eagerly expands same-module union aliases, so
@@ -2954,7 +2969,9 @@ class SemanticAnalyzer:
                 # and an imported same-short-named one never collide on
                 # rendering. `typ.name` is carried only as the local display
                 # short (`_short()` / `__str__` / same-module bare fallback).
-                return RecursiveAliasInstanceType(qname, new_args, typ.name, info)
+                # Formed as every alias instance is (`without_class_own_args`).
+                return without_class_own_args(
+                    RecursiveAliasInstanceType(qname, new_args, typ.name, info))
         return typ.map_inner_types(self._finalize_alias_refs)
 
     def _finalize_generic_recursive_aliases(self, module: TpyModule) -> None:

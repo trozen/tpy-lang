@@ -41,6 +41,8 @@ P& identity(P& p) {
 //     copied = list(map(identity, ps))  # tpyc: warning(/copies P elements/)
 //     copied[0].n += 1000
 //     print("map-list", ps[0].n, copied[0].n)
+//     # a bound holds of the type `Own[P]` owns
+//     print("ref-bound", ref_n[Own[P]](P(9)))  # tpyc: ok
 //     part_unowned.main()
 //     part_open.main()
 //     part_store.main()
@@ -49,6 +51,8 @@ P& identity(P& p) {
 //     part_frames_own.main()
 //     part_sinks.main()
 //     part_tuple_copy.main()
+//     part_bounds.main()
+//     part_refs.main()
 void main() {
     P p = P(1);
     P __tmp_1 = p;
@@ -73,6 +77,7 @@ void main() {
     std::vector<P> copied = ::tpy::construct<std::vector<P>>(::tpy::builtin_map<P>(identity, ps));
     ::tpy::__getitem__(copied, 0).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(copied, 0).n, 1000);
     std::cout << "map-list" << " " << ::tpy::__getitem__(ps, 0).n << " " << ::tpy::__getitem__(copied, 0).n << "\n" << ::tpy::check_signals;
+    std::cout << "ref-bound" << " " << ::tpyapp::main::ref_n<::tpy::own_arg<P>>(P(9)) << "\n" << ::tpy::check_signals;
     ::tpyapp::part_unowned::main();
     ::tpyapp::part_open::main();
     ::tpyapp::part_store::main();
@@ -81,12 +86,16 @@ void main() {
     ::tpyapp::part_frames_own::main();
     ::tpyapp::part_sinks::main();
     ::tpyapp::part_tuple_copy::main();
+    ::tpyapp::part_bounds::main();
+    ::tpyapp::part_refs::main();
 }
 
+// import part_bounds
 // import part_forms
 // import part_frames_own
 // import part_last
 // import part_open
+// import part_refs
 // import part_sinks
 // import part_store
 // import part_tuple_copy

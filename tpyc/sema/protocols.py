@@ -6,7 +6,7 @@ Protocol conformance checking and method/field lookups.
 
 from __future__ import annotations
 from enum import Enum
-from typing import Any, Callable, Iterator, NamedTuple, TYPE_CHECKING
+from typing import Any, Callable, Iterator, Mapping, NamedTuple, TYPE_CHECKING
 
 import re
 import dataclasses
@@ -49,6 +49,7 @@ from .elem_paths import (
     step_hands_over_lent,
 )
 from .bound_check import find_method_class_param_bound_violation
+from .pending_num import leaves_as_numbers
 from .dyn_erasure import declares_dynamic_base, record_inherits_dynamic
 from ..value_category import consuming_only
 
@@ -551,15 +552,30 @@ class ProtocolChecker:
         satisfies it, though `directly_implements_dynamic` still adapts it."""
         return declares_dynamic_base(concrete, protocol, self.ctx.registry)
 
-    def satisfies_bound(self, actual: TpyType, bound: TpyType) -> bool:
-        """Does `actual` satisfy a type-parameter `bound`?
+    def satisfies_bound(self, actual: TpyType, bound: TpyType,
+                        subst: 'Mapping[str, TpyType | int] | None' = None,
+                        ) -> bool:
+        """Does type argument `actual` satisfy a type-parameter `bound`?
+
+        The one bound predicate: every site that asks whether a type argument
+        meets its parameter's bound asks it here. `subst` is the call's or
+        instantiation's substitution, which resolves a bound naming another
+        type parameter (`U: T`, `T: Proto[R]`) first (`substituted_bound`).
 
         A protocol bound (`T: Comparable`) uses structural conformance -- a
         capability assertion. A class bound (`U: Animal`) or a type-param bound
         (`U: T`) is a subtype assertion checked by nominal inheritance; that
         subtyping is what backs the `Ptr[U] -> Ptr[Bound]` pointer upcast (see
         CompatibilityChecker._is_representational_subtype).
+
+        A type argument `Own[X]` instantiates the generic owning `X`; the
+        bound constrains the type, so it is asked of `X` -- on both sides, as
+        a substituted `U: T` at `T = Own[X]` names it too -- as the C++
+        concepts test `storage_t<T>`. A part whose numbers are not decided
+        yet meets the bound as every width it may settle to does.
         """
+        actual = leaves_as_numbers(unwrap_own(actual))
+        bound = self.substituted_bound(bound, subst)
         if is_protocol_type(bound):
             return self.type_conforms_to_protocol(actual, bound)
         if isinstance(bound, TypeParamRef):
@@ -569,6 +585,14 @@ class ProtocolChecker:
             return actual == bound
         # A class bound, user record or builtin (`U: dict[str, int32]`).
         return actual == bound or self.ctx.registry.is_subclass_of(actual, bound)
+
+    def substituted_bound(self, bound: TpyType,
+                          subst: 'Mapping[str, TpyType | int] | None' = None,
+                          ) -> TpyType:
+        """`bound` at `subst`, as `satisfies_bound` asks it."""
+        if subst:
+            bound = self.type_ops.substitute_type_params(bound, dict(subst))
+        return unwrap_own(bound)
 
     def classify_protocol_conformance(
         self, actual: TpyType, protocol: NominalType,
@@ -1577,8 +1601,7 @@ class ProtocolChecker:
                  if type_subst else method)
                 for method in overloads
                 if not (type_subst and find_method_class_param_bound_violation(
-                    method, definer_params, type_subst,
-                    self.type_conforms_to_protocol,
+                    method, definer_params, type_subst, self,
                 ) is not None)]
 
     def type_has_field_with_type(self, actual: TpyType, field_name: str, expected_type: TpyType) -> bool:

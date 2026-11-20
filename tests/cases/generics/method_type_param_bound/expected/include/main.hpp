@@ -32,7 +32,7 @@ struct Pair {
 
     // def with_default[T: Default](self) -> T:
     ::tpy::val_or_ref_t<T> with_default() const
-      requires ::std::default_initializable<T>;
+      requires ::tpy::Default<T>;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -68,7 +68,7 @@ inline ::tpy::val_or_ref_t<T> Pair<T>::min_val()
 //     return make_default()
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Pair<T>::with_default() const
-  requires ::std::default_initializable<T> {
+  requires ::tpy::Default<T> {
     return ::tpy::storage_t<T>{};
 }
 

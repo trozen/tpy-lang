@@ -36,13 +36,13 @@ concept Hashable = requires(const ::tpy::storage_t<T>& t) {
 // class Comparable(Protocol):
 template<typename T>
 concept Comparable = requires(const ::tpy::storage_t<T>& t) {
-    { t < std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<bool>;
+    { t < std::declval<::tpy::storage_t<std::remove_cvref_t<T>>&>() } -> std::convertible_to<bool>;
 };
 
 // class Equatable(Protocol):
 template<typename T>
 concept Equatable = requires(const ::tpy::storage_t<T>& t) {
-    { t == std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<bool>;
+    { t == std::declval<::tpy::storage_t<std::remove_cvref_t<T>>&>() } -> std::convertible_to<bool>;
 };
 
 // @runtime_checkable
@@ -109,13 +109,13 @@ concept Closable = requires(::tpy::storage_t<T>& t) {
 // class ComparableValue(Comparable, ValueType, Protocol): ...
 template<typename T>
 concept ComparableValue = requires(const ::tpy::storage_t<T>& t) {
-    { t < std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<bool>;
+    { t < std::declval<::tpy::storage_t<std::remove_cvref_t<T>>&>() } -> std::convertible_to<bool>;
 };
 
 // class ComparableRef(Comparable, ReferenceType, Protocol): ...
 template<typename T>
 concept ComparableRef = requires(const ::tpy::storage_t<T>& t) {
-    { t < std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<bool>;
+    { t < std::declval<::tpy::storage_t<std::remove_cvref_t<T>>&>() } -> std::convertible_to<bool>;
 };
 
 } // namespace tpystd::tpy

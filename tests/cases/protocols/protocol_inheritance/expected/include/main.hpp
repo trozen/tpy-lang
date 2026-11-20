@@ -23,7 +23,7 @@ concept PrintableAndSized = requires(::tpy::storage_t<T>& t) {
 // class OrdVal(Comparable, ValueType, Protocol): ...
 template<typename T>
 concept OrdVal = requires(const ::tpy::storage_t<T>& t) {
-    { t < std::declval<std::remove_cvref_t<T>&>() } -> std::convertible_to<bool>;
+    { t < std::declval<::tpy::storage_t<std::remove_cvref_t<T>>&>() } -> std::convertible_to<bool>;
 };
 
 // class SendSized(Send, Sized, Protocol): ...

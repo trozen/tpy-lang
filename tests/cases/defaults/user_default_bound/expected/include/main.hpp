@@ -10,17 +10,17 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 // def create_default[T: Default]() -> T:
-template<::std::default_initializable T>
+template<::tpy::Default T>
 ::tpy::val_or_ref_t<T> create_default();
 // def fill[T: Default](n: int32) -> Own[list[T]]:
-template<::std::default_initializable T>
+template<::tpy::Default T>
 std::vector<::tpy::storage_t<T>> fill(int32_t n);
 // def main() -> None:
 void main();
 
 // def create_default[T: Default]() -> T:
 //     return make_default()
-template<::std::default_initializable T>
+template<::tpy::Default T>
 ::tpy::val_or_ref_t<T> create_default() {
     return ::tpy::storage_t<T>{};
 }
@@ -29,7 +29,7 @@ template<::std::default_initializable T>
 //     for i in range(n):
 //         result.append(make_default())
 //     return result
-template<::std::default_initializable T>
+template<::tpy::Default T>
 std::vector<::tpy::storage_t<T>> fill(int32_t n) {
     std::vector<::tpy::storage_t<T>> result = std::vector<::tpy::storage_t<T>>{};
     int32_t __stop_0 = n;

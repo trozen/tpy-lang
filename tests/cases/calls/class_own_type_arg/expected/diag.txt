@@ -1,0 +1,15 @@
+fixtures.py:21: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_declared.py:14: warning: `Own[P]` in a type argument of class 'Later' has no effect yet; write `Later[P]`
+part_declared.py:29: warning: `Own[P]` in a type argument of class 'Later' has no effect yet; write `Later[P]`
+part_declared.py:42: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
+part_declared.py:53: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
+part_declared.py:17: warning: copies Later[P] into field; use copy() to make this explicit
+part_positions.py:14: warning: `Own[T]` in a type argument of class 'C' has no effect yet; write `C[T]`
+part_positions.py:32: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
+part_positions.py:38: warning: copies P into owned storage; use copy() to make this explicit
+part_positions.py:44: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_positions.py:59: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
+main.py:13: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
+main.py:19: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
+main.py:45: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
+main.py:60: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`

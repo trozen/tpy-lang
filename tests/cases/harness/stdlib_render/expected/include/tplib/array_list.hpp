@@ -47,7 +47,7 @@ struct ArrayList {
 
     // def append_default[T: Default](self) -> None:
     void append_default()
-      requires ::std::default_initializable<T>;
+      requires ::tpy::Default<T>;
 
     // def pop(self, index: int32 | None = None) -> Own[T]:
     ::tpy::own_return_t<T> pop(std::optional<int32_t> index = std::nullopt);
@@ -258,7 +258,7 @@ inline void ArrayList<T, N>::append(::tpy::own_param_t<T> value) {
 //     self.append(make_default())
 template<typename T, std::size_t N>
 inline void ArrayList<T, N>::append_default()
-  requires ::std::default_initializable<T> {
+  requires ::tpy::Default<T> {
     this->append(::tpy::storage_t<T>{});
 }
 

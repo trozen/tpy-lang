@@ -130,14 +130,16 @@ def binding_sources(callee: object, own_sources: 'tuple[tuple[str, int], ...]',
 
 def composite_leaves(typ: TpyType, declared: 'Collection[str]'
                      ) -> list[TypeParamRef]:
-    """Every open type parameter of `declared` that is a leaf of a tuple or
-    of an Optional / union in `typ` -- at any depth, through a callable's
-    parameters and result, an iterator's step, a container's elements. An
-    element of any other type (`list[T]`) is no leaf: a container owns its
-    elements whether or not they are `Own` (`list[Own[P]]` is `list[P]`);
-    a tuple element (`list[tuple[T, int32]]`) still is, as that normalizes
-    only a whole element. The storage form `Unowned(T)` is none either: it
-    is never `Own`."""
+    """Every open type parameter of `declared` that is a leaf of a tuple, of
+    an Optional / union, or a type argument of a class TPy emits itself
+    (`is_emitted_generic_class`: `C[T]`, which takes no `Own[X]` yet) in `typ`
+    -- at any depth, through a callable's parameters and result, an
+    iterator's step, a container's elements. An element of any other type
+    (`list[T]`) is no leaf: a container owns its elements whether or not
+    they are `Own` (`list[Own[P]]` is `list[P]`); a tuple element
+    (`list[tuple[T, int32]]`) still is, as that normalizes only a whole
+    element. A protocol's type argument is none, and neither is the
+    storage form `Unowned(T)`: it is never `Own`."""
     found: dict[str, TypeParamRef] = {}
 
     def walk(t: TpyType, inside: bool) -> None:
@@ -146,7 +148,9 @@ def composite_leaves(typ: TpyType, declared: 'Collection[str]'
             if inside and t.name in declared:
                 found.setdefault(t.name, t)
             return
-        member = isinstance(t, (TupleType, OptionalType, UnionType))
+        member = (isinstance(t, (TupleType, OptionalType, UnionType))
+                  or (isinstance(t, NominalType)
+                      and t.is_emitted_generic_class()))
         for inner in t.inner_types():
             walk(inner, member)
     walk(typ, False)

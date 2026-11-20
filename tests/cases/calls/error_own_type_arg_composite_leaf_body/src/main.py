@@ -37,24 +37,19 @@ def nested[T](x: T) -> int32:
     return inner(x)
 
 
-class Box[T]:
-    v: T
-
-    def __init__(self, v: T) -> None:
-        self.v = v  # tpyc: warning(/may copy T into field/)
-
-    def pair(self) -> tuple[T, int32]:
-        return (self.v, 1)
-
-
 def mk() -> Own[P]:
     return P(6)
 
 
 def via_method[T](make: Fn[[], T]) -> int32:
-    b = Box[T](make())
-    v, n = b.pair()
-    return n
+    # a builtin container's method: the `tuple[str, T]` its result steps
+    # through is the only composite (a class's own `C[T]` would be one
+    # itself)
+    d: dict[str, T] = {}
+    d["a"] = make()  # tpyc: warning(/may copy T into container/)
+    for k, v in d.items():
+        return len(k)
+    return 0
 
 
 def main() -> None:
@@ -69,7 +64,7 @@ def main() -> None:
     # a nested def's parameter: the enclosing generic's `T`
     print(nested[Own[P]](P(5)))  # tpyc: error(/type argument of 'nested' is not supported yet: 'T' appears inside 'T \| None'/)
     # a method call's result: every type in the body counts
-    print(via_method[Own[P]](mk))  # tpyc: error(/type argument of 'via_method' is not supported yet: 'T' appears inside 'tuple\[T, int32\]'/)
+    print(via_method[Own[P]](mk))  # tpyc: error(/type argument of 'via_method' is not supported yet: 'T' appears inside 'tuple\[str, T\]'/)
 
 
 main()

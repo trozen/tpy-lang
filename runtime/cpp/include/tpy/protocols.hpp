@@ -20,6 +20,7 @@
 
 #include "dunder.hpp"
 #include "ranges.hpp"
+#include "type_traits.hpp"
 
 namespace tpy {
 
@@ -28,12 +29,14 @@ namespace tpy {
  *
  * A type is NativeIterable<ElemT> if it supports begin()/end() iteration
  * and dereferencing yields ElemT. This is the "native" C++ iteration pattern.
+ * Checked against the types `T` and `ElemT` hold, as every bound is (`X`
+ * at `T = Own[X]`).
  */
 template<typename T, typename ElemT>
-concept NativeIterable = requires(const T& t) {
+concept NativeIterable = requires(const storage_t<T>& t) {
     { std::ranges::begin(t) } -> std::input_or_output_iterator;
     { std::ranges::end(t) } -> std::sentinel_for<decltype(std::ranges::begin(t))>;
-    { *std::ranges::begin(t) } -> std::convertible_to<ElemT>;
+    { *std::ranges::begin(t) } -> std::convertible_to<storage_t<ElemT>>;
 };
 
 /**
@@ -43,8 +46,8 @@ concept NativeIterable = requires(const T& t) {
  * This requires an iterator-pair constructor (begin, end).
  */
 template<typename T, typename ElemT>
-concept NativeRangeConstructible = requires(repeat_range<ElemT> r) {
-    T(std::ranges::begin(r), std::ranges::end(r));
+concept NativeRangeConstructible = requires(repeat_range<storage_t<ElemT>> r) {
+    storage_t<T>(std::ranges::begin(r), std::ranges::end(r));
 };
 
 /**

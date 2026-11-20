@@ -4,6 +4,7 @@ store2 3 2
 outer-own 7 8
 first 3 4
 map-list 3 1003
+ref-bound 1
 unowned 8 1 2
 open-keep-lend 2 1 12
 open-keep-own 4 1
@@ -53,3 +54,17 @@ tuple-plain-own 1
 tuple-class-own 2
 tuple-enum-lend 4
 tuple-enum-after [30, 0] [40, 1]
+bounds-dep 1
+bounds-class 1
+bounds-pick 2 5
+fold-build
+bounds-fold-own 6
+fold-lend
+bounds-fold-lend 102
+bounds-keep 7
+bounds-list-own 1
+bounds-list-count 1
+bounds-static-spelled 9
+refs-unbounded 2 5
+refs-bounded 2 6
+refs-reduce-named 116 10

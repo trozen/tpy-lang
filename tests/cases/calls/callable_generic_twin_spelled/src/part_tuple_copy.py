@@ -50,10 +50,9 @@ def grow_all[T: Grow](xs: list[T]) -> int32:
     return c
 
 
-# A generic class's own `T` is not checked
-# (BUGS.md#own-type-arg-composite-leaf-refused), so `Box[Own[P]]` is admitted;
-# only its constructor is called here: calling `pair()` at `Box[Own[P]]` fails
-# the C++ build (BUGS.md#generic-method-tuple-result-concrete-rejects).
+# A generic class holding a tuple of its `T`; only its constructor is called
+# here: calling `pair()` fails the C++ build
+# (BUGS.md#generic-method-tuple-result-concrete-rejects).
 class Box[T]:
     v: T
 
@@ -76,7 +75,9 @@ def main() -> None:
     w[0].xs.append(8)
     print("tuple-two-lend", q.xs, w[1].xs)
     print("tuple-plain-own", second[Own[int32]]((3, 1)))  # tpyc: ok
-    b = Box[Own[P]](P(4))  # tpyc: ok
+    # the class at a plain `T` (no `Own[X]` class type argument until unit
+    # 2b: BUGS.md#class-own-type-arg-method-result-ill-formed)
+    b = Box[P](P(4))  # tpyc: ok
     b.v.xs.append(5)
     print("tuple-class-own", len(b.v.xs))
     ps = [P(30), P(40)]

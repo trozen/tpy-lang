@@ -82,15 +82,15 @@ class Bag[T]:
         return self.items[i]
 
 
-def bag_own(b: Bag[Own[A]]) -> Own[A]:
+def bag_own(b: Bag[A]) -> Own[A]:
     return b[0]  # tpyc: warning(/copies A into owned storage/)
 
 
-def bag_own_call(b: Bag[Own[A]]) -> Own[A]:
+def bag_own_call(b: Bag[A]) -> Own[A]:
     return b.__getitem__(0)  # tpyc: warning(/copies A into owned storage/)
 
 
-def bag_ret(b: Bag[Own[A]]) -> A:
+def bag_ret(b: Bag[A]) -> A:
     return b[0]  # tpyc: ok
 
 
@@ -100,8 +100,10 @@ def mutate_plain_bag(b: Bag[A]) -> None:
     print("plain bag mutate", b[0].x)
 
 
-def mutate_bag(b: Bag[Own[A]]) -> None:
-    # a user generic __getitem__ -> T at T = Own[A]: the stored element, as at a list.
+def mutate_bag(b: Bag[A]) -> None:
+    # a user generic __getitem__ -> T: the stored element, as at a list;
+    # at a plain `T`, as a class takes no `Own[X]` type argument until unit
+    # 2b (BUGS.md#class-own-type-arg-method-result-ill-formed).
     poke(b[0])  # tpyc: ok
     poke(b.__getitem__(0))  # tpyc: ok
     print("bag element mutate", b[0].x)

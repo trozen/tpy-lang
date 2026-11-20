@@ -1,7 +1,7 @@
-main.py:44: warning: may copy T into field if not a value type; use copy() to make this explicit
-main.py:62: error: `Own[P]` as a type argument of 'body_only' is not supported yet: 'T' appears inside 'Callable[[tuple[T, T]], int32]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
-main.py:64: error: `Own[P]` as a type argument of 'literal_only' is not supported yet: 'T' appears inside 'tuple[T, int32]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
-main.py:66: error: `Own[P]` as a type argument of 'ternary' is not supported yet: 'T' appears inside 'T | None'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
-main.py:68: error: `Own[P]` as a type argument of 'unread' is not supported yet: 'T' appears inside 'T | None'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
-main.py:70: error: `Own[P]` as a type argument of 'nested' is not supported yet: 'T' appears inside 'T | None'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
-main.py:72: error: `Own[P]` as a type argument of 'via_method' is not supported yet: 'T' appears inside 'tuple[T, int32]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
+main.py:49: warning: may copy T into container if not a value type; use copy() to make this explicit
+main.py:57: error: `Own[P]` as a type argument of 'body_only' is not supported yet: 'T' appears inside 'Callable[[tuple[T, T]], int32]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
+main.py:59: error: `Own[P]` as a type argument of 'literal_only' is not supported yet: 'T' appears inside 'tuple[T, int32]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
+main.py:61: error: `Own[P]` as a type argument of 'ternary' is not supported yet: 'T' appears inside 'T | None'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
+main.py:63: error: `Own[P]` as a type argument of 'unread' is not supported yet: 'T' appears inside 'T | None'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
+main.py:65: error: `Own[P]` as a type argument of 'nested' is not supported yet: 'T' appears inside 'T | None'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'
+main.py:67: error: `Own[P]` as a type argument of 'via_method' is not supported yet: 'T' appears inside 'tuple[str, T]'; use `P` as the type argument (the argument is lent), or write the function with `Own[P]` in place of 'T'

@@ -166,6 +166,11 @@ concept ReferenceType = !ValueType<T>;
 template<typename T>
 concept Copyable = std::is_copy_constructible_v<storage_t<T>>;
 
+// C++ concept for the Default marker protocol: zero-argument construction
+// of the type `T` holds (`X` at `T = Own[X]`).
+template<typename T>
+concept Default = std::default_initializable<storage_t<T>>;
+
 // A call through an `Fn[[...], R]` parameter returns what the slot takes:
 // convertible to its storage form (`X` at `R = Own[X]`).
 template<typename Got, typename R>

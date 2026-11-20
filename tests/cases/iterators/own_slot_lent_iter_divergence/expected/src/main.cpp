@@ -112,7 +112,9 @@ __gen_gen_l gen_l(const std::vector<int32_t>& xs) {
 //     cv = View()
 //     bump(copy(cv))  # tpyc: warning(/copies list\[int32\] elements/)
 //     print("free copy()", G)
-//     bump(GV[Own[list[int32]]]())  # tpyc: warning(/copies list\[int32\] elements/)
+//     # a generic class whose step ignores its `T`, at a plain `T` (a class
+//     # takes no `Own[X]` type argument until unit 2b: BUGS.md#class-own-type-arg-method-result-ill-formed)
+//     bump(GV[list[int32]]())  # tpyc: warning(/copies list\[int32\] elements/)
 //     print("free Own type arg", G)
 //     GA.append(Pt(1))
 //     bump_pt(SpanView())  # tpyc: warning(/copies Pt elements/)

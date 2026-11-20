@@ -29,7 +29,7 @@ def _adopt_skeleton(skeleton, full):
 
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..emitted_members import clone_families
-from ..typesys import (mark_class_callables, 
+from ..typesys import (mark_class_callables, without_class_own_args, 
     ReadonlyCause, READONLY_RESULT_CAUSE_RANK, strongest_readonly_cause, readonly_result, readonly_protects, RESULT_ROOT,
     mark_overload_group, name_overload_variants,
     unique_cpp_name,
@@ -1291,8 +1291,8 @@ class TypeRegistrar:
                                loc) -> None:
         # A bound is never rendered, so the render guard cannot see it.
         scope = declaration_bound_scope(type_params, resolved, enclosing)
-        for bound in resolved.values():
-            self.type_ops.check_spelled_type(bound, loc, scope)
+        for name, bound in resolved.items():
+            resolved[name] = self.type_ops.check_spelled_type(bound, loc, scope)
 
     def _reject_forward_typeparam_bound_refs(
         self, param_name: str, bound: TpyType,
@@ -1824,7 +1824,10 @@ class TypeRegistrar:
         # redundant -- including `Optional[Own[T]]`, since a field
         # `Optional[T]` is `std::optional<T>` either way (the borrow default
         # that makes the exemption load-bearing exists only for locals).
-        if type_contains_own(fld.type, allow_optional_own=False):
+        # An `Own[X]` a class type argument drops is warned there
+        # (`check_type_args`), not refused here.
+        if type_contains_own(without_class_own_args(fld.type),
+                             allow_optional_own=False):
             raise SemanticError(
                 f"Own[T] is redundant in this field type ('{fld.type}'): a "
                 f"field owns its value inline -- remove the Own.",
@@ -1834,7 +1837,7 @@ class TypeRegistrar:
         # validate_record_field_protocols: records defined later in the
         # same module aren't fully registered yet (no methods), so a
         # field `dict[KeyDefinedLater, V]` would false-reject here.
-        self.type_ops.validate_type(
+        fld.type = self.type_ops.validate_type(
             fld.type, allow_type_param_ref=is_generic, loc=fld.loc,
             check_hashable_constraints=False,
             bound_scope=declaration_bound_scope(record.type_params,
@@ -2231,6 +2234,7 @@ class TypeRegistrar:
                                             method.type_param_bounds,
                                             record.type_param_bounds)
 
+            formed_params = []
             for pname, ptype in method_params:
                 if has_auto_readonly(ptype):
                     raise SemanticError(
@@ -2241,22 +2245,24 @@ class TypeRegistrar:
                 if not contains_type_param(ptype):
                     # Hashable check deferred (see field-validation comment
                     # above): sibling records aren't fully registered yet.
-                    self.type_ops.validate_type(
+                    ptype = self.type_ops.validate_type(
                         ptype, allow_type_param_ref=allow_tpref,
                         loc=method.loc or record.loc,
                         check_hashable_constraints=False,
                     )
                 else:
-                    self.type_ops.check_spelled_type(
+                    ptype = self.type_ops.check_spelled_type(
                         ptype, method.loc or record.loc, scope)
+                formed_params.append((pname, ptype))
+            method_params = formed_params
             if not contains_type_param(method_return):
-                self.type_ops.validate_type(
+                method_return = self.type_ops.validate_type(
                     method_return, allow_type_param_ref=allow_tpref,
                     loc=method.loc or record.loc,
                     check_hashable_constraints=False,
                 )
             else:
-                self.type_ops.check_spelled_type(
+                method_return = self.type_ops.check_spelled_type(
                     method_return, method.loc or record.loc, scope)
             # Protocol types cannot be used as method return types.
             # Exceptions: @dynamic protocols, and @native/@cpp_template stub methods
@@ -2411,9 +2417,10 @@ class TypeRegistrar:
                         "supported on async methods",
                         method.loc or record.loc
                     )
-                va_type = self.type_ops.resolve_type(method.vararg_type)
-                self.type_ops.check_spelled_type(va_type, method.loc or record.loc,
-                                                 scope)
+                va_type = self.type_ops.check_spelled_type(
+                    self.type_ops.resolve_type(method.vararg_type),
+                    method.loc or record.loc, scope)
+                method.vararg_type = va_type
                 va_param = ParamInfo(method.vararg_name, _vararg_span_type(va_type),
                                      is_variadic=True)
                 if kw_start is not None and kw_start < len(method_param_infos):
@@ -2421,9 +2428,9 @@ class TypeRegistrar:
                 else:
                     method_param_infos.append(va_param)
             if method.kwarg_name is not None and method.kwarg_type is not None:
-                resolved_kwarg_type = self.type_ops.resolve_type(method.kwarg_type)
-                self.type_ops.check_spelled_type(resolved_kwarg_type,
-                                                 method.loc or record.loc, scope)
+                resolved_kwarg_type = self.type_ops.check_spelled_type(
+                    self.type_ops.resolve_type(method.kwarg_type),
+                    method.loc or record.loc, scope)
                 method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type,
                                                     is_kwargs=True))
             # async def method: callers see Cancellable[T]. Mirrors free async def
@@ -3079,7 +3086,7 @@ class TypeRegistrar:
                         f"Use '{base_type.name}[T]' with appropriate type arguments.",
                         record.loc
                     )
-                self.type_ops.validate_record_type_args(
+                base_type = self.type_ops.validate_record_type_args(
                     base_type, parent_info,
                     allow_type_param_ref=record_info.is_generic(),
                     loc=record.loc)
@@ -3110,8 +3117,11 @@ class TypeRegistrar:
                                for p in parents_collected]
         record_info.implemented_protocols = [
             attach_type_param_bounds(p, bounds) for p in implemented_protocols]
-        for base in (*record_info.parents, *record_info.implemented_protocols):
-            self.type_ops.check_spelled_type(base, record.loc)
+        record_info.parents = [self.type_ops.check_spelled_type(b, record.loc)
+                               for b in record_info.parents]
+        record_info.implemented_protocols = [
+            self.type_ops.check_spelled_type(b, record.loc)
+            for b in record_info.implemented_protocols]
         # Invalidate the lazy `_is_polymorphic_class` cache: it may have
         # been computed during early validation (register_record's
         # validate_type call) when `implemented_protocols` was empty,
@@ -3687,21 +3697,22 @@ class TypeRegistrar:
         for fld in record.fields:
             if fld.type is None:
                 continue
-            self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic, loc=fld.loc,
-                                        check_bounds=False)
+            fld.type = self.type_ops.validate_type(
+                fld.type, allow_type_param_ref=is_generic, loc=fld.loc,
+                check_bounds=False)
         for method in record.methods:
-            for _, ptype in method.params:
-                if ptype is not None and not contains_type_param(ptype):
-                    self.type_ops.validate_type(
-                        ptype, allow_type_param_ref=is_generic,
-                        loc=method.loc or record.loc, check_bounds=False,
-                    )
-            if (method.return_type is not None
-                    and not contains_type_param(method.return_type)):
-                self.type_ops.validate_type(
-                    method.return_type, allow_type_param_ref=is_generic,
-                    loc=method.loc or record.loc, check_bounds=False,
-                )
+            loc = method.loc or record.loc
+            method.params = [
+                (n, ptype if ptype is None else self.type_ops.validate_type(
+                    ptype, allow_type_param_ref=(
+                        is_generic or contains_type_param(ptype)),
+                    loc=loc, check_bounds=False))
+                for n, ptype in method.params]
+            if method.return_type is not None:
+                method.return_type = self.type_ops.validate_type(
+                    method.return_type, allow_type_param_ref=(
+                        is_generic or contains_type_param(method.return_type)),
+                    loc=loc, check_bounds=False)
 
     def prune_value_property_clones(self, record: TpyRecord) -> None:
         """Drop the mutable getter clone of a @property whose return is a
@@ -4302,8 +4313,11 @@ class TypeRegistrar:
             resolved_return = attach_type_param_bounds(
                 self.type_ops.resolve_type(msig.return_type, protocols_only=True),
                 bounds)
-            for t in [*(t for _, t in resolved_params), resolved_return]:
-                self.type_ops.check_spelled_type(t, protocol.loc)
+            resolved_params = [
+                (n, self.type_ops.check_spelled_type(t, protocol.loc))
+                for n, t in resolved_params]
+            resolved_return = self.type_ops.check_spelled_type(
+                resolved_return, protocol.loc)
             resolved_methods.append(MethodSignature(
                 name=msig.name,
                 params=resolved_params,
@@ -4321,8 +4335,11 @@ class TypeRegistrar:
                                for n, t in protocol.fields]
             protocol.parent_protocols = [attach_type_param_bounds(p, bounds)
                                          for p in protocol.parent_protocols]
-        for t in (*(t for _, t in protocol.fields), *protocol.parent_protocols):
-            self.type_ops.check_spelled_type(t, protocol.loc)
+        protocol.fields = [(n, self.type_ops.check_spelled_type(t, protocol.loc))
+                           for n, t in protocol.fields]
+        protocol.parent_protocols = [
+            self.type_ops.check_spelled_type(p, protocol.loc)
+            for p in protocol.parent_protocols]
         info = ProtocolInfo(
             name=protocol.name,
             methods=resolved_methods,
@@ -4924,10 +4941,10 @@ class TypeRegistrar:
         resolved_params = []
         for pname, ptype in func.params:
             try:
-                resolved_ptype = self.type_ops.resolve_type(ptype)
-                self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic,
-                                            loc=func.loc, allow_pointer_repr_dynamic=True,
-                                            bound_scope=bound_scope)
+                resolved_ptype = self.type_ops.validate_type(
+                    self.type_ops.resolve_type(ptype),
+                    allow_type_param_ref=is_generic, loc=func.loc,
+                    allow_pointer_repr_dynamic=True, bound_scope=bound_scope)
             except SemanticError as e:
                 raise self.ctx.error(str(e), func)
             if _contains_self_type(resolved_ptype):
@@ -4943,17 +4960,19 @@ class TypeRegistrar:
         if func.vararg_name is not None:
             resolved_vararg_type = self.type_ops.resolve_type(func.vararg_type)
             try:
-                self.type_ops.validate_type(resolved_vararg_type,
-                                            allow_type_param_ref=is_generic,
-                                            loc=func.loc,
-                                            bound_scope=bound_scope)
+                resolved_vararg_type = self.type_ops.validate_type(
+                    resolved_vararg_type, allow_type_param_ref=is_generic,
+                    loc=func.loc, bound_scope=bound_scope)
+                # The body reads its `*args` as the formed type too.
+                func.vararg_type = resolved_vararg_type
             except SemanticError as e:
                 raise self.ctx.error(str(e), func)
 
         resolved_return = self.type_ops.resolve_type(func.return_type)
         try:
-            self.type_ops.validate_type(resolved_return, allow_type_param_ref=is_generic,
-                                        loc=func.loc, bound_scope=bound_scope)
+            resolved_return = self.type_ops.validate_type(
+                resolved_return, allow_type_param_ref=is_generic,
+                loc=func.loc, bound_scope=bound_scope)
         except SemanticError as e:
             raise self.ctx.error(str(e), func)
 
@@ -5040,9 +5059,9 @@ class TypeRegistrar:
         # **kwargs: Unpack[TypedDict] -- append as TypedDict param at end
         resolved_kwarg_type = None
         if func.kwarg_name is not None and func.kwarg_type is not None:
-            resolved_kwarg_type = self.type_ops.resolve_type(func.kwarg_type)
-            self.type_ops.check_spelled_type(resolved_kwarg_type, func.loc,
-                                             bound_scope)
+            resolved_kwarg_type = self.type_ops.check_spelled_type(
+                self.type_ops.resolve_type(func.kwarg_type), func.loc,
+                bound_scope)
             # Validate no field name conflicts with a parameter a keyword
             # can bind: a positional-only or `*args` one's name is a
             # field's (PEP 692).

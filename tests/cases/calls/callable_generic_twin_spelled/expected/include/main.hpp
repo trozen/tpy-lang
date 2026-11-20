@@ -4,10 +4,12 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "part_bounds.hpp"
 #include "part_forms.hpp"
 #include "part_frames_own.hpp"
 #include "part_last.hpp"
 #include "part_open.hpp"
+#include "part_refs.hpp"
 #include "part_sinks.hpp"
 #include "part_store.hpp"
 #include "part_tuple_copy.hpp"
@@ -33,6 +35,9 @@ template<typename T>
 ::tpy::val_or_ref_t<T> first(std::vector<::tpy::storage_t<T>>& xs);
 // def identity(p: P) -> P:
 P& identity(P& p);
+// def ref_n[T: ReferenceType](x: T) -> int32:
+template<::tpy::ReferenceType T>
+int32_t ref_n(::tpy::param_val_or_ref_t<T> x);
 // def main() -> None:
 void main();
 
@@ -81,6 +86,12 @@ void outer_own(::tpy::param_val_or_ref_t<T> x, std::vector<::tpy::storage_t<T>>&
 template<typename T>
 ::tpy::val_or_ref_t<T> first(std::vector<::tpy::storage_t<T>>& xs) {
     return ::tpy::__getitem__(xs, 0);
+}
+// def ref_n[T: ReferenceType](x: T) -> int32:
+//     return 1
+template<::tpy::ReferenceType T>
+int32_t ref_n(::tpy::param_val_or_ref_t<T> x) {
+    return 1;
 }
 
 void __tpy_init();

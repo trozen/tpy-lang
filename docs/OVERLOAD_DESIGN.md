@@ -995,6 +995,19 @@ both stages), compared key by key:
 6. **Cost** -- the sum of the remaining per-argument costs: an int
    literal's distance from its home at a fixed width it fits, a subclass
    argument's MRO distance.
+7. **Owned callable result** (a tie-break, `_owned_result_tiebreak`) --
+   among candidates still tied on every key above, at a callable argument
+   returning a non-plain `Own[X]`, a parameter whose declared result
+   writes `Own[T]` beats one whose result is a bare type parameter bound
+   to `Own[X]` (the bare `T` fallback, one level down inside the
+   callable's type). A candidate loses only where another writes `Own[T]`
+   and it is bare, and nowhere the other way round; candidates that write
+   no `Own[T]` there stay tied, and so do crossed pairs. `reduce(own_add2,
+   ps)` with `def own_add2(a: Own[P], b: Own[P]) -> Own[P]` takes the
+   building `reduce(func: Fn[[T, T], Own[T]], ...)`, not the lending
+   `Fn[[T, T], T]` its `T: ReferenceType` also admits at `T = Own[P]`.
+   A top-level `x: Own[T]` and `x: T` (or `list[Own[T]]` and `list[T]`)
+   are not ordered (TODO.md "A written Own[T] outranks a bare T").
 
 **Widening cost** (`_scalar_widening_cost` / `_type_args_widening_cost`) is 0
 for exact matches and positive when an argument is widening to a param type:
