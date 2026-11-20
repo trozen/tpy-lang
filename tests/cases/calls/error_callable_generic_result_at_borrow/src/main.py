@@ -1,6 +1,7 @@
-# A Callable returned from a generic whose return is a type parameter holds
-# its result by value -- at `T = P` it is a Callable[[], Own[P]] -- so it
-# does not fit a Callable whose bare return is a borrow.
+# A Callable returned from a generic whose return is a type parameter is
+# its substitution: `pick(c)` binds `T = Own[P]` from `c`'s declared form, so
+# it hands back a Callable[[], Own[P]], which does not fit a Callable whose
+# bare return is a borrow.
 # Rule: docs/LANGUAGE_FEATURES.md "Lambda / Closures", the Restriction "A
 # Callable's borrowed result points into its arguments only".
 from typing import Callable

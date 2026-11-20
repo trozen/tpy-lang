@@ -1,0 +1,15 @@
+lend 51
+value 8
+factory 2 1 False
+lend-through 2 True
+gen 52
+outside-value 8
+outside-ref 53 True
+store 61 True
+static 54 True
+optional-inside 51 True
+optional-outside 52
+classmethod 53 True
+method-result 54 True
+nested 55 True
+async 56 True

@@ -1,0 +1,1 @@
+main.py:31: error: this lambda builds a new list[int32], but 'Base.factory' (Callable[[], V]) returns a borrow; declare 'Base.factory' as Callable[[], Own[V]] to return it by value

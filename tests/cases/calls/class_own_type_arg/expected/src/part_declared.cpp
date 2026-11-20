@@ -25,7 +25,8 @@ int32_t by_cp(::tpyapp::fixtures::C<::tpyapp::fixtures::P>& c) {
 }
 
 // def static_call(f: Callable[[int32], Own[P]]) -> None:
-//     # `f` binds the class's `T` to `Own[P]`, settled to `P`: the result lends
+//     # `f`'s `Own[P]` result binds the class's `T` to `P` through the
+//     # parameter's `Own[T]`: the result lends
 //     xs = [P(1)]
 //     h = Later.pick(f, xs)  # tpyc: ok
 //     h.x = 9

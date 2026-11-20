@@ -1,5 +1,5 @@
-# A type argument of a class written in TPy drops a non-plain `Own[X]` until
-# the Callable contract unit 2b (BUGS.md#class-own-type-arg-method-result-ill-formed):
+# A type argument of a class written in TPy drops a non-plain `Own[X]`
+# (BUGS.md#class-own-type-arg-method-result-ill-formed):
 # `C[Own[P]]` is `C[P]`, warned where it is written, so every section lends
 # its element as `C[P]` does -- a write through `get()` reaches the list.
 from __future__ import annotations
@@ -23,8 +23,8 @@ def by_return() -> Own[C[Own[P]]]:  # tpyc: warning(/has no effect yet/)
 
 
 def pending(f: Callable[[int32], Own[P]]) -> None:
-    # a construction completed by `fill`: `f`'s result binds `T = Own[P]`,
-    # settled to `C[P]`
+    # a construction completed by `fill`: `f`'s `Own[P]` result meets
+    # `fill`'s `Own[T]`, so it binds `T = P`
     c = C()
     c.fill(f, 3)  # tpyc: ok
     h = c.get()
@@ -33,7 +33,8 @@ def pending(f: Callable[[int32], Own[P]]) -> None:
 
 
 def class_method(f: Callable[[int32], Own[P]]) -> None:
-    # a class method whose class `T` the callable binds to `Own[P]`
+    # a class method whose class `T` the callable's `Own[P]` result binds to
+    # `P` through `build`'s `Own[T]`
     c = C.build(f, 4)  # tpyc: ok
     h = c.get()
     h.x = 9

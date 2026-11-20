@@ -199,7 +199,7 @@ from .pending_num import (ContainerCells, Entry, PendingNums, PendingNumCell,
 from .list_elem import container_call
 from .nonlocal_binding import (bind_nonlocals, enclosing_scope_facts,
                                enter_enclosing_scope, nonvalue_params)
-from .slot_hint import SlotHint
+from .slot_hint import ClassMember, SlotHint
 from .local_deduction import (
     collect_pending_source_types, mark_pending_list_mutated,
     note_elem_binding, note_pending_elem_read,
@@ -7950,6 +7950,21 @@ class StatementAnalyzer:
         self.ctx.set_expr_type(sub, target)
         return target, value_type, stored is not None
 
+    def _class_member_field(self, target: TpyFieldAccess
+                            ) -> ClassMember | None:
+        """Field `target` as the class member a refusal names
+        (`ClassMember.of`), spelled by the class declaring it."""
+        obj = unwrap_readonly(unwrap_ref_type(
+            self.ctx.get_expr_type(target.obj) or VOID))
+        record = (self.ctx.registry.get_record_for_type(obj)
+                  if isinstance(obj, NominalType) else None)
+        found = (self.protocols.declaring_record_field(record, target.field)
+                 if record is not None else None)
+        if found is None or not isinstance(found[1].type, TpyType):
+            return None
+        owner, fld = found
+        return ClassMember.of(owner, f"'{owner.name}.{fld.name}'", fld.type)
+
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
         if isinstance(stmt.target, TpyName):
@@ -8062,7 +8077,10 @@ class StatementAnalyzer:
             # call ranks its argument.
             value_hint = None
         else:
-            value_hint = target_type
+            member = (self._class_member_field(stmt.target)
+                      if isinstance(stmt.target, TpyFieldAccess) else None)
+            value_hint = (target_type if member is None
+                          else SlotHint(target_type, member=member))
         cell_target = False
         if literal_store:
             assert sub_recv is not None and key_type is not None

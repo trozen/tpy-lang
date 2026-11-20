@@ -43,14 +43,14 @@ struct C {
     // def put(self, x: T) -> None:
     void put(::tpy::param_val_or_ref_t<T> x);
 
-    // def fill(self, f: Callable[[int32], T], k: int32) -> None:
+    // def fill(self, f: Callable[[int32], Own[T]], k: int32) -> None:
     void fill(const std::function<::tpy::storage_t<T>(int32_t)>& f, int32_t k);
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get();
 
     // @classmethod
-    // def build(cls, f: Callable[[int32], T], k: int32) -> Own[C[T]]:
+    // def build(cls, f: Callable[[int32], Own[T]], k: int32) -> Own[C[T]]:
     static C<T> build(const std::function<::tpy::storage_t<T>(int32_t)>& f, int32_t k);
     static constexpr std::string_view __tpy_class_name__ = "fixtures.C";
 };
@@ -78,7 +78,7 @@ inline void C<T>::put(::tpy::param_val_or_ref_t<T> x) {
     this->items.push_back(::tpy::param_consume<T>(x));
 }
 
-// def fill(self, f: Callable[[int32], T], k: int32) -> None:
+// def fill(self, f: Callable[[int32], Own[T]], k: int32) -> None:
 //     self.items.append(f(k))
 template<typename T>
 inline void C<T>::fill(const std::function<::tpy::storage_t<T>(int32_t)>& f, int32_t k) {
@@ -93,7 +93,7 @@ inline ::tpy::val_or_ref_t<T> C<T>::get() {
 }
 
 // @classmethod
-// def build(cls, f: Callable[[int32], T], k: int32) -> Own[C[T]]:
+// def build(cls, f: Callable[[int32], Own[T]], k: int32) -> Own[C[T]]:
 //     c = C[T]()
 //     c.items.append(f(k))
 //     return c

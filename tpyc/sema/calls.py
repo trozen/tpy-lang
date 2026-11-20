@@ -117,7 +117,7 @@ from .dyn_erasure import erased_source
 from .type_ops import (ConstraintOrigin, ReturnSeed, _fills_none_arm, partial_substitute, settle_class_type_args, settle_inferred,
                        seeded_arg_hint)
 from .expressions import star_source_element_type
-from .slot_hint import SlotHint
+from .slot_hint import ClassMember, SlotHint
 from .pending_num import (bare_slot, literal_entries, pending_leaves, receives_pending,
                           strip_int, value_family)
 from .type_join import user_type_name
@@ -5027,9 +5027,13 @@ class CallAnalyzer:
                             (func.params[s] for s, _ in evidence
                              if s is not None), ptype)
                             if feeds_elements else frozenset())
+                        fn_hint = dc_replace(
+                            seed.slot(ptype, concrete_hint).fitting(
+                                arg, frozenset(callee_unresolved), owning),
+                            member=self.class_member_param(
+                                func, func.params[slot].name))
                         arg_types[k] = self.expr.analyze_expr_with_hint(
-                            arg, seed.slot(ptype, concrete_hint).fitting(
-                                arg, frozenset(callee_unresolved), owning))
+                            arg, fn_hint)
 
         # Fallback: analyze any remaining unresolved args without hints
         for k, (_, arg) in enumerate(evidence):
@@ -6447,6 +6451,22 @@ class CallAnalyzer:
             return f"'{pname}'"
         return f"parameter '{pname}' of {owner.name}.{declared.name}"
 
+    def class_member_param(self, declared: FunctionInfo | None,
+                           pname: str) -> ClassMember | None:
+        """Parameter `pname` of method `declared` as the class member a
+        refusal names (`ClassMember.of`). A generic or static method's call
+        analyzes a FunctionInfo of its own; its root is the method."""
+        if declared is None or not declared.root.owning_type_qname:
+            return None
+        method = declared.root
+        owner = self.ctx.registry.find_record_by_qname(
+            method.owning_type_qname)
+        param = next((p for p in method.params if p.name == pname), None)
+        if owner is None or param is None:
+            return None
+        return ClassMember.of(owner, self.param_label(method, pname),
+                              operand_param_type(param, keep_readonly=True))
+
     def _receive_arg(self, i: int, args: list[TpyExpr],
                      given: TpyType | None,
                      param: 'ParamInfo | tuple[str, TpyType]', *,
@@ -6471,7 +6491,11 @@ class CallAnalyzer:
         else:
             decl = (declared_types[i] if declared_types is not None
                     and i < len(declared_types) else ptype)
-            arg_type = self.expr.analyze_arg_at_param(arg, check_ptype, decl)
+            member = (None if vpc
+                      else self.class_member_param(declared, pname))
+            arg_type = self.expr.analyze_arg_at_param(
+                arg, check_ptype if member is None
+                else SlotHint(check_ptype, member=member), decl)
         if not self.ctx.trial_depth and self.ctx.slot_step_commits():
             # `args` is the call's layout, held apart from the tree until
             # it is stored: a decided argument's holder does not see it.

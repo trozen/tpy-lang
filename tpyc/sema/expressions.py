@@ -94,7 +94,8 @@ from ..value_category import (frame_factory_callee, peel_coerce, is_rvalue_sourc
 from .alias_rebind import stamp_bind_kind, unpack_target_records
 from .binding_ownership import CompMove, step_handover_paths
 from .elem_paths import leaf_paths
-from .compatibility import TupleSink
+from .compatibility import (TupleSink, callable_slot_spelling,
+                            fresh_at_borrow_slot)
 from .narrowing import NarrowingTracker
 from .flow_facts import Branch, FlowFacts
 from .dead_arms import (decided_truth, folded_truth, narrows_past_literal,
@@ -119,7 +120,7 @@ from .type_join import (InferredJoin, JoinOutcome, declared_float_slot,
                         operand_spelling, python_type_name,
                         select_mix_message)
 from .list_literals import IterableHelper
-from .slot_hint import (SlotHint, callable_return, element,
+from .slot_hint import (ClassMember, SlotHint, callable_return, element,
                         optional_inner, type_arg)
 from .local_deduction import (collect_pending_source_types,
                               mark_pending_list_mutated,
@@ -811,7 +812,7 @@ class ExpressionAnalyzer:
             return self.analyze_expr(value)
         return self._analyze_expr_under_hint(value, slot, coercion_ctx)
 
-    def analyze_arg_at_param(self, arg: TpyExpr, hint: TpyType,
+    def analyze_arg_at_param(self, arg: TpyExpr, hint: SlotHint | TpyType,
                              declared: TpyType) -> TpyType:
         """`analyze_expr_with_hint` for an argument to one resolved callee.
         `declared` is the parameter's type as the callee spells it: at a
@@ -2042,7 +2043,7 @@ class ExpressionAnalyzer:
     @staticmethod
     def _bare_hint(hint: SlotHint) -> SlotHint:
         """`hint` without its readonly / Own wrappers."""
-        return hint.map(lambda t: unwrap_own(unwrap_readonly(t)))
+        return hint.map(lambda t: unwrap_own(unwrap_readonly(t)), peel=True)
 
     def _analyze_expr_under_hint(self, expr: TpyExpr, slot: SlotHint,
                                  coercion_ctx: CoercionContext | None = None,
@@ -2069,7 +2070,7 @@ class ExpressionAnalyzer:
     def _analyze_expr_under_hint_raw(self, expr: TpyExpr, slot: SlotHint,
                                      coercion_ctx: CoercionContext | None,
                                      ) -> TpyType:
-        slot = slot.map(unwrap_ref_type)
+        slot = slot.map(unwrap_ref_type, peel=True)
         typ = self._analyze_hinted_shape(expr, slot, coercion_ctx)
         if typ is not None:
             self.read_slot(expr)
@@ -2103,7 +2104,7 @@ class ExpressionAnalyzer:
             if isinstance(t, OptionalType):
                 t = t.inner
             return unwrap_own(t)
-        lambda_slot = slot.map(callable_part)
+        lambda_slot = slot.map(callable_part, peel=True)
         lambda_hint = lambda_slot.type
         if isinstance(expr, TpyLambda) and is_callable_type(lambda_hint):
             typ = self._analyze_lambda_with_fn_hint(expr, lambda_slot)
@@ -2655,7 +2656,8 @@ class ExpressionAnalyzer:
         else:
             t = self.analyze_expr_with_hint(e, declared)
         slot = declared.map(
-            lambda d: unwrap_readonly(unwrap_own(unwrap_ref_type(d))))
+            lambda d: unwrap_readonly(unwrap_own(unwrap_ref_type(d))),
+            peel=True)
         if (isinstance(e, TpyTupleLiteral) and isinstance(t, TupleType)
                 and isinstance(slot.type, TupleType)
                 and self.compat.is_type_compatible(t, slot.type)):
@@ -7817,8 +7819,10 @@ class ExpressionAnalyzer:
         contract = fn_type.closure_return()
         if (not fn_type.is_template and fn_type.returns_borrow()
                 and self.ctx.slot_step_commits()):
-            self._check_callable_result_roots(expr, fn_type, expr)
-        self._queue_lambda_borrow_check(expr, contract, fn_type, factory_of)
+            self._check_callable_result_roots(expr, fn_type, expr,
+                                              fn_slot.member)
+        self._queue_lambda_borrow_check(expr, contract, fn_type, factory_of,
+                                        fn_slot.member)
         self._lambda_result_sink(expr, contract)
         if not isinstance(fn_type.return_type, VoidType):
             expr.body = self.compat.coerce_expr(
@@ -7830,7 +7834,8 @@ class ExpressionAnalyzer:
 
     def _check_callable_result_roots(
             self, closure: 'TpyLambda | TpyNestedDef',
-            slot: CallableType, site: TpyExpr) -> None:
+            slot: CallableType, site: TpyExpr,
+            member: ClassMember | None = None) -> None:
         """A lambda or nested def at a `Callable` slot whose result is a
         borrow: only its signature decides, and the borrow may point into
         its arguments only (a global or static storage aside). A nested def
@@ -7844,14 +7849,17 @@ class ExpressionAnalyzer:
         value is read so only under rule R: any other result that may point
         (`unrooted_callable_result`) is refused. A capture -- copied into
         the std::function, or held by reference (`self`, a reference-type
-        parameter) -- is storage the caller never handed it."""
+        parameter) -- is storage the caller never handed it. `member`: the
+        class member the slot is, which a refusal names."""
+        named, owned = callable_slot_spelling(slot, member,
+                                              self.compat.shown_type)
         if not isinstance(closure, TpyLambda):
             state = _captured_state(self.ctx, closure)
             if state is not None:
                 raise self._stateful_callable_error(
                     f"'{closure.func.name}'", f"it captures {state}",
                     "its signature", "Take it as an Fn parameter, or make "
-                    "it a module function or a lambda", slot, site)
+                    "it a module function or a lambda", named, site)
             return
         params = set(closure.param_names)
         captured = set(closure.captured_names) - params
@@ -7867,23 +7875,24 @@ class ExpressionAnalyzer:
                         f"'{name}', which captures {state}",
                         f"the signature of '{name}'", f"Take the lambda as an "
                         f"Fn parameter, or make '{name}' a module function",
-                        slot, site)
+                        named, site)
             if leaf.at_call and unrooted_callable_result(self.ctx, leaf.node):
-                raise self._unrooted_callable_error(leaf.node, slot, site)
+                raise self._unrooted_callable_error(leaf.node, named, owned,
+                                                    site)
             where = self._callable_leaf_escape(leaf, params, captured)
             if where is not None:
                 raise self._callable_root_error("this lambda's result", where,
-                                                slot, site)
+                                                named, owned, site)
 
     def _stateful_callable_error(self, what: str, why: str, whose: str,
-                                 fix: str, slot: CallableType,
+                                 fix: str, slot: str,
                                  site: TpyExpr) -> SemanticError:
         return self.ctx.error(
             f"{what} cannot be passed as {slot}: {why}, so {whose} cannot "
             f"promise that the borrow it returns points only into its "
             f"arguments. {fix}", site)
 
-    def _unrooted_callable_error(self, call: TpyExpr, slot: CallableType,
+    def _unrooted_callable_error(self, call: TpyExpr, slot: str, owned: str,
                                  site: TpyExpr) -> SemanticError:
         callee = (call.func if isinstance(call, TpyCall)
                   else call.obj if isinstance(call, TpyMethodCall) else None)
@@ -7895,8 +7904,6 @@ class ExpressionAnalyzer:
                 and call.method != "__call__"):
             spelled = f"{spelled}.{call.method}"
         through = f"'{spelled}'" if spelled is not None else "a callable value"
-        owned = dc_replace(slot, return_type=OwnType(
-            unwrap_readonly(slot.return_type)))
         return self.ctx.error(
             f"this lambda's result comes from a call through {through}, "
             f"whose signature cannot promise it points only into its "
@@ -7904,11 +7911,8 @@ class ExpressionAnalyzer:
             f"its arguments. Pass the lambda to an Fn parameter, or declare "
             f"{owned} to return a copy", site)
 
-    def _callable_root_error(self, what: str, where: str,
-                             slot: CallableType,
-                             site: TpyExpr) -> SemanticError:
-        owned = dc_replace(slot, return_type=OwnType(
-            unwrap_readonly(slot.return_type)))
+    def _callable_root_error(self, what: str, where: str, slot: str,
+                             owned: str, site: TpyExpr) -> SemanticError:
         return self.ctx.error(
             f"{what} points into {where}, not into an argument: a borrow "
             f"returned through {slot} must point into its arguments. Take "
@@ -8007,10 +8011,11 @@ class ExpressionAnalyzer:
     def _queue_lambda_borrow_check(self, expr: TpyLambda,
                                    result: TpyType | None,
                                    slot: CallableType | None,
-                                   factory_of: str | None) -> None:
+                                   factory_of: str | None,
+                                   member: ClassMember | None = None) -> None:
         if isinstance(result, RefType):
             self.ctx.pending_lambda_borrow_checks.append(
-                LambdaResultCheck(expr, slot, factory_of))
+                LambdaResultCheck(expr, slot, factory_of, member))
 
     def resolve_pending_lambda_borrow_checks(self) -> None:
         """Reject a lambda whose borrow result points into a value its own
@@ -8040,14 +8045,12 @@ class ExpressionAnalyzer:
             # The whole result is a new value: the def twin's refusal of a
             # temporary at a reference return, naming the owning spelling
             # of the slot.
-            owned = dc_replace(slot, return_type=OwnType(
-                unwrap_readonly(slot.return_type)))
             what = (f"'{check.factory_of}' builds" if check.factory_of
                     else "this lambda builds")
-            raise self.ctx.error(
-                f"{what} a new {unwrap_readonly(result.wrapped)}, but "
-                f"{slot} returns a "
-                f"borrow; declare {owned} to return it by value", lam)
+            raise self.ctx.error(fresh_at_borrow_slot(
+                f"{what} a new {unwrap_readonly(result.wrapped)}", slot,
+                check.member, self.compat.shown_type)
+                + " to return it by value", lam)
         what = _temp_root_spelling(root)
         into = f"'{what}', a value" if what else "a value"
         raise self.ctx.error(
@@ -8168,7 +8171,8 @@ class ExpressionAnalyzer:
                 self.ctx.mark_nested_def_escape(expr.name)
                 node = self.ctx.visible_nested_def(expr.name)
                 if node is not None and hint.returns_borrow():
-                    self._check_callable_result_roots(node, hint, expr)
+                    self._check_callable_result_roots(node, hint, expr,
+                                                      slot.member)
         if self.ctx.slot_step_commits():
             if type_args is not None:
                 # The reference instantiates the generic as a call would:
@@ -8285,7 +8289,7 @@ class ExpressionAnalyzer:
                 continue
             if fi.is_generic():
                 generic, rejection = self._infer_generic_ref_type_args(
-                    fi, hint, wildcards, owning, probing)
+                    fi, hint, wildcards, owning, probing, slot.member)
                 if generic is not None:
                     candidates.append(generic)
                 elif rejection is not None and generic_rejection is None:
@@ -8306,7 +8310,7 @@ class ExpressionAnalyzer:
             if not probing:
                 refusal = self.compat.callable_ref_refusal(
                     name, fi, self.fit_signature(fi, type_args), hint,
-                    candidates[0].fit)
+                    candidates[0].fit, slot.member)
                 if refusal is not None:
                     raise self.ctx.error(refusal, err_node)
             return candidates[0]
@@ -8328,7 +8332,8 @@ class ExpressionAnalyzer:
                 if refit.misfit is not None:
                     fi_fit = refit
             refusal = self.compat.callable_ref_refusal(
-                name, fi, self.fit_signature(fi, None), concrete, fi_fit)
+                name, fi, self.fit_signature(fi, None), concrete, fi_fit,
+                slot.member)
             if refusal is not None:
                 raise self.ctx.error(refusal, err_node)
         # Return None to fall through (might be a variable, not a function)
@@ -8356,6 +8361,7 @@ class ExpressionAnalyzer:
         wildcards: frozenset[str] = frozenset(),
         owning: frozenset[int] = frozenset(),
         probing: bool = False,
+        member: ClassMember | None = None,
     ) -> tuple[FunctionRefMatch | None, str | None]:
         """Try to infer type parameters for a generic function from an
         Fn/Callable hint: positions naming the function's type parameters
@@ -8415,7 +8421,7 @@ class ExpressionAnalyzer:
             if probing:
                 return None, None
             refusal = self.compat.callable_ref_refusal(
-                fi.name, fi, signature, hint, fit)
+                fi.name, fi, signature, hint, fit, member)
             return None, refusal
         return FunctionRefMatch(fi, type_args, fit), None
 

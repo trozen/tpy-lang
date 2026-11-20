@@ -28,7 +28,7 @@ class C[T]:
         # class `T` the element is copied in
         self.items.append(x)  # tpyc: warning(/may copy T into owned storage/)
 
-    def fill(self, f: Callable[[int32], T], k: int32) -> None:
+    def fill(self, f: Callable[[int32], Own[T]], k: int32) -> None:
         self.items.append(f(k))
 
     def get(self) -> T:
@@ -40,8 +40,8 @@ def mk(k: int32) -> Own[P]:
 
 
 def pending(f: Callable[[int32], Own[P]]) -> None:
-    # a pending construction completed by `fill`: `f`'s result binds
-    # `T = Own[P]` exactly, settled to `T = P` as a construction's is
+    # a pending construction completed by `fill`: `f`'s `Own[P]` result
+    # meets `fill`'s `Own[T]`, so it binds `T = P`
     c = C()
     c.fill(f, 3)  # tpyc: ok
     h = c.get()

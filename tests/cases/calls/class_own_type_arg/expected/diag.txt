@@ -11,5 +11,5 @@ part_positions.py:44: warning: may copy T into owned storage if not a value type
 part_positions.py:59: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
 main.py:13: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
 main.py:19: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
-main.py:45: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
-main.py:60: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
+main.py:46: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`
+main.py:61: warning: `Own[P]` in a type argument of class 'C' has no effect yet; write `C[P]`

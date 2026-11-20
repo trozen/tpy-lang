@@ -128,6 +128,7 @@ from ..type_def_registry import (
     protocol_info_of, is_iterator_adapter,
     is_dict_view,
 )
+from .slot_hint import ClassMember
 from .overloads import type_matches_numeric
 from .receiver_calls import call_mutates_receiver
 from .int_narrowing import narrowing_proven_safe, site_value_range
@@ -814,6 +815,44 @@ def _declared(reg: SinkRead, leaves: dict[ElemPath, TupleLeaf]
 
 GENERATOR_AT_CALLABLE = ("a generator cannot be passed as a callable yet "
                          "(BUGS.md#generator-at-callable-slot-unlowered)")
+
+
+def _owning_result(t: TpyType) -> TpyType:
+    """Callable `t` -- or the callable an optional, `Own` or `readonly`
+    `t` holds, under the same wrappers -- returning its result type by
+    value."""
+    if isinstance(t, OptionalType):
+        return OptionalType(_owning_result(t.inner))
+    if isinstance(t, (OwnType, ReadonlyType)):
+        return dc_replace(t, wrapped=_owning_result(t.wrapped))
+    if isinstance(t, CallableType):
+        return dc_replace(t, return_type=OwnType(
+            unwrap_readonly(t.return_type)))
+    return t
+
+
+def callable_slot_spelling(slot: CallableType,
+                           member: ClassMember | None,
+                           show: Callable[[TpyType], object],
+                           ) -> tuple[str, str]:
+    """How a refusal at callable `slot`, whose result is a borrow, names
+    the slot and the owning spelling it says to declare: as the source
+    spells the slot, or at a class `member` by its label with the type the
+    class declares there, which is what its author changes."""
+    if member is None:
+        return str(show(slot)), str(show(_owning_result(slot)))
+    return (f"{member.label} ({show(member.declared)})",
+            f"{member.label} as {show(_owning_result(member.declared))}")
+
+
+def fresh_at_borrow_slot(what: str, slot: CallableType,
+                         member: ClassMember | None,
+                         show: Callable[[TpyType], object]) -> str:
+    """The refusal of a callable handing out `what` (its own value) at
+    `slot`, whose result is a borrow, naming the owning spelling to
+    declare (`callable_slot_spelling`)."""
+    named, owned = callable_slot_spelling(slot, member, show)
+    return f"{what}, but {named} returns a borrow; declare {owned}"
 
 
 def _lambda_calling(callee: str, names: Sequence[str],
@@ -5457,6 +5496,7 @@ class TypeCompatibility:
         called: FunctionInfo | None,
         fit: CallableFit | None,
         callee: str | None = None,
+        member: ClassMember | None = None,
     ) -> tuple[str, bool] | None:
         """Why a callable of type `actual` does not fit `expected` -- its
         `fit` there (`callable_fit`), None when there is none to read (the
@@ -5468,7 +5508,8 @@ class TypeCompatibility:
         signature `actual` is, None for a callable value; a generator one
         never fits (BUGS.md#generator-at-callable-slot-unlowered). `callee`
         is how the source names the callable, for the lambda a remedy
-        spells."""
+        spells; `member` the class member the slot is, given with `callee`,
+        which a fresh result's refusal names, as a whole sentence."""
         if called is not None and called.is_generator:
             return GENERATOR_AT_CALLABLE, False
         if fit is None:
@@ -5515,11 +5556,10 @@ class TypeCompatibility:
                     f"{self.shown_type(erased)}, or return "
                     f"{self.shown_type(owned.return_type)} from both", False)
         if misfit.fresh:
-            owned = dc_replace(expected, return_type=OwnType(
-                unwrap_readonly(misfit.expected)))
-            return (f"it returns {self.shown_type(misfit.actual)}, but "
-                    f"{self.shown_type(expected)} returns a borrow; declare "
-                    f"{self.shown_type(owned)}", False)
+            subject = f"'{callee}'" if member is not None else "it"
+            return (fresh_at_borrow_slot(
+                f"{subject} returns {self.shown_type(misfit.actual)}",
+                expected, member, self.shown_type), False)
         context = "param" if misfit.index is not None else "return"
         source, target = ((misfit.expected, misfit.actual)
                           if misfit.index is not None
@@ -5544,16 +5584,19 @@ class TypeCompatibility:
     def callable_ref_refusal(
         self, name: str, called: FunctionInfo,
         actual: CallableType, expected: CallableType, fit: CallableFit,
+        member: ClassMember | None = None,
     ) -> str | None:
         """The refusal of function `called`, named `name` where it is
         passed, of type `actual` at `expected` with `fit` there
         (`callable_misfit_reason`), with the lambda that converts each call
         where a direct call converts; None when it fits."""
         misfit = self.callable_misfit_reason(actual, expected, called, fit,
-                                             name)
+                                             name, member)
         if misfit is None:
             return None
         reason, lambda_converts = misfit
+        if member is not None and fit.misfit is not None and fit.misfit.fresh:
+            return reason
         param_names = [p.name for p in called.params]
         hint = (f" (write '{_lambda_calling(name, param_names)}' to convert "
                 f"each call)" if lambda_converts else "")
@@ -6589,8 +6632,7 @@ class TypeCompatibility:
                          if for_yield
                          and (isinstance(call, TpyCall)
                               or call_operands(call) is not None)
-                         and (call_result_is_fresh(
-                             self.ctx, call, gen_yield=True)
+                         and (call_result_is_fresh(self.ctx, call)
                              or self._open_callable_at_readonly_slot(
                                  call, return_type))
                          else "")

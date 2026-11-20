@@ -103,11 +103,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 template<typename T>
 struct Generic {
     // callbacks: list[Callable[[T], T]]
-    std::vector<std::function<::tpy::storage_t<T>(::tpy::param_val_or_ref_t<T>)>> callbacks;
+    std::vector<std::function<::tpy::val_or_ref_t<T>(::tpy::param_val_or_ref_t<T>)>> callbacks;
 
     // def __init__(self, fn: Callable[[T], T]):
     Generic() = default;
-    explicit Generic(std::function<::tpy::storage_t<T>(::tpy::param_val_or_ref_t<T>)> fn);
+    explicit Generic(std::function<::tpy::val_or_ref_t<T>(::tpy::param_val_or_ref_t<T>)> fn);
 
     // def invoke(self, x: T) -> T:
     ::tpy::val_or_ref_t<T> invoke(::tpy::param_val_or_ref_t<T> x) const;
@@ -240,7 +240,7 @@ inline Holder::Holder() : app(App()) {}
 // def __init__(self, fn: Callable[[T], T]):
 //     self.callbacks = [fn]
 template<typename T>
-inline Generic<T>::Generic(std::function<::tpy::storage_t<T>(::tpy::param_val_or_ref_t<T>)> fn) : callbacks(std::vector<std::function<::tpy::storage_t<T>(::tpy::param_val_or_ref_t<T>)>>{fn}) {}
+inline Generic<T>::Generic(std::function<::tpy::val_or_ref_t<T>(::tpy::param_val_or_ref_t<T>)> fn) : callbacks(std::vector<std::function<::tpy::val_or_ref_t<T>(::tpy::param_val_or_ref_t<T>)>>{fn}) {}
 
 // def invoke(self, x: T) -> T:
 //     return self.callbacks[0](x)  # tpyc: ok

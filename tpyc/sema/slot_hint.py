@@ -30,8 +30,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from enum import Enum, auto
-from typing import Callable, TYPE_CHECKING
+from typing import Callable, NamedTuple, TYPE_CHECKING
 
+from .type_join import peel_value
 from ..typesys import (ANY, AnyType, CallableType, NominalType, OptionalType,
                        TpyType, TupleType, TypeParamRef, UnionType,
                        contains_type_param, type_param_names,
@@ -39,6 +40,7 @@ from ..typesys import (ANY, AnyType, CallableType, NominalType, OptionalType,
 
 if TYPE_CHECKING:
     from ..parse import TpyExpr
+    from ..typesys import RecordInfo
 
 # The type param a wholly inferred hint's pattern consists of.
 _LOCAL = TypeParamRef("<inferred local>")
@@ -71,6 +73,30 @@ class NodeBinding:
 _NO_BINDING = NodeBinding(None)
 
 
+class ClassMember(NamedTuple):
+    """The class member a slot is, reached through a receiver that
+    substitutes the class's type parameters: `label` as a diagnostic names
+    it (`'Lazy.f'`, `parameter 'f' of Lazy.reset`), `declared` its type as
+    the class spells it, which is what its author changes."""
+    label: str
+    declared: TpyType
+
+    @staticmethod
+    def of(owner: RecordInfo, label: str,
+           declared: TpyType) -> ClassMember | None:
+        """`declared`, a member of the class `owner` declares it in, as a
+        class member: only a callable slot naming `owner`'s type parameters
+        reads differently through a receiver than as the class spells it.
+        A bare `x: T` is no callable slot the class spells, whatever `T`
+        is instantiated at."""
+        if not owner.type_params or not contains_type_param(
+                declared, set(owner.type_params)):
+            return None
+        if not isinstance(peel_value(declared)[0], CallableType):
+            return None
+        return ClassMember(label, unwrap_qualifiers(declared))
+
+
 @dataclass(frozen=True)
 class SlotHint:
     type: TpyType
@@ -83,6 +109,9 @@ class SlotHint:
     # (`map`), a fill-only one is not. Equality ignores it on purpose --
     # nothing compares or caches hints by scope.
     binding: NodeBinding | None = field(default=None, compare=False)
+    # The class member the whole hint is the type of, for a refusal to
+    # name; no projection (`map`) is that member.
+    member: ClassMember | None = field(default=None, compare=False)
 
     @staticmethod
     def declared(t: TpyType) -> SlotHint:
@@ -163,15 +192,23 @@ class SlotHint:
         return (b if b is not None and not b.fill and b.node is node
                 else _NO_BINDING)
 
-    def map(self, fn: Callable[[TpyType], TpyType | None]) -> SlotHint | None:
+    def map(self, fn: Callable[[TpyType], TpyType | None], *,
+            peel: bool = False) -> SlotHint | None:
         """Project `type` and `pattern` together: `fn` takes the same part
         (an element, a type argument, a wrapper's inner type) of both, so
         the part keeps the provenance its position has, and answers None
         where a type has no such part. None when the TYPE has none. A
         callable-fit binding stays bound to its node; a fill-only one is
-        dropped, since a part of the hint types no argument node."""
+        dropped, since a part of the hint types no argument node. `peel`
+        says `fn` only takes wrappers off (an optional's included), so the
+        part is still the class member the hint is (`member`); any other
+        part is not."""
         out = self._project(fn)
-        if out is None or self.binding is None or self.binding.fill:
+        if out is None:
+            return out
+        if peel and self.member is not None:
+            out = replace(out, member=self.member)
+        if self.binding is None or self.binding.fill:
             return out
         return replace(out, binding=self.binding)
 

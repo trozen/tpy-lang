@@ -758,19 +758,22 @@ class MethodAnalyzer:
         rec = self.ctx.registry.get_record_for_type(obj_type)
         if rec is None:
             return None
+        fld = self.protocols.lookup_record_field(rec, expr.method)
+        if fld is None:
+            return None
+        type_subst = self.type_ops.build_type_substitution(obj_type)
+        # Send/Sync markers constrain stores into the field, not calls
+        fld_type = unwrap_send_sync(
+            self.type_ops.substitute_type_params(fld.type, type_subst)
+            if type_subst else fld.type)
         callable_type = None
         is_optional_field = False
-        for fld in rec.fields:
-            if fld.name == expr.method:
-                # Send/Sync markers constrain stores into the field, not calls
-                fld_type = unwrap_send_sync(fld.type)
-                if isinstance(fld_type, CallableType):
-                    callable_type = fld_type
-                elif isinstance(fld_type, OptionalType) and isinstance(
-                        unwrap_send_sync(fld_type.inner), CallableType):
-                    callable_type = unwrap_send_sync(fld_type.inner)
-                    is_optional_field = True
-                break
+        if isinstance(fld_type, CallableType):
+            callable_type = fld_type
+        elif isinstance(fld_type, OptionalType) and isinstance(
+                unwrap_send_sync(fld_type.inner), CallableType):
+            callable_type = unwrap_send_sync(fld_type.inner)
+            is_optional_field = True
         if callable_type is None:
             return None
         # Warn if calling Optional[Callable] field without narrowing

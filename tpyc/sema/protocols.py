@@ -1806,22 +1806,41 @@ class ProtocolChecker:
         E.g., if Container[T] has field `value: T` and IntContainer extends Container[int32],
         looking up `value` on IntContainer returns FieldInfo with type int32.
         """
+        found = self._find_record_field(record_info, field_name)
+        if found is None:
+            return None
+        anc_type, anc_info, fld = found
+        type_subst = (self.get_parent_type_subst(anc_type, anc_info)
+                      if anc_type is not None else None)
+        if type_subst:
+            # Preserve every other FieldInfo fact (native_name, loc,
+            # ...) -- only the type is substituted.
+            return dataclasses.replace(
+                fld, type=self.type_ops.substitute_type_params(fld.type, type_subst))
+        return fld
+
+    def declaring_record_field(
+        self, record_info: RecordInfo, field_name: str,
+    ) -> tuple[RecordInfo, FieldInfo] | None:
+        """The record declaring `record_info`'s field `field_name` -- itself
+        or an ancestor -- with the field as that record spells it."""
+        found = self._find_record_field(record_info, field_name)
+        return None if found is None else (found[1], found[2])
+
+    def _find_record_field(
+        self, record_info: RecordInfo, field_name: str,
+    ) -> tuple[TpyType | None, RecordInfo, FieldInfo] | None:
+        """The field `field_name` where `record_info`'s MRO first declares
+        it: the ancestor's type as `record_info` names it (None for
+        `record_info` itself), its record, and the field unsubstituted."""
         for fld in record_info.fields:
             if fld.name == field_name:
-                return fld
+                return None, record_info, fld
         for anc_type, anc_info in self.ctx.registry.iter_mro_entries(
                 record_info, fields_only=True):
             inherited = next((f for f in anc_info.fields if f.name == field_name), None)
-            if inherited is None:
-                continue
-            type_subst = self.get_parent_type_subst(anc_type, anc_info)
-            if type_subst:
-                # Preserve every other FieldInfo fact (native_name, loc,
-                # ...) -- only the type is substituted.
-                return dataclasses.replace(
-                    inherited,
-                    type=self.type_ops.substitute_type_params(inherited.type, type_subst))
-            return inherited
+            if inherited is not None:
+                return anc_type, anc_info, inherited
         return None
 
     def find_field_parent_branches(

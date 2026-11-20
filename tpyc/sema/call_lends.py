@@ -1362,8 +1362,7 @@ def is_enum_name_read(expr: TpyExpr, ctx: 'SemanticContext') -> bool:
 
 
 def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
-                         proof: bool = False,
-                         gen_yield: bool = False) -> bool:
+                         proof: bool = False) -> bool:
     """Whether the call-shaped `call` hands back a FRESH object, which a
     borrow of it dies with: a value made from lent operands, or a new
     object the call proves fresh (`origin`). Without `proof`, also what a
@@ -1387,17 +1386,11 @@ def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
             isinstance(call, TpyCallLike) and call.result_form.is_declared):
         return False
     fi = lend.ops.fi
-    if (is_str_type(fi.return_type) or is_string_type(fi.return_type)
+    return (is_str_type(fi.return_type) or is_string_type(fi.return_type)
             or is_bytes_type(fi.return_type)
             or is_bytearray_type(fi.return_type)
             or is_bytearray_type(unwrap_own(unwrap_readonly(
-                ctx.get_expr_type(call))))):
-        return True
-    # A class's std::function of an open return hands back a value
-    # (`CallableType.class_return`), which a lending yield slot cannot lend.
-    return (gen_yield and lend.kind is CalleeFact.CALLABLE
-            and fi.callable_type is not None
-            and fi.callable_type.class_return and fi.returns_open())
+                ctx.get_expr_type(call)))))
 
 
 def _is_null_ptr(call: TpyExpr) -> bool:
@@ -1476,11 +1469,9 @@ class ReturnLend(CallPolicy):
 
     `gen_yield` is the reading at a generator's borrow-slot yield, whose
     slot lends what it is handed for a whole step: an `Own[T]` result is a
-    TEMPORARY whoever the callee (`copy()`, `xs.pop()`), and so is the
-    result of a callable VALUE declared as an open type parameter -- at an
-    owning callee the instantiation's value is fresh, and the reference
-    instantiation decides a generic body. `proof` is the reading that must PROVE
-    a temporary (`borrow_temp_root`): a fresh result only by
+    TEMPORARY whoever the callee (`copy()`, `xs.pop()`). `proof` is the
+    reading that must PROVE a temporary (`borrow_temp_root`): a fresh
+    result only by
     `call_result_is_fresh`'s proof, a call only through its recorded
     sources, no path through a hidden call, a walrus or an await, and the
     and/or arms followed."""
@@ -1555,8 +1546,7 @@ class ReturnLend(CallPolicy):
                 ask: Ask) -> list[LendSource] | None:
         if ((self.proof or self.gen_yield
              or not _builtin_own_result(self.ctx, call))
-                and call_result_is_fresh(self.ctx, call, proof=self.proof,
-                                         gen_yield=self.gen_yield)):
+                and call_result_is_fresh(self.ctx, call, proof=self.proof)):
             return []
         if _is_null_ptr(call):
             return []

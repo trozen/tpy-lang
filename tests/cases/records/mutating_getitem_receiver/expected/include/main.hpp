@@ -113,12 +113,12 @@ inline std::ostream& operator<<(std::ostream& os, const Counts& obj) {
 // class DefaultDict[K: Hashable, V]:
 template<::tpystd::tpy::Hashable K, typename V>
 struct DefaultDict {
-    // factory: Callable[[], V]
+    // factory: Callable[[], Own[V]]
     std::function<::tpy::storage_t<V>()> factory;
     // data: dict[K, V]
     ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>> data;
 
-    // def __init__(self, factory: Callable[[], V]) -> None:
+    // def __init__(self, factory: Callable[[], Own[V]]) -> None:
     DefaultDict() = default;
     explicit DefaultDict(std::function<::tpy::storage_t<V>()> factory);
 
@@ -682,7 +682,7 @@ inline int32_t Holder::look_alias(std::string_view k) {
 //     super().__init__()
 inline KeyMono::KeyMono() : KeyBase<int64_t>() {}
 
-// def __init__(self, factory: Callable[[], V]) -> None:
+// def __init__(self, factory: Callable[[], Own[V]]) -> None:
 //     self.factory = factory
 //     self.data = {}
 template<::tpystd::tpy::Hashable K, typename V>

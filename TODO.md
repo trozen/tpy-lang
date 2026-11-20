@@ -1691,17 +1691,14 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
   in TPy source").
 - **[sema] Callable contract unit 2: the generic twin (filed 2026-11-05 with the concrete contract).** Status:
   2a (function and generator type arguments) landed -- `Own[X]` as a literal type argument (`::tpy::own_arg<X>`),
-  exact / neutral inference, `functools.reduce`'s lending and owning forms; what remains is 2b, user CLASS type
-  arguments (`Holder[Own[P]]`, a class's `Callable[[], V]` member at `V` bound by an owning callable), and the
-  2a gaps filed in BUGS.md. Face (2026-11-19): `def keep[T](x: T) -> Own[Hold[T]]: return Hold(x)` called
-  `keep[Own[NC]](NC(7))` returns `Hold<::tpy::own_arg<NC>>` where the caller's local is `Hold<NC>` (g++ stops; the
-  member-init itself moves, `param_consume`; probe `/tmp/agents/u2p/r1/nc.py`). 2b deletes `CallableType.class_return` and `mark_class_callables` (`tpyc/typesys.py`):
-  the narrow keep of the old open-return settle for a CLASS's `Callable[[], V]` member and signature, which 2a
-  left at today's behavior (a substituted class callable returns by value, `Callable[[], P]` read as
-  `Callable[[], Own[P]]`). The stopgap is marked only on record fields and method signatures, which three
-  readers consult: a LOCAL in a generic class's method spelling `Callable[[], T]` (the class's `T`) is not
-  marked, so it takes the function-type-argument reading (unconfirmed, review 2026-11-17); 2b's literal class
-  type arguments decide it with the rest. The original entry: the concrete
+  exact / neutral inference, `functools.reduce`'s lending and owning forms; 2b-1 (class `Callable` members) landed --
+  a generic class's `Callable[..., T]` field / method signature reads as a function's (a bare `T` result a borrow at a
+  reference instantiation, `Callable[[], Own[T]]` a fresh one; `CallableType.class_return` and `mark_class_callables`
+  deleted, the refusal names the class member). What remains is 2b-2, user CLASS type arguments at `Own[X]`
+  (`Holder[Own[P]]`, today dropped to `Holder[P]` with a warning), and the 2a gaps filed in BUGS.md. Face of 2b-2 (2026-11-19):
+  `def keep[T](x: T) -> Own[Hold[T]]: return Hold(x)` called `keep[Own[NC]](NC(7))` returns
+  `Hold<::tpy::own_arg<NC>>` where the caller's local is `Hold<NC>` (g++ stops; the member-init itself moves,
+  `param_consume`; probe `/tmp/agents/u2p/r1/nc.py`). The original entry: the concrete
   contract (a `Callable` / `Fn` / lambda `-> P` lends like a `def`'s) leaves a slot whose declared return is an
   open type parameter (`Fn[[T], U]`, `Fn[[T, T], T]`, `functools.reduce`, `map`) on today's path, because one
   `U` serves both a borrow position (`-> U` of the callable) and a value position (`list[U]`): `fill[T, U](f:
@@ -1710,11 +1707,13 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
   encoding of a borrow vs owned `U` (`::tpy::val_or_ref<P>` is broken as a template argument,
   fixed by unit 2a; an owned-side marker has no storage readers -- both
   directions risk a missed reader, so this is a design decision), deleting the `gen_yield=` open-`U` fresh
-  reading (`call_result_is_fresh`, `tpyc/sema/call_lends.py`), and flipping
+  reading (`call_result_is_fresh`, `tpyc/sema/call_lends.py`; done in 2b-1), and flipping
   `iterators/error_gen_yield_callable_result{,_readonly}` to happy cases. The generic-slot refusals the unit
-  revisits: `calls/error_callable_generic_slot_lending_value`, `calls/error_callable_generic_slot_lending_def`,
-  `calls/error_callable_generic_fn_value_at_callable` and `calls/error_callable_generic_result_at_borrow` (a
-  substituted open `Callable` return is `Own[R]`, `CallableType.__post_init__`). User rule (2026-11-04): a
+  revisits: `calls/error_callable_generic_fn_value_at_callable` (an `Fn` value at a `Callable[[], T]` slot)
+  and `calls/error_callable_generic_result_at_borrow`, whose `Own[P]` is the FUNCTION's own binding:
+  `pick(c)` with `c: Callable[[], Own[P]]` binds `T = Own[P]` from the argument's declared form (unit 2a),
+  so `pick` hands back a `Callable[[], Own[P]]` (the `..._slot_lending_{value,def}` cases went with
+  unit 2a). User rule (2026-11-04): a
   generic behaves as the user's manual concrete lowering, with every type argument spellable. A substituted `Fn[[T], U]` keeps
   `open_return=True`, a real field of the frozen type, so it is unequal to a declared `Fn[[P], P]` that prints and
   renders the same; the unit removes that provenance from the type's identity.

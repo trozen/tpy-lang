@@ -7034,20 +7034,6 @@ class CallableType(TpyType):
     param_types: tuple[TpyType, ...]
     return_type: TpyType
     is_template: bool = False
-    # A std::function whose return is a CLASS's open type parameter (a
-    # field or method signature of a generic class): a class's type
-    # parameter is never bound to `Own[X]` (only a function's takes `Own`
-    # literally), so it hands its instantiation's value back by value, and a
-    # substitution settles the return to its storage spelling
-    # (`_settled_open_return`).
-    class_return: bool = field(default=False, compare=False, hash=False)
-
-    def __post_init__(self) -> None:
-        if (self.class_return and not self.is_template
-                and not is_open_type_param_return(self.return_type)):
-            object.__setattr__(self, "return_type",
-                               _settled_open_return(self.return_type))
-            object.__setattr__(self, "class_return", False)
 
     @staticmethod
     def _callable_param_cpp(t: 'TpyType') -> str:
@@ -7119,8 +7105,7 @@ class CallableType(TpyType):
         # `U = P`, the value at `U = Own[P]` (`val_or_ref_t<U>`).
         ret = ("void" if representation is ResultRepresentation.ERASED_VOID
                else self.contract_return().to_cpp_return()
-               if self.returns_borrow()
-               or (self.returns_open() and not self.class_return)
+               if self.returns_borrow() or self.returns_open()
                else self.return_type.to_cpp())
         params = ", ".join(self._callable_param_cpp(t) for t in self.param_types)
         return f"std::function<{ret}({params})>"
@@ -7161,8 +7146,7 @@ class CallableType(TpyType):
         return self.param_types + (self.return_type,)
 
     def with_inner_types(self, types: tuple[TpyType, ...]) -> 'TpyType':
-        return CallableType(types[:-1], types[-1], self.is_template,
-                            class_return=self.class_return)
+        return CallableType(types[:-1], types[-1], self.is_template)
 
     def __str__(self) -> str:
         params = ", ".join(str(t) for t in self.param_types)
@@ -7171,39 +7155,6 @@ class CallableType(TpyType):
 
     def qualified_name(self) -> Optional[str]:
         return None
-
-
-def _settled_open_return(ret: TpyType) -> TpyType:
-    """The decided spelling of a class's std::function open return
-    substituted with `ret` (`CallableType.class_return`): it hands its
-    result back by value, so a type whose return form is not its storage
-    form (`returns_storage_form`) is `Own[R]`, any other itself."""
-    while True:
-        peeled = unwrap_ref_type(unwrap_readonly(ret))
-        if peeled is ret:
-            break
-        ret = peeled
-    return ret if returns_storage_form(ret) else OwnType(ret)
-
-
-def mark_class_callables(t: TpyType, class_params: 'frozenset[str]') -> TpyType:
-    """`t` with each non-template callable whose return is one of the
-    class type parameters `class_params` marked `class_return`."""
-    if isinstance(t, CallableType):
-        inner = tuple(mark_class_callables(x, class_params)
-                      for x in t.inner_types())
-        ret = unwrap_readonly(inner[-1])
-        mark = (not t.is_template and isinstance(ret, TypeParamRef)
-                and ret.name in class_params)
-        if mark or any(n is not o for n, o in zip(inner, t.inner_types())):
-            return CallableType(inner[:-1], inner[-1], t.is_template,
-                                class_return=mark or t.class_return)
-        return t
-    inner = t.inner_types()
-    new = tuple(mark_class_callables(x, class_params) for x in inner)
-    if any(n is not o for n, o in zip(new, inner)):
-        return t.with_inner_types(new)
-    return t
 
 
 def make_fn_type(param_types: tuple['TpyType', ...], return_type: 'TpyType') -> CallableType:

@@ -68,7 +68,7 @@ struct Later {
     int32_t peek_own(Later<::tpyapp::fixtures::P>& other) const;
 
     // @staticmethod
-    // def pick(f: Callable[[int32], T], xs: list[T]) -> T:
+    // def pick(f: Callable[[int32], Own[T]], xs: list[T]) -> T:
     static ::tpy::val_or_ref_t<T> pick(const std::function<::tpy::storage_t<T>(int32_t)>& f, std::vector<::tpy::storage_t<T>>& xs);
     static constexpr std::string_view __tpy_class_name__ = "part_declared.Later";
 };
@@ -127,7 +127,7 @@ inline int32_t Later<T>::peek_own(Later<::tpyapp::fixtures::P>& other) const {
 }
 
 // @staticmethod
-// def pick(f: Callable[[int32], T], xs: list[T]) -> T:
+// def pick(f: Callable[[int32], Own[T]], xs: list[T]) -> T:
 //     return xs[0]
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Later<T>::pick(const std::function<::tpy::storage_t<T>(int32_t)>& f, std::vector<::tpy::storage_t<T>>& xs) {

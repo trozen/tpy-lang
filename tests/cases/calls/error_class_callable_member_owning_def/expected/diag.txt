@@ -1,0 +1,1 @@
+main.py:30: error: 'mk' returns Own[P], but parameter 'f' of Lazy.__init__ (Callable[[], T]) returns a borrow; declare parameter 'f' of Lazy.__init__ as Callable[[], Own[T]]

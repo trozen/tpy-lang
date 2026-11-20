@@ -1,0 +1,1 @@
+main.py:26: error: this lambda builds a new list[int32], but 'DefaultMap.factory' (Callable[[], V]) returns a borrow; declare 'DefaultMap.factory' as Callable[[], Own[V]] to return it by value

@@ -25,8 +25,8 @@ int32_t by_param(::tpyapp::fixtures::C<::tpyapp::fixtures::P>& c) {
 }
 
 // def pending(f: Callable[[int32], Own[P]]) -> None:
-//     # a construction completed by `fill`: `f`'s result binds `T = Own[P]`,
-//     # settled to `C[P]`
+//     # a construction completed by `fill`: `f`'s `Own[P]` result meets
+//     # `fill`'s `Own[T]`, so it binds `T = P`
 //     c = C()
 //     c.fill(f, 3)  # tpyc: ok
 //     h = c.get()
@@ -41,7 +41,8 @@ void pending(const std::function<::tpyapp::fixtures::P(int32_t)>& f) {
 }
 
 // def class_method(f: Callable[[int32], Own[P]]) -> None:
-//     # a class method whose class `T` the callable binds to `Own[P]`
+//     # a class method whose class `T` the callable's `Own[P]` result binds to
+//     # `P` through `build`'s `Own[T]`
 //     c = C.build(f, 4)  # tpyc: ok
 //     h = c.get()
 //     h.x = 9

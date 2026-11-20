@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from .loop_frames import (PendingLoopFrameCall, PendingSourceWrite,
                               WithExitCheck)
     from .scope_tracker import DeferredEscape
-    from .slot_hint import SlotHint
+    from .slot_hint import ClassMember, SlotHint
     from .statements import StatementAnalyzer
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
@@ -1777,10 +1777,11 @@ class LambdaResultCheck(NamedTuple):
     (`SemanticContext.pending_lambda_borrow_checks`). `slot`: the callable
     slot whose contract typed the result, None for a result inferred from
     the body; `factory_of`: the class a synthesized factory lambda stands
-    for."""
+    for; `member`: the class member the slot is (`SlotHint.member`)."""
     lam: 'TpyLambda'
     slot: 'CallableType | None'
     factory_of: str | None
+    member: 'ClassMember | None' = None
 
 
 class ClimbNode(NamedTuple):

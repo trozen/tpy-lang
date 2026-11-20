@@ -2292,11 +2292,6 @@ def returns_open_type_param(fi: 'FunctionInfo | None') -> bool:
     """
     if fi is None or fi.is_constructor:
         return False
-    if (fi.is_callable_value and fi.callable_type is not None
-            and fi.callable_type.class_return):
-        # A class's std::function returns by value: a class's type
-        # parameter is never bound to `Own[X]`.
-        return False
     return is_open_type_param_return(fi.return_type)
 
 

@@ -26,8 +26,11 @@ is literal substitution, spelled and inferred alike. A substituted open
 callable return is what its type argument says (`CallableType.open_return` is
 gone), so a call through `Fn[[T], U]` lends at `U = P` and owns at
 `U = Own[P]`. `functools.reduce` has a lending and an owning form per arity.
-User class type arguments are unit 2b (`docs/LANGUAGE_FEATURES.md`, "Generic
-Functions").
+Unit 2b-1 (2026-11-20) gave a generic class's `Callable[..., T]` field,
+method parameter and method result the function rule (a bare `T` result
+lends at a reference instantiation, a fresh-value factory is spelled
+`Callable[[], Own[T]]`); user class type arguments at `Own[X]` remain, as
+unit 2b-2 (`docs/LANGUAGE_FEATURES.md`, "Generic Functions").
 
 **Re-plan (2026-11-05, user decision "A": only signatures decide).** This
 supersedes the unit-1 design's "`__call__(self, x) -> P: return x` fits" and

@@ -11,8 +11,8 @@ P mk(int32_t k) {
 }
 
 // def pending(f: Callable[[int32], Own[P]]) -> None:
-//     # a pending construction completed by `fill`: `f`'s result binds
-//     # `T = Own[P]` exactly, settled to `T = P` as a construction's is
+//     # a pending construction completed by `fill`: `f`'s `Own[P]` result
+//     # meets `fill`'s `Own[T]`, so it binds `T = P`
 //     c = C()
 //     c.fill(f, 3)  # tpyc: ok
 //     h = c.get()

@@ -45,12 +45,12 @@ void main();
 // class DefaultDict[K: Hashable, V]:
 template<::tpystd::tpy::Hashable K, typename V>
 struct DefaultDict {
-    // factory: Callable[[], V]
+    // factory: Callable[[], Own[V]]
     std::function<::tpy::storage_t<V>()> factory;
     // _data: dict[K, V]
     ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::storage_t<V>> _data;
 
-    // def __init__(self, factory: Callable[[], V]) -> None:
+    // def __init__(self, factory: Callable[[], Own[V]]) -> None:
     DefaultDict() = default;
     explicit DefaultDict(std::function<::tpy::storage_t<V>()> factory);
 
@@ -311,7 +311,7 @@ inline int32_t Grouper::size(int32_t i) const {
     return ::tpy::__len__(this->rows[i]);
 }
 
-// def __init__(self, factory: Callable[[], V]) -> None:
+// def __init__(self, factory: Callable[[], Own[V]]) -> None:
 //     self.factory = factory
 //     self._data = {}
 template<::tpystd::tpy::Hashable K, typename V>

@@ -29,10 +29,10 @@ class Counts:
 
 
 class DefaultDict[K: Hashable, V]:
-    factory: Callable[[], V]
+    factory: Callable[[], Own[V]]
     data: dict[K, V]
 
-    def __init__(self, factory: Callable[[], V]) -> None:
+    def __init__(self, factory: Callable[[], Own[V]]) -> None:
         self.factory = factory
         self.data = {}
 
