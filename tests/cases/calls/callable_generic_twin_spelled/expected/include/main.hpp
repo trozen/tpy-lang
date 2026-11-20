@@ -65,7 +65,7 @@ inline P::P(int32_t n) : n(n) {}
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> take(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // def store2[T](x: T, out: list[T]) -> None:
 //     out.append(x)  # tpyc: warning(/may copy T into owned storage/)

@@ -31,7 +31,7 @@ struct Bag {
     void add(::tpy::param_val_or_ref_t<T> value);
 
     // def contains[T: Equatable](self, value: T) -> bool:
-    bool contains(::tpy::readonly_form_t<T> value) const
+    bool contains(::tpy::param_val_or_cref_t<T> value) const
       requires ::tpystd::tpy::Equatable<T>;
 
     // def biggest[T: Comparable](self) -> T:
@@ -117,7 +117,7 @@ inline void Bag<T, N>::add(::tpy::param_val_or_ref_t<T> value) {
 //             return True
 //     return False
 template<typename T, std::size_t N>
-inline bool Bag<T, N>::contains(::tpy::readonly_form_t<T> value) const
+inline bool Bag<T, N>::contains(::tpy::param_val_or_cref_t<T> value) const
   requires ::tpystd::tpy::Equatable<T> {
     auto& __obj_0 = this->items;
     auto __beg_0 = __obj_0.begin();

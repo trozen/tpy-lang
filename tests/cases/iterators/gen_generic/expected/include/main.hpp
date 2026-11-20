@@ -45,10 +45,10 @@ template <typename T>
 __gen_bump_each<T> bump_each(::tpy::param_val_or_ref_t<T> obj, int32_t count);
 // def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
 template <typename T>
-__gen_size_each<T> size_each(::tpy::readonly_form_t<T> obj, int32_t count);
+__gen_size_each<T> size_each(::tpy::param_val_or_cref_t<T> obj, int32_t count);
 // def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
 template <typename T>
-__gen_len_each<T> len_each(::tpy::readonly_form_t<T> obj, int32_t count);
+__gen_len_each<T> len_each(::tpy::param_val_or_cref_t<T> obj, int32_t count);
 // def repeat[T](value: T, count: int32) -> Iterator[T]:
 template <typename T>
 __gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> value, int32_t count);
@@ -97,7 +97,7 @@ struct __gen_bump_each : public ::tpy::next_iter_mixin<__gen_bump_each<T>, int32
 
     __gen_bump_each(::tpy::param_val_or_ref_t<T> obj_, int32_t count_)
         : __state(S_INITIAL),
-          obj(::tpy::param_pass_last<T>(obj_)),
+          obj(::tpy::param_handoff<T>(obj_)),
           count(std::move(count_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -165,9 +165,9 @@ struct __gen_size_each : public ::tpy::next_iter_mixin<__gen_size_each<T>, int32
         S_DONE = 3,
     };
 
-    __gen_size_each(::tpy::readonly_form_t<T> obj_, int32_t count_)
+    __gen_size_each(::tpy::param_val_or_cref_t<T> obj_, int32_t count_)
         : __state(S_INITIAL),
-          obj(obj_),
+          obj(::tpy::param_handoff<T>(obj_)),
           count(std::move(count_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -178,7 +178,7 @@ struct __gen_size_each : public ::tpy::next_iter_mixin<__gen_size_each<T>, int32
     }
 };
 // def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
-//     # the `readonly[T]` slot: the param is `readonly_form_t<T>` and the frame
+//     # the `readonly[T]` slot: the param is `param_val_or_cref_t<T>` and the frame
 //     # member `val_or_cref_t<T>` -- a const reference at a reference
 //     # instantiation, a copy at a value one. Const either way, so only a
 //     # @readonly method is callable through it and `obj.append(1)` here would
@@ -186,7 +186,7 @@ struct __gen_size_each : public ::tpy::next_iter_mixin<__gen_size_each<T>, int32
 //     # (async/generic_async_free_func).
 //     i: int32 = 0
 //     while i < count:
-//         yield obj.size() + i                                                    # -> S_RESUME_0
+//         yield obj.size() + i                                                       # -> S_RESUME_0
 //         i += 1
 template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_size_each<T>::__next__() {
@@ -219,8 +219,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_size_each<T>::__next__() {
 
 // def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
 template <typename T>
-__gen_size_each<T> size_each(::tpy::readonly_form_t<T> obj, int32_t count) {
-    return __gen_size_each<T>(obj, count);
+__gen_size_each<T> size_each(::tpy::param_val_or_cref_t<T> obj, int32_t count) {
+    return __gen_size_each<T>(::tpy::param_pass_last<T>(obj), count);
 }
 
 // def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
@@ -238,9 +238,9 @@ struct __gen_len_each : public ::tpy::next_iter_mixin<__gen_len_each<T>, int32_t
         S_DONE = 3,
     };
 
-    __gen_len_each(::tpy::readonly_form_t<T> obj_, int32_t count_)
+    __gen_len_each(::tpy::param_val_or_cref_t<T> obj_, int32_t count_)
         : __state(S_INITIAL),
-          obj(obj_),
+          obj(::tpy::param_handoff<T>(obj_)),
           count(std::move(count_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -253,11 +253,11 @@ struct __gen_len_each : public ::tpy::next_iter_mixin<__gen_len_each<T>, int32_t
 // def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
 //     # the same slot at a VALUE instantiation (str): the frame copies the
 //     # argument into its own member (`val_or_cref_t<T>`), which is what lets
-//     # an RVALUE source below survive -- the factory's `readonly_form_t<T>`
+//     # an RVALUE source below survive -- the factory's `param_val_or_cref_t<T>`
 //     # slot is only a view of the caller's temporary.
 //     i: int32 = 0
 //     while i < count:
-//         yield len(obj) + i                                                   # -> S_RESUME_0
+//         yield len(obj) + i                                                      # -> S_RESUME_0
 //         i += 1
 template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_len_each<T>::__next__() {
@@ -290,8 +290,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_len_each<T>::__next__() {
 
 // def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
 template <typename T>
-__gen_len_each<T> len_each(::tpy::readonly_form_t<T> obj, int32_t count) {
-    return __gen_len_each<T>(obj, count);
+__gen_len_each<T> len_each(::tpy::param_val_or_cref_t<T> obj, int32_t count) {
+    return __gen_len_each<T>(::tpy::param_pass_last<T>(obj), count);
 }
 
 // def repeat[T](value: T, count: int32) -> Iterator[T]:
@@ -311,7 +311,7 @@ struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, ::tpy::yiel
 
     __gen_repeat(::tpy::param_val_or_ref_t<T> value_, int32_t count_)
         : __state(S_INITIAL),
-          value(::tpy::param_pass_last<T>(value_)),
+          value(::tpy::param_handoff<T>(value_)),
           count(std::move(count_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();

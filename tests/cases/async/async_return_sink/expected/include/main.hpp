@@ -609,7 +609,7 @@ struct __coro_ident {
     __coro_ident(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1337,7 +1337,7 @@ inline std::optional<::tpy::storage_t<T>> V<T>::f(::tpy::storage_t<T> x) const {
 //     return v
 template<typename T>
 ::tpy::val_or_ref_t<T> same(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_to_return_last<T>(v);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(v));
 }
 // # open T (sync twin): a literal argument the result does not lend from
 // def sync_indexed[T](c: Cell[T]) -> T:

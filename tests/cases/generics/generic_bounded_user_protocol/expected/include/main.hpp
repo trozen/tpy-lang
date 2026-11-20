@@ -48,7 +48,7 @@ struct Holder {
 
     // def __init__(self, item: T):
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<T> item);
+    explicit Holder(::tpy::param_val_or_cref_t<T> item);
 
     // def get_item(self) -> T:
     ::tpy::val_or_ref_t<T> get_item();
@@ -75,7 +75,7 @@ inline int32_t MyNumber::add(int32_t x) const {
 // def __init__(self, item: T):
 //     self.item = item
 template<Addable T>
-inline Holder<T>::Holder(::tpy::readonly_form_t<T> item) : item(item) {}
+inline Holder<T>::Holder(::tpy::param_val_or_cref_t<T> item) : item(::tpy::param_consume<T>(item)) {}
 
 // def get_item(self) -> T:
 //     return self.item

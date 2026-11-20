@@ -88,7 +88,7 @@ struct G {
 
     // def __init__(self, v: T) -> None:
     G() = default;
-    explicit G(::tpy::readonly_form_t<T> v);
+    explicit G(::tpy::param_val_or_cref_t<T> v);
 
     // @property
     // def v(self) -> T:
@@ -190,7 +190,7 @@ inline void Poker::poke(Box* p) const {
 //     # expected: a generic T stored into a field may be a reference type
 //     self._v = v  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline G<T>::G(::tpy::readonly_form_t<T> v) : _v(v) {}
+inline G<T>::G(::tpy::param_val_or_cref_t<T> v) : _v(::tpy::param_consume<T>(v)) {}
 
 // @property
 // def v(self) -> T:

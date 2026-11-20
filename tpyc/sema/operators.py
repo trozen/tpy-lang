@@ -91,7 +91,7 @@ DUNDER_CPP_TEMPLATES: dict[str, str] = {
 # codegen friend-shim tables: a use renders the dunder without its template
 # argument whether it goes through a friend operator (`+`, `==`, `+` with
 # the record on the right) or a direct call (`+=`, `//`, unary `-`), and
-# `readonly_form_t<C>` cannot be deduced at either, so a user method among
+# `param_val_or_cref_t<C>` cannot be deduced at either, so a user method among
 # all of these with a type parameter of its own fails the C++ build.
 OPERATOR_DUNDERS: frozenset[str] = frozenset(
     list(builtin_modules.BINOP_TO_METHOD.values())

@@ -28,15 +28,15 @@ struct Bag {
     void add_all(T_items&& items);
 
     // def __getitem__(self, key: T) -> int:
-    ::tpy::BigInt __getitem__(::tpy::readonly_form_t<T> key) const;
+    ::tpy::BigInt __getitem__(::tpy::param_val_or_cref_t<T> key) const;
 
     // def __contains__(self, key: T) -> bool:
-    bool __contains__(::tpy::readonly_form_t<T> key) const;
+    bool __contains__(::tpy::param_val_or_cref_t<T> key) const;
 
     // def total(self) -> int:
     ::tpy::BigInt total() const;
 
-    ::tpy::BigInt operator[](::tpy::readonly_form_t<T> key) const;
+    ::tpy::BigInt operator[](::tpy::param_val_or_cref_t<T> key) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -72,14 +72,14 @@ inline void Bag<T>::add_all(T_items&& items) {
 // def __getitem__(self, key: T) -> int:
 //     return self._data.get(key, 0)  # tpyc: ok
 template<::tpystd::tpy::Hashable T>
-inline ::tpy::BigInt Bag<T>::__getitem__(::tpy::readonly_form_t<T> key) const {
+inline ::tpy::BigInt Bag<T>::__getitem__(::tpy::param_val_or_cref_t<T> key) const {
     return ::tpy::dict_get_default(this->_data, key, ::tpy::BigInt(0));
 }
 
 // def __contains__(self, key: T) -> bool:
 //     return key in self._data  # tpyc: ok
 template<::tpystd::tpy::Hashable T>
-inline bool Bag<T>::__contains__(::tpy::readonly_form_t<T> key) const {
+inline bool Bag<T>::__contains__(::tpy::param_val_or_cref_t<T> key) const {
     return (this->_data.contains(key));
 }
 
@@ -102,8 +102,8 @@ inline ::tpy::BigInt Bag<T>::total() const {
 }
 
 template<::tpystd::tpy::Hashable T>
-inline ::tpy::BigInt Bag<T>::operator[](::tpy::readonly_form_t<T> key) const {
-    return __getitem__(key);
+inline ::tpy::BigInt Bag<T>::operator[](::tpy::param_val_or_cref_t<T> key) const {
+    return __getitem__(::tpy::param_handoff<T>(key));
 }
 
 void __tpy_init();

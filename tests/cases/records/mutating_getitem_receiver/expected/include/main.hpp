@@ -277,8 +277,8 @@ struct KeyBase {
 
     // @dispatch
     // def __getitem__(self, k: T) -> int32:
-    int32_t __getitem____T(::tpy::readonly_form_t<T> k) const;
-    int32_t __getitem__(::tpy::readonly_form_t<T> k) const;
+    int32_t __getitem____T(::tpy::param_val_or_cref_t<T> k) const;
+    int32_t __getitem__(::tpy::param_val_or_cref_t<T> k) const;
 
     // @dispatch
     // @readonly(False)
@@ -286,7 +286,7 @@ struct KeyBase {
     int32_t __getitem____int32(int32_t i);
     int32_t __getitem__(int32_t i);
 
-    int32_t operator[](::tpy::readonly_form_t<T> k) const;
+    int32_t operator[](::tpy::param_val_or_cref_t<T> k) const;
 
     int32_t operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.KeyBase";
@@ -706,7 +706,7 @@ inline ::tpy::val_or_ref_t<V> DefaultDict<K, V>::__getitem__(::tpy::param_val_or
 
 template<::tpystd::tpy::Hashable K, typename V>
 inline ::tpy::val_or_ref_t<V> DefaultDict<K, V>::operator[](::tpy::param_val_or_ref_t<K> key) {
-    return __getitem__(key);
+    return __getitem__(::tpy::param_handoff<K>(key));
 }
 
 // def __init__(self) -> None:
@@ -718,13 +718,13 @@ inline KeyBase<T>::KeyBase() : xs(std::vector<int32_t>{5}) {}
 // def __getitem__(self, k: T) -> int32:
 //     return self.xs[0]
 template<typename T>
-inline int32_t KeyBase<T>::__getitem____T(::tpy::readonly_form_t<T> k) const {
+inline int32_t KeyBase<T>::__getitem____T(::tpy::param_val_or_cref_t<T> k) const {
     return ::tpy::__getitem__(this->xs, 0);
 }
 
 template<typename T>
-inline int32_t KeyBase<T>::__getitem__(::tpy::readonly_form_t<T> k) const {
-    return this->__getitem____T(k);
+inline int32_t KeyBase<T>::__getitem__(::tpy::param_val_or_cref_t<T> k) const {
+    return this->__getitem____T(::tpy::param_handoff<T>(k));
 }
 
 // # Only the int32-keyed overload mutates.
@@ -745,8 +745,8 @@ inline int32_t KeyBase<T>::__getitem__(int32_t i) {
 }
 
 template<typename T>
-inline int32_t KeyBase<T>::operator[](::tpy::readonly_form_t<T> k) const {
-    return __getitem__(k);
+inline int32_t KeyBase<T>::operator[](::tpy::param_val_or_cref_t<T> k) const {
+    return __getitem__(::tpy::param_handoff<T>(k));
 }
 
 template<typename T>

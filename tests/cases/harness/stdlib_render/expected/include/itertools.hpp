@@ -96,7 +96,7 @@ struct __gen_repeat__T : public ::tpy::next_iter_mixin<__gen_repeat__T<T>, ::tpy
 
     __gen_repeat__T(::tpy::param_val_or_ref_t<T> object_)
         : __state(S_INITIAL),
-          object(::tpy::param_pass_last<T>(object_)) {}
+          object(::tpy::param_handoff<T>(object_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_repeat__T& __iter__() { return *this; }
@@ -174,7 +174,7 @@ struct __gen_repeat__T__int32 : public ::tpy::next_iter_mixin<__gen_repeat__T__i
 
     __gen_repeat__T__int32(::tpy::param_val_or_ref_t<T> object_, int32_t times_)
         : __state(S_INITIAL),
-          object(::tpy::param_pass_last<T>(object_)),
+          object(::tpy::param_handoff<T>(object_)),
           times(std::move(times_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();

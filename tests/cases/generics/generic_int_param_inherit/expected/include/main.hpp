@@ -24,7 +24,7 @@ struct Base {
 
     // def __init__(self, v: T) -> None:
     Base() = default;
-    explicit Base(::tpy::readonly_form_t<T> v);
+    explicit Base(::tpy::param_val_or_cref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -74,7 +74,7 @@ inline std::ostream& operator<<(std::ostream& os, const GrandChild<T, N>& obj) {
 // def __init__(self, v: T) -> None:
 //     self.value = v
 template<typename T, std::size_t N>
-inline Base<T, N>::Base(::tpy::readonly_form_t<T> v) : value(v) {}
+inline Base<T, N>::Base(::tpy::param_val_or_cref_t<T> v) : value(::tpy::param_consume<T>(v)) {}
 
 // def __init__(self, v: T, e: int32) -> None:
 //     super().__init__(v)

@@ -44,10 +44,10 @@ struct Bag {
     Bag();
 
     // def __contains__(self, key: K) -> bool:
-    bool __contains__(::tpy::readonly_form_t<K> key) const;
+    bool __contains__(::tpy::param_val_or_cref_t<K> key) const;
 
     // def has(self, key: K) -> bool:
-    bool has(::tpy::readonly_form_t<K> key) const;
+    bool has(::tpy::param_val_or_cref_t<K> key) const;
 
     // def add(self, key: K, v: V) -> None:
     void add(::tpy::param_val_or_ref_t<K> key, ::tpy::param_val_or_ref_t<V> v);
@@ -121,7 +121,7 @@ inline Bag<K, V>::Bag() : _data(::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::s
 // def __contains__(self, key: K) -> bool:
 //     return key in self._data  # tpyc: ok
 template<::tpystd::tpy::Hashable K, typename V>
-inline bool Bag<K, V>::__contains__(::tpy::readonly_form_t<K> key) const {
+inline bool Bag<K, V>::__contains__(::tpy::param_val_or_cref_t<K> key) const {
     return (this->_data.contains(key));
 }
 
@@ -129,7 +129,7 @@ inline bool Bag<K, V>::__contains__(::tpy::readonly_form_t<K> key) const {
 // def has(self, key: K) -> bool:
 //     return key in self._data  # tpyc: ok
 template<::tpystd::tpy::Hashable K, typename V>
-inline bool Bag<K, V>::has(::tpy::readonly_form_t<K> key) const {
+inline bool Bag<K, V>::has(::tpy::param_val_or_cref_t<K> key) const {
     return (this->_data.contains(key));
 }
 

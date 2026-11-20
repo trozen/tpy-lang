@@ -34,7 +34,7 @@ struct Counter {
 
     // def __init__(self, n: T) -> None:
     Counter() = default;
-    explicit Counter(::tpy::readonly_form_t<T> n);
+    explicit Counter(::tpy::param_val_or_cref_t<T> n);
 
     // def as_int32(self) -> int32:
     int32_t as_int32() const;
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter<T>& obj) {
 // def __init__(self, n: T) -> None:
 //     self.n = n  # tpyc: warning(/may copy T into field/)
 template<::tpy::AnyFixedInt T>
-inline Counter<T>::Counter(::tpy::readonly_form_t<T> n) : n(n) {}
+inline Counter<T>::Counter(::tpy::param_val_or_cref_t<T> n) : n(::tpy::param_consume<T>(n)) {}
 
 // # method: the same conversion off a T-typed FIELD read.
 // def as_int32(self) -> int32:

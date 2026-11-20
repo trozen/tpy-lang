@@ -56,7 +56,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, ::tpy::yield_slot
 
     __gen_gen(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

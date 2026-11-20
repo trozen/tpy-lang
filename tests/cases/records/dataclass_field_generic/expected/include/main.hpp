@@ -24,7 +24,7 @@ struct Pair {
     ::tpy::storage_t<T> second;
 
     // def __init__(self, first: T = T(), second: T = T()) -> None:
-    explicit Pair(::tpy::readonly_form_t<T> first = T{}, ::tpy::readonly_form_t<T> second = T{});
+    explicit Pair(::tpy::param_val_or_cref_t<T> first = T{}, ::tpy::param_val_or_cref_t<T> second = T{});
 
     // def __eq__(self, other: Pair[T]) -> bool:
     bool __eq__(const Pair<T>& other) const;
@@ -84,9 +84,9 @@ inline std::string Wrapper::__repr__() const {
 //     self.first = first
 //     self.second = second
 template<typename T>
-inline Pair<T>::Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second)
-    : first(first),
-      second(second) {}
+inline Pair<T>::Pair(::tpy::param_val_or_cref_t<T> first, ::tpy::param_val_or_cref_t<T> second)
+    : first(::tpy::param_consume<T>(first)),
+      second(::tpy::param_consume<T>(second)) {}
 
 // def __eq__(self, other: Pair[T]) -> bool:
 //     return self.first == other.first and self.second == other.second

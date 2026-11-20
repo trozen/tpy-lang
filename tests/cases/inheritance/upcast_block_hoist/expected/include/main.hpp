@@ -186,7 +186,7 @@ struct GDer : Base {
 
     // def __init__(self, n: int32, extra: T) -> None:
     GDer() = default;
-    explicit GDer(int32_t n, ::tpy::readonly_form_t<T> extra);
+    explicit GDer(int32_t n, ::tpy::param_val_or_cref_t<T> extra);
     // copyable via __copy__
     GDer(const GDer& other);
     GDer& operator=(const GDer& other);
@@ -303,9 +303,9 @@ inline IDer::IDer(int32_t n) : IBase() {
 //     super().__init__(n)
 //     self.extra = extra
 template<typename T>
-inline GDer<T>::GDer(int32_t n, ::tpy::readonly_form_t<T> extra)
+inline GDer<T>::GDer(int32_t n, ::tpy::param_val_or_cref_t<T> extra)
     : Base(n),
-      extra(extra) {}
+      extra(::tpy::param_consume<T>(extra)) {}
 
 template<typename T>
 inline GDer<T>::GDer(const GDer& other) : GDer(other.__copy__()) {}

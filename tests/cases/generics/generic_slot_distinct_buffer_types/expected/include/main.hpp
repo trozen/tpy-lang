@@ -51,7 +51,7 @@ struct Peeker {
 
 
     // def peek(self, xs: list[T], v: readonly[T]) -> bool:
-    bool peek(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::readonly_form_t<T> v) const;
+    bool peek(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_cref_t<T> v) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Peeker";
 };
 
@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const Peeker<T>& obj) {
 
 
 // def peek(self, xs: list[T], v: readonly[T]) -> bool:
-//     # a `readonly[T]` METHOD slot renders `readonly_form_t<T>` -- the same
+//     # a `readonly[T]` METHOD slot renders `param_val_or_cref_t<T>` -- the same
 //     # parameter form, const-qualified only where it is a mutable reference,
 //     # so a view binds here as bare as at the plain `T` slot
 //     for x in xs:
@@ -71,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const Peeker<T>& obj) {
 //             return True
 //     return False
 template<typename T>
-inline bool Peeker<T>::peek(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::readonly_form_t<T> v) const {
+inline bool Peeker<T>::peek(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_cref_t<T> v) const {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -111,7 +111,7 @@ bool has_item(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_re
 //     return v
 template<typename T>
 ::tpy::val_or_ref_t<T> echo_ref(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_to_return_last<T>(v);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(v));
 }
 // def store[T](xs: list[T], v: T) -> None:
 //     # the body position a view slot cannot serve: a store into `T` storage

@@ -25,7 +25,7 @@ struct Wrap {
 
     // def __init__(self, items: T) -> None:
     Wrap() = default;
-    explicit Wrap(::tpy::readonly_form_t<T> items);
+    explicit Wrap(::tpy::param_val_or_cref_t<T> items);
 
     __gen_Wrap_summary<T> summary() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrap";
@@ -114,7 +114,7 @@ inline __gen_Wrap_summary<T> Wrap<T>::summary() const {
 // def __init__(self, items: T) -> None:
 //     self.items = items
 template<::tpy::NativeIterable<int32_t> T>
-inline Wrap<T>::Wrap(::tpy::readonly_form_t<T> items) : items(items) {}
+inline Wrap<T>::Wrap(::tpy::param_val_or_cref_t<T> items) : items(::tpy::param_consume<T>(items)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

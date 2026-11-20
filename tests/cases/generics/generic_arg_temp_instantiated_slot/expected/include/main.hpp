@@ -110,10 +110,10 @@ struct Boxed {
 
     // def __init__(self, v: T) -> None:
     Boxed() = default;
-    explicit Boxed(::tpy::readonly_form_t<T> v);
+    explicit Boxed(::tpy::param_val_or_cref_t<T> v);
 
     // def holds(self, other: T) -> bool:  # tpyc: ok
-    bool holds(::tpy::readonly_form_t<T> other) const;
+    bool holds(::tpy::param_val_or_cref_t<T> other) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Boxed";
 };
 
@@ -171,7 +171,7 @@ struct __coro_echo {
     __coro_echo(::tpy::param_val_or_ref_t<T> value_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          value(::tpy::param_pass_last<T>(value_)) {}
+          value(::tpy::param_handoff<T>(value_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -245,7 +245,7 @@ struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, ::tpy::yiel
 
     __gen_repeat(::tpy::param_val_or_ref_t<T> value_, int32_t count_)
         : __state(S_INITIAL),
-          value(::tpy::param_pass_last<T>(value_)),
+          value(::tpy::param_handoff<T>(value_)),
           count(std::move(count_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -345,12 +345,12 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
 // def __init__(self, v: T) -> None:
 //     self.v = copy(v)
 template<typename T>
-inline Boxed<T>::Boxed(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Boxed<T>::Boxed(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def holds(self, other: T) -> bool:  # tpyc: ok
 //     return True
 template<typename T>
-inline bool Boxed<T>::holds(::tpy::readonly_form_t<T> other) const {
+inline bool Boxed<T>::holds(::tpy::param_val_or_cref_t<T> other) const {
     return true;
 }
 
@@ -364,7 +364,7 @@ bool anyslot(std::string_view name, ::tpy::param_val_or_ref_t<T> v) {
 //     return v
 template<typename T>
 ::tpy::val_or_ref_t<T> pass_through(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_to_return_last<T>(v);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(v));
 }
 
 void __tpy_init();

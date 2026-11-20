@@ -67,7 +67,7 @@ struct Bar {
 
     // def __init__(self, factory: T) -> None:
     Bar() = default;
-    explicit Bar(::tpy::readonly_form_t<T> factory);
+    explicit Bar(::tpy::param_val_or_cref_t<T> factory);
 
     // def create_foo(self) -> Own[Foo]:
     Foo create_foo();
@@ -94,7 +94,7 @@ inline Foo DefaultFooMaker::make() const {
 // def __init__(self, factory: T) -> None:
 //     self.factory = factory
 template<FooMaker T>
-inline Bar<T>::Bar(::tpy::readonly_form_t<T> factory) : factory(factory) {}
+inline Bar<T>::Bar(::tpy::param_val_or_cref_t<T> factory) : factory(::tpy::param_consume<T>(factory)) {}
 
 // def create_foo(self) -> Own[Foo]:
 //     return self.factory.make()

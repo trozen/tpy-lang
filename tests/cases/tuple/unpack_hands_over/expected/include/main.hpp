@@ -245,7 +245,7 @@ int32_t open_composite_rebind(std::vector<std::tuple<GCell<T>, int32_t>>& ps, GC
 // def readonly_else_rebind[T](xs: readonly[list[tuple[T, int32]]],
 //                             y: readonly[T]) -> readonly[T]:
 template<typename T>
-::tpy::val_or_cref_t<T> readonly_else_rebind(const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& xs, ::tpy::readonly_form_t<T> y);
+::tpy::val_or_cref_t<T> readonly_else_rebind(const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& xs, ::tpy::param_val_or_cref_t<T> y);
 // def wrapper_elem(s: Tree[int32]) -> None:
 void wrapper_elem(Tree<int32_t>& s);
 // def combinators_owning() -> None:
@@ -1409,7 +1409,7 @@ int32_t open_composite_rebind(std::vector<std::tuple<GCell<T>, int32_t>>& ps, GC
 //         x = y  # tpyc: ok
 //     return x
 template<typename T>
-::tpy::val_or_cref_t<T> readonly_else_rebind(const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& xs, ::tpy::readonly_form_t<T> y) {
+::tpy::val_or_cref_t<T> readonly_else_rebind(const std::vector<std::tuple<::tpy::storage_t<T>, int32_t>>& xs, ::tpy::param_val_or_cref_t<T> y) {
     const ::tpy::storage_t<T>* x;
     auto& __obj_1 = xs;
     auto __beg_1 = __obj_1.begin();

@@ -42,7 +42,7 @@ struct Holder {
 
     // def __init__(self, x: T) -> None:
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<T> x);
+    explicit Holder(::tpy::param_val_or_cref_t<T> x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -92,7 +92,7 @@ inline std::ostream& operator<<(std::ostream& os, const Small<M>& obj) {
 //     # A bare `T` field may hold a reference type: the store warns.
 //     self.x = x  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline Holder<T>::Holder(::tpy::readonly_form_t<T> x) : x(x) {}
+inline Holder<T>::Holder(::tpy::param_val_or_cref_t<T> x) : x(::tpy::param_consume<T>(x)) {}
 
 // def run(self) -> None:
 //     # Operators compute in int32.

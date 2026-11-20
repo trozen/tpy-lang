@@ -43,7 +43,7 @@ struct Pair {
 
     // def __init__(self, a: T, b: T) -> None:
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b);
+    explicit Pair(::tpy::param_val_or_cref_t<T> a, ::tpy::param_val_or_cref_t<T> b);
 
     // def first(self: auto_own[Self]) -> auto_own[T]:
     ::tpy::val_or_ref_t<T> first() &;
@@ -68,9 +68,9 @@ inline Node::Node(int32_t val) : val(val) {}
 //     self.first_val = copy(a)
 //     self.second_val = copy(b)
 template<typename T>
-inline Pair<T>::Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b)
-    : first_val(a),
-      second_val(b) {}
+inline Pair<T>::Pair(::tpy::param_val_or_cref_t<T> a, ::tpy::param_val_or_cref_t<T> b)
+    : first_val(::tpy::param_consume<T>(a)),
+      second_val(::tpy::param_consume<T>(b)) {}
 
 // def first(self: auto_own[Self]) -> auto_own[T]:
 //     return self.first_val

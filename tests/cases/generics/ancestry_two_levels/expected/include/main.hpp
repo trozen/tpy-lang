@@ -28,7 +28,7 @@ struct G {
 
     // def __init__(self, item: T) -> None:
     G() = default;
-    explicit G(::tpy::readonly_form_t<T> item);
+    explicit G(::tpy::param_val_or_cref_t<T> item);
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get();
@@ -158,8 +158,8 @@ inline int32_t M::size() {
 //     self.item = item  # tpyc: warning(/may copy T into field/)
 //     self.tag = "g"
 template<typename T>
-inline G<T>::G(::tpy::readonly_form_t<T> item)
-    : item(item),
+inline G<T>::G(::tpy::param_val_or_cref_t<T> item)
+    : item(::tpy::param_consume<T>(item)),
       tag("g") {}
 
 // def get(self) -> T:

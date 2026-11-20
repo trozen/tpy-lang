@@ -673,7 +673,7 @@ struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local<T>, :
 
     __gen_frame_local(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_frame_local& __iter__() { return *this; }
@@ -728,7 +728,7 @@ struct __gen_frame_local_any : public ::tpy::next_iter_mixin<__gen_frame_local_a
 
     __gen_frame_local_any(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_frame_local_any& __iter__() { return *this; }
@@ -2510,7 +2510,7 @@ template<typename T>
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> gident(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // # a return copies a scalar element of the step out: it roots nothing
 // def first_n(it: Iterator[P]) -> tuple[int32, int32]:

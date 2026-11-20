@@ -1,0 +1,2 @@
+CPython cannot subscript a generic function (`rebind[Own[str]](a, "b")`), which
+is the only way to instantiate the reassigned parameter at `Own[str]`.

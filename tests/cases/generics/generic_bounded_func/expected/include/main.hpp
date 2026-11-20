@@ -19,7 +19,7 @@ void main();
 //     return item
 template<::tpystd::typing::Sized T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> item) {
-    return ::tpy::param_to_return_last<T>(item);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(item));
 }
 
 void __tpy_init();

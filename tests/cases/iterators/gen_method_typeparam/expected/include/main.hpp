@@ -48,7 +48,7 @@ struct __gen_Foo_items : public ::tpy::next_iter_mixin<__gen_Foo_items<U>, ::tpy
     __gen_Foo_items(const Foo& __self, ::tpy::param_val_or_ref_t<U> x_)
         : __state(S_INITIAL),
           __self(__self),
-          x(::tpy::param_pass_last<U>(x_)) {}
+          x(::tpy::param_handoff<U>(x_)) {}
 
     std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __next__();
     __gen_Foo_items& __iter__() { return *this; }

@@ -39,8 +39,8 @@ struct __coro_make_pair {
     __coro_make_pair(::tpy::param_val_or_ref_t<K> k_, ::tpy::param_val_or_ref_t<V> v_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          k(::tpy::param_pass_last<K>(k_)),
-          v(::tpy::param_pass_last<V>(v_)) {}
+          k(::tpy::param_handoff<K>(k_)),
+          v(::tpy::param_handoff<V>(v_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

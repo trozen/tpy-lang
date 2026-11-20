@@ -234,7 +234,7 @@ struct Cell {
 
     // def __init__(self, v: T) -> None:
     Cell() = default;
-    explicit Cell(::tpy::readonly_form_t<T> v);
+    explicit Cell(::tpy::param_val_or_cref_t<T> v);
 
     // @property
     // def val(self) -> T:
@@ -406,7 +406,7 @@ struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep<T>, ::tpy::yield_slot
 
     __gen_rep(::tpy::param_val_or_ref_t<T> obj_, int32_t times_)
         : __state(S_INITIAL),
-          obj(::tpy::param_pass_last<T>(obj_)),
+          obj(::tpy::param_handoff<T>(obj_)),
           times(std::move(times_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -1665,7 +1665,7 @@ inline Holder<T>::Holder(const std::vector<::tpy::storage_t<T>>& items) : items(
 //     # reference instantiation this stores a copy, which the warning hedges
 //     self.v = v  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline Cell<T>::Cell(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Cell<T>::Cell(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // @property
 // def val(self) -> T:

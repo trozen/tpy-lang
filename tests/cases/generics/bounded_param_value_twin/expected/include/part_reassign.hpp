@@ -48,7 +48,7 @@ struct C {
     C();
 
     // def swap(self, x: T, y: T) -> T:
-    ::tpy::storage_t<T> swap(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::readonly_form_t<T> y) const;
+    ::tpy::storage_t<T> swap(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_cref_t<T> y) const;
     static constexpr std::string_view __tpy_class_name__ = "part_reassign.C";
 };
 
@@ -92,8 +92,8 @@ struct __gen_gen_reassign : public ::tpy::next_iter_mixin<__gen_gen_reassign<T>,
 
     __gen_gen_reassign(::tpy::param_val_or_ref_t<T> x_, ::tpy::param_val_or_ref_t<T> y_)
         : __state(S_INITIAL),
-          x(::tpy::param_pass_last<T>(x_)),
-          y(::tpy::param_pass_last<T>(y_)) {}
+          x(::tpy::param_handoff<T>(x_)),
+          y(::tpy::param_handoff<T>(y_)) {}
 
     std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_reassign& __iter__() { return *this; }
@@ -147,10 +147,10 @@ inline C<T>::C() {
 //     x = y  # tpyc: ok
 //     return x
 template<::tpy::ValueType T>
-inline ::tpy::storage_t<T> C<T>::swap(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::readonly_form_t<T> y) const {
-    ::tpy::storage_t<T> x = ::tpy::param_to_storage<::tpy::storage_t<T>>(__param_x);
+inline ::tpy::storage_t<T> C<T>::swap(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_cref_t<T> y) const {
+    ::tpy::storage_t<T> x = ::tpy::param_to_storage<T>(::tpy::param_handoff<T>(__param_x));
     x = ::tpy::param_consume<T>(y);
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 // def __init__(self) -> None:
@@ -174,9 +174,9 @@ inline std::optional<::tpy::storage_t<T>> Clr<T>::clear(::tpy::opt_cparam_t<T> x
 //     return x
 template<::tpy::ValueType T>
 ::tpy::storage_t<T> reassign(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> y) {
-    ::tpy::storage_t<T> x = ::tpy::param_to_storage<::tpy::storage_t<T>>(__param_x);
+    ::tpy::storage_t<T> x = ::tpy::param_to_storage<T>(::tpy::param_handoff<T>(__param_x));
     x = ::tpy::param_consume<T>(y);
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // # through `nonlocal` from a closure
 // def via_nonlocal[T: ValueType](x: T, y: T) -> T:
@@ -187,7 +187,7 @@ template<::tpy::ValueType T>
 //     return x
 template<::tpy::ValueType T>
 ::tpy::storage_t<T> via_nonlocal(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> y) {
-    ::tpy::storage_t<T> x = ::tpy::param_to_storage<::tpy::storage_t<T>>(__param_x);
+    ::tpy::storage_t<T> x = ::tpy::param_to_storage<T>(::tpy::param_handoff<T>(__param_x));
     auto inner = [&y, &x]() {
         x = ::tpy::param_to_assign<T>(y);
     };

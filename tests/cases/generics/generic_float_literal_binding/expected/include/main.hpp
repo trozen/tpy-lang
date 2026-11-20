@@ -172,13 +172,13 @@ template<typename T>
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> ident(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // def pair_first[A, B](a: A, b: B) -> A:
 //     return a
 template<typename A, typename B>
 ::tpy::val_or_ref_t<A> pair_first(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b) {
-    return ::tpy::param_to_return_last<A>(a);
+    return ::tpy::param_to_return<A>(::tpy::param_handoff<A>(a));
 }
 // def apply[T](x: T, f: Callable[[T], T]) -> T:
 //     return f(x)

@@ -54,7 +54,7 @@ struct H {
 
     // def __init__(self, p: T) -> None:
     H() = default;
-    explicit H(::tpy::readonly_form_t<T> p);
+    explicit H(::tpy::param_val_or_cref_t<T> p);
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get();
@@ -163,7 +163,7 @@ inline void User::touch(A* q) const {
 // def __init__(self, p: T) -> None:
 //     self.p = p
 template<typename T>
-inline H<T>::H(::tpy::readonly_form_t<T> p) : p(p) {}
+inline H<T>::H(::tpy::param_val_or_cref_t<T> p) : p(::tpy::param_consume<T>(p)) {}
 
 // def get(self) -> T:
 //     return self.p

@@ -200,7 +200,7 @@ struct Plain {
 
     // def m[U](self, x: U) -> Own[Later]:
     template<typename U>
-    Later m(::tpy::readonly_form_t<U> x) const;
+    Later m(::tpy::param_val_or_cref_t<U> x) const;
 
     // def p(self, h: HasN) -> Own[Later]:
     template<HasN T_h>
@@ -279,7 +279,7 @@ struct Pair {
 
     // def with_[U](self, u: U) -> Own[Later]:
     template<typename U>
-    Later with_(::tpy::readonly_form_t<U> u) const;
+    Later with_(::tpy::param_val_or_cref_t<U> u) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -1029,7 +1029,7 @@ inline void Maker<T>::bump(Later& l) const {
 // def m[U](self, x: U) -> Own[Later]:
 //     return Later(self.base)  # tpyc: ok
 template<typename U>
-inline Later Plain::m(::tpy::readonly_form_t<U> x) const {
+inline Later Plain::m(::tpy::param_val_or_cref_t<U> x) const {
     return Later(this->base);
 }
 
@@ -1101,7 +1101,7 @@ inline Pair<T>::Pair(::tpy::own_param_t<T> x) : x(std::move(x)) {}
 //     return Later(7)  # tpyc: ok
 template<typename T>
 template<typename U>
-inline Later Pair<T>::with_(::tpy::readonly_form_t<U> u) const {
+inline Later Pair<T>::with_(::tpy::param_val_or_cref_t<U> u) const {
     return Later(7);
 }
 

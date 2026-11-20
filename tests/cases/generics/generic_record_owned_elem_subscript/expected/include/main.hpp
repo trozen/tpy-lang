@@ -36,7 +36,7 @@ struct Bare {
 
     // def __init__(self, x: U) -> None:
     Bare() = default;
-    explicit Bare(::tpy::readonly_form_t<U> x);
+    explicit Bare(::tpy::param_val_or_cref_t<U> x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bare";
 };
 
@@ -86,7 +86,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
 // def __init__(self, x: U) -> None:
 //     self.x = x
 template<typename U>
-inline Bare<U>::Bare(::tpy::readonly_form_t<U> x) : x(x) {}
+inline Bare<U>::Bare(::tpy::param_val_or_cref_t<U> x) : x(::tpy::param_consume<U>(x)) {}
 
 // def __init__(self, v: Own[T]) -> None:
 //     self.v = v

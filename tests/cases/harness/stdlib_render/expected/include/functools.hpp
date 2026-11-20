@@ -56,7 +56,7 @@ template<typename T, ::tpy::ReferenceType U, typename __F0>
     for (int32_t i = 0; i < __stop_0; ++i) {
         ::tpy::reseat_result<U>(acc, __slot_2, func(::tpy::param_pass<U>((*acc)), ::tpy::param_pass<T>(a[static_cast<std::size_t>(i)])));
     }
-    return ::tpy::param_to_return<U>(::tpy::open_local_last<U>((*acc)));
+    return ::tpy::param_to_return<U>(::tpy::open_local_handoff<U>((*acc)));
 }
 // @dispatch
 // def reduce[T, U](func: Fn[[U, T], Own[U]], a: Iterable[T], initial: U) -> Own[U]:
@@ -105,7 +105,7 @@ template<::tpy::ReferenceType T, typename __F0>
     for (int32_t i = 1; i < __stop_0; ++i) {
         ::tpy::reseat_result<T>(acc, __slot_2, func(::tpy::param_pass<T>((*acc)), ::tpy::param_pass<T>(::tpy::__getitem__(a, i))));
     }
-    return ::tpy::param_to_return<T>(::tpy::open_local_last<T>((*acc)));
+    return ::tpy::param_to_return<T>(::tpy::open_local_handoff<T>((*acc)));
 }
 // @dispatch
 // def reduce[T](func: Fn[[T, T], Own[T]], a: list[T]) -> Own[T]:

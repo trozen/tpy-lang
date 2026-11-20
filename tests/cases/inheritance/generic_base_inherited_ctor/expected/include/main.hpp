@@ -50,7 +50,7 @@ struct Typed {
 
     // def __init__(self, x: T) -> None:
     Typed() = default;
-    explicit Typed(::tpy::readonly_form_t<T> x);
+    explicit Typed(::tpy::param_val_or_cref_t<T> x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Typed";
 };
 
@@ -119,7 +119,7 @@ inline Base<N>::Base(int32_t x) : _v(x) {}
 // def __init__(self, x: T) -> None:
 //     self.val = x  # tpyc: warning(/may copy/)
 template<typename T>
-inline Typed<T>::Typed(::tpy::readonly_form_t<T> x) : val(x) {}
+inline Typed<T>::Typed(::tpy::param_val_or_cref_t<T> x) : val(::tpy::param_consume<T>(x)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

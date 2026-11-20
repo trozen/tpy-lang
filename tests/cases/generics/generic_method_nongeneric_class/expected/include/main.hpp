@@ -41,7 +41,7 @@ inline Converter::Converter() {
 //     return val
 template<typename U>
 inline ::tpy::val_or_ref_t<U> Converter::identity(::tpy::param_val_or_ref_t<U> val) const {
-    return ::tpy::param_to_return_last<U>(val);
+    return ::tpy::param_to_return<U>(::tpy::param_handoff<U>(val));
 }
 
 void __tpy_init();

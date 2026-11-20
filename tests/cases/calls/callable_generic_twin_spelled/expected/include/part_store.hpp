@@ -45,7 +45,7 @@ template <typename A, typename T, typename F_f>
 __gen_twice<A, T, F_f> twice(F_f&& f, ::tpy::param_val_or_ref_t<A> x);
 // def inspect[T](x: readonly[T]) -> int32:
 template<typename T>
-int32_t inspect(::tpy::readonly_form_t<T> x);
+int32_t inspect(::tpy::param_val_or_cref_t<T> x);
 // def fwd[T](x: T) -> int32:
 template<typename T>
 int32_t fwd(::tpy::param_val_or_ref_t<T> x);
@@ -146,7 +146,7 @@ struct __gen_twice : public ::tpy::next_iter_mixin<__gen_twice<A, T, F_f>, ::tpy
     __gen_twice(F_f&& f_, ::tpy::param_val_or_ref_t<A> x_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          x(::tpy::param_pass_last<A>(x_)) {}
+          x(::tpy::param_handoff<A>(x_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_twice& __iter__() { return *this; }
@@ -205,7 +205,7 @@ inline N::N(int32_t n) : n(n) {}
 //     return x
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Ops::take(::tpy::param_val_or_ref_t<T> x) const {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 // def dup[T](x: T) -> Own[T]:
@@ -233,13 +233,13 @@ template<typename T>
 //     return k  # tpyc: ok
 template<::tpy::ValueType K>
 ::tpy::storage_t<K> keyed(::tpy::param_val_or_ref_t<K> k) {
-    return ::tpy::param_to_return_last<K>(k);
+    return ::tpy::param_to_return<K>(::tpy::param_handoff<K>(k));
 }
 // def ident[T](x: T) -> T:
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> ident(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // def relay[T](f: Fn[[], T]) -> T:
 //     # the fresh result is held for the nested call, whose lent result is
@@ -256,7 +256,7 @@ template<typename T, typename __F0>
 // def inspect[T](x: readonly[T]) -> int32:
 //     return 1
 template<typename T>
-int32_t inspect(::tpy::readonly_form_t<T> x) {
+int32_t inspect(::tpy::param_val_or_cref_t<T> x) {
     return 1;
 }
 // def fwd[T](x: T) -> int32:
@@ -281,7 +281,7 @@ template<typename T, typename __F0>
     ::tpy::__getitem__(xs, 0).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, 0).n, 1);
     std::optional<::tpy::storage_t<T>> __slot_2;
     ::tpy::reseat_result<T>(acc, __slot_2, f());
-    return ::tpy::param_to_return<T>(::tpy::open_local_last<T>((*acc)));
+    return ::tpy::param_to_return<T>(::tpy::open_local_handoff<T>((*acc)));
 }
 // def fill[T, U](f: Fn[[T], U], x: T, out: list[U]) -> None:
 //     out.append(f(x))  # tpyc: warning(/may copy U into owned storage/)
@@ -310,7 +310,7 @@ template<typename T, typename __F0>
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> peek(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 void __tpy_init();

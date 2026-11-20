@@ -71,7 +71,7 @@ struct Holder {
 
     // def __init__(self, item: U) -> None:
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<U> item);
+    explicit Holder(::tpy::param_val_or_cref_t<U> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -322,7 +322,7 @@ inline NamedMid::NamedMid(int32_t n) : TaggedBox((::tpy::add_check<int32_t>(n, 2
 //     # The copy is unobservable here: every caller passes a fresh literal.
 //     self.item = item  # tpyc: warning(/may copy U into field/)
 template<typename U>
-inline Holder<U>::Holder(::tpy::readonly_form_t<U> item) : item(item) {}
+inline Holder<U>::Holder(::tpy::param_val_or_cref_t<U> item) : item(::tpy::param_consume<U>(item)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

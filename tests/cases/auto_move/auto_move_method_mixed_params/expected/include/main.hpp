@@ -75,7 +75,7 @@ struct GenericBox {
 
     // def __init__(self, item: T):
     GenericBox() = default;
-    explicit GenericBox(::tpy::readonly_form_t<T> item);
+    explicit GenericBox(::tpy::param_val_or_cref_t<T> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericBox";
 };
 
@@ -111,7 +111,7 @@ inline int32_t GenericHolder<T>::replace_with_flag(::tpy::own_param_t<T> item, i
 // def __init__(self, item: T):
 //     self.item = item
 template<typename T>
-inline GenericBox<T>::GenericBox(::tpy::readonly_form_t<T> item) : item(item) {}
+inline GenericBox<T>::GenericBox(::tpy::param_val_or_cref_t<T> item) : item(::tpy::param_consume<T>(item)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -48,7 +48,7 @@ struct Holder {
 
     // def __init__(self, item: V) -> None:
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<V> item);
+    explicit Holder(::tpy::param_val_or_cref_t<V> item);
 
     // def get_item(self) -> V:
     ::tpy::val_or_ref_t<V> get_item();
@@ -75,7 +75,7 @@ inline int32_t IntBox::get() const {
 // def __init__(self, item: V) -> None:
 //     self.item = item
 template<Container<int32_t> V>
-inline Holder<V>::Holder(::tpy::readonly_form_t<V> item) : item(item) {}
+inline Holder<V>::Holder(::tpy::param_val_or_cref_t<V> item) : item(::tpy::param_consume<V>(item)) {}
 
 // def get_item(self) -> V:
 //     return self.item

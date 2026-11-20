@@ -455,7 +455,7 @@ bool probe_gen(::tpy::opt_cparam_t<T> val) {
 template<typename T>
 ::tpy::val_or_ref_t<T> first_or(::tpy::opt_param_t<T> val, ::tpy::param_val_or_ref_t<T> fallback) {
     if ((!::tpy::opt_has_value(val))) {
-        return ::tpy::param_to_return_last<T>(fallback);
+        return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(fallback));
     }
     return (*val);
 }

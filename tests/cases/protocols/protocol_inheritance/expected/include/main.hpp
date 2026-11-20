@@ -78,7 +78,7 @@ struct Container {
 
     // def __init__(self, value: T) -> None:
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value);
+    explicit Container(::tpy::param_val_or_cref_t<T> value);
 
     // def describe(self) -> None:
     void describe();
@@ -117,7 +117,7 @@ inline size_t Message::size() const {
 // def __init__(self, value: T) -> None:
 //     self.value = value
 template<PrintableAndSized T>
-inline Container<T>::Container(::tpy::readonly_form_t<T> value) : value(value) {}
+inline Container<T>::Container(::tpy::param_val_or_cref_t<T> value) : value(::tpy::param_consume<T>(value)) {}
 
 // def describe(self) -> None:
 //     print(self.value.to_str())

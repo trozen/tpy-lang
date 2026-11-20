@@ -28,7 +28,7 @@ struct G {
 
     // def __init__(self, a: T, b: T, c: T) -> None:
     G() = default;
-    explicit G(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b, ::tpy::readonly_form_t<T> c);
+    explicit G(::tpy::param_val_or_cref_t<T> a, ::tpy::param_val_or_cref_t<T> b, ::tpy::param_val_or_cref_t<T> c);
     static constexpr std::string_view __tpy_class_name__ = "__main__.G";
 };
 
@@ -44,10 +44,10 @@ inline std::ostream& operator<<(std::ostream& os, const G<T>& obj) {
 //     self.b = copy(b)
 //     self.c = copy(c)
 template<typename T>
-inline G<T>::G(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b, ::tpy::readonly_form_t<T> c)
-    : a(a),
-      b(b),
-      c(c) {}
+inline G<T>::G(::tpy::param_val_or_cref_t<T> a, ::tpy::param_val_or_cref_t<T> b, ::tpy::param_val_or_cref_t<T> c)
+    : a(::tpy::param_consume<T>(a)),
+      b(::tpy::param_consume<T>(b)),
+      c(::tpy::param_consume<T>(c)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

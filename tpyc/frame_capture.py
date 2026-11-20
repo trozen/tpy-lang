@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING
 
 from .type_def_registry import is_owned_in_coro_frame
 from .typesys import (
-    CallableType, OwnType, TupleType, TypeParamRef, copy_owns_storage,
+    open_type_param,
+    CallableType, OwnType, TupleType, copy_owns_storage,
     is_fn_type, is_ptr_variant_union, param_takes_ownership,
     pointer_repr_optional, unwrap_readonly, unwrap_ref_type,
 )
@@ -59,7 +60,7 @@ def classify_param_kind(
     # takes the same per-instantiation traits: a literal `const T&` field
     # would hold a reference at a VALUE instantiation too, where the frame
     # outlives the temporary the factory call materialized.
-    if isinstance(actual, TypeParamRef):
+    if open_type_param(ptype, int_kind=True) is not None:
         return FrameCaptureKind.TYPE_PARAM
     # Checked before the OptionalType-pointer-repr branch so
     # `Own[Awaitable[T]] | None` isn't mis-routed to POINTER --

@@ -349,7 +349,7 @@ inline int32_t DefaultDict<K, V>::__len__() const {
 
 template<::tpystd::tpy::Hashable K, typename V>
 inline ::tpy::val_or_ref_t<V> DefaultDict<K, V>::operator[](::tpy::param_val_or_ref_t<K> key) {
-    return __getitem__(key);
+    return __getitem__(::tpy::param_handoff<K>(key));
 }
 
 template<::tpystd::tpy::Hashable K, typename V>

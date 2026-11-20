@@ -22,7 +22,7 @@ struct Box {
 
     // def __init__(self, val: T):
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> val);
+    explicit Box(::tpy::param_val_or_cref_t<T> val);
 
     // def transform[U](self, other: U) -> U:
     template<typename U>
@@ -40,14 +40,14 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 // def __init__(self, val: T):
 //     self.val = val
 template<typename T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> val) : val(val) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> val) : val(::tpy::param_consume<T>(val)) {}
 
 // def transform[U](self, other: U) -> U:
 //     return other
 template<typename T>
 template<typename U>
 inline ::tpy::val_or_ref_t<U> Box<T>::transform(::tpy::param_val_or_ref_t<U> other) const {
-    return ::tpy::param_to_return_last<U>(other);
+    return ::tpy::param_to_return<U>(::tpy::param_handoff<U>(other));
 }
 
 void __tpy_init();

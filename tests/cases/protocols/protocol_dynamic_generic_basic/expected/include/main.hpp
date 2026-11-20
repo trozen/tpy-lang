@@ -94,7 +94,7 @@ struct tpy::Adapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::Cont
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     ::tpy::storage_t<T> get() override { return inner.get(); }
-    void set(::tpy::param_val_or_ref_t<T> val) override { inner.set(val); }
+    void set(::tpy::param_val_or_ref_t<T> val) override { inner.set(::tpy::param_handoff<T>(val)); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__Container_Concept__<std::remove_const_t<__tpy_Impl>, T>
@@ -102,7 +102,7 @@ struct tpy::RefAdapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::C
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
     ::tpy::storage_t<T> get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
-    void set(::tpy::param_val_or_ref_t<T> val) override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else inner.set(val); }
+    void set(::tpy::param_val_or_ref_t<T> val) override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else inner.set(::tpy::param_handoff<T>(val)); }
 };
 
 namespace tpyapp::main {

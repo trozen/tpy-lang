@@ -157,7 +157,7 @@ shared `std::string` and a trait keyed on the C++ type could not tell their para
 apart. Each of the four str/bytes types owns a C++ type now, so `param_val_or_ref_t<T>` at that
 slot IS the twin's `std::string_view` -- the fix was to make the two spellings distinct, not to
 carry the form beside `T`. The three slots that render CONST (a `readonly[T]` param, a
-`@readonly` method's `T`, a constructor's) went with it: they spell `readonly_form_t<T>`, the same
+`@readonly` method's `T`, a constructor's) went with it: they spell `param_val_or_cref_t<T>`, the same
 parameter form const-qualified only where it is a mutable reference, because `const T&` binds
 neither a view NOR anything a generic BODY could materialize -- there `T` is not fixed yet.
 Same class, still open: a `T | None` RETURN is committed to `T*` for every instantiation, so

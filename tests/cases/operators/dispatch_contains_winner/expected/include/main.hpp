@@ -383,7 +383,7 @@ struct OneT {
     OneT();
 
     // def __contains__(self, x: T) -> bool:
-    bool __contains__(::tpy::readonly_form_t<T> x) const;
+    bool __contains__(::tpy::param_val_or_cref_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.OneT";
 };
 
@@ -737,7 +737,7 @@ inline OneT<T>::OneT() {
 // def __contains__(self, x: T) -> bool:
 //     return True
 template<typename T>
-inline bool OneT<T>::__contains__(::tpy::readonly_form_t<T> x) const {
+inline bool OneT<T>::__contains__(::tpy::param_val_or_cref_t<T> x) const {
     return true;
 }
 

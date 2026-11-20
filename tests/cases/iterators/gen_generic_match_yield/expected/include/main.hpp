@@ -37,8 +37,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, ::tpy::yield_slot
 
     __gen_gen(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_, ::tpy::BigInt tag_)
         : __state(S_INITIAL),
-          a(::tpy::param_pass_last<T>(a_)),
-          b(::tpy::param_pass_last<T>(b_)),
+          a(::tpy::param_handoff<T>(a_)),
+          b(::tpy::param_handoff<T>(b_)),
           tag(std::move(tag_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();

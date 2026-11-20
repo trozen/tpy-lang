@@ -17,7 +17,7 @@ template<typename T>
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 void __tpy_init();

@@ -31,7 +31,7 @@ template <typename T>
 __coro_identity<T> identity(::tpy::param_val_or_ref_t<T> x);
 // async def sized_after[T: Readable](obj: readonly[T], alias: Bin) -> int32:
 template <typename T>
-__coro_sized_after<T> sized_after(::tpy::readonly_form_t<T> obj, Bin& alias);
+__coro_sized_after<T> sized_after(::tpy::param_val_or_cref_t<T> obj, Bin& alias);
 // async def main_coro() -> None:
 __coro_main_coro main_coro();
 // def main() -> None:
@@ -72,7 +72,7 @@ struct __coro_identity {
     __coro_identity(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -120,10 +120,10 @@ struct __coro_sized_after {
         S_DONE = 2,
     };
 
-    __coro_sized_after(::tpy::readonly_form_t<T> obj_, Bin& alias)
+    __coro_sized_after(::tpy::param_val_or_cref_t<T> obj_, Bin& alias)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          obj(obj_),
+          obj(::tpy::param_handoff<T>(obj_)),
           alias(alias) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -171,8 +171,8 @@ template <typename T>
 
 // async def sized_after[T: Readable](obj: readonly[T], alias: Bin) -> int32:
 template <typename T>
-__coro_sized_after<T> sized_after(::tpy::readonly_form_t<T> obj, Bin& alias) {
-    return __coro_sized_after<T>(obj, alias);
+__coro_sized_after<T> sized_after(::tpy::param_val_or_cref_t<T> obj, Bin& alias) {
+    return __coro_sized_after<T>(::tpy::param_pass_last<T>(obj), alias);
 }
 
 // async def main_coro() -> None:

@@ -77,7 +77,7 @@ from ...parse.nodes import (
     TpyTupleUnpack,
     TpyVarDecl,
 )
-from ...typesys import generic_opt_trait_type, pointer_variant_union
+from ...typesys import generic_opt_trait_type, open_type_param, pointer_variant_union
 from ...typesys import (
     AnyType, unwrap_value_own,
     CallableType,
@@ -276,8 +276,7 @@ def _res_capture_ok(t: 'TpyType | None', analyzer) -> bool:
         return False
     if _res_value_ok(t, analyzer):
         return True
-    return isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))),
-                      TypeParamRef)
+    return open_type_param(t, int_kind=True) is not None
 
 
 def _async_payload_refused(rt_decl: 'TpyType | None', analyzer) -> bool:

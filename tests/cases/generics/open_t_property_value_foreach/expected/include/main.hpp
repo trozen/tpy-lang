@@ -31,7 +31,7 @@ struct Cell {
 
     // def __init__(self, v: T) -> None:
     Cell() = default;
-    explicit Cell(::tpy::readonly_form_t<T> v);
+    explicit Cell(::tpy::param_val_or_cref_t<T> v);
 
     // @property
     // def payload(self) -> T:
@@ -118,7 +118,7 @@ struct __gen_chars_m : public ::tpy::next_iter_mixin<__gen_chars_m, int32_t> {
 //     # the store is a copy the compiler cannot prove away
 //     self.v = v  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline Cell<T>::Cell(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Cell<T>::Cell(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // @property
 // def payload(self) -> T:

@@ -45,7 +45,7 @@ struct Pair {
 
     // def __init__(self, r: R, t: T) -> None:
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<R> r, ::tpy::readonly_form_t<T> t);
+    explicit Pair(::tpy::param_val_or_cref_t<R> r, ::tpy::param_val_or_cref_t<T> t);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -66,9 +66,9 @@ inline ::tpy::BigInt IntGet::get() const {
 //     self.r = r
 //     self.t = t
 template<typename R, Getter<R> T>
-inline Pair<R, T>::Pair(::tpy::readonly_form_t<R> r, ::tpy::readonly_form_t<T> t)
-    : r(r),
-      t(t) {}
+inline Pair<R, T>::Pair(::tpy::param_val_or_cref_t<R> r, ::tpy::param_val_or_cref_t<T> t)
+    : r(::tpy::param_consume<R>(r)),
+      t(::tpy::param_consume<T>(t)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

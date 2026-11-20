@@ -56,7 +56,7 @@ struct Labels {
     void drop(::tpy::param_val_or_ref_t<T> value);
 
     // def has(self, value: T) -> bool:
-    bool has(::tpy::readonly_form_t<T> value) const;
+    bool has(::tpy::param_val_or_cref_t<T> value) const;
 
     // def tag_len(self, tag: str) -> int32:
     int32_t tag_len(std::string_view tag) const;
@@ -157,7 +157,7 @@ inline void Labels<T, N>::drop(::tpy::param_val_or_ref_t<T> value) {
 //             return True
 //     return False
 template<::tpystd::tpy::Equatable T, std::size_t N>
-inline bool Labels<T, N>::has(::tpy::readonly_form_t<T> value) const {
+inline bool Labels<T, N>::has(::tpy::param_val_or_cref_t<T> value) const {
     auto& __src_0 = this->items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

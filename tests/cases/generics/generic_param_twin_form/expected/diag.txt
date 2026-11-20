@@ -1,0 +1,17 @@
+fixtures.py:25: warning: returns a copy of str field 'self.s'; use -> StrView for zero-copy access or -> String to silence this warning
+part_frames.py:25: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_lends.py:81: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_moves.py:15: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_positions.py:14: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_qualified.py:70: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_reads.py:24: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_reads.py:25: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_reads.py:32: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_reads.py:39: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_reads.py:44: warning: 'Direct.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'Base' part instead
+part_reads.py:47: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_reads.py:48: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_shims.py:14: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_shims.py:43: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_shims.py:47: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_shims.py:51: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit

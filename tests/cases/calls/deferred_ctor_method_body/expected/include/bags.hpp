@@ -42,7 +42,7 @@ struct Cell {
 
     // def __init__(self, v: T) -> None:
     Cell() = default;
-    explicit Cell(::tpy::readonly_form_t<T> v);
+    explicit Cell(::tpy::param_val_or_cref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "bags.Cell";
 };
 
@@ -106,7 +106,7 @@ inline void Bag<T>::put(::tpy::param_val_or_ref_t<T> v) {
 // def __init__(self, v: T) -> None:
 //     self.v = copy(v)
 template<typename T>
-inline Cell<T>::Cell(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Cell<T>::Cell(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def __init__(self) -> None:
 //     self.keys = set()

@@ -708,13 +708,13 @@ struct GBase {
     GBase();
 
     // def __add__(self, x: T) -> int32:
-    int32_t __add__(::tpy::readonly_form_t<T> x) const;
+    int32_t __add__(::tpy::param_val_or_cref_t<T> x) const;
 
     // def __contains__(self, x: T) -> bool:
-    bool __contains__(::tpy::readonly_form_t<T> x) const;
+    bool __contains__(::tpy::param_val_or_cref_t<T> x) const;
 
-    friend decltype(auto) operator+(const GBase& lhs, ::tpy::readonly_form_t<T> x) {
-        return lhs.__add__(x);
+    friend decltype(auto) operator+(const GBase& lhs, ::tpy::param_val_or_cref_t<T> x) {
+        return lhs.__add__(::tpy::param_handoff<T>(x));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.GBase";
 };
@@ -1468,14 +1468,14 @@ inline GBase<T>::GBase() {
 // def __add__(self, x: T) -> int32:
 //     return 9
 template<typename T>
-inline int32_t GBase<T>::__add__(::tpy::readonly_form_t<T> x) const {
+inline int32_t GBase<T>::__add__(::tpy::param_val_or_cref_t<T> x) const {
     return 9;
 }
 
 // def __contains__(self, x: T) -> bool:
 //     return True
 template<typename T>
-inline bool GBase<T>::__contains__(::tpy::readonly_form_t<T> x) const {
+inline bool GBase<T>::__contains__(::tpy::param_val_or_cref_t<T> x) const {
     return true;
 }
 

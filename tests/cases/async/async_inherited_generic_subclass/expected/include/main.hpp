@@ -47,7 +47,7 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v);
+    explicit Box(::tpy::param_val_or_cref_t<T> v);
 
     __coro_Box_fetch<T> fetch();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -92,7 +92,7 @@ struct Guard {
 
     // def __init__(self, v: T) -> None:
     Guard() = default;
-    explicit Guard(::tpy::readonly_form_t<T> v);
+    explicit Guard(::tpy::param_val_or_cref_t<T> v);
 
     __coro_Guard___aenter__<T> __aenter__() const;
 
@@ -523,13 +523,13 @@ inline Ticks& Ticks::__aiter__() {
 // def __init__(self, v: T) -> None:
 //     self.v = v
 template<typename T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def __init__(self, v: T) -> None:
 //     # an open T may be a reference type, whose field store copies
 //     self.v = v  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline Guard<T>::Guard(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Guard<T>::Guard(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def __init__(self, v: U) -> None:
 //     super().__init__(v)

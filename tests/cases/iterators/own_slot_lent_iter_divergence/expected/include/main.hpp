@@ -386,7 +386,7 @@ struct __gen_gen_gt : public ::tpy::next_iter_mixin<__gen_gen_gt<T>, ::tpy::val_
 
     __gen_gen_gt(::tpy::param_val_or_ref_t<T> t_)
         : __state(S_INITIAL),
-          t(::tpy::param_pass_last<T>(t_)) {}
+          t(::tpy::param_handoff<T>(t_)) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_gen_gt& __iter__() { return *this; }

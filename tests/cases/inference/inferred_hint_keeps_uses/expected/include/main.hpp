@@ -385,7 +385,7 @@ template<typename T>
 template<typename T>
 ::tpy::val_or_ref_t<T> apply_t(const std::function<double(::tpy::param_val_or_ref_t<T>)>& fn, ::tpy::param_val_or_ref_t<T> x) {
     std::cout << "callable_t_float_param" << " " << ::tpy::print_float((::tpy::truediv(fn(::tpy::param_pass<T>(x)), 2))) << "\n" << ::tpy::check_signals;
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // def pick2[T](v: list[T], f: float) -> T:
 //     print("pick2_param", f / 2)

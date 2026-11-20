@@ -24,7 +24,7 @@ struct Pair {
 
     // def __init__(self, first: A, second: B) -> None:
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<A> first, ::tpy::readonly_form_t<B> second);
+    explicit Pair(::tpy::param_val_or_cref_t<A> first, ::tpy::param_val_or_cref_t<B> second);
 
     // def get_first(self) -> A:
     ::tpy::val_or_ref_t<A> get_first();
@@ -45,9 +45,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
 //     self.first = first
 //     self.second = second
 template<typename A, typename B>
-inline Pair<A, B>::Pair(::tpy::readonly_form_t<A> first, ::tpy::readonly_form_t<B> second)
-    : first(first),
-      second(second) {}
+inline Pair<A, B>::Pair(::tpy::param_val_or_cref_t<A> first, ::tpy::param_val_or_cref_t<B> second)
+    : first(::tpy::param_consume<A>(first)),
+      second(::tpy::param_consume<B>(second)) {}
 
 // def get_first(self) -> A:
 //     return self.first

@@ -522,7 +522,7 @@ struct __gen_tparam_gen : public ::tpy::next_iter_mixin<__gen_tparam_gen<T>, boo
 
     __gen_tparam_gen(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();
     __gen_tparam_gen& __iter__() { return *this; }
@@ -760,7 +760,7 @@ struct Tree {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> same(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // def is_square[T: Shape](x: T) -> bool:
 //     # a type-parameter subject with no name

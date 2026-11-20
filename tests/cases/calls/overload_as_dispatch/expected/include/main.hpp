@@ -504,7 +504,7 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v);
+    explicit Box(::tpy::param_val_or_cref_t<T> v);
 
     // @overload
     // def get(self, i: int32) -> T: ...
@@ -1636,7 +1636,7 @@ using Num = ::tpy::Union<int64_t, std::string>;
 //     # a generic field store warns as everywhere, not per copy
 //     self.v = v  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // @overload
 // def get(self, i: int32) -> T: ...

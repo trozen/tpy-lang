@@ -133,7 +133,7 @@ struct Wrapper {
 
     // def __init__(self, val: T):
     Wrapper() = default;
-    explicit Wrapper(::tpy::readonly_form_t<T> val);
+    explicit Wrapper(::tpy::param_val_or_cref_t<T> val);
 
     // def get_inner_value(self) -> int32:
     int32_t get_inner_value() const;
@@ -175,7 +175,7 @@ inline IntHolder::IntHolder(int32_t v) : item(v) {}
 // def __init__(self, val: T):
 //     self.inner = val
 template<HasValue T>
-inline Wrapper<T>::Wrapper(::tpy::readonly_form_t<T> val) : inner(val) {}
+inline Wrapper<T>::Wrapper(::tpy::param_val_or_cref_t<T> val) : inner(::tpy::param_consume<T>(val)) {}
 
 // def get_inner_value(self) -> int32:
 //     return self.inner.value

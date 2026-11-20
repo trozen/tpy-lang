@@ -34,7 +34,7 @@ struct Labels {
 
     // def __init__(self, first: T) -> None:
     Labels() = default;
-    explicit Labels(::tpy::readonly_form_t<T> first);
+    explicit Labels(::tpy::param_val_or_cref_t<T> first);
 
     __gen_Labels_gen_it<T> gen_it(::tpy::param_val_or_ref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Labels";
@@ -117,7 +117,7 @@ struct __gen_Labels_gen_it : public ::tpy::next_iter_mixin<__gen_Labels_gen_it<T
     __gen_Labels_gen_it(Labels<T>& __self, ::tpy::param_val_or_ref_t<T> v_)
         : __state(S_INITIAL),
           __self(__self),
-          v(::tpy::param_pass_last<T>(v_)) {}
+          v(::tpy::param_handoff<T>(v_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Labels_gen_it& __iter__() { return *this; }
@@ -161,7 +161,7 @@ inline __gen_Labels_gen_it<T> Labels<T>::gen_it(::tpy::param_val_or_ref_t<T> v) 
 // def __init__(self, first: T) -> None:
 //     self.first = first
 template<typename T>
-inline Labels<T>::Labels(::tpy::readonly_form_t<T> first) : first(first) {}
+inline Labels<T>::Labels(::tpy::param_val_or_cref_t<T> first) : first(::tpy::param_consume<T>(first)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

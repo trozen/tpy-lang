@@ -88,7 +88,7 @@ inline R::R(const ::tpy::BigInt& v) : v(v) {}
 template<typename T>
 ::tpy::val_or_ref_t<T> g3(::tpy::param_val_or_ref_t<T> x, const R* u, const ::tpy::BigInt& k) {
     std::cout << "g3-gap-body" << " " << k << " " << ::tpy::print_bool((u == nullptr)) << "\n" << ::tpy::check_signals;
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 void __tpy_init();

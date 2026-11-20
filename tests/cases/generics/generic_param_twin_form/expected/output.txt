@@ -1,0 +1,92 @@
+field int32 1
+field V v0
+inst int 100000000000000000000
+inst tuple (2, 'orig')
+global int32 1
+global V g0 7
+global after 7 g1
+class alias 2 True
+class alias after 50
+ctor 1 30
+method 2 31
+generator 4 32
+async 3 33
+bounded int32 5 34
+bounded V vb
+protocol V vb 35
+move ret moved value moved value
+move keep moved value moved value
+move generator moved value moved value
+move async moved value moved value
+move rebind other moved value other
+move rebind str b
+move app 5
+move dynamic 11 moved value
+shim getitem True key
+shim call False key
+shim add 1 key
+dynamic class 11 11
+dynamic class after 5
+elem first x0 x0
+elem keep v1 v1
+elem head t0 t0
+ro generator V rv rv
+ro generator bytes b'cd'
+ro async V rv rv
+ro async bytes b'ab'
+init bytes b'world'
+init V hv hv
+init str hs
+init class 1
+rebind int 3 100000000000000000000
+view live viewed
+reads str two two 1
+reads V tv tv
+reads inherited dv dv
+reads inherited direct dd dd
+reads label lab/lab
+ro generator class 5 True
+ro async class 7 True
+send rebind str b
+send rebind bytes b'b'
+sync rebind d b'f'
+send shim 3 sk
+lends local static static
+lends open U uuuuuuuuuuuuuuuuuuuuuuuuuuuuuu
+lends open local acc
+lends local view lvlvlvlvlvlvlvlvlvlvlvlvlvlvlvlvlvlvlvlv
+lends local append la la
+lends local return abc
+lends local rebound return tw tw
+lends local finally reads fl
+lends local finally fl
+lends exit wl
+lends local with wl
+lends rebound finally reads rf
+lends rebound finally rf
+lends exit rw
+lends rebound with rw
+lends exit hello
+lends with hello
+lends finally reads fs
+lends finally fs
+lends async finally reads af
+lends async finally af
+qualified send field 1
+qualified send class 11 True
+qualified send return s b'b' v
+qualified send return class 6 True
+qualified readonly send 3 r 4 q
+qualified send generator gs
+qualified send generator rvalue 6
+qualified send generator class 13 True
+qualified opt class 8 True
+qualified own return ov
+qualified send call 4
+qualified send call class 4 4
+qualified sync class 2
+qualified readonly 7 True
+qualified readonly value 5 rs
+qualified async readonly 7 True
+qualified async send cs
+qualified async send class 12 True

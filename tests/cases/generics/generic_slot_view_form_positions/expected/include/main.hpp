@@ -31,7 +31,7 @@ bool has_item(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_re
 bool has_item_str(const std::vector<std::string>& xs, std::string_view v);
 // def peek[T](xs: list[T], v: readonly[T]) -> bool:
 template<typename T>
-bool peek(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::readonly_form_t<T> v);
+bool peek(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_cref_t<T> v);
 // def peek_str(xs: list[str], v: readonly[str]) -> bool:
 bool peek_str(const std::vector<std::string>& xs, std::string_view v);
 // def peek_bytes(xs: list[bytes], v: readonly[bytes]) -> bool:
@@ -81,7 +81,7 @@ struct Boxed {
 
     // def __init__(self, value: T) -> None:
     Boxed() = default;
-    explicit Boxed(::tpy::readonly_form_t<T> value);
+    explicit Boxed(::tpy::param_val_or_cref_t<T> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Boxed";
 };
 
@@ -166,10 +166,10 @@ struct Labels {
 
     // def __init__(self, first: T) -> None:
     Labels() = default;
-    explicit Labels(::tpy::readonly_form_t<T> first);
+    explicit Labels(::tpy::param_val_or_cref_t<T> first);
 
     // def has(self, value: T) -> bool:
-    bool has(::tpy::readonly_form_t<T> value) const;
+    bool has(::tpy::param_val_or_cref_t<T> value) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Labels";
 };
 
@@ -257,7 +257,7 @@ inline void Holder::method(std::string_view k) const {
 // def __init__(self, value: T) -> None:
 //     self.v = value  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline Boxed<T>::Boxed(::tpy::readonly_form_t<T> value) : v(value) {}
+inline Boxed<T>::Boxed(::tpy::param_val_or_cref_t<T> value) : v(::tpy::param_consume<T>(value)) {}
 
 // def __init__(self, value: Own[T]) -> None:
 //     # An Own[T] source MOVES into the field, so no copy warning here.
@@ -275,7 +275,7 @@ inline void OwnBoxed<T>::put(::tpy::own_param_t<T> value) {
 // def __init__(self, first: T) -> None:
 //     self.items = [first]  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
-inline Labels<T>::Labels(::tpy::readonly_form_t<T> first) : items(::tpy::make_vector<::tpy::storage_t<T>>(::tpy::param_to_storage<T>(first))) {}
+inline Labels<T>::Labels(::tpy::param_val_or_cref_t<T> first) : items(::tpy::make_vector<::tpy::storage_t<T>>(::tpy::param_to_storage<T>(first))) {}
 
 // def has(self, value: T) -> bool:
 //     for it in self.items:
@@ -283,7 +283,7 @@ inline Labels<T>::Labels(::tpy::readonly_form_t<T> first) : items(::tpy::make_ve
 //             return True
 //     return False
 template<typename T>
-inline bool Labels<T>::has(::tpy::readonly_form_t<T> value) const {
+inline bool Labels<T>::has(::tpy::param_val_or_cref_t<T> value) const {
     auto& __obj_0 = this->items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -322,7 +322,7 @@ bool has_item(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_re
 //             return True
 //     return False
 template<typename T>
-bool peek(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::readonly_form_t<T> v) {
+bool peek(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_cref_t<T> v) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

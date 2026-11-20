@@ -48,10 +48,10 @@ struct P {
     P();
 
     // def m(self, x: T | None, d: T) -> T:
-    ::tpy::storage_t<T> m(::tpy::opt_cparam_t<T> x, ::tpy::readonly_form_t<T> d) const;
+    ::tpy::storage_t<T> m(::tpy::opt_cparam_t<T> x, ::tpy::param_val_or_cref_t<T> d) const;
 
     // def opt(self, x: T) -> T | None:
-    std::optional<::tpy::storage_t<T>> opt(::tpy::readonly_form_t<T> x) const;
+    std::optional<::tpy::storage_t<T>> opt(::tpy::param_val_or_cref_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "part_optional.P";
 };
 
@@ -149,9 +149,9 @@ inline P<T>::P() {
 //         return d
 //     return x
 template<::tpy::ValueType T>
-inline ::tpy::storage_t<T> P<T>::m(::tpy::opt_cparam_t<T> x, ::tpy::readonly_form_t<T> d) const {
+inline ::tpy::storage_t<T> P<T>::m(::tpy::opt_cparam_t<T> x, ::tpy::param_val_or_cref_t<T> d) const {
     if ((!::tpy::opt_has_value(x))) {
-        return ::tpy::param_to_return_last<T>(d);
+        return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(d));
     }
     return (*x);
 }
@@ -159,8 +159,8 @@ inline ::tpy::storage_t<T> P<T>::m(::tpy::opt_cparam_t<T> x, ::tpy::readonly_for
 // def opt(self, x: T) -> T | None:
 //     return x
 template<::tpy::ValueType T>
-inline std::optional<::tpy::storage_t<T>> P<T>::opt(::tpy::readonly_form_t<T> x) const {
-    return ::tpy::param_consume<T>(x);
+inline std::optional<::tpy::storage_t<T>> P<T>::opt(::tpy::param_val_or_cref_t<T> x) const {
+    return ::tpy::param_to_storage<T>(::tpy::param_handoff<T>(x));
 }
 
 // def __init__(self) -> None:
@@ -184,7 +184,7 @@ inline void Show<T>::show(::tpy::opt_cparam_t<T> x) const {
 template<::tpy::ValueType T>
 ::tpy::storage_t<T> pick(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d) {
     if ((!::tpy::opt_has_value(x))) {
-        return ::tpy::param_to_return_last<T>(d);
+        return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(d));
     }
     return (*x);
 }
@@ -193,7 +193,7 @@ template<::tpy::ValueType T>
 //     return x
 template<::tpy::ValueType T>
 ::tpy::storage_t<T> idt(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // # `match` on the parameter
 // def describe[T: ValueType](x: T | None, d: T) -> T:
@@ -206,7 +206,7 @@ template<::tpy::ValueType T>
 ::tpy::storage_t<T> describe(::tpy::opt_param_t<T> x, ::tpy::param_val_or_ref_t<T> d) {
     auto& __match_subject_1 = x;
     if (!__match_subject_1.has_value()) {
-        return ::tpy::param_to_return_last<T>(d);
+        return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(d));
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
         {
@@ -236,7 +236,7 @@ std::optional<::tpy::storage_t<T>> first(::tpy::varargs<const ::tpy::storage_t<T
 //     return x  # tpyc: ok
 template<::tpy::ValueType T>
 std::optional<::tpy::storage_t<T>> via(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_consume<T>(x);
+    return ::tpy::param_to_storage<T>(::tpy::param_handoff<T>(x));
 }
 
 void __tpy_init();

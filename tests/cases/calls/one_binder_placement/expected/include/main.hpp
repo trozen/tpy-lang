@@ -497,7 +497,7 @@ using MaybeValued = std::optional<Valued>;
 //     return value
 template<typename T>
 ::tpy::val_or_ref_t<T> tagged__str__T(std::string_view key, ::tpy::param_val_or_ref_t<T> value) {
-    return ::tpy::param_to_return_last<T>(value);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(value));
 }
 // @dispatch
 // def choose[T](x: T) -> str:

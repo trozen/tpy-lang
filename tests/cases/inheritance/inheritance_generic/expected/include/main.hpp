@@ -21,7 +21,7 @@ struct Container {
 
     // def __init__(self, value: T) -> None:
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value);
+    explicit Container(::tpy::param_val_or_cref_t<T> value);
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get();
@@ -61,7 +61,7 @@ inline IntContainer::IntContainer(int32_t value, int32_t extra)
 // def __init__(self, value: T) -> None:
 //     self.value = value
 template<typename T>
-inline Container<T>::Container(::tpy::readonly_form_t<T> value) : value(value) {}
+inline Container<T>::Container(::tpy::param_val_or_cref_t<T> value) : value(::tpy::param_consume<T>(value)) {}
 
 // def get(self) -> T:
 //     return self.value

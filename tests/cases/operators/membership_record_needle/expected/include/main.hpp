@@ -38,7 +38,7 @@ __coro_async_holds async_holds(const std::vector<Pt>& pts, const Pt& p);
 bool via_closure(const std::vector<Tag>& tags, const Tag& t);
 // def has[T: Equatable](xs: list[T], x: readonly[T]) -> bool:
 template<::tpystd::tpy::Equatable T>
-bool has(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::readonly_form_t<T> x);
+bool has(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_cref_t<T> x);
 // def comp_flags(tags: list[Tag], probes: list[Tag]) -> Own[list[bool]]:
 std::vector<bool> comp_flags(const std::vector<Tag>& tags, const std::vector<Tag>& probes);
 // def main() -> None:
@@ -203,7 +203,7 @@ inline bool Bag::has(const Tag& t) const {
 // def has[T: Equatable](xs: list[T], x: readonly[T]) -> bool:
 //     return x in xs  # tpyc: ok
 template<::tpystd::tpy::Equatable T>
-bool has(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::readonly_form_t<T> x) {
+bool has(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_cref_t<T> x) {
     return ::tpy::seq_contains(xs, x);
 }
 

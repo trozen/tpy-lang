@@ -22,7 +22,7 @@ struct Grid {
 
     // def __init__(self, value: T) -> None:
     Grid() = default;
-    explicit Grid(::tpy::readonly_form_t<T> value);
+    explicit Grid(::tpy::param_val_or_cref_t<T> value);
 
     // def copy(self) -> Own[Grid[T, N]]:
     Grid<T, N> copy();
@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grid<T, N>& obj) {
 // def __init__(self, value: T) -> None:
 //     self._value = value
 template<typename T, std::size_t N>
-inline Grid<T, N>::Grid(::tpy::readonly_form_t<T> value) : _value(value) {}
+inline Grid<T, N>::Grid(::tpy::param_val_or_cref_t<T> value) : _value(::tpy::param_consume<T>(value)) {}
 
 // def copy(self) -> Own[Grid[T, N]]:
 //     return Grid[T, N](self._value)

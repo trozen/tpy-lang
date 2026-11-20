@@ -58,7 +58,7 @@ struct Container {
 
     // def __init__(self, value: T) -> None:
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value);
+    explicit Container(::tpy::param_val_or_cref_t<T> value);
 
     // def print_value(self) -> None:
     void print_value();
@@ -105,7 +105,7 @@ inline Container<Message> DefaultFactory::make(std::string_view text) const {
 // def __init__(self, value: T) -> None:
 //     self.value = value
 template<Printable T>
-inline Container<T>::Container(::tpy::readonly_form_t<T> value) : value(value) {}
+inline Container<T>::Container(::tpy::param_val_or_cref_t<T> value) : value(::tpy::param_consume<T>(value)) {}
 
 // def print_value(self) -> None:
 //     print(self.value.to_str())

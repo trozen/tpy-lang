@@ -187,7 +187,7 @@ void main() {
 // # The mutation verdict is what decides the caller's own spelling, so the
 // # generic slot has to count as a mutable use even though the generic body never
 // # writes. (`readonly[T]` is the declared opt-out, it renders
-// # `readonly_form_t<T>`; an argument at such a slot is a lowering reject today,
+// # `param_val_or_cref_t<T>`; an argument at such a slot is a lowering reject today,
 // # `call.generic_arg_shape`, so there is no section for it.)
 // #
 // # A generic body cannot write through an open `T` yet (`assign.field_write_shape`

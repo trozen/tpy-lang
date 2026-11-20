@@ -71,7 +71,7 @@ template<typename T>
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> ident(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // def bump[T](x: T, b: B) -> T:
 //     # the parameter aliases the caller's object: the write shows there
@@ -80,7 +80,7 @@ template<typename T>
 template<typename T>
 ::tpy::val_or_ref_t<T> bump(::tpy::param_val_or_ref_t<T> x, B& b) {
     b.v = ::tpy::add_check<int32_t>(b.v, 100);
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 void __tpy_init();

@@ -145,7 +145,7 @@ struct Bag {
     Bag();
 
     // def put(self, v: T, *, n: int64 = 2) -> None:
-    void put(::tpy::readonly_form_t<T> v, int64_t n = 2) const;
+    void put(::tpy::param_val_or_cref_t<T> v, int64_t n = 2) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -235,7 +235,7 @@ struct KwPick {
 
     // def pick[T](self, x: T, *, k: T) -> T:
     template<typename T>
-    ::tpy::val_or_ref_t<T> pick(::tpy::readonly_form_t<T> x, ::tpy::param_val_or_ref_t<T> k) const;
+    ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_cref_t<T> x, ::tpy::param_val_or_ref_t<T> k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.KwPick";
 };
 
@@ -267,7 +267,7 @@ struct OptBox {
 
     // def __init__(self, x: T, *, k: T | None = None) -> None:
     OptBox() = default;
-    explicit OptBox(::tpy::readonly_form_t<T> x, ::tpy::opt_cparam_t<T> k = nullptr);
+    explicit OptBox(::tpy::param_val_or_cref_t<T> x, ::tpy::opt_cparam_t<T> k = nullptr);
     static constexpr std::string_view __tpy_class_name__ = "__main__.OptBox";
 };
 
@@ -477,7 +477,7 @@ inline Bag<T>::Bag() {
 // def put(self, v: T, *, n: int64 = 2) -> None:
 //     print("pending", v, n)
 template<typename T>
-inline void Bag<T>::put(::tpy::readonly_form_t<T> v, int64_t n) const {
+inline void Bag<T>::put(::tpy::param_val_or_cref_t<T> v, int64_t n) const {
     std::cout << "pending" << " " << ::tpy::ValuePrinter(v) << " " << n << "\n" << ::tpy::check_signals;
 }
 
@@ -485,7 +485,7 @@ inline void Bag<T>::put(::tpy::readonly_form_t<T> v, int64_t n) const {
 //     return x
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Gen::pick(::tpy::param_val_or_ref_t<T> x, int64_t y) const {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 // def __init__(self) -> None:
@@ -504,21 +504,21 @@ inline void Opt<T>::f(std::optional<int64_t> x, int64_t k) const {
 // def pick[T](self, x: T, *, k: T) -> T:
 //     return k
 template<typename T>
-inline ::tpy::val_or_ref_t<T> KwPick::pick(::tpy::readonly_form_t<T> x, ::tpy::param_val_or_ref_t<T> k) const {
-    return ::tpy::param_to_return_last<T>(k);
+inline ::tpy::val_or_ref_t<T> KwPick::pick(::tpy::param_val_or_cref_t<T> x, ::tpy::param_val_or_ref_t<T> k) const {
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(k));
 }
 
 // def pick[T](self, x: T, *, k: T | None = None) -> T:
 //     return x
 template<typename T>
 inline ::tpy::val_or_ref_t<T> OptPick::pick(::tpy::param_val_or_ref_t<T> x, ::tpy::opt_cparam_t<T> k) const {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 // def __init__(self, x: T, *, k: T | None = None) -> None:
 //     self.x = x
 template<typename T>
-inline OptBox<T>::OptBox(::tpy::readonly_form_t<T> x, ::tpy::opt_cparam_t<T> k) : x(x) {}
+inline OptBox<T>::OptBox(::tpy::param_val_or_cref_t<T> x, ::tpy::opt_cparam_t<T> k) : x(::tpy::param_consume<T>(x)) {}
 
 // # generic *args: the keyword-only parameter after the pack is no element.
 // def total[T](*xs: T, k: int64 = 5) -> int64:
@@ -559,19 +559,19 @@ template<typename U, typename __F0>
 //     return k
 template<typename T>
 ::tpy::val_or_ref_t<T> kw_infer(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> k) {
-    return ::tpy::param_to_return_last<T>(k);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(k));
 }
 // def kw_only[T](*, k: T) -> T:
 //     return k
 template<typename T>
 ::tpy::val_or_ref_t<T> kw_only(::tpy::param_val_or_ref_t<T> k) {
-    return ::tpy::param_to_return_last<T>(k);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(k));
 }
 // def kw_after_args[T](*xs: T, k: T) -> T:
 //     return k
 template<typename T>
 ::tpy::val_or_ref_t<T> kw_after_args(::tpy::varargs<const ::tpy::storage_t<T>> xs, ::tpy::param_val_or_ref_t<T> k) {
-    return ::tpy::param_to_return_last<T>(k);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(k));
 }
 // # A `None` at a `T | None` parameter fills its None arm: no evidence for `T`
 // # beside an argument that is, keyword or positional.
@@ -584,7 +584,7 @@ template<typename T>
     if ((::tpy::opt_has_value(k))) {
         return (*k);
     }
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // def optp[T](x: T, k: T | None = None) -> T:
 //     if k is not None:
@@ -595,7 +595,7 @@ template<typename T>
     if ((::tpy::opt_has_value(k))) {
         return (*k);
     }
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // # A candidate tried per lambda infers `T` from its keyword-only `k`.
 // @dispatch
@@ -606,7 +606,7 @@ template<typename T, typename __F0>
       { __fn(__a0) } -> std::convertible_to<int64_t>;
   }
 ::tpy::val_or_ref_t<T> fk__T__Fn_int64_int64(::tpy::param_val_or_ref_t<T> k, __F0&& fn) {
-    return ::tpy::param_to_return_last<T>(k);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(k));
 }
 // @dispatch
 // def fk(*, k: str, fn: Fn[[str], str]) -> str:

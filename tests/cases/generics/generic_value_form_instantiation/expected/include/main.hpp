@@ -77,7 +77,7 @@ struct Cell {
 
     // def __init__(self, v: T) -> None:
     Cell() = default;
-    explicit Cell(::tpy::readonly_form_t<T> v);
+    explicit Cell(::tpy::param_val_or_cref_t<T> v);
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get();
@@ -110,7 +110,7 @@ struct __coro_held {
     __coro_held(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -194,7 +194,7 @@ struct __gen_hold : public ::tpy::next_iter_mixin<__gen_hold<T>, ::tpy::yield_sl
 
     __gen_hold(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_hold& __iter__() { return *this; }
@@ -245,7 +245,7 @@ __gen_hold<T> hold(::tpy::param_val_or_ref_t<T> x) {
 // def __init__(self, v: T) -> None:
 //     self.v = v  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline Cell<T>::Cell(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Cell<T>::Cell(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def get(self) -> T:
 //     return self.v
@@ -270,7 +270,7 @@ inline ::tpy::storage_t<T>* Cell<T>::find(::tpy::param_val_or_ref_t<T> v) {
 //     return v
 template<typename T>
 ::tpy::val_or_ref_t<T> echo(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_to_return_last<T>(v);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(v));
 }
 // def has_item[T](xs: list[T], v: T) -> bool:
 //     for x in xs:

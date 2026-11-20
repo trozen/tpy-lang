@@ -44,7 +44,7 @@ int32_t apply__Fn_T_U__list_T(__F0&& f, const std::vector<::tpy::storage_t<T>>& 
 //     return a
 template<typename T>
 ::tpy::val_or_ref_t<T> apply__list_T__T__T(const std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    return ::tpy::param_to_return_last<T>(a);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(a));
 }
 
 void __tpy_init();

@@ -50,7 +50,7 @@ struct Holder {
 
     // def __init__(self, value: T) -> None:
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<T> value);
+    explicit Holder(::tpy::param_val_or_cref_t<T> value);
 
     // def dup(self) -> T:
     ::tpy::val_or_ref_t<T> dup() const;
@@ -70,7 +70,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 // def __init__(self, value: T) -> None:
 //     self.value = value
 template<typename T>
-inline Holder<T>::Holder(::tpy::readonly_form_t<T> value) : value(value) {}
+inline Holder<T>::Holder(::tpy::param_val_or_cref_t<T> value) : value(::tpy::param_consume<T>(value)) {}
 
 // def dup(self) -> T:
 //     return copy(self.value)  # tpyc: ok

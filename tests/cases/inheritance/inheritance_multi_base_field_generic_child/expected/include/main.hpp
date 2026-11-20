@@ -50,7 +50,7 @@ struct Container : Box<U>, Label {
 
     // def __init__(self, v: U, label: str) -> None:
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<U> v, std::string_view label);
+    explicit Container(::tpy::param_val_or_cref_t<U> v, std::string_view label);
 
     // def tagged(self) -> str:
     std::string tagged() const;
@@ -68,7 +68,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container<U>& obj) {
 //     Box.value = v
 //     Label.value = label
 template<typename U>
-inline Container<U>::Container(::tpy::readonly_form_t<U> v, std::string_view label)
+inline Container<U>::Container(::tpy::param_val_or_cref_t<U> v, std::string_view label)
     : Box<U>(),
       Label() {
     this->Box<U>::value = ::tpy::param_consume<U>(v);

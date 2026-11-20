@@ -71,7 +71,7 @@ struct GenBox {
 
     // def __init__(self, k: K, v: V):
     GenBox() = default;
-    explicit GenBox(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v);
+    explicit GenBox(::tpy::param_val_or_cref_t<K> k, ::tpy::param_val_or_cref_t<V> v);
 
     // def __getitem__(self, want: int32) -> V | None:
     ::tpy::storage_t<V>* __getitem__(int32_t want);
@@ -146,9 +146,9 @@ inline Rec* Box::operator[](int32_t want) {
 //     self._k = k
 //     self._v = v
 template<typename K, typename V>
-inline GenBox<K, V>::GenBox(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v)
-    : _k(k),
-      _v(v) {}
+inline GenBox<K, V>::GenBox(::tpy::param_val_or_cref_t<K> k, ::tpy::param_val_or_cref_t<V> v)
+    : _k(::tpy::param_consume<K>(k)),
+      _v(::tpy::param_consume<V>(v)) {}
 
 // def __getitem__(self, want: int32) -> V | None:
 //     if want > 0:

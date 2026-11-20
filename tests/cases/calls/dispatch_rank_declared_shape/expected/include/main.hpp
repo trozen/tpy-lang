@@ -95,7 +95,7 @@ std::string gr__Named(T_x&& x);
 // @dispatch
 // def gr[T](x: readonly[T]) -> str:
 template<typename T>
-std::string gr__readonly_T(::tpy::readonly_form_t<T> x);
+std::string gr__readonly_T(::tpy::param_val_or_cref_t<T> x);
 // @dispatch
 // def mb(x: MA) -> str:
 std::string mb__MA(MA& x);
@@ -899,7 +899,7 @@ std::string gr__Named(T_x&& x) {
 // def gr[T](x: readonly[T]) -> str:
 //     return "bare"
 template<typename T>
-std::string gr__readonly_T(::tpy::readonly_form_t<T> x) {
+std::string gr__readonly_T(::tpy::param_val_or_cref_t<T> x) {
     return "bare";
 }
 // @dispatch

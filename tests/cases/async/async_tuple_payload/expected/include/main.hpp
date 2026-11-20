@@ -211,7 +211,7 @@ struct __coro_Holder_wrap {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -391,7 +391,7 @@ struct __coro_solo {
     __coro_solo(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>, int32_t>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -554,7 +554,7 @@ struct __coro_fin_suspend {
     __coro_fin_suspend(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>, int32_t>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -741,7 +741,7 @@ struct __coro_task_fwd {
     __coro_task_fwd(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>, int32_t>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -801,7 +801,7 @@ struct __coro_wait_fwd {
     __coro_wait_fwd(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::val_or_ptr_t<T>, int32_t>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -883,7 +883,7 @@ struct __coro_opt_solo {
     __coro_opt_solo(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::storage_t<T>, std::optional<int32_t>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

@@ -96,7 +96,7 @@ inline C::C() {
 //     return x
 template<typename T>
 inline ::tpy::val_or_ref_t<T> C::m(::tpy::param_val_or_ref_t<T> x) const {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 // def contextual[T, U](f: Fn[[T], U], x: T) -> U:
@@ -132,7 +132,7 @@ template<typename T, typename U, typename __F0>
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> plain(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 void __tpy_init();

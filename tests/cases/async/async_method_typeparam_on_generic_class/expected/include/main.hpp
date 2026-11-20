@@ -27,7 +27,7 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v);
+    explicit Box(::tpy::param_val_or_cref_t<T> v);
 
     template <typename U>
     __coro_Box_with_label<T, U> with_label(::tpy::param_val_or_ref_t<U> label) const;
@@ -57,7 +57,7 @@ struct __coro_Box_with_label {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          label(::tpy::param_pass_last<U>(label_)) {}
+          label(::tpy::param_handoff<U>(label_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -95,7 +95,7 @@ inline __coro_Box_with_label<T, U> Box<T>::with_label(::tpy::param_val_or_ref_t<
 // def __init__(self, v: T) -> None:
 //     self.val = v
 template<typename T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> v) : val(v) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> v) : val(::tpy::param_consume<T>(v)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

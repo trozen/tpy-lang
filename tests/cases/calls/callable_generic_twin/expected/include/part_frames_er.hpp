@@ -89,8 +89,8 @@ struct __coro_co_er {
     __coro_co_er(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          a(::tpy::param_pass_last<T>(a_)),
-          b(::tpy::param_pass_last<T>(b_)) {}
+          a(::tpy::param_handoff<T>(a_)),
+          b(::tpy::param_handoff<T>(b_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -200,8 +200,8 @@ struct __gen_gen_er : public ::tpy::next_iter_mixin<__gen_gen_er<T>, ::tpy::yiel
 
     __gen_gen_er(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_, bool fail_)
         : __state(S_INITIAL),
-          a(::tpy::param_pass_last<T>(a_)),
-          b(::tpy::param_pass_last<T>(b_)),
+          a(::tpy::param_handoff<T>(a_)),
+          b(::tpy::param_handoff<T>(b_)),
           fail(std::move(fail_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -295,7 +295,7 @@ struct __gen_gen_tried : public ::tpy::next_iter_mixin<__gen_gen_tried<T, F_f>, 
     __gen_gen_tried(F_f&& f_, ::tpy::param_val_or_ref_t<T> a_, bool c_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          a(::tpy::param_pass_last<T>(a_)),
+          a(::tpy::param_handoff<T>(a_)),
           c(std::move(c_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -368,7 +368,7 @@ struct __gen_gen_walrus : public ::tpy::next_iter_mixin<__gen_gen_walrus<T, F_f>
     __gen_gen_walrus(F_f&& f_, ::tpy::param_val_or_ref_t<T> a_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          a(::tpy::param_pass_last<T>(a_)) {}
+          a(::tpy::param_handoff<T>(a_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_walrus& __iter__() { return *this; }
@@ -431,7 +431,7 @@ struct __gen_gen_walrus_once : public ::tpy::next_iter_mixin<__gen_gen_walrus_on
     __gen_gen_walrus_once(F_f&& f_, ::tpy::param_val_or_ref_t<T> a_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          a(::tpy::param_pass_last<T>(a_)) {}
+          a(::tpy::param_handoff<T>(a_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_walrus_once& __iter__() { return *this; }
@@ -479,7 +479,7 @@ std::expected<::tpy::val_or_ref<::tpy::storage_t<T>>, E> er_relay(::tpy::param_v
     if (fail) {
         return ::tpy::make_unexpected(E{});
     }
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 void __tpy_init();

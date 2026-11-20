@@ -184,7 +184,7 @@ struct Holder {
 
     // def __init__(self, v: T) -> None:
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<T> v);
+    explicit Holder(::tpy::param_val_or_cref_t<T> v);
 
     // def store(self, v: T) -> None:
     void store(::tpy::param_val_or_ref_t<T> v);
@@ -241,7 +241,7 @@ struct GenBase {
 
     // def __init__(self, v: T) -> None:
     GenBase() = default;
-    explicit GenBase(::tpy::readonly_form_t<T> v);
+    explicit GenBase(::tpy::param_val_or_cref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenBase";
 };
 
@@ -279,7 +279,7 @@ struct GBox {
 
     // def __init__(self, v: T) -> None:
     GBox() = default;
-    explicit GBox(::tpy::readonly_form_t<T> v);
+    explicit GBox(::tpy::param_val_or_cref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GBox";
 };
 
@@ -297,10 +297,10 @@ struct Shadowed {
 
     // def __init__(self, v: T) -> None:
     Shadowed() = default;
-    explicit Shadowed(::tpy::readonly_form_t<T> v);
+    explicit Shadowed(::tpy::param_val_or_cref_t<T> v);
 
     // def keep[T: ValueType](self, v: T) -> int32:
-    int32_t keep(::tpy::readonly_form_t<T> v) const
+    int32_t keep(::tpy::param_val_or_cref_t<T> v) const
       requires ::tpy::ValueType<T>;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shadowed";
 };
@@ -357,7 +357,7 @@ struct __coro_async_slot {
     __coro_async_slot(::tpy::param_val_or_ref_t<T> v_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          v(::tpy::param_pass_last<T>(v_)) {}
+          v(::tpy::param_handoff<T>(v_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -440,7 +440,7 @@ struct __gen_gen_slot : public ::tpy::next_iter_mixin<__gen_gen_slot<T>, int32_t
 
     __gen_gen_slot(::tpy::param_val_or_ref_t<T> v_)
         : __state(S_INITIAL),
-          v(::tpy::param_pass_last<T>(v_)) {}
+          v(::tpy::param_handoff<T>(v_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_slot& __iter__() { return *this; }
@@ -517,7 +517,7 @@ inline GenLeaf::GenLeaf(Cell& v) : GenMid<Cell>(v) {}
 // def __init__(self, v: T) -> None:
 //     self.item = v  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline Holder<T>::Holder(::tpy::readonly_form_t<T> v) : item(v) {}
+inline Holder<T>::Holder(::tpy::param_val_or_cref_t<T> v) : item(::tpy::param_consume<T>(v)) {}
 
 // def store(self, v: T) -> None:
 //     self.item = v  # tpyc: warning(/may copy T into field/)
@@ -529,7 +529,7 @@ inline void Holder<T>::store(::tpy::param_val_or_ref_t<T> v) {
 // def __init__(self, v: T) -> None:
 //     self.item = v  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline GenBase<T>::GenBase(::tpy::readonly_form_t<T> v) : item(v) {}
+inline GenBase<T>::GenBase(::tpy::param_val_or_cref_t<T> v) : item(::tpy::param_consume<T>(v)) {}
 
 // def __init__(self) -> None:
 //     self.item = None
@@ -546,19 +546,19 @@ inline void OptHolder<T>::store(::tpy::opt_cparam_t<T> v) {
 // def __init__(self, v: T) -> None:
 //     self.item = v  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline GBox<T>::GBox(::tpy::readonly_form_t<T> v) : item(v) {}
+inline GBox<T>::GBox(::tpy::param_val_or_cref_t<T> v) : item(::tpy::param_consume<T>(v)) {}
 
 // def __init__(self, v: T) -> None:
 //     self.item = v  # tpyc: warning(/may copy T into field/)
 template<::tpy::Copyable T>
-inline Shadowed<T>::Shadowed(::tpy::readonly_form_t<T> v) : item(v) {}
+inline Shadowed<T>::Shadowed(::tpy::param_val_or_cref_t<T> v) : item(::tpy::param_consume<T>(v)) {}
 
 // def keep[T: ValueType](self, v: T) -> int32:
 //     xs: list[T] = []
 //     xs.append(v)  # tpyc: ok
 //     return len(xs)
 template<::tpy::Copyable T>
-inline int32_t Shadowed<T>::keep(::tpy::readonly_form_t<T> v) const
+inline int32_t Shadowed<T>::keep(::tpy::param_val_or_cref_t<T> v) const
   requires ::tpy::ValueType<T> {
     std::vector<::tpy::storage_t<T>> xs = std::vector<::tpy::storage_t<T>>{};
     xs.push_back(::tpy::param_consume<T>(v));
@@ -588,7 +588,7 @@ int32_t free_slot(::tpy::param_val_or_ref_t<T> v) {
 //     return v  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
 ::tpy::own_return_t<T> ret_own(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_consume<T>(v);
+    return ::tpy::param_to_storage<T>(::tpy::param_handoff<T>(v));
 }
 // # two distinct reference instantiations of ONE body: still ONE line, because
 // # the contract is the declaration's and not any call's

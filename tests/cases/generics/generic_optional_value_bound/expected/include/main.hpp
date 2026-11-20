@@ -24,7 +24,7 @@ struct Box {
 
     // def __init__(self, value: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> value);
+    explicit Box(::tpy::param_val_or_cref_t<T> value);
 
     // def get(self) -> T | None:
     std::optional<::tpy::storage_t<T>> get() const;
@@ -45,8 +45,8 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 //     self._value = value
 //     self._has = True
 template<::tpy::ValueType T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> value)
-    : _value(value),
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> value)
+    : _value(::tpy::param_consume<T>(value)),
       _has(true) {}
 
 // def get(self) -> T | None:

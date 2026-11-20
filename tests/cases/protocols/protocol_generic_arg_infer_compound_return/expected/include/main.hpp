@@ -35,7 +35,7 @@ struct Cell {
 
     // def __init__(self, value: T) -> None:
     Cell() = default;
-    explicit Cell(::tpy::readonly_form_t<T> value);
+    explicit Cell(::tpy::param_val_or_cref_t<T> value);
 
     // def pair(self) -> tuple[T, int32]:
     std::tuple<::tpy::val_or_ptr_t<T>, int32_t> pair();
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
 // def __init__(self, value: T) -> None:
 //     self.value = value
 template<typename T>
-inline Cell<T>::Cell(::tpy::readonly_form_t<T> value) : value(value) {}
+inline Cell<T>::Cell(::tpy::param_val_or_cref_t<T> value) : value(::tpy::param_consume<T>(value)) {}
 
 // def pair(self) -> tuple[T, int32]:
 //     return (self.value, int32(1))

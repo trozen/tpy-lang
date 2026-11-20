@@ -70,7 +70,7 @@ std::string kw__list_T__str(const std::vector<::tpy::storage_t<T>>& xs, std::str
 template<typename T>
 ::tpy::val_or_ref_t<T> kw__list_T__T(std::vector<::tpy::storage_t<T>>& xs, ::tpy::param_val_or_ref_t<T> v) {
     xs.push_back(::tpy::param_to_storage<T>(v));
-    return ::tpy::param_to_return_last<T>(v);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(v));
 }
 
 void __tpy_init();

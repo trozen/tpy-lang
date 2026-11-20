@@ -31,10 +31,10 @@ template<typename U>
 void show(std::string_view tag, ::tpy::param_val_or_ref_t<U> v);
 // def mks[T](x: Send[T]) -> Callable[[], None]:
 template<typename T>
-std::function<void()> mks(::tpy::storage_t<T>& x);
+std::function<void()> mks(::tpy::param_val_or_ref_t<T> x);
 // def mky[T](x: Sync[T]) -> Callable[[], None]:
 template<typename T>
-std::function<void()> mky(::tpy::storage_t<T>& x);
+std::function<void()> mky(::tpy::param_val_or_ref_t<T> x);
 // def mksc(x: Send[C]) -> Callable[[], None]:
 std::function<void()> mksc(const ::tpyapp::fixtures::C& x);
 // def scope_send() -> Callable[[], None]:
@@ -65,7 +65,7 @@ struct Holder {
 
     // def __init__(self, x: T) -> None:
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<T> x);
+    explicit Holder(::tpy::param_val_or_cref_t<T> x);
     static constexpr std::string_view __tpy_class_name__ = "part_shapes.Holder";
 };
 
@@ -112,7 +112,7 @@ inline int32_t Cnt::bump() {
 //         print("ctor", x)  # escapes through the field
 //     self.cb = g
 template<typename T>
-inline Holder<T>::Holder(::tpy::readonly_form_t<T> x) {
+inline Holder<T>::Holder(::tpy::param_val_or_cref_t<T> x) {
     auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
         auto& x = __cap_x.v;
         std::cout << "ctor" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
@@ -143,7 +143,7 @@ void show(std::string_view tag, ::tpy::param_val_or_ref_t<U> v) {
 //         show("send", x)  # Send[T] holds the storage form as a bare T does
 //     return g
 template<typename T>
-std::function<void()> mks(::tpy::storage_t<T>& x) {
+std::function<void()> mks(::tpy::param_val_or_ref_t<T> x) {
     auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
         auto& x = __cap_x.v;
         ::tpyapp::part_shapes::show<::tpy::storage_t<T>>("send", x);
@@ -155,7 +155,7 @@ std::function<void()> mks(::tpy::storage_t<T>& x) {
 //         show("sync", x)
 //     return g
 template<typename T>
-std::function<void()> mky(::tpy::storage_t<T>& x) {
+std::function<void()> mky(::tpy::param_val_or_ref_t<T> x) {
     auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
         auto& x = __cap_x.v;
         ::tpyapp::part_shapes::show<::tpy::storage_t<T>>("sync", x);

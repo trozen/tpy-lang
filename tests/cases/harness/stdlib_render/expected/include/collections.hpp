@@ -24,7 +24,7 @@ struct Counter {
     explicit Counter(const T_items* items = nullptr);
 
     // def __getitem__(self, key: T) -> int:
-    ::tpy::BigInt __getitem__(::tpy::readonly_form_t<T> key) const;
+    ::tpy::BigInt __getitem__(::tpy::param_val_or_cref_t<T> key) const;
 
     // def __setitem__(self, key: T, count: int) -> None:
     void __setitem__(::tpy::param_val_or_ref_t<T> key, const ::tpy::BigInt& count);
@@ -33,7 +33,7 @@ struct Counter {
     int32_t __len__() const;
 
     // def __contains__(self, key: T) -> bool:
-    bool __contains__(::tpy::readonly_form_t<T> key) const;
+    bool __contains__(::tpy::param_val_or_cref_t<T> key) const;
 
     // def total(self) -> int:
     ::tpy::BigInt total() const;
@@ -47,7 +47,7 @@ struct Counter {
     // def subtract(self, other: Counter[T]) -> None:
     void subtract(const Counter<T>& other);
 
-    ::tpy::BigInt operator[](::tpy::readonly_form_t<T> key) const;
+    ::tpy::BigInt operator[](::tpy::param_val_or_cref_t<T> key) const;
 
     size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "collections.Counter";
@@ -88,7 +88,7 @@ inline Counter<T>::Counter(const T_items* items) : _data(::tpy::ordered_map<::tp
 //     # Missing key returns 0 without inserting (unlike defaultdict).
 //     return self._data.get(key, 0)
 template<::tpystd::tpy::Hashable T>
-inline ::tpy::BigInt Counter<T>::__getitem__(::tpy::readonly_form_t<T> key) const {
+inline ::tpy::BigInt Counter<T>::__getitem__(::tpy::param_val_or_cref_t<T> key) const {
     return ::tpy::dict_get_default(this->_data, key, ::tpy::BigInt(0));
 }
 
@@ -109,7 +109,7 @@ inline int32_t Counter<T>::__len__() const {
 // def __contains__(self, key: T) -> bool:
 //     return key in self._data
 template<::tpystd::tpy::Hashable T>
-inline bool Counter<T>::__contains__(::tpy::readonly_form_t<T> key) const {
+inline bool Counter<T>::__contains__(::tpy::param_val_or_cref_t<T> key) const {
     return (this->_data.contains(key));
 }
 
@@ -189,8 +189,8 @@ inline void Counter<T>::subtract(const Counter<T>& other) {
 }
 
 template<::tpystd::tpy::Hashable T>
-inline ::tpy::BigInt Counter<T>::operator[](::tpy::readonly_form_t<T> key) const {
-    return __getitem__(key);
+inline ::tpy::BigInt Counter<T>::operator[](::tpy::param_val_or_cref_t<T> key) const {
+    return __getitem__(::tpy::param_handoff<T>(key));
 }
 
 template<::tpystd::tpy::Hashable T>

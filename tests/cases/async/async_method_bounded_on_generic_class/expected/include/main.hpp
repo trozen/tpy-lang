@@ -27,7 +27,7 @@ struct Summer {
 
     // def __init__(self, items: T) -> None:
     Summer() = default;
-    explicit Summer(::tpy::readonly_form_t<T> items);
+    explicit Summer(::tpy::param_val_or_cref_t<T> items);
 
     __coro_Summer_total<T> total() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Summer";
@@ -105,7 +105,7 @@ inline __coro_Summer_total<T> Summer<T>::total() const {
 // def __init__(self, items: T) -> None:
 //     self.items = items
 template<::tpystd::typing::Iterable<int32_t> T>
-inline Summer<T>::Summer(::tpy::readonly_form_t<T> items) : items(items) {}
+inline Summer<T>::Summer(::tpy::param_val_or_cref_t<T> items) : items(::tpy::param_consume<T>(items)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

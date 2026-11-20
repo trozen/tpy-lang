@@ -780,7 +780,7 @@ struct Dial : Gauge<T> {
 
     // def __init__(self, v: T) -> None:
     Dial() = default;
-    explicit Dial(::tpy::readonly_form_t<T> v);
+    explicit Dial(::tpy::param_val_or_cref_t<T> v);
 
     // def gauge(self) -> T:
     ::tpy::val_or_ref_t<T> gauge() override;
@@ -803,7 +803,7 @@ struct Cell : Peek<T>, OwnPeek<T> {
 
     // def __init__(self, x: T) -> None:
     Cell() = default;
-    explicit Cell(::tpy::readonly_form_t<T> x);
+    explicit Cell(::tpy::param_val_or_cref_t<T> x);
 
     // def peek(self) -> Own[T]:  # tpyc: ok
     ::tpy::own_return_t<T> peek() override;
@@ -1761,9 +1761,9 @@ inline int32_t TickDial::gauge() {
 //     # An open T may be a reference type, which this store copies.
 //     self.v = v  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline Dial<T>::Dial(::tpy::readonly_form_t<T> v)
+inline Dial<T>::Dial(::tpy::param_val_or_cref_t<T> v)
     : n(0),
-      v(v) {}
+      v(::tpy::param_consume<T>(v)) {}
 
 // def gauge(self) -> T:
 //     return self.v
@@ -1776,8 +1776,8 @@ inline ::tpy::val_or_ref_t<T> Dial<T>::gauge() {
 //     self.x = x
 //     self.reads = 0
 template<::tpy::ValueType T>
-inline Cell<T>::Cell(::tpy::readonly_form_t<T> x)
-    : x(x),
+inline Cell<T>::Cell(::tpy::param_val_or_cref_t<T> x)
+    : x(::tpy::param_consume<T>(x)),
       reads(0) {}
 
 // def peek(self) -> Own[T]:  # tpyc: ok

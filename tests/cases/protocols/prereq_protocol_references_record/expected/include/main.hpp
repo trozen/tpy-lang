@@ -74,7 +74,7 @@ struct Wrapper {
 
     // def __init__(self, value: T) -> None:
     Wrapper() = default;
-    explicit Wrapper(::tpy::readonly_form_t<T> value);
+    explicit Wrapper(::tpy::param_val_or_cref_t<T> value);
 
     // def get_result(self) -> Own[Result]:
     Result get_result();
@@ -109,7 +109,7 @@ struct Container {
 
     // def __init__(self, factory: T) -> None:
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> factory);
+    explicit Container(::tpy::param_val_or_cref_t<T> factory);
 
     // def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
     Wrapper<Message> create_wrapper(std::string_view text);
@@ -146,7 +146,7 @@ inline Wrapper<Message> DefaultWrapperMaker::make(std::string_view text) const {
 // def __init__(self, value: T) -> None:
 //     self.value = value
 template<Convertible T>
-inline Wrapper<T>::Wrapper(::tpy::readonly_form_t<T> value) : value(value) {}
+inline Wrapper<T>::Wrapper(::tpy::param_val_or_cref_t<T> value) : value(::tpy::param_consume<T>(value)) {}
 
 // def get_result(self) -> Own[Result]:
 //     return self.value.to_result()
@@ -158,7 +158,7 @@ inline Result Wrapper<T>::get_result() {
 // def __init__(self, factory: T) -> None:
 //     self.factory = factory
 template<WrapperMaker T>
-inline Container<T>::Container(::tpy::readonly_form_t<T> factory) : factory(factory) {}
+inline Container<T>::Container(::tpy::param_val_or_cref_t<T> factory) : factory(::tpy::param_consume<T>(factory)) {}
 
 // def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
 //     return self.factory.make(text)

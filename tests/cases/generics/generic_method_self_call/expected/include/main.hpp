@@ -22,7 +22,7 @@ struct Processor {
 
     // def __init__(self, val: T):
     Processor() = default;
-    explicit Processor(::tpy::readonly_form_t<T> val);
+    explicit Processor(::tpy::param_val_or_cref_t<T> val);
 
     // def wrap[U](self, x: U) -> U:
     template<typename U>
@@ -43,14 +43,14 @@ inline std::ostream& operator<<(std::ostream& os, const Processor<T>& obj) {
 // def __init__(self, val: T):
 //     self.val = val
 template<typename T>
-inline Processor<T>::Processor(::tpy::readonly_form_t<T> val) : val(val) {}
+inline Processor<T>::Processor(::tpy::param_val_or_cref_t<T> val) : val(::tpy::param_consume<T>(val)) {}
 
 // def wrap[U](self, x: U) -> U:
 //     return x
 template<typename T>
 template<typename U>
 inline ::tpy::val_or_ref_t<U> Processor<T>::wrap(::tpy::param_val_or_ref_t<U> x) const {
-    return ::tpy::param_to_return_last<U>(x);
+    return ::tpy::param_to_return<U>(::tpy::param_handoff<U>(x));
 }
 
 // def process(self) -> int32:

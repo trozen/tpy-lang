@@ -17,7 +17,8 @@
  *      instantiated at the slot spelling is not refused for the wrapper.
  *   5. At a type argument `Own[X]` (the owned tag `own_arg<X>`) every slot
  *      form is the hand-written `Own[X]` twin's: an owned parameter, a
- *      handed-over result and step, and `X` itself as the storage form.
+ *      handed-over result and step, and `X` itself as the storage form; at
+ *      any other type argument the parameter form is the twin's too.
  *
  * Exits non-zero on failure; the harness treats output as the assertion.
  */
@@ -177,7 +178,7 @@ namespace owned_tag {
 using ::tpy::own_arg;
 static_assert(std::is_same_v<::tpy::param_val_or_ref_t<own_arg<Point>>, Point&&>);
 static_assert(std::is_same_v<::tpy::own_param_t<own_arg<std::string>>, std::string>);
-static_assert(std::is_same_v<::tpy::readonly_form_t<own_arg<Point>>, Point&&>);
+static_assert(std::is_same_v<::tpy::param_val_or_cref_t<own_arg<Point>>, Point&&>);
 static_assert(std::is_same_v<::tpy::val_or_ref_t<own_arg<Point>>, Point>);
 static_assert(std::is_same_v<::tpy::yield_slot_t<own_arg<Point>>, Point>);
 static_assert(std::is_same_v<::tpy::storage_t<const own_arg<std::string>>,
@@ -199,12 +200,104 @@ static_assert(std::is_same_v<::tpy::opt_param_t<own_arg<std::string>>,
                              std::optional<std::string>>);
 static_assert(std::is_same_v<::tpy::opt_cparam_t<own_arg<std::string>>,
                              std::optional<std::string>>);
+// The value arm: a generic `T` parameter takes the hand-written twin's form
+// -- by value at a scalar, a view at `str` / `bytes`, a const reference where
+// the twin's is one (`int`, `String`, a tuple) -- and a reference type's `T&`.
+static_assert(std::is_same_v<::tpy::param_val_or_ref_t<int32_t>, int32_t>);
+static_assert(std::is_same_v<::tpy::param_val_or_ref_t<double>, double>);
+static_assert(std::is_same_v<::tpy::param_val_or_ref_t<std::string>,
+                             std::string_view>);
+static_assert(std::is_same_v<::tpy::param_val_or_ref_t<::tpy::Bytes>,
+                             ::tpy::BytesView>);
+static_assert(std::is_same_v<::tpy::param_val_or_ref_t<::tpy::BigInt>,
+                             const ::tpy::BigInt&>);
+static_assert(std::is_same_v<::tpy::param_val_or_ref_t<::tpy::String>,
+                             const ::tpy::String&>);
+static_assert(std::is_same_v<::tpy::param_val_or_ref_t<std::tuple<int32_t, std::string>>,
+                             const std::tuple<int32_t, std::string>&>);
+static_assert(std::is_same_v<::tpy::param_val_or_ref_t<Point>, Point&>);
+static_assert(std::is_same_v<::tpy::param_val_or_cref_t<int32_t>, int32_t>);
+static_assert(std::is_same_v<::tpy::param_val_or_cref_t<Point>, const Point&>);
+// The `_last` helpers move exactly a slot that holds a value of its own.
+static_assert(::tpy::param_holds_value_v<int32_t>);
+static_assert(::tpy::param_holds_value_v<own_arg<Point>>);
+static_assert(!::tpy::param_holds_value_v<Point>);
+static_assert(!::tpy::param_holds_value_v<::tpy::BigInt>);
+static_assert(!::tpy::param_holds_value_v<std::string>);
+static_assert(!::tpy::param_holds_value_v<std::tuple<int32_t>>);
+// Copyable but not movable: its slot holds a value, yet a move would not bind.
+struct Pinned {
+    Pinned() = default;
+    Pinned(const Pinned&) = default;
+    Pinned(Pinned&&) = delete;
+};
 }  // namespace owned_tag
+template<> struct tpy::is_value_type<owned_tag::Pinned> : std::true_type {};
+namespace owned_tag {
+static_assert(std::is_same_v<::tpy::param_val_or_ref_t<Pinned>, Pinned>);
+static_assert(!::tpy::param_holds_value_v<Pinned>);
+// A hand-off moves a slot that holds a value; a body last use moves only the
+// owned tag (the twin copies `g(x)` of a by-value parameter).
+static_assert(std::is_same_v<decltype(::tpy::param_handoff<int32_t>(std::declval<int32_t&>())),
+                             int32_t&&>);
+static_assert(std::is_same_v<decltype(::tpy::param_handoff<Pinned>(std::declval<Pinned&>())),
+                             Pinned&>);
+static_assert(std::is_same_v<decltype(::tpy::param_pass_last<int32_t>(std::declval<int32_t&>())),
+                             int32_t&>);
+static_assert(std::is_same_v<decltype(::tpy::open_local_last<Pinned>(std::declval<Pinned&>())),
+                             Pinned&>);
+// An open-result local's last use copies at a value storage type, as the
+// twin's local does; only an owned value storage moves.
+static_assert(std::is_same_v<decltype(::tpy::open_local_last<int32_t>(std::declval<int32_t&>())),
+                             int32_t&>);
+static_assert(std::is_same_v<decltype(::tpy::open_local_handoff<int32_t>(std::declval<int32_t&>())),
+                             int32_t&&>);
+static_assert(std::is_same_v<decltype(::tpy::open_local_handoff<Pinned>(std::declval<Pinned&>())),
+                             Pinned&>);
+static_assert(std::is_same_v<decltype(::tpy::open_local_last<own_arg<std::string>>(
+                                 std::declval<std::string&>())),
+                             std::string&&>);
+// A const source (a `readonly[T]` parameter) keeps its const at a reference
+// `T`'s return; a value `T` returns the value.
+static_assert(std::is_same_v<decltype(::tpy::param_to_return<Point>(std::declval<const Point&>())),
+                             const Point&>);
+static_assert(std::is_same_v<decltype(::tpy::param_to_return<Point>(std::declval<Point&>())),
+                             Point&>);
+
+// Copied, never moved: a value whose copy and move are counted.
+struct Counted {
+    static inline int copies = 0;
+    static inline int moves = 0;
+    int v = 0;
+    Counted() = default;
+    Counted(const Counted& o) : v(o.v) { ++copies; }
+    Counted(Counted&& o) noexcept : v(o.v) { ++moves; o.v = -1; }
+};
+}  // namespace owned_tag
+template<> struct tpy::is_value_type<owned_tag::Counted> : std::true_type {};
+
+namespace {
+// A body's staged or frame-field return at its last use copies at a value
+// `T` (the twin's `V __tpy_ret_0 = x;`); only the direct `return x;`, spelled
+// through `param_handoff`, moves.
+void return_last_copies() {
+    using owned_tag::Counted;
+    Counted c;
+    c.v = 7;
+    Counted r = ::tpy::param_to_return_last<Counted>(c);
+    check(Counted::copies == 1 && Counted::moves == 0 && c.v == 7 && r.v == 7,
+          "param_to_return_last copies a value T");
+    Counted m = ::tpy::param_to_return<Counted>(::tpy::param_handoff<Counted>(c));
+    check(Counted::copies == 1 && Counted::moves == 1 && m.v == 7,
+          "the direct return moves a value T");
+}
+}  // namespace
 
 int main() {
     slot_spelling();
     accessor_constness();
     collect_allocations();
+    return_last_copies();
     if (failures != 0) {
         std::printf("%d yield-slot form check(s) failed\n", failures);
         return 1;

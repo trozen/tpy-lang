@@ -22,7 +22,7 @@ struct Same {
 
     // def __init__(self, a: T, b: T) -> None:
     Same() = default;
-    explicit Same(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b);
+    explicit Same(::tpy::param_val_or_cref_t<T> a, ::tpy::param_val_or_cref_t<T> b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Same";
 };
 
@@ -37,9 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const Same<T>& obj) {
 //     self.a = a
 //     self.b = b
 template<typename T>
-inline Same<T>::Same(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b)
-    : a(a),
-      b(b) {}
+inline Same<T>::Same(::tpy::param_val_or_cref_t<T> a, ::tpy::param_val_or_cref_t<T> b)
+    : a(::tpy::param_consume<T>(a)),
+      b(::tpy::param_consume<T>(b)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

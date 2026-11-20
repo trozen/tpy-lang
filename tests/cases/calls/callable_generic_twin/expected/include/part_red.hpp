@@ -59,7 +59,7 @@ template<typename T, typename __F0>
     for (int32_t i = 1; i < __stop_0; ++i) {
         ::tpy::reseat_result<T>(acc, __slot_2, func(::tpy::param_pass<T>((*acc)), ::tpy::param_pass<T>(::tpy::__getitem__(xs, i))));
     }
-    return ::tpy::param_to_return<T>(::tpy::open_local_last<T>((*acc)));
+    return ::tpy::param_to_return<T>(::tpy::open_local_handoff<T>((*acc)));
 }
 // def red_touch(func: Fn[[P, P], P], xs: list[P]) -> P:
 //     return red(func, xs)
@@ -91,7 +91,7 @@ template<typename T, typename __F0>
     for (int32_t i = 1; i < __stop_0; ++i) {
         ::tpy::reseat_result<T>(acc, __slot_2, func(::tpy::param_pass<T>((*acc)), ::tpy::param_pass<T>(::tpy::__getitem__(xs, i))));
     }
-    return ::tpy::param_to_return<T>(::tpy::open_local_last<T>((*acc)));
+    return ::tpy::param_to_return<T>(::tpy::open_local_handoff<T>((*acc)));
 }
 // def fin[T](x: T) -> T:
 //     try:

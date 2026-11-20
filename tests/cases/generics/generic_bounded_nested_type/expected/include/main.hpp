@@ -48,7 +48,7 @@ struct Wrapper {
 
     // def __init__(self, holder: V) -> None:
     Wrapper() = default;
-    explicit Wrapper(::tpy::readonly_form_t<V> holder);
+    explicit Wrapper(::tpy::param_val_or_cref_t<V> holder);
 
     // def get_holder(self) -> V:
     ::tpy::val_or_ref_t<V> get_holder();
@@ -75,7 +75,7 @@ inline std::vector<int32_t>& IntListHolder::items() {
 // def __init__(self, holder: V) -> None:
 //     self.holder = holder
 template<ItemsProvider<int32_t> V>
-inline Wrapper<V>::Wrapper(::tpy::readonly_form_t<V> holder) : holder(holder) {}
+inline Wrapper<V>::Wrapper(::tpy::param_val_or_cref_t<V> holder) : holder(::tpy::param_consume<V>(holder)) {}
 
 // def get_holder(self) -> V:
 //     return self.holder

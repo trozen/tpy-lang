@@ -185,7 +185,7 @@ template<typename A, ::tpy::ReferenceType T, typename __F0>
       { __fn(static_cast<decltype(__a0)&&>(__a0)) } -> ::tpy::returns_form<T>;
   }
 ::tpy::val_or_ref_t<T> pick(__F0&& f, ::tpy::param_val_or_ref_t<A> k, ::tpy::param_val_or_ref_t<T> d) {
-    return ::tpy::param_to_return_last<T>(d);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(d));
 }
 // @dispatch
 // def fold[T: ReferenceType](func: Fn[[T, T], T], a: list[T]) -> T:
@@ -207,7 +207,7 @@ template<::tpy::ReferenceType T, typename __F0>
     for (int32_t i = 1; i < __stop_0; ++i) {
         ::tpy::reseat_result<T>(acc, __slot_2, func(::tpy::param_pass<T>((*acc)), ::tpy::param_pass<T>(::tpy::__getitem__(a, i))));
     }
-    return ::tpy::param_to_return<T>(::tpy::open_local_last<T>((*acc)));
+    return ::tpy::param_to_return<T>(::tpy::open_local_handoff<T>((*acc)));
 }
 // @dispatch
 // def fold[T](func: Fn[[T, T], Own[T]], a: list[T]) -> Own[T]:
@@ -235,7 +235,7 @@ template<typename T, typename __F0>
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> keep(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // def collect[T](x: T) -> int32:
 //     xs = list[T]()

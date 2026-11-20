@@ -23,7 +23,7 @@ struct Inner {
 
     // def __init__(self, value: T) -> None:
     Inner() = default;
-    explicit Inner(::tpy::readonly_form_t<T> value);
+    explicit Inner(::tpy::param_val_or_cref_t<T> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -41,7 +41,7 @@ struct Outer {
 
     // def __init__(self, inner: T) -> None:
     Outer() = default;
-    explicit Outer(::tpy::readonly_form_t<T> inner);
+    explicit Outer(::tpy::param_val_or_cref_t<T> inner);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -55,12 +55,12 @@ inline std::ostream& operator<<(std::ostream& os, const Outer<T>& obj) {
 // def __init__(self, value: T) -> None:
 //     self.value = value
 template<typename T>
-inline Inner<T>::Inner(::tpy::readonly_form_t<T> value) : value(value) {}
+inline Inner<T>::Inner(::tpy::param_val_or_cref_t<T> value) : value(::tpy::param_consume<T>(value)) {}
 
 // def __init__(self, inner: T) -> None:
 //     self.inner = inner
 template<typename T>
-inline Outer<T>::Outer(::tpy::readonly_form_t<T> inner) : inner(inner) {}
+inline Outer<T>::Outer(::tpy::param_val_or_cref_t<T> inner) : inner(::tpy::param_consume<T>(inner)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

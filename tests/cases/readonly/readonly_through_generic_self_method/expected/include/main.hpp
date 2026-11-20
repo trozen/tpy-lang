@@ -23,7 +23,7 @@ struct Holder {
 
     // def __init__(self, val: T) -> None:
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<T> val);
+    explicit Holder(::tpy::param_val_or_cref_t<T> val);
 
     // def identity[U](self, key: U) -> U:
     template<typename U>
@@ -63,14 +63,14 @@ inline std::ostream& operator<<(std::ostream& os, const SubHolder<T>& obj) {
 // def __init__(self, val: T) -> None:
 //     self.val = val
 template<typename T>
-inline Holder<T>::Holder(::tpy::readonly_form_t<T> val) : val(val) {}
+inline Holder<T>::Holder(::tpy::param_val_or_cref_t<T> val) : val(::tpy::param_consume<T>(val)) {}
 
 // def identity[U](self, key: U) -> U:
 //     return key
 template<typename T>
 template<typename U>
 inline ::tpy::val_or_ref_t<U> Holder<T>::identity(::tpy::param_val_or_ref_t<U> key) const {
-    return ::tpy::param_to_return_last<U>(key);
+    return ::tpy::param_to_return<U>(::tpy::param_handoff<U>(key));
 }
 
 // def lookup(self, x: int32) -> int32:

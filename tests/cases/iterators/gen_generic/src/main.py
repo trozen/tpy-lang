@@ -43,7 +43,7 @@ def bump_each[T: Appendable](obj: T, count: int32) -> Iterator[int32]:
 
 
 def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
-    # the `readonly[T]` slot: the param is `readonly_form_t<T>` and the frame
+    # the `readonly[T]` slot: the param is `param_val_or_cref_t<T>` and the frame
     # member `val_or_cref_t<T>` -- a const reference at a reference
     # instantiation, a copy at a value one. Const either way, so only a
     # @readonly method is callable through it and `obj.append(1)` here would
@@ -63,7 +63,7 @@ class Sized(Protocol):
 def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
     # the same slot at a VALUE instantiation (str): the frame copies the
     # argument into its own member (`val_or_cref_t<T>`), which is what lets
-    # an RVALUE source below survive -- the factory's `readonly_form_t<T>`
+    # an RVALUE source below survive -- the factory's `param_val_or_cref_t<T>`
     # slot is only a view of the caller's temporary.
     i: int32 = 0
     while i < count:

@@ -171,7 +171,7 @@ struct Pair {
 
     // def __init__(self, a: A, b: B) -> None:
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<A> a, ::tpy::readonly_form_t<B> b);
+    explicit Pair(::tpy::param_val_or_cref_t<A> a, ::tpy::param_val_or_cref_t<B> b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -293,9 +293,9 @@ inline void Built<N>::run() const {
 //     self.a = a  # tpyc: warning(/may copy A/)
 //     self.b = b  # tpyc: warning(/may copy B/)
 template<typename A, typename B>
-inline Pair<A, B>::Pair(::tpy::readonly_form_t<A> a, ::tpy::readonly_form_t<B> b)
-    : a(a),
-      b(b) {}
+inline Pair<A, B>::Pair(::tpy::param_val_or_cref_t<A> a, ::tpy::param_val_or_cref_t<B> b)
+    : a(::tpy::param_consume<A>(a)),
+      b(::tpy::param_consume<B>(b)) {}
 
 // def run(self) -> None:
 //     # A default-int read of the largest int32 fits its checked conversion.
@@ -309,7 +309,7 @@ inline void Edge<N>::run() const {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // def outer[T](x: T) -> None:
 //     def inner() -> None:

@@ -37,8 +37,8 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, ::tpy::yield_sl
 
     __gen_pair(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_)
         : __state(S_INITIAL),
-          a(::tpy::param_pass_last<T>(a_)),
-          b(::tpy::param_pass_last<T>(b_)) {}
+          a(::tpy::param_handoff<T>(a_)),
+          b(::tpy::param_handoff<T>(b_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_pair& __iter__() { return *this; }

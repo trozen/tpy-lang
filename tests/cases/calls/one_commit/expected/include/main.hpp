@@ -144,7 +144,7 @@ struct G {
 
     // def __init__(self, a: T, *, b: int32 = 0) -> None:
     G() = default;
-    explicit G(::tpy::readonly_form_t<T> a, int32_t b = 0);
+    explicit G(::tpy::param_val_or_cref_t<T> a, int32_t b = 0);
     static constexpr std::string_view __tpy_class_name__ = "__main__.G";
 };
 
@@ -208,7 +208,7 @@ struct CbFixed {
 
     // def __init__(self, cb: Callable[[int32], int32], x: T) -> None:
     CbFixed() = default;
-    explicit CbFixed(std::function<int32_t(int32_t)> cb, ::tpy::readonly_form_t<T> x);
+    explicit CbFixed(std::function<int32_t(int32_t)> cb, ::tpy::param_val_or_cref_t<T> x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.CbFixed";
 };
 
@@ -276,7 +276,7 @@ struct DBag {
     std::vector<::tpy::storage_t<T>> items;
 
     // def __init__(self, v: T = 0) -> None:
-    explicit DBag(::tpy::readonly_form_t<T> v = 0);
+    explicit DBag(::tpy::param_val_or_cref_t<T> v = 0);
 
     // def put(self, x: T) -> None:
     void put(::tpy::param_val_or_ref_t<T> x);
@@ -408,7 +408,7 @@ struct KwC {
     explicit KwC(Num& kw);
 
     // def put(self, v: T) -> None:
-    void put(::tpy::readonly_form_t<T> v) const;
+    void put(::tpy::param_val_or_cref_t<T> v) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.KwC";
 };
 
@@ -581,8 +581,8 @@ inline void Maker::go() const {
 //     self.a = copy(a)
 //     self.b = b
 template<typename T>
-inline G<T>::G(::tpy::readonly_form_t<T> a, int32_t b)
-    : a(a),
+inline G<T>::G(::tpy::param_val_or_cref_t<T> a, int32_t b)
+    : a(::tpy::param_consume<T>(a)),
       b(b) {}
 
 // def __init__(self, cb: Callable[[T], T], x: T) -> None:
@@ -593,7 +593,7 @@ inline Cb<T>::Cb(std::function<::tpy::storage_t<T>(::tpy::param_val_or_ref_t<T>)
 // def __init__(self, cb: Callable[[int32], int32], x: T) -> None:
 //     self.r = f"{cb(5)}:{x}"
 template<typename T>
-inline CbFixed<T>::CbFixed(std::function<int32_t(int32_t)> cb, ::tpy::readonly_form_t<T> x) : r(std::format("{}:{}", cb(5), ::tpy::__str__(x))) {}
+inline CbFixed<T>::CbFixed(std::function<int32_t(int32_t)> cb, ::tpy::param_val_or_cref_t<T> x) : r(std::format("{}:{}", cb(5), ::tpy::__str__(x))) {}
 
 // def ap[T, U](self, f: Callable[[T], U], v: T) -> U:
 //     return f(v)
@@ -606,8 +606,8 @@ inline ::tpy::val_or_ref_t<U> Ap::ap(std::function<::tpy::val_or_ref_t<U>(::tpy:
 //     self.v = copy(v)
 //     self.items = []
 template<typename T>
-inline DBag<T>::DBag(::tpy::readonly_form_t<T> v)
-    : v(v),
+inline DBag<T>::DBag(::tpy::param_val_or_cref_t<T> v)
+    : v(::tpy::param_consume<T>(v)),
       items(std::vector<::tpy::storage_t<T>>{}) {}
 
 // def put(self, x: T) -> None:
@@ -687,7 +687,7 @@ inline KwC<T>::KwC(Num& kw) {
 // def put(self, v: T) -> None:
 //     pass
 template<typename T>
-inline void KwC<T>::put(::tpy::readonly_form_t<T> v) const {
+inline void KwC<T>::put(::tpy::param_val_or_cref_t<T> v) const {
 }
 
 void __tpy_init();

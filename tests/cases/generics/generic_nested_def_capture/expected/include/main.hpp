@@ -29,7 +29,7 @@ template<::tpyapp::fixtures::HasGet T>
 std::function<void(std::string_view)> mkp(::tpy::param_val_or_ref_t<T> x);
 // def mkr[T](x: readonly[T]) -> Callable[[str], None]:
 template<typename T>
-std::function<void(std::string_view)> mkr(::tpy::readonly_form_t<T> x);
+std::function<void(std::string_view)> mkr(::tpy::param_val_or_cref_t<T> x);
 // def nonesc[T](x: T, c: C) -> None:
 template<typename T>
 void nonesc(::tpy::param_val_or_ref_t<T> x, ::tpyapp::fixtures::C& c);
@@ -79,7 +79,7 @@ std::function<void(std::string_view)> mkp(::tpy::param_val_or_ref_t<T> x) {
 //         print(tag, x)  # readonly[T]
 //     return g
 template<typename T>
-std::function<void(std::string_view)> mkr(::tpy::readonly_form_t<T> x) {
+std::function<void(std::string_view)> mkr(::tpy::param_val_or_cref_t<T> x) {
     auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)](std::string_view tag) {
         auto& x = __cap_x.v;
         std::cout << tag << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;

@@ -63,7 +63,7 @@ struct __coro_Container_echo {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -113,7 +113,7 @@ struct __coro_Container_labeled {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<std::string, ::tpy::val_or_ptr_t<T>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

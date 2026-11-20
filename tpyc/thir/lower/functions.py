@@ -51,7 +51,7 @@ from ...typesys import (
     none_default_cpp_spelling,
     unwrap_readonly,
     unwrap_ref_type,
-    unwrap_send_sync,
+    unwrap_send_sync, open_type_param,
     view_family_for_type,
 )
 from ...codegen_cpp import emit_prims
@@ -237,13 +237,16 @@ def _param_reassign_copies(func: TpyFunction,
         opt_inner = pt.inner if isinstance(pt, OptionalType) else None
         fam = view_family_for_type(opt_inner if opt_inner is not None else pt)
         init_cpp = None
-        if isinstance(unwrap_readonly(pt), TypeParamRef):
+        open_t = open_type_param(pt)
+        if open_t is not None:
             # The parameter form converts to `T`'s storage through the
             # generic trait (`std::string(view)` at `str`). The statement is
             # built before the body's bindings, so it carries the render, not
-            # a conversion node over a read.
+            # a conversion node over a read. Nothing reads `__param_x` after
+            # it: a slot holding a value moves.
             init_cpp = OpenTSink.STORAGE.render(
-                unwrap_readonly(pt).to_cpp(), f"__param_{escape_cpp_name(name)}")
+                open_t.to_cpp_tag(), f"__param_{escape_cpp_name(name)}",
+                handoff=True)
         elif fam is not None:
             # A view-family param's copy respells the LOCAL owned
             # (`std::string p = std::string(__param_p);` / the Optional

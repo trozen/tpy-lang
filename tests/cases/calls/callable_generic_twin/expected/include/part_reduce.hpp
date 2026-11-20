@@ -81,7 +81,7 @@ template<typename T, ::tpy::ReferenceType U, typename __F0>
     for (int32_t i = 0; i < __stop_0; ++i) {
         ::tpy::reseat_result<U>(acc, __slot_2, func(::tpy::param_pass<U>((*acc)), ::tpy::param_pass<T>(a[static_cast<std::size_t>(i)])));
     }
-    return ::tpy::param_to_return<U>(::tpy::open_local_last<U>((*acc)));
+    return ::tpy::param_to_return<U>(::tpy::open_local_handoff<U>((*acc)));
 }
 // def red_u[T, U](func: Fn[[U, T], U], a: list[T], initial: U) -> U:
 //     acc = initial
@@ -100,7 +100,7 @@ template<typename T, typename U, typename __F0>
     for (int32_t i = 0; i < __stop_0; ++i) {
         ::tpy::reseat_result<U>(acc, __slot_2, func(::tpy::param_pass<U>((*acc)), ::tpy::param_pass<T>(a[static_cast<std::size_t>(i)])));
     }
-    return ::tpy::param_to_return<U>(::tpy::open_local_last<U>((*acc)));
+    return ::tpy::param_to_return<U>(::tpy::open_local_handoff<U>((*acc)));
 }
 
 void __tpy_init();

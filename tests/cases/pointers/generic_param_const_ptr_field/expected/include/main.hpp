@@ -50,7 +50,7 @@ struct RWView {
 
     // def __init__(self, src: W) -> None:
     RWView() = default;
-    explicit RWView(::tpy::readonly_form_t<W> src);
+    explicit RWView(::tpy::param_val_or_cref_t<W> src);
 
     // def read(self) -> int32:
     int32_t read() const;
@@ -71,7 +71,7 @@ struct ROView {
 
     // def __init__(self, src: readonly[W]) -> None:
     ROView() = default;
-    explicit ROView(::tpy::readonly_form_t<W> src);
+    explicit ROView(::tpy::param_val_or_cref_t<W> src);
 
     // def read(self) -> int32:
     int32_t read() const;
@@ -99,7 +99,7 @@ inline int32_t Counter::value() const {
 // def __init__(self, src: W) -> None:
 //     self._src = src
 template<Reads W>
-inline RWView<W>::RWView(::tpy::readonly_form_t<W> src) : _src(&src) {}
+inline RWView<W>::RWView(::tpy::param_val_or_cref_t<W> src) : _src(&src) {}
 
 // def read(self) -> int32:
 //     return self._src.value()
@@ -111,7 +111,7 @@ inline int32_t RWView<W>::read() const {
 // def __init__(self, src: readonly[W]) -> None:
 //     self._src = src
 template<Reads W>
-inline ROView<W>::ROView(::tpy::readonly_form_t<W> src) : _src(&src) {}
+inline ROView<W>::ROView(::tpy::param_val_or_cref_t<W> src) : _src(&src) {}
 
 // def read(self) -> int32:
 //     return self._src.value()

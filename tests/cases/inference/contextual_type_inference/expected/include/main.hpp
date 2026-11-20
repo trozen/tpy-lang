@@ -51,7 +51,7 @@ struct Pair {
 
     // def __init__(self, a: A) -> None:
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<A> a);
+    explicit Pair(::tpy::param_val_or_cref_t<A> a);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
@@ -75,7 +75,7 @@ inline std::string Container<T>::__repr__() const {
 // def __init__(self, a: A) -> None:
 //     self.first = a
 template<typename A, typename B>
-inline Pair<A, B>::Pair(::tpy::readonly_form_t<A> a) : first(a) {}
+inline Pair<A, B>::Pair(::tpy::param_val_or_cref_t<A> a) : first(::tpy::param_consume<A>(a)) {}
 
 // def __repr__(self) -> str:
 //     return f"Pair(first={self.first!r}, second={self.second!r})"
@@ -94,7 +94,7 @@ Container<T> make_box() {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 void __tpy_init();

@@ -76,7 +76,7 @@ struct Pair {
 
     // def __init__(self, first: T, second: T) -> None:
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second);
+    explicit Pair(::tpy::param_val_or_cref_t<T> first, ::tpy::param_val_or_cref_t<T> second);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -106,9 +106,9 @@ inline Handler::Handler(std::function<void(int32_t)> cb) : cb(cb) {}
 //     self.first = first
 //     self.second = second
 template<typename T>
-inline Pair<T>::Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second)
-    : first(first),
-      second(second) {}
+inline Pair<T>::Pair(::tpy::param_val_or_cref_t<T> first, ::tpy::param_val_or_cref_t<T> second)
+    : first(::tpy::param_consume<T>(first)),
+      second(::tpy::param_consume<T>(second)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

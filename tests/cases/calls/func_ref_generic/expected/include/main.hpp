@@ -55,7 +55,7 @@ void main();
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // def pair[T, U](a: T, b: U) -> tuple[T, U]:
 //     return (a, b)
@@ -70,9 +70,9 @@ std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<U>> pair(::tpy::param_val
 template<::tpystd::tpy::Comparable T>
 ::tpy::val_or_ref_t<T> max_val(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     if ((a > b)) {
-        return ::tpy::param_to_return_last<T>(a);
+        return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(a));
     }
-    return ::tpy::param_to_return_last<T>(b);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(b));
 }
 // # Fn param (zero-cost template)
 // def apply_fn(f: Fn[[int32], int32], x: int32) -> int32:

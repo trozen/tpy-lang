@@ -73,11 +73,11 @@ struct Holder {
 
     // def __init__(self, u: U) -> None:
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<U> u);
+    explicit Holder(::tpy::param_val_or_cref_t<U> u);
 
     // def tag[T: ValueType](self, x: T) -> T | None:
     template<::tpy::ValueType T>
-    std::optional<::tpy::storage_t<T>> tag(::tpy::readonly_form_t<T> x) const;
+    std::optional<::tpy::storage_t<T>> tag(::tpy::param_val_or_cref_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -95,7 +95,7 @@ struct C {
     C();
 
     // def opt(self, x: T) -> T | None:
-    std::optional<::tpy::storage_t<T>> opt(::tpy::readonly_form_t<T> x) const;
+    std::optional<::tpy::storage_t<T>> opt(::tpy::param_val_or_cref_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
@@ -113,7 +113,7 @@ struct Cell {
 
     // def __init__(self, v: T) -> None:
     Cell() = default;
-    explicit Cell(::tpy::readonly_form_t<T> v);
+    explicit Cell(::tpy::param_val_or_cref_t<T> v);
 
     // def get(self) -> T:
     ::tpy::storage_t<T> get() const;
@@ -143,7 +143,7 @@ struct __coro_aw {
     __coro_aw(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<::tpy::storage_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -322,7 +322,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, ::tpy::storage_t<
 
     __gen_gen(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -433,14 +433,14 @@ __gen_drain<T, T_xs> drain(T_xs&& xs) {
 //     # the copy is real at a reference `U`
 //     self.u = u  # tpyc: warning(/may copy U into field/)
 template<typename U>
-inline Holder<U>::Holder(::tpy::readonly_form_t<U> u) : u(u) {}
+inline Holder<U>::Holder(::tpy::param_val_or_cref_t<U> u) : u(::tpy::param_consume<U>(u)) {}
 
 // def tag[T: ValueType](self, x: T) -> T | None:
 //     return x  # tpyc: ok
 template<typename U>
 template<::tpy::ValueType T>
-inline std::optional<::tpy::storage_t<T>> Holder<U>::tag(::tpy::readonly_form_t<T> x) const {
-    return ::tpy::param_consume<T>(x);
+inline std::optional<::tpy::storage_t<T>> Holder<U>::tag(::tpy::param_val_or_cref_t<T> x) const {
+    return ::tpy::param_to_storage<T>(::tpy::param_handoff<T>(x));
 }
 
 // def __init__(self) -> None:
@@ -452,14 +452,14 @@ inline C<T>::C() {
 // def opt(self, x: T) -> T | None:
 //     return x  # tpyc: ok
 template<::tpy::ValueType T>
-inline std::optional<::tpy::storage_t<T>> C<T>::opt(::tpy::readonly_form_t<T> x) const {
-    return ::tpy::param_consume<T>(x);
+inline std::optional<::tpy::storage_t<T>> C<T>::opt(::tpy::param_val_or_cref_t<T> x) const {
+    return ::tpy::param_to_storage<T>(::tpy::param_handoff<T>(x));
 }
 
 // def __init__(self, v: T) -> None:
 //     self.v = v
 template<::tpy::ValueType T>
-inline Cell<T>::Cell(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Cell<T>::Cell(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def get(self) -> T:
 //     return self.v
@@ -505,7 +505,7 @@ void show_any(::tpy::param_val_or_ref_t<T> x) {
 //     return v  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
 ::tpy::own_return_t<T> ret_own(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_consume<T>(v);
+    return ::tpy::param_to_storage<T>(::tpy::param_handoff<T>(v));
 }
 // # an `Own[T]` parameter into a `T | None` return
 // def opt_back[T: ValueType](x: Own[T]) -> T | None:

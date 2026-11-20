@@ -203,7 +203,7 @@ struct Items {
 
     // def __init__(self, v: T) -> None:
     Items() = default;
-    explicit Items(::tpy::readonly_form_t<T> v);
+    explicit Items(::tpy::param_val_or_cref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Items";
 };
 
@@ -221,7 +221,7 @@ struct VBox {
 
     // def __init__(self, v: T) -> None:
     VBox() = default;
-    explicit VBox(::tpy::readonly_form_t<T> v);
+    explicit VBox(::tpy::param_val_or_cref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.VBox";
 };
 
@@ -239,17 +239,17 @@ struct Shadow {
 
     // def __init__(self, v: T) -> None:
     Shadow() = default;
-    explicit Shadow(::tpy::readonly_form_t<T> v);
+    explicit Shadow(::tpy::param_val_or_cref_t<T> v);
 
     // def opt[T: ValueType](self, x: T) -> T | None:
-    std::optional<::tpy::storage_t<T>> opt(::tpy::readonly_form_t<T> x) const
+    std::optional<::tpy::storage_t<T>> opt(::tpy::param_val_or_cref_t<T> x) const
       requires ::tpy::ValueType<T>;
 
     // def set_local(self, x: T) -> None:
     void set_local(::tpy::param_val_or_ref_t<T> x);
 
     // def keep[T](self, x: T) -> Own[list[T]]:
-    std::vector<::tpy::storage_t<T>> keep(::tpy::readonly_form_t<T> x) const;
+    std::vector<::tpy::storage_t<T>> keep(::tpy::param_val_or_cref_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shadow";
 };
 
@@ -312,7 +312,7 @@ struct VHolder {
 
     // def __init__(self, v: T) -> None:
     VHolder() = default;
-    explicit VHolder(::tpy::readonly_form_t<T> v);
+    explicit VHolder(::tpy::param_val_or_cref_t<T> v);
 
     // def store(self, x: Own[T]) -> None:
     void store(::tpy::storage_t<T> x);
@@ -427,25 +427,25 @@ inline Holder::Holder(int32_t v) {
 // def __init__(self, v: T) -> None:
 //     self.items = [v]
 template<::tpy::ValueType T>
-inline Items<T>::Items(::tpy::readonly_form_t<T> v) : items(::tpy::make_vector<::tpy::storage_t<T>>(::tpy::param_to_storage<T>(v))) {}
+inline Items<T>::Items(::tpy::param_val_or_cref_t<T> v) : items(::tpy::make_vector<::tpy::storage_t<T>>(::tpy::param_to_storage<T>(v))) {}
 
 // def __init__(self, v: T) -> None:
 //     self.v = v
 template<::tpy::ValueType T>
-inline VBox<T>::VBox(::tpy::readonly_form_t<T> v) : v(v) {}
+inline VBox<T>::VBox(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def __init__(self, v: T) -> None:
 //     self.v = v
 template<::tpy::ValueType T>
-inline Shadow<T>::Shadow(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Shadow<T>::Shadow(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // # a method's own T shadows its class's: a `T | None` result
 // def opt[T: ValueType](self, x: T) -> T | None:
 //     return x  # tpyc: ok
 template<::tpy::ValueType T>
-inline std::optional<::tpy::storage_t<T>> Shadow<T>::opt(::tpy::readonly_form_t<T> x) const
+inline std::optional<::tpy::storage_t<T>> Shadow<T>::opt(::tpy::param_val_or_cref_t<T> x) const
   requires ::tpy::ValueType<T> {
-    return ::tpy::param_consume<T>(x);
+    return ::tpy::param_to_storage<T>(::tpy::param_handoff<T>(x));
 }
 
 // # a ValueType T local stored at its last use moves into the field
@@ -463,7 +463,7 @@ inline void Shadow<T>::set_local(::tpy::param_val_or_ref_t<T> x) {
 // def keep[T](self, x: T) -> Own[list[T]]:
 //     return [x]  # tpyc: warning(/may copy T into owned storage/)
 template<::tpy::ValueType T>
-inline std::vector<::tpy::storage_t<T>> Shadow<T>::keep(::tpy::readonly_form_t<T> x) const {
+inline std::vector<::tpy::storage_t<T>> Shadow<T>::keep(::tpy::param_val_or_cref_t<T> x) const {
     return ::tpy::make_vector<::tpy::storage_t<T>>(::tpy::param_to_storage<T>(x));
 }
 
@@ -515,8 +515,8 @@ inline std::tuple<::tpy::own_return_t<T>, A*> RHolder<T>::reb(std::tuple<::tpy::
 //     self.v = v
 //     self.xs = []
 template<::tpy::ValueType T>
-inline VHolder<T>::VHolder(::tpy::readonly_form_t<T> v)
-    : v(v),
+inline VHolder<T>::VHolder(::tpy::param_val_or_cref_t<T> v)
+    : v(::tpy::param_consume<T>(v)),
       xs(std::vector<::tpy::storage_t<T>>{}) {}
 
 // # a bounded class's method: an owned T stored, returned and appended
@@ -585,7 +585,7 @@ std::tuple<std::optional<::tpy::storage_t<T>>, int32_t> own_pair(std::tuple<std:
 //     return x
 template<::tpy::ValueType T>
 ::tpy::storage_t<T> take(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // # bounded generic: a field write and an argument
 // def bounded_paths[T: ValueType](b: VBox[T], x: T) -> None:

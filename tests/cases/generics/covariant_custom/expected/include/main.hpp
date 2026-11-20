@@ -89,7 +89,7 @@ struct Tagged {
     bool __tpy_owned_ = true;
 
     // def __init__(self, val: Own[T], tag: N) -> None:
-    explicit Tagged(::tpy::own_param_t<T> val, ::tpy::readonly_form_t<N> tag);
+    explicit Tagged(::tpy::own_param_t<T> val, ::tpy::param_val_or_cref_t<N> tag);
     Tagged(const Tagged&) = delete;
     Tagged& operator=(const Tagged&) = delete;
     Tagged(Tagged&& other) noexcept;
@@ -168,7 +168,7 @@ inline std::string Cat::name() {
 //     self._tag = tag
 //     self._owned = True
 template<typename T, typename N>
-inline Tagged<T, N>::Tagged(::tpy::own_param_t<T> val, ::tpy::readonly_form_t<N> tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))) {
+inline Tagged<T, N>::Tagged(::tpy::own_param_t<T> val, ::tpy::param_val_or_cref_t<N> tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))) {
     ::new(static_cast<void*>(this->_ptr)) ::tpy::storage_t<T>(std::move(val));
     this->_tag = ::tpy::param_consume<N>(tag);
     this->_owned = true;

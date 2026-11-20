@@ -53,7 +53,7 @@ template<typename T, typename __F0>
 ::tpy::val_or_ref_t<T> red(__F0&& func, std::vector<::tpy::storage_t<T>>& xs);
 // def count[T](x: readonly[T]) -> int32:
 template<typename T>
-int32_t count(::tpy::readonly_form_t<T> x);
+int32_t count(::tpy::param_val_or_cref_t<T> x);
 // def fwd[T](x: T) -> int32:
 template<typename T>
 int32_t fwd(::tpy::param_val_or_ref_t<T> x);
@@ -117,7 +117,7 @@ struct __gen_gen_y : public ::tpy::next_iter_mixin<__gen_gen_y<T, F_f>, ::tpy::y
     __gen_gen_y(F_f&& f_, ::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_y& __iter__() { return *this; }
@@ -243,7 +243,7 @@ inline ::tpy::val_or_ref_t<T> Ops::via(__F0&& f, ::tpy::param_val_or_ref_t<T> x)
     ::tpy::storage_t<T>* y = ::tpy::init_result<T>(__slot_1, f(::tpy::param_pass_last<T>(x)));
     std::optional<::tpy::storage_t<T>> __slot_2;
     ::tpy::reseat_result<T>(y, __slot_2, f(::tpy::param_pass<T>((*y))));
-    return ::tpy::param_to_return_last<T>(::tpy::open_local_last<T>((*y)));
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(::tpy::open_local_handoff<T>((*y))));
 }
 
 // def branch[T](f: Fn[[T], T], x: T, c: bool) -> T:
@@ -266,7 +266,7 @@ template<typename T, typename __F0>
     } else {
         ::tpy::reseat_result<T>(y, __slot_2, f(::tpy::param_pass_last<T>(x)));
     }
-    return ::tpy::param_to_return_last<T>(::tpy::open_local_last<T>((*y)));
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(::tpy::open_local_handoff<T>((*y))));
 }
 // def branch_store[T](f: Fn[[T], T], x: T, c: bool, out: list[T]) -> None:
 //     if c:
@@ -312,7 +312,7 @@ template<typename T, typename __F0>
             ::tpy::reseat_result<T>(y, __slot_2, x);
         }
     }
-    return ::tpy::param_to_return<T>(::tpy::open_local_last<T>((*y)));
+    return ::tpy::param_to_return<T>(::tpy::open_local_handoff<T>((*y)));
 }
 // def stored[T](x: T, d: dict[int32, T]) -> None:
 //     # a store of `x: T` into a dict element: the twin's hedged copy
@@ -339,12 +339,12 @@ template<typename T, typename __F0>
     for (int32_t i = 1; i < __stop_0; ++i) {
         ::tpy::reseat_result<T>(acc, __slot_2, func(::tpy::param_pass<T>((*acc)), ::tpy::param_pass<T>(::tpy::__getitem__(xs, i))));
     }
-    return ::tpy::param_to_return<T>(::tpy::open_local_last<T>((*acc)));
+    return ::tpy::param_to_return<T>(::tpy::open_local_handoff<T>((*acc)));
 }
 // def count[T](x: readonly[T]) -> int32:
 //     return 1
 template<typename T>
-int32_t count(::tpy::readonly_form_t<T> x) {
+int32_t count(::tpy::param_val_or_cref_t<T> x) {
     return 1;
 }
 // def fwd[T](x: T) -> int32:

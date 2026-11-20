@@ -61,9 +61,9 @@ inline double Util::larger_float(double a, double b) {
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Util::pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     if ((a > b)) {
-        return ::tpy::param_to_return_last<T>(a);
+        return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(a));
     }
-    return ::tpy::param_to_return_last<T>(b);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(b));
 }
 
 void __tpy_init();

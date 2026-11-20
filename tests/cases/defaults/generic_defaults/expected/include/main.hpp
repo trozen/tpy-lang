@@ -30,7 +30,7 @@ template<typename T>
     if ((::tpy::__len__(items) > 0)) {
         return ::tpy::__getitem__(items, 0);
     }
-    return ::tpy::param_to_return_last<T>(fallback);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(fallback));
 }
 // def fallback_or[T](items: list[T], fallback: T = 0) -> T:
 //     if len(items) > 0:
@@ -41,7 +41,7 @@ template<typename T>
     if ((::tpy::__len__(items) > 0)) {
         return ::tpy::__getitem__(items, 0);
     }
-    return ::tpy::param_to_return_last<T>(fallback);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(fallback));
 }
 // def pick[T](a: T, b: T, use_first: bool = True) -> T:
 //     if use_first:
@@ -50,9 +50,9 @@ template<typename T>
 template<typename T>
 ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b, bool use_first) {
     if (use_first) {
-        return ::tpy::param_to_return_last<T>(a);
+        return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(a));
     }
-    return ::tpy::param_to_return_last<T>(b);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(b));
 }
 
 void __tpy_init();

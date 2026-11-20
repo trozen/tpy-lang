@@ -1188,7 +1188,8 @@ class TypeParamRef(TpyType):
         if self.kind == TypeParamKind.INT:
             # INT params are passed by value (they're std::size_t)
             return f"std::size_t {name}"
-        # Use trait-based param type: const T& for value types, T& for object types
+        # The trait answers the instantiation's own parameter form: the
+        # value, a view or a const reference at a value type, `T&` otherwise.
         return f"::tpy::param_val_or_ref_t<{self.to_cpp_tag()}> {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
@@ -1197,9 +1198,10 @@ class TypeParamRef(TpyType):
         # Not `const T&`: at a type whose parameter form is a distinct view
         # (`str`, `bytes`) that slot cannot bind the caller's read, and inside a
         # generic body there is nothing to materialize because `T` is not fixed.
-        # `readonly_form_t` const-qualifies a mutable reference and passes every
-        # other form through, so a reference instantiation keeps `const T&`.
-        return f"::tpy::readonly_form_t<{self.to_cpp_tag()}> {name}"
+        # `param_val_or_cref_t` const-qualifies a mutable reference and passes
+        # every other form through, so a reference instantiation keeps
+        # `const T&`.
+        return f"::tpy::param_val_or_cref_t<{self.to_cpp_tag()}> {name}"
 
     def to_cpp_return(self) -> str:
         if self.kind == TypeParamKind.INT:
@@ -1242,7 +1244,7 @@ class UnownedParam(TypeParamRef):
         return unowned(replacement)
 
     def to_cpp_const_param(self, name: str) -> str:
-        return f"::tpy::readonly_form_t<{self.to_cpp()}> {name}"
+        return f"::tpy::param_val_or_cref_t<{self.to_cpp()}> {name}"
 
 
 def stored_element(t: 'TpyType | int') -> 'TpyType | int':
@@ -2194,6 +2196,11 @@ class OwnType(TpyType):
     """
     wrapped: TpyType
 
+    def _open_param(self) -> 'TypeParamRef | None':
+        # `Own[Send[T]]` hands over the `T` as `Own[T]` does.
+        return open_type_param(self.wrapped, through_readonly=False,
+                               int_kind=True)
+
     def is_plain(self) -> bool:
         """`Own[X]` is plain `X`: a by-value scalar, which a parameter, a
         result and a container hold alike."""
@@ -2235,11 +2242,11 @@ class OwnType(TpyType):
         if self.wrapped.is_value_type():
             return self.wrapped.to_cpp()
         cpp_type = self.wrapped.to_cpp()
-        if isinstance(self.wrapped, TypeParamRef):
+        if (tp := self._open_param()) is not None:
             # own_param_t resolves to unique_ptr<T> for abstract @dynamic T,
             # T&& otherwise -- lazy per-T dispatch in a template context.
             # Also prevents forwarding-ref deduction (non-deduced context).
-            return f"::tpy::own_param_t<{self.wrapped.to_cpp_tag()}>"
+            return f"::tpy::own_param_t<{tp.to_cpp_tag()}>"
         return f"{cpp_type}&&"
 
     def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
@@ -2247,7 +2254,7 @@ class OwnType(TpyType):
         # storage form (`Own[str]` is `std::string`, never the view).
         if is_dyn_protocol(self.wrapped) or self.wrapped.is_value_type():
             return ParamPassing.VALUE
-        if isinstance(self.wrapped, TypeParamRef):
+        if self._open_param() is not None:
             return ParamPassing.TRAIT
         return ParamPassing.OWN
 
@@ -2263,8 +2270,8 @@ class OwnType(TpyType):
         if self.wrapped.is_value_type():
             return f"{self.wrapped.to_cpp()} {name}"
         cpp_type = self.wrapped.to_cpp()
-        if isinstance(self.wrapped, TypeParamRef):
-            return f"::tpy::own_param_t<{self.wrapped.to_cpp_tag()}> {name}"
+        if (tp := self._open_param()) is not None:
+            return f"::tpy::own_param_t<{tp.to_cpp_tag()}> {name}"
         return f"{cpp_type}&& {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
@@ -2274,12 +2281,12 @@ class OwnType(TpyType):
         # Lazy dispatch via own_return_t<T>: T for concrete, unique_ptr<T>
         # for abstract @dynamic. Direct `T` would be ill-formed when T
         # monomorphizes to an abstract base.
-        if self.return_passing() is ReturnPassing.TRAIT:
-            return f"::tpy::own_return_t<{self.wrapped.to_cpp_tag()}>"
+        if (tp := self._open_param()) is not None:
+            return f"::tpy::own_return_t<{tp.to_cpp_tag()}>"
         return self.to_cpp()
 
     def return_passing(self) -> ReturnPassing:
-        if isinstance(self.wrapped, TypeParamRef):
+        if self._open_param() is not None:
             return ReturnPassing.TRAIT
         return ReturnPassing.VALUE
 
@@ -3222,37 +3229,43 @@ class RefType(TpyType):
     """
     wrapped: TpyType
 
+    def _open_param(self) -> 'TypeParamRef | None':
+        # A `Send[T]` / `Sync[T]` marker is no further form: the borrow of
+        # its `T` is the trait's, as of a bare `T`.
+        return open_type_param(self.wrapped, through_readonly=False,
+                               int_kind=True)
+
     def drop_runs_user_code(self) -> bool:
         return False
 
     def to_cpp(self) -> str:
-        if isinstance(self.wrapped, TypeParamRef):
-            return self.wrapped.to_cpp_return()
+        if (tp := self._open_param()) is not None:
+            return tp.to_cpp_return()
         return f"{self.wrapped.to_cpp()}&"
 
     def to_cpp_return(self) -> str:
         if self.return_passing() is not ReturnPassing.REFERENCE:
-            return self.wrapped.to_cpp_return()
+            return (self._open_param() or self.wrapped).to_cpp_return()
         return f"{self.wrapped.to_cpp()}&"
 
     def to_cpp_return_const(self) -> str:
         if self.return_passing() is not ReturnPassing.REFERENCE:
-            return self.wrapped.to_cpp_return_const()
+            return (self._open_param() or self.wrapped).to_cpp_return_const()
         return f"const {self.wrapped.to_cpp()}&"
 
     def return_passing(self) -> ReturnPassing:
         # `to_cpp`'s form: a generic `T` keeps its own return trait.
-        if isinstance(self.wrapped, TypeParamRef):
-            return self.wrapped.return_passing()
+        if (tp := self._open_param()) is not None:
+            return tp.return_passing()
         return ReturnPassing.REFERENCE
 
     def to_cpp_param_type(self) -> str:
-        if isinstance(self.wrapped, TypeParamRef):
-            return f"::tpy::param_val_or_ref_t<{self.wrapped.name}>"
+        if (tp := self._open_param()) is not None:
+            return f"::tpy::param_val_or_ref_t<{tp.name}>"
         return f"{self.wrapped.to_cpp()}&"
 
     def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
-        if isinstance(self.wrapped, TypeParamRef):
+        if self._open_param() is not None:
             return ParamPassing.TRAIT
         return ParamPassing.CONST_REF if signature_const else ParamPassing.MUT_REF
 
@@ -3264,9 +3277,9 @@ class RefType(TpyType):
         return f"{self.to_cpp_param_type()} {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
-        if isinstance(self.wrapped, TypeParamRef):
+        if (tp := self._open_param()) is not None:
             # Not `const T&` -- see TypeParamRef.to_cpp_const_param.
-            return self.wrapped.to_cpp_const_param(name)
+            return tp.to_cpp_const_param(name)
         return f"const {self.wrapped.to_cpp()}& {name}"
 
     def to_cpp_stored(self) -> str:
@@ -3355,14 +3368,21 @@ def generic_opt_trait_type(t: 'TpyType | None') -> 'OptionalType | None':
     return None
 
 
-def open_type_param(t: 'TpyType | None') -> 'TypeParamRef | None':
+def open_type_param(t: 'TpyType | None', *, through_readonly: bool = True,
+                    int_kind: bool = False) -> 'TypeParamRef | None':
     """The open type parameter `t` names bare, through the Send / Sync,
     Ref and readonly qualifiers a parameter's declared type carries; None
-    for anything else, `Own[T]` and `T | None` included."""
+    for anything else, `Own[T]` and `T | None` included.
+    `through_readonly`: False for a reader whose form keeps the const (a
+    `readonly[T]` there is not the bare `T`); `int_kind`: an `[N: int]`
+    parameter counts too."""
+    peeled = ((RefType, ReadonlyType, _MarkerType) if through_readonly
+              else (RefType, _MarkerType))
     bare = t
-    while isinstance(bare, (RefType, ReadonlyType, _MarkerType)):
+    while isinstance(bare, peeled):
         bare = bare.wrapped
-    if isinstance(bare, TypeParamRef) and bare.kind is TypeParamKind.TYPE:
+    if isinstance(bare, TypeParamRef) and (
+            int_kind or bare.kind is TypeParamKind.TYPE):
         return bare
     return None
 
@@ -3600,7 +3620,7 @@ def is_open_type_param_return(ret: 'TpyType') -> bool:
     drift apart; the RENDER reader (`call_returns_cpp_ref`) deliberately
     answers the opposite and is not one of them.
     """
-    return isinstance(unwrap_ref_type(unwrap_readonly(ret)), TypeParamRef)
+    return open_type_param(ret, int_kind=True) is not None
 
 
 def is_ref_type(t: 'TpyType') -> bool:
@@ -4196,8 +4216,10 @@ def return_representation(t: TpyType) -> Representation:
     borrowing view (`StrView`) returns by value too, but what it returns is
     a view over storage the callee does not own."""
     t = unwrap_send_sync(unwrap_readonly(t))
-    if isinstance(t, TypeParamRef) or (
-            isinstance(t, (OwnType, RefType)) and isinstance(t.wrapped, TypeParamRef)):
+    if open_type_param(t, through_readonly=False, int_kind=True) is not None or (
+            isinstance(t, OwnType)
+            and open_type_param(t.wrapped, through_readonly=False,
+                                int_kind=True) is not None):
         return Representation.TRAIT
     if isinstance(t, OwnType):
         return Representation.STORAGE

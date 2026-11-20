@@ -29,6 +29,7 @@ from ...sema.dyn_erasure import dyn_forward_ok
 from ...sema.own_copy import contains_reference_type
 from ...type_def_registry import has_view_param_form, owned_from_view_explicit
 from ...typesys import (
+    open_type_param,
     by_value_optional_payload,
     contains_type_param,
     UnownedParam,
@@ -39,7 +40,6 @@ from ...typesys import (
     holds_borrowing_view,
     IntLiteralType,
     is_dyn_protocol,
-    is_open_type_param_return,
     lands_in_indirection,
     lands_in_view_member,
     LiteralType,
@@ -1029,8 +1029,7 @@ def is_open_t_binding(s: Source) -> bool:
     if s.open_result:
         return True
     pt = s.param_type
-    return pt is not None and is_open_type_param_return(
-        unwrap_ref_type(unwrap_send_sync(pt)))
+    return pt is not None and open_type_param(pt) is not None
 
 
 def open_t_convert(expr: THIRExpr, t: TpyType, sink: OpenTSink
@@ -1077,6 +1076,30 @@ def open_trait_lift(expr: THIRExpr, t: TpyType, trait: TraitAbi, *,
         open_slot_last=s is not None and s.slot_last, loc=expr.loc)
 
 
+def moves_implicitly(slot: Slot, s: Source, *,
+                     open_local: bool = False) -> bool:
+    """A result's own `return` moves an id-expression naming an object of
+    the returning body implicitly (C++'s `return x;`); a capture is the
+    enclosing body's. `open_local`: the read is an open-result local at its
+    last use, read through its pointer (`(*acc)`, no id-expression), which
+    the twin's `return acc;` names itself."""
+    return (slot.implicit_move and (s.id_read or open_local)
+            and not s.captured)
+
+
+def _direct_return_handoff(node: 'THIRFormConvert | None', expr: THIRExpr,
+                           slot: Slot) -> 'THIRFormConvert | None':
+    """A parameter's or an open-result local's last use at the C++
+    `return x;` itself: the twin's by-value parameter or local moves there
+    implicitly (into `T`, `Own[T]` or a value `T | None` alike). A staged or
+    frame-field return copies."""
+    if node is not None and (node.open_t_last or node.open_slot_last) and (
+            moves_implicitly(slot, expr.source,
+                             open_local=node.open_slot_last)):
+        return replace(node, open_t_handoff=True)
+    return node
+
+
 def open_param_result(expr: THIRExpr, slot: Slot,
                       member: 'TpyType | None' = None) -> 'Plan | None':
     """A result handed the bare read of an open-`T` PARAM, held in its
@@ -1097,11 +1120,13 @@ def open_param_result(expr: THIRExpr, slot: Slot,
         if (slot.trait in (TraitAbi.YIELD_SLOT, TraitAbi.VAL_OR_PTR)
                 or slot.construct is SlotConstruct.PASS):
             return None
-        node = open_param_convert(expr, slot.type, OpenTSink.RETURN)
+        node = _direct_return_handoff(
+            open_param_convert(expr, slot.type, OpenTSink.RETURN), expr, slot)
         return (Plan(node, Effect.LIFT, row="open_tparam_param")
                 if node is not None else None)
     if isinstance(member, TypeParamRef):
-        node = open_param_convert(expr, member, OpenTSink.STORAGE)
+        node = _direct_return_handoff(
+            open_param_convert(expr, member, OpenTSink.STORAGE), expr, slot)
         return (Plan(node, Effect.COPY, copied=tuple(leaves_at(member, ())))
                 if node is not None else None)
     return None
@@ -1393,9 +1418,7 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
     st = _resolve_plain_alias(slot.type, types)
     direct = slot.construct is SlotConstruct.DIRECT_INIT
     holds = slot.holds
-    # A result's own `return` moves an id-expression naming an object of
-    # the returning body implicitly; a capture is the enclosing body's.
-    implicit = slot.implicit_move and s.id_read and not s.captured
+    implicit = moves_implicitly(slot, s)
     # A lambda parameter the record moves is the lambda's own result, which
     # its result slot moves implicitly; any other move of one is a compiler
     # bug (`check_record_move`).
@@ -1892,9 +1915,10 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                     Effect.MOVE if mv else Effect.COPY,
                     copied=() if mv else tuple(leaves_at(member, ())))
     if isinstance(member, TypeParamRef):
-        if not mv and slot.construct is not SlotConstruct.DIRECT_INIT:
-            # A parameter-form read builds the member's storage; a
-            # member-init direct-initializes `T` from the param form itself.
+        if not mv:
+            # A parameter-form read builds the member's storage, a
+            # member-init's included, which takes the value over at the
+            # parameter's last use (`param_consume`).
             lifted = open_param_result(expr, slot, member)
             if lifted is not None:
                 return lifted

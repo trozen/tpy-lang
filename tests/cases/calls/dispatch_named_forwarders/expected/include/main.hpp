@@ -1181,7 +1181,7 @@ inline std::string Box<T>::put__T(::tpy::param_val_or_ref_t<T> x) {
 
 template<typename T>
 inline std::string Box<T>::put(::tpy::param_val_or_ref_t<T> x) {
-    return this->put__T(x);
+    return this->put__T(::tpy::param_handoff<T>(x));
 }
 
 // @dispatch

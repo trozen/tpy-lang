@@ -68,7 +68,7 @@ struct GBox {
 
     // def __init__(self, v: T) -> None:
     GBox() = default;
-    explicit GBox(::tpy::readonly_form_t<T> v);
+    explicit GBox(::tpy::param_val_or_cref_t<T> v);
 
     // @dispatch
     // def ov(self, x: str) -> int:
@@ -194,7 +194,7 @@ inline ::tpy::BigInt Sub::code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::
 // def __init__(self, v: T) -> None:
 //     self.v = v  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline GBox<T>::GBox(::tpy::readonly_form_t<T> v) : v(v) {}
+inline GBox<T>::GBox(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // @dispatch
 // def ov(self, x: str) -> int:

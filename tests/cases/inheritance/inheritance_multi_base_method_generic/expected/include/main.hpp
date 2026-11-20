@@ -23,7 +23,7 @@ struct Box {
 
     // def __init__(self, item: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> item);
+    explicit Box(::tpy::param_val_or_cref_t<T> item);
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get();
@@ -69,7 +69,7 @@ inline int32_t IntBox::fetch() {
 // def __init__(self, item: T) -> None:
 //     self.item = item
 template<typename T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> item) : item(item) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> item) : item(::tpy::param_consume<T>(item)) {}
 
 // def get(self) -> T:
 //     return self.item

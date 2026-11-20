@@ -2416,13 +2416,30 @@ class OpenTSink(Enum):
     PASS = auto()
 
     def render(self, t_cpp: str, value_cpp: str, last: bool = False,
-               slot_last: bool = False) -> str:
+               slot_last: bool = False, handoff: bool = False) -> str:
         """The runtime conversion of `value_cpp` for this sink; `last`: the
         read is the parameter's last use, which an `Own[X]` instantiation
         hands over instead of copying; `slot_last`: the read is an
         open-result pointer local's last use, whose pointee at a value
         storage type is the local's own slot (`open_local_last`), which
-        every sink takes over."""
+        every sink takes over; `handoff`: the compiler hands the parameter
+        on where nothing reads it again (a frame constructor, a forwarder,
+        a reassigned parameter's prologue, a direct `return x;`), which
+        moves wherever the slot holds a value (`param_handoff`)."""
+        if handoff:
+            moved = value_cpp
+            if slot_last:
+                # An open-result local dead after the read: its own slot
+                # moves where it holds a value, as the twin's `return acc;`.
+                moved = f"::tpy::open_local_handoff<{t_cpp}>({moved})"
+            if last or not slot_last:
+                moved = f"::tpy::param_handoff<{t_cpp}>({moved})"
+            if self is OpenTSink.PASS:
+                return moved
+            assert self in (OpenTSink.STORAGE, OpenTSink.RETURN), self
+            helper = ("param_to_storage" if self is OpenTSink.STORAGE
+                      else "param_to_return")
+            return f"::tpy::{helper}<{t_cpp}>({moved})"
         if slot_last:
             value_cpp = open_local_last_cpp(t_cpp, value_cpp)
         helper = ({OpenTSink.STORAGE: "param_consume",
@@ -2483,6 +2500,10 @@ class THIRFormConvert(THIRExpr):
     # The read is an open-result pointer local's last use
     # (`Source.slot_last`, `OpenTSink.render`).
     open_slot_last: bool = False
+    # The read is a parameter the C++ hands on directly (a direct
+    # `return x;`, which the twin moves implicitly): `OpenTSink.render`'s
+    # `handoff`.
+    open_t_handoff: bool = False
     # An open-`T` BORROW into a slot that spells it through its trait (a
     # tuple element's `val_or_ptr_t<T>`): the instantiation decides the
     # address-of or the value (`::tpy::to_val_or_ptr`). None: the bare

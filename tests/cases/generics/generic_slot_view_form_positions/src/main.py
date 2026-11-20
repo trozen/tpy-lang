@@ -3,7 +3,7 @@
 # `param_val_or_ref_t<T>` at the slot IS the monomorphic twin's own parameter
 # form and the view binds bare -- NO position here buys an owned temp, including
 # the three that spell their slot const (a `readonly[T]` param, a readonly
-# method's `T`, a constructor's), which render `readonly_form_t<T>`: the same
+# method's `T`, a constructor's), which render `param_val_or_cref_t<T>`: the same
 # form, const-qualified only where it is a mutable reference. The
 # `generic_slot_distinct_buffer_types` case is the inverse, one generic at all
 # five buffer types. Each section prints its own name and its monomorphic twin's
@@ -194,7 +194,7 @@ def bytes_positions(k: bytes) -> None:
 
 def readonly_slot(k: str, b: bytes) -> None:
     # readonly[T] free function, str and bytes, each beside its twin: the const
-    # slot is `readonly_form_t<T>`, which at a view family IS the view
+    # slot is `param_val_or_cref_t<T>`, which at a view family IS the view
     keys = [b"a", b"b"]
     print("readonly_slot", peek(NAMES, k), peek_str(NAMES, k))  # tpyc: ok
     print("readonly_slot", peek(keys, b), peek_bytes(keys, b))  # tpyc: ok

@@ -815,7 +815,7 @@ inline ::tpy::val_or_ref_t<T> Cell<T>::get() {
 //     return x
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Scaler::same(::tpy::param_val_or_ref_t<T> x) const {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 
 void __tpy_init();

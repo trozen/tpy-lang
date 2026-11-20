@@ -40,7 +40,7 @@ struct Container {
 
     // def __init__(self, value: T) -> None:
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value);
+    explicit Container(::tpy::param_val_or_cref_t<T> value);
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get();
@@ -61,7 +61,7 @@ struct Box : Animal {
 
     // def __init__(self, name: str, value: T) -> None:
     Box() = default;
-    explicit Box(std::string_view name, ::tpy::readonly_form_t<T> value);
+    explicit Box(std::string_view name, ::tpy::param_val_or_cref_t<T> value);
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get();
@@ -82,7 +82,7 @@ struct Wrapper : Container<int32_t> {
 
     // def __init__(self, value: int32, extra: U) -> None:
     Wrapper() = default;
-    explicit Wrapper(int32_t value, ::tpy::readonly_form_t<U> extra);
+    explicit Wrapper(int32_t value, ::tpy::param_val_or_cref_t<U> extra);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -100,7 +100,7 @@ inline Animal::Animal(std::string_view name) : name(name) {}
 // def __init__(self, value: T) -> None:
 //     self.value = value
 template<typename T>
-inline Container<T>::Container(::tpy::readonly_form_t<T> value) : value(value) {}
+inline Container<T>::Container(::tpy::param_val_or_cref_t<T> value) : value(::tpy::param_consume<T>(value)) {}
 
 // def get(self) -> T:
 //     return self.value
@@ -113,9 +113,9 @@ inline ::tpy::val_or_ref_t<T> Container<T>::get() {
 //     super().__init__(name)
 //     self.value = value
 template<typename T>
-inline Box<T>::Box(std::string_view name, ::tpy::readonly_form_t<T> value)
+inline Box<T>::Box(std::string_view name, ::tpy::param_val_or_cref_t<T> value)
     : Animal(name),
-      value(value) {}
+      value(::tpy::param_consume<T>(value)) {}
 
 // def get(self) -> T:
 //     return self.value
@@ -128,9 +128,9 @@ inline ::tpy::val_or_ref_t<T> Box<T>::get() {
 //     super().__init__(value)
 //     self.extra = extra
 template<typename U>
-inline Wrapper<U>::Wrapper(int32_t value, ::tpy::readonly_form_t<U> extra)
+inline Wrapper<U>::Wrapper(int32_t value, ::tpy::param_val_or_cref_t<U> extra)
     : Container<int32_t>(value),
-      extra(extra) {}
+      extra(::tpy::param_consume<U>(extra)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

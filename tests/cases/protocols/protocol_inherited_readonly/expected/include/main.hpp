@@ -31,7 +31,7 @@ template<Child T_x>
 int32_t read_via_child(const T_x& x);
 // def read_via_bound[T: Child](x: readonly[T]) -> int32:
 template<Child T>
-int32_t read_via_bound(::tpy::readonly_form_t<T> x);
+int32_t read_via_bound(::tpy::param_val_or_cref_t<T> x);
 
 // class Impl:
 struct Impl {
@@ -83,7 +83,7 @@ int32_t read_via_child(const T_x& x) {
 // def read_via_bound[T: Child](x: readonly[T]) -> int32:
 //     return x.read()
 template<Child T>
-int32_t read_via_bound(::tpy::readonly_form_t<T> x) {
+int32_t read_via_bound(::tpy::param_val_or_cref_t<T> x) {
     return x.read();
 }
 

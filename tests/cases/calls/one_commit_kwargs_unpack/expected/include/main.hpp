@@ -41,7 +41,7 @@ struct C {
 
     // def __init__(self, v: T, **kw: Unpack[Opt]) -> None:
     C() = default;
-    explicit C(::tpy::readonly_form_t<T> v, Opt& kw);
+    explicit C(::tpy::param_val_or_cref_t<T> v, Opt& kw);
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
@@ -78,7 +78,7 @@ inline D::D(int32_t v, Opt& kw) {
 //     kw["n"] += 1
 //     print("C kw:", kw["n"])
 template<typename T>
-inline C<T>::C(::tpy::readonly_form_t<T> v, Opt& kw) {
+inline C<T>::C(::tpy::param_val_or_cref_t<T> v, Opt& kw) {
     kw.n = ::tpy::add_check<int32_t>(kw.n, 1);
     std::cout << "C kw:" << " " << kw.n << "\n" << ::tpy::check_signals;
 }

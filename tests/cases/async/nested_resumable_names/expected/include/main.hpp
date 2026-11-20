@@ -57,7 +57,7 @@ struct Outer {
 
         // def __init__(self, value: T) -> None:
         Box() = default;
-        explicit Box(::tpy::readonly_form_t<T> value);
+        explicit Box(::tpy::param_val_or_cref_t<T> value);
 
         __coro_2_5_Outer_3_Box_3_get<T> get();
         static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Box";
@@ -316,7 +316,7 @@ struct __coro_2_5_Outer_5_Inner_4_echo {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          value(::tpy::param_pass_last<T>(value_)) {}
+          value(::tpy::param_handoff<T>(value_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -653,7 +653,7 @@ struct __coro_nested_echo {
         : __state(S_INITIAL),
           __cancel_pending(false),
           inner(inner),
-          value(::tpy::param_pass_last<T>(value_)),
+          value(::tpy::param_handoff<T>(value_)),
           delta(std::move(delta_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
@@ -911,7 +911,7 @@ inline Outer::Gate::Gate() : value(::tpy::BigInt(0)) {}
 //     # Unconstrained T may require a copy into inline field storage.
 //     self.value = value  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline Outer::Box<T>::Box(::tpy::readonly_form_t<T> value) : value(value) {}
+inline Outer::Box<T>::Box(::tpy::param_val_or_cref_t<T> value) : value(::tpy::param_consume<T>(value)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

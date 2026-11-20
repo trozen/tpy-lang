@@ -35,7 +35,7 @@ struct SortedPair {
 
     // def __init__(self, a: T, b: T) -> None:
     SortedPair() = default;
-    explicit SortedPair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b);
+    explicit SortedPair(::tpy::param_val_or_cref_t<T> a, ::tpy::param_val_or_cref_t<T> b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.SortedPair";
 };
 
@@ -74,7 +74,7 @@ inline SortedPair<int32_t> DefaultPairFactory::make_pair(int32_t a, int32_t b) c
 //         self.first = b
 //         self.second = a
 template<::tpystd::tpy::Comparable T>
-inline SortedPair<T>::SortedPair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b) {
+inline SortedPair<T>::SortedPair(::tpy::param_val_or_cref_t<T> a, ::tpy::param_val_or_cref_t<T> b) {
     if ((a < b)) {
         this->first = ::tpy::param_consume<T>(a);
         this->second = ::tpy::param_consume<T>(b);

@@ -265,7 +265,7 @@ void bytes_positions(::tpy::BytesView k) {
 
 // def readonly_slot(k: str, b: bytes) -> None:
 //     # readonly[T] free function, str and bytes, each beside its twin: the const
-//     # slot is `readonly_form_t<T>`, which at a view family IS the view
+//     # slot is `param_val_or_cref_t<T>`, which at a view family IS the view
 //     keys = [b"a", b"b"]
 //     print("readonly_slot", peek(NAMES, k), peek_str(NAMES, k))  # tpyc: ok
 //     print("readonly_slot", peek(keys, b), peek_bytes(keys, b))  # tpyc: ok

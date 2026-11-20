@@ -21,7 +21,7 @@ struct Holder {
 
     // def __init__(self, value: T):
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<T> value);
+    explicit Holder(::tpy::param_val_or_cref_t<T> value);
     // non-copyable (field '_storage')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 //     self._storage = UninitHeapStorage[T](1)
 //     self._storage.init0(value)
 template<typename T>
-inline Holder<T>::Holder(::tpy::readonly_form_t<T> value) : _storage(::tpy::UninitHeapStorage<T>(1)) {
+inline Holder<T>::Holder(::tpy::param_val_or_cref_t<T> value) : _storage(::tpy::UninitHeapStorage<T>(1)) {
     this->_storage.init0(::tpy::param_consume<T>(value));
 }
 

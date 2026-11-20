@@ -395,7 +395,7 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v);
+    explicit Box(::tpy::param_val_or_cref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "defs.Box";
 };
 
@@ -436,7 +436,7 @@ struct G {
     G();
 
     // def g(self, v: T, x: int32 = K, y: int32 = 0) -> int32:
-    int32_t g(::tpy::readonly_form_t<T> v, int32_t x = ::tpyapp::defs::K, int32_t y = 0) const;
+    int32_t g(::tpy::param_val_or_cref_t<T> v, int32_t x = ::tpyapp::defs::K, int32_t y = 0) const;
     static constexpr std::string_view __tpy_class_name__ = "defs.G";
 };
 
@@ -702,7 +702,7 @@ inline int32_t Derived::m2(int32_t x, int32_t y) const {
 // def __init__(self, v: T) -> None:
 //     pass
 template<typename T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> v) {
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> v) {
 }
 
 // def __init__(self) -> None:
@@ -714,7 +714,7 @@ inline G<T>::G() {
 // def g(self, v: T, x: int32 = K, y: int32 = 0) -> int32:
 //     return x * 10 + y
 template<typename T>
-inline int32_t G<T>::g(::tpy::readonly_form_t<T> v, int32_t x, int32_t y) const {
+inline int32_t G<T>::g(::tpy::param_val_or_cref_t<T> v, int32_t x, int32_t y) const {
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, 10)), y));
 }
 

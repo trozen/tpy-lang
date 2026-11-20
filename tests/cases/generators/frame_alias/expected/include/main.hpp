@@ -470,8 +470,8 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs<T>, ::tpy::yield_
 
     __gen_pairs(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_)
         : __state(S_INITIAL),
-          a(::tpy::param_pass_last<T>(a_)),
-          b(::tpy::param_pass_last<T>(b_)) {}
+          a(::tpy::param_handoff<T>(a_)),
+          b(::tpy::param_handoff<T>(b_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_pairs& __iter__() { return *this; }

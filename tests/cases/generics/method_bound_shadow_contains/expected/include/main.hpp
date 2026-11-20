@@ -27,7 +27,7 @@ struct MyBag {
     void add(::tpy::param_val_or_ref_t<T> value);
 
     // def __contains__[T: Equatable](self, value: T) -> bool:
-    bool __contains__(::tpy::readonly_form_t<T> value) const
+    bool __contains__(::tpy::param_val_or_cref_t<T> value) const
       requires ::tpystd::tpy::Equatable<T>;
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyBag";
 };
@@ -57,7 +57,7 @@ inline void MyBag<T>::add(::tpy::param_val_or_ref_t<T> value) {
 //             return True
 //     return False
 template<typename T>
-inline bool MyBag<T>::__contains__(::tpy::readonly_form_t<T> value) const
+inline bool MyBag<T>::__contains__(::tpy::param_val_or_cref_t<T> value) const
   requires ::tpystd::tpy::Equatable<T> {
     auto& __obj_0 = this->items;
     auto __beg_0 = __obj_0.begin();

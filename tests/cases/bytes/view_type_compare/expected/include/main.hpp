@@ -87,7 +87,7 @@ struct Box {
     explicit Box(::tpy::own_param_t<T> item);
 
     // def __contains__(self, needle: T) -> bool:
-    bool __contains__(::tpy::readonly_form_t<T> needle) const;
+    bool __contains__(::tpy::param_val_or_cref_t<T> needle) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -174,7 +174,7 @@ inline Box<T>::Box(::tpy::own_param_t<T> item) : item(std::move(item)) {}
 // def __contains__(self, needle: T) -> bool:
 //     return needle == self.item  # tpyc: ok
 template<typename T>
-inline bool Box<T>::__contains__(::tpy::readonly_form_t<T> needle) const {
+inline bool Box<T>::__contains__(::tpy::param_val_or_cref_t<T> needle) const {
     return ::tpy::eq(needle, this->item);
 }
 

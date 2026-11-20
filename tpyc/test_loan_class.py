@@ -277,7 +277,7 @@ def _rendered_passing(typ, const: bool) -> ParamPassing:
     declared fact must agree with."""
     decl = typ.to_cpp_const_param("x") if const else typ.to_cpp_param("x")
     form = decl.removesuffix(" x")
-    if any(trait in form for trait in ("param_val_or_ref_t", "readonly_form_t", "opt_param_t", "opt_cparam_t",
+    if any(trait in form for trait in ("param_val_or_ref_t", "param_val_or_cref_t", "opt_param_t", "opt_cparam_t",
                                             "own_param_t")):
         return ParamPassing.TRAIT
     if form.endswith("&&"):

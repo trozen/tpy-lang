@@ -103,9 +103,9 @@ struct Base {
     ::tpy::val_or_ref_t<V> __getitem__(::tpy::param_val_or_ref_t<K> k);
 
     // def __getitem__(self, k: K) -> V:
-    ::tpy::val_or_cref_t<V> __getitem__(::tpy::readonly_form_t<K> k) const;
+    ::tpy::val_or_cref_t<V> __getitem__(::tpy::param_val_or_cref_t<K> k) const;
 
-    ::tpy::val_or_cref_t<V> operator[](::tpy::readonly_form_t<K> k) const;
+    ::tpy::val_or_cref_t<V> operator[](::tpy::param_val_or_cref_t<K> k) const;
 
     ::tpy::val_or_ref_t<V> operator[](::tpy::param_val_or_ref_t<K> k);
 
@@ -294,18 +294,18 @@ inline ::tpy::val_or_ref_t<V> Base<K, V>::__getitem__(::tpy::param_val_or_ref_t<
 // def __getitem__(self, k: K) -> V:
 //     return self._d[k]
 template<::tpystd::tpy::Hashable K, typename V>
-inline ::tpy::val_or_cref_t<V> Base<K, V>::__getitem__(::tpy::readonly_form_t<K> k) const {
+inline ::tpy::val_or_cref_t<V> Base<K, V>::__getitem__(::tpy::param_val_or_cref_t<K> k) const {
     return ::tpy::__getitem__(this->_d, k);
 }
 
 template<::tpystd::tpy::Hashable K, typename V>
-inline ::tpy::val_or_cref_t<V> Base<K, V>::operator[](::tpy::readonly_form_t<K> k) const {
-    return __getitem__(k);
+inline ::tpy::val_or_cref_t<V> Base<K, V>::operator[](::tpy::param_val_or_cref_t<K> k) const {
+    return __getitem__(::tpy::param_handoff<K>(k));
 }
 
 template<::tpystd::tpy::Hashable K, typename V>
 inline ::tpy::val_or_ref_t<V> Base<K, V>::operator[](::tpy::param_val_or_ref_t<K> k) {
-    return __getitem__(k);
+    return __getitem__(::tpy::param_handoff<K>(k));
 }
 
 template<::tpystd::tpy::Hashable K, typename V>

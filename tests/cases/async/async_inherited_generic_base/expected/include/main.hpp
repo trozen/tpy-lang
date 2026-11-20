@@ -44,7 +44,7 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v);
+    explicit Box(::tpy::param_val_or_cref_t<T> v);
 
     // def put(self, v: T) -> None:
     void put(::tpy::param_val_or_ref_t<T> v);
@@ -69,7 +69,7 @@ struct Guard {
 
     // def __init__(self, val: T) -> None:
     Guard() = default;
-    explicit Guard(::tpy::readonly_form_t<T> val);
+    explicit Guard(::tpy::param_val_or_cref_t<T> val);
 
     __coro_Guard___aenter__<T> __aenter__();
 
@@ -95,7 +95,7 @@ struct Counter {
 
     // def __init__(self, limit: int32, seed: T) -> None:
     Counter() = default;
-    explicit Counter(int32_t limit, ::tpy::readonly_form_t<T> seed);
+    explicit Counter(int32_t limit, ::tpy::param_val_or_cref_t<T> seed);
 
     // def __aiter__(self) -> "Counter[T]":
     Counter<T>& __aiter__();
@@ -506,7 +506,7 @@ inline Leaf::Leaf(int32_t v) : Mid<int32_t>(v) {}
 // def __init__(self, v: T) -> None:
 //     self.v = v
 template<typename T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def put(self, v: T) -> None:
 //     self.v = v
@@ -519,8 +519,8 @@ inline void Box<T>::put(::tpy::param_val_or_ref_t<T> v) {
 //     self.val = val
 //     self.entered = 0
 template<typename T>
-inline Guard<T>::Guard(::tpy::readonly_form_t<T> val)
-    : val(val),
+inline Guard<T>::Guard(::tpy::param_val_or_cref_t<T> val)
+    : val(::tpy::param_consume<T>(val)),
       entered(0) {}
 
 // def __init__(self, limit: int32, seed: T) -> None:
@@ -528,10 +528,10 @@ inline Guard<T>::Guard(::tpy::readonly_form_t<T> val)
 //     self.limit = limit
 //     self.seed = seed
 template<typename T>
-inline Counter<T>::Counter(int32_t limit, ::tpy::readonly_form_t<T> seed)
+inline Counter<T>::Counter(int32_t limit, ::tpy::param_val_or_cref_t<T> seed)
     : cur(0),
       limit(limit),
-      seed(seed) {}
+      seed(::tpy::param_consume<T>(seed)) {}
 
 // def __aiter__(self) -> "Counter[T]":
 //     return self

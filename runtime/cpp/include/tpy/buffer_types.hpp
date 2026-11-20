@@ -175,6 +175,9 @@ namespace detail {
 template<> struct param_val_or_ref_impl<Bytes> {
     using type = BytesView;
 };
+template<> struct param_val_or_ref_impl<String> {
+    using type = const String&;
+};
 
 // One hash for the whole family, so a view probes a table of owners and a
 // record field holding either agrees with the table: the string_view hash

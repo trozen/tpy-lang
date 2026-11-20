@@ -43,7 +43,7 @@ struct Box {
 
     // def __init__(self, value: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> value);
+    explicit Box(::tpy::param_val_or_cref_t<T> value);
 
     // @auto_readonly
     // def __deref__(self) -> T:
@@ -76,7 +76,7 @@ inline Point::Point(int32_t x, int32_t y)
 // def __init__(self, value: T) -> None:
 //     self._value = copy(value)
 template<typename T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> value) : _value(value) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> value) : _value(::tpy::param_consume<T>(value)) {}
 
 // @auto_readonly
 // def __deref__(self) -> T:

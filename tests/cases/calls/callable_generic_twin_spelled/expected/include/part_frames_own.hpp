@@ -74,7 +74,7 @@ struct __gen_gen_rebind : public ::tpy::next_iter_mixin<__gen_gen_rebind<T, F_f>
     __gen_gen_rebind(F_f&& f_, ::tpy::param_val_or_ref_t<T> a_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          a(::tpy::param_pass_last<T>(a_)) {}
+          a(::tpy::param_handoff<T>(a_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_rebind& __iter__() { return *this; }
@@ -138,7 +138,7 @@ struct __gen_gen_walrus : public ::tpy::next_iter_mixin<__gen_gen_walrus<T, F_f>
     __gen_gen_walrus(F_f&& f_, ::tpy::param_val_or_ref_t<T> a_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          a(::tpy::param_pass_last<T>(a_)) {}
+          a(::tpy::param_handoff<T>(a_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_walrus& __iter__() { return *this; }
@@ -200,7 +200,7 @@ struct __gen_gen_walrus_once : public ::tpy::next_iter_mixin<__gen_gen_walrus_on
     __gen_gen_walrus_once(F_f&& f_, ::tpy::param_val_or_ref_t<T> a_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          a(::tpy::param_pass_last<T>(a_)) {}
+          a(::tpy::param_handoff<T>(a_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_walrus_once& __iter__() { return *this; }
@@ -252,7 +252,7 @@ template<typename T, typename __F0>
     std::optional<::tpy::storage_t<T>> __slot_1;
     ::tpy::storage_t<T>* y = nullptr;
     (void)((::tpy::reseat_result<T>(y, __slot_1, f(::tpy::param_pass_last<T>(a))), *y));
-    return ::tpy::param_to_return_last<T>(::tpy::open_local_last<T>((*y)));
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(::tpy::open_local_handoff<T>((*y))));
 }
 
 void __tpy_init();

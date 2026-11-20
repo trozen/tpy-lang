@@ -68,7 +68,7 @@ struct Meter {
 
     // def either[T](self, x: T, y: T) -> T:
     template<typename T>
-    ::tpy::val_or_ref_t<T> either(::tpy::readonly_form_t<T> x, ::tpy::param_val_or_ref_t<T> y) const;
+    ::tpy::val_or_ref_t<T> either(::tpy::param_val_or_cref_t<T> x, ::tpy::param_val_or_ref_t<T> y) const;
 
     // def top(self, v: int32) -> int64:
     int64_t top(int32_t v) const;
@@ -149,21 +149,21 @@ inline int64_t Meter::top(int32_t v) const {
 // def either[T](self, x: T, y: T) -> T:
 //     return y
 template<typename T>
-inline ::tpy::val_or_ref_t<T> Meter::either(::tpy::readonly_form_t<T> x, ::tpy::param_val_or_ref_t<T> y) const {
-    return ::tpy::param_to_return_last<T>(y);
+inline ::tpy::val_or_ref_t<T> Meter::either(::tpy::param_val_or_cref_t<T> x, ::tpy::param_val_or_ref_t<T> y) const {
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(y));
 }
 
 // def pick[T](x: T, y: T) -> T:
 //     return y
 template<typename T>
 ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y) {
-    return ::tpy::param_to_return_last<T>(y);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(y));
 }
 // def last3[T](x: T, y: T, z: T) -> T:
 //     return z
 template<typename T>
 ::tpy::val_or_ref_t<T> last3(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y, ::tpy::param_val_or_ref_t<T> z) {
-    return ::tpy::param_to_return_last<T>(z);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(z));
 }
 // @dispatch
 // def which[T](x: T, y: T) -> str:

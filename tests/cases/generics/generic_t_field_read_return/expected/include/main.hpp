@@ -73,7 +73,7 @@ inline ::tpy::val_or_ref_t<T> Cell<T>::pick() {
 //     return v
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Cell<T>::echo(::tpy::param_val_or_ref_t<T> v) const {
-    return ::tpy::param_to_return_last<T>(v);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(v));
 }
 
 // def store(self, v: T) -> None:

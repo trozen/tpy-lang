@@ -116,7 +116,7 @@ template<typename T, typename __F0>
     ::tpy::storage_t<T>* y = ::tpy::init_result<T>(__slot_1, a);
     std::optional<::tpy::storage_t<T>> __slot_2;
     ::tpy::reseat_result<T>(y, __slot_2, f(::tpy::param_pass<T>((*y))));
-    return ::tpy::param_to_return<T>(::tpy::open_local_last<T>((*y)));
+    return ::tpy::param_to_return<T>(::tpy::open_local_handoff<T>((*y)));
 }
 // # a branch-first binding: one arm a result, the other `a` itself
 // def branch[T](f: Fn[[T], T], a: T, c: bool) -> T:
@@ -138,7 +138,7 @@ template<typename T, typename __F0>
     } else {
         ::tpy::reseat_result<T>(y, __slot_2, a);
     }
-    return ::tpy::param_to_return<T>(::tpy::open_local_last<T>((*y)));
+    return ::tpy::param_to_return<T>(::tpy::open_local_handoff<T>((*y)));
 }
 // # a `try` body and a handler each binding it
 // def tried[T](f: Fn[[T], T], a: T, c: bool) -> T:
@@ -167,7 +167,7 @@ template<typename T, typename __F0>
             ::tpy::reseat_result<T>(y, __slot_2, a);
         }
     }
-    return ::tpy::param_to_return<T>(::tpy::open_local_last<T>((*y)));
+    return ::tpy::param_to_return<T>(::tpy::open_local_handoff<T>((*y)));
 }
 // # a walrus binding, then a rebind
 // def walrus[T](f: Fn[[T], T], a: T) -> T:
@@ -184,7 +184,7 @@ template<typename T, typename __F0>
     (void)((::tpy::reseat_result<T>(y, __slot_1, f(::tpy::param_pass_last<T>(a))), *y));
     std::optional<::tpy::storage_t<T>> __slot_2;
     ::tpy::reseat_result<T>(y, __slot_2, f(::tpy::param_pass<T>((*y))));
-    return ::tpy::param_to_return_last<T>(::tpy::open_local_last<T>((*y)));
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(::tpy::open_local_handoff<T>((*y))));
 }
 // # a walrus as the only binding, read once at the return
 // def walrus_once[T](f: Fn[[T], T], a: T) -> T:
@@ -198,7 +198,7 @@ template<typename T, typename __F0>
     std::optional<::tpy::storage_t<T>> __slot_1;
     ::tpy::storage_t<T>* y = nullptr;
     (void)((::tpy::reseat_result<T>(y, __slot_1, f(::tpy::param_pass_last<T>(a))), *y));
-    return ::tpy::param_to_return_last<T>(::tpy::open_local_last<T>((*y)));
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(::tpy::open_local_handoff<T>((*y))));
 }
 // # a tuple-unpack target, then a rebind
 // def unpacked[T](f: Fn[[T], T], a: T) -> T:
@@ -217,7 +217,7 @@ template<typename T, typename __F0>
     int32_t k = __unpack_0_1;
     std::optional<::tpy::storage_t<T>> __slot_2;
     ::tpy::reseat_result<T>(y, __slot_2, f(::tpy::param_pass<T>((*y))));
-    return ::tpy::param_to_return<T>(::tpy::open_local_last<T>((*y)));
+    return ::tpy::param_to_return<T>(::tpy::open_local_handoff<T>((*y)));
 }
 // # a read handed to a generic METHOD's open `T` (OPEN_SAME_T)
 // def via_method[T](r: Relay, f: Fn[[T], T], a: T) -> T:

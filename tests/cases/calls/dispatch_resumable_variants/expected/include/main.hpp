@@ -174,7 +174,7 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v);
+    explicit Box(::tpy::param_val_or_cref_t<T> v);
 
     __gen_Box_out__int32<T> out__int32(int32_t x);
     __gen_Box_out__int32<T> out(int32_t x);
@@ -745,7 +745,7 @@ struct __coro_GenManager___aenter____T {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          extra(::tpy::param_pass_last<T>(extra_)) {}
+          extra(::tpy::param_handoff<T>(extra_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -917,7 +917,7 @@ struct __coro_Steps___anext____T {
         : __state(S_INITIAL),
           __cancel_pending(false),
           __self(__self),
-          skip(::tpy::param_pass_last<T>(skip_)) {}
+          skip(::tpy::param_handoff<T>(skip_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1459,7 +1459,7 @@ struct __gen_rep__T : public ::tpy::next_iter_mixin<__gen_rep__T<T>, ::tpy::yiel
 
     __gen_rep__T(::tpy::param_val_or_ref_t<T> obj_)
         : __state(S_INITIAL),
-          obj(::tpy::param_pass_last<T>(obj_)) {}
+          obj(::tpy::param_handoff<T>(obj_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_rep__T& __iter__() { return *this; }
@@ -1514,7 +1514,7 @@ struct __gen_rep__T__int32 : public ::tpy::next_iter_mixin<__gen_rep__T__int32<T
 
     __gen_rep__T__int32(::tpy::param_val_or_ref_t<T> obj_, int32_t n_)
         : __state(S_INITIAL),
-          obj(::tpy::param_pass_last<T>(obj_)),
+          obj(::tpy::param_handoff<T>(obj_)),
           n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -2416,7 +2416,7 @@ inline void SyncManager::__exit__(std::monostate kind, std::monostate value, std
 // def __init__(self, v: T) -> None:
 //     self.v = copy(v)
 template<typename T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def __init__(self) -> None:
 //     self.log = []

@@ -94,7 +94,7 @@ struct __coro_co_rebind {
         : __state(S_INITIAL),
           __cancel_pending(false),
           f(std::forward<F_f>(f_)),
-          a(::tpy::param_pass_last<T>(a_)) {}
+          a(::tpy::param_handoff<T>(a_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -163,7 +163,7 @@ struct __gen_gen_rebind : public ::tpy::next_iter_mixin<__gen_gen_rebind<T, F_f>
     __gen_gen_rebind(F_f&& f_, ::tpy::param_val_or_ref_t<T> a_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          a(::tpy::param_pass_last<T>(a_)) {}
+          a(::tpy::param_handoff<T>(a_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_rebind& __iter__() { return *this; }
@@ -294,7 +294,7 @@ struct __gen_gen_branch : public ::tpy::next_iter_mixin<__gen_gen_branch<T, F_f>
     __gen_gen_branch(F_f&& f_, ::tpy::param_val_or_ref_t<T> a_, bool c_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          a(::tpy::param_pass_last<T>(a_)),
+          a(::tpy::param_handoff<T>(a_)),
           c(std::move(c_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -357,7 +357,7 @@ struct __gen_gen_pair : public ::tpy::next_iter_mixin<__gen_gen_pair<T, F_f>, st
     __gen_gen_pair(F_f&& f_, ::tpy::param_val_or_ref_t<T> a_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          a(::tpy::param_pass_last<T>(a_)) {}
+          a(::tpy::param_handoff<T>(a_)) {}
 
     std::expected<std::tuple<::tpy::val_or_ptr_t<T>, int32_t>, ::tpy::StopIteration> __next__();
     __gen_gen_pair& __iter__() { return *this; }
@@ -406,7 +406,7 @@ std::expected<::tpy::val_or_ref<::tpy::storage_t<T>>, E> er_relay(::tpy::param_v
     if (fail) {
         return ::tpy::make_unexpected(E{});
     }
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // # an `@error_return` call's result as the first binding, then a rebind
 // @error_return(E)
@@ -432,7 +432,7 @@ std::expected<::tpy::val_or_ref<::tpy::storage_t<T>>, E> er_bind(::tpy::param_va
             ::tpy::reseat_result<::tpy::storage_t<T>>(y, __slot_2, ::tpy::unwrap_ref_move(*__try_tmp_2));
         }
     }
-    return ::tpy::param_to_return<::tpy::storage_t<T>>(::tpy::open_local_last<::tpy::storage_t<T>>((*y)));
+    return ::tpy::param_to_return<::tpy::storage_t<T>>(::tpy::open_local_handoff<::tpy::storage_t<T>>((*y)));
 }
 
 void __tpy_init();

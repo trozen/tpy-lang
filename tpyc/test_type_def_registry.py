@@ -20,10 +20,14 @@ Two layers:
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
+from tpyc import get_runtime_dir
 from tpyc import typesys as ts
 from tpyc.type_def_registry import (
+    ParamPassing,
     TypeCategory,
     get_type_def,
     type_def_of,
@@ -1809,49 +1813,61 @@ def test_view_param_form_set_is_str_and_bytes():
 
 
 def test_view_param_form_matches_the_runtime_trait_rows():
-    """The registry's view-param set and the runtime's
+    """The registry's param-passing facts and the runtime's
     `param_val_or_ref_impl` rows are the same fact in two languages.
 
     A generic `T` parameter renders `::tpy::param_val_or_ref_t<T>`, whose
-    default is `const T&` for a value type -- the OWNED form. A type whose TPy
-    parameter form is a distinct view therefore needs a row in the runtime, or
-    a generic slot at it stops matching the monomorphic twin and the caller has
-    to materialize a copy (the defect the distinct C++ types removed). The
-    reverse drift is worse: a row for a type whose param form is NOT a view
-    would hand a generic body a view of a buffer it is supposed to own.
+    default is `T` by value for a value type -- the form a scalar or a
+    ValueType record's hand-written parameter takes. A type whose TPy
+    parameter form is something else needs a row in the runtime, or a generic
+    slot at it stops matching the monomorphic twin: a distinct VIEW (`str`,
+    `bytes`), where a missing row makes the caller materialize a copy, and a
+    CONST reference (`int`, `String`, a tuple), where a missing row copies
+    the argument the twin borrows. The reverse drift is worse: a view row for
+    a type whose param form is NOT a view would hand a generic body a view of
+    a buffer it is supposed to own.
 
-    KEY: registry side, every value TypeDef `has_view_param_form` answers True
-    for, rendered through its own `cpp_formatter`; runtime side, every
-    `param_val_or_ref_impl<X>` specialization under
-    `runtime/cpp/include/tpy/` except the `void` row, which is trait
-    machinery (`val_or_ref_t<void>` lets `def f[T] -> T` instantiate at None).
-    Both normalized by stripping a leading `::`.
+    KEY: registry side, every value TypeDef whose `param_passing` is VIEW or
+    CONST_REF, rendered through its own `cpp_formatter`, plus the structural
+    tuple (`TupleType.param_passing`); runtime side, every
+    `param_val_or_ref_impl<X>` specialization under `runtime/cpp/include/tpy/`
+    except the `void` and `own_arg<X>` rows, which are trait machinery. Both
+    normalized by stripping a leading `::`; a runtime row whose type is
+    `const ...&` is a CONST_REF row, any other a VIEW row.
     """
-    import re
-
-    from tpyc import get_runtime_dir
-    from tpyc.type_def_registry import _type_defs, has_view_param_form
-
-    registry = set()
+    registry: dict[str, ParamPassing] = {}
     for qname, td in _type_defs.items():
         if td.cpp_formatter is None or td.param_cpp_formatter is None:
             continue
         t = ts.NominalType(name=qname.rsplit(".", 1)[-1], type_args=(),
                            _module_qname=qname)
-        if has_view_param_form(t):
-            registry.add(td.cpp_formatter(()).removeprefix("::"))
+        if not t.is_value_type():
+            continue
+        passing = t.param_passing()
+        if passing in (ParamPassing.VIEW, ParamPassing.CONST_REF):
+            registry[td.cpp_formatter(()).removeprefix("::")] = passing
+    tup = ts.TupleType((ts.INT32, ts.STR))
+    assert tup.param_passing() is ParamPassing.CONST_REF
+    registry["std::tuple<Ts...>"] = ParamPassing.CONST_REF
 
     include = get_runtime_dir() / "cpp" / "include" / "tpy"
     text = "\n".join(f.read_text() for f in sorted(include.rglob("*.hpp")))
-    pat = re.compile(r"struct\s+param_val_or_ref_impl<([^;>]+)>\s*\{")
+    pat = re.compile(
+        r"struct\s+param_val_or_ref_impl<(.+?)>\s*\{\s*using\s+type\s*=\s*([^;]+);")
     def qualify(head: str) -> str:
         # A row inside `namespace tpy` spells its own types unqualified.
         return head if "::" in head else f"tpy::{head}"
 
-    rows = {qualify(h) for h in
-            ({m.group(1).strip().removeprefix("::")
-              for m in pat.finditer(text)} - {"void"})}
+    rows: dict[str, ParamPassing] = {}
+    for m in pat.finditer(text):
+        head = m.group(1).strip().removeprefix("::")
+        if head == "void" or head.startswith("own_arg<"):
+            continue
+        form = m.group(2).strip()
+        rows[qualify(head)] = (ParamPassing.CONST_REF
+                               if form.startswith("const ") and form.endswith("&")
+                               else ParamPassing.VIEW)
     assert rows, "the param_val_or_ref_impl scan found no rows at all"
     assert registry == rows, (
-        f"registry view-param types {sorted(registry)} != runtime rows "
-        f"{sorted(rows)}")
+        f"registry param forms {sorted(registry.items())} != runtime rows "
+        f"{sorted(rows.items())}")

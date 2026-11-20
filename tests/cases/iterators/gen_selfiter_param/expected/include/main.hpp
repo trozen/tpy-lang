@@ -53,7 +53,7 @@ struct __gen_repeat_n : public ::tpy::next_iter_mixin<__gen_repeat_n<T>, ::tpy::
 
     __gen_repeat_n(::tpy::param_val_or_ref_t<T> obj_, int32_t times_)
         : __state(S_INITIAL),
-          obj(::tpy::param_pass_last<T>(obj_)),
+          obj(::tpy::param_handoff<T>(obj_)),
           times(std::move(times_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();

@@ -48,7 +48,7 @@ struct Holder {
 
     // def __init__(self, k: K, v: V):
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v);
+    explicit Holder(::tpy::param_val_or_cref_t<K> k, ::tpy::param_val_or_cref_t<V> v);
 
     // @property
     // def key(self) -> K:
@@ -130,9 +130,9 @@ inline Rec::Rec(int32_t x) : x(x) {}
 //     self._k = k
 //     self._v = v
 template<typename K, typename V>
-inline Holder<K, V>::Holder(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v)
-    : _k(k),
-      _v(v) {}
+inline Holder<K, V>::Holder(::tpy::param_val_or_cref_t<K> k, ::tpy::param_val_or_cref_t<V> v)
+    : _k(::tpy::param_consume<K>(k)),
+      _v(::tpy::param_consume<V>(v)) {}
 
 // @property
 // def key(self) -> K:

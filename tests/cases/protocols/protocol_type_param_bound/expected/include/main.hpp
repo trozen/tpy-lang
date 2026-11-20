@@ -289,7 +289,7 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v);
+    explicit Box(::tpy::param_val_or_cref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -513,7 +513,7 @@ struct Gen {
 
     // def __init__(self, v: T) -> None:
     Gen() = default;
-    explicit Gen(::tpy::readonly_form_t<T> v);
+    explicit Gen(::tpy::param_val_or_cref_t<T> v);
 
     __gen_Gen_each<T> each(::tpy::param_val_or_ref_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Gen";
@@ -551,7 +551,7 @@ struct Shadow {
 
     // def __init__(self, v: T) -> None:
     Shadow() = default;
-    explicit Shadow(::tpy::readonly_form_t<T> v);
+    explicit Shadow(::tpy::param_val_or_cref_t<T> v);
 
     // def take[T](self, b: Box[T]) -> T:  # tpyc: ok
     ::tpy::val_or_ref_t<T> take(Box<T>& b) const;
@@ -617,7 +617,7 @@ struct tpy::Adapter<tpyapp::main::Sink<T>, __tpy_Impl> : tpyapp::main::Sink<T> {
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     ::tpy::storage_t<T> get() override { return inner.get(); }
-    void put(::tpy::param_val_or_ref_t<T> v) override { inner.put(v); }
+    void put(::tpy::param_val_or_ref_t<T> v) override { inner.put(::tpy::param_handoff<T>(v)); }
 };
 
 template<typename T, typename __tpy_Impl> requires tpyapp::main::__Sink_Concept__<std::remove_const_t<__tpy_Impl>, T>
@@ -625,7 +625,7 @@ struct tpy::RefAdapter<tpyapp::main::Sink<T>, __tpy_Impl> : tpyapp::main::Sink<T
     __tpy_Impl& inner;
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
     ::tpy::storage_t<T> get() override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else return inner.get(); }
-    void put(::tpy::param_val_or_ref_t<T> v) override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else inner.put(v); }
+    void put(::tpy::param_val_or_ref_t<T> v) override { if constexpr (std::is_const_v<__tpy_Impl>) ::tpy::unreachable_override(); else inner.put(::tpy::param_handoff<T>(v)); }
 };
 
 template<tpyapp::main::__Top_Concept__ T>
@@ -711,7 +711,7 @@ struct __coro_bounded_async {
     __coro_bounded_async(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     ::tpystd::tpy::Poll<::tpy::storage_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -804,7 +804,7 @@ struct __gen_bounded_gen : public ::tpy::next_iter_mixin<__gen_bounded_gen<T>, :
 
     __gen_bounded_gen(::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> __next__();
     __gen_bounded_gen& __iter__() { return *this; }
@@ -860,7 +860,7 @@ struct __gen_Gen_each : public ::tpy::next_iter_mixin<__gen_Gen_each<T>, ::tpy::
     __gen_Gen_each(const Gen<T>& __self, ::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL),
           __self(__self),
-          x(::tpy::param_pass_last<T>(x_)) {}
+          x(::tpy::param_handoff<T>(x_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Gen_each& __iter__() { return *this; }
@@ -992,7 +992,7 @@ inline int32_t TakeImpl::take(std::optional<int32_t> x) const {
 // def __init__(self, v: T) -> None:
 //     self.v = v
 template<::tpy::ValueType T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def __init__(self, b: Own[Box[U]]) -> None:
 //     self.b = b
@@ -1038,7 +1038,7 @@ inline Early<T>::Early(::tpy::own_param_t<T> t) : t(std::move(t)) {}
 // def __init__(self, v: T) -> None:
 //     self.v = v
 template<::tpy::ValueType T>
-inline Gen<T>::Gen(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Gen<T>::Gen(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def __init__(self, v: Own[T]) -> None:
 //     self.v = v
@@ -1048,7 +1048,7 @@ inline EqBox<T>::EqBox(::tpy::own_param_t<T> v) : v(std::move(v)) {}
 // def __init__(self, v: T) -> None:
 //     self.v = v
 template<::tpy::ValueType T>
-inline Shadow<T>::Shadow(::tpy::readonly_form_t<T> v) : v(v) {}
+inline Shadow<T>::Shadow(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def take[T](self, b: Box[T]) -> T:  # tpyc: ok
 //     return b.v

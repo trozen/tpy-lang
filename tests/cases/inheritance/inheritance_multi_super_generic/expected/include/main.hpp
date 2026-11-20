@@ -24,7 +24,7 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v);
+    explicit Box(::tpy::param_val_or_cref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -78,7 +78,7 @@ inline IntBox::IntBox(int32_t v)
 // def __init__(self, v: T) -> None:
 //     self.val = v
 template<typename T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> v) : val(v) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> v) : val(::tpy::param_consume<T>(v)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

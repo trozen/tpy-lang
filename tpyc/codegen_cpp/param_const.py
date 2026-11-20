@@ -35,7 +35,7 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 
 from ..typesys import (
-    TpyType, ReadonlyType, OwnType, OptionalType, TupleType, TypeParamRef,
+    TpyType, ReadonlyType, OwnType, OptionalType, TupleType, open_type_param,
     FunctionInfo,
     unwrap_readonly, unwrap_ref_type,
     param_has_mutable_borrow_surface,
@@ -124,7 +124,7 @@ def decide_param_const(
     if directly_mutated:
         return _NOT_CONST
 
-    if isinstance(inner, TypeParamRef):
+    if open_type_param(ptype, through_readonly=False, int_kind=True) is not None:
         # Generic param: signature spelling decided at instantiation time;
         # const-inference doesn't apply at the template level.
         return _NOT_CONST

@@ -306,7 +306,7 @@ struct __coro_identity {
     __coro_identity(::tpy::param_val_or_ref_t<T> n_)
         : __state(S_INITIAL),
           __cancel_pending(false),
-          n(::tpy::param_pass_last<T>(n_)) {}
+          n(::tpy::param_handoff<T>(n_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

@@ -44,7 +44,7 @@ struct Wrapper {
 
     // def __init__(self, value: T) -> None:
     Wrapper() = default;
-    explicit Wrapper(::tpy::readonly_form_t<T> value);
+    explicit Wrapper(::tpy::param_val_or_cref_t<T> value);
 
     // def __str__(self) -> str:
     std::string __str__() const;
@@ -77,7 +77,7 @@ inline std::string Pair::__str__() const {
 // def __init__(self, value: T) -> None:
 //     self.value = value
 template<::tpystd::tpy::Stringable T>
-inline Wrapper<T>::Wrapper(::tpy::readonly_form_t<T> value) : value(value) {}
+inline Wrapper<T>::Wrapper(::tpy::param_val_or_cref_t<T> value) : value(::tpy::param_consume<T>(value)) {}
 
 // def __str__(self) -> str:
 //     return f"Wrapper({self.value})"

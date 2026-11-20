@@ -109,7 +109,7 @@ struct G {
 
     // def __init__(self, tag: T) -> None:
     G() = default;
-    explicit G(::tpy::readonly_form_t<T> tag);
+    explicit G(::tpy::param_val_or_cref_t<T> tag);
 
     // def rec(self, other: B) -> Rec:
     Rec& rec(B& other) const;
@@ -203,14 +203,14 @@ inline const Rec& K::peek(const B& other) const {
 //     return v
 template<typename U>
 inline ::tpy::val_or_ref_t<U> K::echo(::tpy::param_val_or_ref_t<U> v) const {
-    return ::tpy::param_to_return_last<U>(v);
+    return ::tpy::param_to_return<U>(::tpy::param_handoff<U>(v));
 }
 
 // def __init__(self, tag: T) -> None:
 //     # the field owns its value, and a reference-typed T would be copied in
 //     self.tag = tag  # tpyc: warning(/may copy T into field/)
 template<typename T>
-inline G<T>::G(::tpy::readonly_form_t<T> tag) : tag(tag) {}
+inline G<T>::G(::tpy::param_val_or_cref_t<T> tag) : tag(::tpy::param_consume<T>(tag)) {}
 
 // # method of a generic record
 // def rec(self, other: B) -> Rec:

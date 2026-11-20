@@ -311,7 +311,7 @@ concept Sync = is_sync<storage_t<T>>::value;
 namespace detail {
     template<typename T> struct val_or_ref_impl       { using type = std::conditional_t<is_value_type<T>::value, T,        T&>; };
     template<typename T> struct val_or_cref_impl      { using type = std::conditional_t<is_value_type<T>::value, T,        const T&>; };
-    template<typename T> struct param_val_or_ref_impl { using type = std::conditional_t<is_value_type<T>::value, const T&, T&>; };
+    template<typename T> struct param_val_or_ref_impl { using type = std::conditional_t<is_value_type<T>::value, T,        T&>; };
 
     template<> struct val_or_ref_impl<void>       { using type = void; };
 
@@ -319,22 +319,50 @@ namespace detail {
     // (`unique_ptr<X>` for a @dynamic base), in mutable and const slots alike.
     template<typename X> struct val_or_ref_impl<own_arg<X>>;
     template<typename X> struct val_or_cref_impl<own_arg<X>>;
+    template<typename X> struct param_val_or_ref_impl<own_arg<X>>;
     template<> struct val_or_cref_impl<void>      { using type = void; };
     template<> struct param_val_or_ref_impl<void> { using type = void; };
 
     // `std::string` is TPy `str` and nothing else (TPy `String` is
     // `tpy::String`), so a generic slot at it takes the twin's parameter form:
-    // the view, not an owned `const std::string&` the caller would have to
+    // the view, not an owned `std::string` the caller would have to
     // materialize. The bytes sibling of this row lives in buffer_types.hpp,
     // next to `tpy::Bytes`.
     template<> struct param_val_or_ref_impl<std::string> {
         using type = std::string_view;
+    };
+
+    // The value types whose hand-written parameter is a const reference
+    // (`TypeDef.param_passing` CONST_REF, a tuple's `_param_spelling`): a
+    // generic slot at one of them takes that form too, so it neither copies
+    // where the twin borrows nor differs from it. `String`'s row lives in
+    // buffer_types.hpp, next to `tpy::String`.
+    template<> struct param_val_or_ref_impl<BigInt> {
+        using type = const BigInt&;
+    };
+    template<typename... Ts> struct param_val_or_ref_impl<std::tuple<Ts...>> {
+        using type = const std::tuple<Ts...>&;
     };
 }
 
 template<typename T> using val_or_ref_t       = typename detail::val_or_ref_impl<T>::type;
 template<typename T> using val_or_cref_t      = typename detail::val_or_cref_impl<T>::type;
 template<typename T> using param_val_or_ref_t = typename detail::param_val_or_ref_impl<T>::type;
+
+// A generic `T` parameter slot holds a value of its storage type -- at
+// `T = Own[X]`, and at a value instantiation whose parameter form is by value
+// (`int32_t`, a ValueType record) -- rather than borrowing the caller's (a
+// reference, or a view such as `string_view` at `str`). `param_handoff`
+// below moves such a slot where the hand-written twin moves its by-value
+// parameter: a hand-off, a direct `return x;`. Both operands are
+// instantiated: the owned tag's own `param_val_or_ref_impl` row keeps it away
+// from `is_value_type`. A value with no move constructor (a `@nomove`
+// binding) keeps its copy.
+template<typename T>
+inline constexpr bool param_holds_value_v =
+    is_own_arg_v<T>
+    || (std::is_same_v<param_val_or_ref_t<T>, storage_t<T>>
+        && std::is_move_constructible_v<storage_t<T>>);
 
 // What a closure holds of a `T` parameter declared `P`: a value of its own (the
 // parameter may be a view or a reference the call ends), or the caller's object
@@ -483,7 +511,7 @@ Dest to_val_or_ptr(T&& x) {
 // types whose parameter form is a distinct view, and there is nothing for a
 // caller inside a generic body to materialize: `T` is not fixed yet.
 template <typename T>
-using readonly_form_t = std::conditional_t<
+using param_val_or_cref_t = std::conditional_t<
     std::is_lvalue_reference_v<param_val_or_ref_t<T>>
         && !std::is_const_v<std::remove_reference_t<param_val_or_ref_t<T>>>,
     const std::remove_reference_t<param_val_or_ref_t<T>>&,
@@ -529,10 +557,16 @@ decltype(auto) param_to_assign(Src&& s) {
     }
 }
 
+// The result form of a by-value `T` return from a source `Src`: a const
+// source (a `readonly[T]` parameter) keeps its const at a reference `T`.
+template <class T, class Src>
+using param_return_t = std::conditional_t<
+    std::is_const_v<std::remove_reference_t<Src>>, val_or_cref_t<T>, val_or_ref_t<T>>;
+
 // param_to_storage at a by-value `T` return: a reference instantiation returns
 // the borrow unchanged (it must NOT start copying), a value one owns.
 template <class T, class Src>
-val_or_ref_t<T> param_to_return(Src&& s) {
+param_return_t<T, Src> param_to_return(Src&& s) {
     if constexpr (std::is_reference_v<val_or_ref_t<T>>) {
         return s;
     } else {
@@ -542,8 +576,8 @@ val_or_ref_t<T> param_to_return(Src&& s) {
 
 // A read of a generic `T` parameter at its LAST use into an owning sink: at
 // `T = Own[X]` the parameter owns its value, so the sink takes it over (the
-// twin's `std::move(x)`); at any other `T` the parameter is a borrow and the
-// sink copies, as `param_to_storage` does.
+// twin's `std::move(x)`); at any other `T` the sink copies, as the twin's
+// `out.push_back(x)` / `: v(v)` of a by-value parameter does.
 template <class T, class Src>
 storage_t<T> param_consume(Src&& s) {
     if constexpr (is_own_arg_v<T> && std::is_lvalue_reference_v<Src>
@@ -555,10 +589,12 @@ storage_t<T> param_consume(Src&& s) {
 }
 
 // param_to_return at the parameter's last use: at `T = Own[X]` the result
-// takes the parameter's value over (the twin's `return x` of an `Own[X]`
-// parameter); at any other `T`, `param_to_return`.
+// takes the parameter's value over; at any other `T`, `param_to_return` (a
+// staged or frame-field return copies, as the twin's `V __tpy_ret_0 = x;`).
+// The twin's direct `return x;` moves implicitly: that one return spells
+// `param_to_return<T>(param_handoff<T>(x))`.
 template <class T, class Src>
-val_or_ref_t<T> param_to_return_last(Src&& s) {
+param_return_t<T, Src> param_to_return_last(Src&& s) {
     if constexpr (is_own_arg_v<T> && std::is_lvalue_reference_v<Src>
                   && !std::is_const_v<std::remove_reference_t<Src>>) {
         return val_or_ref_t<T>(std::move(s));
@@ -568,14 +604,31 @@ val_or_ref_t<T> param_to_return_last(Src&& s) {
 }
 
 // An open-result local (`acc = xs[0]; acc = f(acc, x)`) read at its last use,
-// into any sink: at a value storage type the local holds a snapshot in a slot
-// of its own, which the sink takes over (the twin's `std::move(acc)` of an
-// `int32_t` / `std::string` local); at a reference storage type it is the
-// read as it is, which the sink's own helper borrows, copies or, where every
-// binding was an open result at `T = Own[X]`, moves.
+// into any sink: at `T = Own[X]` with a value storage type the local holds a
+// snapshot in a slot of its own, which the sink takes over; at any other `T`
+// it is the read as it is, which the sink copies (as the twin's `W acc` local
+// is copied at its last use, BUGS.md#owned-viewfam-local-last-use-copies),
+// borrows or, where every binding was an open result at `T = Own[X]`, moves.
 template <class T, class Src>
 decltype(auto) open_local_last(Src&& s) {
-    if constexpr (is_value_type_v<storage_t<T>> && std::is_lvalue_reference_v<Src>
+    if constexpr (is_own_arg_v<T> && is_value_type_v<storage_t<T>>
+                  && std::is_move_constructible_v<storage_t<T>>
+                  && std::is_lvalue_reference_v<Src>
+                  && !std::is_const_v<std::remove_reference_t<Src>>) {
+        return static_cast<std::remove_reference_t<Src>&&>(s);
+    } else {
+        return std::forward<Src>(s);
+    }
+}
+
+// An open-result local dead after the read -- the direct `return acc;`, which
+// the twin's local moves implicitly: at a value storage type the local's own
+// slot moves out; at a reference one it is the read as it is.
+template <class T, class Src>
+decltype(auto) open_local_handoff(Src&& s) {
+    if constexpr (is_value_type_v<storage_t<T>>
+                  && std::is_move_constructible_v<storage_t<T>>
+                  && std::is_lvalue_reference_v<Src>
                   && !std::is_const_v<std::remove_reference_t<Src>>) {
         return static_cast<std::remove_reference_t<Src>&&>(s);
     } else {
@@ -586,7 +639,8 @@ decltype(auto) open_local_last(Src&& s) {
 // A read handed to an open-`T` parameter of a callee at the SAME `T`: at
 // `T = Own[X]` that parameter owns (`X&&` / `X`), so a read that is not its
 // last use hands over a copy (warned at the instantiating call); at any other
-// `T` the parameter borrows and the read passes through unchanged.
+// `T` the read passes through unchanged, which a by-value parameter copies
+// and a reference one borrows, as at the twin's parameter.
 template <class T, class Src>
 decltype(auto) param_pass(Src&& s) {
     if constexpr (is_own_arg_v<T>) {
@@ -596,10 +650,26 @@ decltype(auto) param_pass(Src&& s) {
     }
 }
 
-// param_pass at the read's last use: at `T = Own[X]` the value moves on.
+// param_pass at the read's last use: at `T = Own[X]` the value moves on; at
+// any other `T` the read passes as `param_pass` does, as the twin's `g(x)`.
 template <class T, class Src>
 decltype(auto) param_pass_last(Src&& s) {
     if constexpr (is_own_arg_v<T> && std::is_lvalue_reference_v<Src>
+                  && !std::is_const_v<std::remove_reference_t<Src>>) {
+        return static_cast<std::remove_reference_t<Src>&&>(s);
+    } else {
+        return param_pass<T>(std::forward<Src>(s));
+    }
+}
+
+// A parameter the compiler hands on where nothing can read it again -- a
+// resumable frame's constructor taking it into its field, a shim or adapter
+// forwarding its own parameter, a reassigned parameter's prologue: wherever
+// the slot holds a value it moves, as the twin's `std::move(x_)`; otherwise
+// it passes as `param_pass` does.
+template <class T, class Src>
+decltype(auto) param_handoff(Src&& s) {
+    if constexpr (param_holds_value_v<T> && std::is_lvalue_reference_v<Src>
                   && !std::is_const_v<std::remove_reference_t<Src>>) {
         return static_cast<std::remove_reference_t<Src>&&>(s);
     } else {

@@ -305,7 +305,7 @@ template<typename T, ::tpyapp::part_adapters::Stepper<T> T_s>
         goto __after_try_1;
         // except StopIteration:
         __except_1:;
-        return ::tpy::param_to_return_last<T>(d);
+        return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(d));
         __after_try_1:;
     }
 }

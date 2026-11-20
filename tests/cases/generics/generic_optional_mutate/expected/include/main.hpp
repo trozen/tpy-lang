@@ -43,7 +43,7 @@ struct Container {
 
     // def __init__(self, value: T) -> None:
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value);
+    explicit Container(::tpy::param_val_or_cref_t<T> value);
 
     // def get(self) -> T | None:
     ::tpy::storage_t<T>* get();
@@ -68,8 +68,8 @@ inline Point::Point(int32_t x, int32_t y)
 //     self._value = value
 //     self._has = True
 template<typename T>
-inline Container<T>::Container(::tpy::readonly_form_t<T> value)
-    : _value(value),
+inline Container<T>::Container(::tpy::param_val_or_cref_t<T> value)
+    : _value(::tpy::param_consume<T>(value)),
       _has(true) {}
 
 // def get(self) -> T | None:

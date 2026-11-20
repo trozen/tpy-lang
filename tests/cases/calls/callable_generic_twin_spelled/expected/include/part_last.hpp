@@ -73,7 +73,7 @@ struct __gen_gen_again : public ::tpy::next_iter_mixin<__gen_gen_again<T, F_f>, 
     __gen_gen_again(F_f&& f_, ::tpy::param_val_or_ref_t<T> a_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          a(::tpy::param_pass_last<T>(a_)) {}
+          a(::tpy::param_handoff<T>(a_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_again& __iter__() { return *this; }
@@ -136,7 +136,7 @@ struct __gen_gen_twice : public ::tpy::next_iter_mixin<__gen_gen_twice<T, F_f>, 
     __gen_gen_twice(F_f&& f_, ::tpy::param_val_or_ref_t<T> a_)
         : __state(S_INITIAL),
           f(std::forward<F_f>(f_)),
-          a(::tpy::param_pass_last<T>(a_)) {}
+          a(::tpy::param_handoff<T>(a_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gen_twice& __iter__() { return *this; }

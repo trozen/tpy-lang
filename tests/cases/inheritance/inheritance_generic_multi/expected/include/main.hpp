@@ -24,7 +24,7 @@ struct Base {
 
     // def __init__(self, first: T, second: U) -> None:
     Base() = default;
-    explicit Base(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<U> second);
+    explicit Base(::tpy::param_val_or_cref_t<T> first, ::tpy::param_val_or_cref_t<U> second);
 
     // def set_first(self, v: T) -> None:
     void set_first(::tpy::param_val_or_ref_t<T> v);
@@ -85,9 +85,9 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf<T>& obj) {
 //     self.first = first
 //     self.second = second
 template<typename T, typename U>
-inline Base<T, U>::Base(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<U> second)
-    : first(first),
-      second(second) {}
+inline Base<T, U>::Base(::tpy::param_val_or_cref_t<T> first, ::tpy::param_val_or_cref_t<U> second)
+    : first(::tpy::param_consume<T>(first)),
+      second(::tpy::param_consume<U>(second)) {}
 
 // def set_first(self, v: T) -> None:
 //     self.first = v

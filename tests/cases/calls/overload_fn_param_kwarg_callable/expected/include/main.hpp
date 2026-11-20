@@ -34,7 +34,7 @@ template<typename T, typename U, typename __F0>
       { __fn(static_cast<decltype(__a0)&&>(__a0), static_cast<decltype(__a1)&&>(__a1)) } -> ::tpy::returns_form<U>;
   }
 ::tpy::val_or_ref_t<U> reduce__list_T__Fn_U_T_U__U(const std::vector<::tpy::storage_t<T>>& xs, __F0&& func, ::tpy::param_val_or_ref_t<U> init) {
-    return ::tpy::param_to_return_last<U>(init);
+    return ::tpy::param_to_return<U>(::tpy::param_handoff<U>(init));
 }
 // @dispatch
 // def reduce[T](xs: list[T], func: Fn[[T, T], T]) -> T:  # tpyc: ok

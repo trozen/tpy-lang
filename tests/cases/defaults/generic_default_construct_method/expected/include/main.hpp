@@ -22,7 +22,7 @@ struct Container {
 
     // def __init__(self, val: T) -> None:
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> val);
+    explicit Container(::tpy::param_val_or_cref_t<T> val);
 
     // def get_or_default(self, fallback: T = T()) -> T:
     ::tpy::val_or_ref_t<T> get_or_default(::tpy::param_val_or_ref_t<T> fallback = T{}) const;
@@ -39,13 +39,13 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // def __init__(self, val: T) -> None:
 //     self.val = copy(val)
 template<typename T>
-inline Container<T>::Container(::tpy::readonly_form_t<T> val) : val(val) {}
+inline Container<T>::Container(::tpy::param_val_or_cref_t<T> val) : val(::tpy::param_consume<T>(val)) {}
 
 // def get_or_default(self, fallback: T = T()) -> T:
 //     return fallback
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Container<T>::get_or_default(::tpy::param_val_or_ref_t<T> fallback) const {
-    return ::tpy::param_to_return_last<T>(fallback);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(fallback));
 }
 
 void __tpy_init();

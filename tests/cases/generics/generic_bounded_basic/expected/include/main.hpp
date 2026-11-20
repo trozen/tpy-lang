@@ -22,7 +22,7 @@ struct Container {
 
     // def __init__(self, item: T):
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> item);
+    explicit Container(::tpy::param_val_or_cref_t<T> item);
 
     // def get_item(self) -> T:
     ::tpy::val_or_ref_t<T> get_item();
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // def __init__(self, item: T):
 //     self.item = item
 template<::tpystd::typing::Sized T>
-inline Container<T>::Container(::tpy::readonly_form_t<T> item) : item(item) {}
+inline Container<T>::Container(::tpy::param_val_or_cref_t<T> item) : item(::tpy::param_consume<T>(item)) {}
 
 // def get_item(self) -> T:
 //     return self.item

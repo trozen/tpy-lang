@@ -7624,8 +7624,8 @@ def _generic_arg_slot(a: TpyExpr, raw_ptype: 'TpyType | None',
     view-form source owes nothing at ANY `T` slot: each of the four str/bytes
     types has its own C++ type, so `param_val_or_ref_t<T>` resolves to the same
     view the monomorphic twin's slot spells, and a const slot spells
-    `readonly_form_t<T>`, which is that form const-qualified only where it is a
-    mutable reference.
+    `param_val_or_cref_t<T>`, which is that form const-qualified only where
+    it is a mutable reference.
 
     The verdict used to be re-asked as two separate predicates at each
     seam, which is how they could drift. Each seam still owns what is

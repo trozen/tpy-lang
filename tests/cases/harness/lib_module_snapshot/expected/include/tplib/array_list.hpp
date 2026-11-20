@@ -56,11 +56,11 @@ struct ArrayList {
     void insert(int32_t index, ::tpy::own_param_t<T> value);
 
     // def index[T: Equatable](self, value: T) -> int32:
-    int32_t index(::tpy::readonly_form_t<T> value) const
+    int32_t index(::tpy::param_val_or_cref_t<T> value) const
       requires ::tpystd::tpy::Equatable<T>;
 
     // def count[T: Equatable](self, value: T) -> int32:
-    int32_t count(::tpy::readonly_form_t<T> value) const
+    int32_t count(::tpy::param_val_or_cref_t<T> value) const
       requires ::tpystd::tpy::Equatable<T>;
 
     // def remove[T: Equatable](self, value: T) -> None:
@@ -114,7 +114,7 @@ struct ArrayList {
     void __delitem__(int32_t index);
 
     // def __contains__[T: Equatable](self, value: T) -> bool:
-    bool __contains__(::tpy::readonly_form_t<T> value) const
+    bool __contains__(::tpy::param_val_or_cref_t<T> value) const
       requires ::tpystd::tpy::Equatable<T>;
 
     // def __eq__[T: Equatable](self, other: ArrayList[T, N]) -> bool:
@@ -311,7 +311,7 @@ inline void ArrayList<T, N>::insert(int32_t index, ::tpy::own_param_t<T> value) 
 //             return int32.wrap(ui)
 //     assert False, "list.index(x): x not in list"
 template<typename T, std::size_t N>
-inline int32_t ArrayList<T, N>::index(::tpy::readonly_form_t<T> value) const
+inline int32_t ArrayList<T, N>::index(::tpy::param_val_or_cref_t<T> value) const
   requires ::tpystd::tpy::Equatable<T> {
     uint32_t __stop_0 = this->_size;
     for (uint32_t ui = 0; ui < __stop_0; ++ui) {
@@ -329,7 +329,7 @@ inline int32_t ArrayList<T, N>::index(::tpy::readonly_form_t<T> value) const
 //             n += 1
 //     return n
 template<typename T, std::size_t N>
-inline int32_t ArrayList<T, N>::count(::tpy::readonly_form_t<T> value) const
+inline int32_t ArrayList<T, N>::count(::tpy::param_val_or_cref_t<T> value) const
   requires ::tpystd::tpy::Equatable<T> {
     int32_t n = 0;
     uint32_t __stop_0 = this->_size;
@@ -533,7 +533,7 @@ inline void ArrayList<T, N>::__delitem__(int32_t index) {
 //             return True
 //     return False
 template<typename T, std::size_t N>
-inline bool ArrayList<T, N>::__contains__(::tpy::readonly_form_t<T> value) const
+inline bool ArrayList<T, N>::__contains__(::tpy::param_val_or_cref_t<T> value) const
   requires ::tpystd::tpy::Equatable<T> {
     uint32_t __stop_0 = this->_size;
     for (uint32_t ui = 0; ui < __stop_0; ++ui) {

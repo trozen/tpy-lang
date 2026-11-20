@@ -22,11 +22,11 @@ struct Wrapper {
 
     // def __init__(self, val: T):
     Wrapper() = default;
-    explicit Wrapper(::tpy::readonly_form_t<T> val);
+    explicit Wrapper(::tpy::param_val_or_cref_t<T> val);
 
     // def is_less[U: Comparable](self, a: U, b: U) -> bool:
     template<::tpystd::tpy::Comparable U>
-    bool is_less(::tpy::readonly_form_t<U> a, ::tpy::readonly_form_t<U> b) const;
+    bool is_less(::tpy::param_val_or_cref_t<U> a, ::tpy::param_val_or_cref_t<U> b) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -40,13 +40,13 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 // def __init__(self, val: T):
 //     self.val = val
 template<typename T>
-inline Wrapper<T>::Wrapper(::tpy::readonly_form_t<T> val) : val(val) {}
+inline Wrapper<T>::Wrapper(::tpy::param_val_or_cref_t<T> val) : val(::tpy::param_consume<T>(val)) {}
 
 // def is_less[U: Comparable](self, a: U, b: U) -> bool:
 //     return a < b
 template<typename T>
 template<::tpystd::tpy::Comparable U>
-inline bool Wrapper<T>::is_less(::tpy::readonly_form_t<U> a, ::tpy::readonly_form_t<U> b) const {
+inline bool Wrapper<T>::is_less(::tpy::param_val_or_cref_t<U> a, ::tpy::param_val_or_cref_t<U> b) const {
     return (a < b);
 }
 

@@ -19,7 +19,7 @@ from ..typesys import (
     AliasRef, RecursiveUnionInfo, RecordInfo, ModuleVarInfo,
     is_protocol_type, unwrap_readonly, ensure_qualified, unwrap_ref_type,
     param_takes_ownership,
-    shadowed_local_cpp_name, unwrap_own,
+    shadowed_local_cpp_name, unwrap_own, open_type_param,
 )
 from ..parse import (
     SourceLocation, TpyExpr,
@@ -113,11 +113,18 @@ def forward_param(cpp_name: str, ptype: TpyType) -> str:
     no more than a move: the shim's copy is its last use. A class's copy
     is not known cheap (`copy_is_cheap` does not see a ValueType's `str`
     field, BUGS.md#copy-is-cheap-valuetype-record-fields), a builtin
-    scalar's is. A `@nomove` type keeps its copy. Any other parameter is
-    passed by name."""
+    scalar's is. A `@nomove` type keeps its copy. An open `T` parameter
+    moves on where its instantiation holds a value (`param_handoff`).
+    Any other parameter is passed by name."""
     if param_takes_ownership(ptype):
         return f"std::move({cpp_name})"
     bare = unwrap_readonly(ptype)
+    open_t = open_type_param(ptype)
+    if open_t is not None:
+        # Local: `thir` imports this module (its emitter's shared helpers).
+        from ..thir.nodes import OpenTSink
+        return OpenTSink.PASS.render(open_t.to_cpp_tag(), cpp_name,
+                                     handoff=True)
     if (bare.param_passing() is ParamPassing.VALUE
             and bare.is_movable()
             and not (bare.copy_is_cheap()

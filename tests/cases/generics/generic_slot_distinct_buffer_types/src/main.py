@@ -65,7 +65,7 @@ def store_bytes(xs: list[bytes], v: bytes) -> None:
 
 class Peeker[T]:
     def peek(self, xs: list[T], v: readonly[T]) -> bool:
-        # a `readonly[T]` METHOD slot renders `readonly_form_t<T>` -- the same
+        # a `readonly[T]` METHOD slot renders `param_val_or_cref_t<T>` -- the same
         # parameter form, const-qualified only where it is a mutable reference,
         # so a view binds here as bare as at the plain `T` slot
         for x in xs:

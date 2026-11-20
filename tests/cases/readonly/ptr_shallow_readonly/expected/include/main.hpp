@@ -490,7 +490,7 @@ struct GV {
 
     // def __init__(self, v: T) -> None:
     GV() = default;
-    explicit GV(::tpy::readonly_form_t<T> v);
+    explicit GV(::tpy::param_val_or_cref_t<T> v);
 
     // def __add__(self, o: int32) -> T:
     ::tpy::val_or_cref_t<T> __add__(int32_t o) const;
@@ -729,7 +729,7 @@ struct RBox {
 
     // def __init__(self, v: T) -> None:
     RBox() = default;
-    explicit RBox(::tpy::readonly_form_t<T> v);
+    explicit RBox(::tpy::param_val_or_cref_t<T> v);
 
     __coro_RBox_peek<T> peek() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.RBox";
@@ -1466,7 +1466,7 @@ inline int32_t PHold<T>::touch() const {
 // def __init__(self, v: T) -> None:
 //     self.v = copy(v)
 template<typename T>
-inline GV<T>::GV(::tpy::readonly_form_t<T> v) : v(v) {}
+inline GV<T>::GV(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
 
 // def __add__(self, o: int32) -> T:
 //     return self.v
@@ -1493,7 +1493,7 @@ inline ::tpy::val_or_cref_t<T> GV<T>::rget() {
 // def __init__(self, v: T) -> None:
 //     self.val = copy(v)
 template<typename T>
-inline RBox<T>::RBox(::tpy::readonly_form_t<T> v) : val(v) {}
+inline RBox<T>::RBox(::tpy::param_val_or_cref_t<T> v) : val(::tpy::param_consume<T>(v)) {}
 
 // def value_proto(p: Getter[int32]) -> int32:
 //     x = p.get()

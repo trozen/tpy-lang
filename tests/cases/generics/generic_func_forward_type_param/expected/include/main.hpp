@@ -78,7 +78,7 @@ void sink(::tpy::own_param_t<T> x) {
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    return ::tpy::param_to_return_last<T>(x);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(x));
 }
 // # Forward T as explicit type arg
 // def wrapper[T](x: Own[T]) -> None:

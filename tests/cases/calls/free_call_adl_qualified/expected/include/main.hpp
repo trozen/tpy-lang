@@ -195,7 +195,7 @@ inline int32_t Scaler::scaled(int32_t x) const {
 //     return a
 template<typename T>
 ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    return ::tpy::param_to_return_last<T>(a);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(a));
 }
 
 void __tpy_init();

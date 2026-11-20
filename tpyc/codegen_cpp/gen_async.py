@@ -48,7 +48,7 @@ _FRESH_COLLECTION_NODES = (
 from ..typesys import (ResultPosition, ResultRepresentation,
                        classify_result_representation, pointer_repr_optional,
                        yield_borrow_slot_cpp)
-from ..typesys import TypeParamKind, TypeParamRef, IntLiteralType, NominalType, OwnType, TpyType, OptionalType, ReadonlyType, TupleType, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, ConcreteFrameType, type_arg_cpp
+from ..typesys import open_type_param, IntLiteralType, NominalType, OwnType, TpyType, OptionalType, ReadonlyType, TupleType, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, ConcreteFrameType, type_arg_cpp
 from ..value_category import for_source_is_rvalue
 from ..type_def_registry import (is_str_type, is_big_int_type,
                                   view_owned_copy_init)
@@ -75,6 +75,7 @@ from ..thir.lower.frame import (
     frame_name_of,
 )
 from ..thir.frame import region_cleanups
+from ..thir.nodes import OpenTSink
 from .frame_names import frame_struct_name, sub_struct_qualname
 from .frame_fields import FrameField, order_frame_fields
 
@@ -148,8 +149,9 @@ class _CoroParam:
     # the owned field (`::tpy::Bytes(b_)`, or the optional-aware form for
     # `str|None` / `bytes|None`). Built via view_owned_copy_init.
     owned_copy_init: str = ""
-    # TYPE_PARAM of TYPE kind only: the parameter's `T`, which the factory's
-    # hand-off (`param_pass_last<T>`) is spelled at.
+    # TYPE_PARAM of TYPE kind only: the parameter's `T`, which the ctor's
+    # init (`param_handoff<T>`) and the factory's pass (`param_pass_last<T>`)
+    # are spelled at.
     tparam_cpp: str = ""
 
     def field_decl(self) -> str:
@@ -187,10 +189,12 @@ class _CoroParam:
         if self.kind is FrameCaptureKind.REF:
             return f"{self.cpp_name}({self.cpp_name})"
         if self.kind is FrameCaptureKind.TYPE_PARAM and self.tparam_cpp:
-            # `param_val_or_ref_t<T>` borrows at `T = P` (bound as it is) and
-            # owns at `T = Own[X]`, where the frame takes the value over.
-            return (f"{self.cpp_name}(::tpy::param_pass_last<"
-                    f"{self.tparam_cpp}>({self.cpp_name}_))")
+            # The ctor parameter borrows at a reference `T` (bound as it is)
+            # and holds a value at `T = Own[X]` and at a by-value instantiation,
+            # where the frame takes it over: nothing reads it after this.
+            return (f"{self.cpp_name}("
+                    + OpenTSink.PASS.render(self.tparam_cpp, f"{self.cpp_name}_",
+                                            handoff=True) + ")")
         if self.kind in (FrameCaptureKind.POINTER, FrameCaptureKind.TYPE_PARAM):
             # POINTER: raw pointer, trivially copyable -- std::move is noise.
             return f"{self.cpp_name}({self.cpp_name}_)"
@@ -505,10 +509,9 @@ class AsyncCoroCodegen:
                 ctor_param_type=ctor_type,
                 kind=kind,
                 owned_copy_init=owned_init,
-                tparam_cpp=(ptype_inner.to_cpp_tag()
+                tparam_cpp=(open_t.to_cpp_tag()
                             if kind is FrameCaptureKind.TYPE_PARAM
-                            and isinstance(ptype_inner, TypeParamRef)
-                            and ptype_inner.kind is TypeParamKind.TYPE
+                            and (open_t := open_type_param(ptype)) is not None
                             else ""),
             ))
         return out
@@ -1458,9 +1461,10 @@ class AsyncCoroCodegen:
                 parts.append(f"std::move({cparam.cpp_name})")
             elif cparam.kind is FrameCaptureKind.TYPE_PARAM and cparam.tparam_cpp:
                 # The factory's parameter goes to the same `T` in the frame
-                # at its last use: owned at `T = Own[X]`, it moves on.
-                parts.append(f"::tpy::param_pass_last<{cparam.tparam_cpp}>"
-                             f"({cparam.cpp_name})")
+                # at its last use: owned at `T = Own[X]`, it moves on; a
+                # by-value one is copied, as the twin's `__gen_g(x)`.
+                parts.append(OpenTSink.PASS.render(
+                    cparam.tparam_cpp, cparam.cpp_name, last=True))
             else:
                 parts.append(cparam.cpp_name)
         return ", ".join(parts)

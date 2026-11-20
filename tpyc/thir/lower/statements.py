@@ -11091,9 +11091,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # A value-bounded `T` target fed a `T` parameter's read: the
             # parameter form converts through the generic trait, in place
             # where `T` assigns from it, as the str twin's `t = s;` does.
-            tgt_u = unwrap_readonly(tgt_t)
+            tgt_u = open_type_param(tgt_t)
             assigned = (open_param_convert(init, tgt_u, OpenTSink.ASSIGN)
-                        if isinstance(tgt_u, TypeParamRef)
+                        if tgt_u is not None
                         and tgt_u.is_value_type() else None)
             if assigned is not None:
                 init = assigned

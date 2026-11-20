@@ -24,7 +24,7 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v);
+    explicit Box(::tpy::param_val_or_cref_t<T> v);
     // non-copyable (@nocopy)
     Box(const Box&) = delete;
     Box& operator=(const Box&) = delete;
@@ -58,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pile& obj) {
 // def __init__(self, v: T) -> None:
 //     self.val = v
 template<typename T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> v) : val(v) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> v) : val(::tpy::param_consume<T>(v)) {}
 
 // def total[T](self, *boxes: Box[T]) -> int32:
 //     n: int32 = 0

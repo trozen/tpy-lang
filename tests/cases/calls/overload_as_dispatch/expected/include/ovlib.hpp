@@ -46,7 +46,7 @@ struct __gen_rep__T : public ::tpy::next_iter_mixin<__gen_rep__T<T>, ::tpy::yiel
 
     __gen_rep__T(::tpy::param_val_or_ref_t<T> o_)
         : __state(S_INITIAL),
-          o(::tpy::param_pass_last<T>(o_)) {}
+          o(::tpy::param_handoff<T>(o_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_rep__T& __iter__() { return *this; }
@@ -103,7 +103,7 @@ struct __gen_rep__T__int32 : public ::tpy::next_iter_mixin<__gen_rep__T__int32<T
 
     __gen_rep__T__int32(::tpy::param_val_or_ref_t<T> o_, int32_t n_)
         : __state(S_INITIAL),
-          o(::tpy::param_pass_last<T>(o_)),
+          o(::tpy::param_handoff<T>(o_)),
           n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
@@ -155,14 +155,14 @@ __gen_rep__T__int32<T> rep__T__int32(::tpy::param_val_or_ref_t<T> o, int32_t n) 
 //     return o
 template<typename T>
 ::tpy::val_or_ref_t<T> ident__T(::tpy::param_val_or_ref_t<T> o) {
-    return ::tpy::param_to_return_last<T>(o);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(o));
 }
 // @dispatch
 // def ident[T](o: T, n: int32) -> T:
 //     return o
 template<typename T>
 ::tpy::val_or_ref_t<T> ident__T__int32(::tpy::param_val_or_ref_t<T> o, int32_t n) {
-    return ::tpy::param_to_return_last<T>(o);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(o));
 }
 
 void __tpy_init();

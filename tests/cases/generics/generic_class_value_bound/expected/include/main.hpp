@@ -26,7 +26,7 @@ struct Box {
 
     // def __init__(self, value: T) -> None:
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> value);
+    explicit Box(::tpy::param_val_or_cref_t<T> value);
 
     // def get(self) -> T:
     ::tpy::storage_t<T> get() const;
@@ -52,7 +52,7 @@ struct Ring {
 
     // def __init__(self, fill: T) -> None:
     Ring() = default;
-    explicit Ring(::tpy::readonly_form_t<T> fill);
+    explicit Ring(::tpy::param_val_or_cref_t<T> fill);
 
     // def put(self, v: T) -> None:
     void put(::tpy::param_val_or_ref_t<T> v);
@@ -75,7 +75,7 @@ inline std::ostream& operator<<(std::ostream& os, const Ring<T>& obj) {
 // def __init__(self, value: T) -> None:
 //     self.value = value  # tpyc: ok
 template<::tpy::ValueType T>
-inline Box<T>::Box(::tpy::readonly_form_t<T> value) : value(value) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> value) : value(::tpy::param_consume<T>(value)) {}
 
 // def get(self) -> T:
 //     return self.value
@@ -95,7 +95,7 @@ inline void Box<T>::set(::tpy::param_val_or_ref_t<T> value) {
 //     self.data = [fill, fill, fill, fill]
 //     self.size = 0
 template<::tpy::ValueType T>
-inline Ring<T>::Ring(::tpy::readonly_form_t<T> fill)
+inline Ring<T>::Ring(::tpy::param_val_or_cref_t<T> fill)
     : data(std::array<::tpy::storage_t<T>, 4>{::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill)}),
       size(0) {}
 
@@ -130,7 +130,7 @@ inline ::tpy::storage_t<T> Ring<T>::pop() {
 //     return v
 template<::tpy::ValueType T>
 ::tpy::storage_t<T> identity(::tpy::param_val_or_ref_t<T> v) {
-    return ::tpy::param_to_return_last<T>(v);
+    return ::tpy::param_to_return<T>(::tpy::param_handoff<T>(v));
 }
 
 void __tpy_init();
