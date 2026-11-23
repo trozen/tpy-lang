@@ -1,8 +1,8 @@
-# A COPY result hoisted into a statement temporary (max over an iterator at a
-# parameter the callee writes) is evaluated before the operands to its left:
-# TPy prints 1009 where CPython prints 1100. Operand order is the postponed
-# evaluation-order policy (BUGS.md#subexpression-right-to-left-eval); this
-# case pins the current render. CPython's output differs, hence no_cpython.
+# A COPY result (max over an iterator) passed inline to a parameter the callee
+# writes: the callee writes the copy. The `+` operands run in the C++
+# compiler's order (BUGS.md#subexpression-right-to-left-eval), so this case
+# pins the render and prints nothing order-dependent. CPython's output differs
+# (the callee writes the list element itself), hence no_cpython.
 # The keyword section pins the copy warning at the parameter a keyword binds.
 from typing import Iterator
 
@@ -39,9 +39,9 @@ def bump_kw(*, p: P) -> None:
 
 def main() -> None:
     ps = [P(3), P(9)]
-    # the hoisted copy runs before set_first
+    # the copy is passed inline; which operand of `+` runs first is the compiler's
     t = set_first(ps) + bump_ret(max(walk(ps), key=key_of))  # tpyc: warning(/copies P into argument 'p'/)
-    print("order", t)
+    print("order", t > 1000)
     # by keyword: the copy is found at the parameter the keyword binds
     bump_kw(p=max(walk(ps), key=key_of))  # tpyc: warning(/copies P into argument 'p' of 'bump_kw/)
     print("keyword", ps[0].v, ps[1].v)
