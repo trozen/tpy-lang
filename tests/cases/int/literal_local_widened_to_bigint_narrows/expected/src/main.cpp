@@ -56,8 +56,7 @@ void value_positions(std::string_view data) {
 //     subscript_positions("abc", [1, 2, 3])
 //     value_positions("abcd")
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    ::tpyapp::main::subscript_positions("abc", __tmp_1);
+    ::tpyapp::main::subscript_positions("abc", ::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3}));
     ::tpyapp::main::value_positions("abcd");
 }
 

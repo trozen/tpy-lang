@@ -582,12 +582,9 @@ void via_proto(std::string_view tag, T_sk&& sk, const std::vector<int32_t>& pv, 
     std::cout << tag << " " << "str_own owned" << " " << sk.take_str(std::move(__tmp_6)) << " " << s << "\n" << ::tpy::check_signals;
     int32_t n = 7;
     std::array<int32_t, 2> xs = {1, 22};
-    ::tpy::Union<int32_t, std::string> __tmp_7 = n;
-    std::cout << tag << " " << "union local" << " " << sk.take_union(__tmp_7) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<int32_t, std::string> __tmp_8 = ::tpy::__getitem__(xs, 1);
-    std::cout << tag << " " << "union subscript" << " " << sk.take_union(__tmp_8) << "\n" << ::tpy::check_signals;
-    R __tmp_9 = R(6);
-    std::cout << tag << " " << "union ctor" << " " << sk.take_ru(::tpy::Union<const Other*, const R*>{&__tmp_9}) << "\n" << ::tpy::check_signals;
+    std::cout << tag << " " << "union local" << " " << sk.take_union(::tpy::Union<int32_t, std::string>(n)) << "\n" << ::tpy::check_signals;
+    std::cout << tag << " " << "union subscript" << " " << sk.take_union(::tpy::Union<int32_t, std::string>(::tpy::__getitem__(xs, 1))) << "\n" << ::tpy::check_signals;
+    std::cout << tag << " " << "union ctor" << " " << sk.take_ru(::tpy::Union<const Other*, const R*>{&(::tpy::as_mut_lvalue(R(6)))}) << "\n" << ::tpy::check_signals;
 }
 // def via_bound[T: Sink](tag: str, sk: T, pv: list[int32],
 //                        opt: Optional[list[int32]]) -> None:
@@ -635,12 +632,9 @@ void via_bound(std::string_view tag, ::tpy::param_val_or_ref_t<T> sk, const std:
     std::cout << tag << " " << "str_own owned" << " " << sk.take_str(std::move(__tmp_6)) << " " << s << "\n" << ::tpy::check_signals;
     int32_t n = 7;
     std::array<int32_t, 2> xs = {1, 22};
-    ::tpy::Union<int32_t, std::string> __tmp_7 = n;
-    std::cout << tag << " " << "union local" << " " << sk.take_union(__tmp_7) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<int32_t, std::string> __tmp_8 = ::tpy::__getitem__(xs, 1);
-    std::cout << tag << " " << "union subscript" << " " << sk.take_union(__tmp_8) << "\n" << ::tpy::check_signals;
-    R __tmp_9 = R(6);
-    std::cout << tag << " " << "union ctor" << " " << sk.take_ru(::tpy::Union<const Other*, const R*>{&__tmp_9}) << "\n" << ::tpy::check_signals;
+    std::cout << tag << " " << "union local" << " " << sk.take_union(::tpy::Union<int32_t, std::string>(n)) << "\n" << ::tpy::check_signals;
+    std::cout << tag << " " << "union subscript" << " " << sk.take_union(::tpy::Union<int32_t, std::string>(::tpy::__getitem__(xs, 1))) << "\n" << ::tpy::check_signals;
+    std::cout << tag << " " << "union ctor" << " " << sk.take_ru(::tpy::Union<const Other*, const R*>{&(::tpy::as_mut_lvalue(R(6)))}) << "\n" << ::tpy::check_signals;
 }
 // def via_opt(sk: Opt) -> None:
 //     # A list literal at a pointer-repr Optional slot hoists a typed
@@ -652,8 +646,7 @@ void via_bound(std::string_view tag, ::tpy::param_val_or_ref_t<T> sk, const std:
 template<Opt T_sk>
 void via_opt(T_sk&& sk) {
     int32_t n = 4;
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2};
-    std::cout << "optptr list literal" << " " << sk.take_ol(&(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << "optptr list literal" << " " << sk.take_ol(&::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
     std::cout << "opt scalar" << " " << sk.take_oi((::tpy::add_check<int32_t>(n, 1))) << "\n" << ::tpy::check_signals;
 }
 // def via_generic(sink: GSink[str], xs: list[str]) -> None:

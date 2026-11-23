@@ -19,11 +19,7 @@ Acc bigger_copy(const Acc& a, const Acc& b) {
 // def main() -> None:
 //     print(bigger(Acc(3), Acc(1)).n, bigger_copy(Acc(3), Acc(1)).n)
 void main() {
-    Acc __tmp_1 = Acc(3);
-    Acc __tmp_2 = Acc(1);
-    Acc __tmp_3 = Acc(3);
-    Acc __tmp_4 = Acc(1);
-    std::cout << ::tpyapp::main::bigger(__tmp_1, __tmp_2).n << " " << ::tpyapp::main::bigger_copy(__tmp_3, __tmp_4).n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::bigger(Acc(3), Acc(1)).n << " " << ::tpyapp::main::bigger_copy(Acc(3), Acc(1)).n << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -52,8 +52,7 @@ A* ptr_with(A& a, std::vector<int32_t>& scratch) {
 // def arg_temp(a: A) -> None:
 //     bump(ptr_with(a, []))  # tpyc: ok
 void arg_temp(A& a) {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    ::tpyapp::main::bump(::tpy::deref_check(::tpyapp::main::ptr_with(a, __tmp_1)));
+    ::tpyapp::main::bump(::tpy::deref_check(::tpyapp::main::ptr_with(a, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))));
 }
 
 // # decl: a field source binds the alias; `m` stays readonly because only the

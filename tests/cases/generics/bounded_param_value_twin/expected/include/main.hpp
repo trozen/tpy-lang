@@ -277,14 +277,12 @@ struct __coro_amain {
     bool __cancel_pending;
     int32_t __await_lift_0;
     std::string __await_lift_1;
-    ::tpy::frame_slot<std::array<int32_t, 2>> __coro_arg_0;
     int32_t __await_lift_2;
-    ::tpy::frame_slot<std::array<std::string, 2>> __coro_arg_1;
     int32_t __await_lift_3;
     std::optional<__coro_aw<int32_t>> __sub_0;
     std::optional<__coro_aw<std::string>> __sub_1;
-    std::optional<__coro_adrain<int32_t, ::tpy::await_arg_capture_t<decltype((std::move((*__coro_arg_0))))>>> __sub_2;
-    std::optional<__coro_adrain<std::string, ::tpy::await_arg_capture_t<decltype((std::move((*__coro_arg_1))))>>> __sub_3;
+    std::optional<__coro_adrain<int32_t, ::tpy::await_arg_capture_t<decltype((std::array<int32_t, 2>{1, 2}))>>> __sub_2;
+    std::optional<__coro_adrain<std::string, ::tpy::await_arg_capture_t<decltype((std::array<std::string, 2>{"p", "q"}))>>> __sub_3;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -219,7 +219,7 @@ void main() {
     std::vector<int32_t> __tmp_12 = std::vector<int32_t>{};
     std::vector<int32_t> __tmp_13 = {1};
     std::cout << "and" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::and_branch(__tmp_11, "x"))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::and_branch(__tmp_12, "x"))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::and_branch(__tmp_13, ""))) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_14 = {1};
+    std::vector<int32_t> __tmp_14 = std::vector<int32_t>{1};
     std::vector<int32_t> __tmp_15 = std::vector<int32_t>{};
     std::cout << "or" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::peephole_or(__tmp_14, ""))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::peephole_or(__tmp_15, ""))) << "\n" << ::tpy::check_signals;
 }

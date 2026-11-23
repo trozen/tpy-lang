@@ -139,8 +139,7 @@ void main() {
     std::cout << ::tpyapp::main::elements(src) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::own_arg(src) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::accumulate(src) << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<std::string, ::tpy::BigInt>> __tmp_1 = {std::tuple<std::string, ::tpy::BigInt>{"a", ::tpy::BigInt(1)}, std::tuple<std::string, ::tpy::BigInt>{"b", ::tpy::BigInt(2)}};
-    std::cout << ::tpyapp::main::collect(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::collect({std::tuple<std::string, ::tpy::BigInt>{"a", ::tpy::BigInt(1)}, std::tuple<std::string, ::tpy::BigInt>{"b", ::tpy::BigInt(2)}}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

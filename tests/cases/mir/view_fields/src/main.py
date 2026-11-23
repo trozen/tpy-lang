@@ -254,8 +254,8 @@ def paired(t: Tok) -> int32:  # tpyc: mir(uncovered /^wrapper holds a borrow$/)
     return pair[0].n
 
 
-# free function: a record argument built on one branch is a deferred temporary; its backing stores name's loan
-def deferred(name: str, flag: bool) -> int32:  # tpyc: mir(certified)
+# free function: a record argument built on one branch is a temporary of that arm's own expression
+def deferred(name: str, flag: bool) -> int32:  # tpyc: mir(covered)
     return size(Tok(name, 1)) if flag else 0
 
 

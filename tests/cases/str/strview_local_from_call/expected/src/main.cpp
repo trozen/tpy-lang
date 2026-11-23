@@ -100,10 +100,8 @@ void main() {
     std::cout << ::tpyapp::main::conditional_rebind("aa", "bb", true) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::conditional_rebind("cc", "dd", false) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::ternary_params("yes", "no", true) << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_1 = {"a", "b", "c"};
-    std::cout << ::tpyapp::main::loop_iter(__tmp_1, "d") << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_2 = std::vector<std::string>{};
-    std::cout << ::tpyapp::main::loop_iter(__tmp_2, "empty") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::loop_iter({"a", "b", "c"}, "d") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::loop_iter(std::vector<std::string>{}, "empty") << "\n" << ::tpy::check_signals;
 }
 
 // main()

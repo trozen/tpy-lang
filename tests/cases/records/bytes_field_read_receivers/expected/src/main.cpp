@@ -382,26 +382,15 @@ void sec_comp(const std::vector<Outer>& rows) {
 void main() {
     ::tpyapp::main::sec_free();
     ::tpyapp::main::sec_chain_write();
-    Inner __tmp_1 = Inner(::tpy::bytes_literal_owned("c1", 2), "q1");
-    Outer __tmp_2 = ::tpyapp::main::mk();
-    Outer __tmp_3 = ::tpyapp::main::mk();
-    Outer __tmp_4 = ::tpyapp::main::mk();
-    ::tpyapp::main::sec_callee(__tmp_1, __tmp_2, __tmp_3, __tmp_4);
-    Inner __tmp_5 = Inner(::tpy::bytes_literal_owned("o1", 2), "s1");
-    ::tpyapp::main::sec_one_hop(__tmp_5);
+    ::tpyapp::main::sec_callee(::tpy::as_mut_lvalue(Inner(::tpy::bytes_literal_owned("c1", 2), "q1")), ::tpy::as_mut_lvalue(::tpyapp::main::mk()), ::tpyapp::main::mk(), ::tpyapp::main::mk());
+    ::tpyapp::main::sec_one_hop(::tpy::as_mut_lvalue(Inner(::tpy::bytes_literal_owned("o1", 2), "s1")));
     ::tpyapp::main::sec_global();
-    Outer __tmp_6 = ::tpyapp::main::mk();
-    ::tpyapp::main::sec_alias(__tmp_6);
-    Outer __tmp_7 = ::tpyapp::main::mk();
-    ::tpyapp::main::sec_alias_rev(__tmp_7);
-    Inner __tmp_8 = Inner(::tpy::bytes_literal_owned("a1", 2), "u1");
-    ::tpyapp::main::sec_onehop_alias(__tmp_8);
-    Inner __tmp_9 = Inner(::tpy::bytes_literal_owned("a2", 2), "u2");
-    ::tpyapp::main::sec_onehop_alias_rev(__tmp_9);
-    Inner __tmp_10 = Inner(::tpy::bytes_literal_owned("a3", 2), "u3");
-    ::tpyapp::main::sec_onehop_method(__tmp_10);
-    Hidden __tmp_11 = Hidden(Inner(::tpy::bytes_literal_owned("h1", 2), "r1"));
-    ::tpyapp::main::sec_hidden_call(__tmp_11);
+    ::tpyapp::main::sec_alias(::tpy::as_mut_lvalue(::tpyapp::main::mk()));
+    ::tpyapp::main::sec_alias_rev(::tpy::as_mut_lvalue(::tpyapp::main::mk()));
+    ::tpyapp::main::sec_onehop_alias(::tpy::as_mut_lvalue(Inner(::tpy::bytes_literal_owned("a1", 2), "u1")));
+    ::tpyapp::main::sec_onehop_alias_rev(::tpy::as_mut_lvalue(Inner(::tpy::bytes_literal_owned("a2", 2), "u2")));
+    ::tpyapp::main::sec_onehop_method(::tpy::as_mut_lvalue(Inner(::tpy::bytes_literal_owned("a3", 2), "u3")));
+    ::tpyapp::main::sec_hidden_call(Hidden(Inner(::tpy::bytes_literal_owned("h1", 2), "r1")));
     Outer ro_src = ::tpyapp::main::mk();
     ::tpyapp::main::sec_readonly_root(ro_src);
     ::tpy::Bytes got = Runner(::tpyapp::main::mk()).run();
@@ -418,10 +407,8 @@ void main() {
             std::cout << "gen yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    Outer __tmp_12 = ::tpyapp::main::mk();
-    ::tpyapp::main::sec_blocks(__tmp_12);
-    std::vector<Outer> __tmp_13 = {::tpyapp::main::mk(), ::tpyapp::main::mk()};
-    ::tpyapp::main::sec_comp(__tmp_13);
+    ::tpyapp::main::sec_blocks(::tpyapp::main::mk());
+    ::tpyapp::main::sec_comp({::tpyapp::main::mk(), ::tpyapp::main::mk()});
 }
 
 // GLOB = Inner(b"g1", "g2")

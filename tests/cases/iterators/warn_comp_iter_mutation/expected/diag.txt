@@ -29,6 +29,7 @@ part_operands.py:55: warning: this call may move the elements of 'xs', and the i
 part_operands.py:60: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
 part_operands.py:60: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 60; iterate over a copy ('copy(xs)'), or make the changes after the loop
 part_operands.py:66: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_operands.py:66: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 66; iterate over a copy ('copy(xs)'), or make the changes after the loop
 part_operands.py:71: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
 part_operands.py:84: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
 part_operands.py:84: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 84; iterate over a copy ('copy(xs)'), or make the changes after the loop
@@ -61,11 +62,10 @@ part_positions.py:91: warning: Passing borrowed container 'xs' to non-readonly p
 part_positions.py:91: warning: this call may move the elements of 'xs', but the iteration over 'xs' still walks them and continues on line 91; iterate over a copy ('copy(xs)'), or make the changes after the loop
 part_positions.py:96: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
 part_positions.py:102: warning: Mutation of 'xs' while iterating over it ('pop' invalidates the iterator)
-part_scope.py:13: warning: Iterator borrows from temporary receiver object; the temporary is destroyed before iteration begins
-part_scope.py:35: warning: Passing borrowed container 'r' to non-readonly parameter 'ys' (function may invalidate references)
-part_scope.py:44: warning: Passing borrowed container 'c' to non-readonly parameter 'rs' (function may invalidate references)
-part_scope.py:79: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
-part_scope.py:85: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_scope.py:36: warning: Passing borrowed container 'r' to non-readonly parameter 'ys' (function may invalidate references)
+part_scope.py:45: warning: Passing borrowed container 'c' to non-readonly parameter 'rs' (function may invalidate references)
+part_scope.py:80: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
+part_scope.py:86: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
 part_unlowered.py:19: warning: Passing borrowed container 'ps' to non-readonly parameter 'ps' (function may invalidate references)
 part_unlowered.py:24: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)
 part_unlowered.py:42: warning: Passing borrowed container 'xs' to non-readonly parameter 'ys' (function may invalidate references)

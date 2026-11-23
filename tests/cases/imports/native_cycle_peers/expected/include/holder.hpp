@@ -87,8 +87,7 @@ inline void Holder::rebind(::eng::Engine& engine) {
 // def run(self) -> int32:
 //     return self.engine.take(Msg())
 inline int32_t Holder::run() const {
-    ::eng::Msg __tmp_1 = ::eng::Msg();
-    return ::tpy::none_attr(this->engine, "take").take(__tmp_1);
+    return ::tpy::none_attr(this->engine, "take").take(::tpy::as_mut_lvalue(::eng::Msg()));
 }
 
 // def __init__(self) -> None:

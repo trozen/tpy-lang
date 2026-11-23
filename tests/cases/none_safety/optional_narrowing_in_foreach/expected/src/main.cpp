@@ -64,12 +64,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << ::tpyapp::main::sum_items(__tmp_1, 10) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = {1, 2, 3};
-    std::cout << ::tpyapp::main::sum_items(__tmp_2, std::nullopt) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = {1, 2, 3};
-    std::cout << ::tpyapp::main::assert_then_loop(5, __tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_items({1, 2, 3}, 10) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_items({1, 2, 3}, std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::assert_then_loop(5, {1, 2, 3}) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

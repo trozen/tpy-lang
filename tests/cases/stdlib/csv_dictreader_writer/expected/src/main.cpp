@@ -192,8 +192,9 @@ void roundtrip() {
     w.writeheader();
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}, {"note", "says, hi"}}));
     {
-        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(out.getvalue());
-        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1, std::nullopt, ",", "\"", true, false);
+        std::string __tmp_1 = out.getvalue();
+        ::tpystd::io::StringIO __tmp_2 = ::tpystd::io::StringIO(__tmp_1);
+        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_2, std::nullopt, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

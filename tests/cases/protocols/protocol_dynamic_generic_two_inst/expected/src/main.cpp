@@ -20,10 +20,8 @@ void show_str(Container<std::string>& c) {
 //     show_int(IntBox())
 //     show_str(StrBox())
 void main() {
-    ::tpy::Adapter<Container<int32_t>, IntBox> __tmp_1{IntBox()};
-    ::tpyapp::main::show_int(__tmp_1);
-    ::tpy::Adapter<Container<std::string>, StrBox> __tmp_2{StrBox()};
-    ::tpyapp::main::show_str(__tmp_2);
+    ::tpyapp::main::show_int(::tpy::as_mut_lvalue(::tpy::Adapter<Container<int32_t>, IntBox>{IntBox()}));
+    ::tpyapp::main::show_str(::tpy::as_mut_lvalue(::tpy::Adapter<Container<std::string>, StrBox>{StrBox()}));
 }
 
 // main()

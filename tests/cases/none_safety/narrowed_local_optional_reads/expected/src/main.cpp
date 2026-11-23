@@ -62,8 +62,7 @@ void local_path() {
 //     step(7, 8, [0, 0, 0])
 //     local_path()
 void main() {
-    std::vector<::tpy::BigInt> __tmp_1 = std::vector<::tpy::BigInt>{0, 0, 0};
-    ::tpyapp::main::step(7, 8, &(__tmp_1));
+    ::tpyapp::main::step(7, 8, &::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{0, 0, 0}));
     ::tpyapp::main::local_path();
 }
 

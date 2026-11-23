@@ -33,11 +33,10 @@ void decl(const Cell<std::string>& c) {
 //     for n in chars_m(Cell[str]("ab")):
 //         print("meth:", n)
 void main() {
-    Cell<std::string> __tmp_1 = Cell<std::string>("a string long enough to leave the SSO buffer behind");
-    ::tpyapp::main::decl(__tmp_1);
+    ::tpyapp::main::decl(Cell<std::string>("a string long enough to leave the SSO buffer behind"));
     {
-        Cell<std::string> __tmp_2 = Cell<std::string>("ab");
-        auto __src_0 = ::tpyapp::main::chars(__tmp_2);
+        Cell<std::string> __tmp_1 = Cell<std::string>("ab");
+        auto __src_0 = ::tpyapp::main::chars(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -47,8 +46,8 @@ void main() {
         }
     }
     {
-        Cell<std::string> __tmp_3 = Cell<std::string>("ab");
-        auto __src_2 = ::tpyapp::main::chars_m(__tmp_3);
+        Cell<std::string> __tmp_2 = Cell<std::string>("ab");
+        auto __src_2 = ::tpyapp::main::chars_m(__tmp_2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

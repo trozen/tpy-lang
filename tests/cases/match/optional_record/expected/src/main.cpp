@@ -106,10 +106,8 @@ std::string check_color(std::optional<Color> c) {
 //     print(check_color(Color.Green))
 void main() {
     std::cout << ::tpyapp::main::check_point(nullptr) << "\n" << ::tpy::check_signals;
-    Point __tmp_1 = Point(0, 0);
-    std::cout << ::tpyapp::main::check_point(&(__tmp_1)) << "\n" << ::tpy::check_signals;
-    Point __tmp_2 = Point(3, 4);
-    std::cout << ::tpyapp::main::check_point(&(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_point(&::tpy::as_mut_lvalue(Point(0, 0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_point(&::tpy::as_mut_lvalue(Point(3, 4))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::check_color(std::nullopt) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::check_color(Color::Red) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::check_color(Color::Green) << "\n" << ::tpy::check_signals;

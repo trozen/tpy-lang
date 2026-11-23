@@ -63,8 +63,7 @@ __coro_voice voice(::tpy::Union<const Cat*, const Dog*> a) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(Dog());
-        __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
+        __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&(__head_arg_0.emplace(Dog()))});
         __state = S_RESUME_0;
         continue;
     }
@@ -74,8 +73,7 @@ __coro_voice voice(::tpy::Union<const Cat*, const Dog*> a) {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
-        __coro_arg_1.emplace(Cat());
-        __sub_1.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_1))});
+        __sub_1.emplace(::tpy::Union<const Cat*, const Dog*>{&(__head_arg_1.emplace(Cat()))});
         __state = S_RESUME_1;
         continue;
     }

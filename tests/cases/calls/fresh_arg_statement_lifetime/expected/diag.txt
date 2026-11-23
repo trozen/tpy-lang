@@ -1,0 +1,4 @@
+fixtures.py:8: warning: copies list[int32] into field; use copy() to make this explicit
+part_inverse.py:27: warning: copies list[int32] into owned storage; use copy() to make this explicit
+part_opened.py:69: warning: copies Collar | None into field; use copy() to make this explicit
+part_opened.py:150: warning: lambda at line 150 copies the object 'tr' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)

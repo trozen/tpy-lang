@@ -255,8 +255,7 @@ void main() {
     std::cout << "moded" << " " << ::tpyapp::main::moded_shapes(h, names, rows) << "\n" << ::tpy::check_signals;
     std::cout << "operands" << " " << ::tpyapp::main::operand_positions(xs, 1) << "\n" << ::tpy::check_signals;
     std::cout << "guards" << " " << ::tpyapp::main::guard_shapes(h, xs, names) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "drained" << " " << ::tpyapp::main::drain(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "drained" << " " << ::tpyapp::main::drain(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3})) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::mutate_through_field(h);
 }
 

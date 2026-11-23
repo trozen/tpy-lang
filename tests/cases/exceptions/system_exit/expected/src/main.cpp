@@ -202,16 +202,14 @@ void codes() {
     }
     {
         try {
-            ::tpy::Union<std::monostate, int32_t, std::string> __tmp_1 = std::monostate{};
-            ::tpyapp::main::leave_with(__tmp_1);
+            ::tpyapp::main::leave_with(::tpy::Union<std::monostate, int32_t, std::string>(std::monostate{}));
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes union None", e);
         }
     }
     {
         try {
-            ::tpy::Union<std::monostate, int32_t, std::string> __tmp_2 = "u";
-            ::tpyapp::main::leave_with(__tmp_2);
+            ::tpyapp::main::leave_with(::tpy::Union<std::monostate, int32_t, std::string>("u"));
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes union str", e);
         }
@@ -225,8 +223,7 @@ void codes() {
     }
     {
         try {
-            ::tpy::Union<std::monostate, int32_t, std::string> __tmp_3 = "w";
-            ::tpyapp::main::raise_code(__tmp_3);
+            ::tpyapp::main::raise_code(::tpy::Union<std::monostate, int32_t, std::string>("w"));
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes SystemExit(union)", e);
         }

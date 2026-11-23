@@ -30,11 +30,9 @@ void main() {
     const int32_t* rp = &y;
     std::cout << ::tpy::deref_check(rp) << "\n" << ::tpy::check_signals;
     int32_t z = 99;
-    auto __tmp_1 = &z;
-    std::cout << ::tpyapp::main::deref_protocol(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::deref_protocol(&z) << "\n" << ::tpy::check_signals;
     int32_t w = 55;
-    auto __tmp_2 = &w;
-    std::cout << ::tpyapp::main::deref_protocol(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::deref_protocol(&w) << "\n" << ::tpy::check_signals;
     Box b = Box(33);
     std::cout << ::tpy::deref_check(b) << "\n" << ::tpy::check_signals;
 }

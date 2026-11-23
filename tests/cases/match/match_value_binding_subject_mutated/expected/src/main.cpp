@@ -87,12 +87,9 @@ void element_realloc(std::vector<::tpy::Union<Cat, Dog>>& xs) {
 //     field_method(Holder())
 //     element_realloc([Dog(4)])
 void main() {
-    Holder __tmp_1 = Holder();
-    ::tpyapp::main::field_direct(__tmp_1);
-    Holder __tmp_2 = Holder();
-    ::tpyapp::main::field_method(__tmp_2);
-    std::vector<::tpy::Union<Cat, Dog>> __tmp_3 = {Dog(4)};
-    ::tpyapp::main::element_realloc(__tmp_3);
+    ::tpyapp::main::field_direct(::tpy::as_mut_lvalue(Holder()));
+    ::tpyapp::main::field_method(::tpy::as_mut_lvalue(Holder()));
+    ::tpyapp::main::element_realloc(::tpy::as_mut_lvalue(std::vector<::tpy::Union<Cat, Dog>>{Dog(4)}));
 }
 
 // main()

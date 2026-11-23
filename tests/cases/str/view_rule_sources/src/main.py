@@ -68,8 +68,8 @@ def pick(h: H) -> tuple[Rec, str]:
 
 def sec_static() -> None:
     # static storage: a literal, a Final global, an enum member's name, a
-    # slice of a str literal; a bytes literal's slice renders over a
-    # temporary span, so it owns.
+    # slice of a str literal; a bytes literal's slice reads static storage
+    # but is deduced owned (BUGS.md#bytes-literal-slice-owned-temporary).
     a = "literal"  # tpyc: type(StrView) ok
     ab = b"literal"  # tpyc: type(BytesView) ok
     g = GREETING  # tpyc: type(StrView) ok

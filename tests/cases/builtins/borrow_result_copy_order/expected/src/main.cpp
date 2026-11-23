@@ -49,11 +49,9 @@ void bump_kw(P& p) {
 //     print("keyword", ps[0].v, ps[1].v)
 void main() {
     std::vector<P> ps = {P(::tpy::BigInt(3)), P(::tpy::BigInt(9))};
-    P __tmp_1 = ::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of);
-    ::tpy::BigInt t = ((::tpyapp::main::set_first(ps)) + (::tpyapp::main::bump_ret(__tmp_1)));
+    ::tpy::BigInt t = ((::tpyapp::main::set_first(ps)) + (::tpyapp::main::bump_ret(::tpy::as_mut_lvalue(::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of)))));
     std::cout << "order" << " " << t << "\n" << ::tpy::check_signals;
-    P __tmp_2 = ::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of);
-    ::tpyapp::main::bump_kw(__tmp_2);
+    ::tpyapp::main::bump_kw(::tpy::as_mut_lvalue(::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of)));
     std::cout << "keyword" << " " << ::tpy::__getitem__(ps, 0).v << " " << ::tpy::__getitem__(ps, 1).v << "\n" << ::tpy::check_signals;
 }
 

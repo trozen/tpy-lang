@@ -74,8 +74,7 @@ void main() {
     std::cout << "finally_break" << " " << ::tpyapp::main::finally_may_break(::tpyapp::main::mk(), true) << " " << ::tpyapp::main::finally_may_break(::tpyapp::main::mk(), false) << "\n" << ::tpy::check_signals;
     std::cout << "with" << " " << ::tpyapp::main::with_once(::tpyapp::main::mk()) << "\n" << ::tpy::check_signals;
     std::cout << "tuple" << " " << ::tpyapp::main::tuple_steps(::tpyapp::main::pairs()) << "\n" << ::tpy::check_signals;
-    auto __tmp_1 = Sized3(3);
-    std::cout << "protocol" << " " << ::tpyapp::main::count(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "protocol" << " " << ::tpyapp::main::count(Sized3(3)) << "\n" << ::tpy::check_signals;
 }
 
 // # An `Iterable[Own[T]]` parameter is consumed by its first traversal: every shape

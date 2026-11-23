@@ -40,10 +40,8 @@ void main() {
     std::cout << "named grandparent:" << " " << ng.value << " " << ng.label << "\n" << ::tpy::check_signals;
     std::cout << "named pass class:" << " " << NamedMid(10).value << "\n" << ::tpy::check_signals;
     std::cout << "through pass:" << " " << OptLeaf().level << " " << OptMid().level << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    ViaSuper vs = ViaSuper(__tmp_1);
-    std::vector<int32_t> __tmp_2 = {3};
-    ViaName vn = ViaName(__tmp_2);
+    ViaSuper vs = ViaSuper(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}));
+    ViaName vn = ViaName(::tpy::as_mut_lvalue(std::vector<int32_t>{3}));
     std::cout << "generic ancestor:" << " " << ::tpy::ListPrinter(vs.item) << " " << ::tpy::ListPrinter(vn.item) << "\n" << ::tpy::check_signals;
     {
         try {

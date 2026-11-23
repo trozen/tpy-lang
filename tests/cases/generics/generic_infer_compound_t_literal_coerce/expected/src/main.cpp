@@ -65,8 +65,7 @@ void main() {
     ::tpyapp::main::add_to_set<int32_t>(seen, 11);
     ::tpyapp::main::add_to_set<int32_t>(seen, 22);
     std::cout << ::tpy::__len__(seen) << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<int32_t, std::string>> __tmp_1 = {std::tuple<int32_t, std::string>{1, "a"}, std::tuple<int32_t, std::string>{2, "b"}};
-    ::tpyapp::main::take_any<std::vector<std::tuple<int32_t, std::string>>>(__tmp_1);
+    ::tpyapp::main::take_any<std::vector<std::tuple<int32_t, std::string>>>(::tpy::as_mut_lvalue(std::vector<std::tuple<int32_t, std::string>>{std::tuple<int32_t, std::string>{1, "a"}, std::tuple<int32_t, std::string>{2, "b"}}));
     ::tpyapp::main::pair_any<std::tuple<int32_t, std::string>>(std::tuple<int32_t, std::string>{3, "x"}, std::tuple<int32_t, std::string>{4, "y"});
 }
 

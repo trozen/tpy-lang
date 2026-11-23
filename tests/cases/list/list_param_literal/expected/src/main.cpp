@@ -44,18 +44,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::vector<::tpy::BigInt> __tmp_1 = std::vector<::tpy::BigInt>{};
-    ::tpyapp::main::takes_list(__tmp_1);
-    std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-    ::tpyapp::main::takes_list_int32(__tmp_2);
-    std::vector<::tpy::BigInt> __tmp_3 = std::vector<::tpy::BigInt>();
-    ::tpyapp::main::takes_list(__tmp_3);
-    std::vector<int32_t> __tmp_4 = std::vector<int32_t>();
-    ::tpyapp::main::takes_list_int32(__tmp_4);
-    std::vector<::tpy::BigInt> __tmp_5 = {1, 2, 3};
-    ::tpyapp::main::takes_list(__tmp_5);
-    std::array<int32_t, 3> __tmp_6 = {10, 20, 30};
-    ::tpyapp::main::takes_array(__tmp_6);
+    ::tpyapp::main::takes_list(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{}));
+    ::tpyapp::main::takes_list_int32(::tpy::as_mut_lvalue(std::vector<int32_t>{}));
+    ::tpyapp::main::takes_list(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>()));
+    ::tpyapp::main::takes_list_int32(::tpy::as_mut_lvalue(std::vector<int32_t>()));
+    ::tpyapp::main::takes_list(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{1, 2, 3}));
+    ::tpyapp::main::takes_array({10, 20, 30});
 }
 
 } // namespace tpyapp::main

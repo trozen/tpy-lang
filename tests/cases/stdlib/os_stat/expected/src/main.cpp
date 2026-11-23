@@ -69,20 +69,23 @@ void main() {
     std::string_view base = "tpy_os_stat";
     ::tpyapp::main::teardown(base);
     ::tpystd::os::mkdir(base);
-    auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat(base, "/f.txt")), "w");
-    auto& fh = __ctx_1.__enter__();
-    try {
-        fh.write("hello");
-        goto __with_exit_1;
-    } catch (::tpy::BaseException& __exc_1) {
-        __ctx_1.__exit__({}, &__exc_1, {});
-        throw;
-    } catch (...) {
+    {
+        ::tpy::String __tmp_1 = (::tpy::str_concat(base, "/f.txt"));
+        auto __ctx_1 = ::tpy::builtin_open_mode(__tmp_1, "w");
+        auto& fh = __ctx_1.__enter__();
+        try {
+            fh.write("hello");
+            goto __with_exit_1;
+        } catch (::tpy::BaseException& __exc_1) {
+            __ctx_1.__exit__({}, &__exc_1, {});
+            throw;
+        } catch (...) {
+            __ctx_1.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        throw;
     }
-    __with_exit_1:
-    __ctx_1.__exit__({}, nullptr, {});
     ::tpystd::os::_types::stat_result st = ::tpystd::os::stat((::tpy::str_concat(base, "/f.txt")));
     std::cout << "size:" << " " << st.st_size << "\n" << ::tpy::check_signals;
     std::cout << "is-reg:" << " " << ::tpy::print_bool(((static_cast<int64_t>(st.st_mode & 61440)) == 32768)) << "\n" << ::tpy::check_signals;

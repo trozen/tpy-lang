@@ -349,7 +349,7 @@ class TestMethodArgSinkShape:
         # rather than a silent widening.
         plain = {r.row for r in _PLAIN_ARG_SINK.rows}
         mine = {r.row for r in _METHOD_ARG_SINK.rows}
-        assert len(plain - mine) == 33
+        assert len(plain - mine) == 34
         assert {"borrow_tuple_field", "borrow_tuple_subscript",
                 "dyn_own_coro_factory",
                 "dyn_own_handle", "list_repeat_proto",
@@ -384,6 +384,7 @@ class TestPlainSinkShape:
         assert [r.row for r in _PLAIN_ARG_SINK.rows] == [
             "lambda",
             "func_ref",
+            "async_factory_wrap",
             "callable_value_pass",
             "callable_field",
             "callable_object",
@@ -592,7 +593,7 @@ class TestGenericPlainSinkShape:
         # quietly fill one and call it a transcription. The count is what
         # closes the gap: naming a subset leaves the unnamed absences free
         # to be filled silently.
-        assert len(set(plain) - set(generic)) == 34
+        assert len(set(plain) - set(generic)) == 35
         assert {"optional_ptr", "required_protocol_union",
                 "union_coerced_literal"} <= (set(plain) - set(generic))
 
@@ -1243,7 +1244,6 @@ class TestRecordCtorSharedAndNewRows:
             "str_owned_slot",
             "own_lvalue",
             "copy_open_elem",
-            "async_factory_wrap",
             "value_record_field",
             "ru_wrapper_name_no_alias",
             "ru_wrapper_own_literal",
@@ -1252,7 +1252,7 @@ class TestRecordCtorSharedAndNewRows:
             "protocol_union_literal_temp",
             "protocol_union_iter_temp",
         ]
-        assert len([r for r in rows if r in others]) == 15
+        assert len([r for r in rows if r in others]) == 16
 
     def test_the_shadow_rows_hold_a_different_predicate(self):
         # Each of these SHADOWS a shared row name and had to be given its

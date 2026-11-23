@@ -89,11 +89,9 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_genexpr_1_frame::__next__
     while ((*__for_i_0) < (*__for_stop_0)) {
         i = ((*__for_i_0))++;
         int32_t __tmp_1 = i;
-        ::tpystd::tplib::box::Box<int32_t> __tmp_2 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
-        if (::tpyapp::main::is_small(__tmp_2)) {
-            int32_t __tmp_3 = i;
-            ::tpystd::tplib::box::Box<int32_t> __tmp_4 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_3));
-            return ::tpyapp::main::score(__tmp_4);
+        if (::tpyapp::main::is_small(::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1)))) {
+            int32_t __tmp_2 = i;
+            return ::tpyapp::main::score(::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_2)));
         }
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -125,8 +123,7 @@ void filtered(int32_t n) {
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             int32_t __tmp_1 = i;
-            ::tpystd::tplib::box::Box<int32_t> __tmp_2 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
-            if (::tpyapp::main::is_small(__tmp_2)) {
+            if (::tpyapp::main::is_small(::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1)))) {
                 __result.push_back(i);
             }
         }
@@ -149,8 +146,7 @@ void walrus_owned() {
         if (6 > 0) __result.reserve(static_cast<size_t>(6));
         for (int32_t x = 0; x < 6; ++x) {
             int32_t __tmp_1 = x;
-            ::tpystd::tplib::box::Box<int32_t> __tmp_2 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
-            if (((y = ::tpyapp::main::score(__tmp_2)) > 0)) {
+            if (((y = ::tpyapp::main::score(::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1)))) > 0)) {
                 __result.push_back(x);
             }
         }

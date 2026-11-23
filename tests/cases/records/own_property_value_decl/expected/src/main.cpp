@@ -68,8 +68,7 @@ void use_view(const Holder& h) {
 //     print("owner:", len(s._items))
 void main() {
     Snap s = Snap();
-    Holder __tmp_1 = Holder();
-    ::tpyapp::main::use_view(__tmp_1);
+    ::tpyapp::main::use_view(Holder());
     ::tpyapp::main::use(s);
     ::tpyapp::main::use_annotated(s);
     std::cout << "method:" << " " << s.widen() << " " << ::tpy::__len__(s._items) << "\n" << ::tpy::check_signals;

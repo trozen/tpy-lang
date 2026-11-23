@@ -30,8 +30,7 @@ void poke(std::vector<Item>& xs) {
 // def main() -> None:
 //     poke([Item(1, 5), Item(2, 50)])
 void main() {
-    std::vector<Item> __tmp_1 = {Item(1, 5), Item(2, 50)};
-    ::tpyapp::main::poke(__tmp_1);
+    ::tpyapp::main::poke(::tpy::as_mut_lvalue(std::vector<Item>{Item(1, 5), Item(2, 50)}));
 }
 
 // main()

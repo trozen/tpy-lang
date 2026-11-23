@@ -102,10 +102,10 @@ struct __coro_main {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Shelter> s;
-    ::tpy::frame_slot<Dog> __coro_arg_0;
     std::string __await_lift_0;
-    ::tpy::frame_slot<Cat> __coro_arg_1;
     std::string __await_lift_1;
+    ::tpy::frame_slot<Dog> __head_arg_0;
+    ::tpy::frame_slot<Cat> __head_arg_1;
     std::optional<__coro_Shelter_describe> __sub_0;
     std::optional<__coro_Shelter_describe> __sub_1;
 

@@ -22,11 +22,9 @@ namespace tpyapp::main {
 //     # A custom CA file adds trust but keeps verification on.
 //     print(custom.verify_mode == ssl.CERT_REQUIRED, custom.check_hostname)
 void main() {
-    ::tpy::Union<bool, std::string> __tmp_1 = true;
-    ::tpystd::ssl::SSLContext secure = ::tpystd::tplib::requests::_ssl_context_for(__tmp_1);
+    ::tpystd::ssl::SSLContext secure = ::tpystd::tplib::requests::_ssl_context_for(::tpy::Union<bool, std::string>(true));
     std::cout << ::tpy::print_bool((secure.verify_mode == ::tpystd::ssl::CERT_REQUIRED)) << " " << ::tpy::print_bool(secure.check_hostname) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<bool, std::string> __tmp_2 = false;
-    ::tpystd::ssl::SSLContext insecure = ::tpystd::tplib::requests::_ssl_context_for(__tmp_2);
+    ::tpystd::ssl::SSLContext insecure = ::tpystd::tplib::requests::_ssl_context_for(::tpy::Union<bool, std::string>(false));
     std::cout << ::tpy::print_bool((insecure.verify_mode == ::tpystd::ssl::CERT_NONE)) << " " << ::tpy::print_bool(insecure.check_hostname) << "\n" << ::tpy::check_signals;
     auto __ctx_1 = ::tpy::builtin_open_mode(CA_PATH, "w");
     auto& f = __ctx_1.__enter__();

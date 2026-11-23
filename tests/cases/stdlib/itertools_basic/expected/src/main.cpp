@@ -43,27 +43,31 @@ namespace tpyapp::main {
 //     print([x for x in itertools.filterfalse(lambda n: n % 2 == 0,
 //                                             itertools.islice(itertools.count(), 8))])
 void main() {
-    auto __tmp_1 = ::tpystd::itertools::count();
     std::cout << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
-        auto __obj_0 = ::tpystd::itertools::islice<::tpy::BigInt>(__tmp_1, 4);
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const ::tpy::BigInt& x = *__beg_0;
-            __result.push_back(x);
+        {
+            auto __tmp_1 = ::tpystd::itertools::count();
+            auto __obj_0 = ::tpystd::itertools::islice<::tpy::BigInt>(__tmp_1, 4);
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                const ::tpy::BigInt& x = *__beg_0;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = ::tpystd::itertools::count(::tpy::BigInt(10), ::tpy::BigInt(5));
     std::cout << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
-        auto __obj_1 = ::tpystd::itertools::islice<::tpy::BigInt>(__tmp_2, 3);
-        auto __beg_1 = __obj_1.begin();
-        auto __end_1 = __obj_1.end();
-        for (; __beg_1 != __end_1; ++__beg_1) {
-            const ::tpy::BigInt& x = *__beg_1;
-            __result.push_back(x);
+        {
+            auto __tmp_2 = ::tpystd::itertools::count(::tpy::BigInt(10), ::tpy::BigInt(5));
+            auto __obj_1 = ::tpystd::itertools::islice<::tpy::BigInt>(__tmp_2, 3);
+            auto __beg_1 = __obj_1.begin();
+            auto __end_1 = __obj_1.end();
+            for (; __beg_1 != __end_1; ++__beg_1) {
+                const ::tpy::BigInt& x = *__beg_1;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
@@ -100,15 +104,17 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = ::tpystd::itertools::repeat__T<int32_t>(9);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_5 = ::tpystd::itertools::islice<int32_t>(__tmp_3, 4);
-        auto __beg_5 = __obj_5.begin();
-        auto __end_5 = __obj_5.end();
-        for (; __beg_5 != __end_5; ++__beg_5) {
-            int32_t x = *__beg_5;
-            __result.push_back(x);
+        {
+            auto __tmp_3 = ::tpystd::itertools::repeat__T<int32_t>(9);
+            auto __obj_5 = ::tpystd::itertools::islice<int32_t>(__tmp_3, 4);
+            auto __beg_5 = __obj_5.begin();
+            auto __end_5 = __obj_5.end();
+            for (; __beg_5 != __end_5; ++__beg_5) {
+                int32_t x = *__beg_5;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
@@ -123,65 +129,75 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    auto __tmp_4 = std::array<int32_t, 3>{1, 2, 3};
-    auto __tmp_5 = ::tpystd::itertools::cycle<int32_t>(__tmp_4);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_7 = ::tpystd::itertools::islice<int32_t>(__tmp_5, 7);
-        auto __beg_7 = __obj_7.begin();
-        auto __end_7 = __obj_7.end();
-        for (; __beg_7 != __end_7; ++__beg_7) {
-            int32_t x = *__beg_7;
-            __result.push_back(x);
+        {
+            auto __tmp_4 = std::array<int32_t, 3>{1, 2, 3};
+            auto __tmp_5 = ::tpystd::itertools::cycle<int32_t>(__tmp_4);
+            auto __obj_7 = ::tpystd::itertools::islice<int32_t>(__tmp_5, 7);
+            auto __beg_7 = __obj_7.begin();
+            auto __end_7 = __obj_7.end();
+            for (; __beg_7 != __end_7; ++__beg_7) {
+                int32_t x = *__beg_7;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    auto __tmp_6 = ::tpystd::itertools::cycle<int32_t>(empty);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_8 = ::tpystd::itertools::islice<int32_t>(__tmp_6, 5);
-        auto __beg_8 = __obj_8.begin();
-        auto __end_8 = __obj_8.end();
-        for (; __beg_8 != __end_8; ++__beg_8) {
-            int32_t x = *__beg_8;
-            __result.push_back(x);
+        {
+            auto __tmp_6 = ::tpystd::itertools::cycle<int32_t>(empty);
+            auto __obj_8 = ::tpystd::itertools::islice<int32_t>(__tmp_6, 5);
+            auto __beg_8 = __obj_8.begin();
+            auto __end_8 = __obj_8.end();
+            for (; __beg_8 != __end_8; ++__beg_8) {
+                int32_t x = *__beg_8;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    auto __tmp_7 = std::array<int32_t, 5>{10, 20, 30, 40, 50};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_9 = ::tpystd::itertools::islice<int32_t>(__tmp_7, 3);
-        auto __beg_9 = __obj_9.begin();
-        auto __end_9 = __obj_9.end();
-        for (; __beg_9 != __end_9; ++__beg_9) {
-            int32_t x = *__beg_9;
-            __result.push_back(x);
+        {
+            auto __tmp_7 = std::array<int32_t, 5>{10, 20, 30, 40, 50};
+            auto __obj_9 = ::tpystd::itertools::islice<int32_t>(__tmp_7, 3);
+            auto __beg_9 = __obj_9.begin();
+            auto __end_9 = __obj_9.end();
+            for (; __beg_9 != __end_9; ++__beg_9) {
+                int32_t x = *__beg_9;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    auto __tmp_8 = std::array<int32_t, 2>{10, 20};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_10 = ::tpystd::itertools::islice<int32_t>(__tmp_8, 5);
-        auto __beg_10 = __obj_10.begin();
-        auto __end_10 = __obj_10.end();
-        for (; __beg_10 != __end_10; ++__beg_10) {
-            int32_t x = *__beg_10;
-            __result.push_back(x);
+        {
+            auto __tmp_8 = std::array<int32_t, 2>{10, 20};
+            auto __obj_10 = ::tpystd::itertools::islice<int32_t>(__tmp_8, 5);
+            auto __beg_10 = __obj_10.begin();
+            auto __end_10 = __obj_10.end();
+            for (; __beg_10 != __end_10; ++__beg_10) {
+                int32_t x = *__beg_10;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    auto __tmp_9 = std::array<int32_t, 3>{10, 20, 30};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_11 = ::tpystd::itertools::islice<int32_t>(__tmp_9, 0);
-        auto __beg_11 = __obj_11.begin();
-        auto __end_11 = __obj_11.end();
-        for (; __beg_11 != __end_11; ++__beg_11) {
-            int32_t x = *__beg_11;
-            __result.push_back(x);
+        {
+            auto __tmp_9 = std::array<int32_t, 3>{10, 20, 30};
+            auto __obj_11 = ::tpystd::itertools::islice<int32_t>(__tmp_9, 0);
+            auto __beg_11 = __obj_11.begin();
+            auto __end_11 = __obj_11.end();
+            for (; __beg_11 != __end_11; ++__beg_11) {
+                int32_t x = *__beg_11;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
@@ -241,28 +257,32 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    auto __tmp_10 = ::tpystd::itertools::count();
     std::cout << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
-        auto __obj_17 = ::tpystd::itertools::takewhile<::tpy::BigInt>([](const ::tpy::BigInt& n) -> bool { return (n < 5); }, __tmp_10);
-        auto __beg_17 = __obj_17.begin();
-        auto __end_17 = __obj_17.end();
-        for (; __beg_17 != __end_17; ++__beg_17) {
-            const ::tpy::BigInt& x = *__beg_17;
-            __result.push_back(x);
+        {
+            auto __tmp_10 = ::tpystd::itertools::count();
+            auto __obj_17 = ::tpystd::itertools::takewhile<::tpy::BigInt>([](const ::tpy::BigInt& n) -> bool { return (n < 5); }, __tmp_10);
+            auto __beg_17 = __obj_17.begin();
+            auto __end_17 = __obj_17.end();
+            for (; __beg_17 != __end_17; ++__beg_17) {
+                const ::tpy::BigInt& x = *__beg_17;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    auto __tmp_11 = ::tpystd::itertools::count();
-    auto __tmp_12 = ::tpystd::itertools::islice<::tpy::BigInt>(__tmp_11, 8);
     std::cout << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
-        auto __obj_18 = ::tpystd::itertools::filterfalse<::tpy::BigInt>([](const ::tpy::BigInt& n) -> bool { return (((n) % (::tpy::BigInt(2))) == 0); }, __tmp_12);
-        auto __beg_18 = __obj_18.begin();
-        auto __end_18 = __obj_18.end();
-        for (; __beg_18 != __end_18; ++__beg_18) {
-            const ::tpy::BigInt& x = *__beg_18;
-            __result.push_back(x);
+        {
+            auto __tmp_11 = ::tpystd::itertools::count();
+            auto __tmp_12 = ::tpystd::itertools::islice<::tpy::BigInt>(__tmp_11, 8);
+            auto __obj_18 = ::tpystd::itertools::filterfalse<::tpy::BigInt>([](const ::tpy::BigInt& n) -> bool { return (((n) % (::tpy::BigInt(2))) == 0); }, __tmp_12);
+            auto __beg_18 = __obj_18.begin();
+            auto __end_18 = __obj_18.end();
+            for (; __beg_18 != __end_18; ++__beg_18) {
+                const ::tpy::BigInt& x = *__beg_18;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;

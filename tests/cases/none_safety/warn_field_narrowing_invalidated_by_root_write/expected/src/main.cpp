@@ -26,12 +26,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    Box __tmp_1 = Box(2);
-    Box __tmp_2 = Box(10);
-    std::cout << ::tpyapp::main::use_after_rebind(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
-    Box __tmp_3 = Box(2);
-    Box __tmp_4 = Box(11);
-    std::cout << ::tpyapp::main::use_after_rebind(__tmp_3, __tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_after_rebind(::tpy::as_mut_lvalue(Box(2)), ::tpy::as_mut_lvalue(Box(10))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_after_rebind(::tpy::as_mut_lvalue(Box(2)), ::tpy::as_mut_lvalue(Box(11))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

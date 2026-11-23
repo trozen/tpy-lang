@@ -459,8 +459,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    Box __tmp_1 = Box(5);
-    ::tpyapp::main::loop_retain(__tmp_1);
+    ::tpyapp::main::loop_retain(::tpy::as_mut_lvalue(Box(5)));
     ::tpyapp::main::main();
 }
 

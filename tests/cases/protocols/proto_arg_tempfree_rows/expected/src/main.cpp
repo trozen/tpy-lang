@@ -7,8 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     drive(Sink(0))
 void main() {
-    Sink __tmp_1 = Sink(0);
-    ::tpyapp::main::drive(__tmp_1);
+    ::tpyapp::main::drive(::tpy::as_mut_lvalue(Sink(0)));
 }
 
 // main()

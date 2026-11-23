@@ -335,12 +335,10 @@ void main() {
     ::tpystd::tplib::rc::Rc<Pet> rc = Rc<Pet>::new_<Dog>(Dog());
     ::tpyapp::main::rc_handle(rc);
     ::tpystd::tplib::arc::Arc<Pet> ap = Arc<Pet>::new_<Dog>(Dog());
-    ::tpystd::tplib::arc::Arc<Point> __tmp_1 = Arc<Point>::new_<Point>(Point(::tpy::BigInt(2)));
-    ::tpyapp::main::arc_handle(__tmp_1, ap);
+    ::tpyapp::main::arc_handle(Arc<Point>::new_<Point>(Point(::tpy::BigInt(2))), ap);
     ::tpystd::tplib::rc::Weak<Pet> w = rc.downgrade();
     ::tpyapp::main::weak_handle(w);
-    WeakSub __tmp_2 = ::tpyapp::main::make_weak_sub(rc);
-    ::tpyapp::main::weak_subclass(__tmp_2);
+    ::tpyapp::main::weak_subclass(::tpyapp::main::make_weak_sub(rc));
     ::tpyapp::main::arc_payload(ap);
     Pet* q2 = &ap.get();
     if (Dog* __q2_ptr = dynamic_cast<Dog*>(q2); (__q2_ptr != nullptr)) {
@@ -348,8 +346,7 @@ void main() {
     }
     ::tpyapp::main::get_payload(rc);
     ::tpyapp::main::get_payload(rc);
-    ::tpystd::tplib::rc::Rc<Pet> __tmp_3 = Rc<Pet>::new_<Cat>(Cat());
-    ::tpyapp::main::get_payload(__tmp_3);
+    ::tpyapp::main::get_payload(::tpy::as_mut_lvalue(Rc<Pet>::new_<Cat>(Cat())));
     ::tpyapp::main::deref_payload(rc);
     Kennel(::tpystd::tplib::box::Box<Dog>(Dog())).show();
     Pet* q = &rc.get();
@@ -360,24 +357,18 @@ void main() {
     std::cout << "deref_record: through bp" << " " << bp.get().x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::match_get(b);
     ::tpyapp::main::match_deref(b);
-    ::tpystd::tplib::box::Box<Pet> __tmp_4 = ::tpystd::tplib::box::Box<Cat>(Cat());
-    ::tpyapp::main::match_deref(__tmp_4);
+    ::tpyapp::main::match_deref(::tpy::as_mut_lvalue(::tpystd::tplib::box::Box<Pet>(::tpystd::tplib::box::Box<Cat>(Cat()))));
     std::cout << ::tpyapp::main::box_get(b) << "\n" << ::tpy::check_signals;
-    ::tpystd::tplib::box::Box<Pet> __tmp_5 = ::tpystd::tplib::box::Box<Cat>(Cat());
-    std::cout << ::tpyapp::main::box_get(__tmp_5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::box_get(::tpy::as_mut_lvalue(::tpystd::tplib::box::Box<Pet>(::tpystd::tplib::box::Box<Cat>(Cat())))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::shadow_alias(b);
-    ::tpystd::tplib::box::Box<Pet> __tmp_6 = ::tpystd::tplib::box::Box<Cat>(Cat());
-    ::tpyapp::main::shadow_alias(__tmp_6);
+    ::tpyapp::main::shadow_alias(::tpy::as_mut_lvalue(::tpystd::tplib::box::Box<Pet>(::tpystd::tplib::box::Box<Cat>(Cat()))));
     std::cout << ::tpyapp::main::rebind_handle() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::match_local(b);
-    Holder __tmp_7 = Holder(::tpystd::tplib::box::Box<Dog>(Dog()));
-    ::tpyapp::main::match_call_mutates(__tmp_7);
+    ::tpyapp::main::match_call_mutates(::tpy::as_mut_lvalue(Holder(::tpystd::tplib::box::Box<Dog>(Dog()))));
     ::tpyapp::main::optional_box(nullptr);
     ::tpyapp::main::optional_box(&(b));
-    Hound __tmp_8 = Hound();
-    ::tpyapp::main::upgrade_method(__tmp_8);
-    Handle __tmp_9 = Handle(Point(::tpy::BigInt(3)));
-    ::tpyapp::main::user_deref(__tmp_9);
+    ::tpyapp::main::upgrade_method(Hound());
+    ::tpyapp::main::user_deref(Handle(Point(::tpy::BigInt(3))));
     Point pt = Point(::tpy::BigInt(4));
     ::tpyapp::main::ptr_object(&pt);
 }

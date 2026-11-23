@@ -28,8 +28,7 @@ void main() {
     A a = A(1);
     B b = B(2);
     ::tpyapp::main::add_b(a, b);
-    A __tmp_1 = A(3);
-    ::tpyapp::main::add_a(::tpy::__getitem__(a.bs, 0), __tmp_1);
+    ::tpyapp::main::add_a(::tpy::__getitem__(a.bs, 0), A(3));
     ::tpy::__getitem__(a.bs, 0).val = 200;
     ::tpy::__getitem__(::tpy::__getitem__(a.bs, 0).as_, 0).val = 30;
     std::cout << a.val << " " << ::tpy::__getitem__(a.bs, 0).val << " " << ::tpy::__getitem__(::tpy::__getitem__(a.bs, 0).as_, 0).val << " " << ::tpy::__len__(a.bs) << " " << ::tpy::__len__(::tpy::__getitem__(a.bs, 0).as_) << "\n" << ::tpy::check_signals;

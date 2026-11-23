@@ -176,16 +176,18 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_lc_gen_src::__ne
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::vector<C> __tmp_1 = {C(::tpy::BigInt(100)), C(::tpy::BigInt(200))};
         vals.emplace(({
             std::vector<::tpy::BigInt> __result;
-            auto& __obj_0 = ::tpyapp::main::pick(__tmp_1);
-            auto __beg_0 = __obj_0.begin();
-            auto __end_0 = __obj_0.end();
-            for (; __beg_0 != __end_0; ++__beg_0) {
-                const auto& c = *__beg_0;
-                for (int32_t k = 0; k < 1; ++k) {
-                    __result.push_back(((c.n) + (::tpy::BigInt(k))));
+            {
+                std::vector<C> __tmp_1 = std::vector<C>{C(::tpy::BigInt(100)), C(::tpy::BigInt(200))};
+                auto& __obj_0 = ::tpyapp::main::pick(__tmp_1);
+                auto __beg_0 = __obj_0.begin();
+                auto __end_0 = __obj_0.end();
+                for (; __beg_0 != __end_0; ++__beg_0) {
+                    const auto& c = *__beg_0;
+                    for (int32_t k = 0; k < 1; ++k) {
+                        __result.push_back(((c.n) + (::tpy::BigInt(k))));
+                    }
                 }
             }
             std::move(__result);

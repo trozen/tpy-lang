@@ -14,13 +14,15 @@ from __future__ import annotations
 
 import io
 from contextlib import contextmanager
-from dataclasses import dataclass, field, fields as dc_fields, is_dataclass
-from typing import Callable, ContextManager, Iterator, Mapping, TextIO
+from dataclasses import (dataclass, field, fields as dc_fields, is_dataclass,
+                         replace)
+from typing import (Callable, ContextManager, Iterator, Mapping,
+                    TextIO)
 
 from ..temp_schedule import TempQueue
 from ..parse.nodes import NoneUseKind, ResultForm, TryTier
 from ..codegen_cpp.context import (
-    INDENT, CondRegion,
+    INDENT, CondRegion, typed_init_expression,
     any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span,
     cpp_string_literal_expr, escape_cpp_char, escape_cpp_name,
     escape_cpp_string, expand_cpp_template, loop_var_binding,
@@ -40,8 +42,8 @@ from ..typesys import (NoneType, pointer_trait_cpp, substitute_cpp_ret, Optional
                        unwrap_qualifiers, view_family_for_type)
 from .source import TraitAbi
 from .frame import LeafRole
-from .nodes import (THIRRebindSlot, THIRStoragePlacement, Form, PrintForm,
-    PtrSlotKind, TruthinessMode, THIRArgTemp, THIRTempRead, BOUND_SOURCE_READ,
+from .nodes import (deref_hops_cpp, THIRRebindSlot, THIRStoragePlacement, Form, PrintForm,
+    PtrSlotKind, TruthinessMode, THIRArgTemp, THIRTempRead, THIRInlineTemp, BOUND_SOURCE_READ,
     THIRLent, THIRAssert, THIRAssign, THIRBinOp, THIRChainedCompareStmtExpr,
     THIRDynCast, THIREvalThen,
     THIRBreak, THIRBytesLiteral, THIRCall, THIRCharLiteral, THIRWalrus,
@@ -54,6 +56,7 @@ from .nodes import (THIRRebindSlot, THIRStoragePlacement, Form, PrintForm,
     THIRConsumingIter, THIRCopy, THIRForEach, THIRNode, THIRForIterProto,
     THIRForRange, THIRFormConvert, THIRFString, THIRFunction, THIRIf,
     THIRIdentity, THIRIfExpr, THIRIsNone, THIRSlotEmplace, THIRValueSelect,
+    THIRRootSlot,
     THIRMembership, THIRStrMembership, THIRTupleMembership, THIRIsinstance,
     THIRAnyIsinstance, THIRDynIsinstance, THIRDynIsinstanceMulti,
     THIRDefaultConstruct, THIRLiteral, THIRMatch, THIRMatchArmEntry,
@@ -163,11 +166,13 @@ class TempSink:
             self._declared.append(placement)
 
     def create(self, cpp_type: str, init_expr: str, *,
-               brace_init: bool = False, movable: bool = False) -> str:
+               brace_init: bool = False, movable: bool = False,
+               fills_in_place: bool = False) -> str:
         assert self.plan is None, "unplanned temporary producer"
         return self._ctx.temps.create_typed(cpp_type, init_expr,
                                             brace_init=brace_init,
-                                            movable=movable)
+                                            movable=movable,
+                                            fills_in_place=fills_in_place)
 
     @contextmanager
     def conditional_region(self, anchor: THIRExpr | None = None) -> Iterator[CondRegion]:
@@ -187,7 +192,8 @@ class TempSink:
     def argument(self, expr: THIRArgTemp, init: str, plan: THIRTempPlan | None) -> str:
         if plan is None:
             name = self.create(expr.cpp_type or "auto", init, brace_init=expr.brace_init,
-                               movable=bool(expr.movable))
+                               movable=expr.would_bank(),
+                               fills_in_place=expr.fills_in_place)
         else:
             placement = plan.placement(expr)
             assert self.plan is plan and isinstance(placement.node, THIRArgTemp)
@@ -195,7 +201,8 @@ class TempSink:
             assert entry.optional == placement.optional
             name = self._ctx.temps.create_typed(expr.cpp_type or "auto", init,
                                                 brace_init=expr.brace_init, movable=bool(expr.movable),
-                                                planned_optional=placement.optional)
+                                                planned_optional=placement.optional,
+                                                fills_in_place=expr.fills_in_place)
         if expr.read_id is not None:
             self._read_names[expr.read_id] = name
         return name
@@ -267,6 +274,9 @@ class TempSink:
         self._check_flush()
         self._ctx.temps.flush(out, indent)
 
+    def flush_named(self, out: TextIO, indent: str) -> None:
+        self._ctx.temps.flush_named(out, indent)
+
 
 def _emit_held(held: 'tuple[THIRArgTemp, ...]', state: '_EmitState') -> None:
     """Declare the temps a statement holds, in order, ahead of its line;
@@ -305,11 +315,14 @@ class UnevaluatedTemps(TempSink):
     A named pre-declaration (a walrus target) has no such stand-in."""
 
     def create(self, cpp_type: str, init_expr: str, *,
-               brace_init: bool = False, movable: bool = False) -> str:
+               brace_init: bool = False, movable: bool = False,
+               fills_in_place: bool = False) -> str:
         # A deduced declaration names no type to stand in for: spell what
-        # it would deduce from its initializer.
+        # it would deduce from its initializer (`auto` decays an array).
         if cpp_type == "auto&&":
             cpp_type = f"std::remove_reference_t<decltype(({init_expr}))>"
+        elif cpp_type == "auto":
+            cpp_type = f"std::decay_t<decltype(({init_expr}))>"
         return f"std::declval<{cpp_type}&>()"
 
     def declare_named(self, name: str, cpp_type: str, *,
@@ -774,12 +787,6 @@ def _emit_union_arg_lift(e: THIRUnionArgLift, state: _EmitState) -> str:
     if e.value is None:
         return f"{e.variant_cpp}{{std::monostate{{}}}}"
     inner = _emit_expr(e.value, state)
-    if e.temp_cpp is not None:
-        # The rvalue branch: hoist the member-typed ctor into a named temp at
-        # the statement flush and lift its address -- `pv{&__tmp_N}`, no
-        # parens (TempState's temp-arm spelling, unlike the name lift below).
-        name = state.temps.create(e.temp_cpp, inner)
-        return f"{e.variant_cpp}{{&{name}}}"
     if e.deref:
         inner = f"(*{inner})"
     if e.const_wrap == "storage":
@@ -825,14 +832,8 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
     if e.cpp_template is not None or e.native_function_name is not None:
         return _emit_bound_call(bound, recv, args, ret=e.result_type)
     if e.deref_chain:
-        # User Deref-wrapper method call: N `.__deref__()` calls between the
-        # bare receiver and the member call (`r.__deref__().sum()`); a
-        # pointer-local receiver joins the first hop with `->`
-        # (`g->__deref__().push_back(3)`).
-        first = "->" if e.is_arrow else "."
-        chain = (f"{first}__deref__()"
-                 + ".__deref__()" * (e.deref_chain - 1))
-        return _emit_bound_call(bound, f"{recv}{chain}", args)
+        return _emit_bound_call(
+            bound, recv + deref_hops_cpp(e.is_arrow, e.deref_chain), args)
     return _emit_bound_call(bound, recv, args, arrow=arrow, mtargs=mtargs)
 
 
@@ -940,6 +941,10 @@ def _emit_comprehension_block(e: 'THIRComprehensionBlock',
     """The statement-expression around a comprehension body. It renders
     inline after the enclosing statement's `= `, so the first line is a bare
     `({` and the body indents one level past that statement."""
+    if isinstance(state.temps, UnevaluatedTemps):
+        # A `decltype` operand admits no statements: the block's value
+        # stands in by its type.
+        return f"std::declval<{e.container_cpp}>()"
     level = state.stmt_indent_level
     ind1 = INDENT * (level + 1)
     buf = io.StringIO()
@@ -1019,7 +1024,11 @@ def _emit_vararg_pack(e: 'THIRVarargPack', state: _EmitState) -> str:
     init = ", ".join(subs)
     array_cpp = (f"std::array<{e.elem_cpp}*, {n}>" if e.is_ref
                  else f"std::array<{e.elem_cpp}, {n}>")
-    temp = state.temps.create(array_cpp, init, brace_init=True)
+    # A pointer array is built where its elements are: under a conditional
+    # operand it is emplaced in that arm, after the elements it points at
+    # (a value array would copy its elements into the optional).
+    temp = state.temps.create(array_cpp, init, brace_init=True,
+                              movable=e.is_ref)
     return f"::tpy::varargs<{e.elem_cpp}>({temp})"
 
 
@@ -1143,13 +1152,9 @@ def _cpp_str(text: 'str | None') -> str:
 
 def _emit_field_access(e: THIRFieldAccess, state: _EmitState) -> str:
     if e.deref_chain:
-        # User Deref-wrapper field access: N `__deref__()` calls between the
-        # bare receiver and the field (`r.__deref__().x`); a pointer-local
-        # receiver joins the first hop with `->` (`r->__deref__().x`).
-        first = "->" if e.is_arrow else "."
-        chain = (f"{first}__deref__()"
-                 + ".__deref__()" * (e.deref_chain - 1))
-        base = f"{_emit_expr(e.receiver, state)}{chain}.{e.field_cpp}"
+        base = (_emit_expr(e.receiver, state)
+                + deref_hops_cpp(e.is_arrow, e.deref_chain)
+                + f".{e.field_cpp}")
         return f"(*{base})" if e.narrowed_deref else base
     base = f"{_emit_expr(e.receiver, state)}{'->' if e.is_arrow else '.'}{e.field_cpp}"
     # Sema-narrowed Optional field: the storage stays std::optional<T>, so the
@@ -2084,6 +2089,13 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return _emit_ctor_call(e, state)
     if isinstance(e, THIRVarargPack):
         return _emit_vararg_pack(e, state)
+    if isinstance(e, THIRRootSlot):
+        if (isinstance(e.value, THIRCtorCall) and not e.value.brace_init
+                and not e.build_first):
+            args = ", ".join(_emit_expr(a, state) for a in e.value.args)
+        else:
+            args = _emit_expr(e.value, state)
+        return f"{e.name}.emplace({args})"
     if isinstance(e, THIRSlotEmplace):
         # The slot is a NAMED decl, so it hoists to the statement even inside
         # a conditional region; only the emplace runs with the operand.
@@ -2095,12 +2107,26 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # here; args render left-to-right, so temps are created in argument
         # order. The pending decl flushes before the statement line.
         init_cpp = _emit_expr(e.init, state)
-        name = state.temps.argument(e, init_cpp, state.temp_plan)
+        if (e.frame_holder is not None
+                and not isinstance(state.temps, UnevaluatedTemps)):
+            # A frame holder is filled where the argument is evaluated.
+            name = (f"{e.frame_holder.name}.emplace("
+                    f"{typed_init_expression(e.frame_holder.cpp_type, init_cpp, e.brace_init)})")
+        else:
+            name = state.temps.argument(e, init_cpp, state.temp_plan)
         if e.move:
             return f"std::move({name})"
         return f"&({name})" if e.addr_of else name
     if isinstance(e, THIRTempRead):
         return state.temps.read(e)
+    if isinstance(e, THIRInlineTemp):
+        inner = _emit_expr(e.value, state)
+        if e.cpp_type is not None:
+            inner = (f"{e.cpp_type}{{{inner}}}" if e.brace_init
+                     else f"{e.cpp_type}({inner})")
+        if e.mutable or e.addr_of:
+            inner = f"::tpy::as_mut_lvalue({inner})"
+        return f"&{inner}" if e.addr_of else inner
     if isinstance(e, THIRCopy):
         return f"{e.cpp_type}({_emit_expr(e.value, state)})"
     if isinstance(e, THIRConsumingIter):
@@ -2665,8 +2691,20 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     iterable_cpp = _emit_loop_source(stmt, stmt.iterable, state)
     if stmt.str_literal_iterable:
         iterable_cpp = f"std::string_view({iterable_cpp})"
-    # The source's arg temps (an inner comprehension clause's call source)
-    # are declared ahead of its one capture.
+    # The source's arg temps (the fresh arguments the head keeps) are
+    # declared ahead of its one capture, in a scope of the loop's own, so
+    # they live until the whole statement ends.
+    scoped = stmt.head_scope
+    outer_indent = indent
+    parent_scope = state.temps.scope
+    if scoped:
+        # A name the head binds (a walrus target) outlives the statement.
+        state.temps.flush_named(out, indent)
+        out.write(f"{indent}{{\n")
+        indent_level += 1
+        indent = INDENT * indent_level
+        if state.temp_plan is not None:
+            state.temps.enter_scope(stmt, "head")
     state.temps.flush(out, indent)
     if stmt.frame_src_field is not None:
         # A fresh source whose elements this body binds into borrowing frame
@@ -2708,6 +2746,9 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     state.loop_depth -= 1
     out.write(f"{indent}}}\n")
     _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level, scope_owner=stmt)
+    if scoped:
+        out.write(f"{outer_indent}}}\n")
+        state.temps.scope = parent_scope
 
 
 def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
@@ -2719,16 +2760,24 @@ def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
     # CPython's refcount drop), and the src/itr and __r indices are two
     # consecutive per-function loop-index draws.
     indent = INDENT * indent_level
+    _emit_hoist_decls(out, indent, stmt, state)
     saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
     it_cpp = _emit_loop_source(stmt, stmt.iterable, state)
     n = state.next_loop_index()
     src, itr = f"__src_{n}", f"__itr_{n}"
     outer = indent
     lvl = indent_level
-    if not stmt.iterable_lvalue:
+    # An lvalue source opens the scope too when the head keeps a fresh
+    # argument, so the argument lives until the loop ends.
+    scoped = not stmt.iterable_lvalue or stmt.head_scope
+    parent_scope = state.temps.scope
+    if scoped:
+        state.temps.flush_named(out, indent)
         out.write(f"{indent}{{\n")
         lvl += 1
         indent = INDENT * lvl
+        if state.temp_plan is not None:
+            state.temps.enter_scope(stmt, "head")
     state.temps.flush(out, indent)
     binding_kw = "auto&" if stmt.iterable_lvalue else "auto"
     if stmt.frame_src_field is not None:
@@ -2758,12 +2807,15 @@ def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
                                owned_slot=_loop_owned_slot(stmt, r_n))
     _write_lines(out, inner, binding)
     state.loop_depth += 1
-    _emit_stmts(out, stmt.body, lvl + 1, state)
+    _emit_stmts(out, stmt.body, lvl + 1, state, scope_owner=stmt, scope_role="loop")
     state.loop_depth -= 1
     out.write(f"{indent}}}\n")
-    if not stmt.iterable_lvalue:
+    # The else runs inside the statement's scope: what the head keeps lives
+    # until the whole statement ends.
+    _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, lvl, scope_owner=stmt)
+    if scoped:
         out.write(f"{outer}}}\n")
-    _pop_loop_frame(out, outer, state, saved_depth, stmt.orelse, indent_level)
+        state.temps.scope = parent_scope
 
 
 def _emit_finally_chain(out: TextIO, indent: str, state: _EmitState,
@@ -2827,7 +2879,8 @@ def _emit_raised_object(out: TextIO, indent: str, stmt: THIRRaise,
         else:
             out.write(f"{indent}return {value_cpp};\n")
     elif stmt.via_virtual:
-        chain = ".__deref__()" * stmt.deref_depth
+        chain = (deref_hops_cpp(False, stmt.deref_depth)
+                 if stmt.deref_depth else "")
         out.write(f"{indent}{obj}{chain}.__raise__();\n")
     else:
         out.write(f"{indent}throw {obj};\n")
@@ -3018,6 +3071,31 @@ def _emit_loop_exit(out: TextIO, indent: str, state: _EmitState,
 
 def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
                state: _EmitState) -> None:
+    if not stmt.head_scope:
+        _emit_with_items(out, stmt, indent_level, state)
+        return
+    # The scope the head's temporaries live in until the statement ends;
+    # what the statement declares for after it (its pre-declarations, a
+    # name a head binds) stays outside. A head binds such a name as its
+    # item renders, after the scope's first lines are written: the scope's
+    # lines are buffered and the names written ahead of them.
+    indent = INDENT * indent_level
+    _emit_hoist_decls(out, indent, stmt, state)
+    scoped = io.StringIO()
+    rebound: list[tuple[str, str]] = []
+    _emit_with_items(scoped, replace(stmt, hoist_decls=()), indent_level + 1,
+                     state, names_out=(out, indent), rebound=rebound)
+    out.write(f"{indent}{{\n")
+    out.write(scoped.getvalue())
+    out.write(f"{indent}}}\n")
+    for target, ptr in rebound:
+        out.write(f"{indent}auto& {target} = *{ptr};\n")
+
+
+def _emit_with_items(out: TextIO, stmt: THIRWith, indent_level: int,
+                     state: _EmitState, *,
+                     names_out: 'tuple[TextIO, str] | None' = None,
+                     rebound: 'list[tuple[str, str]] | None' = None) -> None:
     # See THIRWith for the shape: per-item header lines, then one try/catch
     # layer per manager, closed innermost-first so the innermost __exit__ runs
     # first. The header flush is a no-op in the slice -- temp-registering
@@ -3030,6 +3108,11 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
         n = state.with_counter.next()
         ctx_ids.append(n)
         ctx_cpp = _emit_expr(item.ctx_expr, state)
+        # A fresh argument the manager keeps flushes before its line, in
+        # the with's own scope; a name it binds, before that scope.
+        if names_out is not None:
+            state.temps.flush_named(*names_out)
+        state.temps.flush(out, indent)
         if item.deref_manager:
             ctx_cpp = f"*({ctx_cpp})"
         ctx_bind = "auto&" if item.manager_borrowed else "auto"
@@ -3042,25 +3125,6 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
                       f".emplace({ctx_cpp});\n")
             out.write(f"{indent}auto& __ctx_{n} = "
                       f"(*{item.frame_ctx.name});\n")
-        elif item.manager_hoist_cpp is not None:
-            # Kept owned manager (`_with_manager_needs_hoist`): the target's
-            # slot aliases `__enter__()`'s result past the block, so the
-            # manager lives in a function-scope optional and `__ctx_N` binds
-            # through it. Slot allocated AFTER the manager expr renders, so
-            # the expression's own counter draws come first. At module-init
-            # scope the slot spells `static std::optional<T>
-            # __global_slot_N;` (slot_static / slot_prefix), so no
-            # assert_local_slot -- the hoist line carries the scope's own
-            # lifetime, like the pointer-slot global arms.
-            assert state.hoist_drainable, (
-                "a with manager-hoist slot in a leaf emitter with no "
-                "function-top drain (lowering should have rejected this body)")
-            slot = f"{state.slot_prefix}_{state.next_slot()}"
-            state.hoist_lines.append(
-                f"{state.slot_static}std::optional<{item.manager_hoist_cpp}> "
-                f"{slot};")
-            out.write(f"{indent}{slot}.emplace({ctx_cpp});\n")
-            out.write(f"{indent}auto& __ctx_{n} = (*{slot});\n")
         else:
             out.write(f"{indent}{ctx_bind} __ctx_{n} = {ctx_cpp};\n")
         # The as-target spells the RAW source name while later reads escape
@@ -3069,11 +3133,21 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
             out.write(f"{indent}auto {item.target} = __ctx_{n}.__enter__();\n")
         elif item.target_arm is WithTargetArm.REF:
             out.write(f"{indent}auto& {item.target} = __ctx_{n}.__enter__();\n")
+        elif item.target_arm is WithTargetArm.SCOPED_REF:
+            assert names_out is not None and rebound is not None
+            ptr = f"__with_target_{n}"
+            names_out[0].write(
+                f"{names_out[1]}{item.target_cpp}* {ptr} = nullptr;\n")
+            rebound.append((item.target, ptr))
+            out.write(f"{indent}auto& {item.target} = __ctx_{n}.__enter__();\n")
+            out.write(f"{indent}{ptr} = &{item.target};\n")
         elif item.target_arm is WithTargetArm.PTR_DECL:
             out.write(f"{indent}{item.target_cpp}* {item.target} = "
                       f"&(__ctx_{n}.__enter__());\n")
         elif item.target_arm is WithTargetArm.ASSIGN_PTR:
             out.write(f"{indent}{item.target} = &(__ctx_{n}.__enter__());\n")
+        elif item.target_arm is WithTargetArm.ASSIGN:
+            out.write(f"{indent}{item.target} = __ctx_{n}.__enter__();\n")
         elif item.target_arm is WithTargetArm.FRAME_SLOT:
             out.write(f"{indent}{item.target}"
                       f".emplace(__ctx_{n}.__enter__());\n")
@@ -3370,6 +3444,13 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
     else:
         binding = "auto&" if stmt.subject_ref else "auto"
         subject_cpp = _emit_expr(stmt.subject, state)
+        if stmt.head_scope:
+            # The subject's temporaries live in a scope of the statement's
+            # own until it ends; a name the subject binds, outside it.
+            state.temps.flush_named(out, indent)
+            out.write(f"{indent}{{\n")
+            outer_indent, indent_level = indent, indent_level + 1
+            indent = INDENT * indent_level
         # Subject arg temps flush before the bind line; admitted subjects
         # rarely carry any, but a call-rooted rvalue subject can.
         state.temps.flush(out, indent)
@@ -3403,6 +3484,8 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
         _emit_match_switch(out, stmt, indent_level, state, subject)
     if stmt.emit_unreachable:
         out.write(f"{indent}::std::unreachable();\n")
+    if stmt.subject is not None and stmt.head_scope:
+        out.write(f"{outer_indent}}}\n")
 
 
 def _emit_match_binding(out: TextIO, binding: 'THIRMatchBinding | None',
@@ -5033,6 +5116,16 @@ class ResumableLeafEmitter:
                 and n.frame_src_field is not None}
         return self._held_loops
 
+    def render_unevaluated(self, node: THIRExpr, temps: 'TempSink') -> str:
+        """Render `node` under the unevaluated sink `temps`: what a frame
+        struct's `decltype` spells a member's type off."""
+        saved = self._state.temps
+        self._state.temps = temps
+        try:
+            return _emit_expr(node, self._state)
+        finally:
+            self._state.temps = saved
+
     def render_for_source(self, iterable, *, temps: 'TempSink',
                           frame_src_field=None) -> str:
         """The render of a `for` head's iterable, as the loop's own setup
@@ -5063,11 +5156,15 @@ class ResumableLeafEmitter:
             cpp = f"std::string_view({cpp})"
         return cpp
 
-    def render_expr(self, slot) -> str:
+    def render_expr(self, slot, *, indent: 'str | None' = None) -> str:
         """Render an expression position -- a branch condition, a header
         expression, an await operand or receiver, a yield value; arg temps
         queue on the shared ctx sink and flush at the printer's flush point
-        where the position has one."""
+        where the position has one. `indent`: the line the render sits on,
+        which a statement-expression inside it (a comprehension) indents
+        from."""
+        if indent is not None:
+            self._state.stmt_indent_level = len(indent) // len(INDENT)
         return _emit_expr(self.leaf(slot), self._state)
 
     def render_await_args(self, slot, *,

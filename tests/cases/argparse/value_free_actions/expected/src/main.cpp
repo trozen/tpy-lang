@@ -15,8 +15,7 @@ namespace tpyapp::main {
 //     print(args.c)
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = {"--verbose", "-c", "-c", "-c"};
-    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1({"--verbose", "-c", "-c", "-c"});
     std::cout << ::tpy::print_bool(args.verbose) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(args.no_cache) << "\n" << ::tpy::check_signals;
     std::cout << args.c << "\n" << ::tpy::check_signals;

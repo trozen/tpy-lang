@@ -172,12 +172,11 @@ int32_t read(const Point& p) {
     return p.y;
 }
 
-// # free function: the result lent as a borrowed argument temporary
-// def lend_temp(n: int32) -> int32:  # tpyc: mir(certified) mir_summary(known)
+// # free function: the result lent as a temporary of the call's own expression
+// def lend_temp(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
 //     return read(make(n))
 int32_t lend_temp(int32_t n) {
-    Point __tmp_1 = ::tpyapp::main::make(n);
-    return ::tpyapp::main::read(__tmp_1);
+    return ::tpyapp::main::read(::tpyapp::main::make(n));
 }
 
 // # kept refusal: an Optional local bound to the result
@@ -275,13 +274,11 @@ void main() {
     std::cout << "reseat_return" << " " << ::tpyapp::main::reseat_return(3).x << "\n" << ::tpy::check_signals;
     std::cout << "use_result" << " " << ::tpyapp::main::use_result(3) << "\n" << ::tpy::check_signals;
     std::cout << "use_temp" << " " << ::tpyapp::main::use_temp(4) << "\n" << ::tpy::check_signals;
-    Pool __tmp_1 = Pool();
-    std::cout << "spawn_temp" << " " << ::tpyapp::main::spawn_temp(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "spawn_temp" << " " << ::tpyapp::main::spawn_temp(Pool()) << "\n" << ::tpy::check_signals;
     std::cout << "reseat" << " " << ::tpyapp::main::reseat(5) << "\n" << ::tpy::check_signals;
     std::cout << "collect" << " " << ::tpyapp::main::collect(6) << "\n" << ::tpy::check_signals;
     std::cout << "named_caller" << " " << ::tpyapp::main::named_caller("ab") << "\n" << ::tpy::check_signals;
-    Pool __tmp_2 = Pool();
-    std::cout << "spawned" << " " << ::tpyapp::main::spawned(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "spawned" << " " << ::tpyapp::main::spawned(Pool()) << "\n" << ::tpy::check_signals;
     std::cout << "give" << " " << ::tpyapp::main::give(1) << "\n" << ::tpy::check_signals;
     std::cout << "lend_temp" << " " << ::tpyapp::main::lend_temp(2) << "\n" << ::tpy::check_signals;
     std::cout << "maybe" << " " << ::tpyapp::main::maybe(true, 9) << " " << ::tpyapp::main::maybe(false, 9) << "\n" << ::tpy::check_signals;

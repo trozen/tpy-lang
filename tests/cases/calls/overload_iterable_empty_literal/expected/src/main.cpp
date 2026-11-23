@@ -19,8 +19,7 @@ namespace tpyapp::main {
 //     # (cost-based), not declaration-order-dependent.
 //     print(sum([]))
 void main() {
-    auto __tmp_1 = std::vector<double>{};
-    std::cout << ::tpyapp::main::pick__Iterable_float__float(__tmp_1, 1.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick__Iterable_float__float(std::vector<double>{}, 1.0) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::builtin_sum<int32_t>(std::vector<int32_t>{}) << "\n" << ::tpy::check_signals;
 }
 

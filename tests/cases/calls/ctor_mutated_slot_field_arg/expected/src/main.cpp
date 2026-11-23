@@ -57,11 +57,9 @@ void main() {
     std::cout << "ctor_reclist" << " " << ::tpy::__len__(w.recs) << " " << rt.n << "\n" << ::tpy::check_signals;
     BufTaker bt = BufTaker(w.buf);
     std::cout << "ctor_bytearray" << " " << ::tpy::__len__(w.buf) << " " << bt.n << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>(w.items);
-    ListTaker ct = ListTaker(__tmp_1);
+    ListTaker ct = ListTaker(::tpy::as_mut_lvalue(std::vector<int32_t>(w.items)));
     std::cout << "ctor_copy_temp" << " " << ::tpy::ListPrinter(w.items) << " " << ct.n << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = ::tpyapp::main::mk();
-    ListTaker ot = ListTaker(__tmp_2);
+    ListTaker ot = ListTaker(::tpy::as_mut_lvalue(::tpyapp::main::mk()));
     std::cout << "ctor_own_call" << " " << ot.n << "\n" << ::tpy::check_signals;
 }
 

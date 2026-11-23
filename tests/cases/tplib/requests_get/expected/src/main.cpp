@@ -44,8 +44,7 @@ void main() {
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 8002);
     conn.sock = std::move(a);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"db", "das"}});
-    ::tpystd::tplib::requests::Response r = s.get("http://api.test:8002/v1/tables", &(__tmp_1));
+    ::tpystd::tplib::requests::Response r = s.get("http://api.test:8002/v1/tables", &::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"db", "das"}})));
     std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << " " << r.reason << "\n" << ::tpy::check_signals;
     std::cout << r.text() << "\n" << ::tpy::check_signals;
     std::cout << r.headers["Content-Type"] << "\n" << ::tpy::check_signals;

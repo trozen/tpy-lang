@@ -47,8 +47,8 @@ from ..value_category import (
     CONTAINER_LITERAL_NODES,
     const_place,
     const_storage_source as _const_storage_source_shared,
-    is_temporary_expr as _is_temporary_expr_shared,
     is_value_emit_rvalue as _is_value_emit_rvalue_shared,
+    is_lvalue_iterable,
 )
 from .forms import (
     LoopBinding,
@@ -782,68 +782,6 @@ def loop_var_binding(
     raise AssertionError("unknown loop binding")
 
 
-def is_constructor_call(expr: 'TpyExpr',
-                       get_record: 'Callable[[str], object | None]') -> bool:
-    """Whether this call CONSTRUCTS a value, i.e. yields a C++ prvalue.
-
-    Three spellings reach it, and the middle one is why this is shared rather
-    than re-derived: a builtin or generic type instantiation carries
-    `call_type`; a resolved user-record constructor carries `is_constructor`
-    on its fi, which holds however the callee is SPELLED (`cls(...)` inside a
-    @classmethod names no record at all); and a record lookup by name covers
-    the builtin constructors whose fi is a `@cpp_template` `__init__` rather
-    than a synthetic ctor.
-
-    Binding `auto&` to such a result does not compile, so every
-    iterable-lvalue decision must ask exactly this question.
-    """
-    if not isinstance(expr, TpyCall):
-        return False
-    if expr.call_type is not None:
-        return True
-    rfi = expr.resolved_function_info
-    if rfi is not None and rfi.is_constructor:
-        return True
-    return (isinstance(expr.func, TpyName)
-            and get_record(expr.func_name) is not None)
-
-
-def is_lvalue_iterable(
-    expr: TpyExpr,
-    get_record: Callable[[str], object | None],
-) -> bool:
-    """Check if an iterable expression is a C++ lvalue.
-
-    Lvalue expressions get ``auto&`` to preserve consumption semantics.
-    Rvalue expressions (constructors, value-returning calls, literals)
-    get ``auto`` to own the temporary safely.
-
-    get_record: look up a record by name (e.g. registry.get_record).
-    """
-    while isinstance(expr, TpyCoerce):
-        expr = expr.expr
-    if isinstance(expr, TpyName):
-        return True
-    if isinstance(expr, TpyFieldAccess):
-        return is_lvalue_iterable(expr.obj, get_record)
-    if isinstance(expr, TpySubscript):
-        # Slicing (a[1:]) returns an rvalue span/view, not a reference into obj.
-        # Only single-index subscripting (a[0]) returns T& and inherits lvalueness from obj.
-        if isinstance(expr.index, TpySlice):
-            return False
-        # A class `__getitem__` answers as its explicit call does.
-        getitem = expr.dunder(SubscriptDunder.GET)
-        if (getitem is not None
-                and element_access(expr, SubscriptDunder.GET) is None):
-            return _call_returns_cpp_ref_shared(None, getitem)
-        return is_lvalue_iterable(expr.obj, get_record)
-    if isinstance(expr, (TpyMethodCall, TpyCall)):
-        return (not is_constructor_call(expr, get_record)
-                and _call_returns_cpp_ref_shared(
-                    None, expr.resolved_function_info))
-    return False
-
-
 def ternary_iterable_lends_storage(
     expr: TpyExpr,
     get_record: Callable[[str], object | None],
@@ -927,7 +865,7 @@ class CondRegion:
         self.prefix: str = ""
 
 
-def _as_expression(type_cpp: str, init_expr: str, brace_init: bool) -> str:
+def typed_init_expression(type_cpp: str, init_expr: str, brace_init: bool) -> str:
     """Render an initializer as a standalone expression of type `type_cpp`.
 
     A temp's initializer is authored for a copy-initialized declaration
@@ -951,7 +889,9 @@ class TempState:
     """Manages temporary variables for array literals passed to mutable reference params."""
 
     def __init__(self):
-        self._queue: TempQueue[tuple[str, str, str | None, bool]] = TempQueue()
+        # (name, cpp_type, init, brace_init, fill): `fill` is the call a
+        # banked temp's region makes to build it, None for `name.emplace(init)`.
+        self._queue: TempQueue[tuple[str, str, str | None, bool, str | None]] = TempQueue()
         # (name, cpp_type, init, declarator suffix)
         self._pending_named: list[tuple[str, str, str | None, str]] = []
         # Names minted by `declare_named_auto` (a select's slot): a
@@ -1006,18 +946,20 @@ class TempState:
 
     @contextmanager
     def enclosing_statement(self) -> Iterator[None]:
-        """Inside a statement block, register temps on the statement the
-        block's expression sits in -- for a part of the block Python
-        evaluates in the enclosing scope (a comprehension's first source),
-        whose temps must outlive the block."""
+        """Inside a statement block, register named slots on the statement
+        the block's expression sits in -- for a part of the block Python
+        evaluates in the enclosing scope (a comprehension's first source):
+        a walrus there binds its target in the enclosing scope (PEP 572).
+        Its temporaries stay in the block, declared before the source in
+        evaluation order, and live until the block ends."""
         assert self._outer_regions, "enclosing_statement outside a block"
-        inner = (self._queue, self._pending_named)
-        self._queue, self._pending_named = self._outer_regions.pop()
+        inner = self._pending_named
+        outer_queue, self._pending_named = self._outer_regions.pop()
         try:
             yield
         finally:
-            self._outer_regions.append((self._queue, self._pending_named))
-            self._queue, self._pending_named = inner
+            self._outer_regions.append((outer_queue, self._pending_named))
+            self._pending_named = inner
 
     @contextmanager
     def conditional_region(self) -> Iterator[CondRegion]:
@@ -1043,25 +985,36 @@ class TempState:
             yield region
         finally:
             deferred = self._queue.end(entries)
-            region.prefix = "".join(f"{entry.value[0]}.emplace({entry.value[2]}), "
-                                    for entry in deferred)
+            region.prefix = "".join(
+                (f"{entry.value[0]}.emplace({entry.value[2]}), "
+                 if entry.value[4] is None else f"{entry.value[4]}, ")
+                for entry in deferred)
 
     def _register(self, temp_name: str, type_cpp: str,
                   init_expr: str, brace_init: bool, movable: bool,
-                  planned_optional: bool | None = None) -> str:
-        entry = self._queue.register((temp_name, type_cpp, init_expr, brace_init),
+                  planned_optional: bool | None = None,
+                  fills_in_place: bool = False) -> str:
+        entry = self._queue.register((temp_name, type_cpp, init_expr, brace_init, None),
                                      banks_in_region(type_cpp, movable) if planned_optional is None else planned_optional)
         assert planned_optional is None or entry.optional == planned_optional
         if not entry.optional:
             return temp_name
-        entry.value = (temp_name, f"std::optional<{type_cpp}>",
-                       _as_expression(type_cpp, init_expr, brace_init), False)
+        if not fills_in_place:
+            entry.value = (temp_name, f"std::optional<{type_cpp}>",
+                           typed_init_expression(type_cpp, init_expr, brace_init), False, None)
+        else:
+            # A value that cannot move is built in place from a callable
+            # (guaranteed elision), deferred or not.
+            make = (f"[&]() -> {type_cpp} {{ return "
+                    f"{typed_init_expression(type_cpp, init_expr, brace_init)}; }}")
+            entry.value = (temp_name, f"::tpy::detail::elided_slot<{type_cpp}>",
+                           f"std::in_place, {make}", True, f"{temp_name}.fill({make})")
         return f"(*{temp_name})"
 
     @staticmethod
     def _rows(entries: tuple) -> list[tuple[str, str, str | None, bool]]:
         return [(name, typ, None if entry.deferred else init, brace)
-                for entry in entries for name, typ, init, brace in (entry.value,)]
+                for entry in entries for name, typ, init, brace, _ in (entry.value,)]
 
     def create(self, param_type: TpyType, init_expr: str) -> str:
         """Create a temp variable and return its name for use in the call."""
@@ -1074,7 +1027,8 @@ class TempState:
 
     def create_typed(self, cpp_type: str, init_expr: str, *,
                      brace_init: bool = False, movable: bool = False,
-                     planned_optional: bool | None = None) -> str:
+                     planned_optional: bool | None = None,
+                     fills_in_place: bool = False) -> str:
         """Create a temp variable with an explicit C++ type.
 
         `movable` gates deferral into an open conditional region and defaults
@@ -1082,10 +1036,13 @@ class TempState:
         emplaces the temp, and `emplace(T(...))` needs a move ctor that the
         eager `T t = T(...);` form does not (it gets guaranteed elision). A
         caller holding the TpyType can opt back in with `type.is_movable()`.
+        `fills_in_place`: a banked temp is built in place from a callable
+        returning its initializer (`::tpy::detail::elided_slot`), for a value that
+        cannot move.
         """
         temp_name = f"__tmp_{self._draw()}"
         return self._register(temp_name, cpp_type, init_expr, brace_init,
-                              movable, planned_optional)
+                              movable, planned_optional, fills_in_place)
 
     def declare_named_auto(self, prefix: str, cpp_type: str, *, init: str | None = None) -> str:
         """Register a uniquely-named hoisted declaration and return its name.
@@ -1149,6 +1106,13 @@ class TempState:
     def flush(self, out: TextIO, indent: str) -> None:
         """Emit any pending temp variable declarations."""
         self._render(out, indent, self._pending_named, self._rows(self._queue.drain()))
+        self._pending_named.clear()
+
+    def flush_named(self, out: TextIO, indent: str) -> None:
+        """Emit (and remove) only the named pre-declarations: a name a
+        compound statement's head binds is declared outside the scope the
+        statement opens for the temporaries its head keeps."""
+        self._render(out, indent, self._pending_named, [])
         self._pending_named.clear()
 
     def flush_since(self, out: TextIO, checkpoint: tuple[int, int], indent: str) -> None:
@@ -2891,11 +2855,6 @@ class CodeGenContext:
     def is_value_emit_rvalue(self, expr: TpyExpr) -> bool:
         """`value_category.is_value_emit_rvalue`."""
         return _is_value_emit_rvalue_shared(self.analyzer, expr)
-
-    def is_temporary_expr(self, expr: TpyExpr) -> bool:
-        """Check if an expression produces a temporary (rvalue): the shared
-        `value_category.is_temporary_expr`."""
-        return _is_temporary_expr_shared(self.analyzer, expr)
 
     def unwrap_copy(self, expr: TpyExpr) -> TpyExpr:
         """If expr is tpy.copy(x), return x; otherwise return expr as-is."""

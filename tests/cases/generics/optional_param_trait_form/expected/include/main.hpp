@@ -298,7 +298,6 @@ struct __coro_amain {
     ::tpy::frame_slot<Pinned> pin;
     bool __await_lift_0;
     bool __await_lift_1;
-    int32_t __coro_arg_0;
     bool __await_lift_2;
     bool __await_lift_3;
     bool __await_lift_4;
@@ -306,7 +305,6 @@ struct __coro_amain {
     bool __await_lift_6;
     bool __await_lift_7;
     bool __await_lift_8;
-    int32_t __coro_arg_1;
     bool __await_lift_9;
     std::optional<__coro_probe_async<Pinned>> co;
     std::optional<__coro_probe_pinned_twin> co_twin;

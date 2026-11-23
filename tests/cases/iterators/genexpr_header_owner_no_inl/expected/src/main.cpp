@@ -9,8 +9,7 @@ namespace tpyapp::main {
 //     print("proto", proto(extra, [3, 4]))
 void main() {
     std::array<int32_t, 2> extra = {1, 2};
-    std::vector<int32_t> __tmp_1 = {3, 4};
-    std::cout << "proto" << " " << ::tpyapp::main::proto(extra, __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "proto" << " " << ::tpyapp::main::proto(extra, {3, 4}) << "\n" << ::tpy::check_signals;
 }
 
 // # the genexpr reads neither `it` nor any local: its frame is no template.

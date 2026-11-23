@@ -194,12 +194,10 @@ void main() {
     }
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d3 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", 1}, {"b", "world"}});
     ::tpyapp::main::process_dict(d3);
-    ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> __tmp_1 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", "direct"}});
-    ::tpyapp::main::process_dict(__tmp_1);
+    ::tpyapp::main::process_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", "direct"}}));
     std::vector<::tpy::Union<int32_t, std::string>> items = {"hello", 1, "world"};
     ::tpyapp::main::process_list(items);
-    std::vector<::tpy::Union<int32_t, std::string>> __tmp_2 = {"direct", 99};
-    ::tpyapp::main::process_list(__tmp_2);
+    ::tpyapp::main::process_list({"direct", 99});
     ::tpyapp::main::consume_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", "owned"}, {"b", 1}}));
     ::tpyapp::main::consume_list(std::vector<::tpy::Union<int32_t, std::string>>{"own-hello", 1});
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d4 = ::tpyapp::main::make_dict();

@@ -270,9 +270,7 @@ std::string via_own_caption(OwnCaption& c) {
 //     print("redecl_own_value:", via_own_caption(Sign()), via_caption(Sign()))
 void main() {
     Ray p = Ray(2.0);
-    Flat __tmp_1 = Flat();
-    Bent __tmp_2 = Bent();
-    std::cout << "plain:" << " " << ::tpy::print_float(::tpyapp::main::plain_trace(__tmp_1, p)) << " " << ::tpy::print_float(::tpyapp::main::plain_trace(__tmp_2, p)) << " " << ::tpy::print_float(p.d) << "\n" << ::tpy::check_signals;
+    std::cout << "plain:" << " " << ::tpy::print_float(::tpyapp::main::plain_trace(::tpy::as_mut_lvalue(Flat()), p)) << " " << ::tpy::print_float(::tpyapp::main::plain_trace(::tpy::as_mut_lvalue(Bent()), p)) << " " << ::tpy::print_float(p.d) << "\n" << ::tpy::check_signals;
     Ray q = Ray(2.0);
     std::cout << "inferred:" << " " << ::tpy::print_float(::tpyapp::main::inferred_trace(Convex(1.0), q)) << " " << ::tpy::print_float(::tpyapp::main::inferred_trace(Concave(1.0), q)) << "\n" << ::tpy::check_signals;
     Big b = Big();
@@ -281,15 +279,12 @@ void main() {
     t.fill();
     std::cout << "generic_parent:" << " " << ::tpyapp::main::generic_parent_read(t) << "\n" << ::tpy::check_signals;
     Ray s = Ray(1.5);
-    Piston __tmp_3{Piston()};
-    std::cout << "same_form_redecl:" << " " << ::tpy::print_float(::tpyapp::main::same_form_redecl_push(__tmp_3, s)) << " " << ::tpy::print_float(s.d) << "\n" << ::tpy::check_signals;
+    std::cout << "same_form_redecl:" << " " << ::tpy::print_float(::tpyapp::main::same_form_redecl_push(::tpy::as_mut_lvalue(Piston{Piston()}), s)) << " " << ::tpy::print_float(s.d) << "\n" << ::tpy::check_signals;
     Ray u = Ray(0.0);
     Cart cart = Cart();
-    ::tpy::RefAdapter<Mover, Cart> __tmp_4{cart};
-    std::cout << "identical_parents:" << " " << ::tpyapp::main::identical_parents_trace(__tmp_4, u) << " " << ::tpy::print_float(u.d) << "\n" << ::tpy::check_signals;
+    std::cout << "identical_parents:" << " " << ::tpyapp::main::identical_parents_trace(::tpy::as_mut_lvalue(::tpy::RefAdapter<Mover, Cart>{cart}), u) << " " << ::tpy::print_float(u.d) << "\n" << ::tpy::check_signals;
     Ray w = Ray(0.0);
-    Wagon __tmp_5{Wagon()};
-    std::cout << "identical_parents:" << " " << ::tpyapp::main::identical_parents_trace(__tmp_5, w) << " " << ::tpy::print_float(w.d) << "\n" << ::tpy::check_signals;
+    std::cout << "identical_parents:" << " " << ::tpyapp::main::identical_parents_trace(::tpy::as_mut_lvalue(Wagon{Wagon()}), w) << " " << ::tpy::print_float(w.d) << "\n" << ::tpy::check_signals;
     Metronome mt = Metronome();
     std::cout << "own_scalar_slots:" << " " << ::tpyapp::main::own_scalar_a(mt) << " " << ::tpyapp::main::own_scalar_b(mt) << " " << mt.n << "\n" << ::tpy::check_signals;
     std::cout << "structural_readonly_fills_mutable:" << " " << ::tpyapp::main::structural_readonly_trace() << "\n" << ::tpy::check_signals;
@@ -308,16 +303,12 @@ void main() {
     Boat bt = Boat();
     std::cout << "plain_bridge_agree:" << " " << ::tpyapp::main::via_rudder(bt) << " " << ::tpyapp::main::via_bridges<Boat>(bt) << " " << bt.n << "\n" << ::tpy::check_signals;
     Raft rf = Raft();
-    ::tpy::RefAdapter<Steer, Raft> __tmp_6{rf};
-    ::tpy::RefAdapter<Helm, Raft> __tmp_7{rf};
-    std::cout << "plain_bridge_agree:" << " " << ::tpyapp::main::via_steer(__tmp_6) << " " << ::tpyapp::main::via_helm(__tmp_7) << " " << rf.n << "\n" << ::tpy::check_signals;
+    std::cout << "plain_bridge_agree:" << " " << ::tpyapp::main::via_steer(::tpy::as_mut_lvalue(::tpy::RefAdapter<Steer, Raft>{rf})) << " " << ::tpyapp::main::via_helm(::tpy::as_mut_lvalue(::tpy::RefAdapter<Helm, Raft>{rf})) << " " << rf.n << "\n" << ::tpy::check_signals;
     Blender bl = Blender();
     std::cout << "keyword_order:" << " " << ::tpyapp::main::via_swap_mixer(bl) << " " << ::tpyapp::main::via_swap_bound<Blender>(bl) << " " << ::tpyapp::main::via_mixer(bl) << " " << bl.n << "\n" << ::tpy::check_signals;
     Banner bn = Banner();
     std::cout << "redecl_own_value:" << " " << ::tpyapp::main::via_caption(bn) << " " << ::tpyapp::main::via_own_caption(bn) << " " << bn.n << "\n" << ::tpy::check_signals;
-    ::tpy::Adapter<OwnCaption, Sign> __tmp_8{Sign()};
-    ::tpy::Adapter<Caption, Sign> __tmp_9{Sign()};
-    std::cout << "redecl_own_value:" << " " << ::tpyapp::main::via_own_caption(__tmp_8) << " " << ::tpyapp::main::via_caption(__tmp_9) << "\n" << ::tpy::check_signals;
+    std::cout << "redecl_own_value:" << " " << ::tpyapp::main::via_own_caption(::tpy::as_mut_lvalue(::tpy::Adapter<OwnCaption, Sign>{Sign()})) << " " << ::tpyapp::main::via_caption(::tpy::as_mut_lvalue(::tpy::Adapter<Caption, Sign>{Sign()})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

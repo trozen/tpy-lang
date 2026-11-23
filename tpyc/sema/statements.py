@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
 from ..holders import Holder, IterHolder
 from ..typesys import pending_view_of, protocol_param_alternatives, without_class_own_args
-from ..typesys import (unwrap_qualifiers, bound_as_spelled, contains_reference_type, unwrap_value_own, drop_own_marker, pointer_repr_optional, pointer_variant_union,
+from ..typesys import (frame_module_qual, unwrap_qualifiers, bound_as_spelled, contains_reference_type, unwrap_value_own, drop_own_marker, pointer_repr_optional, pointer_variant_union,
                        holds_result_member,
                        ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
                        BASIC_SLICE, SLICE)
@@ -64,7 +64,6 @@ from ..parse import (
     TpyFieldAccess, TpyFunction, TupleElemCapture,
     TpyMatch, TpyBinOp, TpyIfExpr,
     TpyLambda, TpyNamedExpr,
-    is_stable_address_lvalue,
 )
 from ..coercions import (Coercion, CoercionContext, int_payload,
                          peel_identity_coercions)
@@ -99,6 +98,7 @@ from .call_lends import (
     path_holds_root,
 )
 from .context import (
+    ParkedFunctionState,
     BindingSource, CallOperands, ConsumeCause, OwnSlot, binding_source, literal_element_source, reads_readonly, PendingLocal,
     LoopClauseEdges,
     record_borrow_binding, record_stmt_borrow_binding,
@@ -130,7 +130,8 @@ from .loop_frames import (binding_value, decide_copies_var, for_live_region,
 from .binding_ownership import step_handover_paths
 from .elem_paths import bare_tuple, leaf_paths
 from .iter_loans import (
-    IterElementSource, iter_element_source, record_iteration_pull,
+    IterElementSource, iter_element_source, keep_head_arguments,
+    record_iteration_pull,
     iteration_yields_copies,
     _record_iter_receiver_mutation, check_iter_receiver_loans,
     frame_capture_loans, hold_whole,
@@ -565,7 +566,7 @@ def register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
             continue
         if key is None:
             if fi is None or not (loan.fresh and is_dangling_temporary_arg(
-                    loan.operand)):
+                    ctx, loan.operand)):
                 continue
             if src.idx >= 0 and frame_call(peel_coerce(src.expr)) is not None:
                 # A frame handed on keeps its temporaries by its own rule.
@@ -1196,11 +1197,12 @@ class StatementAnalyzer:
                                     init: 'TpyMethodCall') -> None:
         """A bound async-METHOD coroutine captures its receiver by
         reference for the handle's whole lifetime (concrete frame and
-        erased adapter alike). Require a stable-lvalue receiver (the
-        rule inline `await obj.m()` enforces for the await's duration)
-        and register the borrow so the receiver cannot be silently
-        moved out from under a live handle. Escapes that outlive the
-        scope (create_task / return) additionally warn at those sites.
+        erased adapter alike): register the borrow so the receiver
+        cannot be silently moved out from under a live handle. A
+        temporary receiver lives for its statement, so a handle awaited
+        later dangles (BUGS.md#frame-handle-outlives-fresh-argument).
+        Escapes that outlive the scope (create_task / return)
+        additionally warn at those sites.
 
         Called from the single post-cleanup site in _analyze_var_decl,
         keyed on the init shape alone -- it must cover every binding
@@ -1208,14 +1210,6 @@ class StatementAnalyzer:
         generic `remove_borrower(stmt.name)` reassignment cleanup, which
         would otherwise erase the fresh borrow.
         """
-        if not is_stable_address_lvalue(init.obj):
-            raise self.ctx.error(
-                "receiver of a bound async method call must be a stable "
-                "lvalue (a local, parameter, or field chain rooted at "
-                "one) -- the coroutine captures it by reference for the "
-                "handle's lifetime. Bind the receiver to a local first: "
-                "`r = <expr>; c = r.method(...)`",
-                init)
         root = holder_root(init.obj, MayLend(self.ctx), proven=True)
         if root is not None:
             storage = self.ctx.func.borrow_tracker.effective_storage(root)
@@ -1264,17 +1258,14 @@ class StatementAnalyzer:
                 return erased_or_reject()
         owner = None
         if isinstance(init, TpyMethodCall):
-            recv_type = self.ctx.get_expr_type(init.obj)
-            recv_inner = unwrap_own(unwrap_ref_type(recv_type)) if recv_type else None
-            if not isinstance(recv_inner, NominalType):
+            recv_inner = self.expr.method_call_receiver_type(init)
+            if recv_inner is None:
                 return erased_or_reject()
             owner = coro_struct_owner(
                 fi.owning_type_qname, recv_inner,
                 self.ctx.registry)
-        module_qual = None
-        if (owner is None and fi.originating_module is not None
-                and fi.originating_module != self.ctx.module_name):
-            module_qual = fi.originating_module
+        module_qual = (frame_module_qual(fi, self.ctx.module_name)
+                       if owner is None else None)
         targs = getattr(init, "inferred_type_args", None)
         return make_concrete_coro(
             inner, fi.frame_cpp_name, owner=owner,
@@ -4426,6 +4417,7 @@ class StatementAnalyzer:
         pushed: list[tuple[str, Scope, object]] = []
         for item in stmt.items:
             ctx_type = unwrap_own(unwrap_ref_type(self.expr.analyze_expr(item.context_expr)))
+            keep_head_arguments(self.ctx, item.context_expr)
 
             # A reference-type manager that names EXISTING storage must be
             # borrowed by the with-region, not copied into the ctx slot --
@@ -4598,9 +4590,8 @@ class StatementAnalyzer:
                         unwrap_ref_type(enter_info.async_inner_return),
                         ReadonlyType))
 
-            # Does `__enter__` lend the manager's own storage, or something that
-            # merely passes through it? Only the first makes the manager's
-            # lifetime the target's problem.
+            # Whether `__enter__` lends the manager's own storage rather than
+            # something that merely passes through it.
             item.manager_owns_enter_result = enter_info.returns_self_borrow
 
             # Register the as-variable if present
@@ -4614,6 +4605,17 @@ class StatementAnalyzer:
                 )
                 self.ctx.func.with_target_names.add(item.target)
                 item.enter_type = resolved
+                if (item.target_read_after and not stmt.is_async
+                        and item.enter_call is not None):
+                    # What the target borrows -- the manager's storage, or
+                    # what the manager borrows from -- outlives the
+                    # statement (`enclose_head_roots`, once callee facts
+                    # are final).
+                    f = self.ctx.func
+                    self.ctx.deferred_head_enclosures.append((
+                        ParkedFunctionState(f.current_function, f,
+                                            f.current_scope, f.current_ns),
+                        item.enter_call, resolved))
                 self.ctx.func.current_scope.define(item.target, resolved)
                 pushed.append((item.target, self.ctx.func.current_scope,
                                register_binder(
@@ -7244,8 +7246,8 @@ class StatementAnalyzer:
                                 self._binding_source(stmt),
                                 fresh=existing_type is None,
                                 init_type=init_type, node=stmt)
-        # Bound async-METHOD coroutine: stable-lvalue receiver + borrow
-        # registration. Keyed on the init shape alone so every binding
+        # Bound async-METHOD coroutine: borrow registration of its receiver.
+        # Keyed on the init shape alone so every binding
         # form (fresh, annotated-erased, rebind) is covered, and placed
         # after the binder's release of the old loans so the fresh borrow
         # survives.
@@ -8275,6 +8277,12 @@ class StatementAnalyzer:
                      if tgt_inner.is_readonly
                      else self.ctx.func.current_addr_escape_param_names
                      ).add(stmt.value.name)
+                    owner = stmt.target.obj
+                    if not (isinstance(owner, TpyName)
+                            and owner.name == "self"
+                            and self.ctx.self_names_receiver()):
+                        self.ctx.func.current_foreign_addr_escape_param_names.add(
+                            stmt.value.name)
             elif isinstance(stmt.value, TpyName) and consumes:
                 # A local holding what an Own param moved in, stored.
                 self.ctx.mark_own_param_consumed(stmt.value.name)

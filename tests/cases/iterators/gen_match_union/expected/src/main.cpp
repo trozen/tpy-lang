@@ -14,8 +14,7 @@ namespace tpyapp::main {
 //     for s in b2.describe():
 //         print(s)
 void main() {
-    Dog __tmp_1 = Dog("rex");
-    Box b = Box(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
+    Box b = Box(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("rex")))});
     {
         auto __src_0 = b.describe();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -27,8 +26,7 @@ void main() {
         }
     }
     std::cout << "--" << "\n" << ::tpy::check_signals;
-    Cat __tmp_2 = Cat(::tpy::BigInt(9));
-    Box b2 = Box(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
+    Box b2 = Box(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat(::tpy::BigInt(9))))});
     {
         auto __src_2 = b2.describe();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);

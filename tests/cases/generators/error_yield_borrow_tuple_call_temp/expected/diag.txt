@@ -1,1 +1,1 @@
-main.py:23: error: in function 'g': this construct is not yet supported by C++ code generation (expr.call:call.arg_shape.record_f1)
+main.py:22: error: Cannot yield local or temporary as tuple element 1. Type 'P' is yielded by reference. Use Own[P] for this tuple element to yield by value.

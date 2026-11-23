@@ -20,8 +20,7 @@ void read_oob(const std::vector<int32_t>* lst) {
 // def main() -> None:
 //     read_oob([1, 2, 3])
 void main() {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2, 3};
-    ::tpyapp::main::read_oob(&(__tmp_1));
+    ::tpyapp::main::read_oob(&::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3}));
 }
 
 // main()

@@ -8,10 +8,8 @@ namespace tpyapp::main {
 //     print(classify(Dog(1)))    # Animal + Dog = 3
 //     print(classify(Puppy(1)))  # Animal + Dog + Puppy = 7
 void main() {
-    Dog __tmp_1 = Dog(1);
-    std::cout << ::tpyapp::main::classify<Dog>(__tmp_1) << "\n" << ::tpy::check_signals;
-    Puppy __tmp_2 = Puppy(1);
-    std::cout << ::tpyapp::main::classify<Puppy>(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify<Dog>(::tpy::as_mut_lvalue(Dog(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify<Puppy>(::tpy::as_mut_lvalue(Puppy(1))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

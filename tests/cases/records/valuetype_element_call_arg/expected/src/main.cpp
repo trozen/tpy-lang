@@ -300,12 +300,9 @@ void free_fn(const std::vector<Color>& pts) {
     A b = ::tpyapp::main::own_elem_call(owned);
     b.x = 7;
     std::cout << "own element call" << " " << b.x << "\n" << ::tpy::check_signals;
-    std::vector<A> __tmp_1 = {A(1)};
-    ::tpyapp::main::mutate_own(__tmp_1);
-    Bag<A> __tmp_2 = Bag<A>(std::vector<A>{A(1), A(10)});
-    ::tpyapp::main::mutate_bag(__tmp_2);
-    Bag<A> __tmp_3 = Bag<A>(std::vector<A>{A(1)});
-    ::tpyapp::main::mutate_plain_bag(__tmp_3);
+    ::tpyapp::main::mutate_own(::tpy::as_mut_lvalue(std::vector<A>(std::vector<A>{A(1)})));
+    ::tpyapp::main::mutate_bag(::tpy::as_mut_lvalue(Bag<A>(std::vector<A>{A(1), A(10)})));
+    ::tpyapp::main::mutate_plain_bag(::tpy::as_mut_lvalue(Bag<A>(std::vector<A>{A(1)})));
     std::array<P, 1> ps = {P(1)};
     ::tpyapp::main::bump(::tpy::__getitem__(ps, 0));
     std::cout << "reference element" << " " << ::tpy::__getitem__(ps, 0).n << "\n" << ::tpy::check_signals;
@@ -314,8 +311,7 @@ void free_fn(const std::vector<Color>& pts) {
 // def main() -> None:
 //     free_fn([Color(1), Color(2)])
 void main() {
-    std::vector<Color> __tmp_1 = {Color(1), Color(2)};
-    ::tpyapp::main::free_fn(__tmp_1);
+    ::tpyapp::main::free_fn({Color(1), Color(2)});
 }
 
 // import asyncio

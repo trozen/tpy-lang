@@ -22,8 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    M __tmp_1 = M();
-    ::tpyapp::main::rebind(__tmp_1);
+    ::tpyapp::main::rebind(M());
 }
 
 } // namespace tpyapp::main

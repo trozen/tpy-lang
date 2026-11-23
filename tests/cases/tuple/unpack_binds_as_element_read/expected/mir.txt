@@ -34,8 +34,8 @@ main::varargs_span_decl_caller@312:0: uncovered (unsupported native container el
 main::ptr_pack_direct@336:0: uncovered (container holds a borrow)
 main::ptr_pack_unpack@340:0: uncovered (container holds a borrow)
 main::grow_while_borrowed@346:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::temp_arg@355:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::main@360:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::temp_arg@354:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::main@359:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::H.write_through@107:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::Gauge.bump@325:4: covered (storage: no_proof_required), summary: known
 main::P.__init__@14:4: covered (storage: no_proof_required), summary: known

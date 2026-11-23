@@ -55,7 +55,7 @@ int32_t receiver_slice(H& h);
 int32_t other_field(H& h, const H& g);
 // def str_local(h: H) -> int32:  # tpyc: mir(covered)
 int32_t str_local(H& h);
-// def list_copy(xs: list[int32]) -> int32:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
+// def list_copy(xs: list[int32]) -> int32:  # tpyc: mir(uncovered /unsupported metadata: cpp_template/)
 int32_t list_copy(std::vector<int32_t>& xs);
 // def alias_external(left: Line, right: Line) -> bool:  # tpyc: mir(conflict /alias_obligation/)
 bool alias_external(const Line& left, Line& right);
@@ -85,7 +85,7 @@ __gen_gen_caller gen_caller(std::vector<::tpy::BigInt>& xs);
 ::tpy::BigInt unspelled(std::vector<::tpy::BigInt>& xs);
 // def renamed(xs: list[int]) -> int:  # tpyc: mir(conflict /argument_alias/)
 ::tpy::BigInt renamed(std::vector<::tpy::BigInt>& xs);
-// def line_copy(ln: Line) -> bool:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
+// def line_copy(ln: Line) -> bool:  # tpyc: mir(covered)
 bool line_copy(const Line& ln);
 // def pick(c: bool, a: list[Cell], b: list[Cell]) -> int32:  # tpyc: mir(conflict /alias_obligation/)
 int32_t pick(bool c, std::vector<Cell>& a, const std::vector<Cell>& b);

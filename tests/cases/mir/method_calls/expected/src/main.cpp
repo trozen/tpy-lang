@@ -567,14 +567,8 @@ void main() {
     Temp t = Temp(5);
     ::tpyapp::main::write_prop(t, 12);
     std::cout << "read_prop/write_prop:" << " " << ::tpyapp::main::read_prop(t) << " " << t.deg << "\n" << ::tpy::check_signals;
-    Pair __tmp_1 = Pair(1);
-    Pair __tmp_2 = Pair(1);
-    Pair __tmp_3 = Pair(1);
-    Pair __tmp_4 = Pair(2);
-    std::cout << "call_dunder:" << " " << ::tpy::print_bool(::tpyapp::main::call_dunder(__tmp_1, __tmp_2)) << " " << ::tpy::print_bool(::tpyapp::main::call_dunder(__tmp_3, __tmp_4)) << "\n" << ::tpy::check_signals;
-    Pair __tmp_5 = Pair(1);
-    Pair __tmp_6 = Pair(0);
-    std::cout << "call_bool:" << " " << ::tpy::print_bool(::tpyapp::main::call_bool(__tmp_5)) << " " << ::tpy::print_bool(::tpyapp::main::call_bool(__tmp_6)) << "\n" << ::tpy::check_signals;
+    std::cout << "call_dunder:" << " " << ::tpy::print_bool(::tpyapp::main::call_dunder(Pair(1), Pair(1))) << " " << ::tpy::print_bool(::tpyapp::main::call_dunder(Pair(1), Pair(2))) << "\n" << ::tpy::check_signals;
+    std::cout << "call_bool:" << " " << ::tpy::print_bool(::tpyapp::main::call_bool(Pair(1))) << " " << ::tpy::print_bool(::tpyapp::main::call_bool(Pair(0))) << "\n" << ::tpy::check_signals;
     std::cout << "ctor_call:" << " " << Tally(1).n << "\n" << ::tpy::check_signals;
     Outer o = Outer(Gauge(1));
     ::tpyapp::main::field_receiver(o);
@@ -584,8 +578,7 @@ void main() {
     std::vector<Gauge> gs = {Gauge(2), Gauge(3)};
     ::tpyapp::main::element_receiver(gs);
     std::cout << "element_receiver:" << " " << ::tpy::__getitem__(gs, 0).level << "\n" << ::tpy::check_signals;
-    Cell<int32_t> __tmp_7 = Cell<int32_t>(9);
-    std::cout << "generic_record:" << " " << ::tpyapp::main::generic_record(__tmp_7) << "\n" << ::tpy::check_signals;
+    std::cout << "generic_record:" << " " << ::tpyapp::main::generic_record(::tpy::as_mut_lvalue(Cell<int32_t>(9))) << "\n" << ::tpy::check_signals;
     Scaler sc = Scaler(3);
     std::cout << "generic_method:" << " " << ::tpyapp::main::generic_method(sc) << "\n" << ::tpy::check_signals;
     std::cout << "consuming:" << " " << ::tpyapp::main::consuming(4) << "\n" << ::tpy::check_signals;

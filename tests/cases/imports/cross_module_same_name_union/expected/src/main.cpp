@@ -40,8 +40,7 @@ void main() {
     std::cout << ::tpyapp::pkg_a::name_of(a) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::pkg_b::name_of_b() << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&(a)}) << "\n" << ::tpy::check_signals;
-    ::tpyapp::pkg_b::Bar __tmp_1 = ::tpyapp::pkg_b::Bar(7);
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&(::tpy::as_mut_lvalue(::tpyapp::pkg_b::Bar(7)))}) << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module same-name identity end-to-end.

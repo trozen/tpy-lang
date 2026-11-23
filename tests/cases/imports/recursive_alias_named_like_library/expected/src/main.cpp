@@ -25,10 +25,8 @@ namespace tpyapp::main {
 //     print("module:", shapes.total_of_nested(), json.dumps([3]))
 void main() {
     JsonValue v = 4;
-    ::tpystd::json::JsonValue __tmp_1 = std::vector<::tpystd::json::JsonValue>{1, 2};
-    std::cout << "main:" << " " << ::tpyapp::main::depth(v) << " " << ::tpystd::json::dumps(__tmp_1, 0, false) << "\n" << ::tpy::check_signals;
-    ::tpystd::json::JsonValue __tmp_2 = std::vector<::tpystd::json::JsonValue>{3};
-    std::cout << "module:" << " " << ::tpyapp::shapes::total_of_nested() << " " << ::tpystd::json::dumps(__tmp_2, 0, false) << "\n" << ::tpy::check_signals;
+    std::cout << "main:" << " " << ::tpyapp::main::depth(v) << " " << ::tpystd::json::dumps(::tpystd::json::JsonValue(std::vector<::tpystd::json::JsonValue>{1, 2}), 0, false) << "\n" << ::tpy::check_signals;
+    std::cout << "module:" << " " << ::tpyapp::shapes::total_of_nested() << " " << ::tpystd::json::dumps(::tpystd::json::JsonValue(std::vector<::tpystd::json::JsonValue>{3}), 0, false) << "\n" << ::tpy::check_signals;
 }
 
 // # A program's recursive alias named like json's `JsonValue` stays out of json's

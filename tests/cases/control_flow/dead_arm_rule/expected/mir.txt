@@ -170,7 +170,7 @@ main::guard_dead_chain@1549:0: uncovered (unsupported statement), summary: opaqu
 main::guard_dead_union@1559:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::guard_dead_switch@1569:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::guard_dead_str@1581:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::main@1599:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@1599:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Dog.bark@19:4: covered (storage: no_proof_required), summary: known
 main::Kennel.label@241:4: covered (storage: no_proof_required), summary: known
 main::Truth.__bool__@463:4: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)

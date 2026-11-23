@@ -141,8 +141,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        __coro_arg_0 = (::tpy::add_check<int32_t>(n, 1));
-        __sub_2.emplace(__coro_arg_0);
+        __sub_2.emplace((::tpy::add_check<int32_t>(n, 1)));
         __state = S_RESUME_2;
         continue;
     }
@@ -209,8 +208,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         if (__r8.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_8 = std::move(__r8).value();
         __sub_8.reset();
-        __coro_arg_1 = ::tpyapp::main::mk();
-        __sub_9.emplace(__coro_arg_1);
+        __sub_9.emplace(::tpyapp::main::mk());
         __state = S_RESUME_9;
         continue;
     }

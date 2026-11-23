@@ -62,9 +62,11 @@ from ...typesys import (
 from ..faces import witness as _witness
 from ..param_contract import Materializer
 from ..nodes import (
+    SeatLifetime,
     Form,
     THIRCopy,
     THIRDecayCopy,
+    THIRInlineTemp,
     THIRExpr,
     THIRFormConvert, OpenTSink,
     THIRLiteral,
@@ -111,6 +113,10 @@ class StorageRequest:
     """Backing storage the caller must realize before the slot can hold
     the converted value (the caller owns placement; convert only asks)."""
     type: TpyType
+    # The node of the plan's expression the storage holds, the conversion
+    # reading it there (the owner a view is built over, a tuple's bound
+    # source); None holds the plan's expression itself.
+    held: 'THIRExpr | None' = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +130,9 @@ class Plan:
     # A COPY that constructs this type (`Source.copy_type`): `expr` is the
     # `THIRCopy`, whose C++ spelling the sink supplies (`spelled`).
     copy_type: TpyType | None = None
+    # The slot's type a temporary of the full expression is built at from
+    # the value (`expr` is the `THIRInlineTemp`), spelled by the sink.
+    built_type: TpyType | None = None
     # The leaves the plan copies out of existing storage -- none a moved
     # leaf authorizes -- each as its path in the converted read and the
     # type it lands in (`_copy_permitted` checks them).
@@ -145,6 +154,8 @@ def spelled(plan: Plan, render) -> THIRExpr:
     """The plan's expression with its copy's type spelled by the sink's
     type renderer: the conversion decides the copy, the sink knows how its
     module spells a type."""
+    if plan.built_type is not None:
+        return replace(plan.expr, cpp_type=render(plan.built_type))
     if plan.copy_type is None:
         return plan.expr
     return replace(plan.expr, cpp_type=render(plan.copy_type))
@@ -180,6 +191,14 @@ def _lendable(s: Source) -> bool:
     not to die with the statement. The address of a value that dies with
     it -- or whose lifetime nothing states -- would dangle."""
     return s.temporary is False and s.held in _DURABLE_HELD
+
+
+def _statement_fresh(s: Source) -> bool:
+    """A value its statement creates -- a call's owned result, a
+    construction, a literal, a comprehension -- which storage holding it
+    takes over without a copy; a member read off one is not."""
+    return s.prvalue or (s.temporary is not False
+                         and s.held in (Held.FRESH, Held.VALUE))
 
 
 def _copy_declared(s: Source, under: Source) -> bool:
@@ -947,6 +966,13 @@ def _to_borrow_tuple(expr: THIRExpr, s: Source, slot: Slot, types, *,
                         take=TupleTake.PER_ELEMENT if mv else TupleTake.COPY)
     if isinstance(built, Refuse):
         return built
+    bound = built.expr.bound
+    if slot.retained and bound is not None and s.prvalue:
+        # A fresh source its statement keeps is held there, the elements
+        # pointing into the held tuple.
+        return Plan(built.expr, Effect.MATERIALIZE, copied=built.copied,
+                    storage_request=StorageRequest(
+                        storage_type(bound.result_type), held=bound))
     return Plan(built.expr, Effect.COPY if built.copied else Effect.LIFT,
                 copied=built.copied)
 
@@ -1236,12 +1262,14 @@ def tuple_moves(s: Source, *, movable: 'bool | None' = None) -> bool:
                  or moves_an_object(s.elems)))
 
 
-def param_tuple_slot(t: TpyType, types, *, const: bool = False) -> Slot:
+def param_tuple_slot(t: TpyType, types, *, const: bool = False,
+                     retained: bool = False) -> Slot:
     """A tuple parameter's slot, holding each element in its passing form
-    (an `Own` element by value, a reference as its pointer)."""
+    (an `Own` element by value, a reference as its pointer); `retained`:
+    the argument's compound statement keeps it (`Slot.retained`)."""
     slot = slot_for(t, SlotPosition.PARAM, types, result_const=const)
     assert slot is not None
-    return slot
+    return replace(slot, retained=retained)
 
 
 def to_local(expr: THIRExpr, t: TpyType, form: BindingForm, types, *,
@@ -1512,6 +1540,17 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                 # one check in `convert`.
                 return Refuse("tuple_source")
             return lift_pointees()
+        owner = expr.uncoerced
+        if (slot.retained and _statement_fresh(owner.source)
+                and (slot.representation is Representation.VIEW
+                     or holds_borrowing_view(st))):
+            # A view its statement keeps views storage the statement holds:
+            # the fresh owner is held, the view built over it.
+            return Plan(expr, Effect.MATERIALIZE,
+                        storage_request=StorageRequest(
+                            owner.source.copy_type
+                            or unwrap_readonly(owner.result_type),
+                            held=owner))
         # A value slot's own construction / assignment takes the source as
         # it renders (an owned string assigns from a view), except an owned
         # buffer whose storage takes no view. A body write copies a
@@ -1665,12 +1704,17 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             return _to_pointer(expr, s, st, rt_whole, types,
                                const=slot.const, call=True)
         if (slot.lifetime is SlotLifetime.FULL_EXPRESSION
-                and not slot.const
+                and (not slot.const
+                     or (slot.retained and _statement_fresh(s)))
                 and not _lendable(s) and not st.is_value_type()
                 and not contains_type_param(st)):
             # A parameter's trait binds a reference-typed instantiation
             # by mutable reference, which binds no temporary: it is lent
-            # storage held for the call.
+            # storage held for the call -- as is a fresh value its
+            # statement keeps. A value-typed instantiation is taken by value
+            # (`param_val_or_ref_t<std::string>` owns its copy), so its
+            # statement holds nothing, where the monomorphic twin's `str`
+            # parameter is a view whose owner is held.
             return Plan(expr, Effect.MATERIALIZE,
                         storage_request=StorageRequest(
                             held_object_type(expr, st, types)))
@@ -1714,18 +1758,25 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                 # converts into the union.
                 and not s.narrowed):
             # A union parameter given one member's value binds the union
-            # built from it, held for the call: a bare member would leave
-            # the callee's overload set to C++'s own ranking.
+            # built from it, explicitly: a bare member would leave the
+            # callee's overload set to C++'s own ranking. A const reference
+            # binds it as a temporary of the full expression; a mutable one
+            # binds no rvalue and is lent storage.
             if not _builds_one_member(st, rt_whole, s, types):
                 return Refuse("union_member", by_slot=True)
+            if slot.const and not slot.retained:
+                return Plan(THIRInlineTemp(
+                    result_type=st, value=expr, form=Form.STORAGE,
+                    lifetime=SeatLifetime.FULL_EXPRESSION, loc=expr.loc),
+                            Effect.LIFT, built_type=st)
             return Plan(expr, Effect.MATERIALIZE,
                         storage_request=StorageRequest(st))
         if slot.lifetime is SlotLifetime.FULL_EXPRESSION and not _lendable(s):
             # A parameter holds its argument for the call only, and a
             # temporary lives that long: a `const T&` binds it as it is, a
             # mutable `T&` binds no rvalue and lends storage held for the
-            # call.
-            if slot.const:
+            # call -- as does a fresh value its statement keeps.
+            if slot.const and not (slot.retained and _statement_fresh(s)):
                 return Plan(expr, Effect.PASS)
             return Plan(expr, Effect.MATERIALIZE,
                         storage_request=StorageRequest(

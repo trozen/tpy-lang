@@ -15,7 +15,7 @@ the form-carrying nodes slot in without reshaping the hierarchy.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field, fields as dc_fields, replace
 from enum import Enum, auto
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -758,8 +758,10 @@ class THIRValueSelect(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRSlotEmplace(THIRExpr):
-    """A fresh reference-type operand of a select (a ternary arm, the RHS of
-    a value `and`/`or`) whose other operand is an lvalue: emit hoists
+    """Storage a statement declares by name before itself and fills where
+    its value is evaluated. A fresh reference-type operand of a select (a
+    ternary arm, the RHS of a value `and`/`or`) whose other operand is an
+    lvalue. Emit hoists
     `std::optional<cpp_type> __select_slot_N;` before the statement and
     renders `__select_slot_N.emplace(<value>)`, which returns `T&`. Both
     operands are then lvalues, so the select stays one and aliases the
@@ -767,6 +769,24 @@ class THIRSlotEmplace(THIRExpr):
     when its operand is chosen and lives as long as the enclosing block."""
     value: THIRExpr = None  # type: ignore[assignment]
     cpp_type: str = ""
+
+
+@dataclass(frozen=True)
+class THIRRootSlot(THIRExpr):
+    """Storage declared where a name the statement binds is declared, and
+    filled where its value is evaluated: the root a `with` target read
+    after the statement borrows (sema's `head_enclosed_root`) -- the
+    manager, or the fresh receiver a borrowed manager comes from. Its
+    declaration `std::optional<T> name;` is a pre-declaration of the
+    compound statement it is placed in front of (`root_slot`); renders
+    `name.emplace(<constructor arguments>)` (a constructor's own arguments,
+    so nothing is built twice), which returns `T&` -- or, where the slot
+    may already hold a value (`build_first`), `name.emplace(<value>)`: the
+    new value is built before the old one, which its arguments may read,
+    is destroyed."""
+    name: str = ""
+    value: THIRExpr = None  # type: ignore[assignment]
+    build_first: bool = False
 
 
 @dataclass(frozen=True)
@@ -1243,17 +1263,13 @@ class THIRUnionArgLift(THIRExpr):
     render is const-blind (it spells the callee's variant
     whatever the source's const-ness -- a const source into a MUTABLE slot is
     a miscompile, see BUGS.md). BORROW
-    form -- the variant aliases the named source.
-
-    `temp_cpp` set marks the RVALUE branch instead: `value` is
-    a member-typed ctor rvalue hoisted into a `temp_cpp __tmp_N = <value>;`
-    decl at the statement flush, the variant lifting the temp's address
-    (`pv{&__tmp_N}` -- no parens)."""
+    form -- the variant aliases the named source; a fresh member's object
+    is lent as a temporary of its full expression (`value` a
+    `THIRInlineTemp`)."""
     variant_cpp: str
     value: THIRExpr | None = None  # None -> the monostate member
     deref: bool = False
     const_wrap: 'str | None' = None
-    temp_cpp: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1341,6 +1357,21 @@ class THIRVarargPack(THIRExpr):
     span_fn: str | None = None
 
 
+class SeatLifetime(Enum):
+    """How long the storage of a temporary lives, as the statement's keep
+    plan decides (`frame_seat.plan_keeps`)."""
+    # A temporary of the full expression that builds it, which nothing
+    # held past it borrows.
+    FULL_EXPRESSION = auto()
+    # A temp the statement declares.
+    STATEMENT = auto()
+    # A holder of the frame, filled where the temporary is evaluated.
+    FRAME = auto()
+    # A name the statement binds and reads after it borrows it (sema's
+    # `head_enclosed_root`): a slot of the scope enclosing the statement.
+    ENCLOSING = auto()
+
+
 @dataclass(frozen=True)
 class THIRArgTemp(THIRExpr):
     """A call arg hoisted into a `__tmp_N` declaration flushed before the
@@ -1387,6 +1418,20 @@ class THIRArgTemp(THIRExpr):
     # conditional-operand exit check rejects it there rather than let it
     # land at the enclosing statement.
     movable: 'bool | None' = None
+    # A temp a resumable body keeps past a suspension -- a compound head's
+    # kept argument, a factory argument a callee frame keeps -- in a HEAD_ARG
+    # holder of the frame, emplaced where the argument is evaluated (under
+    # its condition, per `with` item) in place of a declaration before the
+    # statement. It lives until emplaced again or the frame dies
+    # (destruction timing is no contract).
+    frame_holder: 'THIRFrameHolder | None' = None
+    # The keep plan's lifetime for the argument it holds (`held_temp`);
+    # None for storage no argument's value borrows.
+    lifetime: 'SeatLifetime | None' = None
+    # A seat of a value that cannot move: banked into a conditional region,
+    # it is built in place from a callable returning its initializer
+    # (`::tpy::detail::elided_slot<T>`, `fill([&]() -> T { return init; })`).
+    fills_in_place: bool = False
 
     def would_bank(self) -> bool:
         """Will the conditional-operand machinery BANK this temp into the
@@ -1395,8 +1440,10 @@ class THIRArgTemp(THIRExpr):
         statement? Asks the shared `banks_in_region` predicate over exactly
         what the emit hands it: the audited `movable` fact (an UNAUDITED
         row emits `movable=False`) and the slot spelling (a `None`
-        cpp_type is the `auto` row, which no `std::optional` can name)."""
-        return banks_in_region(self.cpp_type or "auto", self.movable)
+        cpp_type is the `auto` row, which no `std::optional` can name); a
+        seat built in place (`fills_in_place`) banks whatever it is."""
+        return banks_in_region(self.cpp_type or "auto",
+                               bool(self.movable) or self.fills_in_place)
 
 
 @dataclass(frozen=True)
@@ -1407,6 +1454,28 @@ class THIRTempRead(THIRExpr):
     evaluates once and reads at several positions (an augmented subscript's
     receiver and key, read by its getter and its setter)."""
     read_id: int = 0
+
+
+@dataclass(frozen=True)
+class THIRInlineTemp(THIRExpr):
+    """Storage a call argument needs, realized inline as a temporary of the
+    full expression: a fresh argument lives for the statement that
+    evaluates it, whatever its parameter, so nothing is hoisted to extend
+    it. `cpp_type` set constructs the parameter's type from the value
+    explicitly (`::tpy::Union<A, B>(3)`: a bare member would leave the
+    callee's overload set to C++'s own ranking); `mutable` binds the
+    temporary where C++ takes only an lvalue -- a parameter its callee
+    writes -- through `::tpy::as_mut_lvalue`, and `addr_of` passes its
+    address (a pointer parameter), through the same helper."""
+    value: THIRExpr
+    cpp_type: str | None = None
+    # The construction is `cpp_type{value}` rather than `cpp_type(value)`.
+    brace_init: bool = False
+    mutable: bool = False
+    addr_of: bool = False
+    # The keep plan's lifetime for it; only a full-expression temporary is
+    # realized inline (a kept one is seated instead).
+    lifetime: 'SeatLifetime | None' = None
 
 
 # The read id of a tuple's lambda-bound source (`THIRTupleLiteral.bound`):
@@ -1645,6 +1714,14 @@ class THIRMethodCall(THIRExpr):
                     or self.method_targs_cpp is not None or self.deref_chain
                     or isinstance(self.receiver, THIRNoneCheck)
                     or self.move_receiver)
+
+
+def deref_hops_cpp(is_arrow: bool, hops: int) -> str:
+    """The `__deref__()` calls a member of a user Deref wrapper is reached
+    through, after the receiver (`r.__deref__().sum()`); a pointer
+    receiver joins the first hop with `->` (`g->__deref__().push_back(3)`)."""
+    return (("->" if is_arrow else ".") + "__deref__()"
+            + ".__deref__()" * (hops - 1))
 
 
 def record_rvalue_storage(expr: THIRExpr) -> THIROwnedRecord | None:
@@ -3744,6 +3821,11 @@ class THIRForEach(THIRStmt):
     presize_if_sized: bool = False
     # See THIRForRange.
     source_in_enclosing: bool = False
+    # The head declares temporaries the statement keeps until it ends
+    # (`declares_temporaries`): the statement opens one scope of its own
+    # for them, which the names it binds stay outside of. Decided at
+    # lowering; the temporary planner and the emitter read it.
+    head_scope: bool = False
 
 
 @dataclass(frozen=True)
@@ -3788,6 +3870,13 @@ class THIRForIterProto(THIRStmt):
     # when the caller handed it over, the one it lends otherwise
     # (`::tpy::handover_iter<decltype(xs)>(xs)`).
     owning_source: bool = False
+    # The head declares temporaries the statement keeps until it ends
+    # (`declares_temporaries`): the statement opens one scope of its own
+    # for them, which the names it binds stay outside of. Decided at
+    # lowering; the temporary planner and the emitter read it.
+    head_scope: bool = False
+    # Pre-declarations emitted in front of the loop (see THIRForEach).
+    hoist_decls: tuple[HoistDecl, ...] = ()
 
 
 class WithTargetArm(Enum):
@@ -3804,6 +3893,14 @@ class WithTargetArm(Enum):
                         the F2 pointer-locals; `target_cpp` carries `T`)
       * `ASSIGN_PTR` -- reuse of a prior with's pointer-local target:
                         `<name> = &(__ctx_N.__enter__());`
+      * `ASSIGN`     -- a value target the statement pre-declares outside
+                        the scope it opens for its head (`head_scope`):
+                        `<name> = __ctx_N.__enter__();`
+      * `SCOPED_REF` -- a reference target that scope binds and the code
+                        after it reads: `auto& <name> = ...;` aimed at by a
+                        `T* __with_target_N` declared before the scope
+                        (`target_cpp` carries `T`), through which the name
+                        is bound again after it
       * `FRAME_SLOT` -- resumable frame_slot target (leaf `with`):
                         `<name>.emplace(__ctx_N.__enter__());`
       * `FRAME_FIELD` -- resumable plain frame-field target (leaf `with`):
@@ -3820,6 +3917,8 @@ class WithTargetArm(Enum):
     REF = auto()
     PTR_DECL = auto()
     ASSIGN_PTR = auto()
+    ASSIGN = auto()
+    SCOPED_REF = auto()
     FRAME_SLOT = auto()
     FRAME_FIELD = auto()
     FRAME_POINTER = auto()
@@ -3836,13 +3935,9 @@ class THIRWithItem:
     the admitted subset. `can_suppress` / `takes_exc_val` are sema's
     `__exit__` facts (bool return / an `exc_val: Optional[BaseException]`
     second param); they pick the catch arms and the exc argument spellings.
-    `target_cpp` is the PTR_DECL arm's pointee type, pre-rendered at lowering
+    `target_cpp` is the PTR_DECL / SCOPED_REF arm's pointee type, pre-rendered at lowering
     (`lc.render_type`, the same source as an F2 borrow local's cpp_type).
-    `manager_hoist_cpp` is the KEPT owned manager's type (the
-    hoist rule: an already-declared target aliases
-    `__enter__()`'s result past the block, so the manager hoists to a
-    function-scope `std::optional<CM> __slot_N` and `__ctx_N` binds through
-    it); None keeps the plain `auto __ctx_N = ...` bind. `frame_ctx` is the
+    `frame_ctx` is the
     resumable leaf twin: the WITH_CONTEXT holder homing the owned manager
     in the frame (`THIRResumableFrame.with_owned_ctx_map`, declared by the
     printer), rendering `<holder>.emplace(...)` + the `auto& __ctx_N` bind
@@ -3857,7 +3952,6 @@ class THIRWithItem:
     can_suppress: bool
     takes_exc_val: bool
     target_cpp: 'str | None' = None
-    manager_hoist_cpp: 'str | None' = None
     frame_ctx: 'THIRFrameHolder | None' = None
     # FRAME_POINTER over a by-value `__enter__` result: the frame's PTR_SLOT
     # holder the object lands in.
@@ -3900,6 +3994,11 @@ class THIRWith(THIRStmt):
     body: tuple[THIRStmt, ...] = ()
     body_terminates: bool = False
     hoist_decls: tuple[HoistDecl, ...] = ()
+    # The head declares temporaries the statement keeps until it ends
+    # (`declares_temporaries`): the statement opens one scope of its own
+    # for them, which the names it binds stay outside of. Decided at
+    # lowering; the temporary planner and the emitter read it.
+    head_scope: bool = False
 
 
 @dataclass(frozen=True)
@@ -4296,6 +4395,11 @@ class THIRMatch(THIRStmt):
     subject_effect: 'THIRStmt | None' = None
     arms: tuple[THIRMatchArm, ...] = ()
     hoist_decls: tuple[HoistDecl, ...] = ()
+    # The head declares temporaries the statement keeps until it ends
+    # (`declares_temporaries`): the statement opens one scope of its own
+    # for them, which the names it binds stay outside of. Decided at
+    # lowering; the temporary planner and the emitter read it.
+    head_scope: bool = False
     is_exhaustive: bool = False
     emit_unreachable: bool = False    # is_exhaustive AND every arm terminates
     synthetic_default: bool = False   # no wildcard AND not exhaustive
@@ -4755,6 +4859,13 @@ class THIRResumableLeaves:
     # from (`THIRResumeExtraction`); the printer writes the declaration.
     resume_extractions: 'Mapping[str, THIRResumeExtraction]' = field(
         default_factory=dict)
+    # The HEAD_ARG holders the leaves fill (`THIRArgTemp.frame_holder`), in
+    # the order they were given: the printer declares a field for each.
+    head_holders: 'tuple[THIRFrameHolder, ...]' = ()
+    # Every frame struct this body's frame embeds by value: the frame's own
+    # (`THIRResumableFrame.embedding_edges`) and its holders'
+    # (`THIRFrameHolder.embeds`), which the struct order reads.
+    embedding_edges: 'tuple[tuple[str, str | None], ...]' = ()
 
 
 @dataclass(frozen=True)
@@ -4807,13 +4918,58 @@ def constructor_signature(ctor: THIRConstructor) -> THIRCallableSignature:
 
 def hoists_declaration(node: THIRNode) -> bool:
     """Whether `node`'s render declares something before its enclosing
-    statement: an arg temp or a temp-bearing union lift, a slot emplace, a
+    statement: an arg temp, a slot emplace, a
     `*args` pack's element array, an `and` / `or` operand held once, or a
     walrus target. The one definition the lowering's factory (`_hoisted`)
     and the validator's no-statement checks share."""
-    return (isinstance(node, (THIRArgTemp, THIRSlotEmplace, THIRWalrus))
-            or (isinstance(node, THIRUnionArgLift)
-                and node.temp_cpp is not None)
+    return (isinstance(node, (THIRSlotEmplace, THIRWalrus))
+            or (isinstance(node, THIRArgTemp) and node.frame_holder is None)
             or (isinstance(node, THIRValueSelect)
                 and node.lhs_temp_cpp is not None)
             or (isinstance(node, THIRVarargPack) and bool(node.args)))
+
+
+def replaced_node(root: THIRNode, old: THIRNode, new: THIRNode) -> THIRNode:
+    """`root` with the node `old` -- by identity, wherever it sits under
+    `root` -- replaced by `new`."""
+    if root is old:
+        return new
+    changes: dict[str, object] = {}
+    for f in dc_fields(root):
+        if not f.init:
+            continue
+        v = getattr(root, f.name)
+        if isinstance(v, THIRNode):
+            r = replaced_node(v, old, new)
+            if r is not v:
+                changes[f.name] = r
+        elif isinstance(v, tuple) and any(isinstance(x, THIRNode) for x in v):
+            items = tuple(replaced_node(x, old, new)
+                          if isinstance(x, THIRNode) else x for x in v)
+            if any(a is not b for a, b in zip(items, v)):
+                changes[f.name] = items
+    return replace(root, **changes) if changes else root
+
+
+def declares_temporaries(heads: 'tuple[THIRExpr | None, ...]') -> bool:
+    """Whether a compound statement's head declares an anonymous temporary
+    its statement holds (`hoists_declaration`, a name it binds -- a walrus
+    target, a select's slot -- aside): the statement
+    then opens a scope of its own, which the temporaries live in until it
+    ends. An expression with statements of its own (a
+    comprehension's block) declares its temporaries inside itself."""
+    stack: list = [h for h in heads if h is not None]
+    while stack:
+        node = stack.pop()
+        if (hoists_declaration(node)
+                and not isinstance(node, (THIRWalrus, THIRSlotEmplace))):
+            return True
+        if isinstance(node, THIRComprehensionBlock):
+            continue
+        for f in dc_fields(node):
+            v = getattr(node, f.name, None)
+            if isinstance(v, THIRNode):
+                stack.append(v)
+            elif isinstance(v, tuple):
+                stack.extend(x for x in v if isinstance(x, THIRNode))
+    return False

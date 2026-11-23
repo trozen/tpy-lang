@@ -60,8 +60,7 @@ int32_t call_free(Q& q, const H& h) {
 // def call_free_temp() -> int32:  # tpyc: mir(covered)
 //     return peek(Q(4))
 int32_t call_free_temp() {
-    Q __tmp_1 = Q(4);
-    return ::tpyapp::main::peek(&(__tmp_1));
+    return ::tpyapp::main::peek(&::tpy::as_mut_lvalue(Q(4)));
 }
 
 // # caller, method: the same shapes (a temporary there is a THIR reject, BUGS.md#batch7-everyday-arg-rejects)
@@ -105,12 +104,11 @@ int32_t call_ctor(Q& q, const H& h) {
 }
 
 // # a temporary at a constructor's Optional parameter, bound as any call's argument
-// def call_ctor_temp() -> int32:  # tpyc: mir(certified)
+// def call_ctor_temp() -> int32:  # tpyc: mir(covered)
 //     d = H(Q(4))
 //     return d.n
 int32_t call_ctor_temp() {
-    Q __tmp_1 = Q(4);
-    H d = H(&(__tmp_1));
+    H d = H(&::tpy::as_mut_lvalue(Q(4)));
     return d.n;
 }
 
@@ -625,53 +623,26 @@ Q& pick(Q* p, Q& q) {
 //     print("read_then_put", read_then_put(H(Q(6))))
 //     print("pick", pick(None, Q(7)).v)
 void main() {
-    Q __tmp_1 = Q(1);
-    Q __tmp_2 = Q(2);
-    H __tmp_3 = H(&(__tmp_2));
-    std::cout << "call_free" << " " << ::tpyapp::main::call_free(__tmp_1, __tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "call_free" << " " << ::tpyapp::main::call_free(::tpy::as_mut_lvalue(Q(1)), H(&::tpy::as_mut_lvalue(Q(2)))) << "\n" << ::tpy::check_signals;
     std::cout << "call_free_temp" << " " << ::tpyapp::main::call_free_temp() << "\n" << ::tpy::check_signals;
-    Q __tmp_4 = Q(1);
-    Q __tmp_5 = Q(2);
-    H __tmp_6 = H(&(__tmp_5));
-    std::cout << "call_method" << " " << ::tpyapp::main::call_method(__tmp_4, __tmp_6) << "\n" << ::tpy::check_signals;
-    Q __tmp_7 = Q(1);
-    Q __tmp_8 = Q(2);
-    H __tmp_9 = H(&(__tmp_8));
-    std::cout << "call_ctor" << " " << ::tpyapp::main::call_ctor(__tmp_7, __tmp_9) << "\n" << ::tpy::check_signals;
+    std::cout << "call_method" << " " << ::tpyapp::main::call_method(::tpy::as_mut_lvalue(Q(1)), H(&::tpy::as_mut_lvalue(Q(2)))) << "\n" << ::tpy::check_signals;
+    std::cout << "call_ctor" << " " << ::tpyapp::main::call_ctor(::tpy::as_mut_lvalue(Q(1)), H(&::tpy::as_mut_lvalue(Q(2)))) << "\n" << ::tpy::check_signals;
     std::cout << "call_ctor_temp" << " " << ::tpyapp::main::call_ctor_temp() << "\n" << ::tpy::check_signals;
-    Q __tmp_10 = Q(1);
-    Q __tmp_11 = Q(5);
-    H __tmp_12 = H(&(__tmp_11));
-    std::cout << "call_bump" << " " << ::tpyapp::main::call_bump(__tmp_10, __tmp_12) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_13 = {1, 2};
-    std::cout << "call_none" << " " << ::tpyapp::main::call_none(__tmp_13) << "\n" << ::tpy::check_signals;
-    P __tmp_14 = P(1);
-    std::vector<int32_t> __tmp_15 = {1, 2};
-    std::vector<int32_t> __tmp_16 = {1, 2};
-    std::cout << "call_items" << " " << ::tpyapp::main::call_items(&(__tmp_14), __tmp_15) << " " << ::tpyapp::main::call_items(nullptr, __tmp_16) << "\n" << ::tpy::check_signals;
-    Q __tmp_17 = Q(3);
-    H __tmp_18 = H(nullptr);
-    std::cout << "call_holder" << " " << ::tpyapp::main::call_holder(__tmp_17, __tmp_18) << "\n" << ::tpy::check_signals;
+    std::cout << "call_bump" << " " << ::tpyapp::main::call_bump(::tpy::as_mut_lvalue(Q(1)), ::tpy::as_mut_lvalue(H(&::tpy::as_mut_lvalue(Q(5))))) << "\n" << ::tpy::check_signals;
+    std::cout << "call_none" << " " << ::tpyapp::main::call_none(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "call_items" << " " << ::tpyapp::main::call_items(&::tpy::as_mut_lvalue(P(1)), ::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << " " << ::tpyapp::main::call_items(nullptr, ::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "call_holder" << " " << ::tpyapp::main::call_holder(::tpy::as_mut_lvalue(Q(3)), ::tpy::as_mut_lvalue(H(nullptr))) << "\n" << ::tpy::check_signals;
     std::cout << "call_scalar" << " " << ::tpyapp::main::call_scalar(4, 5) << " " << ::tpyapp::main::call_scalar(std::nullopt, 5) << "\n" << ::tpy::check_signals;
     std::cout << "scalar_loops" << " " << ::tpyapp::main::scalar_loops(3) << " " << ::tpyapp::main::scalar_loops(std::nullopt) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<bool, int32_t> __tmp_19 = true;
-    std::cout << "via_scalar" << " " << ::tpyapp::main::via_scalar(3) << " " << ::tpyapp::main::via_scalar(__tmp_19) << "\n" << ::tpy::check_signals;
-    Q __tmp_20 = Q(4);
-    std::cout << "narrowed_plain" << " " << ::tpyapp::main::narrowed_plain(&(__tmp_20)) << " " << ::tpyapp::main::narrowed_plain(nullptr) << "\n" << ::tpy::check_signals;
+    std::cout << "via_scalar" << " " << ::tpyapp::main::via_scalar(3) << " " << ::tpyapp::main::via_scalar(::tpy::Union<bool, int32_t>(true)) << "\n" << ::tpy::check_signals;
+    std::cout << "narrowed_plain" << " " << ::tpyapp::main::narrowed_plain(&::tpy::as_mut_lvalue(Q(4))) << " " << ::tpyapp::main::narrowed_plain(nullptr) << "\n" << ::tpy::check_signals;
     std::cout << "call_scalar_ctor" << " " << ::tpyapp::main::call_scalar_ctor() << "\n" << ::tpy::check_signals;
     std::cout << "call_scalar_ctor_arg" << " " << ::tpyapp::main::call_scalar_ctor_arg(7) << "\n" << ::tpy::check_signals;
-    Q __tmp_21 = Q(8);
-    H __tmp_22 = H(&(__tmp_21));
-    std::cout << "clear_read_silent" << " " << ::tpyapp::main::clear_read_silent(__tmp_22) << "\n" << ::tpy::check_signals;
-    T __tmp_23 = T("t");
-    std::cout << "retext_call" << " " << ::tpyapp::main::retext_call(__tmp_23) << "\n" << ::tpy::check_signals;
-    P __tmp_24 = P(1);
-    std::cout << "grow_then_iter" << " " << ::tpyapp::main::grow_then_iter(__tmp_24) << "\n" << ::tpy::check_signals;
-    Q __tmp_25 = Q(6);
-    H __tmp_26 = H(&(__tmp_25));
-    std::cout << "read_then_put" << " " << ::tpyapp::main::read_then_put(__tmp_26) << "\n" << ::tpy::check_signals;
-    Q __tmp_27 = Q(7);
-    std::cout << "pick" << " " << ::tpyapp::main::pick(nullptr, __tmp_27).v << "\n" << ::tpy::check_signals;
+    std::cout << "clear_read_silent" << " " << ::tpyapp::main::clear_read_silent(::tpy::as_mut_lvalue(H(&::tpy::as_mut_lvalue(Q(8))))) << "\n" << ::tpy::check_signals;
+    std::cout << "retext_call" << " " << ::tpyapp::main::retext_call(::tpy::as_mut_lvalue(T("t"))) << "\n" << ::tpy::check_signals;
+    std::cout << "grow_then_iter" << " " << ::tpyapp::main::grow_then_iter(::tpy::as_mut_lvalue(P(1))) << "\n" << ::tpy::check_signals;
+    std::cout << "read_then_put" << " " << ::tpyapp::main::read_then_put(::tpy::as_mut_lvalue(H(&::tpy::as_mut_lvalue(Q(6))))) << "\n" << ::tpy::check_signals;
+    std::cout << "pick" << " " << ::tpyapp::main::pick(nullptr, ::tpy::as_mut_lvalue(Q(7))).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

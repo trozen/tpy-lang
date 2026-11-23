@@ -17,8 +17,7 @@ void store(Counter* c, int32_t v) {
 //     print(Counter.n)
 void main() {
     Counter::n = 0;
-    Counter __tmp_1 = Counter();
-    ::tpyapp::main::store(&(__tmp_1), 7);
+    ::tpyapp::main::store(&::tpy::as_mut_lvalue(Counter()), 7);
     std::cout << Counter::n << "\n" << ::tpy::check_signals;
 }
 

@@ -48,8 +48,7 @@ void pooled_reuse() {
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
-    ::tpy::Union<bool, std::string> __tmp_1 = true;
-    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/v1/a", __tmp_1);
+    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/v1/a", ::tpy::Union<bool, std::string>(true));
     std::cout << "key:" << " " << key << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nr1", 40));
@@ -75,12 +74,9 @@ void pooled_reuse() {
 //     print(requests._pool_key("https://api.test:8443/x", False))
 //     print(requests._pool_key("https://api.test/x", "/etc/ca.pem"))
 void pool_key_shapes() {
-    ::tpy::Union<bool, std::string> __tmp_1 = true;
-    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", __tmp_1) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<bool, std::string> __tmp_2 = false;
-    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test:8443/x", __tmp_2) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<bool, std::string> __tmp_3 = "/etc/ca.pem";
-    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", __tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", ::tpy::Union<bool, std::string>(true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test:8443/x", ::tpy::Union<bool, std::string>(false)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", ::tpy::Union<bool, std::string>("/etc/ca.pem")) << "\n" << ::tpy::check_signals;
 }
 
 // def failed_request_drops_entry() -> None:
@@ -111,8 +107,7 @@ void failed_request_drops_entry() {
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
-    ::tpy::Union<bool, std::string> __tmp_1 = true;
-    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/x", __tmp_1);
+    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/x", ::tpy::Union<bool, std::string>(true));
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     b.shutdown(::tpystd::socket::SHUT_WR);
     {
@@ -145,8 +140,7 @@ void exit_closes_pool() {
     try {
         conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
         conn->sock = std::move(a);
-        ::tpy::Union<bool, std::string> __tmp_1 = true;
-        ::tpy::__setitem__(s._pool, ::tpystd::tplib::requests::_pool_key("http://api.test/", __tmp_1), ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move((*conn))));
+        ::tpy::__setitem__(s._pool, ::tpystd::tplib::requests::_pool_key("http://api.test/", ::tpy::Union<bool, std::string>(true)), ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move((*conn))));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});

@@ -126,8 +126,7 @@ bool own_str_name(std::vector<int32_t>& xs, std::string_view tail) {
 //     # whether it ran in the skipped branch.
 //     return flag or seen_bag("refparam", Bag([1, 2]))
 bool ref_param_rvalue(bool flag) {
-    std::optional<Bag> __tmp_1;
-    return (flag || (__tmp_1.emplace(Bag({1, 2})), ::tpyapp::main::seen_bag("refparam", (*__tmp_1))));
+    return (flag || ::tpyapp::main::seen_bag("refparam", Bag({1, 2})));
 }
 
 // def left_operand(xs: list[int32]) -> bool:
@@ -166,36 +165,27 @@ bool left_operand(std::vector<int32_t>& xs) {
 //     i = left_operand([1, 2, 3])
 //     print("left", i)
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2, 0};
-    bool a = ::tpyapp::main::or_rhs(__tmp_1);
+    bool a = ::tpyapp::main::or_rhs(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 0}));
     std::cout << "or" << " " << ::tpy::print_bool(a) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = {1, 2, 3};
-    bool b = ::tpyapp::main::and_rhs(__tmp_2);
+    bool b = ::tpyapp::main::and_rhs(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3}));
     std::cout << "and" << " " << ::tpy::print_bool(b) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = {1, 2, 3};
-    bool c = ::tpyapp::main::nested(__tmp_3, false);
+    bool c = ::tpyapp::main::nested(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3}), false);
     std::cout << "nested" << " " << ::tpy::print_bool(c) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_4 = {1, 2, 3};
-    bool d = ::tpyapp::main::ternary(__tmp_4);
+    bool d = ::tpyapp::main::ternary(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3}));
     std::cout << "ternary" << " " << ::tpy::print_bool(d) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_5 = {1, 2, 3};
-    bool e = ::tpyapp::main::chained(__tmp_5);
+    bool e = ::tpyapp::main::chained(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3}));
     std::cout << "chained" << " " << ::tpy::print_bool(e) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_6 = {1, 2, 0};
-    int32_t f = ::tpyapp::main::value_select(__tmp_6);
+    int32_t f = ::tpyapp::main::value_select(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 0}));
     std::cout << "valuesel" << " " << f << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_7 = {1, 2, 0};
-    bool g = ::tpyapp::main::record_payload(__tmp_7);
+    bool g = ::tpyapp::main::record_payload({1, 2, 0});
     std::cout << "record" << " " << ::tpy::print_bool(g) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_8 = {1, 2, 0};
-    bool h = ::tpyapp::main::own_str_name(__tmp_8, "kept");
+    bool h = ::tpyapp::main::own_str_name(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 0}), "kept");
     std::cout << "ownstr" << " " << ::tpy::print_bool(h) << "\n" << ::tpy::check_signals;
     bool j = ::tpyapp::main::ref_param_rvalue(true);
     std::cout << "refparam_skipped" << " " << ::tpy::print_bool(j) << "\n" << ::tpy::check_signals;
     bool k = ::tpyapp::main::ref_param_rvalue(false);
     std::cout << "refparam_taken" << " " << ::tpy::print_bool(k) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_9 = {1, 2, 3};
-    bool i = ::tpyapp::main::left_operand(__tmp_9);
+    bool i = ::tpyapp::main::left_operand(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3}));
     std::cout << "left" << " " << ::tpy::print_bool(i) << "\n" << ::tpy::check_signals;
 }
 

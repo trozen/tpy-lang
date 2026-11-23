@@ -121,9 +121,7 @@ void __tpy_init() {
     ::tpyapp::main::test_iadd_rvalue_no_warn();
     ::tpyapp::main::test_iadd_range_no_warn();
     ::tpyapp::main::test_iadd_span_warns();
-    std::vector<Node> __tmp_1 = {Node(1)};
-    std::vector<Node> __tmp_2 = {Node(2)};
-    ::tpyapp::main::test_iadd_generic_warns<Node>(__tmp_1, __tmp_2);
+    ::tpyapp::main::test_iadd_generic_warns<Node>(::tpy::as_mut_lvalue(std::vector<Node>{Node(1)}), {Node(2)});
 }
 
 } // namespace tpyapp::main

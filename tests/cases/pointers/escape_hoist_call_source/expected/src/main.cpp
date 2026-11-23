@@ -661,8 +661,7 @@ void main() {
     std::cout << "runner:" << " " << r.last << "\n" << ::tpy::check_signals;
     ::tpyapp::main::two_roots_section();
     ::tpyapp::main::nocopy_section();
-    B __tmp_1 = B(30);
-    ::tpyapp::main::outliving_storage_section(__tmp_1);
+    ::tpyapp::main::outliving_storage_section(::tpy::as_mut_lvalue(B(30)));
     ::tpyapp::main::callee_shape_section();
     ::tpyapp::main::nested_def_section();
     Forward().run();
@@ -678,8 +677,7 @@ void main() {
         }
     }
     ::tpyapp::main::copy_section();
-    B __tmp_2 = B(3);
-    ::tpyapp::main::inverse_section(__tmp_2);
+    ::tpyapp::main::inverse_section(::tpy::as_mut_lvalue(B(3)));
 }
 
 

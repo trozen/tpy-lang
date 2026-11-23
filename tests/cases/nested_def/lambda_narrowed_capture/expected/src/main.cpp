@@ -40,10 +40,8 @@ void escaping_value_position(const ::tpy::Union<double, std::string>& v) {
 //     fn_record_position(A(1))
 //     escaping_value_position(2.5)
 void main() {
-    A __tmp_1 = A(1);
-    ::tpyapp::main::fn_record_position(::tpy::Union<A*, B*>{&__tmp_1});
-    ::tpy::Union<double, std::string> __tmp_2 = 2.5;
-    ::tpyapp::main::escaping_value_position(__tmp_2);
+    ::tpyapp::main::fn_record_position(::tpy::Union<A*, B*>{&(::tpy::as_mut_lvalue(A(1)))});
+    ::tpyapp::main::escaping_value_position(::tpy::Union<double, std::string>(2.5));
 }
 
 // main()

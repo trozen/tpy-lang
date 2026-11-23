@@ -337,22 +337,14 @@ int32_t and_guard(int32_t k, std::string_view t, const std::vector<int32_t>& xs)
 void main() {
     std::cout << "opt" << " " << ::tpyapp::main::opt_guard(1, 0) << " " << ::tpyapp::main::opt_guard(1, 5) << " " << ::tpyapp::main::opt_guard(1, std::nullopt) << "\n" << ::tpy::check_signals;
     std::cout << "str" << " " << ::tpyapp::main::str_guard(1, "") << " " << ::tpyapp::main::str_guard(1, "a") << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_2 = {1};
-    std::cout << "list" << " " << ::tpyapp::main::list_guard(1, __tmp_1) << " " << ::tpyapp::main::list_guard(1, __tmp_2) << "\n" << ::tpy::check_signals;
-    Bag __tmp_3 = Bag(0);
-    Bag __tmp_4 = Bag(2);
-    std::cout << "record" << " " << ::tpyapp::main::record_guard(1, __tmp_3) << " " << ::tpyapp::main::record_guard(1, __tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << "list" << " " << ::tpyapp::main::list_guard(1, std::vector<int32_t>{}) << " " << ::tpyapp::main::list_guard(1, {1}) << "\n" << ::tpy::check_signals;
+    std::cout << "record" << " " << ::tpyapp::main::record_guard(1, Bag(0)) << " " << ::tpyapp::main::record_guard(1, Bag(2)) << "\n" << ::tpy::check_signals;
     std::cout << "enum" << " " << ::tpyapp::main::enum_guard(1, Color::RED) << " " << ::tpyapp::main::enum_guard(1, Color::BLUE) << "\n" << ::tpy::check_signals;
     std::cout << "intenum" << " " << ::tpyapp::main::int_enum_guard(1, Level::ZERO) << " " << ::tpyapp::main::int_enum_guard(1, Level::HIGH) << "\n" << ::tpy::check_signals;
-    Plain __tmp_5 = Plain(0);
-    std::cout << "plain" << " " << ::tpyapp::main::plain_record_guard(1, __tmp_5) << "\n" << ::tpy::check_signals;
+    std::cout << "plain" << " " << ::tpyapp::main::plain_record_guard(1, Plain(0)) << "\n" << ::tpy::check_signals;
     std::cout << "any" << " " << ::tpyapp::main::any_guard(1, ::tpy::make_any(::tpy::BigInt(0))) << " " << ::tpyapp::main::any_guard(1, ::tpy::make_any(::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
     std::cout << "not" << " " << ::tpyapp::main::not_guard(1, "") << " " << ::tpyapp::main::not_guard(1, "a") << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_6 = {1};
-    std::vector<int32_t> __tmp_7 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_8 = {1};
-    std::cout << "and" << " " << ::tpyapp::main::and_guard(1, "", __tmp_6) << " " << ::tpyapp::main::and_guard(1, "a", __tmp_7) << " " << ::tpyapp::main::and_guard(1, "a", __tmp_8) << "\n" << ::tpy::check_signals;
+    std::cout << "and" << " " << ::tpyapp::main::and_guard(1, "", {1}) << " " << ::tpyapp::main::and_guard(1, "a", std::vector<int32_t>{}) << " " << ::tpyapp::main::and_guard(1, "a", {1}) << "\n" << ::tpy::check_signals;
     std::cout << "miss" << " " << ::tpyapp::main::opt_guard(9, 5) << " " << ::tpyapp::main::str_guard(9, "a") << "\n" << ::tpy::check_signals;
 }
 

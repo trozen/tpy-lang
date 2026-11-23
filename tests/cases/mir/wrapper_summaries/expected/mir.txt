@@ -39,7 +39,7 @@ main::fixed_union@238:0: uncovered (unsupported union declaration), summary: opa
 main::fixed_tuple@244:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::tup1@250:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::alias_one@256:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: argument_alias, summary: known
-main::main@261:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@261:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
 main::P.bump@11:4: covered (storage: no_proof_required), summary: known
 main::P.__init__@7:4: covered (storage: no_proof_required), summary: known
 main::Q.__init__@16:4: covered (storage: no_proof_required), summary: known

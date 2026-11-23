@@ -21,8 +21,7 @@ void drain(Sink& s, const Row& r) {
 //     print(len(s.kept), s.kept[0])
 void main() {
     Sink s = Sink();
-    Row __tmp_1 = Row("a");
-    ::tpyapp::main::drain(s, __tmp_1);
+    ::tpyapp::main::drain(s, Row("a"));
     std::cout << ::tpy::__len__(s.kept) << " " << ::tpy::__getitem__(s.kept, 0) << "\n" << ::tpy::check_signals;
 }
 

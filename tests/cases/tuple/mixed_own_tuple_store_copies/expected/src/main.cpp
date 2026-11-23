@@ -157,24 +157,12 @@ int32_t via_field(Box& b) {
 //     print(via_dict_comprehension(Box(2)), via_ternary_source(Box(2), Box(3), True))
 //     print(via_double_nested_tuple(Box(2)))
 void main() {
-    Box __tmp_1 = Box(2);
-    Box __tmp_2 = Box(2);
-    std::cout << ::tpyapp::main::via_list_literal(__tmp_1) << " " << ::tpyapp::main::via_append(__tmp_2) << "\n" << ::tpy::check_signals;
-    Box __tmp_3 = Box(2);
-    Box __tmp_4 = Box(2);
-    std::cout << ::tpyapp::main::via_dict_literal(__tmp_3) << " " << ::tpyapp::main::via_setitem(__tmp_4) << "\n" << ::tpy::check_signals;
-    Box __tmp_5 = Box(2);
-    Box __tmp_6 = Box(2);
-    std::cout << ::tpyapp::main::via_nested_tuple(__tmp_5) << " " << ::tpyapp::main::via_comprehension(__tmp_6) << "\n" << ::tpy::check_signals;
-    Box __tmp_7 = Box(2);
-    Box __tmp_8 = Box(2);
-    std::cout << ::tpyapp::main::via_loop_var(__tmp_7) << " " << ::tpyapp::main::via_field(__tmp_8) << "\n" << ::tpy::check_signals;
-    Box __tmp_9 = Box(2);
-    Box __tmp_10 = Box(2);
-    Box __tmp_11 = Box(3);
-    std::cout << ::tpyapp::main::via_dict_comprehension(__tmp_9) << " " << ::tpyapp::main::via_ternary_source(__tmp_10, __tmp_11, true) << "\n" << ::tpy::check_signals;
-    Box __tmp_12 = Box(2);
-    std::cout << ::tpyapp::main::via_double_nested_tuple(__tmp_12) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_list_literal(::tpy::as_mut_lvalue(Box(2))) << " " << ::tpyapp::main::via_append(::tpy::as_mut_lvalue(Box(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_dict_literal(::tpy::as_mut_lvalue(Box(2))) << " " << ::tpyapp::main::via_setitem(::tpy::as_mut_lvalue(Box(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_nested_tuple(::tpy::as_mut_lvalue(Box(2))) << " " << ::tpyapp::main::via_comprehension(::tpy::as_mut_lvalue(Box(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_loop_var(::tpy::as_mut_lvalue(Box(2))) << " " << ::tpyapp::main::via_field(::tpy::as_mut_lvalue(Box(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_dict_comprehension(::tpy::as_mut_lvalue(Box(2))) << " " << ::tpyapp::main::via_ternary_source(::tpy::as_mut_lvalue(Box(2)), ::tpy::as_mut_lvalue(Box(3)), true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_double_nested_tuple(::tpy::as_mut_lvalue(Box(2))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

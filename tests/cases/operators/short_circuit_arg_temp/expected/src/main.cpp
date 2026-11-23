@@ -20,8 +20,7 @@ bool and_skips_rhs(const Counter& c) {
 // def and_runs_rhs(c: Counter) -> bool:
 //     return True and take(Probe(c, 2))  # LHS true -> Probe IS built
 bool and_runs_rhs(Counter& c) {
-    Probe __tmp_1 = Probe(c, 2);
-    return ::tpyapp::main::take(&(__tmp_1));
+    return ::tpyapp::main::take(&::tpy::as_mut_lvalue(Probe(c, 2)));
 }
 
 // def or_skips_rhs(c: Counter) -> bool:
@@ -33,8 +32,7 @@ bool or_skips_rhs(const Counter& c) {
 // def or_runs_rhs(c: Counter) -> bool:
 //     return False or take(Probe(c, 4))  # LHS false -> Probe IS built
 bool or_runs_rhs(Counter& c) {
-    Probe __tmp_1 = Probe(c, 4);
-    return ::tpyapp::main::take(&(__tmp_1));
+    return ::tpyapp::main::take(&::tpy::as_mut_lvalue(Probe(c, 4)));
 }
 
 // def ternary_skips_else(c: Counter) -> bool:
@@ -46,8 +44,7 @@ bool ternary_skips_else(const Counter& c) {
 // def ternary_skips_then(c: Counter, cond: bool) -> bool:
 //     return take(Probe(c, 6)) if cond else False  # then arm skipped when cond false
 bool ternary_skips_then(Counter& c, bool cond) {
-    std::optional<Probe> __tmp_1;
-    return ((cond) ? (__tmp_1.emplace(Probe(c, 6)), ::tpyapp::main::take(&((*__tmp_1)))) : (false));
+    return ((cond) ? (::tpyapp::main::take(&::tpy::as_mut_lvalue(Probe(c, 6)))) : (false));
 }
 
 // def nested_and(c: Counter, inner: bool) -> bool:
@@ -55,8 +52,7 @@ bool ternary_skips_then(Counter& c, bool cond) {
 //     # `inner` skips it even though the outer `and` was taken.
 //     return True and (inner and take(Probe(c, 7)))
 bool nested_and(Counter& c, bool inner) {
-    std::optional<Probe> __tmp_1;
-    return (inner && (__tmp_1.emplace(Probe(c, 7)), ::tpyapp::main::take(&((*__tmp_1)))));
+    return (inner && ::tpyapp::main::take(&::tpy::as_mut_lvalue(Probe(c, 7))));
 }
 
 // def nested_mixed(c: Counter, first: bool, deep: bool) -> bool:
@@ -69,24 +65,20 @@ bool nested_and(Counter& c, bool inner) {
 //     return True and ((take(Probe(c, 8)) and first)
 //                      or (deep and take(Probe(c, 9))))
 bool nested_mixed(Counter& c, bool first, bool deep) {
-    Probe __tmp_1 = Probe(c, 8);
-    std::optional<Probe> __tmp_2;
-    return ((::tpyapp::main::take(&(__tmp_1)) && first) || (deep && (__tmp_2.emplace(Probe(c, 9)), ::tpyapp::main::take(&((*__tmp_2))))));
+    return ((::tpyapp::main::take(&::tpy::as_mut_lvalue(Probe(c, 8))) && first) || (deep && ::tpyapp::main::take(&::tpy::as_mut_lvalue(Probe(c, 9)))));
 }
 
 // def nested_ternary(c: Counter, inner: bool) -> bool:
 //     return (take(Probe(c, 10)) if inner else False) if True else False
 bool nested_ternary(Counter& c, bool inner) {
-    std::optional<Probe> __tmp_1;
-    return ((inner) ? (__tmp_1.emplace(Probe(c, 10)), ::tpyapp::main::take(&((*__tmp_1)))) : (false));
+    return ((inner) ? (::tpyapp::main::take(&::tpy::as_mut_lvalue(Probe(c, 10)))) : (false));
 }
 
 // def unconditional(c: Counter) -> bool:
 //     """Inverse: a temp in an unconditional position must still materialize."""
 //     return take(Probe(c, 11))
 bool unconditional(Counter& c) {
-    Probe __tmp_1 = Probe(c, 11);
-    return ::tpyapp::main::take(&(__tmp_1));
+    return ::tpyapp::main::take(&::tpy::as_mut_lvalue(Probe(c, 11)));
 }
 
 // def main() -> None:

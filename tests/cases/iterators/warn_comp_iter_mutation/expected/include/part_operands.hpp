@@ -37,7 +37,7 @@ int32_t via_pick_for(std::vector<int32_t>& xs, bool big);
 int32_t nested_places(std::vector<int32_t>& xs, const std::vector<int32_t>& ys, bool big);
 // def own_argument(xs: list[int32], big: bool) -> int32:  # tpyc: mir(conflict /replacement/)
 int32_t own_argument(std::vector<int32_t>& xs, bool big);
-// def borrowed_argument(xs: list[int32], big: bool) -> int32:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
+// def borrowed_argument(xs: list[int32], big: bool) -> int32:  # tpyc: mir(conflict /replacement/)
 int32_t borrowed_argument(std::vector<int32_t>& xs, bool big);
 // def ternary_arm(xs: list[int32], big: bool) -> int32:  # tpyc: mir(uncovered /unsupported record initializer/)
 int32_t ternary_arm(std::vector<int32_t>& xs, bool big);

@@ -46,8 +46,8 @@ from ...type_def_registry import (
 )
 from ...modules.type_resolution import (get_iterable_element_type,
                                        is_native_iterable, traverses_owning)
-from ...codegen_cpp.context import (
-    contains_named_expr, free_callee_cpp, is_lvalue_iterable)
+from ...codegen_cpp.context import contains_named_expr, free_callee_cpp
+from ...value_category import is_lvalue_iterable
 from ...codegen_cpp.types import resolve_pending_container
 from ..reject import ThirUnsupported
 from ..faces import witness as _witness
@@ -990,7 +990,7 @@ def _lower_array_source_comprehension(
     else:
         iterable = _lower_expr(
             it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE,
-                         pos=SinkPos.ITER_SOURCE))
+                                           pos=SinkPos.ITER_SOURCE))
     with bindings.at(lc, gen), bindings.at(lc, init):
         element = _lower_comp_container_elem(
             init.element_expr, elem_t, lc, body_declared)
@@ -1349,14 +1349,18 @@ def _build_comprehension_body(init, result_type, lc, declared,
             body: tuple[THIRStmt, ...] = (inner,)
             if head is not None:
                 body = (head,) + body
-            if k == 0:
-                loop = _comprehension_loop(
-                    route, gen, lc, declared, body,
-                    # The trip count is known up front only for one clause.
-                    "__result" if kind == "list" and len(gens) == 1
-                    else None, loc, outermost=True)
-            else:
-                with lc.placement_scope(SlotPlacement.STATEMENT):
+            # A clause's source is the head of its loop: the fresh
+            # arguments it keeps are declared inside the comprehension's
+            # block, before the loop, and live until the loop ends.
+            with lc.placement_scope(SlotPlacement.STATEMENT):
+                if k == 0:
+                    loop = _comprehension_loop(
+                        route, gen, lc, declared, body,
+                        # The trip count is known up front only for one
+                        # clause.
+                        "__result" if kind == "list" and len(gens) == 1
+                        else None, loc, outermost=True)
+                else:
                     loop = _comprehension_loop(route, gen, lc,
                                                clause_declared, body, None,
                                                loc, outermost=False)

@@ -864,8 +864,7 @@ void main() {
     ::tpyapp::main::param_named_self(a).x = 16;
     std::cout << "param_named_self" << " " << a.x << "\n" << ::tpy::check_signals;
     bool flag = false;
-    A __tmp_1 = A(2);
-    std::cout << "lambda_select" << " " << ::tpyapp::main::through([&flag](A& q) -> A { return ((flag) ? (A(0)) : (A(1))); }, __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "lambda_select" << " " << ::tpyapp::main::through([&flag](A& q) -> A { return ((flag) ? (A(0)) : (A(1))); }, ::tpy::as_mut_lvalue(A(2))) << "\n" << ::tpy::check_signals;
     std::array<N, 2> nodes = {N("pear"), N("apple")};
     std::cout << "sorted_key" << " " << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
@@ -972,8 +971,7 @@ void main() {
     auto&& t3 = std::move(std::get<0>(__tup_3));
     int32_t t4 = std::get<1>(__tup_3);
     std::cout << "own_tuple_storage_name" << " " << t3.x << " " << t4 << "\n" << ::tpy::check_signals;
-    TP __tmp_2 = TP();
-    auto __tup_4 = ::tpyapp::main::own_tuple_borrowed_local(__tmp_2);
+    auto __tup_4 = ::tpyapp::main::own_tuple_borrowed_local(TP());
     auto&& t5 = std::move(std::get<0>(__tup_4));
     auto&& t6 = std::move(std::get<1>(__tup_4));
     t5.x = 9;
@@ -981,8 +979,7 @@ void main() {
     std::vector<std::tuple<int64_t, int32_t>> txs = {std::tuple<int64_t, int32_t>{1, 2}, std::tuple<int64_t, int32_t>{3, 4}};
     std::cout << "tuple_elem_read" << " " << ::tpy::TuplePrinter(::tpyapp::main::tuple_elem_read(txs)) << "\n" << ::tpy::check_signals;
     std::cout << "tuple_elem_local" << " " << ::tpy::TuplePrinter(::tpyapp::main::tuple_elem_local()) << "\n" << ::tpy::check_signals;
-    A __tmp_3 = A(4);
-    auto __tup_5 = ::tpyapp::main::own_tuple_backedge(__tmp_3);
+    auto __tup_5 = ::tpyapp::main::own_tuple_backedge(::tpy::as_mut_lvalue(A(4)));
     auto&& bq = std::move(std::get<0>(__tup_5));
     int32_t bn = std::get<1>(__tup_5);
     std::cout << "own_tuple_backedge" << " " << bq.x << " " << bn << "\n" << ::tpy::check_signals;
@@ -1013,8 +1010,7 @@ void main() {
     std::unique_ptr<Shape> ds = ::tpyapp::main::dyn_struct_local();
     ds->bump();
     std::cout << "dyn_struct_local" << " " << ds->get() << "\n" << ::tpy::check_signals;
-    Sq __tmp_4 = Sq(7);
-    std::unique_ptr<Shape> db = ::tpyapp::main::dyn_borrowed(__tmp_4);
+    std::unique_ptr<Shape> db = ::tpyapp::main::dyn_borrowed(Sq(7));
     db->bump();
     std::cout << "dyn_borrowed" << " " << db->get() << "\n" << ::tpy::check_signals;
     H h = H();
@@ -1037,13 +1033,11 @@ void main() {
     auto&& ga = std::move(std::get<0>(__tup_7));
     int32_t gn = std::get<1>(__tup_7);
     std::cout << "gen_tuple_name" << " " << ga.x << " " << gn << "\n" << ::tpy::check_signals;
-    A __tmp_5 = A(41);
-    auto __tup_8 = ::tpyapp::main::gen_tuple_call<A>(__tmp_5);
+    auto __tup_8 = ::tpyapp::main::gen_tuple_call<A>(::tpy::as_mut_lvalue(A(41)));
     auto&& gc = std::move(std::get<0>(__tup_8));
     int32_t gcn = std::get<1>(__tup_8);
     std::cout << "gen_tuple_call" << " " << gc.x << " " << gcn << "\n" << ::tpy::check_signals;
-    A __tmp_6 = A(42);
-    auto __tup_9 = ::tpyapp::main::gen_own_call<A>(__tmp_6);
+    auto __tup_9 = ::tpyapp::main::gen_own_call<A>(::tpy::as_mut_lvalue(A(42)));
     auto&& go = std::move(std::get<0>(__tup_9));
     int32_t gon = std::get<1>(__tup_9);
     go.x = ::tpy::add_check<int32_t>(go.x, 1);
@@ -1053,8 +1047,7 @@ void main() {
     auto&& gpb = std::move(std::get<1>(__tup_10));
     gpa.x = ::tpy::add_check<int32_t>(gpa.x, 10);
     std::cout << "gen_tuple_pair" << " " << gpa.x << " " << gpb.x << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<A, int32_t>> __tmp_7 = {std::tuple<A, int32_t>{A(3), 1}, std::tuple<A, int32_t>{A(4), 2}};
-    auto __tup_11 = ::tpyapp::main::gen_tuple_loop<A>(__tmp_7, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(5), 0}));
+    auto __tup_11 = ::tpyapp::main::gen_tuple_loop<A>({std::tuple<A, int32_t>{A(3), 1}, std::tuple<A, int32_t>{A(4), 2}}, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(5), 0}));
     auto&& gla = std::move(std::get<0>(__tup_11));
     int32_t gln = std::get<1>(__tup_11);
     gla.x = ::tpy::add_check<int32_t>(gla.x, 10);
@@ -1074,8 +1067,7 @@ void main() {
     auto&& ul = std::move(std::get<0>(__tup_14));
     auto&& vl = std::move(std::get<1>(__tup_14));
     std::cout << "own_tuple_param_lists" << " " << ::tpy::__len__(ul) << " " << ::tpy::__len__(vl) << "\n" << ::tpy::check_signals;
-    A __tmp_8 = A(50);
-    auto __tup_15 = ::tpyapp::main::borrow_tuple_call(__tmp_8);
+    auto __tup_15 = ::tpyapp::main::borrow_tuple_call(::tpy::as_mut_lvalue(A(50)));
     auto&& bta = std::move(std::get<0>(__tup_15));
     int32_t btn = std::get<1>(__tup_15);
     std::cout << "borrow_tuple_call" << " " << bta.x << " " << btn << "\n" << ::tpy::check_signals;

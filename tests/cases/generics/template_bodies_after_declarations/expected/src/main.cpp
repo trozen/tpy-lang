@@ -219,8 +219,7 @@ void main() {
     Plain pl = Plain();
     Later lm = pl.m<double>(1.5);
     lm.v = ::tpy::add_check<int32_t>(lm.v, 1);
-    Five __tmp_1 = Five();
-    Later lp = pl.p(__tmp_1);
+    Later lp = pl.p(::tpy::as_mut_lvalue(Five()));
     lp.v = ::tpy::add_check<int32_t>(lp.v, 1);
     std::cout << "c" << " " << lm.v << " " << lp.v << "\n" << ::tpy::check_signals;
     Ov ov = Ov();
@@ -237,8 +236,8 @@ void main() {
     u.h.t.items.push_back(7);
     int32_t s = ::tpy::__len__(u.h.t.items);
     {
-        Bag<int32_t> __tmp_2 = Bag<int32_t>(5, 6);
-        auto __src_0 = ::tpyapp::main::walk(__tmp_2);
+        Bag<int32_t> __tmp_1 = Bag<int32_t>(5, 6);
+        auto __src_0 = ::tpyapp::main::walk(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

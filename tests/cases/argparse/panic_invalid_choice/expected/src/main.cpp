@@ -10,8 +10,7 @@ namespace tpyapp::main {
 //     parser.parse_args(["--mode", "bogus"])
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = {"--mode", "bogus"};
-    ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    ::tpyapp::main::__tpy_builder_argparse_parse_1({"--mode", "bogus"});
     return 0;
 }
 

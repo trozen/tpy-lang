@@ -32,8 +32,7 @@ void main() {
     Dog __slot_1{Dog()};
     NamedPet* np = &__slot_1;
     ::tpyapp::main::greet_pet((*np));
-    ::tpy::Adapter<NamedPet, Parrot> __tmp_1{Parrot()};
-    ::tpyapp::main::greet_named(__tmp_1);
+    ::tpyapp::main::greet_named(::tpy::as_mut_lvalue(::tpy::Adapter<NamedPet, Parrot>{Parrot()}));
     ::tpy::Adapter<NamedPet, Parrot> __slot_2{Parrot()};
     NamedPet* parrot_np = &__slot_2;
     ::tpyapp::main::greet_pet((*parrot_np));

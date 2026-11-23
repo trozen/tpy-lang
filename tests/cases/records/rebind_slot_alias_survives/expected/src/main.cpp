@@ -166,8 +166,7 @@ void with_scalar(bool c) {
 //     k.p.bump()
 //     print("constructor-escape", k.p.n, t.c.n)
 void constructor_escape(bool c) {
-    Counter __tmp_1 = Counter(99);
-    Keeper k = Keeper(__tmp_1);
+    Keeper k = Keeper(::tpy::as_mut_lvalue(Counter(99)));
     Escaping __slot_1 = Escaping(1, k);
     Escaping* t = &__slot_1;
     std::optional<Escaping> __slot_2;
@@ -188,8 +187,7 @@ void constructor_escape(bool c) {
 //     k.p.bump()
 //     print("setter-escape", k.p.n, t.c.n)
 void setter_escape(bool c) {
-    Counter __tmp_1 = Counter(99);
-    Keeper k = Keeper(__tmp_1);
+    Keeper k = Keeper(::tpy::as_mut_lvalue(Counter(99)));
     Escaping __slot_1 = Escaping(2, k);
     Escaping* t = &__slot_1;
     t->set_value(3);
@@ -211,8 +209,7 @@ void setter_escape(bool c) {
 //     k.p.bump()
 //     print("getitem-escape", k.p.n, t.c.n)
 void getitem_escape(bool c) {
-    Counter __tmp_1 = Counter(99);
-    Keeper k = Keeper(__tmp_1);
+    Keeper k = Keeper(::tpy::as_mut_lvalue(Counter(99)));
     Escaping __slot_1 = Escaping(2, k);
     Escaping* t = &__slot_1;
     (*t)[0].n = 3;
@@ -1185,8 +1182,7 @@ void slot_drop_borrow_unpack_main() {
 void main() {
     ::tpyapp::main::alias_survives_rebind();
     ::tpyapp::main::rebind_in_loop();
-    Counter __tmp_1 = Counter(7);
-    ::tpyapp::main::borrow_call_rebind(__tmp_1);
+    ::tpyapp::main::borrow_call_rebind(::tpy::as_mut_lvalue(Counter(7)));
     ::tpyapp::main::none_reassign(true);
     ::tpyapp::main::none_reassign(false);
     ::tpyapp::main::scalar_deep(true);
@@ -1232,10 +1228,8 @@ void main() {
     ::tpyapp::main::block_finally(true);
     ::tpyapp::main::block_arm_rebind(true);
     ::tpyapp::main::block_arm_rebind(false);
-    Counter __tmp_2 = Counter(1);
-    ::tpyapp::main::block_unpack_borrow(__tmp_2, true);
-    Counter __tmp_3 = Counter(1);
-    ::tpyapp::main::block_borrow_first(__tmp_3, true);
+    ::tpyapp::main::block_unpack_borrow(::tpy::as_mut_lvalue(Counter(1)), true);
+    ::tpyapp::main::block_borrow_first(::tpy::as_mut_lvalue(Counter(1)), true);
     ::tpyapp::main::block_alias_rebind(true);
     ::tpyapp::main::arm_alias_rebind_try();
     ::tpyapp::main::arm_alias_rebind_match(true);

@@ -379,16 +379,15 @@ void handler_continue_finally() {
 //         finally:
 //             print("with_target_finally", i, t.n[0])
 void with_target_finally() {
-    std::optional<Res> __slot_2;
     Res __slot_1 = Res(0);
     Res* t = &__slot_1;
+    std::optional<Res> __with_root_0;
     for (int32_t i = 0; i < 3; ++i) {
         {
             bool __fin_ran_5 = false;
             try {
                 try {
-                    __slot_2.emplace(Res(5));
-                    auto& __ctx_2 = (*__slot_2);
+                    auto& __ctx_2 = __with_root_0.emplace(Res(5));
                     t = &(__ctx_2.__enter__());
                     try {
                         ::tpyapp::main::fail_at(i, 0);
@@ -611,13 +610,12 @@ P deferred_return_finally() {
 //     finally:
 //         print("with_target_exception_finally", t.n[0])
 void with_target_exception_finally() {
-    std::optional<Res> __slot_2;
     Res __slot_1 = Res(0);
     Res* t = &__slot_1;
+    std::optional<Res> __with_root_0;
     {
         try {
-            __slot_2.emplace(Res(6));
-            auto& __ctx_3 = (*__slot_2);
+            auto& __ctx_3 = __with_root_0.emplace(6);
             t = &(__ctx_3.__enter__());
             try {
                 ::tpyapp::main::fail_at(0, 0);
@@ -748,12 +746,11 @@ void suppressed_while_true() {
 //             break
 //     print("with_target_break", t.n[0])
 void with_target_break() {
-    std::optional<Res> __slot_2;
     Res __slot_1 = Res(0);
     Res* t = &__slot_1;
+    std::optional<Res> __with_root_0;
     while (true) {
-        __slot_2.emplace(Res(5));
-        auto& __ctx_5 = (*__slot_2);
+        auto& __ctx_5 = __with_root_0.emplace(Res(5));
         t = &(__ctx_5.__enter__());
         bool __fin_ran_17 = false;
         try {
@@ -1191,8 +1188,7 @@ void main() {
     ::tpyapp::main::with_target_break();
     ::tpyapp::main::with_break();
     ::tpyapp::main::nested_break();
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    ::tpyapp::main::zero_trip_for(__tmp_1);
+    ::tpyapp::main::zero_trip_for(std::vector<int32_t>{});
     ::tpyapp::main::zero_trip_while(0);
     ::tpyapp::main::while_true_rebind();
     std::cout << "gen_break" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_break())) << "\n" << ::tpy::check_signals;

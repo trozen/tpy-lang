@@ -45,8 +45,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_writes::__next
         __self.xs = (::tpy::list_concat(std::vector<int32_t>{n}, std::vector<int32_t>{3}));
         __self.xs.push_back(8);
         __self.show("gen.writes");
-        std::vector<int32_t> __tmp_1 = {n, n};
-        __self.xs = {::tpyapp::main::count(__tmp_1), 7};
+        __self.xs = {::tpyapp::main::count({n, n}), 7};
         std::cout << "gen.literal_arg_temp" << " " << ::tpy::ListPrinter(__self.xs) << "\n" << ::tpy::check_signals;
         ys.emplace(std::vector<int32_t>{n, 30});
         (*ys).push_back(31);

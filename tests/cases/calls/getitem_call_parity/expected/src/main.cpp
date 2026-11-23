@@ -487,9 +487,7 @@ void main() {
     }
     std::cout << "agen_match" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::agen_match(c))) << " " << ::tpy::__getitem__(c.items, 2).n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::capture(c);
-    Pair<Item> __tmp_1 = Pair<Item>(Item(1));
-    Pair<int32_t> __tmp_2 = Pair<int32_t>(7);
-    std::cout << "open_t" << " " << ::tpyapp::main::pair_count<Item>(__tmp_1) << " " << ::tpyapp::main::pair_count<int32_t>(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "open_t" << " " << ::tpyapp::main::pair_count<Item>(::tpy::as_mut_lvalue(Pair<Item>(Item(1)))) << " " << ::tpyapp::main::pair_count<int32_t>(::tpy::as_mut_lvalue(Pair<int32_t>(7))) << "\n" << ::tpy::check_signals;
     Pair<Item> q = Pair<Item>(Item(1));
     auto t = q.pair();
     std::get<0>(t)->n = 9;
@@ -501,9 +499,7 @@ void main() {
     ::tpyapp::main::capture_nested(sh);
     ::tpyapp::main::capture_union(sh);
     std::cout << "capture_nested" << " " << ::tpy::__getitem__(sh.wraps, 0).inner.n << " " << sh.other.s << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, Item> __tmp_3 = ::tpy::ordered_map<std::string, Item>({{"a", Item(1)}});
-    Item __tmp_4 = Item(2);
-    ::tpyapp::main::capture_then_clear(__tmp_3, __tmp_4);
+    ::tpyapp::main::capture_then_clear(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, Item>({{"a", Item(1)}})), ::tpy::as_mut_lvalue(Item(2)));
     ::tpyapp::main::plain_getter(c, true);
 }
 

@@ -144,31 +144,23 @@ __coro_co co() {
 //     h: float32 = ident(float32(0.25))  # tpyc: ok
 //     print("float32_dest:", h)
 void main() {
-    std::vector<double> __tmp_1 = {1.5, 2.5};
-    std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(__tmp_1)) << "\n" << ::tpy::check_signals;
-    std::vector<double> __tmp_2 = {1.5, 2.5};
-    double v = ::tpyapp::main::first_of<double>(__tmp_2);
+    std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(::tpy::as_mut_lvalue(std::vector<double>{1.5, 2.5}))) << "\n" << ::tpy::check_signals;
+    double v = ::tpyapp::main::first_of<double>(::tpy::as_mut_lvalue(std::vector<double>{1.5, 2.5}));
     std::cout << "free:" << " " << ::tpy::print_float(v) << "\n" << ::tpy::check_signals;
-    std::vector<double> __tmp_3 = {1.5, 2.5};
-    std::cout << "free:" << " " << ::tpy::print_float(((::tpyapp::main::first_of<double>(__tmp_3)) + (1.0))) << "\n" << ::tpy::check_signals;
-    std::vector<double> __tmp_4 = {1.5, 2.5};
-    ::tpyapp::main::first_of<double>(__tmp_4);
+    std::cout << "free:" << " " << ::tpy::print_float(((::tpyapp::main::first_of<double>(::tpy::as_mut_lvalue(std::vector<double>{1.5, 2.5}))) + (1.0))) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::first_of<double>(::tpy::as_mut_lvalue(std::vector<double>{1.5, 2.5}));
     std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::ident<double>(1.5)) << "\n" << ::tpy::check_signals;
     std::vector<double> xs = {1.5, 2.5};
     std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(xs)) << "\n" << ::tpy::check_signals;
     std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::pair_first<double, int32_t>(1.5, 2)) << "\n" << ::tpy::check_signals;
     std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::ident<double>(1.5)) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_5 = {1, 2};
-    std::vector<std::string> __tmp_6 = {"a", "b"};
-    std::cout << "twin:" << " " << ::tpyapp::main::first_of<int32_t>(__tmp_5) << " " << ::tpyapp::main::first_of<std::string>(__tmp_6) << "\n" << ::tpy::check_signals;
+    std::cout << "twin:" << " " << ::tpyapp::main::first_of<int32_t>(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << " " << ::tpyapp::main::first_of<std::string>(::tpy::as_mut_lvalue(std::vector<std::string>{"a", "b"})) << "\n" << ::tpy::check_signals;
     std::cout << "tuple_t:" << " " << ::tpy::TuplePrinter(::tpyapp::main::ident<std::tuple<double, int32_t>>(std::tuple<double, int32_t>{1.5, 2})) << "\n" << ::tpy::check_signals;
     std::cout << "tuple_t:" << " " << ::tpy::TuplePrinter(::tpyapp::main::ident<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
     C c = C();
-    std::vector<double> __tmp_7 = {1.5, 2.5};
-    std::cout << "method:" << " " << ::tpy::print_float(c.pick<double>(__tmp_7)) << " " << ::tpy::print_float(c.body()) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << ::tpy::print_float(c.pick<double>(::tpy::as_mut_lvalue(std::vector<double>{1.5, 2.5}))) << " " << ::tpy::print_float(c.body()) << "\n" << ::tpy::check_signals;
     auto inner = []() -> double {
-        std::vector<double> __tmp_8 = {1.5, 2.5};
-        return ((::tpyapp::main::first_of<double>(__tmp_8)) * (2.0));
+        return ((::tpyapp::main::first_of<double>(::tpy::as_mut_lvalue(std::vector<double>{1.5, 2.5}))) * (2.0));
     };
     std::cout << "closure:" << " " << ::tpy::print_float(inner()) << "\n" << ::tpy::check_signals;
     {
@@ -184,13 +176,11 @@ void main() {
     std::cout << "async:" << " " << ::tpy::print_float(::tpystd::asyncio::run<double>(::tpy::make_adapter<::tpystd::coro::Cancellable<double>>(::tpyapp::main::co()))) << "\n" << ::tpy::check_signals;
     std::cout << "comprehension:" << " " << ::tpy::ListPrinter(::tpy::array_from_index<double, 2>([&](std::size_t __i_2) -> double {
         int32_t _ = int32_t(__i_2);
-        std::vector<double> __tmp_9 = {1.5, 2.5};
-        return ::tpyapp::main::first_of<double>(__tmp_9);
+        return ::tpyapp::main::first_of<double>(::tpy::as_mut_lvalue(std::vector<double>{1.5, 2.5}));
     })) << "\n" << ::tpy::check_signals;
     {
         try {
-            std::vector<double> __tmp_10 = {1.5, 2.5};
-            std::cout << "try_finally:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(__tmp_10)) << "\n" << ::tpy::check_signals;
+            std::cout << "try_finally:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(::tpy::as_mut_lvalue(std::vector<double>{1.5, 2.5}))) << "\n" << ::tpy::check_signals;
         } catch (...) {
             std::cout << "try_finally: done" << "\n" << ::tpy::check_signals;
             throw;
@@ -201,8 +191,7 @@ void main() {
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
     case 1: {
-        std::vector<double> __tmp_11 = {1.5, 2.5};
-        std::cout << "match_arm:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(__tmp_11)) << "\n" << ::tpy::check_signals;
+        std::cout << "match_arm:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(::tpy::as_mut_lvalue(std::vector<double>{1.5, 2.5}))) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -235,8 +224,7 @@ void main() {
     }
     std::cout << "builtins:" << " " << ::tpy::print_float(::tpy::max_key(1.5, 2.5, [](double w) -> double { return -(w); })) << "\n" << ::tpy::check_signals;
     std::cout << "builtins:" << " " << ::tpy::ListPrinter((::tpy::list_concat(std::vector<double>{1.5}, std::vector<double>{2.5}))) << "\n" << ::tpy::check_signals;
-    std::vector<float> __tmp_12 = {1.5, 2.5};
-    float f = ::tpyapp::main::first_of<float>(__tmp_12);
+    float f = ::tpyapp::main::first_of<float>(::tpy::as_mut_lvalue(std::vector<float>{1.5, 2.5}));
     std::cout << "float32_dest:" << " " << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
     float h = ::tpyapp::main::ident<float>(0.25f);
     std::cout << "float32_dest:" << " " << ::tpy::print_float(static_cast<double>(h)) << "\n" << ::tpy::check_signals;

@@ -25,7 +25,7 @@ main::consume@234:0: covered (storage: no_proof_required), summary: known
 main::in_list@239:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
 main::maybe@245:0: uncovered (wrapper holds a borrow), summary: opaque (wrapper holds a borrow)
 main::paired@252:0: uncovered (wrapper holds a borrow), summary: opaque (wrapper holds a borrow)
-main::deferred@258:0: certified, summary: known
+main::deferred@258:0: covered (storage: no_proof_required), summary: known
 main::selected@263:0: certified, summary: known
 main::branch@269:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::refill_two@278:0: certified, summary: known

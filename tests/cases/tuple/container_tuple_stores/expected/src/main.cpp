@@ -165,24 +165,20 @@ void own_param_member_field(Slot& s, Box&& q) {
 //     print("method", kx[0].n, kk[0].n, kk[1])
 void main() {
     ::tpy::ordered_map<std::string, std::tuple<Box, int32_t>> d = ::tpy::ordered_map<std::string, std::tuple<Box, int32_t>>();
-    Box __tmp_1 = Box(0);
-    ::tpyapp::main::setitem_literal(d, __tmp_1);
+    ::tpyapp::main::setitem_literal(d, Box(0));
     auto&& ta = ::tpy::__getitem__(d, "a");
     std::get<0>(ta).n = ::tpy::add_check<int32_t>(std::get<0>(ta).n, 5);
     std::cout << "setitem_literal" << " " << std::get<0>(ta).n << " " << std::get<1>(ta) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<Box, Box>> xs = std::vector<std::tuple<Box, Box>>{};
-    Box __tmp_2 = Box(0);
-    ::tpyapp::main::append_mixed_last_use(xs, __tmp_2);
-    Box __tmp_3 = Box(0);
-    int32_t live = ::tpyapp::main::append_mixed_live(xs, __tmp_3);
+    ::tpyapp::main::append_mixed_last_use(xs, ::tpy::as_mut_lvalue(Box(0)));
+    int32_t live = ::tpyapp::main::append_mixed_live(xs, ::tpy::as_mut_lvalue(Box(0)));
     auto&& x0 = ::tpy::__getitem__(xs, 0);
     std::get<1>(x0).n = ::tpy::add_check<int32_t>(std::get<1>(x0).n, 7);
     std::cout << "append_mixed_last_use" << " " << std::get<0>(x0).n << " " << std::get<1>(x0).n << "\n" << ::tpy::check_signals;
     auto&& x1 = ::tpy::__getitem__(xs, 1);
     std::cout << "append_mixed_live" << " " << live << " " << std::get<0>(x1).n << " " << std::get<1>(x1).n << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<int32_t, std::tuple<int32_t, Box>>> ys = std::vector<std::tuple<int32_t, std::tuple<int32_t, Box>>>{};
-    Box __tmp_4 = Box(0);
-    ::tpyapp::main::append_nested_literal(ys, __tmp_4);
+    ::tpyapp::main::append_nested_literal(ys, Box(0));
     std::cout << "append_nested_literal" << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, int32_t>>> src = ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, int32_t>>>({{5, std::tuple<int32_t, std::tuple<int32_t, int32_t>>{1, std::tuple<int32_t, int32_t>{2, 3}}}});
     ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, int32_t>>> nd = ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, int32_t>>>();
@@ -190,8 +186,7 @@ void main() {
     std::cout << "copy_nested_between_dicts" << " " << ::tpy::TuplePrinter(::tpy::__getitem__(nd, 1)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::tuple<Box, int32_t>> pd = ::tpy::ordered_map<int32_t, std::tuple<Box, int32_t>>();
     std::vector<std::tuple<Box, int32_t>> ps = std::vector<std::tuple<Box, int32_t>>{};
-    Box __tmp_5 = Box(0);
-    ::tpyapp::main::store_call_result(pd, ps, __tmp_5);
+    ::tpyapp::main::store_call_result(pd, ps, ::tpy::as_mut_lvalue(Box(0)));
     auto&& t0 = ::tpy::__getitem__(pd, 0);
     std::get<0>(t0).n = ::tpy::add_check<int32_t>(std::get<0>(t0).n, 11);
     std::cout << "store_call_result" << " " << std::get<0>(t0).n << " " << std::get<1>(t0) << " " << ::tpy::__len__(ps) << "\n" << ::tpy::check_signals;
@@ -203,9 +198,7 @@ void main() {
     std::vector<std::tuple<int32_t, std::tuple<int32_t, int32_t>>> ns = std::vector<std::tuple<int32_t, std::tuple<int32_t, int32_t>>>{};
     ::tpyapp::main::append_nested_scalar(ns, std::tuple<int32_t, std::tuple<int32_t, int32_t>>{1, std::tuple<int32_t, int32_t>{2, 3}});
     std::cout << "append_nested_scalar" << " " << ::tpy::TuplePrinter(::tpy::__getitem__(ns, 0)) << "\n" << ::tpy::check_signals;
-    Taker __tmp_6 = Taker();
-    Box __tmp_7 = Box(4);
-    std::cout << "user_slot_mixed_call" << " " << ::tpyapp::main::user_slot_mixed_call(__tmp_6, __tmp_7) << "\n" << ::tpy::check_signals;
+    std::cout << "user_slot_mixed_call" << " " << ::tpyapp::main::user_slot_mixed_call(Taker(), ::tpy::as_mut_lvalue(Box(4))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::tuple<Box, int32_t>> od = ::tpy::ordered_map<int32_t, std::tuple<Box, int32_t>>();
     ::tpyapp::main::own_param_member(od, Box(21));
     auto&& o0 = ::tpy::__getitem__(od, 0);

@@ -6703,6 +6703,28 @@ class TypeCompatibility:
             if isinstance(inner, TpyTupleLiteral):
                 self._check_tuple_literal_elem_dangle(
                     tuple_type, inner, verb, source_type, gen_yield)
+            elif gen_yield and isinstance(peel_coerce(inner), TpyCallLike):
+                self._check_yielded_tuple_dangle(tuple_type, inner, verb)
+
+    def _check_yielded_tuple_dangle(self, tuple_type: TupleType,
+                                    expr: TpyExpr, verb: str) -> None:
+        """A yielded tuple that is no literal (`yield mk(P(7))`) hands out
+        its borrow members' pointers into whatever the value points into:
+        as its scalar twin (`yield ident(P(7))`), one that dies with the
+        statement dangles at the next resumption."""
+        for i, et in enumerate(tuple_type.element_types):
+            if et.is_value_type() or isinstance(et, (OwnType, TypeParamRef)):
+                continue
+            subject = self.dangling_subject(expr, "local or temporary",
+                                            gen_yield=True)
+            if subject is not None:
+                raise self.ctx.error(
+                    f"Cannot {verb} {subject} as tuple element {i}. "
+                    f"Type '{et}' is {verb}ed by reference. "
+                    f"Use Own[{et}] for this tuple element to {verb} by value.",
+                    expr
+                )
+            return
 
     def _check_tuple_literal_elem_dangle(
             self, tuple_type: TupleType, inner: TpyTupleLiteral, verb: str,

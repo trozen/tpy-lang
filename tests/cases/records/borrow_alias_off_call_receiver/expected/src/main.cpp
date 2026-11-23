@@ -47,14 +47,10 @@ int32_t free_own_receiver(const H& h) {
 //     r = Reader(h)
 //     print("method", r.bump(h))
 void main() {
-    H __tmp_1 = H(1);
-    std::cout << "freerecord" << " " << ::tpyapp::main::free_record(__tmp_1) << "\n" << ::tpy::check_signals;
-    H __tmp_2 = H(1);
-    std::cout << "freecontainer" << " " << ::tpyapp::main::free_container(__tmp_2) << "\n" << ::tpy::check_signals;
-    H __tmp_3 = H(1);
-    std::cout << "freeown" << " " << ::tpyapp::main::free_own_receiver(__tmp_3) << "\n" << ::tpy::check_signals;
-    H __tmp_4 = H(1);
-    std::cout << "ctor" << " " << Reader(__tmp_4).v << "\n" << ::tpy::check_signals;
+    std::cout << "freerecord" << " " << ::tpyapp::main::free_record(::tpy::as_mut_lvalue(H(1))) << "\n" << ::tpy::check_signals;
+    std::cout << "freecontainer" << " " << ::tpyapp::main::free_container(::tpy::as_mut_lvalue(H(1))) << "\n" << ::tpy::check_signals;
+    std::cout << "freeown" << " " << ::tpyapp::main::free_own_receiver(H(1)) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor" << " " << Reader(::tpy::as_mut_lvalue(H(1))).v << "\n" << ::tpy::check_signals;
     H h = H(3);
     Reader r = Reader(h);
     std::cout << "method" << " " << r.bump(h) << "\n" << ::tpy::check_signals;

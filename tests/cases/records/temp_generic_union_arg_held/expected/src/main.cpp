@@ -10,10 +10,8 @@ namespace tpyapp::main {
 //     # held as the Optional built from the Mat
 //     print("generic_optional", held[Mat | None](Mat()))  # tpyc: ok
 void main() {
-    ::tpy::Union<Mat, Other> __tmp_1 = Mat();
-    std::cout << "generic_union" << " " << ::tpyapp::main::held<::tpy::Union<Mat, Other>>(__tmp_1) << "\n" << ::tpy::check_signals;
-    std::optional<Mat> __tmp_2 = Mat();
-    std::cout << "generic_optional" << " " << ::tpyapp::main::held<std::optional<Mat>>(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "generic_union" << " " << ::tpyapp::main::held<::tpy::Union<Mat, Other>>(::tpy::as_mut_lvalue(::tpy::Union<Mat, Other>(Mat()))) << "\n" << ::tpy::check_signals;
+    std::cout << "generic_optional" << " " << ::tpyapp::main::held<std::optional<Mat>>(::tpy::as_mut_lvalue(std::optional<Mat>(Mat()))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

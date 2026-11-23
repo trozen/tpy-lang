@@ -96,8 +96,7 @@ void main() {
     Holder<int32_t> h = Holder<int32_t>(7);
     std::cout << h.dup() << "\n" << ::tpy::check_signals;
     std::cout << h.dup_via_module() << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << ::tpyapp::main::sum_copied(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_copied({1, 2, 3}) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::consume() << "\n" << ::tpy::check_signals;
     std::optional<Color> c = ::tpy::EnumUtil<Color>::try_parse("RED");
     std::cout << ::tpy::print_bool((c.has_value())) << "\n" << ::tpy::check_signals;

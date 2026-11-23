@@ -256,8 +256,7 @@ void main() {
             std::cout << "after_raise raised" << "\n" << ::tpy::check_signals;
         }
     }
-    NamedLine __tmp_1 = NamedLine(Named(1, "a"));
-    std::cout << "record_alias" << " " << ::tpyapp::part_records::record_alias(__tmp_1, false) << "\n" << ::tpy::check_signals;
+    std::cout << "record_alias" << " " << ::tpyapp::part_records::record_alias(::tpy::as_mut_lvalue(NamedLine(Named(1, "a"))), false) << "\n" << ::tpy::check_signals;
     Frame fr = Frame();
     std::cout << "record_objects" << " " << ::tpyapp::part_records::record_list_object(fr, false) << " " << ::tpyapp::part_records::record_field(fr, false) << " " << ::tpyapp::part_records::lent_list_object(fr, false) << "\n" << ::tpy::check_signals;
 }

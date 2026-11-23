@@ -125,8 +125,7 @@ void carriers() {
     bool flag = true;
     B a = B(1);
     std::cout << "name:" << " " << ::tpyapp::main::f__B(a) << " " << a.v << "\n" << ::tpy::check_signals;
-    B __tmp_1 = B(2).take();
-    std::cout << "call:" << " " << ::tpyapp::main::f__B(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "call:" << " " << ::tpyapp::main::f__B(::tpy::as_mut_lvalue(B(2).take())) << "\n" << ::tpy::check_signals;
     B __slot_1 = B(3);
     B* b = &__slot_1;
     std::cout << "field:" << " " << ::tpyapp::main::f__int32(std::move(*b).take().v) << "\n" << ::tpy::check_signals;
@@ -149,19 +148,16 @@ void carriers() {
     std::cout << "fstring:" << " " << ::tpyapp::main::f__str(std::format("{}", std::move(*b).take().v)) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_7;
     b = &*(__slot_7 = B(9));
-    std::vector<int32_t> __tmp_2 = {std::move(*b).take().v};
-    std::cout << "list:" << " " << ::tpyapp::main::f__list_int32(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "list:" << " " << ::tpyapp::main::f__list_int32({std::move(*b).take().v}) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_8;
     b = &*(__slot_8 = B(10));
-    ::tpy::ordered_map<std::string, int32_t> __tmp_3 = ::tpy::ordered_map<std::string, int32_t>({{"k", std::move(*b).take().v}});
-    std::cout << "dict:" << " " << ::tpyapp::main::f__dict_str_int32(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "dict:" << " " << ::tpyapp::main::f__dict_str_int32(::tpy::ordered_map<std::string, int32_t>({{"k", std::move(*b).take().v}})) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_9;
     b = &*(__slot_9 = B(11));
-    ::tpy::ordered_set<int32_t> __tmp_4 = ::tpy::ordered_set<int32_t>({std::move(*b).take().v});
-    std::cout << "set:" << " " << ::tpyapp::main::f__set_int32(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << "set:" << " " << ::tpyapp::main::f__set_int32(::tpy::ordered_set<int32_t>({std::move(*b).take().v})) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_10;
     b = &*(__slot_10 = B(12));
-    std::vector<int32_t> __tmp_5 = ({
+    std::cout << "comprehension:" << " " << ::tpyapp::main::f__list_int32(({
         std::vector<int32_t> __result;
         auto __obj_0 = {std::move(*b).take().v};
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -172,19 +168,16 @@ void carriers() {
             __result.push_back(x);
         }
         std::move(__result);
-    });
-    std::cout << "comprehension:" << " " << ::tpyapp::main::f__list_int32(__tmp_5) << "\n" << ::tpy::check_signals;
+    })) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_11;
     b = &*(__slot_11 = B(13));
     std::cout << "tuple:" << " " << ::tpyapp::main::f__tuple_int32_str(std::tuple<int32_t, std::string>{std::move(*b).take().v, "s"}) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_12;
     b = &*(__slot_12 = B(14));
-    B __tmp_6 = ::tpyapp::main::plain(std::move(*b).take());
-    std::cout << "nested-plain:" << " " << ::tpyapp::main::f__B(__tmp_6) << "\n" << ::tpy::check_signals;
+    std::cout << "nested-plain:" << " " << ::tpyapp::main::f__B(::tpy::as_mut_lvalue(::tpyapp::main::plain(std::move(*b).take()))) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_13;
     b = &*(__slot_13 = B(15));
-    B __tmp_7 = ::tpyapp::main::ident<B>(std::move(*b).take());
-    std::cout << "nested-generic:" << " " << ::tpyapp::main::f__B(__tmp_7) << "\n" << ::tpy::check_signals;
+    std::cout << "nested-generic:" << " " << ::tpyapp::main::f__B(::tpy::as_mut_lvalue(::tpyapp::main::ident<B>(std::move(*b).take()))) << "\n" << ::tpy::check_signals;
 }
 
 

@@ -867,8 +867,7 @@ void main() {
     A b = ::tpystd::asyncio::run<A>(::tpy::make_adapter<::tpystd::coro::Cancellable<A>>(::tpyapp::main::hoist_async(h, 7)));
     ::tpyapp::main::show("async", h.p);
     ::tpyapp::main::show("async result", b);
-    A __tmp_1 = ::tpystd::asyncio::run<A>(::tpy::make_adapter<::tpystd::coro::Cancellable<A>>(::tpyapp::main::hoist_async_return(8)));
-    ::tpyapp::main::show("async_return", __tmp_1);
+    ::tpyapp::main::show("async_return", ::tpystd::asyncio::run<A>(::tpy::make_adapter<::tpystd::coro::Cancellable<A>>(::tpyapp::main::hoist_async_return(8))));
     {
         {
             auto __try_tmp_2 = ::tpyapp::main::hoist_error_return(h, 9);
@@ -918,8 +917,7 @@ void main() {
         }
     }
     std::cout << "own_iter" << " " << ::tpy::__getitem__(h.f.items, 0) << " " << ::tpy::__len__(fs) << "\n" << ::tpy::check_signals;
-    A __tmp_2 = A(11);
-    ::tpyapp::main::loop_rebind(::tpyapp::main::mk(), __tmp_2, ys);
+    ::tpyapp::main::loop_rebind(::tpyapp::main::mk(), ::tpy::as_mut_lvalue(A(11)), ys);
     ::tpyapp::main::show("loop_rebind", ::tpy::__getitem__(ys, -1));
     ::tpyapp::main::joined_fresh(h, true);
     A& m0 = std::get<0>(h.m);
@@ -932,10 +930,8 @@ void main() {
     Q& q1 = std::get<1>(h.q);
     ::tpyapp::main::show("hoisted_mixed 0", q0);
     std::cout << "hoisted_mixed 1" << " " << q1.v << "\n" << ::tpy::check_signals;
-    A __tmp_3 = ::tpyapp::main::hoisted_finally(14);
-    ::tpyapp::main::show("hoisted_finally", __tmp_3);
-    A __tmp_4 = ::tpystd::asyncio::run<A>(::tpy::make_adapter<::tpystd::coro::Cancellable<A>>(::tpyapp::main::hoisted_finally_async(15)));
-    ::tpyapp::main::show("hoisted_finally_async", __tmp_4);
+    ::tpyapp::main::show("hoisted_finally", ::tpyapp::main::hoisted_finally(14));
+    ::tpyapp::main::show("hoisted_finally_async", ::tpystd::asyncio::run<A>(::tpy::make_adapter<::tpystd::coro::Cancellable<A>>(::tpyapp::main::hoisted_finally_async(15))));
     std::tuple<std::tuple<A, int32_t>, int32_t> lifted = ::tpyapp::main::member_lift();
     std::cout << "member_lift" << " " << std::get<1>(lifted) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::tuple<A, int32_t>, int32_t>> nested = std::vector<std::tuple<std::tuple<A, int32_t>, int32_t>>{};

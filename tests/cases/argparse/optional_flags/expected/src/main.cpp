@@ -15,8 +15,7 @@ namespace tpyapp::main {
 //     print(args.name)
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = {"--count", "5", "--name", "alice"};
-    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1({"--count", "5", "--name", "alice"});
     std::cout << args.count << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(args.scale) << "\n" << ::tpy::check_signals;
     std::cout << args.name << "\n" << ::tpy::check_signals;

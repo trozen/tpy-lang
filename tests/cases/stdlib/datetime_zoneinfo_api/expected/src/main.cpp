@@ -76,15 +76,12 @@ void main() {
     }
     std::cout << ::tpy::print_bool(all_ok) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::ZoneInfo waw = ::tpystd::datetime::ZoneInfo("Europe/Warsaw");
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
-    ::tpystd::datetime::datetime r0 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1));
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
-    ::tpystd::datetime::datetime r1 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(1), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_2));
+    ::tpystd::datetime::datetime r0 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw)));
+    ::tpystd::datetime::datetime r1 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(1), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw)));
     std::cout << r0 << " " << r0.fold() << "\n" << ::tpy::check_signals;
     std::cout << r1 << " " << r1.fold() << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(((r1.timestamp()) - (r0.timestamp()))) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
-    ::tpystd::datetime::datetime plain = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(10), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3));
+    ::tpystd::datetime::datetime plain = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(10), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw)));
     std::cout << plain << " " << plain.fold() << "\n" << ::tpy::check_signals;
     {
         try {
@@ -96,8 +93,7 @@ void main() {
     }
     {
         try {
-            ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ::tpystd::datetime::ZoneInfo("America/New_York");
-            waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_4));
+            waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(::tpystd::datetime::ZoneInfo("America/New_York"))));
             std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
             std::cout << "ValueError-other-zone" << "\n" << ::tpy::check_signals;

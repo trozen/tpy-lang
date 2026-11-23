@@ -78,35 +78,19 @@ bool test_or_rhs(::tpy::Union<const A*, const B*> v) {
 //     print(test_multi_var(A(10), A(5)))
 //     print(test_multi_var(B(1), B(2)))
 void main() {
-    A __tmp_1 = A(::tpy::BigInt(42));
-    std::cout << ::tpyapp::main::test_and_rhs(::tpy::Union<const A*, const B*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    A __tmp_2 = A(::tpy::BigInt(-1));
-    std::cout << ::tpyapp::main::test_and_rhs(::tpy::Union<const A*, const B*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
-    B __tmp_3 = B(::tpy::BigInt(99));
-    std::cout << ::tpyapp::main::test_and_rhs(::tpy::Union<const A*, const B*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
-    A __tmp_4 = A(::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::test_and_true(::tpy::Union<const A*, const B*>{&__tmp_4}) << "\n" << ::tpy::check_signals;
-    B __tmp_5 = B(::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::test_and_true(::tpy::Union<const A*, const B*>{&__tmp_5}) << "\n" << ::tpy::check_signals;
-    A __tmp_6 = A(::tpy::BigInt(1));
-    std::cout << ::tpy::print_bool(::tpyapp::main::test_or_rhs(::tpy::Union<const A*, const B*>{&__tmp_6})) << "\n" << ::tpy::check_signals;
-    B __tmp_7 = B(::tpy::BigInt(5));
-    std::cout << ::tpy::print_bool(::tpyapp::main::test_or_rhs(::tpy::Union<const A*, const B*>{&__tmp_7})) << "\n" << ::tpy::check_signals;
-    B __tmp_8 = B(::tpy::BigInt(-1));
-    std::cout << ::tpy::print_bool(::tpyapp::main::test_or_rhs(::tpy::Union<const A*, const B*>{&__tmp_8})) << "\n" << ::tpy::check_signals;
-    A __tmp_9 = A(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::test_negation(::tpy::Union<const A*, const B*>{&__tmp_9}) << "\n" << ::tpy::check_signals;
-    B __tmp_10 = B(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::test_negation(::tpy::Union<const A*, const B*>{&__tmp_10}) << "\n" << ::tpy::check_signals;
-    A __tmp_11 = A(::tpy::BigInt(10));
-    B __tmp_12 = B(::tpy::BigInt(20));
-    std::cout << ::tpyapp::main::test_multi_var(::tpy::Union<const A*, const B*>{&__tmp_11}, ::tpy::Union<const A*, const B*>{&__tmp_12}) << "\n" << ::tpy::check_signals;
-    A __tmp_13 = A(::tpy::BigInt(10));
-    A __tmp_14 = A(::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::test_multi_var(::tpy::Union<const A*, const B*>{&__tmp_13}, ::tpy::Union<const A*, const B*>{&__tmp_14}) << "\n" << ::tpy::check_signals;
-    B __tmp_15 = B(::tpy::BigInt(1));
-    B __tmp_16 = B(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::test_multi_var(::tpy::Union<const A*, const B*>{&__tmp_15}, ::tpy::Union<const A*, const B*>{&__tmp_16}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_and_rhs(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(42))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_and_rhs(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(-1))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_and_rhs(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(99))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_and_true(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(5))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_and_true(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(5))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::test_or_rhs(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(1))))})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::test_or_rhs(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(5))))})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::test_or_rhs(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(-1))))})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_negation(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(1))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_negation(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(2))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_multi_var(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(10))))}, ::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(20))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_multi_var(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(10))))}, ::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(5))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_multi_var(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(1))))}, ::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(2))))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

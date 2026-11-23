@@ -41,12 +41,10 @@ void send(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tp
 //     send("http://api.test/empty", empty)
 //     send("http://api.test/raw", b"raw-bytes")
 void main() {
-    ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"user", "ann"}, {"pw", "s3cret"}});
-    ::tpyapp::main::send("http://api.test/login", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1});
+    ::tpyapp::main::send("http://api.test/login", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"user", "ann"}, {"pw", "s3cret"}})))});
     ::tpy::ordered_map<std::string, std::string> empty = ::tpy::ordered_map<std::string, std::string>();
     ::tpyapp::main::send("http://api.test/empty", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&(empty)});
-    ::tpy::Bytes __tmp_2 = ::tpy::bytes_literal_owned("raw-bytes", 9);
-    ::tpyapp::main::send("http://api.test/raw", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2});
+    ::tpyapp::main::send("http://api.test/raw", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&(::tpy::as_mut_lvalue(::tpy::bytes_literal_owned("raw-bytes", 9)))});
 }
 
 // # tplib.requests: a dict data= body is urlencoded (application/x-www-form-

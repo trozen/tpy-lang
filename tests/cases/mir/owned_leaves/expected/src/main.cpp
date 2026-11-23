@@ -317,12 +317,11 @@ int32_t take_point(const Point& p) {
     return p.x;
 }
 
-// # free function: the record rvalue lives in a temporary the call borrows, and the certificate binds it
-// def rvalue_temp() -> int32:  # tpyc: mir(certified)
+// # free function: the record rvalue is a temporary of the call's own expression: nothing to certify
+// def rvalue_temp() -> int32:  # tpyc: mir(covered)
 //     return take_point(Point(7, 0))
 int32_t rvalue_temp() {
-    Point __tmp_1 = Point(7, 0);
-    return ::tpyapp::main::take_point(__tmp_1);
+    return ::tpyapp::main::take_point(Point(7, 0));
 }
 
 // def lent_big(p: BigP) -> int:
@@ -341,8 +340,7 @@ bool take_big(const BigP& p) {
 // def lent_temp_return() -> int:  # tpyc: mir(covered)
 //     return lent_big(BigP(2))
 ::tpy::BigInt lent_temp_return() {
-    BigP __tmp_1 = BigP(::tpy::BigInt(2));
-    return ::tpyapp::main::lent_big(__tmp_1);
+    return ::tpyapp::main::lent_big(BigP(::tpy::BigInt(2)));
 }
 
 // # bound: the same operand region at a declaration
@@ -350,8 +348,7 @@ bool take_big(const BigP& p) {
 //     y = lent_big(BigP(2))
 //     return y
 ::tpy::BigInt lent_temp_bind() {
-    BigP __tmp_1 = BigP(::tpy::BigInt(2));
-    ::tpy::BigInt y = ::tpyapp::main::lent_big(__tmp_1);
+    ::tpy::BigInt y = ::tpyapp::main::lent_big(BigP(::tpy::BigInt(2)));
     return y;
 }
 
@@ -361,8 +358,7 @@ bool take_big(const BigP& p) {
 //         return 1
 //     return 0
 ::tpy::BigInt lent_temp_cond() {
-    BigP __tmp_1 = BigP(::tpy::BigInt(5));
-    if ((::tpyapp::main::lent_big(__tmp_1) > 1)) {
+    if ((::tpyapp::main::lent_big(BigP(::tpy::BigInt(5))) > 1)) {
         return ::tpy::BigInt(1);
     }
     return ::tpy::BigInt(0);
@@ -375,8 +371,7 @@ bool take_big(const BigP& p) {
 //     return 0
 ::tpy::BigInt lent_temp_scoped(bool c) {
     if (c) {
-        BigP __tmp_1 = BigP(::tpy::BigInt(2));
-        return ::tpyapp::main::lent_big(__tmp_1);
+        return ::tpyapp::main::lent_big(BigP(::tpy::BigInt(2)));
     }
     return ::tpy::BigInt(0);
 }
@@ -385,16 +380,14 @@ bool take_big(const BigP& p) {
 // def lent_temp_and(c: bool) -> bool:  # tpyc: mir(covered)
 //     return c and take_big(BigP(2))
 bool lent_temp_and(bool c) {
-    std::optional<BigP> __tmp_1;
-    return (c && (__tmp_1.emplace(BigP(::tpy::BigInt(2))), ::tpyapp::main::take_big((*__tmp_1))));
+    return (c && ::tpyapp::main::take_big(BigP(::tpy::BigInt(2))));
 }
 
 // # select anchor: the same inside the chosen arm
 // def lent_temp_select(c: bool) -> bool:  # tpyc: mir(covered)
 //     return take_big(BigP(2)) if c else False
 bool lent_temp_select(bool c) {
-    std::optional<BigP> __tmp_1;
-    return ((c) ? (__tmp_1.emplace(BigP(::tpy::BigInt(2))), ::tpyapp::main::take_big((*__tmp_1))) : (false));
+    return ((c) ? (::tpyapp::main::take_big(BigP(::tpy::BigInt(2)))) : (false));
 }
 
 // def made(t: str) -> str:
@@ -409,13 +402,12 @@ int32_t view_len(const ViewP& v) {
     return ::tpy::__len__(v.s);
 }
 
-// # refused: the temporary's view operand is a call result, not a stable operand
-// def lent_view_temp(t: str) -> int32:  # tpyc: mir(uncovered /named temporary needs stable scalar operands/)
+// # the temporary's view operand is a call result, bound for the call's own expression
+// def lent_view_temp(t: str) -> int32:  # tpyc: mir(covered)
 //     y = view_len(ViewP(made(t)))
 //     return y
 int32_t lent_view_temp(std::string_view t) {
-    ViewP __tmp_1 = ViewP(::tpyapp::main::made(t));
-    int32_t y = ::tpyapp::main::view_len(__tmp_1);
+    int32_t y = ::tpyapp::main::view_len(ViewP(::tpyapp::main::made(t)));
     return y;
 }
 
@@ -703,8 +695,7 @@ void main() {
     std::cout << "str_field_write:" << " " << r.name << "\n" << ::tpy::check_signals;
     std::cout << "method:" << " " << ::tpy::print_bool(r.positive_x("x")) << " " << ::tpy::print_bool(r.positive_x("y")) << "\n" << ::tpy::check_signals;
     std::cout << "view_return:" << " " << ::tpyapp::main::view_return("vr") << "\n" << ::tpy::check_signals;
-    ::tpy::ByteArray __tmp_1 = ::tpy::ByteArray(::tpy::bytes_literal("ba", 2));
-    std::cout << "buffer:" << " " << ::tpyapp::main::buffer(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "buffer:" << " " << ::tpyapp::main::buffer(::tpy::ByteArray(::tpy::bytes_literal("ba", 2))) << "\n" << ::tpy::check_signals;
     std::cout << "global_copy:" << " " << ::tpyapp::main::global_copy() << "\n" << ::tpy::check_signals;
     std::cout << "view_caller:" << " " << ::tpyapp::main::view_caller("vc") << "\n" << ::tpy::check_signals;
     std::cout << "fstring:" << " " << ::tpyapp::main::fstring(::tpy::BigInt(42)) << "\n" << ::tpy::check_signals;

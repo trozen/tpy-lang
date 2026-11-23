@@ -15,9 +15,7 @@ void show(const ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>& a,
 // def main() -> None:
 //     show({"s": {1}}, {"d": {"k": 2}})
 void main() {
-    ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>> __tmp_1 = ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>({{"s", ::tpy::ordered_set<int32_t>({1})}});
-    ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> __tmp_2 = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"d", ::tpy::ordered_map<std::string, int32_t>({{"k", 2}})}});
-    ::tpyapp::main::show(__tmp_1, __tmp_2);
+    ::tpyapp::main::show(::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>({{"s", ::tpy::ordered_set<int32_t>({1})}}), ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"d", ::tpy::ordered_map<std::string, int32_t>({{"k", 2}})}}));
 }
 
 // main()

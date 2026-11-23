@@ -150,8 +150,7 @@ void main() {
     if ((oq != nullptr)) {
         std::cout << "optional leaf:" << " " << oq->n << " " << op.n << "\n" << ::tpy::check_signals;
     }
-    Q __tmp_1 = Q(27);
-    ::tpyapp::main::wrap(::tpy::Union<const P*, const Q*>{&__tmp_1});
+    ::tpyapp::main::wrap(::tpy::Union<const P*, const Q*>{&(::tpy::as_mut_lvalue(Q(27)))});
     P target = P(24);
     R r = R(&target);
     ::tpy::none_attr(r.p, "n").n = 240;

@@ -44,8 +44,8 @@ main::ro_read@422:0: covered (storage: no_proof_required), summary: known
 main::local@429:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::local_forms@437:0: covered (storage: no_proof_required), summary: known
 main::built_forms@446:0: covered (storage: no_proof_required), summary: known
-main::local_temporary@455:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::main@461:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::local_temporary@455:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@461:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
 main::P.bump@13:4: covered (storage: no_proof_required), summary: known
 main::H.reset@27:4: covered (storage: no_proof_required), summary: known
 main::H.via_self@31:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known

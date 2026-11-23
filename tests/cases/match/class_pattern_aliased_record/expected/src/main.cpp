@@ -38,10 +38,8 @@ namespace tpyapp::main {
 //     print(foreign_x(Foreign(7)))
 //     print(local_y(Point(9)))
 void main() {
-    ::tpyapp::shapes::Point __tmp_1 = ::tpyapp::shapes::Point(::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::foreign_x(__tmp_1) << "\n" << ::tpy::check_signals;
-    Point __tmp_2 = Point(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::local_y(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::foreign_x(::tpyapp::shapes::Point(::tpy::BigInt(7))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::local_y(Point(::tpy::BigInt(9))) << "\n" << ::tpy::check_signals;
 }
 
 // # Under a same-named-record collision (aliased Foreign + local Point), each

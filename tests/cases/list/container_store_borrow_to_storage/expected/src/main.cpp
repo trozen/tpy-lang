@@ -66,33 +66,28 @@ void store_narrowed(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, 
 //         print(e3.x)                              # 13
 void main() {
     std::vector<std::optional<A>> opt = {A(::tpy::BigInt(1)), std::nullopt};
-    A __tmp_1 = A(::tpy::BigInt(5));
-    ::tpyapp::main::store_opt(opt, &(__tmp_1));
+    ::tpyapp::main::store_opt(opt, &::tpy::as_mut_lvalue(A(::tpy::BigInt(5))));
     A* head = ::tpy::optional_to_ptr(::tpy::__getitem__(opt, 0));
     std::cout << (((head != nullptr)) ? (head->x) : (::tpy::BigInt(-1))) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Union<A, B>> u = {A(::tpy::BigInt(1)), B(::tpy::BigInt(2))};
-    B __tmp_2 = B(::tpy::BigInt(9));
-    ::tpyapp::main::store_union(u, ::tpy::Union<const A*, const B*>{&__tmp_2});
+    ::tpyapp::main::store_union(u, ::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(9))))});
     ::tpy::Union<A*, B*> e0 = ::tpy::to_ptr_variant(::tpy::__getitem__(u, 0));
     if (std::holds_alternative<B*>(e0)) {
         auto& __e0 = *std::get<B*>(e0);
         std::cout << __e0.y << "\n" << ::tpy::check_signals;
     }
-    A __tmp_3 = A(::tpy::BigInt(7));
-    ::tpyapp::main::append_union(u, ::tpy::Union<const A*, const B*>{&__tmp_3});
+    ::tpyapp::main::append_union(u, ::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(7))))});
     ::tpy::Union<A*, B*> e2 = ::tpy::to_ptr_variant(::tpy::__getitem__(u, 2));
     if (std::holds_alternative<A*>(e2)) {
         auto& __e2 = *std::get<A*>(e2);
         std::cout << __e2.x << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, std::optional<A>> d = ::tpy::ordered_map<std::string, std::optional<A>>();
-    A __tmp_4 = A(::tpy::BigInt(11));
-    ::tpyapp::main::store_dict(d, &(__tmp_4));
+    ::tpyapp::main::store_dict(d, &::tpy::as_mut_lvalue(A(::tpy::BigInt(11))));
     A* dv = ::tpy::optional_to_ptr(::tpy::__getitem__(d, "k"));
     std::cout << (((dv != nullptr)) ? (dv->x) : (::tpy::BigInt(-1))) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Union<A, B>> nx = {B(::tpy::BigInt(0)), B(::tpy::BigInt(0))};
-    A __tmp_5 = A(::tpy::BigInt(13));
-    ::tpyapp::main::store_narrowed(nx, ::tpy::Union<const A*, const B*>{&__tmp_5});
+    ::tpyapp::main::store_narrowed(nx, ::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(13))))});
     ::tpy::Union<A*, B*> e3 = ::tpy::to_ptr_variant(::tpy::__getitem__(nx, 0));
     if (std::holds_alternative<A*>(e3)) {
         auto& __e3 = *std::get<A*>(e3);

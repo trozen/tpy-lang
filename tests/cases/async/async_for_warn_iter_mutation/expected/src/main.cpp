@@ -658,13 +658,13 @@ void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::hop(__tmp_1)));
     Shelf __tmp_2 = Shelf();
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::field_hop(__tmp_2)));
-    std::vector<Source> __tmp_3 = {Source(::tpy::BigInt(2)), Source(::tpy::BigInt(1))};
+    std::vector<Source> __tmp_3 = std::vector<Source>{Source(::tpy::BigInt(2)), Source(::tpy::BigInt(1))};
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::elem_distinct(__tmp_3)));
-    std::vector<Source> __tmp_4 = {Source(::tpy::BigInt(2)), Source(::tpy::BigInt(1))};
+    std::vector<Source> __tmp_4 = std::vector<Source>{Source(::tpy::BigInt(2)), Source(::tpy::BigInt(1))};
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::elem_unknown(__tmp_4, ::tpy::BigInt(1))));
-    std::vector<Source> __tmp_5 = {Source(::tpy::BigInt(2))};
+    std::vector<Source> __tmp_5 = std::vector<Source>{Source(::tpy::BigInt(2))};
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::elem_container(__tmp_5)));
-    std::vector<Feed> __tmp_6 = {Feed(::tpy::BigInt(2))};
+    std::vector<Feed> __tmp_6 = std::vector<Feed>{Feed(::tpy::BigInt(2))};
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::ptr_iter(__tmp_6)));
 }
 

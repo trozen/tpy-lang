@@ -24,8 +24,8 @@ int32_t sum_all(::tpy::varargs<const Box> items) {
 // def main() -> None:
 //     print(sum_all(Box(3), Box(4)))  # tpyc: ok
 void main() {
-    const Box __tmp_1 = Box(3);
-    const Box __tmp_2 = Box(4);
+    Box __tmp_1 = Box(3);
+    Box __tmp_2 = Box(4);
     std::array<const Box*, 2> __tmp_3{&__tmp_1, &__tmp_2};
     std::cout << ::tpyapp::main::sum_all(::tpy::varargs<const Box>(__tmp_3)) << "\n" << ::tpy::check_signals;
 }

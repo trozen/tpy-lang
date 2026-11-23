@@ -47,19 +47,13 @@ bool is_value_error(const ::tpy::BaseException* e) {
 //     print(is_value_error(RuntimeError("r2")))
 //     print(is_value_error(None))
 void main() {
-    ::tpy::ValueError __tmp_1 = ::tpy::ValueError("v");
-    std::cout << ::tpyapp::main::classify(&(__tmp_1)) << "\n" << ::tpy::check_signals;
-    ::tpy::RuntimeError __tmp_2 = ::tpy::RuntimeError("r");
-    std::cout << ::tpyapp::main::classify(&(__tmp_2)) << "\n" << ::tpy::check_signals;
-    ::tpy::AssertionError __tmp_3 = ::tpy::AssertionError("a");
-    std::cout << ::tpyapp::main::classify(&(__tmp_3)) << "\n" << ::tpy::check_signals;
-    ::tpy::CancelledError __tmp_4 = ::tpy::CancelledError("c");
-    std::cout << ::tpyapp::main::classify(&(__tmp_4)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(&::tpy::as_mut_lvalue(::tpy::ValueError("v"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(&::tpy::as_mut_lvalue(::tpy::RuntimeError("r"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(&::tpy::as_mut_lvalue(::tpy::AssertionError("a"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(&::tpy::as_mut_lvalue(::tpy::CancelledError("c"))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::classify(nullptr) << "\n" << ::tpy::check_signals;
-    ::tpy::ValueError __tmp_5 = ::tpy::ValueError("v2");
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_value_error(&(__tmp_5))) << "\n" << ::tpy::check_signals;
-    ::tpy::RuntimeError __tmp_6 = ::tpy::RuntimeError("r2");
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_value_error(&(__tmp_6))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_value_error(&::tpy::as_mut_lvalue(::tpy::ValueError("v2")))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_value_error(&::tpy::as_mut_lvalue(::tpy::RuntimeError("r2")))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpyapp::main::is_value_error(nullptr)) << "\n" << ::tpy::check_signals;
 }
 

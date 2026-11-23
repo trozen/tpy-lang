@@ -110,7 +110,7 @@ void local();
 int32_t local_forms(const H& a);
 // def built_forms() -> int32:  # tpyc: mir(covered)
 int32_t built_forms();
-// def local_temporary() -> None:  # tpyc: mir(uncovered /temporary plan/)
+// def local_temporary() -> None:  # tpyc: mir(covered)
 void local_temporary();
 // def main() -> None:
 void main();

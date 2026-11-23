@@ -65,10 +65,8 @@ void main() {
     std::cout << ::tpyapp::main::describe(a.as_const()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::describe(b.as_const()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::describe(c.as_const()) << "\n" << ::tpy::check_signals;
-    int32_t __tmp_1 = 1;
-    ::tpyapp::main::process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_1});
-    Dog __tmp_2 = Dog("Buddy");
-    ::tpyapp::main::process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_2});
+    ::tpyapp::main::process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&(::tpy::as_mut_lvalue(1))});
+    ::tpyapp::main::process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&(::tpy::as_mut_lvalue(Dog("Buddy")))});
     ::tpyapp::main::process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}});
 }
 

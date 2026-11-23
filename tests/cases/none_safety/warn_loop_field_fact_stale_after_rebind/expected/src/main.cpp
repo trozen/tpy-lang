@@ -30,9 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    Box __tmp_1 = Box(5);
-    Box __tmp_2 = Box(3);
-    std::cout << ::tpyapp::main::stale_after_rebind(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::stale_after_rebind(::tpy::as_mut_lvalue(Box(5)), ::tpy::as_mut_lvalue(Box(3))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

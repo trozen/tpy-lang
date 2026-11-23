@@ -46,12 +46,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    Box __tmp_1 = Box(42);
-    ::tpyapp::main::observe_field(true, __tmp_1);
-    Box __tmp_2 = Box(0);
-    ::tpyapp::main::observe_field(false, __tmp_2);
-    Box __tmp_3 = Box(99);
-    ::tpyapp::main::observe_method(true, __tmp_3);
+    ::tpyapp::main::observe_field(true, Box(42));
+    ::tpyapp::main::observe_field(false, Box(0));
+    ::tpyapp::main::observe_method(true, Box(99));
 }
 
 } // namespace tpyapp::main

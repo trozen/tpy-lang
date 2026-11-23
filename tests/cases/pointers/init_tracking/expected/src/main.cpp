@@ -161,8 +161,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::main::direct_assign();
-    Point __tmp_1 = Point(11, 12);
-    ::tpyapp::main::param_use(__tmp_1);
+    ::tpyapp::main::param_use(Point(11, 12));
     ::tpyapp::main::value_init();
     ::tpyapp::main::assign_before_if(true);
     ::tpyapp::main::assign_before_if(false);

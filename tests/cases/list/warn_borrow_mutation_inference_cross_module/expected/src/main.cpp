@@ -28,8 +28,7 @@ void test_imported_read_no_warn() {
 void test_imported_mutate_warns() {
     std::vector<::tpyapp::helpers::Point> items = {::tpyapp::helpers::Point(1, 2)};
     ::tpyapp::helpers::Point& v = ::tpy::__getitem__(items, 0);
-    ::tpyapp::helpers::Point __tmp_1 = ::tpyapp::helpers::Point(9, 9);
-    ::tpyapp::helpers::add_point(items, __tmp_1);
+    ::tpyapp::helpers::add_point(items, ::tpyapp::helpers::Point(9, 9));
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
@@ -43,8 +42,7 @@ void test_imported_mutate_warns() {
 void test_imported_transitive_mutation_warns() {
     std::vector<::tpyapp::helpers::Point> items = {::tpyapp::helpers::Point(1, 2)};
     ::tpyapp::helpers::Point& v = ::tpy::__getitem__(items, 0);
-    ::tpyapp::helpers::Point __tmp_1 = ::tpyapp::helpers::Point(9, 9);
-    ::tpyapp::helpers::add_point_wrapper(items, __tmp_1);
+    ::tpyapp::helpers::add_point_wrapper(items, ::tpyapp::helpers::Point(9, 9));
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 

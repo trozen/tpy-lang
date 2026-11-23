@@ -463,8 +463,7 @@ void main() {
     H x = H(50);
     ::tpyapp::main::written_through(x, x);
     H r = H(10);
-    H __tmp_1 = H(20);
-    std::cout << "read_only" << " " << ::tpyapp::main::read_only(r, r, false) << " " << ::tpyapp::main::read_only(r, __tmp_1, true) << "\n" << ::tpy::check_signals;
+    std::cout << "read_only" << " " << ::tpyapp::main::read_only(r, r, false) << " " << ::tpyapp::main::read_only(r, ::tpy::as_mut_lvalue(H(20)), true) << "\n" << ::tpy::check_signals;
     H h = H(30);
     std::cout << "meth" << " " << h.meth(h, false) << " " << std::get<0>(h.bp).n << "\n" << ::tpy::check_signals;
     K k = K(h, h, false);
@@ -474,8 +473,7 @@ void main() {
     std::cout << "loop_var" << " " << ::tpyapp::main::loop_var(h, hs, ::tpy::__getitem__(hs, 1)) << " " << std::get<0>(::tpy::__getitem__(hs, 0).bp).n << " " << std::get<0>(::tpy::__getitem__(hs, 1).bp).n << "\n" << ::tpy::check_signals;
     std::vector<H> ra = {H(1), H(2)};
     std::vector<H> rb = {H(10)};
-    H __tmp_2 = H(100);
-    std::cout << "loop_var_reuse" << " " << ::tpyapp::main::loop_var_reuse(ra, rb, __tmp_2) << " " << std::get<0>(::tpy::__getitem__(ra, 1).bp).n << " " << std::get<0>(::tpy::__getitem__(rb, 0).bp).n << "\n" << ::tpy::check_signals;
+    std::cout << "loop_var_reuse" << " " << ::tpyapp::main::loop_var_reuse(ra, rb, ::tpy::as_mut_lvalue(H(100))) << " " << std::get<0>(::tpy::__getitem__(ra, 1).bp).n << " " << std::get<0>(::tpy::__getitem__(rb, 0).bp).n << "\n" << ::tpy::check_signals;
     std::cout << "try" << " " << ::tpyapp::main::in_try(h, h, true) << " " << std::get<1>(h.bp).n << "\n" << ::tpy::check_signals;
     std::cout << "match" << " " << ::tpyapp::main::in_match(h, h, 1) << " " << std::get<0>(h.bp).n << "\n" << ::tpy::check_signals;
     std::cout << "with" << " " << ::tpyapp::main::in_with(h, h, true) << " " << std::get<0>(h.bp).n << "\n" << ::tpy::check_signals;
@@ -501,8 +499,7 @@ void main() {
     std::vector<std::tuple<int32_t, Box>> rows = ::tpy::make_vector<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(4)});
     int32_t w = ::tpyapp::main::walrus_const(rows, rows);
     std::cout << "walrus" << " " << w << " " << std::get<1>(::tpy::__getitem__(rows, 0)).n << "\n" << ::tpy::check_signals;
-    std::vector<Box> __tmp_3 = {Box(3), Box(4)};
-    v = ::tpyapp::main::walrus_lit_ro(__tmp_3, 1);
+    v = ::tpyapp::main::walrus_lit_ro({Box(3), Box(4)}, 1);
     std::cout << "walrus_lit_ro" << " " << v << "\n" << ::tpy::check_signals;
     O oa = O(2);
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::in_async(oa, oa))) << " " << oa.f.n << "\n" << ::tpy::check_signals;

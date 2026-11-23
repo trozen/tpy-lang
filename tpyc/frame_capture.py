@@ -43,10 +43,8 @@ def classify_param_kind(
     """Decide the coro-frame storage kind for an async-def param.
 
     Single source of truth for the kind cascade: `_classify_params`
-    derives the C++ spelling from it, `param_borrows` reads it to decide
-    whether an rvalue-temporary arg bound to this param must be hoisted
-    into the awaiter's frame, and a protocol parameter's frame member is
-    built from its concrete twin's kind (`frame_member_slot`).
+    derives the C++ spelling from it, and a protocol parameter's frame
+    member is built from its concrete twin's kind (`frame_member_slot`).
     """
     ptype_inner = unwrap_ref_type(ptype)
     actual = unwrap_readonly(ptype_inner)
@@ -77,8 +75,7 @@ def classify_param_kind(
     # what it wants: `to_cpp_param_type()` renders the runtime's
     # per-instantiation form, which owns at a value T and points at a
     # reference one. Only the KIND's name is a pointer -- the borrow
-    # question is answered per instantiation, on the substituted slot the
-    # call site passes to `param_borrows`.
+    # question is answered per instantiation, on the substituted slot.
     if pointer_repr_optional(actual) is not None:
         return FrameCaptureKind.POINTER
     if is_ptr_variant_union(actual):

@@ -1070,16 +1070,14 @@ void main() {
     std::cout << "nested_def_in_body" << " " << ::tpyapp::main::nested_def_in_body() << "\n" << ::tpy::check_signals;
     std::cout << "if_arm" << " " << ::tpyapp::main::if_arm(true) << " " << ::tpyapp::main::if_arm(false) << "\n" << ::tpy::check_signals;
     std::cout << "nested_loops" << " " << ::tpyapp::main::nested_loops() << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    std::cout << "nested_outer_unprovable" << " " << ::tpyapp::main::nested_outer_unprovable(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "nested_outer_unprovable" << " " << ::tpyapp::main::nested_outer_unprovable(std::vector<int32_t>{}) << "\n" << ::tpy::check_signals;
     std::cout << "while_parity" << " " << ::tpyapp::main::while_parity() << "\n" << ::tpy::check_signals;
     std::cout << "literal_local" << " " << ::tpyapp::main::literal_local() << "\n" << ::tpy::check_signals;
     std::cout << "narrowed_bound" << " " << ::tpyapp::main::narrowed_bound(4) << "\n" << ::tpy::check_signals;
     std::cout << "literal_head" << " " << ::tpyapp::main::literal_head() << "\n" << ::tpy::check_signals;
     std::cout << "range_step_pos" << " " << ::tpyapp::main::range_step_pos() << "\n" << ::tpy::check_signals;
     std::cout << "range_step_neg" << " " << ::tpyapp::main::range_step_neg() << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-    std::cout << "pre_assigned" << " " << ::tpyapp::main::pre_assigned(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "pre_assigned" << " " << ::tpyapp::main::pre_assigned(std::vector<int32_t>{}) << "\n" << ::tpy::check_signals;
     std::cout << "loop_var_after" << " " << ::tpyapp::main::loop_var_after() << "\n" << ::tpy::check_signals;
     std::cout << "with_body" << " " << ::tpyapp::main::with_body() << "\n" << ::tpy::check_signals;
     std::cout << "try_finally" << " " << ::tpyapp::main::try_finally() << "\n" << ::tpy::check_signals;

@@ -33,8 +33,7 @@ void poke(std::vector<::tpy::Union<Cat, Dog>>& xs) {
 // def main() -> None:
 //     poke([Cat(4)])
 void main() {
-    std::vector<::tpy::Union<Cat, Dog>> __tmp_1 = {Cat(4)};
-    ::tpyapp::main::poke(__tmp_1);
+    ::tpyapp::main::poke(::tpy::as_mut_lvalue(std::vector<::tpy::Union<Cat, Dog>>{Cat(4)}));
 }
 
 // main()

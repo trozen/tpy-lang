@@ -531,7 +531,7 @@ class str(NativeIterable[char], Iterable[char], Comparable, Equatable, Stringabl
     @cpp_template("::tpy::str_concat({self}, {0})")
     def __add__(self, other: String) -> String: ...
     @dispatch
-    @cpp_template("::tpy::str_concat({self}, {0})")
+    @cpp_template("::tpy::str_concat({self}, {0})", transient=True)
     def __add__(self, other: StrView) -> String: ...
     @dispatch
     @cpp_template("::tpy::str_concat({self}, ::tpy::char_to_str({0}))")

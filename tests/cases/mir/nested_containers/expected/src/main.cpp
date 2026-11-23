@@ -656,15 +656,9 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_1 = {{1}};
-    std::vector<std::string> __tmp_2 = {"x", "y"};
-    std::cout << "keep" << " " << ::tpyapp::main::keep(__tmp_1, __tmp_2) << " " << ::tpy::__len__(::tpyapp::main::pick(rows)) << "\n" << ::tpy::check_signals;
+    std::cout << "keep" << " " << ::tpyapp::main::keep(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1}}), {"x", "y"}) << " " << ::tpy::__len__(::tpyapp::main::pick(rows)) << "\n" << ::tpy::check_signals;
     std::cout << "same_kept" << " " << ::tpyapp::main::same_kept(rows) << " " << ::tpy::ListPrinter(rows) << " " << ::tpy::__len__(::tpyapp::main::value_of(t)) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_3 = {{1, 2}};
-    std::vector<std::vector<int32_t>> __tmp_4 = {{3}};
-    std::vector<std::vector<int32_t>> __tmp_5 = {{1, 2}};
-    std::vector<std::vector<int32_t>> __tmp_6 = {{3}};
-    std::cout << "joined_inner" << " " << ::tpyapp::main::joined_inner(true, __tmp_3, __tmp_4) << " " << ::tpyapp::main::joined_inner(false, __tmp_5, __tmp_6) << "\n" << ::tpy::check_signals;
+    std::cout << "joined_inner" << " " << ::tpyapp::main::joined_inner(true, ::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}}), {{3}}) << " " << ::tpyapp::main::joined_inner(false, ::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}}), {{3}}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

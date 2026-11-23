@@ -535,8 +535,7 @@ void method_position() {
 //     two_block_defs_position()
 //     method_position()
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "module:" << " " << ::tpyapp::main::tally(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "module:" << " " << ::tpyapp::main::tally({1, 2, 3}) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::free_position();
     ::tpyapp::main::closure_position();
     ::tpyapp::main::own_param_position();

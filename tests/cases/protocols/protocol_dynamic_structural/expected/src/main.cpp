@@ -17,11 +17,9 @@ void greet(Pet& pet) {
 //     pet: Pet = Parrot()   # local: owning adapter (owns inner value)
 //     print(pet.make_noise())
 void main() {
-    ::tpy::Adapter<Pet, Parrot> __tmp_1{Parrot()};
-    ::tpyapp::main::greet(__tmp_1);
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(::tpy::Adapter<Pet, Parrot>{Parrot()}));
     Parrot p = Parrot();
-    ::tpy::RefAdapter<Pet, Parrot> __tmp_2{p};
-    ::tpyapp::main::greet(__tmp_2);
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(::tpy::RefAdapter<Pet, Parrot>{p}));
     ::tpy::Adapter<Pet, Parrot> __slot_1{Parrot()};
     Pet* pet = &__slot_1;
     std::cout << pet->make_noise() << "\n" << ::tpy::check_signals;

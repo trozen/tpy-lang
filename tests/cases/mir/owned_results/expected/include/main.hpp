@@ -54,7 +54,7 @@ int32_t take(Point&& p);
 int32_t give(int32_t n);
 // def read(p: Point) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t read(const Point& p);
-// def lend_temp(n: int32) -> int32:  # tpyc: mir(certified) mir_summary(known)
+// def lend_temp(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t lend_temp(int32_t n);
 // def maybe(flag: bool, n: int32) -> int32:  # tpyc: mir(uncovered /^unsupported record initializer$/)
 int32_t maybe(bool flag, int32_t n);

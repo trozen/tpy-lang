@@ -68,7 +68,7 @@ int32_t in_list(std::string_view name);
 int32_t maybe(const Tok* t);
 // def paired(t: Tok) -> int32:  # tpyc: mir(uncovered /^wrapper holds a borrow$/)
 int32_t paired(Tok& t);
-// def deferred(name: str, flag: bool) -> int32:  # tpyc: mir(certified)
+// def deferred(name: str, flag: bool) -> int32:  # tpyc: mir(covered)
 int32_t deferred(std::string_view name, bool flag);
 // def selected(owner: Tok, a: str, flag: bool) -> int32:  # tpyc: mir(certified)
 int32_t selected(const Tok& owner, std::string_view a, bool flag);

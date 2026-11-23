@@ -132,8 +132,7 @@ void main() {
     std::cout << ::tpyapp::main::in_match_arm(::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::in_match_arm(::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::in_try_body() << "\n" << ::tpy::check_signals;
-    std::vector<Point> __tmp_1 = {Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))};
-    std::cout << ::tpyapp::main::loop_var_rebind(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::loop_var_rebind({Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

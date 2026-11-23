@@ -1,0 +1,5 @@
+itertools.py:38: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_plan_reads_frames.py:44: warning: lambda at line 44 may keep its own copy of 'pred'; changes made after it is created may not be seen
+part_plan_reads_fresh.py:114: warning: copies Cell into field (tuple element 1); use copy() to make this explicit
+part_plan_reads_generic.py:79: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_plan_reads_owning.py:111: warning: copies list[int32] into field; use copy() to make this explicit

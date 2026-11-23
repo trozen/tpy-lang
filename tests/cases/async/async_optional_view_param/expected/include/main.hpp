@@ -81,10 +81,8 @@ struct __coro_str_len {
 struct __coro_main_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::Bytes __coro_arg_0;
     ::tpy::BigInt __await_lift_0;
     ::tpy::BigInt __await_lift_1;
-    std::string __coro_arg_1;
     ::tpy::BigInt __await_lift_2;
     ::tpy::BigInt __await_lift_3;
     std::optional<__coro_first_bytes> __sub_0;

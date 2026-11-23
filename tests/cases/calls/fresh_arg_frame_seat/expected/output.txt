@@ -1,0 +1,133 @@
+walrus [0, 5, 6]
+walrus arg [5, 6]
+seat awaited 157
+seat flips [1, 2, 3, 4]
+seat make 3
+seat flips [1, 2, 3]
+seat got
+seat co 11
+seat handed_on 37
+seat async with 112 20
+frames make 3
+frames nested [10, 11]
+frames make 0
+frames make 10
+frames make 1
+frames make 11
+frames make 2
+frames per_pass [21, 23]
+frames make 5
+frames make 7
+frames make 1
+frames tasks 6 15 2 50
+frames literal 6
+frames adapted [4, 5]
+frames a_for abcdefghijklmnopqrstuvwxyz0123456789-3tag-abcdefghijklmnopqrstuvwxyz-2
+lifted value out 99
+lifted view 0
+lifted view 1
+lifted view 2
+lifted arg 5
+lifted arg cond 5
+lifted arg comp 5
+lifted nested view 157
+lifted iter 5 5 5 5 20
+reads chained True
+reads with 40
+reads chained True
+reads with 40
+reads chained True
+reads with 40
+reads cat 000
+reads in False
+reads not False
+reads slice 00
+reads str 00
+reads eq True
+reads cat 111
+reads in True
+reads not False
+reads slice 11
+reads str 11
+reads eq True
+reads cat 222
+reads in False
+reads not False
+reads slice 22
+reads str 22
+reads eq True
+reads sum 1 0
+reads list [0, 1]
+reads sum 3 0
+reads list [1, 2]
+reads sum 5 0
+reads list [2, 3]
+reads fstr 6
+reads fstr 7
+reads fstr 8
+reads stored ['000', '111', '222']
+reads literal 20
+callees tasks keep nothing 30
+callees unpack 0 00000
+callees unpack 0 11111
+callees unpack 0 22222
+callees print 00000
+callees bound 00
+callees format w:5
+callees print 11111
+callees bound 11
+callees format w:5
+callees print 22222
+callees bound 22
+callees format w:5
+callees count [5, 5, 5]
+callees loop target 15
+targets nested def [30]
+targets with 00
+targets match 00
+targets genexpr 4
+targets dict 5
+targets with 11
+targets match 11
+targets genexpr 4
+targets dict 5
+targets with 22
+targets match 22
+targets genexpr 4
+targets dict 5
+statements guard 0 00
+statements guard 1 11
+statements guard 2 22
+statements assert 0 00
+statements assert 1 11
+statements assert 2 22
+statements while else 11
+statements unpack 1
+statements unpack 11
+statements unpack 21
+statements last_k 20
+statements members 33
+statements stores 33
+copies copied [0, 1, 10, 11, 20, 21]
+copies in pass [1, 0, 1, 1, 1, 1, 2, 2, 1, 2, 3, 3]
+copies key ['a', 'bb', 'ccc']
+copies key ['a', 'bb', 'ccc']
+copies key ['a', 'bb', 'ccc']
+copies nested [0, 10, 20]
+copies aug 000000111111222222
+copies scope 00
+copies scope 11
+copies scope 22
+copies lambda scope 6
+copies shadowed 42
+copies own slot 306
+leaves copies [0, 1, 10, 11, 20, 21] [2, 12, 22]
+leaves strs ['item-0', 'item-1', 'item-2'] ['item-000', 'item-555', 'item-111', 'item-666', 'item-222', 'item-777']
+leaves members 3
+leaves frame kept 62
+leaves results 333
+leaves consumed 3
+leaves seated 28 [15] 18
+owned params tasks ['-000', 'ey-0', 'y-10', 'aaaa', '2020', '3030', '4040', '-111', 'ey-1', 'y-11', 'bbbb', '2121', '3131', '4141', '-222', 'ey-2', 'y-12', 'cccc', '2222', '3232', '4242']
+owned params captures item-000|item-555|item-111|item-666|item-222|item-777|
+owned params consumed 4275

@@ -12,9 +12,8 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_codes::__nex
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpyapp::pets::Dog __tmp_1 = ::tpyapp::pets::Dog(::tpy::BigInt(6));
         __state = S_RESUME_0;
-        return ::tpyapp::pets::code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&__tmp_1});
+        return ::tpyapp::pets::code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&(::tpy::as_mut_lvalue(::tpyapp::pets::Dog(::tpy::BigInt(6))))});
     }
     case S_RESUME_0: {  // after: yield pets.code(Dog(6))  # tpyc: ok
         __state = S_DONE;

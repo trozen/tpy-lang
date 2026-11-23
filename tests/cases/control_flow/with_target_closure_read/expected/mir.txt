@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::outer@21:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::outer@21:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::main@39:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Reg.__enter__@14:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Reg.__exit__@17:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

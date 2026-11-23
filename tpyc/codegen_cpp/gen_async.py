@@ -31,20 +31,10 @@ from ..parse.nodes import (
     TpyFunction, TpyStmt,
     TpyName, TpyExpr, TpyCall,
     TpyMethodCall, TpyForEach, TpyWith, TpyWithItem,
-    TpyCoerce,
-    TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
-    TpyListComprehension, TpyDictComprehension, TpySetComprehension,
     walrus_bindings,
 )
 
 
-# Collection literals / comprehensions have no concrete C++ type at a
-# protocol-typed call site (the param is a concept) and no frame storage to
-# survive a suspension, so they can't back an inline-await sub-future field.
-_FRESH_COLLECTION_NODES = (
-    TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
-    TpyListComprehension, TpyDictComprehension, TpySetComprehension,
-)
 from ..typesys import (ResultPosition, ResultRepresentation,
                        classify_result_representation, pointer_repr_optional,
                        yield_borrow_slot_cpp)
@@ -56,7 +46,7 @@ from . import emit_prims
 from .context import (INDENT, escape_cpp_name, CodeGenError, FinallyContext)
 from .forms import binds_handed_over_step
 from .protocols import protocol_param_template_name, fn_param_template_name
-from ..emitted_members import signature_is_template
+from ..emitted_members import frame_struct_is_template
 from .functions import default_to_cpp, default_emittable
 from ..resumable_shape import ResumableShape
 from ..thir.frame import (
@@ -572,9 +562,8 @@ class AsyncCoroCodegen:
         `CodeGenerator._emit_generator_next` moves to `<mod>_inl.hpp` when the
         module emits one (`Compiler._module_emits_inl` decides that from the
         AST)."""
-        return (bool(self.functions.protocols.record_template_args(record_name))
-                or signature_is_template(func)
-                or bool(self._fn_template_parts(func)))
+        return frame_struct_is_template(
+            func, self.functions.protocols.record_template_args(record_name))
 
     def _emit_template_header(self, out: "TextIO", func: TpyFunction,
                                 *, indent: str = "",
@@ -835,6 +824,20 @@ class AsyncCoroCodegen:
         FrameLocalKind.PTR_ALIAS, FrameLocalKind.OPT_PTR,
         FrameLocalKind.REBIND_PTR, FrameLocalKind.BORROW_TUPLE))
 
+    def _refuse_unbacked_locals(self, func: TpyFunction) -> None:
+        """A local no field can back is this frame's own located
+        diagnostic; it goes before anything lowers the body, whose reject
+        for the same local would otherwise be the one reported."""
+        for loc in self._frame_of(func).locals:
+            if loc.placement.kind is FrameLocalKind.PROTOCOL:
+                raise CodeGenError(
+                    f"local {loc.name!r} of protocol type aliasing a "
+                    "protocol-typed parameter is only supported across a "
+                    "suspension when bound exactly once directly from the "
+                    "parameter; bind it once from the parameter, or "
+                    "iterate the parameter directly",
+                    loc=func.loc)
+
     def _frame_fields(self, func: TpyFunction, record_name: str | None,
                       cfg: 'THIRResumableFrame') -> 'list[FrameField]':
         """Every field of this frame, in declaration order (see
@@ -853,19 +856,7 @@ class AsyncCoroCodegen:
         if printed.frame_fields is not None:
             return printed.frame_fields
         locals_ = state.locals
-        # A local no field can back is this frame's own located diagnostic;
-        # it goes before the alias renders lower the body, whose reject for
-        # the same local would otherwise be the one reported.
-        for loc in locals_:
-            lname = loc.name
-            if loc.placement.kind is FrameLocalKind.PROTOCOL:
-                raise CodeGenError(
-                    f"local {lname!r} of protocol type aliasing a "
-                    "protocol-typed parameter is only supported across a "
-                    "suspension when bound exactly once directly from the "
-                    "parameter; bind it once from the parameter, or "
-                    "iterate the parameter directly",
-                    loc=func.loc)
+        self._refuse_unbacked_locals(func)
         aliases = self._for_source_aliases(func, record_name, cfg)
         # The aliases each loop var's field is spelled off -- every loop
         # that binds the name, since a shared field joins their payloads.
@@ -931,6 +922,10 @@ class AsyncCoroCodegen:
         # out. frame_loop_slot has frame_slot's storage but unchecked reads:
         # only this loop's own emitted code reads them, after its init.
         loop_machinery: list[FrameField] = []
+        # The temporaries kept across a suspension (a compound head's, a
+        # callee frame's), declared ahead of the loop sources and managers
+        # built from them so those are destroyed first.
+        loop_machinery += self._head_arg_fields(func, record_name, cfg)
         for holder in state.for_fields:
             fname, ftype = holder.name, holder.cpp_type
             owner = holder.loop
@@ -1021,6 +1016,52 @@ class AsyncCoroCodegen:
         printed.frame_fields = order_frame_fields(fields_)
         return printed.frame_fields
 
+    def embedding_edges(self, func: TpyFunction, record_name: str | None,
+                        cfg: 'THIRResumableFrame'
+                        ) -> 'tuple[tuple[str, str | None], ...]':
+        """The frame structs `func`'s frame embeds by value, as its body
+        publishes them (`THIRResumableLeaves.embedding_edges`): its holders'
+        are known once the body's leaves are lowered, which this does ahead
+        of the struct order."""
+        self._refuse_unbacked_locals(func)
+        rb = self._thir_resumable_attempt(func, record_name, cfg)
+        if rb is None:
+            return cfg.embedding_edges
+        return rb.embedding_edges
+
+    def _head_arg_fields(self, func: TpyFunction, record_name: str | None,
+                         cfg: 'THIRResumableFrame') -> 'list[FrameField]':
+        """A field per HEAD_ARG holder the body's leaves were given
+        (`THIRResumableLeaves.head_holders`)."""
+        rb = self._thir_resumable_attempt(func, record_name, cfg)
+        if rb is None:
+            return []
+        fields: list[FrameField] = []
+        deduced = [h for h in rb.head_holders if h.deduced is not None]
+        spelled: dict[str, str] = {}
+        if deduced:
+            # A deduced holder is spelled off its initializer, unevaluated,
+            # under the frame body scope (the loop source aliases' way), as
+            # the `auto` temp of a plain body deduces it (a decayed array).
+            from ..thir.emit import UnevaluatedTemps
+            leaf = self._thir_resumable_leaf_emitter(func, record_name, cfg)
+            temps = UnevaluatedTemps(self.ctx)
+            with self._resumable_frame_ctx(func, record_name):
+                with self._thir_leaf_scope(leaf):
+                    for h in deduced:
+                        spelled[h.name] = (
+                            "std::decay_t<decltype(("
+                            f"{leaf.render_unevaluated(h.deduced, temps)}))>")
+        for h in rb.head_holders:
+            cpp = spelled.get(h.name, h.cpp_type)
+            fields.append(FrameField(
+                name=h.name,
+                decl=f"{INDENT}::tpy::frame_slot<{cpp}> {h.name};\n",
+                spelled_from=(frozenset(read_names(h.value))
+                              if h.deduced is not None else frozenset()),
+                drop_runs_user_code=h.drop_runs_user_code))
+        return fields
+
     @staticmethod
     def _loop_field_aliases(owner: 'FrameLoopOwner | None') -> 'frozenset[str]':
         """The aliases a loop field may be spelled off: its loop's source
@@ -1076,9 +1117,7 @@ class AsyncCoroCodegen:
         borrows are not traced.
 
         * A frame object borrows the roots sema recorded for its bindings
-          (`function_frame_local_roots`); a plain call's temporaries are the
-          `__coro_arg_<n>` lifts of its statement.
-        * A lift borrows what its expression reads.
+          (`function_frame_local_roots`).
         * A rebound local points into its rebind slots.
         * A borrow alias points into its source root.
         * A loop var (or unpack target) bound into its loop's storage points
@@ -1094,11 +1133,6 @@ class AsyncCoroCodegen:
             if dst is not None and dst != src:
                 out.setdefault(src, set()).add(dst)
 
-        for lift, (source, binds) in state.arg_lifts.items():
-            for n in read_names(source):
-                edge(lift, n)
-            if binds is not None:
-                edge(binds, lift)
         roots_of = self.ctx.analyzer.function_frame_local_roots.get(func, {})
         for loc in state.locals:
             lname = loc.name
@@ -2353,30 +2387,11 @@ class AsyncCoroCodegen:
         positions = self._protocol_param_positions(call)
         if not positions:
             return []
-        for i in positions:
-            if i >= len(call.args):
-                # Defensive: callee param without a corresponding arg
-                # at the call site (defaults aren't supported on async
-                # static-protocol params today; bail rather than emit
-                # a malformed template arg).
-                return []
-            arg = call.args[i]
-            unwrapped = arg
-            while isinstance(unwrapped, TpyCoerce):
-                unwrapped = unwrapped.expr
-            if isinstance(unwrapped, _FRESH_COLLECTION_NODES):
-                # A fresh collection literal/comprehension reaching HERE has no
-                # concrete C++ type (the param is a concept) and no frame
-                # storage to survive the suspension, so it can't back the
-                # sub-future field. The uniform frame-temp hoist normally
-                # replaces it with a frame-slot NAME before this runs
-                # (async_await_proto_param_literal); this stays for the
-                # positions that hoist cannot reach.
-                raise CodeGenError(
-                    "awaiting a coroutine with a protocol-typed parameter "
-                    "does not yet support a collection literal argument; pass "
-                    "a named iterable instead",
-                    loc=getattr(arg, "loc", None) or call.loc)
+        if any(i >= len(call.args) for i in positions):
+            # Defensive: callee param without a corresponding arg at the
+            # call site (defaults aren't supported on async static-protocol
+            # params today; bail rather than emit a malformed template arg).
+            return []
         # The class-scope `decltype` has no statement to declare an
         # argument temporary in: it renders as `std::declval` of its type.
         from ..thir.emit import UnevaluatedTemps
@@ -3911,7 +3926,7 @@ class AsyncCoroCodegen:
         already renders as `CM*`, so the borrowed bind must not re-take its
         address (would double-pointer)."""
         ctx_n, item = stmt.ctx_n, stmt.item
-        ctx_expr = self._leaf.render_expr(stmt.manager)
+        ctx_expr = self._leaf.render_expr(stmt.manager, indent=indent)
         self.ctx.temps.flush(out, indent)
         if item.manager_borrowed:
             if stmt.manager in self._leaf.published.pointer_sources:
@@ -3959,7 +3974,7 @@ class AsyncCoroCodegen:
         dangle at the first suspension without it."""
         # The leaf hands over a BARE render for every narrowed-optional
         # iterable it admits; the lowering decides this unwrap.
-        src_cpp = self._leaf.render_expr(setup.iterable)
+        src_cpp = self._leaf.render_expr(setup.iterable, indent=indent)
         if setup.iterable in self._leaf.published.unwrapped_sources:
             src_cpp = f"(*{src_cpp})"
         self.ctx.temps.flush(out, indent)
@@ -4007,7 +4022,7 @@ class AsyncCoroCodegen:
         if self._print_state(self._frame_of(func)).ctor_seeded_uid == uid:
             return
         if stmt.is_async:
-            iter_cpp = self._leaf.render_expr(stmt.iterable)
+            iter_cpp = self._leaf.render_expr(stmt.iterable, indent=indent)
             self.ctx.temps.flush(out, indent)
             # A global iterable already renders as `Src*`; deref so the
             # `.__aiter__()` call resolves rather than hitting `.`-on-pointer.
@@ -4055,7 +4070,8 @@ class AsyncCoroCodegen:
         if elem_type and isinstance(elem_type, IntLiteralType):
             elem_type = self.ctx.analyzer.ctx.default_int_type
         cpp_elem = self.types.type_to_cpp(elem_type) if elem_type else "int32_t"
-        gen_args = [self._leaf.render_expr(b) for b in stmt.bounds]
+        gen_args = [self._leaf.render_expr(b, indent=indent)
+                    for b in stmt.bounds]
         self.ctx.temps.flush(out, indent)
         nargs = len(gen_args)
         ci, st = f"__for_i_{uid}", f"__for_stop_{uid}"
@@ -4399,7 +4415,7 @@ class AsyncCoroCodegen:
         payload = t.payload
         assert isinstance(payload, THIRYieldSuspension), \
             "generator shape requires a YieldPayload terminator"
-        yield_expr = self._leaf.render_expr(payload.value)
+        yield_expr = self._leaf.render_expr(payload.value, indent=indent)
         self.ctx.temps.flush(out, indent)
         resume = _StateLabel(_StateKind.RESUME, t.suspension_index).cpp_name()
         # The loop form resumes at the loop head whatever the state says.

@@ -5,12 +5,13 @@ from tpy import int32
 from fixtures import grow, grow_len, grow_rows, mk_box
 
 
-def temp_receiver(big: bool) -> int32:  # tpyc: mir(uncovered /temporary needs full-expression boundary/)
+def temp_receiver(big: bool) -> int32:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
     n = 0
     if big:
-        # the source borrows from a temporary receiver that dies before the
-        # loop runs (so this never runs)
-        n = len([e * 2 for e in mk_box().items_m()])  # tpyc: warning(/Iterator borrows from temporary receiver object/)
+        # the source borrows from a temporary receiver: the comprehension's
+        # clause source keeps it until the comprehension ends (so this never
+        # runs, but would be safe)
+        n = len([e * 2 for e in mk_box().items_m()])  # tpyc: ok
     return n
 
 

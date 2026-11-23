@@ -4,15 +4,88 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "nr_api.hpp"
+#include "part_qualified.hpp"
 
 namespace tpyapp::main {
 
+struct Point;
+
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_nr(x: int32) -> Own[NR]:
+::mylog::NR make_nr(int32_t x);
 // def go(x: int32) -> int32:
 int32_t go(int32_t x);
+// def bumped(x: int32) -> int32:
+int32_t bumped(int32_t x);
+// def made(x: int32) -> int32:
+int32_t made(int32_t x);
+// def peeked(x: int32) -> int32:
+int32_t peeked(int32_t x);
+// def absorbed(x: int32) -> int32:
+int32_t absorbed(int32_t x);
+// def pushed() -> int32:
+int32_t pushed();
+// def added() -> int32:
+int32_t added();
 // def main() -> None:
 void main();
 
+// class Point:
+struct Point {
+    // self.v = v
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    Point() = default;
+    explicit Point(int32_t v);
+    // copyable via __copy__
+    Point(const Point& other);
+    Point& operator=(const Point& other);
+    Point(Point&&) = default;
+    Point& operator=(Point&&) = default;
+
+    // def __copy__(self) -> Own[Point]:
+    Point __copy__() const;
+
+    // def __add__(self, other: Point) -> Own[Point]:
+    Point __add__(const Point& other) const;
+
+    friend Point operator+(const Point& lhs, const Point& other) {
+        return lhs.__add__(other);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
+    ::tpy::print_object_default(os, Point::__tpy_class_name__, obj);
+    return os;
+}
+
+
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline Point::Point(int32_t v) : v(v) {}
+
+inline Point::Point(const Point& other) : Point(other.__copy__()) {}
+inline Point& Point::operator=(const Point& other) {
+    if (this != &other) { *this = other.__copy__(); }
+    return *this;
+}
+
+// def __copy__(self) -> Own[Point]:
+//     print("copy")
+//     return Point(self.v)
+inline Point Point::__copy__() const {
+    std::cout << "copy" << "\n" << ::tpy::check_signals;
+    return Point(this->v);
+}
+
+// def __add__(self, other: Point) -> Own[Point]:
+//     return Point(self.v + other.v)
+inline Point Point::__add__(const Point& other) const {
+    return Point((::tpy::add_check<int32_t>(this->v, other.v)));
+}
 void __tpy_init();
 } // namespace tpyapp::main

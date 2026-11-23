@@ -14,7 +14,7 @@ from . import emit, lower as lowering
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRGoto, MIRPlace, MIRStorageWriteMode,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRCall, MIRGoto, MIRPlace, MIRStorageWriteMode,
     MIRRegionId, MIRReturn, function_body_kind,
 )
 from .shapes import MIRTupleIndex, MIRUnionPayload
@@ -22,12 +22,77 @@ from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import MIRBorrowEvidence, MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
-from .test_borrowed_argument_storage import SOURCE, Artifacts, _compile_workspace, _thir, active_artifacts
+from .test_borrowed_argument_storage import Artifacts, _compile_workspace, _thir, active_artifacts
 from .test_expression_temporary_lower import SOURCE as EXPRESSION_SOURCE
 from .testutil import construct, constructor_summaries, execute, prepared
 from .validate import MIRRepeatedInitializationError
 from .value import MIRValidationError
 from .prepare import validate_function
+
+
+# Borrow sinks over parameters, selects and fresh arguments: what the
+# certificate reads.
+BORROWED_SOURCE = '''from tpy import int32, readonly, nocopy
+
+@nocopy
+class Cell:
+    value: int32
+    def __init__(self, value: int32):
+        self.value = value
+    def method(self, value: int32) -> int32:
+        saved = observe(Cell(value))
+        return saved.value
+
+class Caller:
+    value: int32
+    def __init__(self, value: int32):
+        self.value = 0
+        saved = observe(Cell(value))
+        self.value = saved.value
+
+def observe(cell: Cell) -> readonly[Cell]:
+    return cell
+
+def choose(flag: bool, a: Cell, b: Cell) -> readonly[Cell]:
+    return a if flag else b
+
+def independent(a: Cell, b: Cell) -> readonly[Cell]:
+    value = b.value
+    return a
+
+def eager(value: int32) -> int32:
+    saved = observe(Cell(value))
+    return saved.value
+
+def selected(flag: bool, value: int32) -> int32:
+    saved = observe(Cell(value))
+    return saved.value
+
+def mixed(flag: bool, owner: Cell) -> int32:
+    saved = choose(flag, owner, Cell(7))
+    owner.value = 9
+    return saved.value
+
+def unreturned(owner: Cell) -> int32:
+    saved = independent(owner, Cell(7))
+    owner.value = 9
+    return saved.value
+
+def loop(flag: bool, value: int32, seed: Cell) -> int32:
+    answer = 0
+    while flag:
+        saved = observe(Cell(value))
+        answer = saved.value
+        flag = False
+    return answer
+
+def ranges(value: int32, seed: Cell) -> int32:
+    answer = 0
+    for i in range(2):
+        saved = observe(Cell(value))
+        answer = saved.value
+    return answer
+'''
 
 
 EXTRA = '''
@@ -153,7 +218,7 @@ def _active(request: pytest.FixtureRequest):
 
 @pytest.fixture(scope="module")
 def artifacts() -> Artifacts:
-    return _compile_workspace(SOURCE + EXTRA)
+    return _compile_workspace(BORROWED_SOURCE + EXTRA)
 
 
 @pytest.fixture(scope="module")
@@ -173,7 +238,7 @@ def _request(artifacts: Artifacts, fn: th.THIRFunction | th.THIRConstructor) -> 
     return MIRStorageRequest(fn, MIRBodyId("main", name), kind, artifacts[2], MappingProxyType(summaries))
 
 
-@pytest.mark.parametrize("name", ["eager", "method", "Caller", "loop", "ranges", "select"])
+@pytest.mark.parametrize("name", ["select"])
 def test_source_backings_use_actual_builder_places(artifacts: Artifacts, name: str) -> None:
     fn = (next(c for c in artifacts[0].thir_constructors.values() if c.record_name == name)
           if name == "Caller" else _thir(artifacts, name))
@@ -186,16 +251,6 @@ def test_source_backings_use_actual_builder_places(artifacts: Artifacts, name: s
     for backing in fn.storage_facts.backings:
         assert backing.node in result.backings
         assert backing.placement is request.plan.placement(backing.node)
-
-
-@pytest.mark.parametrize("name,reason", [
-    ("printed", "argument storage has no temporary plan"),
-])
-def test_unmodeled_storage_remains_an_obligation(artifacts: Artifacts, name: str, reason: str) -> None:
-    result = certify_thir_storage(_request(artifacts, _thir(artifacts, name)))
-    assert result.requires_proof is True
-    assert result.verdict is MIRStorageVerdict.NOT_COVERED
-    assert any(reason in gap.reason for gap in result.gaps)
 
 
 @pytest.mark.parametrize("name,count", [
@@ -260,37 +315,6 @@ def test_certified_expression_lifetimes_preserve_evaluation(
     assert len(heap) == constructions
 
 
-def test_argument_expression_and_borrow_demands_compose(artifacts: Artifacts) -> None:
-    source = _thir(artifacts, "composed")
-    request = _request(artifacts, source)
-    result = certify_thir_storage(request)
-    assert result.verdict is MIRStorageVerdict.CERTIFIED, (result.gaps, result.evidence)
-    assert result.certifies(request, source, result.function)
-    evidence = result.evidence
-    assert isinstance(evidence, MIRBorrowEvidence)
-    assert {b.kind for b in source.storage_facts.backings} == {
-        THIRBackingKind.ARGUMENT, THIRBackingKind.FULL_EXPRESSION,
-    }
-    assert len(result.backings) == len(evidence.explicit_roots) == 2
-    assert evidence.explicit_roots == frozenset(p.root for p in result.backings.values())
-    holder, = (s.id for s in result.function.slots if s.name == "local")
-    local, = (s.value.source.root for b in result.function.blocks for s in b.statements
-              if isinstance(s, MIRAssign) and s.target == MIRPlace(holder)
-              and isinstance(s.value, MIRBorrow))
-    assert evidence.required == evidence.explicit_roots | {local}
-    assert evidence.operations == frozenset(p for o in source.storage_facts.obligations
-                                           for p in result.operations[o.sink])
-    assert len(evidence.operations) == 3
-    origins = frozenset(origin for group in evidence.origins.values() for origin in group)
-    assert any(origin.external for origin in origins)
-    assert {origin.place.root for origin in origins if not origin.external} == {
-        local, *(result.backings[b.node].root for b in source.storage_facts.backings
-                 if b.kind is THIRBackingKind.ARGUMENT),
-    }
-    assert not evidence.certifies_operations(result.function, evidence.operations,
-                                             evidence.explicit_roots - {next(iter(evidence.explicit_roots))})
-
-
 @pytest.mark.parametrize("mutation", ["missing", "pruned"])
 def test_full_expression_missing_or_pruned_backing_cannot_certify(
         expression_artifacts: Artifacts, mutation: str, monkeypatch) -> None:
@@ -347,7 +371,7 @@ def test_no_obligation_and_unpublished_facts_are_distinct(artifacts: Artifacts) 
     assert any("have not been published" in g.reason for g in result.gaps)
 
 
-@pytest.mark.parametrize("name", ["eager", "inline"])
+@pytest.mark.parametrize("name", ["select", "inline"])
 def test_certificate_never_crosses_request_body_or_mir_identity(artifacts: Artifacts, name: str) -> None:
     fn = _thir(artifacts, name)
     request = _request(artifacts, fn)
@@ -367,7 +391,7 @@ def test_certificate_never_crosses_request_body_or_mir_identity(artifacts: Artif
 
 
 def test_summary_snapshot_and_missing_effects(artifacts: Artifacts) -> None:
-    fn = _thir(artifacts, "eager")
+    fn = _thir(artifacts, "local")
     summaries = dict(artifacts[1].summaries)
     request = replace(_request(artifacts, fn), summaries=summaries)
     summaries.clear()
@@ -422,7 +446,7 @@ def test_returned_local_borrow_is_checked_without_successor_liveness(artifacts: 
 
 
 def test_nested_tuple_branch_inventory_is_not_lost(artifacts: Artifacts) -> None:
-    fn = _thir(artifacts, "eager")
+    fn = _thir(artifacts, "composed")
     # A statement MIR does not lower, holding the body's statements.
     folded = th.THIRStmtSeq(stmts=fn.body)
     fn = _with_body(fn, (folded,))
@@ -432,7 +456,7 @@ def test_nested_tuple_branch_inventory_is_not_lost(artifacts: Artifacts) -> None
     assert result.requires_proof
 
 
-@pytest.mark.parametrize("name", ["eager", "inline"])
+@pytest.mark.parametrize("name", ["select", "inline"])
 def test_missing_backing_facts_are_an_invariant_error(artifacts: Artifacts, name: str) -> None:
     fn = _thir(artifacts, name)
     stale = replace(fn.storage_facts, backings=())

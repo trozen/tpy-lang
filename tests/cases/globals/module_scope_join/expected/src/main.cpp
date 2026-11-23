@@ -1620,14 +1620,11 @@ void __tpy_init() {
     std::cout << "loop_rebind_view:" << " " << rs << " " << ::tpy::BytesPrinter(rb) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show_loop_rebind();
     ::tpyapp::main::loop_rebind_view_fn();
-    std::vector<std::string> __tmp_1 = {(::tpy::str_repeat("f", 30))};
-    ::tpyapp::main::loop_rebind_param("initial", __tmp_1);
-    std::vector<std::string> __tmp_2 = {(::tpy::str_repeat("g", 30))};
-    std::vector<std::string> __tmp_3 = {(::tpy::str_repeat("h", 30))};
-    ::tpyapp::main::loop_rebind_elem(__tmp_2, __tmp_3);
+    ::tpyapp::main::loop_rebind_param("initial", ::tpy::as_mut_lvalue(std::vector<std::string>{(::tpy::str_repeat("f", 30))}));
+    ::tpyapp::main::loop_rebind_elem({(::tpy::str_repeat("g", 30))}, ::tpy::as_mut_lvalue(std::vector<std::string>{(::tpy::str_repeat("h", 30))}));
     {
-        std::vector<std::string> __tmp_4 = {(::tpy::str_repeat("i", 30))};
-        auto __src_15 = ::tpyapp::main::loop_rebind_gen(__tmp_4);
+        std::vector<std::string> __tmp_1 = std::vector<std::string>{(::tpy::str_repeat("i", 30))};
+        auto __src_15 = ::tpyapp::main::loop_rebind_gen(__tmp_1);
         auto&& __itr_15 = ::tpy::__iter__(__src_15);
         for (;;) {
             auto __r_16 = __itr_15.__next__();

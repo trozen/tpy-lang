@@ -46,8 +46,7 @@ __coro_bump bump(std::tuple<int32_t, Box*> p) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         b.emplace(Box(5));
-        __coro_arg_0 = std::tuple<int32_t, Box*>{1, &((*b))};
-        __sub_0.emplace(__coro_arg_0);
+        __sub_0.emplace(std::tuple<int32_t, Box*>{1, &((*b))});
         __state = S_RESUME_0;
         continue;
     }

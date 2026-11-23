@@ -40,15 +40,14 @@ void holder_writes(std::optional<std::string_view> s, std::string_view text, int
     h.n64 = ::tpy::__getitem__(wides, 0);
     h.show("holder.writes");
     Keep k = Keep();
-    std::vector<::tpy::Bytes> __tmp_1 = ({
+    k.flat = Flat(({
         std::vector<::tpy::Bytes> __result;
         if (4 > 0) __result.reserve(static_cast<size_t>(4));
         for (int32_t i = 0; i < 4; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
         }
         std::move(__result);
-    });
-    k.flat = Flat(__tmp_1);
+    }));
     std::cout << "holder.ctor_arg_temp" << " " << k.flat.n << "\n" << ::tpy::check_signals;
 }
 
@@ -242,10 +241,8 @@ void ctor_writes() {
     sh.reset(::tpy::as_mut_span(c), none);
     ::tpy::__setitem__(c, 1, 9);
     std::cout << "method.span_loop_param" << " " << ::tpy::__getitem__(sh.sp, 0) << " " << ::tpy::__getitem__(sh.sp, 1) << "\n" << ::tpy::check_signals;
-    std::vector<std::optional<int32_t>> __tmp_1 = {std::nullopt, 5};
-    ::tpyapp::main::opt_loop_param(4, __tmp_1);
-    std::vector<std::optional<int32_t>> __tmp_2 = std::vector<std::optional<int32_t>>{};
-    ::tpyapp::main::opt_loop_param(std::nullopt, __tmp_2);
+    ::tpyapp::main::opt_loop_param(4, {std::nullopt, 5});
+    ::tpyapp::main::opt_loop_param(std::nullopt, std::vector<std::optional<int32_t>>{});
     ::tpyapp::main::view_of_borrow();
 }
 
@@ -255,8 +252,7 @@ void ctor_writes() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = "async";
-        __sub_0.emplace(b, __coro_arg_0, "tx", 3);
+        __sub_0.emplace(b, "async", "tx", 3);
         __state = S_RESUME_0;
         continue;
     }
@@ -299,16 +295,12 @@ __coro_main_coro main_coro(Box& b) {
 //     lambda_reads()
 //     ctor_writes()
 void main() {
-    ::tpy::Union<int32_t, std::string> __tmp_1 = "init";
-    Box b = Box(__tmp_1);
+    Box b = Box(::tpy::Union<int32_t, std::string>("init"));
     b.show("start");
-    std::vector<P> __tmp_2 = {P(5)};
-    b.method_writes("s", ::tpy::bytes_literal_owned("b", 1), "text", 42, static_cast<int64_t>(5000000000), {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "one"}}, __tmp_2, Inner("in"), true);
-    std::vector<P> __tmp_3 = {P(6)};
-    b.method_writes(std::nullopt, std::nullopt, "abc", 7, 1, {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "two"}}, __tmp_3, Inner(std::nullopt), false);
+    b.method_writes("s", ::tpy::bytes_literal_owned("b", 1), "text", 42, static_cast<int64_t>(5000000000), {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "one"}}, ::tpy::as_mut_lvalue(std::vector<P>{P(5)}), Inner("in"), true);
+    b.method_writes(std::nullopt, std::nullopt, "abc", 7, 1, {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "two"}}, ::tpy::as_mut_lvalue(std::vector<P>{P(6)}), Inner(std::nullopt), false);
     {
-        std::string __tmp_4 = "gen";
-        auto __src_0 = b.gen_writes(__tmp_4, "gt", 8);
+        auto __src_0 = b.gen_writes("gen", "gt", 8);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -318,8 +310,7 @@ void main() {
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro(b)));
-    std::vector<std::tuple<::tpy::BigInt, std::string>> __tmp_5 = {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(3), "three"}};
-    ::tpyapp::main::holder_writes("hold", "ht", 9, __tmp_5);
+    ::tpyapp::main::holder_writes("hold", "ht", 9, {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(3), "three"}});
     Keep __slot_1 = Keep();
     Keep* k = &__slot_1;
     k->load(::tpy::bytes_literal("src", 3));
@@ -541,16 +532,15 @@ Built::Built(int32_t n, Src& s, ::tpy::Any p, std::string_view text, P&& own, bo
       other(std::move(own)),
       lim(g_limit),
       lim2((::tpy::add_check<int32_t>(g_limit, 1))),
-      res(((flag) ? (::tpyapp::main::make_res(1)) : (::tpyapp::main::make_res(2)))) {
-    std::vector<::tpy::Bytes> __tmp_1 = ({
-        std::vector<::tpy::Bytes> __result;
-        if (3 > 0) __result.reserve(static_cast<size_t>(3));
-        for (int32_t i = 0; i < 3; ++i) {
-            __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
-        }
-        std::move(__result);
-    });
-    this->flat = Flat(__tmp_1);
+      res(((flag) ? (::tpyapp::main::make_res(1)) : (::tpyapp::main::make_res(2)))),
+      flat(Flat(({
+    std::vector<::tpy::Bytes> __result;
+    if (3 > 0) __result.reserve(static_cast<size_t>(3));
+    for (int32_t i = 0; i < 3; ++i) {
+        __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
+    }
+    std::move(__result);
+}))) {
     int32_t k = (::tpy::mul_check<int32_t>(n, 2));
     this->late = k;
 }
@@ -572,20 +562,21 @@ Built::Built(int32_t n, Src& s, ::tpy::Any p, std::string_view text, P&& own, bo
 //     self.zs = mk(src) or [1]  # tpyc: ok
 //     self.u = union_tag(UA(a + 4))  # tpyc: ok
 //     self.xs = []
-Placed::Placed(int32_t n, int32_t a, const std::vector<int32_t>& src) : ks(({
+Placed::Placed(int32_t n, int32_t a, const std::vector<int32_t>& src)
+    : ks(({
     std::vector<int32_t> __result;
     int32_t __stop_0 = n;
     if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
     for (int32_t i = 0; i < __stop_0; ++i) {
-        std::vector<int32_t> __tmp_1 = {i};
-        __result.push_back(::tpyapp::main::count(__tmp_1));
+        __result.push_back(::tpyapp::main::count({i}));
     }
     std::move(__result);
-})) {
-    std::vector<int32_t> __tmp_2 = {1, 2};
-    this->ys = ({
-        std::vector<int32_t> __result;
-        auto __obj_1 = ::tpyapp::main::mk(__tmp_2);
+})),
+      ys(({
+    std::vector<int32_t> __result;
+    {
+        std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2};
+        auto __obj_1 = ::tpyapp::main::mk(__tmp_1);
         __result.reserve(static_cast<std::size_t>(__obj_1.size()));
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
@@ -593,19 +584,16 @@ Placed::Placed(int32_t n, int32_t a, const std::vector<int32_t>& src) : ks(({
             int32_t x = *__beg_1;
             __result.push_back(x);
         }
-        std::move(__result);
-    });
-    std::vector<int32_t> __tmp_3 = {1, 2};
-    this->n = ::tpyapp::main::count(__tmp_3);
-    std::vector<int32_t> __tmp_4 = {1};
-    std::vector<int32_t> __tmp_5 = ::tpyapp::main::mk(__tmp_4);
-    this->n2 = ::tpyapp::main::count(__tmp_5);
-    auto&& __tmp_6 = ::tpyapp::main::pick(a);
-    this->t = std::tuple<int32_t, int32_t>{(__tmp_6 ? __tmp_6 : 1), 2};
-    auto&& __tmp_7 = ::tpyapp::main::mk(src);
-    this->zs = ((::tpy::__len__(__tmp_7) != 0) ? std::move(__tmp_7) : std::vector<int32_t>{1});
-    UA __tmp_8 = UA((::tpy::add_check<int32_t>(a, 4)));
-    this->u = ::tpyapp::main::union_tag(::tpy::Union<const UA*, const UB*>{&__tmp_8});
+    }
+    std::move(__result);
+})),
+      n(::tpyapp::main::count({1, 2})),
+      n2(::tpyapp::main::count(::tpyapp::main::mk({1}))) {
+    auto&& __tmp_2 = ::tpyapp::main::pick(a);
+    this->t = std::tuple<int32_t, int32_t>{(__tmp_2 ? __tmp_2 : 1), 2};
+    auto&& __tmp_3 = ::tpyapp::main::mk(src);
+    this->zs = ((::tpy::__len__(__tmp_3) != 0) ? std::move(__tmp_3) : std::vector<int32_t>{1});
+    this->u = ::tpyapp::main::union_tag(::tpy::Union<const UA*, const UB*>{&(::tpy::as_mut_lvalue(UA((::tpy::add_check<int32_t>(a, 4)))))});
     this->xs = std::vector<int32_t>{};
 }
 

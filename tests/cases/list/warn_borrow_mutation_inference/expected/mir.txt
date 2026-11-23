@@ -9,11 +9,11 @@ main::mutate_point@41:0: covered (storage: no_proof_required), summary: known
 main::test_non_mutating_no_warn@47:0: certified, summary: opaque (summary output effect)
 main::test_non_mutating_subscript_read@54:0: certified, summary: opaque (summary output effect)
 main::test_mutating_append_warns@63:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::test_mutating_subscript_write_no_warn@70:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::test_mutating_subscript_write_no_warn@70:0: certified, summary: opaque (summary output effect)
 main::test_mutating_del_warns@78:0: certified, summary: opaque (summary output effect)
 main::test_second_param_not_mutated@87:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::test_no_borrow_no_warn@97:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::test_loop_var_non_mutating_callee@105:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::test_loop_var_non_mutating_callee@105:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::test_loop_var_mutating_callee@112:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::add_point_wrapper@121:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::read_wrapper@125:0: covered (storage: no_proof_required), summary: known

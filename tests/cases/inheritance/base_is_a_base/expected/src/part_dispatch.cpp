@@ -30,12 +30,9 @@ int32_t dict_size(const ::tpy::ordered_map<std::string, int32_t>& m) {
 //     c = Counter()
 //     print("dispatch", dict_size(c))  # tpyc: warning(/'Counter' passed as 'dict\[str, int32\]': calls through 'm' run 'dict.__getitem__', not 'Counter.__getitem__'/)
 void dispatch() {
-    Dog __tmp_1 = Dog("rex");
-    std::cout << "dispatch" << " " << ::tpyapp::part_dispatch::animal_name(__tmp_1) << "\n" << ::tpy::check_signals;
-    Quiet __tmp_2 = Quiet("q");
-    std::cout << "dispatch" << " " << ::tpyapp::part_dispatch::animal_name(__tmp_2) << "\n" << ::tpy::check_signals;
-    Cat __tmp_3 = Cat("tom");
-    std::cout << "dispatch" << " " << ::tpyapp::part_dispatch::pet_name(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "dispatch" << " " << ::tpyapp::part_dispatch::animal_name(Dog("rex")) << "\n" << ::tpy::check_signals;
+    std::cout << "dispatch" << " " << ::tpyapp::part_dispatch::animal_name(Quiet("q")) << "\n" << ::tpy::check_signals;
+    std::cout << "dispatch" << " " << ::tpyapp::part_dispatch::pet_name(Cat("tom")) << "\n" << ::tpy::check_signals;
     Counter c = Counter();
     std::cout << "dispatch" << " " << ::tpyapp::part_dispatch::dict_size(c) << "\n" << ::tpy::check_signals;
 }
@@ -62,8 +59,7 @@ int32_t via_spa(SpA& a) {
 // def dyn_override() -> None:
 //     print("dyn-override", via_spa(SpB()))  # tpyc: ok
 void dyn_override() {
-    SpB __tmp_1 = SpB();
-    std::cout << "dyn-override" << " " << ::tpyapp::part_dispatch::via_spa(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "dyn-override" << " " << ::tpyapp::part_dispatch::via_spa(::tpy::as_mut_lvalue(SpB())) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -16,7 +16,7 @@ main::receiver_field@88:0: covered (storage: no_proof_required), conflicts: argu
 main::receiver_slice@93:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 main::other_field@98:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::str_local@103:0: covered (storage: no_proof_required), summary: known
-main::list_copy@109:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::list_copy@109:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::alias_external@129:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: alias_obligation, summary: known
 main::one_line@136:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 main::merge_self@152:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
@@ -31,7 +31,7 @@ main::name_index@217:0: covered (storage: no_proof_required), conflicts: argumen
 main::negative_index@222:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 main::unspelled@241:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 main::renamed@246:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
-main::line_copy@251:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::line_copy@251:0: covered (storage: no_proof_required), summary: known
 main::pick@263:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, alias_obligation, summary: known
 main::caller@270:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 main::put@284:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
@@ -40,7 +40,7 @@ main::same_element@294:0: covered (storage: no_proof_required), conflicts: argum
 main::same_int_element@298:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 main::touch@303:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::element_field@310:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
-main::main@314:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@314:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
 main::H.setname@19:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::Counter.merge_from@146:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::Log.record_first@207:4: covered (storage: no_proof_required), conflicts: argument_alias, summary: known

@@ -89,22 +89,16 @@ namespace tpyapp::main {
 //     print(chained_or_skips_tail([3]))       # 3 (no IndexError on c[1])
 //     print(chained_and_skips_tail([0]))      # 0 (no IndexError on c[1])
 void main() {
-    std::vector<::tpy::BigInt> __tmp_1 = {5};
-    std::vector<::tpy::BigInt> __tmp_2 = std::vector<::tpy::BigInt>{};
-    std::cout << ::tpyapp::main::or_skips_fallible(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_3 = {0};
-    std::vector<::tpy::BigInt> __tmp_4 = std::vector<::tpy::BigInt>{};
-    std::cout << ::tpyapp::main::and_skips_fallible(__tmp_3, __tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_skips_fallible({5}, std::vector<::tpy::BigInt>{}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::and_skips_fallible({0}, std::vector<::tpy::BigInt>{}) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> log1 = std::vector<::tpy::BigInt>{};
     std::cout << ::tpyapp::main::or_skips_side_effect(log1) << " " << ::tpy::__len__(log1) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> log2 = std::vector<::tpy::BigInt>{};
     std::cout << ::tpyapp::main::and_skips_side_effect(log2) << " " << ::tpy::__len__(log2) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> log3 = std::vector<::tpy::BigInt>{};
     std::cout << ::tpyapp::main::and_runs_rhs_when_truthy(log3) << " " << ::tpy::__len__(log3) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_5 = {3};
-    std::cout << ::tpyapp::main::chained_or_skips_tail(__tmp_5) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_6 = {0};
-    std::cout << ::tpyapp::main::chained_and_skips_tail(__tmp_6) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::chained_or_skips_tail({3}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::chained_and_skips_tail({0}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

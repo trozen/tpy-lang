@@ -78,27 +78,12 @@ int32_t subscript_recv_test(const std::vector<Scalar>& hs) {
 //           subscript_recv_test([Scalar(0)]), subscript_recv_test([Scalar(5)]))
 //     print("method", Reader(None).has(), Reader(Node(3)).has())
 void main() {
-    Holder __tmp_1 = Holder(nullptr);
-    Node __tmp_2 = Node(3);
-    Holder __tmp_3 = Holder(&(__tmp_2));
-    std::cout << "field" << " " << ::tpyapp::main::field_test(__tmp_1) << " " << ::tpyapp::main::field_test(__tmp_3) << "\n" << ::tpy::check_signals;
-    Holder __tmp_4 = Holder(nullptr);
-    Node __tmp_5 = Node(3);
-    Holder __tmp_6 = Holder(&(__tmp_5));
-    std::cout << "while" << " " << ::tpyapp::main::while_test(__tmp_4) << " " << ::tpyapp::main::while_test(__tmp_6) << "\n" << ::tpy::check_signals;
-    Outer __tmp_7 = Outer(Holder(nullptr));
-    Node __tmp_8 = Node(3);
-    Outer __tmp_9 = Outer(Holder(&(__tmp_8)));
-    std::cout << "chain" << " " << ::tpyapp::main::chain_test(__tmp_7) << " " << ::tpyapp::main::chain_test(__tmp_9) << "\n" << ::tpy::check_signals;
-    std::vector<std::optional<Node>> __tmp_10 = {std::nullopt};
-    std::vector<std::optional<Node>> __tmp_11 = {Node(3)};
-    std::cout << "elem" << " " << ::tpyapp::main::elem_test(__tmp_10) << " " << ::tpyapp::main::elem_test(__tmp_11) << "\n" << ::tpy::check_signals;
-    std::vector<Scalar> __tmp_12 = {Scalar(std::nullopt)};
-    std::vector<Scalar> __tmp_13 = {Scalar(0)};
-    std::vector<Scalar> __tmp_14 = {Scalar(5)};
-    std::cout << "subrecv" << " " << ::tpyapp::main::subscript_recv_test(__tmp_12) << " " << ::tpyapp::main::subscript_recv_test(__tmp_13) << " " << ::tpyapp::main::subscript_recv_test(__tmp_14) << "\n" << ::tpy::check_signals;
-    Node __tmp_15 = Node(3);
-    std::cout << "method" << " " << Reader(nullptr).has() << " " << Reader(&(__tmp_15)).has() << "\n" << ::tpy::check_signals;
+    std::cout << "field" << " " << ::tpyapp::main::field_test(Holder(nullptr)) << " " << ::tpyapp::main::field_test(Holder(&::tpy::as_mut_lvalue(Node(3)))) << "\n" << ::tpy::check_signals;
+    std::cout << "while" << " " << ::tpyapp::main::while_test(::tpy::as_mut_lvalue(Holder(nullptr))) << " " << ::tpyapp::main::while_test(::tpy::as_mut_lvalue(Holder(&::tpy::as_mut_lvalue(Node(3))))) << "\n" << ::tpy::check_signals;
+    std::cout << "chain" << " " << ::tpyapp::main::chain_test(Outer(Holder(nullptr))) << " " << ::tpyapp::main::chain_test(Outer(Holder(&::tpy::as_mut_lvalue(Node(3))))) << "\n" << ::tpy::check_signals;
+    std::cout << "elem" << " " << ::tpyapp::main::elem_test({std::nullopt}) << " " << ::tpyapp::main::elem_test({Node(3)}) << "\n" << ::tpy::check_signals;
+    std::cout << "subrecv" << " " << ::tpyapp::main::subscript_recv_test({Scalar(std::nullopt)}) << " " << ::tpyapp::main::subscript_recv_test({Scalar(0)}) << " " << ::tpyapp::main::subscript_recv_test({Scalar(5)}) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Reader(nullptr).has() << " " << Reader(&::tpy::as_mut_lvalue(Node(3))).has() << "\n" << ::tpy::check_signals;
 }
 
 // main()

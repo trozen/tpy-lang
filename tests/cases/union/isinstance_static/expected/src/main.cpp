@@ -96,10 +96,8 @@ void main() {
     std::cout << ::tpy::print_bool(::tpyapp::main::mismatch(1)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpyapp::main::tuple_contains(1)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpyapp::main::tuple_miss(1)) << "\n" << ::tpy::check_signals;
-    A __tmp_1 = A(::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::record_self(__tmp_1) << "\n" << ::tpy::check_signals;
-    A __tmp_2 = A(::tpy::BigInt(8));
-    std::cout << ::tpyapp::main::record_other(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::record_self(A(::tpy::BigInt(7))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::record_other(A(::tpy::BigInt(8))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpyapp::main::negate(1)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpyapp::main::compound(1, true)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpyapp::main::compound(1, false)) << "\n" << ::tpy::check_signals;

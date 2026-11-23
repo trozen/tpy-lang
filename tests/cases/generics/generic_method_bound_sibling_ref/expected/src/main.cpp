@@ -9,8 +9,7 @@ namespace tpyapp::main {
 //     print(r.pick[int32, IntBox](IntBox(42)))   # tpyc: ok
 void main() {
     Runner r = Runner();
-    IntBox __tmp_1 = IntBox(42);
-    std::cout << r.pick<int32_t, IntBox>(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << r.pick<int32_t, IntBox>(::tpy::as_mut_lvalue(IntBox(42))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

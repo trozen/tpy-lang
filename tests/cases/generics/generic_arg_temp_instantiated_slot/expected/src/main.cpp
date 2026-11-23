@@ -55,8 +55,7 @@ void view_source(std::string_view k) {
 //     # `ref_lvalue`, whose source is a name).
 //     print("ref_rvalue", anyslot("ref", mk_cell()))  # tpyc: ok
 void ref_rvalue() {
-    Cell __tmp_1 = ::tpyapp::main::mk_cell();
-    std::cout << "ref_rvalue" << " " << ::tpy::print_bool(::tpyapp::main::anyslot<Cell>("ref", __tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << "ref_rvalue" << " " << ::tpy::print_bool(::tpyapp::main::anyslot<Cell>("ref", ::tpy::as_mut_lvalue(::tpyapp::main::mk_cell()))) << "\n" << ::tpy::check_signals;
 }
 
 // def ref_lvalue() -> None:

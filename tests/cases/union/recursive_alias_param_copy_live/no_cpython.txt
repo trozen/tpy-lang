@@ -1,0 +1,1 @@
+The callee writes the copy a live argument's recursive-alias wrapper holds, where CPython writes the caller's object; the copy warning is the declared difference (BUGS.md#record-at-recursive-alias-param-copied).

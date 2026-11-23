@@ -35,10 +35,8 @@ void s_free() {
     ::tpyapp::main::f_grow(h.get_rect());
     ::tpyapp::main::f_grow(h.prect());
     std::cout << "free grow" << " " << h.rect.w << " " << h.inner.rect.w << " " << ::tpy::__getitem__(xs, 1).w << " " << ::tpy::__getitem__(d, "a").w << "\n" << ::tpy::check_signals;
-    Rect __tmp_1 = Rect(8, 9);
-    std::cout << "free fresh" << " " << ::tpyapp::main::f_area(__tmp_1) << "\n" << ::tpy::check_signals;
-    Rect __tmp_2 = Rect(1, 1);
-    ::tpyapp::main::f_grow(__tmp_2);
+    std::cout << "free fresh" << " " << ::tpyapp::main::f_area(::tpy::as_mut_lvalue(Rect(8, 9))) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::f_grow(::tpy::as_mut_lvalue(Rect(1, 1)));
 }
 
 // def s_value() -> None:
@@ -96,11 +94,9 @@ void s_resumable() {
 //     print("overload const", OvReader().w_of(Wide(4)), OvReader().w_of(Wide(5), 1))  # tpyc: ok
 void s_overload() {
     Rect r = Rect(1, 2);
-    Rect __tmp_1 = Rect(3, 3);
-    std::cout << "overload" << " " << ::tpyapp::main::ov_grow__Growable(r) << " " << ::tpyapp::main::ov_grow__Growable__int32(r, 5) << " " << ::tpyapp::main::ov_grow__Growable(__tmp_1) << " " << r.w << "\n" << ::tpy::check_signals;
+    std::cout << "overload" << " " << ::tpyapp::main::ov_grow__Growable(r) << " " << ::tpyapp::main::ov_grow__Growable__int32(r, 5) << " " << ::tpyapp::main::ov_grow__Growable(::tpy::as_mut_lvalue(Rect(3, 3))) << " " << r.w << "\n" << ::tpy::check_signals;
     OvMeter m = OvMeter();
-    Rect __tmp_2 = Rect(2, 2);
-    std::cout << "overload method" << " " << m.area_of__HasArea(__tmp_2) << " " << m.area_of__HasArea__int32(r, 1) << "\n" << ::tpy::check_signals;
+    std::cout << "overload method" << " " << m.area_of__HasArea(::tpy::as_mut_lvalue(Rect(2, 2))) << " " << m.area_of__HasArea__int32(r, 1) << "\n" << ::tpy::check_signals;
     std::cout << "overload const" << " " << OvReader().w_of__ReadsW(Wide(4)) << " " << OvReader().w_of__ReadsW__int32(Wide(5), 1) << "\n" << ::tpy::check_signals;
 }
 
@@ -120,9 +116,7 @@ void s_span() {
 //     # @readonly overload stubs: a fresh argument binds the const parameter.
 //     print("declared", ro_area(Rect(1, 1)), ro_area(Rect(1, 1), 2))  # tpyc: ok
 void s_declared() {
-    Rect __tmp_1 = Rect(1, 1);
-    Rect __tmp_2 = Rect(1, 1);
-    std::cout << "declared" << " " << ::tpyapp::main::ro_area__HasArea(__tmp_1) << " " << ::tpyapp::main::ro_area__HasArea__int32(__tmp_2, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "declared" << " " << ::tpyapp::main::ro_area__HasArea(Rect(1, 1)) << " " << ::tpyapp::main::ro_area__HasArea__int32(Rect(1, 1), 2) << "\n" << ::tpy::check_signals;
 }
 
 // def s_redeclared() -> None:
@@ -131,8 +125,7 @@ void s_declared() {
 //     print("redeclared", through_sees(w), through_sees(Wide(7)))  # tpyc: ok
 void s_redeclared() {
     Wide w = Wide(6);
-    Wide __tmp_1 = Wide(7);
-    std::cout << "redeclared" << " " << ::tpyapp::main::through_sees(w) << " " << ::tpyapp::main::through_sees(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "redeclared" << " " << ::tpyapp::main::through_sees(w) << " " << ::tpyapp::main::through_sees(Wide(7)) << "\n" << ::tpy::check_signals;
 }
 
 // def s_method() -> None:
@@ -197,8 +190,7 @@ void s_ctor() {
 //     # when the operand runs.
 //     return b or f_area(Loud(7)) > 0  # tpyc: ok
 bool s_cond(bool b) {
-    std::optional<Loud> __tmp_1;
-    return (b || (__tmp_1.emplace(Loud(7)), (::tpyapp::main::f_area((*__tmp_1)) > 0)));
+    return (b || (::tpyapp::main::f_area(::tpy::as_mut_lvalue(Loud(7))) > 0));
 }
 
 // def s_kept() -> None:
@@ -209,9 +201,8 @@ bool s_cond(bool b) {
 //     print("span", sum_span(ys))  # tpyc: ok
 void s_kept() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    auto __tmp_1 = std::array<int32_t, 2>{1, 2};
-    auto __tmp_2 = ::tpy::dict_keys(d);
-    std::cout << "kept" << " " << ::tpyapp::main::m_len(std::string_view("hello")) << " " << Lens().m_len(__tmp_1) << " " << ::tpyapp::main::m_len(__tmp_2) << "\n" << ::tpy::check_signals;
+    auto __tmp_1 = ::tpy::dict_keys(d);
+    std::cout << "kept" << " " << ::tpyapp::main::m_len(std::string_view("hello")) << " " << Lens().m_len(std::array<int32_t, 2>{1, 2}) << " " << ::tpyapp::main::m_len(__tmp_1) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> ys = {1, 2, 3};
     std::cout << "span" << " " << ::tpyapp::main::sum_span(ys) << "\n" << ::tpy::check_signals;
 }

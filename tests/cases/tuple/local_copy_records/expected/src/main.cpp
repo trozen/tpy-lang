@@ -519,8 +519,7 @@ void main() {
     ::tpyapp::main::walrus(std::tuple<const A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)});
     ::tpyapp::main::unpack(std::tuple<const A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)});
     Box(3).snap();
-    A __tmp_1 = A(10);
-    ::tpyapp::main::closure(__tmp_1);
+    ::tpyapp::main::closure(::tpy::as_mut_lvalue(A(10)));
     ::tpyapp::main::loop(std::tuple<const A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)});
     ::tpyapp::main::arm(1, std::tuple<const A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)});
     ::tpyapp::main::arm(2, std::tuple<const A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)});

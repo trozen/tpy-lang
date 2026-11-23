@@ -21,8 +21,7 @@ namespace tpyapp::main {
 //     print(args.mode)
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = {"--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"};
-    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1({"--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"});
     if (!((args.tag.has_value()))) ::tpy::raise_assertion_error();
     if (!((args.num.has_value()))) ::tpy::raise_assertion_error();
     std::cout << ::tpy::__getitem__((*args.tag), 0) << "\n" << ::tpy::check_signals;

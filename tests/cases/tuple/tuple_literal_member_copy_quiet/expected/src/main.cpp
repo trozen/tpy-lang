@@ -205,10 +205,8 @@ void main() {
         }
     }
     ::tpyapp::main::arg_quiet();
-    C __tmp_1 = C(3);
-    ::tpyapp::main::setitem_quiet(__tmp_1);
-    H __tmp_2 = H();
-    ::tpyapp::main::field_quiet(__tmp_2);
+    ::tpyapp::main::setitem_quiet(::tpy::as_mut_lvalue(C(3)));
+    ::tpyapp::main::field_quiet(::tpy::as_mut_lvalue(H()));
     ::tpyapp::main::local_alias();
     ::tpyapp::main::walrus_alias();
 }

@@ -27,12 +27,9 @@ namespace tpyapp::main {
 //     print(pick(B(2)))
 //     print(pick(C(3)))
 void main() {
-    A __tmp_1 = A(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::pick(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    B __tmp_2 = B(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::pick(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
-    C __tmp_3 = C(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::pick(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(1))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(2))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(C(::tpy::BigInt(3))))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -39,10 +39,8 @@ void main() {
     ::tpy::Adapter<::tpyapp::pet::Pet, Cat> __slot_2{Cat()};
     ::tpyapp::pet::Pet* cat = &__slot_2;
     std::cout << cat->speak() << "\n" << ::tpy::check_signals;
-    Dog __tmp_1{Dog()};
-    ::tpyapp::main::greet(__tmp_1);
-    ::tpy::Adapter<::tpyapp::pet::Pet, Cat> __tmp_2{Cat()};
-    ::tpyapp::main::greet(__tmp_2);
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(Dog{Dog()}));
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(::tpy::Adapter<::tpyapp::pet::Pet, Cat>{Cat()}));
     ::tpyapp::pet::Pet* p = &::tpyapp::main::echo((*dog));
     std::cout << p->speak() << "\n" << ::tpy::check_signals;
 }

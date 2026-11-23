@@ -138,8 +138,7 @@ void main() {
     ::tpyapp::part_ref::pick_lambda();
     ::tpyapp::part_ref::last_lambda();
     ::tpyapp::part_ref::lend3();
-    std::vector<std::string> __tmp_1 = {"a", "b", "c"};
-    std::cout << "ref-str" << " " << ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<std::string>(concat, __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "ref-str" << " " << ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<std::string>(concat, ::tpy::as_mut_lvalue(std::vector<std::string>{"a", "b", "c"})) << "\n" << ::tpy::check_signals;
     ::tpyapp::part_ref::empty();
 }
 

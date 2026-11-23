@@ -62,8 +62,7 @@ void main() {
     ::tpyapp::main::dict_value(src);
     ::tpyapp::main::via_append(src);
     ::tpyapp::main::exempt_fresh(0);
-    P __tmp_1 = P(8);
-    ::tpyapp::main::exempt_copy(__tmp_1);
+    ::tpyapp::main::exempt_copy(P(8));
 }
 
 // main()

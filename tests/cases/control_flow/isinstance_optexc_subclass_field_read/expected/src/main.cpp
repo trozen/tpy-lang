@@ -28,10 +28,8 @@ std::string describe(Event* e) {
 //     print(describe(ClickEvent(3, 7)))
 void main() {
     std::cout << ::tpyapp::main::describe(nullptr) << "\n" << ::tpy::check_signals;
-    Event __tmp_1 = Event();
-    std::cout << ::tpyapp::main::describe(&(__tmp_1)) << "\n" << ::tpy::check_signals;
-    ClickEvent __tmp_2 = ClickEvent(::tpy::BigInt(3), ::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::describe(&(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(&::tpy::as_mut_lvalue(Event())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(&::tpy::as_mut_lvalue(ClickEvent(::tpy::BigInt(3), ::tpy::BigInt(7)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

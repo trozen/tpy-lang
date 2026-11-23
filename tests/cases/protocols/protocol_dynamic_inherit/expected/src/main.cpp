@@ -24,8 +24,7 @@ void use_dog(Dog& d) {
 //     pet: Pet = Dog()
 //     print(pet.make_noise())  # virtual dispatch via pointer-local
 void main() {
-    Dog __tmp_1{Dog()};
-    ::tpyapp::main::greet(__tmp_1);
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(Dog{Dog()}));
     Dog d = Dog();
     ::tpyapp::main::greet(d);
     ::tpyapp::main::use_dog(d);

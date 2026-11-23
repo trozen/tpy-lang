@@ -137,8 +137,7 @@ inline C::C() : base(0.5) {}
 //     # method: a generic call inside a method body
 //     return first_of([1.5, 2.5]) + self.base  # tpyc: ok
 inline double C::body() const {
-    std::vector<double> __tmp_1 = {1.5, 2.5};
-    return ((::tpyapp::main::first_of<double>(__tmp_1)) + (this->base));
+    return ((::tpyapp::main::first_of<double>(::tpy::as_mut_lvalue(std::vector<double>{1.5, 2.5}))) + (this->base));
 }
 
 // def pick[T](self, xs: list[T]) -> T:

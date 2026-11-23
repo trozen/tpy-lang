@@ -65,6 +65,8 @@ _SELFCHECKS = [
      "dict.get(key, default) returns the stored value or the default itself over reference types, by value otherwise"),
     ("test_assert_lent.cpp",
      "a call bound as a borrow passes through assert_lent as the same object in the same const-ness"),
+    ("test_as_mut_lvalue.cpp",
+     "a fresh argument binds a written or address-taken parameter as itself, alive to the end of its full-expression"),
     ("test_text_optional_ptr.cpp",
      "optionals, pointers and union pointer alternatives render None or their payload, never an address"),
     ("test_none_access_host.cpp",
@@ -201,6 +203,21 @@ def test_no_signals_leaves_the_embedding_api_undeclared(request, tmp_path):
                                   capture_output=True, text=True)
     assert compiled_out.returncode != 0
     assert "request_interrupt" in compiled_out.stderr, compiled_out.stderr
+
+
+def test_as_mut_lvalue_rejects_a_const_lvalue(request, tmp_path):
+    """A const lvalue must not be handed out as mutable: the helper takes
+    rvalues and mutable lvalues only."""
+    if request.config.getoption("--no-exec"):
+        pytest.skip("--no-exec builds nothing")
+    src = tmp_path / "lv.cpp"
+    src.write_text('#include "tpy/tpy.hpp"\n'
+                   "int use(const int& x) { return tpy::as_mut_lvalue(x); }\n")
+    cmd = [*CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}", "-I", str(RUNTIME_DIR),
+           "-c", str(src), "-o", str(tmp_path / "lv.o")]
+    build = subprocess.run(cmd, capture_output=True, text=True)
+    assert build.returncode != 0
+    assert "as_mut_lvalue" in build.stderr, build.stderr
 
 
 @pytest.mark.parametrize("result", ["P", "const P", "P&&"])

@@ -240,13 +240,13 @@ struct __coro_a_dead {
 struct __coro_a_main {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::frame_slot<Indices> __coro_arg_0;
     int32_t __await_lift_0;
-    ::tpy::frame_slot<Indices> __coro_arg_1;
     int32_t __await_lift_1;
     int32_t __await_lift_2;
-    std::optional<__coro_a_first<::tpy::await_arg_capture_t<decltype(((*__coro_arg_0)))>>> __sub_0;
-    std::optional<__coro_a_first<::tpy::await_arg_capture_t<decltype(((*__coro_arg_1)))>>> __sub_1;
+    ::tpy::frame_slot<Indices> __head_arg_0;
+    ::tpy::frame_slot<Indices> __head_arg_1;
+    std::optional<__coro_a_first<::tpy::await_arg_capture_t<decltype((std::declval<Indices&>()))>>> __sub_0;
+    std::optional<__coro_a_first<::tpy::await_arg_capture_t<decltype((std::declval<Indices&>()))>>> __sub_1;
     std::optional<__coro_a_dead> __sub_2;
 
     enum : int32_t {

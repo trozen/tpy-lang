@@ -20,10 +20,8 @@ void connect(std::string_view host, const Options& kwargs) {
 //     # host as keyword alongside kwargs
 //     connect(host="example.com", port=int32(443), debug=True)
 void main() {
-    Options __tmp_1 = Options(9090, false);
-    ::tpyapp::main::connect("localhost", __tmp_1);
-    Options __tmp_2 = Options(443, true);
-    ::tpyapp::main::connect("example.com", __tmp_2);
+    ::tpyapp::main::connect("localhost", Options(9090, false));
+    ::tpyapp::main::connect("example.com", Options(443, true));
 }
 
 // main()

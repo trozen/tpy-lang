@@ -38,15 +38,11 @@ void main() {
     __slot_2.emplace(Ratio(42));
     c = &*__slot_2;
     std::cout << c->get() << "\n" << ::tpy::check_signals;
-    ::tpy::Adapter<Container<int32_t>, Box> __tmp_1{Box(100)};
-    ::tpyapp::main::show(__tmp_1);
+    ::tpyapp::main::show(::tpy::as_mut_lvalue(::tpy::Adapter<Container<int32_t>, Box>{Box(100)}));
     Ratio r = Ratio(99);
-    ::tpy::RefAdapter<Container<int32_t>, Ratio> __tmp_2{r};
-    ::tpyapp::main::show(__tmp_2);
-    ::tpy::RefAdapter<Container<int32_t>, Ratio> __tmp_3{r};
-    ::tpyapp::main::bump(__tmp_3);
-    ::tpy::RefAdapter<Container<int32_t>, Ratio> __tmp_4{r};
-    ::tpyapp::main::show(__tmp_4);
+    ::tpyapp::main::show(::tpy::as_mut_lvalue(::tpy::RefAdapter<Container<int32_t>, Ratio>{r}));
+    ::tpyapp::main::bump(::tpy::as_mut_lvalue(::tpy::RefAdapter<Container<int32_t>, Ratio>{r}));
+    ::tpyapp::main::show(::tpy::as_mut_lvalue(::tpy::RefAdapter<Container<int32_t>, Ratio>{r}));
 }
 
 // main()

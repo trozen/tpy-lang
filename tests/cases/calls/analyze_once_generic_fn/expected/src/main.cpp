@@ -59,8 +59,7 @@ void main() {
     std::cout << "fstring:" << " " << ::tpyapp::main::g<std::string>(std::format("{}", std::move(*c).take().v)) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_6;
     c = &*(__slot_6 = B(7));
-    std::vector<int32_t> __tmp_1 = {std::move(*c).take().v};
-    std::cout << "list:" << " " << ::tpyapp::main::first<int32_t>(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "list:" << " " << ::tpyapp::main::first<int32_t>(::tpy::as_mut_lvalue(std::vector<int32_t>{std::move(*c).take().v})) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_7;
     c = &*(__slot_7 = B(9));
     std::cout << "tuple:" << " " << std::get<0>(::tpyapp::main::g<std::tuple<int32_t, std::string>>(std::tuple<int32_t, std::string>{std::move(*c).take().v, "s"})) << "\n" << ::tpy::check_signals;

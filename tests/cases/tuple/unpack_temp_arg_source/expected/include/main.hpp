@@ -192,8 +192,7 @@ inline void Cm::__exit__(std::monostate et, const ::tpy::BaseException* ev, std:
 //     a, b = f(M())  # tpyc: ok
 //     self.s = a + b
 inline K::K() {
-    M __tmp_1 = M();
-    auto __tup_1 = ::tpyapp::main::f(__tmp_1);
+    auto __tup_1 = ::tpyapp::main::f(M());
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
     this->s = ((a) + (b));
@@ -204,8 +203,7 @@ inline K::K() {
 //     a, b = f(M())  # tpyc: ok
 //     return a + b + self.s
 inline ::tpy::BigInt K::run() const {
-    M __tmp_1 = M();
-    auto __tup_1 = ::tpyapp::main::f(__tmp_1);
+    auto __tup_1 = ::tpyapp::main::f(M());
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
     return ((((a) + (b))) + (this->s));

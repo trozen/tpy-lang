@@ -191,7 +191,7 @@ void free_function() {
     ::tpyapp::main::bump("free Bag.drain", bd.drain());
     std::vector<std::vector<int32_t>> fd = {{11}};
     ::tpyapp::main::bump("free filter drain", ::tpy::builtin_filter(keep, ::tpyapp::main::each_lent<std::vector<int32_t>>(fd)));
-    std::vector<std::vector<int32_t>> __tmp_7 = {{12}};
+    std::vector<std::vector<int32_t>> __tmp_7 = std::vector<std::vector<int32_t>>{{12}};
     ::tpyapp::main::bump("free from_param", ::tpyapp::main::from_param(__tmp_7));
     std::vector<std::vector<int32_t>> gl = {{13}};
     ::tpyapp::main::bump("free genexpr", ::tpyapp::main::__genexpr_free_function_1(gl));

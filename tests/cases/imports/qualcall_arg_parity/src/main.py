@@ -35,8 +35,7 @@ class GBox[T]:
         return 7
 
 
-def tick(tag: str, n: int) -> int:
-    print(tag, n)
+def quiet(n: int) -> int:
     return n
 
 
@@ -102,13 +101,13 @@ def main() -> None:
     print("dispatch", pets.ov("abc"), K.sov("abc"))  # tpyc: ok
     # @dispatch on a GENERIC record's method: the same `str` pick.
     print("generic_dispatch", GBox(1).ov("abc"))  # tpyc: ok
-    # argument order with the literal FIRST: its hoisted element runs before
-    # the later argument, as in CPython -- in both spellings (a literal in a
-    # later position runs first too: BUGS.md#subexpression-right-to-left-eval).
-    n = seq([tick("order_free", 1)], tick("order_free", 2))  # tpyc: ok
+    # a literal argument with a call element beside a call argument, in both
+    # spellings: both bind inline, so they run in the C++ compiler's order
+    # (BUGS.md#subexpression-right-to-left-eval). `quiet` does not print, as
+    # output.txt must not pin a toolchain-dependent order; the render is the pin.
+    n = seq([quiet(1)], quiet(2))  # tpyc: ok
     print("order_free", n)
-    n = pets.seq([tick("order_qualified", 1)],
-                 tick("order_qualified", 2))  # tpyc: ok
+    n = pets.seq([quiet(1)], quiet(2))  # tpyc: ok
     print("order_qualified", n)
     # generator factory: a str / bytes literal at a view slot is static
     # storage, so it passes bare (no owned temp) and the frame, drained a

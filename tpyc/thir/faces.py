@@ -136,9 +136,13 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # native insert's owned parameter
     "coerce.into_dyn_handle",       # a bound coroutine handle erased into
                                     # `make_adapter<Base>(std::move(*(c)))`
+    "arg.inline_lend",              # a fresh arg bound inline for a `T&` / pointer
+    "arg.dyn_adapter_inline",       # a @dynamic slot's adapter built inline
+    "arg.protocol_inline",          # a fresh arg at a const structural slot
+    "arg.head_kept",                # a compound head's fresh arg, kept for it
+    "arg.head_kept_frame",          # ... on the frame, across a suspension
+    "arg.head_root_enclosed",       # ... in the enclosing scope, for a name read after
     "argtemp.arg_copy",             # a `T&&` parameter's copy, held + moved
-    "argtemp.arg_lend",             # storage held for a `T&` / pointer lend
-    "argtemp.arg_hold",             # a fresh object held for a reference param
                                     # `auto __tmp_N = <call>;` + move hoist
     "argtemp.own_proto_container",  # still-live container name at an
                                     # Own[protocol] slot: auto copy temp + move
@@ -908,11 +912,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # member call over the BasicSlice initializer
     # (`a.__getitem__(::tpy::BasicSlice{1, 4})`).
     "subscript.record_slice_method",
-    # A generator-method ctor-rvalue receiver lifted into a named local
-    # (`Counter __tmp_N = Counter(..);` + `__tmp_N.each()`) -- the frame
-    # captures the receiver by reference, so the temporary must outlive the
-    # call (the is_temporary lift at a method receiver).
-    "method.gen_recv_temp",
     # `Color[name]` enum name lookup -> `::tpy::EnumUtil<E>::from_name(name)`
     # (lowering; a static lookup panicking KeyError on miss).
     "subscript.enum_from_name",
@@ -1983,7 +1982,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "with.manager_borrowed_field",  # field-access lvalue manager: `auto& __ctx_N = <obj>.f;`
     "with.manager_borrowed_getter",  # its accessor spelling: a getter returning a reference into the receiver
     "with.manager_owned",           # rvalue manager: `auto __ctx_N = ...`
-    "with.manager_hoist",           # kept owned manager: `__slot_N.emplace(...)` + `auto& __ctx_N = (*__slot_N);`
+    "with.manager_hoist",           # kept owned manager: `auto& __ctx_N = __slot_N.emplace(...);` (the enclosed root's seat)
     "with.manager_deref",           # pointer-local manager: `*(...)` deref
     "with.as_value",                # `auto <name> = __enter__();`
     "with.as_ref",                  # `auto& <name> = __enter__();`
@@ -2326,6 +2325,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # via self_type alone, is_method clear
     "argtemp.genexpr_proto",        # genexpr at a structural protocol slot:
                                     # the un-spelled auto frame temp
+    "argtemp.comprehension_proto",  # container comprehension at a structural
+                                    # protocol slot: its own container held
+                                    # in the un-spelled auto temp
     "method.array_value_ret",       # VALUE Array method result lands bare
                                     # (std::array prvalue, span-like)
     "call.array_value_ret",         # ... and the free-call twin

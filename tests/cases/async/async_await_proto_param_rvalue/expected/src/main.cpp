@@ -20,8 +20,7 @@ std::vector<int32_t> make_it() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(::tpyapp::main::make_it());
-        __sub_0.emplace((*__coro_arg_0));
+        __sub_0.emplace(__head_arg_0.emplace(::tpyapp::main::make_it()));
         __state = S_RESUME_0;
         continue;
     }

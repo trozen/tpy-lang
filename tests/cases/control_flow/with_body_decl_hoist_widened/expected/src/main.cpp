@@ -131,19 +131,18 @@ int32_t nonvalue_in_branch(int32_t n) {
 //         with Node(10) as inner:
 //             print(inner.n)
 //         # An rvalue reseat of the hoisted pointer name, alongside the kept
-//         # manager of the inner with: two function-top slots.
+//         # manager of the inner with: a function-top slot and a root slot.
 //         inner = inner.next()
 //         print(outer.n)
 //     return inner.n
 int32_t kept_manager_and_reseat() {
     std::optional<Node> __slot_1;
-    std::optional<Node> __slot_2;
     Node* inner;
+    std::optional<Node> __with_root_0;
     auto __ctx_5 = Node(1);
     auto& outer = __ctx_5.__enter__();
     try {
-        __slot_1.emplace(Node(10));
-        auto& __ctx_6 = (*__slot_1);
+        auto& __ctx_6 = __with_root_0.emplace(10);
         inner = &(__ctx_6.__enter__());
         try {
             std::cout << inner->n << "\n" << ::tpy::check_signals;
@@ -157,7 +156,7 @@ int32_t kept_manager_and_reseat() {
         }
         __with_exit_6:
         __ctx_6.__exit__({}, nullptr, {});
-        inner = &*(__slot_2 = inner->next());
+        inner = &*(__slot_1 = inner->next());
         std::cout << outer.n << "\n" << ::tpy::check_signals;
         goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {

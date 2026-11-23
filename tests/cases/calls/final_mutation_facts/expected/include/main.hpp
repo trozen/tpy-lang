@@ -329,8 +329,7 @@ inline HolderLate::HolderLate(Inner& inner) {
 //     h = HolderDirect(Inner(5))  # tpyc: ok
 //     return h.n
 inline ::tpy::BigInt Maker::make() const {
-    Inner __tmp_1 = Inner(::tpy::BigInt(5));
-    HolderDirect h = HolderDirect(__tmp_1);
+    HolderDirect h = HolderDirect(::tpy::as_mut_lvalue(Inner(::tpy::BigInt(5))));
     return h.n;
 }
 

@@ -125,12 +125,7 @@ void drive(const std::vector<int32_t>& xs, const std::vector<std::string>& ss, s
 // def main() -> None:
 //     drive([7, 8], ["hi", "yo"], [Point(1), Point(2)], [[1, 2]], {"k": 3})
 void main() {
-    std::vector<int32_t> __tmp_1 = {7, 8};
-    std::vector<std::string> __tmp_2 = {"hi", "yo"};
-    std::vector<Point> __tmp_3 = {Point(1), Point(2)};
-    std::vector<std::vector<int32_t>> __tmp_4 = {{1, 2}};
-    ::tpy::ordered_map<std::string, int32_t> __tmp_5 = ::tpy::ordered_map<std::string, int32_t>({{"k", 3}});
-    ::tpyapp::main::drive(__tmp_1, __tmp_2, __tmp_3, __tmp_4, __tmp_5);
+    ::tpyapp::main::drive({7, 8}, {"hi", "yo"}, ::tpy::as_mut_lvalue(std::vector<Point>{Point(1), Point(2)}), ::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}}), ::tpy::ordered_map<std::string, int32_t>({{"k", 3}}));
 }
 
 // main()

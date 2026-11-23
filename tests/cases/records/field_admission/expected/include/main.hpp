@@ -721,7 +721,6 @@ struct __coro_main_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     Box& b;
-    std::string __coro_arg_0;
     std::optional<__coro_Box_async_writes> __sub_0;
 
     enum : int32_t {
@@ -816,15 +815,14 @@ inline Keep::Keep()
 //     print("method.adjacent", self.ba, self.flat.n)
 inline void Keep::load(::tpy::BytesView src) {
     this->ba = ::tpy::ByteArray(src);
-    std::vector<::tpy::Bytes> __tmp_1 = ({
+    this->flat = Flat(({
         std::vector<::tpy::Bytes> __result;
         if (5 > 0) __result.reserve(static_cast<size_t>(5));
         for (int32_t i = 0; i < 5; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
         }
         std::move(__result);
-    });
-    this->flat = Flat(__tmp_1);
+    }));
     std::cout << "method.adjacent" << " " << ::tpy::print_optional_val<::tpy::ByteArrayPrinter, ::tpy::ByteArray>(this->ba) << " " << this->flat.n << "\n" << ::tpy::check_signals;
 }
 
@@ -917,8 +915,7 @@ inline UB::UB(int32_t v) : v(v) {}
 //     self.xs = [count([1, 2]), 3]  # tpyc: ok
 //     print("method.literal_arg_temp", self.xs)
 inline void Placed::fill() {
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    this->xs = {::tpyapp::main::count(__tmp_1), 3};
+    this->xs = {::tpyapp::main::count({1, 2}), 3};
     std::cout << "method.literal_arg_temp" << " " << ::tpy::ListPrinter(this->xs) << "\n" << ::tpy::check_signals;
 }
 

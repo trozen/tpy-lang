@@ -519,7 +519,11 @@ void temp_del() {
 //     # call and a borrowed parameter on it copy nothing
 //     HD(mka(27)).a.bump()  # tpyc: ok
 //     mkld("temp_del_reads_list").xs.append(4)  # tpyc: ok
-//     print("temp_del_reads", grow(mkld("temp_del_reads_grow").xs))  # tpyc: ok
+//     # the owner dies with the statement, after the call (CPython drops it at
+//     # the attribute read): the count is bound first so the output does not
+//     # depend on where the `__del__` runs, which is no contract
+//     g = grow(mkld("temp_del_reads_grow").xs)  # tpyc: ok
+//     print("temp_del_reads", g)
 //     # a local bound to one copies nothing either: it takes the member as
 //     # the temporary hands it over (BUGS.md#temporary-finalized-owner-member-moved)
 //     x = mkld("temp_del_reads_local").xs  # tpyc: ok
@@ -527,8 +531,8 @@ void temp_del() {
 void temp_del_reads() {
     HD(::tpyapp::main::mka(27)).a.bump();
     ::tpyapp::main::mkld("temp_del_reads_list").xs.push_back(4);
-    std::vector<int32_t> __tmp_1 = ::tpyapp::main::mkld("temp_del_reads_grow").xs;
-    std::cout << "temp_del_reads" << " " << ::tpyapp::main::grow(__tmp_1) << "\n" << ::tpy::check_signals;
+    int32_t g = ::tpyapp::main::grow(::tpy::as_mut_lvalue(::tpyapp::main::mkld("temp_del_reads_grow").xs));
+    std::cout << "temp_del_reads" << " " << g << "\n" << ::tpy::check_signals;
     std::vector<int32_t> x = ::tpyapp::main::mkld("temp_del_reads_local").xs;
     std::cout << "temp_del_reads" << " " << ::tpy::__len__(x) << "\n" << ::tpy::check_signals;
 }
@@ -1239,8 +1243,7 @@ void main() {
     ::tpyapp::main::match_arm(1);
     ::tpyapp::main::consuming();
     ::tpyapp::main::consuming_nested();
-    SB __tmp_1 = SB();
-    ::tpyapp::main::value_store(__tmp_1);
+    ::tpyapp::main::value_store(::tpy::as_mut_lvalue(SB()));
     std::cout << "value_member" << " " << std::get<0>(::tpyapp::main::value_member()) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::list_member();
     auto&& lx = std::move(std::get<0>(__tup_1));
@@ -1266,21 +1269,18 @@ void main() {
     ::tpyapp::main::except_reads();
     ::tpyapp::main::comprehension();
     ::tpyapp::main::owner_del();
-    HM __tmp_2 = HM(0);
-    ::tpyapp::main::nomove_leaf(__tmp_2);
+    ::tpyapp::main::nomove_leaf(::tpy::as_mut_lvalue(HM(0)));
     ::tpyapp::main::through_ptr();
     ::tpyapp::main::getter();
     ::tpyapp::main::narrowed();
-    HC __tmp_3 = ::tpyapp::main::mkc(46);
-    ::tpyapp::main::borrowed_param(__tmp_3);
+    ::tpyapp::main::borrowed_param(::tpyapp::main::mkc(46));
     ::tpyapp::main::global_root();
     ::tpyapp::main::inherited_del();
     ::tpyapp::main::mid_path_del();
     ::tpyapp::main::nested_del();
     ::tpyapp::main::narrowed_root(true);
     ::tpyapp::main::same_call_path_borrower();
-    Slot2 __tmp_4 = Slot2();
-    ::tpyapp::main::unpack_store(__tmp_4);
+    ::tpyapp::main::unpack_store(::tpy::as_mut_lvalue(Slot2()));
     ::tpyapp::main::unpack_append();
     ::tpyapp::main::same_call_borrower();
     ::tpyapp::main::named_generator();

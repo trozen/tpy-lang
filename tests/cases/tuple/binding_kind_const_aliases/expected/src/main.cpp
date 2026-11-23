@@ -579,8 +579,7 @@ namespace tpyapp::main {
 void main() {
     Box b = Box(::tpy::BigInt(1));
     std::cout << "unpack_opt:" << " " << ::tpyapp::main::unpack_opt(std::tuple<const Box*, ::tpy::BigInt>{&(b), ::tpy::BigInt(2)}, b) << " " << ::tpyapp::main::unpack_opt(std::tuple<const Box*, ::tpy::BigInt>{nullptr, ::tpy::BigInt(5)}, b) << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<std::optional<Box>, ::tpy::BigInt>> __tmp_1 = {std::tuple<std::optional<Box>, ::tpy::BigInt>{Box(::tpy::BigInt(3)), ::tpy::BigInt(4)}, std::tuple<std::optional<Box>, ::tpy::BigInt>{std::nullopt, ::tpy::BigInt(5)}};
-    std::cout << "head_opt:" << " " << ::tpyapp::main::head_opt(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "head_opt:" << " " << ::tpyapp::main::head_opt({std::tuple<std::optional<Box>, ::tpy::BigInt>{Box(::tpy::BigInt(3)), ::tpy::BigInt(4)}, std::tuple<std::optional<Box>, ::tpy::BigInt>{std::nullopt, ::tpy::BigInt(5)}}) << "\n" << ::tpy::check_signals;
     Box __slot_1 = Box(::tpy::BigInt(7));
     Box* c = &__slot_1;
     std::cout << "unpack_ref:" << " " << ::tpyapp::main::unpack_ref(std::tuple<const Box*, ::tpy::BigInt>{c, ::tpy::BigInt(1)}, (*c)) << "\n" << ::tpy::check_signals;
@@ -619,8 +618,7 @@ void main() {
     std::cout << "readonly_union_copy:" << " " << ::tpyapp::main::readonly_union_copy(::tpy::Union<const Box*, const Holder*>{&(bx)}, bx) << " " << ::tpyapp::main::readonly_union_copy_alt(::tpy::Union<const Box*, const Holder*>{&(bx2)}, bx2) << "\n" << ::tpy::check_signals;
     std::optional<Box> __slot_6;
     b2 = &*(__slot_6 = Box(::tpy::BigInt(2)));
-    Holder __tmp_2 = Holder(Box(::tpy::BigInt(0)));
-    std::cout << "readonly_union_reseat:" << " " << ::tpyapp::main::readonly_union_reseat(::tpy::Union<const Box*, const Holder*>{&__tmp_2}, ::tpy::Union<const Box*, const Holder*>{&((*b2))}, (*b2), true) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly_union_reseat:" << " " << ::tpyapp::main::readonly_union_reseat(::tpy::Union<const Box*, const Holder*>{&(::tpy::as_mut_lvalue(Holder(Box(::tpy::BigInt(0)))))}, ::tpy::Union<const Box*, const Holder*>{&((*b2))}, (*b2), true) << "\n" << ::tpy::check_signals;
     RCtx rc3 = RCtx(::tpy::BigInt(1));
     RCtx rc4 = RCtx(::tpy::BigInt(2));
     std::cout << "with_targets_method:" << " " << WithMethod().targets(rc3, rc4, rc4.b) << "\n" << ::tpy::check_signals;

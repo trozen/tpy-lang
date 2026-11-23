@@ -1039,6 +1039,29 @@ constexpr const std::remove_reference_t<T>& as_lvalue(T&& x) noexcept {
 }
 
 /**
+ * A fresh argument bound where C++ takes only an lvalue: a parameter the
+ * callee writes (`T&`) or whose address it takes. The temporary still dies
+ * at the end of the full-expression -- a fresh argument lives for its
+ * statement, whatever its parameter -- so no named temp has to outlive
+ * it. A mutable lvalue already binds and is returned as it is -- an open
+ * `T`'s value-or-reference (`val_or_ref_t<T>(...)`) is an rvalue at a value
+ * instantiation and the caller's object at a reference one; a const one is
+ * refused, so no const object hides behind a mutable reference.
+ */
+template <typename T>
+    requires(!std::is_lvalue_reference_v<T>)
+constexpr T& as_mut_lvalue(T&& x) noexcept {
+    // C++23 returns a named rvalue reference as an xvalue (P2266).
+    return static_cast<T&>(x);
+}
+
+template <typename T>
+    requires(!std::is_const_v<T>)
+constexpr T& as_mut_lvalue(T& x) noexcept {
+    return x;
+}
+
+/**
  * Replace the heap-stored T at `p` with `value`, returning the live slot.
  *
  * Concrete T: same allocation, destroy + placement-new. Abstract @dynamic

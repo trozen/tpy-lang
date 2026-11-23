@@ -25,8 +25,7 @@ void grow(::tpy::ByteArray& b) {
 //     grow(named)
 //     print(len(named), named[2])
 void main() {
-    ::tpy::ByteArray __tmp_1 = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-    ::tpyapp::main::show(__tmp_1);
+    ::tpyapp::main::show(::tpy::ByteArray(::tpy::bytes_literal("abc", 3)));
     ::tpy::ByteArray named = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     ::tpyapp::main::grow(named);
     std::cout << ::tpy::__len__(named) << " " << static_cast<int>(::tpy::bytes_getitem(named, 2)) << "\n" << ::tpy::check_signals;

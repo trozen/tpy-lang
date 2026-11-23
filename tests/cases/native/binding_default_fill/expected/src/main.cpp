@@ -300,8 +300,7 @@ void main() {
             std::cout << "generic-raise" << " " << std::string(::tpy::__str__(gx)) << "\n" << ::tpy::check_signals;
         }
     }
-    S __tmp_4 = S();
-    std::cout << "protocol" << " " << ::tpyapp::main::through(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << "protocol" << " " << ::tpyapp::main::through(::tpy::as_mut_lvalue(S())) << "\n" << ::tpy::check_signals;
     int32_t K = 99;
     std::cout << "filled-call-default" << " " << ::nb::limited_cast(1, ::tpyapp::nbind::K) << " " << K << "\n" << ::tpy::check_signals;
     std::cout << "tpy-default" << " " << ::tpyapp::main::tpy_def(1) << "\n" << ::tpy::check_signals;

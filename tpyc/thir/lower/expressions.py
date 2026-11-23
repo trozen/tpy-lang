@@ -5,7 +5,8 @@ only from the node arm being lowered.
 """
 
 from __future__ import annotations
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from typing import NamedTuple, NoReturn, TypeVar
 from dataclasses import MISSING, field, fields as dataclass_fields, replace
 from enum import Enum, auto
@@ -15,9 +16,16 @@ from .callables import (CallSignature, callable_signature, call_signature,
 from .storage import borrowed_record, record_chain, direct_field, field_identity, full_expression_record, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
 from .captures import capture_facts
 from ..scalar_leaves import record_owner
+from ..frame import (HolderRole, THIRFrameHolder, frame_embedding_edge,
+                     held_frame_function, held_frame_name)
+from .frame_seat import (
+    Hand, SeatLifetime, frame_arg_borrowed_temps, is_view_value, planned,
+)
 from ... import qnames
 from ...parse.nodes import (
     RebindStorage,
+    TpyForEach,
+    TpyWhile,
     ResultForm,
     as_name_read,
     lambda_of,
@@ -64,10 +72,11 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarargPack,
 )
+from ...emitted_members import frame_struct_is_template
 from ...typesys import ANY, binds_runtime_symbol, indirection_referent_readonly, is_readonly_result_type, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
 from ...typesys import (
-    drop_own_marker, dyn_protocol_borrow_result, make_readonly,
-    param_takes_ownership)
+    drop_own_marker, dyn_protocol_borrow_result,
+    make_readonly, param_takes_ownership)
 from ...modules.type_resolution import owning_element_slot, traverses_owning
 from ...typesys import (
     ConcreteFrameType,
@@ -90,6 +99,7 @@ from ...typesys import (
     OptionalType,
     OwnType,
     PendingListType,
+    PendingGenericInstanceType,
     PendingViewType,
     collapse_tuple_own_elements,
     contains_pending_leaf,
@@ -149,6 +159,8 @@ from ...type_def_registry import (ParamPassing,
 )
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp.types import resolve_pending_container, resolve_tuple_pending
+from ...codegen_cpp.frame_names import frame_struct_qualname
+from ...resumable_shape import ResumableShape
 from ...modules.defs import BINOP_TO_METHOD
 from ...modules.type_resolution import (
     get_iterable_element_type,
@@ -187,14 +199,15 @@ from ...coercions import (wrap_into_any, CoercionContext, coercion_rule,
                           context_free_wrap_template, resolve_coercion)
 from ...compilation_context import get_current_compiler
 from ...value_category import (
-    CONTAINER_LITERAL_NODES, place_dies, returns_open_type_param,
+    CONTAINER_LITERAL_NODES, frame_param_lends, place_dies,
+    returns_open_type_param,
     lends_from_dying_source,
     property_access_returns_cpp_ref,
-    call_hands_back_value, call_result_is_reference,
-    call_result_live_in_statement, call_returns_cpp_ref,
+    call_hands_back_value, call_result_is_reference, carries_borrow,
+    call_returns_cpp_ref,
     is_rvalue_source, lends_pointer_form_result, OwningArg,
-    frame_temp_arg_source,
-    may_hold_pointer, protocol_twin_slot, origin_shared,
+    frame_temp_arg_source, fresh_receiver_root, method_owner_type,
+    may_hold_pointer, protocol_twin_slot, origin_shared, static_buffer,
 )
 from ..reject import (ThirUnsupported, call_reject_reason, current_detail,
                       expr_kind_tag, replace_detail,
@@ -202,9 +215,9 @@ from ..reject import (ThirUnsupported, call_reject_reason, current_detail,
 from ..faces import witness as _witness
 from .arg_table import (_ArgReq, _ArgRow, _ArgSink, arg_ok, register_sink)
 from ...sema.literal_utils import numeric_literal_truth
-from ..param_contract import (Adapts, Materializer, ParamContract, arg_retention, const_ref_slot, frame_captured, operand_retention,
+from ..param_contract import (Adapts, HandleUse, Materializer, ParamContract, arg_retention, const_ref_slot, frame_captured, operand_retention,
                               instantiation_storage, pack_element_contract, param_const, param_contract,
-                              protocol_slot)
+                              instantiated_param, protocol_slot)
 from ...sema.call_lends import Retention, TempLend, callee_retains_arg
 from ...sema.own_copy import contains_reference_type
 from ...typesys import (TypeParamKind, contains_type_kind_param,
@@ -228,8 +241,10 @@ from ..source import (BindingConstruct, BindingForm, BindingRepr, Held,
                       elem_borrow_form_differs, element_source, tuple_elems,
                       SelectResult, Source, TraitAbi)
 from ..nodes import (
+    deref_hops_cpp,
     OpenTSink,
     PtrSlotKind,
+    replaced_node,
     THIRAssign,
     THIRVarDecl,
     THIRStrAppend,
@@ -284,12 +299,15 @@ from ..nodes import (
     THIRMethodCall,
     THIRModuleVar,
     THIRDecayCopy,
+    THIRInlineTemp,
     THIRMove,
     THIRName,
     THIROptionalRead,
     THIRUnionLayout, THIRUnionTest, THIRUnionExtraction,
     THIRWalrus,
     THIRSlotEmplace,
+    THIRRootSlot,
+    HoistDecl,
     THIRValueSelect,
     THIRNarrowedRead,
     THIROptionalPtrArg,
@@ -630,7 +648,7 @@ from .predicates import (
     _record_compare_pair,
     _record_dunder_operand_pair,
     _record_dunder_operand_slot,
-    _bytes_param_view_slot,
+    bytes_literal_view_slot,
     _bytes_read_view_slot,
     _unrouted_binding_read,
     _value_opt_view_name,
@@ -655,7 +673,7 @@ from .context import (FrameLocalClass, _call_arg_forms,
                       ValueOptKind,
                       _POS_FORMS, storage_type)
 from .generics import expand_fi_template
-from .convert import (Effect, Refuse, _existing_object, _lendable, as_base,
+from .convert import (Effect, Refuse, StorageRequest, _existing_object, _lendable, as_base,
                       open_param_convert, open_trait_lift,
                       is_open_t_binding,
                       convert, held_object_type, landing, spelled)
@@ -667,13 +685,6 @@ _LITERAL_OVERLOAD_PIN = "literal_overload_pin"
 
 _NESTED_ARG_USE = _ExprUse(record_ctor=_RecordCtorUse.NESTED_ARG)
 _RECORD_TEMP_USE = _ExprUse(record_ctor=_RecordCtorUse.RECORD_TEMP)
-# A record-rvalue temp whose SOURCE ctor is itself at the enclosing statement's
-# flush point (`describe(Canvas(Circle(5)))` -- the outer free call flushes, so
-# the inner Canvas ctor's own arg temps land at the SAME point, innermost-first).
-# allow_temps threads through so the nested ctor loop can hoist its member-ctor
-# temps (`Circle __tmp_1`); only reached from a position already flushing.
-_RECORD_TEMP_FLUSH_USE = _ExprUse(record_ctor=_RecordCtorUse.RECORD_TEMP,
-                                  allow_temps=True)
 # A membership HAYSTACK: the receiver `__contains__` is taken off, read inside
 # the test expression. `forms=` rather than the RECEIVER row because the
 # haystack is not a member-read receiver -- the row's indirect-name deref is
@@ -811,13 +822,13 @@ from .checks import (
     _marker_call_supported,
     _marker_reject,
     _module_qual_ctor_shape,
-    gen_recv_ctor_temp,
     _member_gen_call_iterable_ok,
     _method_call_arg_ok,
     _wrapper_ref_tuple_elem_arg,
     _method_recv_family,
     _none_unit_arg,
     _raw_record_method_fi, MethodCallFacts,
+    _async_factory_wrap_cpp_facts, _r_async_factory_wrap,
     _method_nonname_receiver_ok,
     _record_getitem_call_ok,
     _receiver_type,
@@ -1397,11 +1408,9 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
 
 
 def _callee_is_type_initializer(fi: 'FunctionInfo | None') -> bool:
-    # Sema's synthetic record-constructor fi, or a builtin type's `__init__`
-    # overload: either way the call's callee is a type, whatever node the
-    # arm lowers it to.
-    return fi is not None and (
-        fi.is_constructor or (fi.is_method and fi.name == "__init__"))
+    # Either way the call's callee is a type, whatever node the arm lowers
+    # it to.
+    return fi is not None and fi.initializes_type
 
 
 def _record_ctor_shape_supported(e: TpyCall, lc: '_LowerCtx',
@@ -1571,13 +1580,6 @@ def _r_own_str_literal_bare(req: _ArgReq) -> bool:
 
 def _r_copy_open_elem(req: _ArgReq) -> bool:
     return _copy_open_elem_arg(req.a, req.ptype, req.analyzer) is not None
-
-
-def _r_async_factory_wrap(req: _ArgReq) -> bool:
-    return (isinstance(req.a, TpyName)
-            and _async_factory_wrap_cpp_facts(
-                req.a, req.analyzer.get_expr_type(req.a),
-                req.analyzer) is not None)
 
 
 def _r_ru_wrapper_name_no_alias(req: _ArgReq) -> bool:
@@ -1975,7 +1977,8 @@ def _require_method_call_arg(
     # render arm picks THIRMove on the same shared verdict. Covers the
     # coerce-wrapped movable name (`out.append(buf)` under
     # bytearray->bytes) the per-family ladders' bare-name rows cannot.
-    if _own_move_source_slice(a, ptype, lc, declared):
+    if _own_move_source_slice(a, ptype, lc, declared) or _awaited_operand(
+            a, lc):
         return
     if not _method_call_arg_ok(
             call, a, ptype, index, declared, lc.analyzer,
@@ -1983,7 +1986,8 @@ def _require_method_call_arg(
             param_names=lc.prescan.param_names,
             tparam_bounds=lc.tparam_bounds,
             movable_locals=lc.names_with("movable"),
-            func_name=getattr(lc.func, "name", None), retains=retains):
+            func_name=getattr(lc.func, "name", None), retains=retains,
+            frame_taken=_frame_taken(a, lc)):
         raise ThirUnsupported(call_reject_reason("expr.method_call"))
 
 
@@ -2003,6 +2007,36 @@ def _protocol_spelled_container_cpp(atu: 'TpyType',
             container_type = replace(
                 atu, type_args=(proto.type_args[0],) + atu.type_args[1:])
     return container_type.to_cpp()
+
+
+def _ru_wrapper_inline(ru: TpyType, init: THIRExpr, a: TpyExpr,
+                       lc: '_LowerCtx', *, mutable: bool = False) -> THIRExpr:
+    """A recursive union's wrapper built from `init` for its parameter:
+    spelled with its type, a temporary of the full expression, bound as an
+    lvalue where the parameter is a mutable reference (`mutable`)."""
+    return _inline_temp(a, lc, result_type=ru,
+                        value=init, cpp_type=lc.render_type(ru),
+                        mutable=mutable,
+                        form=Form.VALUE, loc=getattr(a, "loc", None))
+
+
+def _deduced_const_ref(callee_fi: 'FunctionInfo | None', index: int,
+                       ptype: 'TpyType | None', lc: '_LowerCtx',
+                       signature: 'CallSignature | None') -> bool:
+    """A structural protocol parameter its callee publishes as a const
+    reference (`const T_p&`): it deduces the argument's own type from a
+    prvalue as from an lvalue, so a fresh argument binds it inline. A
+    written one is a forwarding reference (`T_p&&`), which a prvalue would
+    instantiate at another type, and an owned or owning-element one hands
+    its argument over."""
+    if callee_fi is None or index < 0 or not isinstance(ptype, TpyType):
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    if (isinstance(u, (OwnType, OptionalType, UnionType))
+            or owning_element_slot(u, lc.analyzer.registry)):
+        return False
+    return arg_contract(callee_fi, index, ptype, lc,
+                        signature=signature).passing is ParamPassing.CONST_REF
 
 
 def _lower_marker_method_arg(
@@ -2027,9 +2061,15 @@ def _lower_marker_method_arg(
         # shapes ahead of the arg gate: it fully determines the render and
         # raises on anything it cannot lower.
         proto = protocol_slot(ptype)
+        # A const reference binds the fresh argument inline (it deduces the
+        # same type from it) unless the keep plan seats it; a forwarding one
+        # keeps the named temp.
+        inline = (_deduced_const_ref(e.resolved_function_info, index, ptype,
+                                     lc, signature)
+                  and not _seat_needed(a, lc))
         if (proto is not None and not is_dyn_protocol(proto)
                 and isinstance(a, TpyArrayLiteral)):
-            if not temp_args:
+            if not temp_args and not inline:
                 raise ThirUnsupported(
                     "protocol arg-temp outside a flush position")
             at = lc.analyzer.get_expr_type(a)
@@ -2047,24 +2087,28 @@ def _lower_marker_method_arg(
                     typed_brace_cpp=_protocol_spelled_container_cpp(atu,
                                                                     proto))
             _witness("argtemp.marker_protocol_literal")
-            return _hoisted(THIRArgTemp(result_type=proto, cpp_type=None, init=init,
-                                        form=Form.BORROW, loc=getattr(a, "loc", None)), lc)
+            if inline:
+                return init
+            return held_temp(THIRArgTemp(result_type=proto, cpp_type=None, init=init,
+                                        form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
         if (proto is not None
                 and _record_rvalue_structural_arg(a, proto, lc.analyzer)):
             # A record RVALUE at a structural slot
             # (`json.load(io.StringIO(s))`): the monomorphized param binds
-            # `T&`, which the temporary cannot, so the same un-spelled
-            # `auto __tmp_N = <rvalue>;` materialize.
-            if not temp_args:
+            # `T&&`, which the temporary would instantiate at another type,
+            # so the same un-spelled `auto __tmp_N = <rvalue>;` materialize;
+            # a const reference binds it inline.
+            if not temp_args and not inline:
                 raise ThirUnsupported(
                     "protocol arg-temp outside a flush position")
             _witness("argtemp.marker_protocol_record")
-            return _hoisted(THIRArgTemp(
-                result_type=proto, cpp_type=None,
-                init=_lower_expr(
-                    a, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.STORAGE)),
-                form=Form.BORROW, loc=getattr(a, "loc", None)), lc)
+            init = _lower_expr(a, lc, declared,
+                               use=_ExprUse(result=_ExprResultUse.STORAGE))
+            if inline:
+                return init
+            return held_temp(THIRArgTemp(
+                result_type=proto, cpp_type=None, init=init,
+                form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
         if (proto is not None and not is_dyn_protocol(proto)
                 and _native_iterable_range_arg(a, ptype)):
             # The range-rvalue rung of the same hoist
@@ -2077,13 +2121,16 @@ def _lower_marker_method_arg(
                                                                 lc.analyzer))):
                 note_detail("call.native_range_shape")
                 raise ThirUnsupported(call_reject_reason("expr.method_call"))
-            if not temp_args:
+            if not temp_args and not inline:
                 raise ThirUnsupported(
                     "protocol arg-temp outside a flush position")
             _witness("argtemp.marker_protocol_range")
-            return _hoisted(THIRArgTemp(result_type=proto, cpp_type=None,
-                                        init=_lower_range_object(a, lc, declared),
-                                        form=Form.BORROW, loc=getattr(a, "loc", None)), lc)
+            init = _lower_range_object(a, lc, declared)
+            if inline:
+                return init
+            return held_temp(THIRArgTemp(result_type=proto, cpp_type=None,
+                                        init=init,
+                                        form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
     # A GENERATOR-FACTORY rvalue at a generator callee's by-reference
     # iterable slot (`islice(count(), 4)`): the frame rvalue hoists into
     # a named statement temp (`auto __tmp_N = count();`) so the
@@ -2099,9 +2146,9 @@ def _lower_marker_method_arg(
                            use=_ExprUse(result=_ExprResultUse.ITERABLE,
                                         allow_temps=True))
         _witness("argtemp.genfac_ref_slot")
-        return _hoisted(THIRArgTemp(result_type=lc.analyzer.get_expr_type(a),
+        return held_temp(THIRArgTemp(result_type=lc.analyzer.get_expr_type(a),
                                     cpp_type=None, init=init, form=Form.BORROW,
-                                    loc=getattr(a, "loc", None)), lc)
+                                    loc=getattr(a, "loc", None)), lc, a)
     # Everything else is the free call's argument: one admission table and
     # one render per slot shape, whichever way the callee was spelled. The
     # callee's const-borrow verdict picks the const-pointee union lift.
@@ -2151,11 +2198,6 @@ def _str_index_receiver_supported(
     """The receiver of a str-family CHAR read (`s[i]`), which the str
     `__getitem__` @cpp_template interpolates."""
     analyzer = lc.analyzer
-    if isinstance(recv, TpyBytesLiteral):
-        # A bytes-literal receiver renders OWNED (`::tpy::bytes_literal_owned`),
-        # the `{self}` substitution the @cpp_template threads -- matching
-        # the target-less default for the literal.
-        return True
     if isinstance(recv, TpyStrLiteral):
         # A str-literal receiver is position-neutral (const char[N]), so it
         # lands bare in the template like any other value read.
@@ -2296,8 +2338,9 @@ def _tracked_slice_recv_ok(recv: TpyExpr, lc: '_LowerCtx',
     for every type."""
     analyzer = lc.analyzer
     if isinstance(recv, (TpyBytesLiteral, TpyStrLiteral)):
-        # A bytes literal renders OWNED (`::tpy::bytes_literal_owned`), a str
-        # literal position-neutral (const char[N]); both static storage.
+        # Read in place: a str literal is position-neutral (const char[N]),
+        # a bytes literal views its static storage where the dunder reads
+        # `self` through its view (`bytes_literal_view_slot`).
         return not write
     if isinstance(recv, TpyName):
         # `self` renders `this`, a pointer the `{self}` substitution would
@@ -2358,13 +2401,14 @@ def _slice_recv_ok(sub: TpySubscript, rtype: 'TpyType | None',
             or _untracked_slice_recv_ok(sub, rtype, lc.analyzer, write=write))
 
 
-def _lower_slice_recv(recv: TpyExpr, lc: '_LowerCtx',
+def _lower_slice_recv(sub: TpySubscript, lc: '_LowerCtx',
                       declared: dict[str, TpyType], loc) -> THIRExpr:
     """The receiver `_slice_recv_ok` admitted, as the slice dunder's
     `{self}`: a module var is a PINNED consumer of its `(*slot)` read (like
     the native-slot arg), a pointer-rung name reads through its deref --
     the dunder takes the container, never the pointer."""
     analyzer = lc.analyzer
+    recv = sub.obj
     mv = _module_var_access_pair(recv, declared, analyzer)
     if mv is not None:
         return _lower_module_var(recv, analyzer.get_expr_type(recv), lc, *mv,
@@ -2373,6 +2417,17 @@ def _lower_slice_recv(recv: TpyExpr, lc: '_LowerCtx',
         return _lower_expr(
             recv, lc, declared,
             use=_ExprUse(pos=SinkPos.RECEIVER, forms=_recv_forms(False, True)))
+    view = (bytes_literal_view_slot(sub.slice_function_info,
+                                    analyzer.get_expr_type(recv),
+                                    receiver=True)
+            if isinstance(recv, TpyBytesLiteral) else None)
+    if view is not None:
+        # A literal at a `self` the dunder reads through its view: the
+        # literal's static storage, as a `str` literal's.
+        return _lower_expr(recv, lc, declared,
+                           use=_ExprUse(slot_target=view))
+    # The fresh object the slice views is seated by its subscript read
+    # (`_lower_expr`).
     return _lower_expr(recv, lc, declared,
                        field_prechecked=isinstance(recv, TpyFieldAccess))
 
@@ -2753,18 +2808,13 @@ def _view_at_runtime(e: TpyExpr, lc: '_LowerCtx') -> bool:
     Optional-param deref and coerce arms."""
     analyzer = lc.analyzer
 
-    def _is_view(t: 'TpyType | None') -> bool:
-        rv = _resolved_viewfam_value(t, analyzer)
-        return rv is not None and (is_str_view_type(rv)
-                                   or is_bytes_view_type(rv))
-
     if isinstance(e, TpyName):
         pt = next((t for n, t in lc.params if n == e.name), None)
         if pt is not None:
             ptu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
             if is_str_type(ptu) or is_bytes_type(ptu):
                 return True
-        return _is_view(analyzer.get_expr_type(e))
+        return is_view_value(e, analyzer)
     if isinstance(e, TpyStrLiteral):
         return True
     if isinstance(e, TpyBinOp) and e.op in _LOGICAL_OPS:
@@ -2773,7 +2823,7 @@ def _view_at_runtime(e: TpyExpr, lc: '_LowerCtx') -> bool:
     if isinstance(e, TpyIfExpr):
         return (_view_at_runtime(e.then_expr, lc)
                 and _view_at_runtime(e.else_expr, lc))
-    return _is_view(analyzer.get_expr_type(e))
+    return is_view_value(e, analyzer)
 
 
 def _contains_isinstance_fact(e: TpyExpr) -> bool:
@@ -2801,7 +2851,13 @@ def _hoisted(node: THIRExprT, lc: '_LowerCtx') -> THIRExprT:
     """Every node whose render hoists a declaration before its statement
     (`hoists_declaration`) is created through here, so the placement half
     of a temporary is decided at one site (grant vs placement:
-    `SlotPlacement`)."""
+    `SlotPlacement`); an argument temp comes through `held_temp`.
+
+    Invariant of every lowering that splits a TPy statement into several
+    C++ ones: a fresh argument stays inside one C++ full-expression, or is
+    bound by `auto&&` (an augmented assignment's held parts) -- a fresh
+    argument lives for its statement, and a hoist must neither end it
+    early nor extend it past what the keep plan decides."""
     assert hoists_declaration(node)
     held = _held_arg_temp(node, lc)
     if held is not None:
@@ -2809,6 +2865,42 @@ def _hoisted(node: THIRExprT, lc: '_LowerCtx') -> THIRExprT:
     if not lc.may_hoist:
         _reject_no_statement()
     return node
+
+
+def held_temp(node: THIRArgTemp, lc: '_LowerCtx',
+              source: 'TpyExpr | None', *, in_place: bool = False
+              ) -> THIRExpr:
+    """THE storage of an argument temp (`THIRArgTemp`): every one is
+    created through here, naming the argument it holds (`source`; None for
+    storage no argument's value borrows), whose seat the statement's keep
+    plan places (`planned`): a frame holder (`_frame_holder_seat`), a slot
+    of the enclosing scope (`root_slot`), or a temp the statement declares
+    (`_hoisted`) -- `in_place`, where the value is evaluated only when
+    chosen (a select operand), a slot filled there (`THIRSlotEmplace`).
+    A temp moved into its callee holds nothing past the call."""
+    if (source is not None and not node.move
+            and lc.bound_roots.plan.covers(source)):
+        keep = planned(source, lc)
+        node = replace(node, lifetime=keep.lifetime)
+        if keep.lifetime is SeatLifetime.FRAME:
+            return _frame_holder_seat(node, lc, source)
+        if keep.lifetime is SeatLifetime.ENCLOSING:
+            _witness("arg.head_root_enclosed")
+            return root_slot(node, lc)
+    if in_place:
+        return _hoisted(THIRSlotEmplace(
+            result_type=node.result_type, value=node.init,
+            cpp_type=node.cpp_type or lc.render_type(node.result_type),
+            form=Form.BORROW, loc=node.loc), lc)
+    return _hoisted(node, lc)
+
+
+def seat_available(source: TpyExpr, lc: '_LowerCtx') -> bool:
+    """Whether this position can give `source` its planned seat
+    (`held_temp`): a frame holder or an enclosing slot anywhere, a
+    statement's storage where a statement encloses the expression."""
+    return lc.may_hoist or planned(source, lc).lifetime in (
+        SeatLifetime.FRAME, SeatLifetime.ENCLOSING)
 
 
 def _held_arg_temp(arg: THIRExpr, lc: '_LowerCtx') -> 'THIRExpr | None':
@@ -2850,6 +2942,17 @@ def _select_result(held: Held, e: 'TpyExpr | None', lc: '_LowerCtx', *,
     if held is Held.STORAGE and temporary:
         held = Held.FRESH
     return SelectResult(held, temporary)
+
+
+def _select_fresh_seat(arm: TpyExpr, fresh: THIRExpr, rec_t: 'TpyType',
+                       lc: '_LowerCtx', loc) -> THIRExpr:
+    """The seat of a select's fresh reference operand `arm` (lowered as
+    `fresh`) beside an lvalue one, emplaced when its operand is chosen so
+    the select stays an lvalue (`held_temp`, in place)."""
+    return held_temp(THIRArgTemp(
+        result_type=rec_t, cpp_type=lc.render_type(rec_t),
+        movable=unwrap_ref_type(rec_t).is_movable(), init=fresh,
+        form=Form.BORROW, loc=loc), lc, arm, in_place=True)
 
 
 def _hoisted_select(node: THIRValueSelect, lc: '_LowerCtx') -> THIRValueSelect:
@@ -3102,9 +3205,7 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
     lhs_temp_cpp = _operand_temp_cpp(e.left, "auto&&")
     lowered_rhs = _lower_operand(e.right, rt)
     if rhs_rvalue:
-        lowered_rhs = _hoisted(THIRSlotEmplace(result_type=rtu, value=lowered_rhs,
-                                               cpp_type=lc.render_type(rtu),
-                                               form=Form.BORROW, loc=loc), lc)
+        lowered_rhs = _select_fresh_seat(e.right, lowered_rhs, rtu, lc, loc)
     _witness("binop.container_select")
     if truthy_mode is TruthinessMode.RECORD_BOOL:
         _witness("binop.select_bool_dunder")
@@ -4571,7 +4672,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             if bytes_pair:
                 return BYTES_FAMILY.view_type
             if _dun is not None and _dun[0] is side:
-                return _bytes_param_view_slot(_dun[1]) or opposite
+                return bytes_literal_view_slot(_dun[1], _dun[2]) or opposite
             return opposite
 
         left = _narrowed_union_read(e.left, l_nu) or _lower_none_operand(
@@ -5333,44 +5434,6 @@ def _async_factory_wrap_cpp(e: 'TpyName', target: 'TpyType | None',
     return _async_factory_wrap_cpp_facts(e, target, lc.analyzer)
 
 
-def _async_factory_wrap_cpp_facts(e: 'TpyName', target: 'TpyType | None',
-                                  analyzer) -> 'str | None':
-    """`_async_factory_wrap_cpp` over the analyzer alone -- the lowering
-    context was the only thing it needed one for, and the arg table carries
-    discrete facts rather than the context."""
-    fi = e.function_ref_info
-    if fi is None or not fi.is_async:
-        return None
-    if (e.function_ref_type_args or fi.native_function or fi.type_params
-            or fi.linkage != FunctionLinkage.DEFAULT):
-        return None
-    if not isinstance(target, CallableType):
-        return None
-    ret = target.return_type
-    if not (isinstance(ret, OwnType) and is_dyn_protocol(ret.wrapped)):
-        return None
-    # The lambda body CALLS the factory, so a bare same-module spelling would
-    # be ADL-visible inside `namespace tpyapp::<mod>`.
-    factory = free_callee_cpp(analyzer.ctx.module_attributes,
-                              analyzer.ctx.module_name,
-                              analyzer.ctx.cpp_module_name, e.name, fi)
-    if factory is None:
-        return None
-    base_cpp = dynamic_base_name(ret.wrapped, analyzer)
-    params = []
-    forwards = []
-    for i, ptype in enumerate(target.param_types):
-        pname = f"__a{i}"
-        params.append(CallableType._callable_param_cpp(ptype) + " " + pname)
-        if isinstance(ptype, OwnType) or not ptype.is_value_type():
-            forwards.append(f"std::move({pname})")
-        else:
-            forwards.append(pname)
-    return (f"[]({', '.join(params)}) -> {ret.to_cpp()} {{ "
-            f"return ::tpy::make_adapter<{base_cpp}>("
-            f"{factory}({', '.join(forwards)})); }}")
-
-
 def _param_declared_type(name: str, lc: '_LowerCtx') -> 'TpyType | None':
     """The declared type of param `name` on the function being lowered, or None
     when `name` is not a param -- the source-type lookup the arg-split shim keys
@@ -5458,7 +5521,6 @@ def _lower_computed_call(
 # reaches them, so a row for them would name a tag nothing can emit.
 _LEND_REJECT_TAGS: dict[SinkPos, str] = {
     SinkPos.CALL_ARG: "arg.lends_from_temporary",
-    SinkPos.ITER_SOURCE: "foreach.iter_lends_from_temporary",
     SinkPos.FIELD_WRITE: "assign.field_write_lends_from_temporary",
 }
 
@@ -5467,9 +5529,12 @@ def _lend_reject_detail(use: _ExprUse) -> str:
     """Name the SINK that refused a borrow of dying storage.
 
     One tag family, `<sink>.lends_from_temporary`, so a reader learns which
-    position they were writing rather than which predicate said no. The three
+    position they were writing rather than which predicate said no. The two
     sinks in `_LEND_REJECT_TAGS` keep the tag they had before the row existed;
-    every other sink spells its own name.
+    every other sink spells its own name. A compound statement's head (an
+    iteration source, a `with` manager, a `match` subject) keeps the fresh
+    root of a receiver chain for the statement (`receiver_kept`), so no
+    head reaches this.
     """
     named = _LEND_REJECT_TAGS.get(use.pos)
     if named is not None:
@@ -5621,7 +5686,18 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # coercion too, which may take the read's address.
         note_detail(_lend_reject_detail(use))
         raise ThirUnsupported(call_reject_reason(expr_kind_tag(e)))
-    lowered = _lower_expr_impl(e, lc, declared, use=use, **kwargs)
+    with _bound_entry(e, lc):
+        # An element or slice read borrows its object: the fresh object it
+        # lives in, where the keep plan keeps it, is held in its seat, as a
+        # field read's object is. A tuple element is no such read: a borrow
+        # tuple's element names its object, whose own seat holds it.
+        root, seat = (seated_root(fresh_seat_root(e.obj, lc), lc, declared)
+                      if (isinstance(e, TpySubscript)
+                          and _subscript_index_and_tuple(
+                              e, lc.analyzer) is None)
+                      else (None, None))
+        with lc.prelowering(root, seat):
+            lowered = _lower_expr_impl(e, lc, declared, use=use, **kwargs)
     if (isinstance(e, TpyName) and isinstance(lowered, THIRName)
             and lowered.name == e.name and lowered.cpp is None):
         binding = lc.narrow.subject_union.get(e.name, declared.get(e.name))
@@ -5974,13 +6050,16 @@ _HELD_BY_KIND: dict[type, Held] = {
     # The borrow form a conversion built: a pointer, a pointer variant, a
     # view of an optional, a borrow tuple, a slot's `T&`.
     **dict.fromkeys((THIROptionalPtrArg, THIROptViewArg, THIRUnionArgLift,
-                     THIRSlotEmplace),
+                     THIRSlotEmplace, THIRRootSlot),
                     Held.BORROWED),
     # A hoisted argument temporary: storage the statement owns. A further
     # read of one reads the same storage (its creator stamps the temp's own
     # source on it, a reference temp its init's).
     THIRArgTemp: Held.STORAGE,
     THIRTempRead: Held.STORAGE,
+    # A temporary of its full expression a call argument builds: a fresh
+    # object, lent for the statement.
+    THIRInlineTemp: Held.FRESH,
 }
 
 
@@ -6156,6 +6235,20 @@ def consuming_receiver(e: TpyMethodCall, fi: 'FunctionInfo | None',
                     loc=getattr(e.obj, "loc", None))
 
 
+def self_typed_source(iterable: 'THIRExpr', lc: '_LowerCtx') -> 'THIRExpr':
+    """A container literal whose consumer deduces its type -- a `for` head
+    the frame spells off the source expression (`decltype((...))`), the
+    consuming iterator (`own_iter(C&&)`) -- names its type: a bare brace
+    is not an expression, and neither a `frame_slot` nor a template
+    parameter can deduce one. (A `str` literal there takes its own view
+    render from the same slot, `SinkForm.SELF_TYPED`.)"""
+    if (isinstance(iterable, THIRContainerLiteral)
+            and iterable.typed_brace_cpp is None):
+        return replace(iterable,
+                       typed_brace_cpp=lc.render_type(iterable.result_type))
+    return iterable
+
+
 def consuming_iter(source: TpyExpr, result_type: 'TpyType | None',
                    lc: '_LowerCtx', declared: dict[str, TpyType],
                    loc) -> THIRConsumingIter:
@@ -6168,6 +6261,7 @@ def consuming_iter(source: TpyExpr, result_type: 'TpyType | None',
     if not is_rvalue_source(lc.analyzer, _peel_coerce(source)):
         value = THIRMove(result_type=value.result_type, value=value,
                          form=value.form, loc=getattr(source, "loc", loc))
+    value = self_typed_source(value, lc)
     return THIRConsumingIter(result_type=result_type or value.result_type,
                              value=value, form=Form.VALUE, loc=loc)
 
@@ -6271,6 +6365,12 @@ def _temporary(e: 'TpyExpr | None', node: THIRExpr,
         # The pointee outlives the pointer value that names it.
         return False
     if e is not None:
+        # A part, at any depth, of a fresh object its statement seats lives
+        # as the seat does (`fresh_seat_root`).
+        peeled = _peel_coerce(e)
+        if isinstance(peeled, (TpyFieldAccess, TpySubscript)) and (
+                fresh_seat_root(peeled.obj, lc) is not None):
+            return False
         return place_dies(lc.analyzer, e)
     if isinstance(node, (THIRName, THIRSelf, THIRTempRead)):
         # A temp read with no source of its creator's is a loop's step, an
@@ -6631,6 +6731,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             fwd.loc = getattr(e, "loc", None)
             if rtype is not None and analyzer.get_expr_type(fwd) is None:
                 analyzer.ctx.set_expr_type(fwd, rtype)
+            lc.bound_roots.plan.stand_in(fwd, e)
             _witness("name.forwarded_alias")
             return _lower_expr(fwd, lc, declared, use=use,
                                allow_whole_optional=allow_whole_optional)
@@ -7362,7 +7463,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 result_type=rtype,
                 receiver=THIRNarrowedRead(
                     result_type=analyzer.get_expr_type(e.obj),
-                    variant_cpp=e.obj.name, member_cpp=member_cpp,
+                    variant_cpp=_narrow_variant_cpp(e.obj.name, u, lc),
+                    member_cpp=member_cpp,
                     union_extraction=_union_extraction(e.obj.name, u, member, lc),
                     is_ptr_variant=is_ptr, form=Form.BORROW, loc=loc),
                 field_cpp=_field_cpp(e),
@@ -7434,14 +7536,18 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 loc=loc,
             ))
         # A call-shaped receiver's own arg temps flush at the enclosing
-        # statement; the receiver borrow form is independent of arrow/deref hops.
-        receiver = _lower_expr(
-            e.obj, lc, declared,
-            use=_ExprUse(result=_ExprResultUse.RECEIVER,
-                         allow_temps=use.allow_temps,
-                         pos=SinkPos.RECEIVER,
-                         forms=_ONLY_FIELD_RECV_BORROW | _LEND_OK),
-            subscript_prechecked=isinstance(e.obj, TpySubscript))
+        # statement; the receiver borrow form is independent of arrow/deref
+        # hops. The fresh object it lives in, where the statement keeps it,
+        # is held in its seat.
+        root, seat = seated_root(fresh_seat_root(e.obj, lc), lc, declared)
+        with lc.prelowering(root, seat):
+            receiver = _lower_expr(
+                e.obj, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                             allow_temps=use.allow_temps,
+                             pos=SinkPos.RECEIVER,
+                             forms=_ONLY_FIELD_RECV_BORROW | _LEND_OK),
+                subscript_prechecked=isinstance(e.obj, TpySubscript))
         receiver = full_expression_record(receiver, analyzer)
         return _self_recv_positioned(THIRFieldAccess(
             result_type=rtype,
@@ -7570,7 +7676,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             form = (Form.BORROW if rt_view is not None
                     and (is_str_view_type(rt_view) or is_bytes_view_type(rt_view))
                     else Form.STORAGE)
-            recv = _lower_slice_recv(e.obj, lc, declared, loc)
+            recv = _lower_slice_recv(e, lc, declared, loc)
             tpl = record_slice_tpl or e.slice_function_info.cpp_template
             if not isinstance(e.index, TpySlice):
                 return THIRStrSlice(
@@ -7756,6 +7862,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # `T*`, wide pointee class) rides the passthrough decl
                 # sink; the raw operator[] render is the same, only the
                 # form tag differs (a borrow pointer, not a value).
+                # A receiver held in its seat (`lc.prelowered`) is read once.
+                held_recv = (lc.prelowered is not None
+                             and e.obj in lc.prelowered)
                 opt_ptr_ret = (use.admits(SinkForm.PTR_OPT_PASSTHROUGH)
                                and _optional_ptr_borrow_wide(rtype, analyzer)
                                is not None)
@@ -7785,8 +7894,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                           # A CONTAINER returned by reference: the element
                           # lvalue a builtin nested element is, bare in every
                           # value position.
-                          or _getitem_container_lvalue(e, declared, analyzer,
-                                                       lc.names_with("pointer")))
+                          or _getitem_container_lvalue(
+                              e, declared, analyzer, lc.names_with("pointer"),
+                              held_recv_ok=held_recv))
                 # A RECORD returned by reference in a RECEIVER position (the
                 # reassigned alias's `&(g[k])` lift, a member-call receiver):
                 # the `T&` lvalue, like a builtin record element there.
@@ -7796,7 +7906,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                      or use.admits(SinkForm.RECORD_COPY))
                     and record_like(rtype, analyzer)
                     and _record_getitem_borrow_subscript(
-                        e, declared, analyzer, lc.names_with("pointer")))
+                        e, declared, analyzer, lc.names_with("pointer"),
+                        held_recv_ok=held_recv))
                 ret_ok = ret_ok or ref_record_recv
                 # A None-narrowed pointer-repr `Optional[record]` NAME reads
                 # its deref (`(*g)[i]`), the same shape the container arm's
@@ -7817,8 +7928,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         ptr_recv_ok=(isinstance(e.obj, TpyName)
                                      and lc.binding(e.obj.name).global_slot),
                         opt_ptr_recv_ok=rec_optrecv,
-                        held_recv_ok=(lc.prelowered is not None
-                                      and e.obj in lc.prelowered))):
+                        held_recv_ok=held_recv)):
                     note_detail("subscript.record_getitem")
                     raise ThirUnsupported("subscript.record_getitem", detail=True)
                 _witness("subscript.record_getitem")
@@ -9399,8 +9509,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                     and i < len(raw_ctor_fi.params)
                                     else None),
                     family_note=("call.ctor_arg."
-                                 + _type_family_tag(p.type, analyzer)),
-                    holds_fresh=HoldsFresh.COMPREHENSIONS)
+                                 + _type_family_tag(p.type, analyzer)))
                 if routed is not None:
                     args.append(routed)
                     continue
@@ -9412,46 +9521,32 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 rec = (_record_rvalue_temp_slot(a, p.type, lc.analyzer)
                        if i in ctor_mut else None)
                 if rec is not None:
-                    if not temp_args:
-                        # A match guard admits calls but is never a flush point,
-                        # so an arg needing a hoisted temp here cannot be lowered
-                        # -- fall the body back rather than drop the temp.
-                        raise ThirUnsupported(
-                            "ctor mutated-slot rvalue temp outside a flush position")
+                    # A mutated slot binds no prvalue: the fresh record is
+                    # bound as an lvalue for its full expression.
                     _witness("argtemp.ctor_mut_rvalue")
-                    args.append(_hoisted(THIRArgTemp(
-                        result_type=rec, cpp_type=lc.render_type(rec), movable=unwrap_ref_type(rec).is_movable(),
-                        # `R __tmp_N = <init>;` IS a storage decl sink, so
-                        # the init takes the STORAGE result use -- the same
-                        # thread the marker-protocol record hoist gives its
-                        # `auto __tmp_N =` twin.
-                        init=_lower_expr(
-                            a, lc, declared,
-                            use=_ExprUse(result=_ExprResultUse.STORAGE)),
-                        form=Form.BORROW, loc=getattr(a, "loc", None)), lc))
+                    args.append(_mut_lvalue(
+                        _lower_expr(a, lc, declared,
+                                    use=_ExprUse(
+                                        result=_ExprResultUse.STORAGE)),
+                        rec, lc, getattr(a, "loc", None), form=Form.BORROW,
+                        kept=a))
                 elif (i in ctor_mut
                       and isinstance(a, (TpyArrayLiteral, TpyDictLiteral,
                                          TpySetLiteral))
                       and _container_literal_arg(a, p.type, analyzer)):
-                    # The gate-admitted MUTATED-slot container-literal hoist
-                    # (the ctor sibling of the free-call
-                    # argtemp.container_literal rows); const slots keep the
-                    # inline brace-init arm below.
-                    if not temp_args:
-                        raise ThirUnsupported(
-                            "ctor container-literal temp outside a flush "
-                            "position")
+                    # The gate-admitted MUTATED-slot container literal, bound
+                    # as an lvalue as the record above is; const slots keep
+                    # the inline brace-init arm below.
                     _ct_slot = unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(p.type)))
                     _ct_lowered = _lower_literal_arg(
                         a, _ct_slot, lc, declared,
                         "container-literal ctor arg on the make path")
                     _witness("argtemp.container_literal")
-                    args.append(_hoisted(THIRArgTemp(
-                        result_type=_ct_slot, cpp_type=lc.render_type(_ct_slot),
-                        init=_ct_lowered, form=Form.BORROW,
-                        movable=unwrap_ref_type(_ct_slot).is_movable(),
-                        loc=getattr(a, "loc", None)), lc))
+                    args.append(_mut_lvalue(
+                        _ct_lowered, _ct_slot, lc, getattr(a, "loc", None),
+                        form=Form.BORROW,
+                        kept=a))
                 elif _field_read_ref_ctor_arg(a, p.type, declared, analyzer):
                     # The gate admitted this exact shape (declared field type
                     # == slot referent), so the render IS the bare member
@@ -10691,11 +10786,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 p_str = _resolved_str_value(rtype, analyzer)
                 if p_str is None:
                     p_str = _resolved_bytes_value(rtype, analyzer)
-                mc_recv, mc_arrow = _ptr_recv_access(e, _lower_expr(
-                    e.obj, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
-                    field_prechecked=isinstance(e.obj, TpyFieldAccess),
-                    subscript_prechecked=isinstance(e.obj, TpySubscript)))
+                mc_recv, mc_arrow, _ = member_receiver(
+                    e, lc, declared, temp_args=temp_args)
                 p_bc = _bound_call_of(pfi, e.method)
                 # The node publishes no callee (MIR would read parameter 0
                 # as the written receiver), so the arguments derive their
@@ -10741,11 +10833,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     d_str = _resolved_bytes_value(rtype, analyzer)
                 _witness("method.user_deref_chain")
                 d_bc = _bound_call_of(dfi, e.method)
+                d_member = member_receiver(e, lc, declared,
+                                           temp_args=temp_args)
                 return _self_recv_positioned(THIRMethodCall(
                     result_type=rtype if rtype is not None else VoidType(),
-                    receiver=_lower_expr(
-                        e.obj, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.RECEIVER)),
+                    receiver=d_member.recv,
                     method_cpp=d_bc.method_cpp,
                     native_function_name=d_bc.native_function_name,
                     cpp_template=d_bc.cpp_template,
@@ -10755,8 +10847,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             kind=("plain", ""), temp_args=temp_args,
                             signature=None)
                         for i, a in enumerate(e.args)),
-                    is_arrow=_name_recv_is_arrow(e.obj, lc),
-                    deref_chain=e.deref_depth,
+                    is_arrow=d_member.is_arrow,
+                    deref_chain=d_member.deref_chain,
                     form=_viewfam_result_form(d_str),
                     loc=loc,
                 ))
@@ -10790,22 +10882,21 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     s_str = _resolved_bytes_value(rtype, analyzer)
                 _witness("method.user_deref_stub")
                 s_bc = _bound_call_of(sfi, e.method)
-                s_recv = _lower_expr(
-                    e.obj, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.RECEIVER))
+                s_member = member_receiver(e, lc, declared,
+                                           temp_args=temp_args)
                 s_args = tuple(
                     _deref_chain_method_arg(e, i, lc, declared,
                                             temp_args=temp_args)
                     for i in range(len(e.args)))
                 return _self_recv_positioned(THIRMethodCall(
                     result_type=rtype if rtype is not None else VoidType(),
-                    receiver=s_recv,
-                    is_arrow=_name_recv_is_arrow(e.obj, lc),
+                    receiver=s_member.recv,
+                    is_arrow=s_member.is_arrow,
                     method_cpp=s_bc.method_cpp,
                     native_function_name=s_bc.native_function_name,
                     cpp_template=s_bc.cpp_template,
                     args=s_args,
-                    deref_chain=e.deref_depth,
+                    deref_chain=s_member.deref_chain,
                     form=_viewfam_result_form(s_str),
                     loc=loc,
                 ))
@@ -10892,59 +10983,20 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             mk_str = _resolved_str_value(rtype, analyzer)
             if mk_str is None:
                 mk_str = _resolved_bytes_value(rtype, analyzer)
-            # A module-qualified generic call spells explicit template args
-            # as type_to_cpp(unwrap_ref_type) per inferred arg (NOT the
-            # free-call arm's to_cpp_stored). A
-            # same-module generic STATIC splits them into class/method args
-            # over the composed callee (`Cls<CA>::template m<MA>`).
-            callee_cpp = mk[1] if mk[0] in ("qualified", "generic_qualified",
-                                            "super_generic") else None
-            on_receiver = (e.super_parent_type is not None
-                             or e.unbound_self_parent_type is not None)
-            if on_receiver and callee_cpp is not None:
-                # `Base::m` on this body's receiver: `this` in a method, the
-                # stored `__self` reference in a resumable frame.
-                callee_cpp = (lc.self_cpp
-                              + ("->" if lc.self_is_pointer else ".")
-                              + callee_cpp)
-            mk_targs = (tuple(type_arg_cpp(unwrap_ref_type(t), lc.render_type)
-                              for t in e.inferred_type_args)
-                        if mk[0] in ("generic_qualified", "super_generic")
-                        else None)
-            if mk[0] == "generic_static":
-                callee_cpp, mk_targs = _generic_static_callee(e, lc)
-            elif mk[0] == "generic_module_static":
-                callee_cpp, mk_targs = _generic_module_static_callee(e, lc)
-            # The callee is resolved once; the arguments read the
-            # signature it publishes. Explicit template args belong to a
-            # generic callee, never a stub whose declared facts are closed.
-            mk_resolved, mk_stub = call_callees(
-                mfi, analyzer, arity=len(e.args), result_type=rtype,
-                binds_body=mk[0] == "qualified" and not e.inferred_type_args,
-                spells_targs=mk_targs is not None)
-            mk_signature = call_signature(mk_resolved, mk_stub)
+            mk_callee = _marker_callee(e, mk, rtype, lc)
             return THIRCall(
                 result_type=rtype if rtype is not None else VoidType(),
                 callee=e.method,
-                resolved_callee=mk_resolved,
+                resolved_callee=mk_callee.resolved,
                 args=tuple(
-                    _lower_marker_method_arg(
-                        e, a, mfi.params[i].type, i, lc, declared,
-                        kind=(mk if mk[0] == "template"
-                              else ("plain", "")),
-                        temp_args=temp_args, signature=mk_signature,
-                        # GENERIC module callees run the same first-pass
-                        # hoist (`auto __tmp_N = {literal};` before
-                        # `cycle<int32_t>(__tmp_N)`); only
-                        # native/template callees skip it.
-                        protocol_hoist=mk[0] in ("qualified",
-                                                 "generic_qualified"))
+                    _marker_call_arg(e, a, i, mk, mk_callee, lc, declared,
+                                     temp_args=temp_args)
                     for i, a in enumerate(e.args)),
                 native_name=mk[1] if mk[0] == "native" else None,
-                callee_cpp=callee_cpp,
+                callee_cpp=mk_callee.callee_cpp,
                 cpp_template=mk[1] if mk[0] == "template" else None,
-                template_args_cpp=mk_targs,
-                stub_callee=mk_stub,
+                template_args_cpp=mk_callee.targs,
+                stub_callee=mk_callee.stub,
                 constructs=_callee_is_type_initializer(mfi),
                 form=_viewfam_result_form(mk_str),
                 loc=loc,
@@ -11063,7 +11115,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 note_detail("method.fi_kind")
                 raise ThirUnsupported(call_reject_reason("expr.method_call"))
             if (lends_from_dying_source(analyzer, e)
-                    and not use.admits(SinkForm.DYING_SOURCE_LEND)):
+                    and not use.admits(SinkForm.DYING_SOURCE_LEND)
+                    # A receiver seated for its compound statement lives
+                    # as long as the statement.
+                    and not receiver_kept(e, lc)):
                 # THE check. The accessor lends storage its RECEIVER owns and
                 # the receiver dies at the end of this full expression, so
                 # only a sink that finishes inside it may read the result.
@@ -11226,11 +11281,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
 
         if isinstance(e.obj, TpyName) and e.obj.name == lc.self_receiver:
             _witness("call.self_method")
-        # An unproven Optional-ptr borrow receiver takes its None check
-        # (`::tpy::none_attr(p, "method").method(args)`); the marker carve-out
-        # local admission permits it only on such a receiver. Mutually exclusive
-        # with the indirect (`->`) arm -- the check yields a reference.
-        deref_check = e.needs_optional_runtime_check
         # A generic method's explicit template args (`b.transform<T>(42)`):
         # the method_targs suffix, spelled type_to_cpp over each
         # inferred arg. The static/module marker faces spell their own.
@@ -11243,71 +11293,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             method_targs = tuple(
                 type_arg_cpp(unwrap_ref_type(t), lc.render_type)
                 for t in e.inferred_type_args)
-        _mnu = (_assign_narrowed_union_recv(e.obj, declared, lc)
-                if isinstance(e.obj, TpyName) else None)
-        enum_wrap = _enum_companion_wrap(e, lc)
-        if base_recv is not None:
-            recv_lowered = _base_part_receiver(base_recv, lc, declared, loc)
-        elif (fi is not None and fi.is_generator
-                and gen_recv_ctor_temp(e.obj, lc.analyzer)):
-            # The generator-factory receiver lift: the frame/peephole
-            # captures the receiver by reference, so the ctor rvalue hoists
-            # into a named local (`Counter __tmp_N = Counter(..);`) flushed
-            # at the consuming position (the for-head brace scope / the
-            # iterator-object decl) -- the is_temporary lift.
-            recv_t = lc.analyzer.get_expr_type(e.obj)
-            _witness("method.gen_recv_temp")
-            recv_lowered = _hoisted(THIRArgTemp(
-                result_type=recv_t, cpp_type=lc.render_type(recv_t), movable=unwrap_ref_type(recv_t).is_movable(),
-                init=_lower_expr(e.obj, lc, declared,
-                                 use=_RECORD_TEMP_FLUSH_USE),
-                form=Form.BORROW, loc=getattr(e.obj, "loc", None)), lc)
-        elif _mnu is not None:
-            # An ASSIGN-narrowed ptr-variant union NAME receiver: the
-            # inline bare-get read (`(*std::get<Circle*>(c)).area()`) --
-            # the field row's method twin; the gate dispatched on the
-            # member record.
-            _mnu_u, _mnu_member = _mnu
-            _mnu_cpp, _mnu_ptr = _narrow_member_cpp(
-                e.obj.name, _mnu_member, _mnu_u, lc)
-            _witness("method.assign_narrowed_union")
-            recv_lowered = THIRNarrowedRead(
-                result_type=analyzer.get_expr_type(e.obj),
-                variant_cpp=e.obj.name, member_cpp=_mnu_cpp,
-                union_extraction=_union_extraction(e.obj.name, _mnu_u, _mnu_member, lc),
-                is_ptr_variant=_mnu_ptr, form=Form.BORROW,
-                loc=getattr(e.obj, "loc", None))
-        else:
-            # A call-shaped receiver's own arg temps flush at the enclosing
-            # statement like any nested arg's, so allow_temps rides through.
-            # A cpp_template expansion and an @native free function both
-            # consume the receiver as an ARGUMENT, a value position -- so an
-            # indirect name derefs there (`::tpy::__len__((*xs))`), where a
-            # real member call spells `->` instead; both emit branches
-            # ignore `is_arrow`, so the deref has to ride the name.
-            #
-            # The checked CALL receiver's `T*` result lands bare into
-            # its check. Safe outside the iterable_override branch only
-            # because all three override predicates reject
-            # needs_optional_runtime_check -- keep that invariant if adding
-            # a fourth.
-            recv_lowered = _lower_call_receiver(
-                e.obj, lc, declared, allow_temps=temp_args,
-                forms=_recv_forms(
-                    (e.needs_optional_runtime_check
-                     and isinstance(e.obj, (TpyCall, TpyMethodCall))),
-                    (fi is not None
-                     and (fi.cpp_template is not None
-                          or enum_wrap is not None
-                          or bool(fi.native_function and fi.native_name)))),
-                prechecked=enum_wrap is None)
-            if enum_wrap is not None:
-                recv_lowered = THIRCoerce(
-                    result_type=recv_lowered.result_type, expr=recv_lowered,
-                    coercion_name="enum_companion", wrap=enum_wrap,
-                    form=recv_lowered.form, loc=getattr(e.obj, "loc", None))
-            if deref_check:
-                recv_lowered = _attr_checked(e, recv_lowered)
+        member = member_receiver(e, lc, declared, temp_args=temp_args,
+                                 base_recv=base_recv)
+        recv_lowered = member.recv
         copied = _consuming_receiver_copy(e, fi, lc, declared)
         copy_recv = copied.result_type if copied is not None else None
         if copied is not None:
@@ -11324,20 +11312,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             native_function_name=binding.native_function_name,
             cpp_template=binding.cpp_template,
             method_targs_cpp=method_targs,
-            is_arrow=(copy_recv is None and not deref_check
-                      and enum_wrap is None) and (
-                # The name receiver's rule (`this->` for an un-narrowed
-                # pointer `self`, `.` through a poly-narrowed cast).
-                _name_recv_is_arrow(e.obj, lc)
-                # A tuple-element record receiver: `std::get<N>(t)` is a
-                # bare `T*` where the tuple holds the element as one
-                # (`std::get<0>(t)->get()`); an inline element is a value
-                # (`.`) -- the field-access arrow's shared rule.
-                or (isinstance(e.obj, TpySubscript)
-                    and recv_lowered.reads_raw_pointer)
-                # An `Own[@dynamic P]` receiver -- name or call rvalue --
-                # is a unique_ptr, so the member access arrows.
-                or _recv_own_dyn(e.obj, declared, analyzer)),
+            is_arrow=copy_recv is None and member.is_arrow,
             move_receiver=(bool(fi.is_consuming) and copy_recv is None
                            and isinstance(e.obj, TpyName)
                            and _witness("method.consuming_move")),
@@ -12281,7 +12256,12 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
     try:
         # No statement of the lambda's own encloses its body: a decl
         # hoisted "before the statement" would land outside the lambda.
-        with lc.placement_scope(SlotPlacement.NO_FLUSH_POINT):
+        # The body runs when the lambda is called, not at the enclosing
+        # statement: no suspension of the enclosing frame falls inside it,
+        # and its temporaries live for its own evaluation.
+        with lc.placement_scope(SlotPlacement.NO_FLUSH_POINT), \
+                lc.planning((Hand(e.body, HandleUse.CONSUMED, False, None),),
+                            apart=True):
             return _lower_lambda_impl(e, lc, declared)
     except ThirUnsupported as ex:
         # A nested lambda already names its own failure and source location.
@@ -13749,13 +13729,13 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 raise ThirUnsupported("expr.tuple_literal")
             ptr_base = lc.render_type(payload)
             parts.append(f"{ptr_base}*")
-            lowered.append(_hoisted(THIRArgTemp(
+            lowered.append(held_temp(THIRArgTemp(
                 result_type=payload, cpp_type=ptr_base,
                 init=_lower_copy_special(
                     member, "copy", payload, lc, declared,
                     getattr(member, "loc", None)),
                 form=Form.BORROW, addr_of=True, movable=payload.is_movable(),
-                loc=getattr(member, "loc", None)), lc))
+                loc=getattr(member, "loc", None)), lc, member))
             lifts.append(False)
             wraps.append(None)
             continue
@@ -13968,17 +13948,17 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 if temp_t is None:
                     note_detail("btuple.frame_elem_unowned")
                     raise ThirUnsupported("expr.tuple_literal")
-                if not frame_flush:
+                if not frame_flush and lc.frame is None:
                     note_detail("btuple.frame_elem_no_statement_slot")
                     raise ThirUnsupported(
                         call_reject_reason("expr.tuple_literal"))
                 frame_hoisted.add(i)
                 _witness("argtemp.frame_temp_elem")
-                lowered.append(_hoisted(THIRArgTemp(
+                lowered.append(held_temp(THIRArgTemp(
                     result_type=temp_t, cpp_type=lc.render_type(temp_t),
                     init=elem_init, form=Form.BORROW, addr_of=True,
                     movable=unwrap_ref_type(temp_t).is_movable(),
-                    loc=getattr(elem, "loc", None)), lc))
+                    loc=getattr(elem, "loc", None)), lc, elem))
                 continue
             _witness("btuple.value_to_borrow")
             src_parts[i] = ptr_base
@@ -14103,8 +14083,14 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             elem_cpps=tuple(src), elements=tuple(lowered),
             addr_of=tuple(lifts), elem_wraps=elem_wraps or (),
             loc=getattr(e, "loc", None)), lc, record_of=e)
-        return converted(source, param_tuple_slot(
-            dest, analyzer, const=target_readonly), analyzer)
+        plan = convert(source, param_tuple_slot(
+            dest, analyzer, const=target_readonly,
+            retained=_seat_needed(e, lc)), analyzer)
+        if isinstance(plan, Refuse):
+            raise ThirUnsupported("tuple." + plan.key, loc=source.loc,
+                                  message=plan.message)
+        return _with_held(plan.expr, plan.storage_request, lc,
+                          getattr(e, "loc", None), e)
     _witness("btuple.literal")
     return THIRBorrowTupleLiteral(
         result_type=slot, spelled_cpp=spelled, elem_cpps=tuple(parts),
@@ -14611,8 +14597,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
                                arg_index=i, call=e,
                                temps=temp_args,
                                instantiated=resolved,
-                               family_note="call.generic_arg_shape",
-                               holds_fresh=HoldsFresh.ALL)
+                               family_note="call.generic_arg_shape")
         if routed is not None:
             args.append(routed)
             continue
@@ -14621,7 +14606,8 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
                 narrowed=frozenset(lc.narrow.narrowed),
                 param_names=lc.prescan.param_names,
                 storage_tuple_locals=lc.names_with("storage_tuple"),
-                overload=root, retains=keep):
+                overload=root, retains=keep,
+                frame_taken=_frame_taken(a, lc)):
             raise ThirUnsupported(call_reject_reason("expr.call"))
         peeled = _peel_coerce(a)
         if (isinstance(ptype, TypeParamRef)
@@ -15008,19 +14994,20 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                            arg_index=arg_index, call=e, signature=signature,
                            temps=temp_args,
                            lifetime_checked=True,
-                           holds_fresh=(HoldsFresh.CALLS if native
-                                        else HoldsFresh.ALL),
                            reference_note=(
                                _native_arg_reject(a, ptype, analyzer)
-                               if native else None))
+                               if native else None),
+                           free_call=True)
     if routed is not None:
         return routed
     len_call = _is_len_call(e, declared, analyzer, lc.names_with("pointer"))
-    if not len_call:
+    if not len_call and not _awaited_operand(a, lc):
         body_facts = _free_arg_body_facts(lc, declared)
         if kind is not None and kind[0] in ("native", "native_c", "template"):
             ok = _native_call_arg_ok(a, ptype, declared, analyzer,
-                                     retains=_keep, **body_facts)
+                                     retains=_keep,
+                                     frame_taken=_frame_taken(a, lc),
+                                     **body_facts)
             _sit = (_separate_iterator_temp_arg(a, ptype, _callee_fi,
                                                 arg_index, analyzer)
                     if ok and temp_args and lc.may_hoist else None)
@@ -15029,15 +15016,17 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                 # with no flush slot here (no grant, or no statement in the
                 # region) it keeps the bare, owned form. The
                 # record type is spelled, so a conditional operand can bank
-                # the temp in its region instead of building it eagerly.
+                # the temp in its region instead of building it eagerly. In
+                # a resumable body the combinator holding it lives on the
+                # frame, and so does the record (`held_temp`).
                 _witness("argtemp.separate_iter_source")
-                return _hoisted(THIRArgTemp(
+                return held_temp(THIRArgTemp(
                     result_type=_sit, cpp_type=lc.render_type(_sit),
                     movable=_sit.is_movable(),
                     init=_lower_expr(a, lc, declared,
                                      use=replace(_NESTED_ARG_USE,
                                                  allow_temps=True)),
-                    form=Form.BORROW, loc=getattr(a, "loc", None)), lc)
+                    form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
         else:
             ok = _plain_call_arg_ok(
                 a, ptype, declared, analyzer, temps_ok=temp_args,
@@ -15046,7 +15035,8 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                 overload=_callee_fi if arg_index >= 0 else None,
                 retains=_keep,
                 frame_capturing=frame_capturing,
-                readonly_target=readonly_target, **body_facts)
+                readonly_target=readonly_target,
+                frame_taken=_frame_taken(a, lc), **body_facts)
         if not ok:
             raise ThirUnsupported(call_reject_reason("expr.call"))
     if (kind is not None and kind[0] in ("native", "native_c", "template")
@@ -15162,18 +15152,18 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         # readonly spelling) OR a const-ROOTED source field
         # (is_const_storage_source: `h.pair` off a const receiver).
         _witness("arg.borrow_tuple_field")
-        field = _lower_expr(a, lc, declared,
-                            use=replace(_arg_position,
-                                        result=_ExprResultUse.BORROW_BIND))
-        return converted(field, param_tuple_slot(bt_slot, analyzer, const=(
-            const_ref_slot(ptype, readonly_target)
-            or _f1_const_rooted_source(a, lc))), analyzer)
+        return converted(
+            _lower_expr(a, lc, declared,
+                        use=replace(_arg_position,
+                                    result=_ExprResultUse.BORROW_BIND)),
+            param_tuple_slot(bt_slot, analyzer, const=(
+                const_ref_slot(ptype, readonly_target)
+                or _f1_const_rooted_source(a, lc))), analyzer)
     _ru_borrow_call = (_recursive_union_borrow_call_arg(a, ptype, analyzer)
                        if plain_kind else False)
     _elem_sub = _record_elem_subscript_arg(a, ptype, analyzer)
     _rec_borrow = (_record_borrow_call_arg(
-                       a, ptype, analyzer, frame_capturing=frame_capturing,
-                       const_slot=const_ref_slot(ptype, readonly_target))
+                       a, ptype, analyzer, frame_capturing=frame_capturing)
                    if plain_kind
                    else _native_record_borrow_call_arg(a, ptype, analyzer))
     # ... and a `T&`-returning call of a SUBCLASS record at the base slot,
@@ -15257,6 +15247,112 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             retention=_keep))
 
 
+class _MarkerCallee(NamedTuple):
+    """A receiver-less marker call's callee (`_marker_call_kind`): its
+    spelling, its explicit template arguments, and the callee resolved
+    once with the signature its arguments read."""
+    callee_cpp: 'str | None'
+    targs: 'tuple[str, ...] | None'
+    resolved: object
+    stub: object
+    signature: 'THIRCallableSignature | None'
+
+
+def _marker_callee(e: TpyMethodCall, mk: 'tuple[str, str]',
+                   rtype: 'TpyType | None', lc: '_LowerCtx') -> _MarkerCallee:
+    """The callee of receiver-less marker call `e` of kind `mk`, for the
+    call and for an argument lowered apart from it (`awaited_call_arg`)."""
+    analyzer = lc.analyzer
+    mfi = e.resolved_function_info
+    # A module-qualified generic call spells explicit template args
+    # as type_to_cpp(unwrap_ref_type) per inferred arg (NOT the
+    # free-call arm's to_cpp_stored). A
+    # same-module generic STATIC splits them into class/method args
+    # over the composed callee (`Cls<CA>::template m<MA>`).
+    callee_cpp = mk[1] if mk[0] in ("qualified", "generic_qualified",
+                                    "super_generic") else None
+    on_receiver = (e.super_parent_type is not None
+                   or e.unbound_self_parent_type is not None)
+    if on_receiver and callee_cpp is not None:
+        # `Base::m` on this body's receiver: `this` in a method, the
+        # stored `__self` reference in a resumable frame.
+        callee_cpp = (lc.self_cpp
+                      + ("->" if lc.self_is_pointer else ".")
+                      + callee_cpp)
+    mk_targs = (tuple(type_arg_cpp(unwrap_ref_type(t), lc.render_type)
+                      for t in e.inferred_type_args)
+                if mk[0] in ("generic_qualified", "super_generic")
+                else None)
+    if mk[0] == "generic_static":
+        callee_cpp, mk_targs = _generic_static_callee(e, lc)
+    elif mk[0] == "generic_module_static":
+        callee_cpp, mk_targs = _generic_module_static_callee(e, lc)
+    # The callee is resolved once; the arguments read the
+    # signature it publishes. Explicit template args belong to a
+    # generic callee, never a stub whose declared facts are closed.
+    mk_resolved, mk_stub = call_callees(
+        mfi, analyzer, arity=len(e.args), result_type=rtype,
+        binds_body=mk[0] == "qualified" and not e.inferred_type_args,
+        spells_targs=mk_targs is not None)
+    mk_signature = call_signature(mk_resolved, mk_stub)
+    return _MarkerCallee(callee_cpp, mk_targs, mk_resolved, mk_stub,
+                         mk_signature)
+
+
+def _marker_call_arg(e: TpyMethodCall, a: TpyExpr, i: int,
+                     mk: 'tuple[str, str]', callee: _MarkerCallee,
+                     lc: '_LowerCtx', declared: dict[str, TpyType], *,
+                     temp_args: bool) -> THIRExpr:
+    """Argument `i` of receiver-less marker call `e` of kind `mk`."""
+    return _lower_marker_method_arg(
+        e, a, e.resolved_function_info.params[i].type, i, lc, declared,
+        kind=mk if mk[0] == "template" else ("plain", ""),
+        temp_args=temp_args, signature=callee.signature,
+        # GENERIC module callees run the same first-pass hoist
+        # (`auto __tmp_N = {literal};` before `cycle<int32_t>(__tmp_N)`);
+        # only native/template callees skip it.
+        protocol_hoist=mk[0] in ("qualified", "generic_qualified"))
+
+
+def awaited_call_arg(e: 'TpyCall | TpyMethodCall', index: int,
+                     lc: '_LowerCtx', declared: dict[str, TpyType]
+                     ) -> THIRExpr:
+    """Argument `index` of an awaited coroutine call, whose arguments the
+    frame lowers apart from the call: through the argument dispatch any
+    call of that shape takes -- a member call's (`_plain_method_call_arg`),
+    a receiver-less marker call's, a free call's -- so its rows, the
+    frame-argument row among them, decide it once."""
+    analyzer = lc.analyzer
+    fi = e.resolved_function_info
+    a = e.args[index]
+    ptype = fi.params[index].type if index < len(fi.params) else None
+    if isinstance(e, TpyMethodCall):
+        if e.user_module_call is None and e.builtin_module_call is None:
+            return _plain_method_call_arg(
+                MethodCallFacts.of(e), a, index, lc, declared,
+                temp_args=True, proto_recv=_protocol_recv(e.obj, lc),
+                keep=arg_retention(fi, index, e, analyzer, a),
+                signature=None)
+        mk = _marker_call_kind(e, analyzer, coro_factory_ok=True,
+                               error_return_ok=True)
+        if mk is None:
+            raise ThirUnsupported(call_reject_reason("expr.method_call"))
+        return _marker_call_arg(
+            e, a, index, mk,
+            _marker_callee(e, mk, analyzer.get_expr_type(e), lc), lc,
+            declared, temp_args=True)
+    k = _free_callee_kind(e, analyzer, coro_factory_ok=True,
+                          error_return_ok=True, ret_cast_ok=True)
+    resolved, stub = call_callees(
+        fi, analyzer, arity=len(e.args), result_type=analyzer.get_expr_type(e),
+        binds_body=(k is not None and k[0] in ("plain", "imported")
+                    and not e.inferred_type_args))
+    return _lower_free_call_arg(
+        e, a, ptype, k, lc, declared, temp_args=True, arg_index=index,
+        readonly_target=param_const(fi, index),
+        signature=call_signature(resolved, stub))
+
+
 def _frame_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
                     lc: '_LowerCtx', analyzer, *, active: bool,
                     temp_args: bool, no_flush_reason: str,
@@ -15278,22 +15374,15 @@ def _frame_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
     slot = frame_temp_arg_slot(a, ptype, analyzer) if active else None
     if slot is None:
         return lower()
-    # Inside a resumable body this row's flush point is the state's `case`
-    # block, which a frame handle outlives -- so the hoist there is the
-    # gen_async one (`_hoist_frame_factory_args`), which seats the argument on
-    # a field of the ENCLOSING frame and has replaced it with a name before
-    # this row sees it. What still reaches here in a resumable body is a
-    # position that pass does not admit (a ternary arm, a comprehension body):
-    # there the handle cannot outlive the full expression either, so the
-    # case-block local is enough -- except for a `str`/`bytes` LITERAL, which
-    # already renders over STATIC storage and would only trade a lifetime that
-    # cannot end for one that ends early.
+    # Inside a resumable body the seat is a holder of the ENCLOSING frame
+    # (`_frame_holder_seat`): a `case` block's local dies before the handle does.
+    # A `str` / `bytes` LITERAL renders over static storage there already.
     if (isinstance(_peel_coerce(a), (TpyStrLiteral, TpyBytesLiteral))
-            and (lc.func.is_generator or lc.func.is_async)):
+            and lc.frame is not None):
         return lower()
-    if not temp_args:
+    if not temp_args and lc.frame is None:
         raise ThirUnsupported(no_flush_reason)
-    return _frame_temp_argtemp(lower(), lower_owned, slot, lc,
+    return _frame_temp_argtemp(lower(), lower_owned, slot, lc, a,
                                getattr(a, "loc", None))
 
 
@@ -15308,7 +15397,7 @@ def _already_hoisted(e: THIRExpr) -> bool:
     while isinstance(e, THIRCoerce):
         e = e.expr
     if isinstance(e, THIRUnionArgLift):
-        return e.temp_cpp is not None or _already_hoisted_opt(e.value)
+        return _already_hoisted_opt(e.value)
     if isinstance(e, (THIROptionalPtrArg, THIRFormConvert)):
         return _already_hoisted_opt(e.value)
     return isinstance(e, (THIRArgTemp, THIRVarargPack))
@@ -15320,7 +15409,8 @@ def _already_hoisted_opt(e: 'THIRExpr | None') -> bool:
 
 def _frame_temp_argtemp(lowered: THIRExpr,
                         lower_owned: 'Callable[[TpyType], THIRExpr]',
-                        slot: 'TpyType', lc: '_LowerCtx', loc) -> THIRExpr:
+                        slot: 'TpyType', lc: '_LowerCtx', source: TpyExpr,
+                        loc) -> THIRExpr:
     """Seat a frame-capturing temporary argument on a hoisted `__tmp_N`.
 
     A coerce-shaped argument keeps its coerce and only its SOURCE moves onto
@@ -15343,15 +15433,15 @@ def _frame_temp_argtemp(lowered: THIRExpr,
         # A literal pinned at its slot (`_pinned_literal_arg`) already yields
         # the local's type, so it is the local's whole init: re-applying the
         # pin to the local would convert a value of the slot's type again.
-        return _hoisted(THIRArgTemp(result_type=slot,
+        return held_temp(THIRArgTemp(result_type=slot,
                                     cpp_type=lc.render_type(slot),
                                     init=lowered,
                                     movable=unwrap_ref_type(slot).is_movable(),
-                                    loc=loc), lc)
+                                    loc=loc), lc, source)
     if isinstance(lowered, THIRCoerce):
-        temp = _hoisted(THIRArgTemp(result_type=slot, cpp_type=lc.render_type(slot),
+        temp = held_temp(THIRArgTemp(result_type=slot, cpp_type=lc.render_type(slot),
                                     init=lowered.expr, form=Form.BORROW,
-                                    movable=unwrap_ref_type(slot).is_movable(), loc=loc), lc)
+                                    movable=unwrap_ref_type(slot).is_movable(), loc=loc), lc, source)
         # A form-PASSTHROUGH coerce (one whose form IS its inner's, the
         # bytes-view family) must keep passing the new inner's form through:
         # the hoisted local is a borrow source where the prvalue it replaces
@@ -15360,9 +15450,30 @@ def _frame_temp_argtemp(lowered: THIRExpr,
         # the source cannot change.
         form = temp.form if lowered.form is lowered.expr.form else lowered.form
         return replace(lowered, expr=temp, form=form)
+    if not has_view_param_form(slot):
+        # The argument as the call lowered it is the local's init: a fresh
+        # one bound inline for the call (`THIRInlineTemp`) is seated on the
+        # local instead, which the frame then keeps. The local holds what
+        # the init builds where the source's resolved type says otherwise
+        # (a comprehension built as a list where its length is known).
+        built = (unwrap_readonly(unwrap_ref_type(lowered.result_type))
+                 if lowered.result_type is not None else slot)
+        slot = built
+        seated = _seat_inline_temp(lowered, slot, lc, loc, place=lambda n, c: held_temp(n, c, source))
+        if seated is not None:
+            return seated
+        # A slot that takes the argument over (its record moves it whole)
+        # is handed the seat's object, not lent it.
+        rec = read_record(lc.analyzer.ctx, source)
+        return held_temp(THIRArgTemp(
+            result_type=slot, cpp_type=lc.render_type(slot), init=lowered,
+            form=lowered.form, movable=unwrap_ref_type(slot).is_movable(),
+            move=rec is not None and rec.moves_whole,
+            loc=loc), lc, source)
     # At a parameter a plain `str` / `bytes` is the view; the slot that owns
-    # its buffer is spelled `Own[...]` there.
-    init = lower_owned(OwnType(slot) if has_view_param_form(slot) else slot)
+    # its buffer is spelled `Own[...]` there, and the argument is lowered
+    # there instead of at its view.
+    init = lower_owned(OwnType(slot))
     if _already_hoisted(init):
         # The re-lowering is a PLAIN argument position, where a row that
         # spells its own hoist at this slot can fire even though the seam's
@@ -15371,9 +15482,33 @@ def _frame_temp_argtemp(lowered: THIRExpr,
         # IS this row's, at this row's slot -- take it rather than nest a
         # second temp inside it, which the validator rejects.
         return init
-    return _hoisted(THIRArgTemp(result_type=slot, cpp_type=lc.render_type(slot),
+    return held_temp(THIRArgTemp(result_type=slot, cpp_type=lc.render_type(slot),
                                 init=init, form=lowered.form,
-                                movable=unwrap_ref_type(slot).is_movable(), loc=loc), lc)
+                                movable=unwrap_ref_type(slot).is_movable(), loc=loc), lc, source)
+
+
+def _seat_inline_temp(lowered: THIRExpr, slot: TpyType, lc: '_LowerCtx',
+                      loc: 'SourceLocation | None', *,
+                      place: 'Callable[..., THIRExpr]') -> 'THIRExpr | None':
+    """`lowered` with the fresh argument it binds inline for the call
+    (`THIRInlineTemp`, under the borrow lift that hands it on) seated on a
+    local of its storage type instead, which `place` places; None when it
+    binds none."""
+    if isinstance(lowered, (THIRUnionArgLift, THIRFormConvert)):
+        inner = (_seat_inline_temp(lowered.value, slot, lc, loc, place=place)
+                 if lowered.value is not None else None)
+        return None if inner is None else replace(lowered, value=inner)
+    if not isinstance(lowered, THIRInlineTemp):
+        return None
+    t = lowered.result_type
+    # An explicit construction (a union, a @dynamic adapter) declares the
+    # local at the type it builds.
+    return place(THIRArgTemp(
+        result_type=t, cpp_type=lowered.cpp_type or lc.render_type(t),
+        init=lowered.value, brace_init=lowered.brace_init,
+        form=lowered.form, addr_of=lowered.addr_of,
+        movable=(None if lowered.brace_init
+                 else unwrap_ref_type(t).is_movable()), loc=loc), lc)
 
 
 def _lower_vararg_pack(pack: TpyVarargPack, ptype: 'TpyType | None',
@@ -15464,11 +15599,24 @@ def _lower_vararg_pack(pack: TpyVarargPack, ptype: 'TpyType | None',
         # broken (see BUGS.md) and caught by the toolchain.
         # A tuple value element, which `converted_arg` does not take, lowers
         # as it reads.
-        lowered.append(
-            _lower_expr(a, lc, declared,
-                        use=(_ExprUse(result=_ExprResultUse.BORROW_BIND)
-                             if is_ref and ref_lvalue[-1]
-                             else _ExprUse())))
+        elem = _lower_expr(a, lc, declared,
+                           use=(_ExprUse(result=_ExprResultUse.BORROW_BIND)
+                                if is_ref and ref_lvalue[-1]
+                                else _ExprUse()))
+        if is_ref and not ref_lvalue[-1]:
+            # A fresh element the pack points at is held where the keep
+            # plan says (`held_temp`), and the pack names it. The holder is
+            # the element's own object, spelled without the pack's const:
+            # a banked holder builds it as an expression (`T{...}`).
+            elem_t = unwrap_readonly(lc.analyzer.get_expr_type(a))
+            elem = held_temp(THIRArgTemp(
+                result_type=elem_t,
+                cpp_type=varargs_elem_cpp(bare_elem, lc.render_type),
+                init=elem,
+                form=Form.BORROW, movable=unwrap_ref_type(elem_t).is_movable(),
+                loc=getattr(a, "loc", None)), lc, a)
+            ref_lvalue[-1] = True
+        lowered.append(elem)
     _witness("vararg.pack_ref" if is_ref else "vararg.pack_value")
     return _hoisted(THIRVarargPack(result_type=ptype, elem_cpp=elem_cpp, is_ref=is_ref,
                                    args=tuple(lowered), ref_lvalue=tuple(ref_lvalue),
@@ -15549,7 +15697,7 @@ def _owning_slot_arg(a: TpyExpr, ptype: TpyType, lc: '_LowerCtx',
     if arg is OwningArg.HANDED_OVER:
         handed = _handed_over_container(_peel_coerce(a), lc)
         _witness("arg.owning_handover")
-        return _lower_call_arg_at(
+        return _lower_call_arg(
             a, OwnType(handed), lc, declared, temp_args=temps,
             method_arg=reason == "expr.method_call",
             retention=None, lifetime_checked=True)
@@ -15562,13 +15710,13 @@ def _owning_slot_arg(a: TpyExpr, ptype: TpyType, lc: '_LowerCtx',
                                    allow_temps=temps or held))
     if not held:
         return init
-    # A frame keeps the iterator past the statement: it is seated on a
-    # named local first, spelled `auto` (its type is its factory's).
+    # A frame keeps the iterator past the statement: it is seated
+    # (`held_temp`), spelled `auto` (its type is its factory's).
     if not temps:
         raise ThirUnsupported("frame temp arg outside a flush position")
-    return _hoisted(THIRArgTemp(result_type=ptype, cpp_type=None, init=init,
-                                form=Form.BORROW,
-                                loc=getattr(a, "loc", None)), lc)
+    return held_temp(THIRArgTemp(result_type=ptype, cpp_type=None,
+                                   init=init, form=Form.BORROW,
+                                   loc=getattr(a, "loc", None)), lc, a)
 
 
 def owning_param_read(a: TpyExpr, lc: '_LowerCtx',
@@ -15812,9 +15960,9 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                   reason: str = "expr.call",
                   family_note: 'str | None' = None,
                   contract: 'ParamContract | None' = None,
-                  holds_fresh: 'HoldsFresh' = None,
                   reference_note: 'str | None' = None,
-                  signature: 'CallSignature | None' = None
+                  signature: 'CallSignature | None' = None,
+                  free_call: bool = False
                   ) -> 'THIRExpr | None':
     """THE argument at a parameter holding its own value, a view or an open
     `T` (`ParamSlotClass`), whatever the callee's family: the source read
@@ -15884,7 +16032,7 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 # A tuple literal is built as at its concrete twin's tuple
                 # parameter, by the rows that build one there (a frame's
                 # temporary elements seated on named locals).
-                return _lower_call_arg_at(
+                return _lower_call_arg(
                     a, structural, lc, declared, temp_args=temps,
                     readonly_target=twin.const,
                     frame_capturing=contract.frame_captured,
@@ -15937,39 +16085,48 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # A deduced protocol parameter asks its hoist of the declared protocol,
     # which answers at the argument's concrete twin (`frame_temp_arg_source`).
     hoist_t = ptype if twin is not None else inst
-    frame_kept = (contract.frame_captured
-                  and cls is not ParamSlotClass.TRAIT
+    # An open `T` is held as its instantiation is (`val_or_ref_t<T>`): by
+    # reference where the frame borrows that type.
+    frame_held = contract.frame_captured and (
+        inst is None or frame_param_lends(inst))
+    frame_kept = (frame_held
                   and frame_temp_arg_slot(a, hoist_t, lc.analyzer) is None)
 
     def lower() -> THIRExpr:
         pinned = _pinned_literal_arg(a, inst, callee_fi, lc, declared)
         if pinned is not None:
             return pinned
+        # A callee frame that keeps the argument holds it already
+        # (`_frame_temp_arg`), for as long as its handle lives.
+        retained = not frame_held and _seat_needed(a, lc)
         if twin is None:
             slot = param_slot(ptype, contract, lc.analyzer,
-                              placement=lc.placement, instantiated=inst)
+                              placement=lc.placement, instantiated=inst,
+                              retained=retained)
             assert slot.materializer is not Materializer.DEDUCED, (
                 "DEDUCED contract without a protocol twin at line "
                 f"{getattr(a, 'line', '?')}")
         else:
             slot = deduced_slot(contract, structural, twin,
-                                lc.analyzer, placement=lc.placement)
+                                lc.analyzer, placement=lc.placement,
+                                retained=retained)
         if same_t is not None:
             slot = replace(slot, open_same_t=same_t)
         return _arg_at_slot(a, slot, ptype, inst, contract, lc, declared,
                              temps=temps, reason=reason, note=note,
-                             frame_kept=frame_kept, cls=cls,
-                             holds_fresh=holds_fresh, callee_fi=callee_fi,
+                             frame_kept=frame_kept, frame_held=frame_held,
+                             cls=cls,
+                             callee_fi=callee_fi,
                              declared_ptype=declared_ptype,
                              written_value=written_value,
                              ranked_note=(cls is ParamSlotClass.REFERENCE
                                           and reference_note is not None),
-                             structural=structural is not None)
+                             structural=structural is not None,
+                             free_call=free_call)
 
     return _frame_temp_arg(
         a, hoist_t, lc, lc.analyzer,
-        active=(contract.frame_captured
-                and cls is not ParamSlotClass.TRAIT),
+        active=frame_held,
         temp_args=temps,
         no_flush_reason="frame temp arg outside a flush position",
         lower=lower,
@@ -16049,60 +16206,6 @@ def _pointer_object_slot(t: TpyType, analyzer) -> bool:
         _protocol_binding(unwrap_readonly(m)) is not None for m in members)
 
 
-class HoldsFresh(Enum):
-    """Which fresh arguments a call position holds in statement storage at
-    a reference parameter rather than binding them in place (None: none):
-    a call's result only, a comprehension only, or any fresh object."""
-    CALLS = auto()
-    COMPREHENSIONS = auto()
-    ALL = auto()
-
-
-def _holds_fresh_arg(a: TpyExpr, read: THIRExpr, holds: 'HoldsFresh | None',
-                     contract: ParamContract, declared_ptype: TpyType,
-                     lc: '_LowerCtx', *, const: bool,
-                     record_t: TpyType) -> bool:
-    """Whether the position holds fresh argument `a` (read as `read`) in
-    statement storage: a fresh record or container the callee binds by
-    reference, held for a callee that lends it back -- a call's result at
-    a parameter not declared `readonly` (a frame keeps even that one), any
-    other fresh object where the position holds every one."""
-    if holds is None or _lendable(read.source) or record_t.is_value_type():
-        # A value (`BigInt`) is bound in place: no record or container is
-        # lent here.
-        return False
-    bare = _peel_coerce(a)
-    node = read.uncoerced
-    if _names_reference(bare, lc) or isinstance(node, THIRValueSelect):
-        # An `and` / `or` select holds its operand already: it names it.
-        return False
-    # A declared signature that keeps nothing of a const parameter (a
-    # `@pure` stub's) reads it within the call, as a `readonly` one does.
-    readonly = (isinstance(unwrap_ref_type(unwrap_send_sync(declared_ptype)),
-                           ReadonlyType)
-                or (contract.declared_only and contract.const
-                    and contract.retention is None))
-    if (readonly and not contract.frame_captured
-            and _empty_container_rvalue(bare, node)):
-        # An empty one has no elements to run ahead of the other arguments.
-        return False
-    if holds is HoldsFresh.COMPREHENSIONS:
-        return isinstance(bare, (TpyListComprehension, TpySetComprehension,
-                                 TpyDictComprehension))
-    if isinstance(node, (THIRCall, THIRMethodCall, THIRCtorCall)):
-        if not is_rvalue_source(lc.analyzer, bare):
-            return False
-        if contract.frame_captured or _constructs_type(bare):
-            return contract.frame_captured or not readonly
-        # A result live for the statement binds in place: a reference,
-        # or at a const parameter any result the callee hands back so.
-        return (not readonly
-                and not (call_result_live_in_statement(lc.analyzer, bare)
-                         if const and _f1_record(record_t, lc.analyzer) else
-                         call_result_is_reference(lc.analyzer, bare)))
-    return holds is HoldsFresh.ALL
-
-
 def _constructs_type(a: TpyExpr) -> bool:
     """A type's construction (`list(xs)`, `bytearray(b)`): it builds its
     value."""
@@ -16116,14 +16219,6 @@ def _names_reference(a: TpyExpr, lc: '_LowerCtx') -> bool:
         return property_access_returns_cpp_ref(lc.analyzer, a)
     return (not _constructs_type(a)
             and call_result_is_reference(lc.analyzer, a))
-
-
-def _empty_container_rvalue(a: TpyExpr, node: THIRExpr) -> bool:
-    """An empty container literal, or a container type's construction
-    from nothing (`list()`)."""
-    if isinstance(node, THIRContainerLiteral):
-        return not node.elements
-    return _constructs_type(a) and not a.args and not a.kwargs
 
 
 def _reference_arg_form(a: TpyExpr, slot: Slot, ptype: TpyType,
@@ -16158,7 +16253,7 @@ def _reference_arg_form(a: TpyExpr, slot: Slot, ptype: TpyType,
                           coercion_name=a.coercion.name,
                           wrap="::tpy::deref_check({0})",
                           form=inner.form, loc=loc)
-    if temps and slot.holds is SlotHolds.BORROWS:
+    if slot.holds is SlotHolds.BORROWS:
         cov = _covariant_temp_arg(a, ptype, declared, lc.analyzer)
         if cov is not None:
             inner = _lower_expr(a, lc, declared,
@@ -16170,11 +16265,14 @@ def _reference_arg_form(a: TpyExpr, slot: Slot, ptype: TpyType,
             if _node_moves(inner):
                 inner = THIRMove(result_type=inner.result_type, value=inner,
                                  form=inner.form, loc=loc)
+            # Built at the parameter's type for the call, as a temporary of
+            # the full expression: bound as it is by a const reference, as
+            # an lvalue by a mutable one.
             _witness("argtemp.covariant")
-            return _hoisted(THIRArgTemp(
-                result_type=cov, cpp_type=lc.render_type(cov),
-                movable=unwrap_ref_type(cov).is_movable(), init=inner,
-                form=Form.BORROW, loc=loc), lc)
+            return _inline_temp(
+                a if slot.retained else None, lc, result_type=cov, value=inner,
+                cpp_type=lc.render_type(cov), mutable=not slot.const,
+                form=Form.BORROW, loc=loc)
     if param_takes_ownership(ptype):
         # `copy(x)` is the copy-construction of its record or container,
         # as every owning sink spells it.
@@ -16249,17 +16347,466 @@ def _owned_open_param(t: TpyType) -> bool:
 def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
                  contract: ParamContract, lc: '_LowerCtx',
                  declared: dict[str, TpyType], *, temps: bool, reason: str,
-                 note: str, frame_kept: bool, cls: ParamSlotClass,
-                 holds_fresh: 'HoldsFresh', callee_fi: 'FunctionInfo | None',
+                 note: str, frame_kept: bool, frame_held: bool,
+                 cls: ParamSlotClass,
+                 callee_fi: 'FunctionInfo | None',
                  declared_ptype: 'TpyType | None',
                  written_value: bool = False,
                  ranked_note: bool = False,
-                 structural: bool = False) -> THIRExpr:
+                 structural: bool = False,
+                 free_call: bool = False) -> THIRExpr:
+    """`a` converted at `slot` (`_arg_converted`)."""
+    expr = _arg_converted(a, slot, ptype, inst, contract, lc, declared,
+                          temps=temps, reason=reason, note=note,
+                          frame_kept=frame_kept, frame_held=frame_held,
+                          cls=cls,
+                          callee_fi=callee_fi, declared_ptype=declared_ptype,
+                          written_value=written_value,
+                          ranked_note=ranked_note, structural=structural,
+                          free_call=free_call)
+    return expr
+
+
+
+def fresh_seat_root(obj: TpyExpr, lc: '_LowerCtx') -> 'TpyExpr | None':
+    """THE seat decision for the fresh object a receiver or read object
+    `obj` lives in -- a method's receiver, a field read's or a slice's
+    object: its fresh root (`fresh_receiver_root`, under any chain of
+    field reads, subscripts and Deref hops) where the keep plan keeps it
+    for the statement or a callee frame takes it (`Keep.taken`) and this
+    position can seat it. None for a root nothing keeps, or a view (its
+    borrower keeps what it points into)."""
+    root = fresh_receiver_root(obj, lc.analyzer)
+    if root is None or is_view_value(root, lc.analyzer):
+        return None
+    keep = planned(root, lc)
+    return (root if (keep.kept or keep.taken) and seat_available(root, lc)
+            else None)
+
+
+def _receiver_seat_root(e: TpyMethodCall,
+                        lc: '_LowerCtx') -> 'TpyExpr | None':
+    """`fresh_seat_root` of method call `e`'s receiver -- not a receiver
+    a consuming method takes over."""
+    root = fresh_seat_root(e.obj, lc)
+    fi = e.resolved_function_info
+    return (None if root is e.obj and fi is not None and fi.is_consuming
+            else root)
+
+
+# The fresh root held in its seat: storage the seat's temp is built from.
+_ROOT_SEAT_USE = _ExprUse(result=_ExprResultUse.BORROW_BIND,
+                          record_ctor=_RecordCtorUse.RECORD_TEMP,
+                          allow_temps=True, pos=SinkPos.RECEIVER,
+                          forms=_LEND_OK)
+
+
+def seated_root(root: 'TpyExpr | None', lc: '_LowerCtx',
+                declared: dict[str, TpyType]
+                ) -> 'tuple[TpyExpr | None, THIRExpr | None]':
+    """Fresh `root` of a receiver or read object (`fresh_seat_root`) and
+    its seat (`held_temp`), for the caller to build the object on
+    (`lc.prelowering`). Nothing for no root, or one an enclosing member
+    seated."""
+    if root is None or (lc.prelowered is not None
+                        and root in lc.prelowered):
+        return None, None
+    recv_t = unwrap_readonly(lc.analyzer.get_expr_type(root))
+    lowered = _lower_expr(root, lc, declared, use=_ROOT_SEAT_USE)
+    _witness("arg.head_kept")
+    # A seat under a condition is filled there, never ahead of it: a value
+    # that cannot move is built in place.
+    movable = unwrap_ref_type(recv_t).is_movable()
+    return root, held_temp(THIRArgTemp(
+        result_type=recv_t, cpp_type=lc.render_type(recv_t),
+        movable=movable,
+        init=lowered,
+        form=(lowered.form if recv_t.is_value_type() else Form.BORROW),
+        fills_in_place=not movable,
+        loc=getattr(root, "loc", None)), lc, root)
+
+
+class MemberReceiver(NamedTuple):
+    """The receiver as `member_receiver` lowers it, whether the member is
+    reached through it as a pointer, and the `__deref__()` hops between."""
+    recv: THIRExpr
+    is_arrow: bool
+    deref_chain: int = 0
+
+
+def member_receiver(e: TpyMethodCall, lc: '_LowerCtx',
+                    declared: dict[str, TpyType], *, temp_args: bool,
+                    base_recv: 'TpyType | None' = None) -> MemberReceiver:
+    """THE receiver of member call `e` as the call reaches its method: a
+    `Ptr`'s pointee (`_ptr_recv_access`), a Deref wrapper's `__deref__()`
+    chain, the base part of `*this`, an assign-narrowed union's member, an
+    unproven Optional under its None check (a reference, so never `->`) --
+    each built on the receiver's fresh root, seated once where the keep
+    plan keeps it (`seated_root`)."""
+    root, seat = (seated_root(_receiver_seat_root(e, lc), lc, declared)
+                  if base_recv is None else (None, None))
+    with lc.prelowering(root, seat):
+        analyzer = lc.analyzer
+        deref_check = e.needs_optional_runtime_check
+        if e.deref_depth:
+            recv_t = analyzer.get_expr_type(e.obj)
+            if recv_t is not None and recv_t.is_pointer():
+                # One `->` reaches the pointee (`_ptr_deref_method_call`).
+                if e.deref_depth != 1:
+                    raise ThirUnsupported("ptr.deref_chain")
+                return MemberReceiver(*_ptr_recv_access(e, _lower_expr(
+                    e.obj, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
+                    field_prechecked=isinstance(e.obj, TpyFieldAccess),
+                    subscript_prechecked=isinstance(e.obj, TpySubscript))))
+            recv = _lower_expr(e.obj, lc, declared,
+                               use=_ExprUse(result=_ExprResultUse.RECEIVER))
+            if deref_check:
+                # The wrapper is reached under its None check before any hop.
+                return MemberReceiver(_attr_checked(e, recv), False,
+                                      e.deref_depth)
+            return MemberReceiver(recv, _name_recv_is_arrow(e.obj, lc),
+                                  e.deref_depth)
+        fi = e.resolved_function_info
+        mnu = (_assign_narrowed_union_recv(e.obj, declared, lc)
+               if isinstance(e.obj, TpyName) else None)
+        enum_wrap = _enum_companion_wrap(e, lc)
+        if base_recv is not None:
+            recv = _base_part_receiver(base_recv, lc, declared,
+                                       getattr(e, "loc", None))
+        elif mnu is not None:
+            # An ASSIGN-narrowed ptr-variant union NAME receiver: the inline
+            # bare-get read (`(*std::get<Circle*>(c)).area()`) -- the field
+            # row's method twin.
+            mnu_u, mnu_member = mnu
+            mnu_cpp, mnu_ptr = _narrow_member_cpp(e.obj.name, mnu_member,
+                                                  mnu_u, lc)
+            _witness("method.assign_narrowed_union")
+            recv = THIRNarrowedRead(
+                result_type=analyzer.get_expr_type(e.obj),
+                variant_cpp=_narrow_variant_cpp(e.obj.name, mnu_u, lc),
+                member_cpp=mnu_cpp,
+                union_extraction=_union_extraction(e.obj.name, mnu_u,
+                                                   mnu_member, lc),
+                is_ptr_variant=mnu_ptr, form=Form.BORROW,
+                loc=getattr(e.obj, "loc", None))
+        else:
+            # A call-shaped receiver's own arg temps flush at the enclosing
+            # statement like any nested arg's, so allow_temps rides through.
+            # A cpp_template expansion and an @native free function both
+            # consume the receiver as an ARGUMENT, a value position -- so an
+            # indirect name derefs there (`::tpy::__len__((*xs))`), where a
+            # real member call spells `->` instead; both emit branches
+            # ignore `is_arrow`, so the deref has to ride the name.
+            #
+            # The checked CALL receiver's `T*` result lands bare into
+            # its check. Safe outside the iterable_override branch only
+            # because all three override predicates reject
+            # needs_optional_runtime_check -- keep that invariant if adding
+            # a fourth.
+            view = (bytes_literal_view_slot(fi,
+                                            analyzer.get_expr_type(e.obj),
+                                            receiver=True)
+                    if isinstance(e.obj, TpyBytesLiteral) else None)
+            if view is not None:
+                # A literal at a `self` the method reads through its view:
+                # its static storage, which the keep plan holds nothing for.
+                recv = _lower_expr(e.obj, lc, declared,
+                                   use=_ExprUse(slot_target=view))
+            else:
+                recv = _lower_call_receiver(
+                    e.obj, lc, declared, allow_temps=temp_args,
+                    forms=_recv_forms(
+                        (deref_check
+                         and isinstance(e.obj, (TpyCall, TpyMethodCall))),
+                        (fi is not None
+                         and (fi.cpp_template is not None
+                              or enum_wrap is not None
+                              or bool(fi.native_function
+                                      and fi.native_name)))),
+                    prechecked=enum_wrap is None)
+            if enum_wrap is not None:
+                recv = THIRCoerce(
+                    result_type=recv.result_type, expr=recv,
+                    coercion_name="enum_companion", wrap=enum_wrap,
+                    form=recv.form, loc=getattr(e.obj, "loc", None))
+            if deref_check:
+                recv = _attr_checked(e, recv)
+        return MemberReceiver(recv, not deref_check and enum_wrap is None and (
+            # The name receiver's rule (`this->` for an un-narrowed pointer
+            # `self`, `.` through a poly-narrowed cast).
+            _name_recv_is_arrow(e.obj, lc)
+            # A tuple-element record receiver: `std::get<N>(t)` is a bare `T*`
+            # where the tuple holds the element as one
+            # (`std::get<0>(t)->get()`); an inline element is a value (`.`) --
+            # the field-access arrow's shared rule.
+            or (isinstance(e.obj, TpySubscript) and recv.reads_raw_pointer)
+            # An `Own[@dynamic P]` receiver -- name or call rvalue -- is a
+            # unique_ptr, so the member access arrows.
+            or _recv_own_dyn(e.obj, declared, analyzer)))
+
+
+def awaited_receiver(call: TpyMethodCall, lc: '_LowerCtx',
+                     declared: dict[str, TpyType]) -> THIRExpr:
+    """The receiver of an awaited method call, handed to its frame
+    constructor's `Class&` parameter: the object the member call of the
+    same method on the same receiver runs on (`member_receiver`), as an
+    lvalue -- past the pointer and the `__deref__()` hops that call takes
+    (`deref_hops_cpp`, the member call's own spelling)."""
+    member = member_receiver(call, lc, declared, temp_args=True)
+    recv, hops, arrow = member.recv, member.deref_chain, member.is_arrow
+    if not (arrow or hops):
+        return recv
+    wrap = "{0}" + deref_hops_cpp(arrow, hops) if hops else "(*{0})"
+    return THIRCoerce(
+        result_type=method_owner_type(call, recv.result_type), expr=recv,
+        coercion_name="deref_to_target", wrap=wrap, form=recv.form,
+        loc=recv.loc)
+
+
+def receiver_kept(e: TpyMethodCall, lc: '_LowerCtx') -> bool:
+    """Whether method call `e`'s receiver lives as long as its compound
+    statement: it lives in the fresh root `member_receiver` seats
+    (`_receiver_seat_root`), or borrows out of roots the statement keeps
+    and seats where they are lowered (`Outer(1).get_inner` in
+    `Outer(1).get_inner.items`)."""
+    if _receiver_seat_root(e, lc) is not None:
+        return True
+    keep = planned(e.obj, lc)
+    return keep.borrows_kept and seat_available(e.obj, lc)
+
+
+class RootPlace(Enum):
+    """Where the root a `with` target read after the statement borrows is
+    declared (`root_placement`)."""
+    # A holder of the resumable body's frame (`_frame_holder_seat`).
+    FRAME = auto()
+    # A module-level target: a `static` slot of the module's init, in front
+    # of the outermost compound statement.
+    MODULE = auto()
+    # In front of the outermost enclosing compound statement whose scope
+    # declares the target.
+    OUTER = auto()
+    # In front of the `with` itself, in the scope that declares the target
+    # -- where the manager's own `__ctx_N` local is that storage unless the
+    # `with`'s head opens a scope of its own.
+    WITH = auto()
+
+
+class RootPlacement(NamedTuple):
+    kind: RootPlace
+    # The pre-declarations the slot joins (`compound_decls`); None in a frame.
+    decls: 'list[HoistDecl] | None'
+    # The slot may already hold a value when the item runs (it is declared
+    # outside a loop the `with` sits in): the new value is built before the
+    # old one is destroyed.
+    engaged: bool
+
+
+def root_placement(lc: '_LowerCtx', target: 'str | None') -> RootPlacement:
+    """THE placement of the root of a `with` item's `target`, decided once
+    per item (`lc.targeting` carries it): outside a resumable body declared where the
+    target is -- in front of the outermost enclosing compound statement
+    whose scope declares it, at module scope a static slot, else in front
+    of the `with` itself (`compound_decls`)."""
+    if lc.frame is not None:
+        return RootPlacement(RootPlace.FRAME, None, False)
+    entries = lc.compound_decls
+    if lc.top_level_scope:
+        at, kind = 0, RootPlace.MODULE
+    else:
+        at = next((k for k, entry in enumerate(entries[:-1])
+                   if target is not None and target in entry.declared), None)
+        kind = RootPlace.OUTER
+        if at is None:
+            at, kind = len(entries) - 1, RootPlace.WITH
+    engaged = entries[-1].loop_depth > entries[at].loop_depth
+    return RootPlacement(kind, entries[at].decls, engaged)
+
+
+def root_slot(node: THIRArgTemp, lc: '_LowerCtx') -> THIRExpr:
+    """An enclosed root outside a resumable body: an optional slot declared
+    where the item's placement says (`lc.root_place`), filled where the
+    value is evaluated."""
+    place = lc.root_place
+    name = f"__with_root_{lc.root_slot_count}"
+    lc.root_slot_count += 1
+    cpp = node.cpp_type or lc.render_type(node.result_type)
+    static = "static " if place.kind is RootPlace.MODULE else ""
+    place.decls.append(HoistDecl(name, f"{static}std::optional<{cpp}>"))
+    return THIRRootSlot(result_type=node.result_type, name=name,
+                        value=node.init, build_first=place.engaged,
+                        form=Form.BORROW, loc=node.loc)
+
+
+def _frame_holder_seat(node: THIRArgTemp, lc: '_LowerCtx',
+                       source: 'TpyExpr | None') -> THIRExpr:
+    """`node` held in a HEAD_ARG holder of the enclosing frame, emplaced
+    where the argument is evaluated: a conditional operand is built only
+    when its arm runs, each `with` item's before the next. A temp spelled
+    `auto` (a deduced slot's) is held at the type of what initializes it,
+    which the frame struct spells off that initializer (`deduced`)."""
+    deduced = node.cpp_type is None and is_protocol_type(node.result_type)
+    spelled = (_held_spelling(node.init, source, node.result_type, lc)
+               if deduced else None)
+    if spelled is not None:
+        node = replace(node, cpp_type=spelled)
+        deduced = False
+    if (deduced and isinstance(node.init, THIRGenExpr)
+            and node.init.owned_source):
+        # Its source is built in place from a lambda, which no member
+        # declaration can spell (BUGS.md#genexpr-fresh-source-frame-holder).
+        raise ThirUnsupported(
+            "frame_holder.genexpr_fresh_source", loc=node.init.loc,
+            message=("a generator expression over a fresh source, passed to "
+                     "a generator or coroutine whose frame keeps it across a "
+                     "suspension, is not supported yet; bind the generator "
+                     "expression's source to a local first"))
+    holder = THIRFrameHolder(
+        HolderRole.HEAD_ARG, f"__head_arg_{lc.head_holder_count}",
+        "" if deduced else (node.cpp_type or lc.render_type(node.result_type)),
+        value=source if deduced else None,
+        deduced=node.init if deduced else None,
+        drop_runs_user_code=unwrap_ref_type(
+            node.result_type).drop_runs_user_code(),
+        embeds=frame_embedding_edge(
+            # A deduced holder holds what initializes it, not its slot.
+            lc.analyzer.get_expr_type(source) if deduced else node.result_type,
+            lc.analyzer.ctx.module_name,
+            held_frame_name(source, lc.analyzer.registry,
+                            lc.analyzer.ctx.module_name)))
+    lc.head_holder_count += 1
+    lc.head_holders.append(holder)
+    _witness("arg.head_kept_frame")
+    return replace(node, frame_holder=holder)
+
+
+def _held_frame_spelling(source: 'TpyExpr | None',
+                         lc: '_LowerCtx') -> 'str | None':
+    """The frame struct a holder of the generator or coroutine object
+    `source` builds is spelled as, where the struct is no template (the
+    printer's `frame_struct_is_template`); None where only the initializer
+    spells it."""
+    fi = held_frame_function(source, lc.analyzer.registry,
+                             lc.analyzer.ctx.module_name)
+    if fi is None or fi.body is None or frame_struct_is_template(fi.body):
+        return None
+    return frame_struct_qualname(
+        None, fi.frame_cpp_name,
+        shape=(ResumableShape.ASYNC if fi.is_async
+               else ResumableShape.GENERATOR))
+
+
+def _held_spelling(init: THIRExpr, source: 'TpyExpr | None', slot: TpyType,
+                   lc: '_LowerCtx') -> 'str | None':
+    """The C++ type a holder of the argument `source` at protocol slot
+    `slot`, initialized by `init`, is spelled as: a generator or coroutine
+    object's frame struct (`_held_frame_spelling`), any other temporary's
+    rendered type (`init`'s, which its render builds). None where only the
+    initializer spells it -- a template frame struct, an argument that is
+    no temporary (`frame_temp_arg_source`: a literal the slot deduces from
+    as it is), a protocol-typed value (a deduced `auto` result), a type
+    sema left pending, or a borrowed value type (a view select, whose C++
+    type is the view)."""
+    if held_frame_function(source, lc.analyzer.registry,
+                           lc.analyzer.ctx.module_name) is not None:
+        return _held_frame_spelling(source, lc)
+    if frame_temp_arg_source(source, slot, lc.analyzer) is None:
+        return None
+    t = resolve_pending_container(init.result_type, lc.analyzer) or (
+        init.result_type)
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if (is_protocol_type(t) or contains_pending_leaf(t)
+            or isinstance(t, (PendingViewType, PendingGenericInstanceType))
+            or (init.form is Form.BORROW and t.is_value_type())):
+        return None
+    return lc.render_type(t)
+
+
+def _inline_temp(source: 'TpyExpr | None', lc: '_LowerCtx',
+                 **fields: object) -> THIRExpr:
+    """Every inline temporary a call argument builds (`THIRInlineTemp`) is
+    created here, for the argument `source`: where the keep plan says its
+    storage outlives the full expression (`planned`) -- its statement
+    keeps it, or a frame does -- it is seated instead (`held_temp`); else
+    it is a temporary of the full expression."""
+    node = THIRInlineTemp(**fields)
+    if not _seat_needed(source, lc):
+        return replace(node, lifetime=SeatLifetime.FULL_EXPRESSION)
+    _witness("arg.head_kept")
+    return _seat_inline_temp(node, node.result_type, lc, node.loc,
+                             place=lambda n, c: held_temp(n, c, source))
+
+
+def _frame_taken(source: TpyExpr, lc: '_LowerCtx') -> bool:
+    """Whether the keep plan has the frame of the coroutine or generator
+    call `source` is handed to hold it (`Keep.taken`) together with what
+    it borrows: a value that can carry a borrow (`carries_borrow`) only
+    where the plan keeps each temporary it borrows."""
+    keep = planned(source, lc)
+    if not keep.taken:
+        return False
+    if not carries_borrow(lc.analyzer.get_expr_type(source)):
+        return True
+    return all(planned(t, lc).kept for t in frame_arg_borrowed_temps(
+        source, keep.taker[0], lc.analyzer))
+
+
+def _awaited_operand(source: TpyExpr, lc: '_LowerCtx') -> bool:
+    """Whether `source` is a direct operand of a call an `await` of the
+    statement runs to completion (`Keep.awaited`): that call's frame is
+    built from it in place, so it passes no shape gate."""
+    return planned(source, lc).awaited
+
+
+def _awaited_capture(source: TpyExpr, ptype: 'TpyType | None',
+                     lc: '_LowerCtx') -> bool:
+    """Whether the awaited call's frame captures `source` as it is, so this
+    frame holds nothing for it: a direct operand (`_awaited_operand`) at a
+    static protocol parameter, whose member the frame deduces from the
+    argument (`::tpy::await_arg_capture_t`: the value for a prvalue, a
+    reference for an lvalue), that the keep plan gives no seat."""
+    proto = protocol_slot(ptype)
+    return (proto is not None and not is_dyn_protocol(proto)
+            and _awaited_operand(source, lc)
+            and not _seat_needed(source, lc))
+
+
+def _seat_needed(source: 'TpyExpr | None', lc: '_LowerCtx') -> bool:
+    """Whether the plan gives `source` storage past its full expression
+    that this position can declare: a frame holder, or a statement (or
+    enclosing) seat where a statement encloses the expression."""
+    return (source is not None
+            and planned(source, lc).lifetime
+            is not SeatLifetime.FULL_EXPRESSION
+            and seat_available(source, lc))
+
+
+def _arg_converted(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
+                   contract: ParamContract, lc: '_LowerCtx',
+                   declared: dict[str, TpyType], *, temps: bool, reason: str,
+                   note: str, frame_kept: bool, frame_held: bool,
+                   cls: ParamSlotClass,
+                   callee_fi: 'FunctionInfo | None',
+                   declared_ptype: 'TpyType | None',
+                   written_value: bool = False,
+                   ranked_note: bool = False,
+                   structural: bool = False,
+                   free_call: bool = False) -> THIRExpr:
     """`a` read as it is (a literal built at `slot`), converted at `slot`;
     storage the conversion asks for held for the statement. A protocol
     slot (`structural`) takes any argument whole, so a refused source is
-    refused as itself, never ranked by the slot."""
+    refused as itself, never ranked by the slot. `free_call`: the
+    argument is a free call's (`_lower_free_call_arg`)."""
     keep = contract.retention
+    # A callee frame that holds the argument (`converted_arg`'s answer)
+    # seats it (`_frame_temp_arg`): the seat direct-initializes storage of
+    # its own, as a frame slot write does.
+    seated = frame_held and not frame_kept
+    read_forms = ((_NO_FORMS if keep is not None else _LEND_OK)
+                  | (_ONLY_SELECT_FRESH_PRVALUE if seated else _NO_FORMS))
     reference = cls is ParamSlotClass.REFERENCE
     if reference:
         try:
@@ -16268,7 +16815,7 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
             if shaped is not None:
                 return shaped
             read = (_literal_at_slot(a, slot, ptype, inst, lc, declared,
-                                     temps=temps)
+                                     temps=temps, callee_fi=callee_fi)
                     if slot.type.is_value_type() else
                     _container_literal_at_slot(a, slot, ptype, callee_fi, lc,
                                                declared, temps=temps))
@@ -16278,8 +16825,7 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
                 return read
             if read is None:
                 read = _arg_read(a, slot, ptype, lc, declared, temps=temps,
-                                 lend_forms=(_NO_FORMS if keep is not None
-                                             else _LEND_OK))
+                                 lend_forms=read_forms)
             else:
                 read = stamped(read, lc, record_of=a)
         except ThirUnsupported as exc:
@@ -16299,7 +16845,7 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
         read = None
     if not reference:
         read = _literal_at_slot(a, slot, ptype, inst, lc, declared,
-                                temps=temps)
+                                temps=temps, callee_fi=callee_fi)
     if (read is None and cls is ParamSlotClass.POINTER
             and isinstance(slot.type, OptionalType)):
         # A container built for an Optional's pointer is built at its
@@ -16331,15 +16877,13 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
         pass
     elif read is None:
         read = _arg_read(a, slot, ptype, lc, declared, temps=temps,
-                         lend_forms=(_NO_FORMS if keep is not None
-                                     else _LEND_OK))
+                         lend_forms=read_forms)
     else:
         read = stamped(read, lc, record_of=a)
     if (frame_kept and holds_borrowing_view(slot.type)
             and not _lendable(read.source)
-            # A literal's buffer is static.
-            and not isinstance(_peel_coerce(a), (TpyStrLiteral,
-                                                 TpyBytesLiteral))):
+            # A literal's buffer is static, and so is a select of literals.
+            and not static_buffer(_peel_coerce(a))):
         # The frame would hold a view of storage that dies with the
         # statement.
         note_detail(note)
@@ -16368,32 +16912,6 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
         note_detail(note)
         raise ThirUnsupported(call_reject_reason(reason))
     expr = spelled(plan, lc.render_type)
-    if (reference and not temps
-            # A declared borrow keeps nothing of an argument that lends
-            # nothing: the result binds as a value there (`ResultForm`).
-            and keep is not None and keep & ~Retention.DECLARED_RESULT
-            and holds_fresh is HoldsFresh.ALL
-            and slot.holds is SlotHolds.BORROWS
-            and not _lendable(read.source) and not slot.type.is_value_type()
-            and not _names_reference(_peel_coerce(a), lc)):
-        # The callee's result may borrow this temporary: it needs storage
-        # the statement holds, and no statement here hosts it.
-        note_detail(note)
-        raise ThirUnsupported(call_reject_reason(reason))
-    if (reference and plan.effect in (Effect.PASS, Effect.MATERIALIZE)
-            and slot.holds is SlotHolds.BORROWS and temps
-            and _holds_fresh_arg(a, read, holds_fresh, contract,
-                                 declared_ptype or ptype, lc,
-                                 const=slot.const, record_t=slot.type)):
-        # A fresh object this position holds in statement storage rather
-        # than binding it in place: it outlives a callee that lends it back.
-        t = (plan.storage_request.type if plan.storage_request is not None
-             else held_object_type(read, slot.type, lc.analyzer))
-        _witness("argtemp.arg_hold")
-        return _hoisted(THIRArgTemp(result_type=t, cpp_type=lc.render_type(t),
-                                    init=expr, form=Form.BORROW,
-                                    movable=unwrap_ref_type(t).is_movable(),
-                                    loc=getattr(a, "loc", None)), lc)
     if (reference and slot.materializer is Materializer.CALLER
             and plan.effect is Effect.PASS
             and temps and _select_node(_peel_coerce(a))
@@ -16402,10 +16920,10 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
         # copies it: the copy is held for the call and moved in.
         t = slot.type
         _witness("argtemp.arg_copy")
-        return _hoisted(THIRArgTemp(
+        return held_temp(THIRArgTemp(
             result_type=t, cpp_type=lc.render_type(t), init=expr, move=True,
             movable=t.is_movable(), form=Form.STORAGE,
-            loc=getattr(a, "loc", None)), lc)
+            loc=getattr(a, "loc", None)), lc, a)
     if (reference and isinstance(expr, THIRContainerLiteral)
             and expr.typed_brace_cpp is None and not expr.elements):
         # A bare `{}` bound in place names no container.
@@ -16422,69 +16940,124 @@ def _arg_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
     request = plan.storage_request
     if request is None:
         return expr
+    bare = _peel_coerce(a)
     if (reference and slot.materializer is not Materializer.CALLER
+            and not slot.retained
             # A union built from its member is no object a callee binds.
             and not isinstance(request.type, UnionType)
-            and (_names_reference(_peel_coerce(a), lc)
+            and (_names_reference(bare, lc)
                  or (contract.declared_only
+                     and not (callee_fi is not None
+                              and callee_fi.is_callable_value)
                      and (read.source.temporary is False
-                          or not contract.signature_only)))):
+                          or not contract.signature_only)
+                     and not (free_call and not contract.const
+                              and isinstance(bare, (TpyCall, TpyMethodCall))
+                              and is_rvalue_source(lc.analyzer, bare))))):
         # A call handing back a reference is the object it names, and a
         # callee with no analyzed body declares its own signature, which
         # binds what it is handed: the parameter takes it in place. A
-        # protocol method's signature is the TPy one, whose mutable
-        # reference binds no temporary: it takes the storage held for the
-        # call.
+        # protocol method's signature is the TPy one, and so is a callable
+        # value's (`std::function<R(P&)>`), whose mutable reference binds no
+        # temporary: it takes the storage lent for the call, and so does a
+        # free call's parameter not declared const handed a fresh call or
+        # construction (not an operator's result): a binding's C++ there
+        # may be a `T&`.
         return expr
-    if not temps:
-        # No statement here hosts the storage: the call's form refuses it.
-        note_detail(note)
-        raise _NoTempHostRefusal(call_reject_reason(reason),
-                                 storage=request.type)
     t = request.type
     loc = getattr(a, "loc", None)
-    plain = _eligible_scalar(t) or _eligible_char(t)
     if slot.materializer is Materializer.CALLER:
+        if not temps:
+            # No statement here hosts the copy: the call's form refuses it.
+            note_detail(note)
+            raise _NoTempHostRefusal(call_reject_reason(reason),
+                                     storage=t)
         # The copy an owned parameter takes, moved in; a buffer its view
         # constructs explicitly is brace-initialized from it.
+        plain = _eligible_scalar(t) or _eligible_char(t)
         _witness("argtemp.arg_copy")
-        return _hoisted(THIRArgTemp(
+        return held_temp(THIRArgTemp(
             result_type=t, cpp_type=lc.render_type(t), init=expr,
             brace_init=_resolved_str_value(t, lc.analyzer) is not None,
             move=True,
             movable=t.is_movable(),
-            form=Form.VALUE if plain else Form.STORAGE, loc=loc), lc)
-    # Storage a reference-typed instantiation is lent for the call.
-    _witness("argtemp.arg_lend")
+            form=Form.VALUE if plain else Form.STORAGE, loc=loc), lc, a)
+    if request.held is not None:
+        return _with_held(expr, request, lc, loc, a)
+    return _lent_inline(expr, t, slot, cls, lc, loc, a)
+
+
+def _with_held(expr: THIRExpr, request: 'StorageRequest | None',
+               lc: '_LowerCtx', loc: 'SourceLocation | None',
+               arg: TpyExpr) -> THIRExpr:
+    """`expr` with the part its conversion asks storage for
+    (`StorageRequest.held`: the owner a view is built over, a tuple's bound
+    source) held where its compound statement keeps it, the conversion
+    reading it there; `expr` itself where it asks for none."""
+    if request is None or request.held is None:
+        return expr
+    held, t = request.held, request.type
+    _witness("arg.head_kept")
+    return replaced_node(expr, held, held_temp(THIRArgTemp(
+        result_type=t, cpp_type=lc.render_type(t),
+        init=_spell_brace(held, t, lc), form=held.form,
+        movable=unwrap_ref_type(t).is_movable(), loc=loc), lc, arg))
+
+
+def _lent_inline(expr: THIRExpr, t: TpyType, slot: Slot,
+                 cls: ParamSlotClass, lc: '_LowerCtx',
+                 loc: 'SourceLocation | None', arg: TpyExpr) -> THIRExpr:
+    """Storage a parameter that binds no prvalue is lent -- a `T&` its callee
+    writes, a pointer at the object: the fresh argument itself, bound as an
+    lvalue for its full expression (`_mut_lvalue`) at the storage's type
+    `t`. A fresh argument lives for its statement whatever its parameter,
+    and for the compound statement whose head passes it where the slot is
+    `retained`."""
+    _witness("arg.inline_lend")
     pointer = cls is ParamSlotClass.POINTER
     if pointer and isinstance(slot.type, UnionType) and t != slot.type:
-        # A pointer variant points at the storage held for it.
-        return _hoisted(THIRUnionArgLift(
+        # A pointer variant points at the member's object.
+        return THIRUnionArgLift(
             result_type=slot.type,
             variant_cpp=(slot.type.to_cpp_const_ptr_variant() if slot.const
                          else slot.type.to_cpp_ptr_variant()),
-            value=expr, temp_cpp=lc.render_type(t), form=Form.BORROW,
-            loc=loc), lc)
+            value=_mut_lvalue(expr, t, lc, loc, form=Form.BORROW,
+                              kept=arg),
+            form=Form.BORROW, loc=loc)
     if pointer and isinstance(t, (OptionalType, UnionType)):
-        # An optional or a union held for the call lends its borrow form
+        # An optional or a union built for the call lends its borrow form
         # (a union's const one at a const slot; an optional's follows its
         # own const-ness).
         return THIRFormConvert(
             result_type=slot.type, form=Form.BORROW, loc=loc,
             is_const=slot.const and isinstance(t, UnionType),
-            value=_hoisted(THIRArgTemp(
-                result_type=t, cpp_type=lc.render_type(t), init=expr,
-                form=Form.STORAGE, movable=unwrap_ref_type(t).is_movable(),
-                loc=loc), lc))
-    return _hoisted(THIRArgTemp(result_type=t, cpp_type=lc.render_type(t),
-                                init=expr,
-                                form=(Form.BORROW if pointer or (
-                                    reference and not t.is_value_type())
-                                      else Form.VALUE),
-                                # A pointer parameter points at it.
-                                addr_of=pointer,
-                                movable=unwrap_ref_type(t).is_movable(),
-                                loc=loc), lc)
+            value=_mut_lvalue(expr, t, lc, loc, form=Form.STORAGE,
+                              kept=arg))
+    return _mut_lvalue(expr, t, lc, loc, addr_of=pointer,
+                       kept=arg,
+                       form=(Form.BORROW if pointer or not t.is_value_type()
+                             else Form.VALUE))
+
+
+def _mut_lvalue(expr: THIRExpr, t: TpyType, lc: '_LowerCtx',
+                loc: 'SourceLocation | None', *, form: Form,
+                kept: 'TpyExpr | None', addr_of: bool = False) -> THIRExpr:
+    """Fresh argument `expr` bound as a mutable lvalue (or its address) for
+    its full expression -- for its compound statement where it is `kept` --
+    built at type `t` where it is not already one. A temp its statement
+    already holds (`THIRTempRead`) is that lvalue."""
+    if (isinstance(expr, THIRTempRead)
+            and unwrap_readonly(expr.result_type) == unwrap_readonly(t)):
+        if addr_of:
+            return THIROptionalPtrArg(result_type=t, value=expr,
+                                      addr_of=True, form=Form.BORROW,
+                                      loc=loc)
+        return expr
+    value = _spell_brace(expr, t, lc)
+    typed = (None if unwrap_readonly(value.result_type) == unwrap_readonly(t)
+             else lc.render_type(t))
+    return _inline_temp(kept, lc, result_type=t, value=value, cpp_type=typed,
+                        mutable=True, addr_of=addr_of, form=form, loc=loc)
 
 
 def _arg_read(a: TpyExpr, slot: Slot, ptype: TpyType, lc: '_LowerCtx',
@@ -16574,11 +17147,12 @@ def _call_arg_result(a: TpyExpr, lc: '_LowerCtx') -> _ExprResultUse:
 
 def _literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
                      inst: TpyType, lc: '_LowerCtx',
-                     declared: dict[str, TpyType], *, temps: bool
+                     declared: dict[str, TpyType], *, temps: bool,
+                     callee_fi: 'FunctionInfo | None'
                      ) -> 'THIRExpr | None':
-    """A literal argument built at its parameter (of declared type `ptype`,
-    holding `inst`): its type and spelling come from the slot, not from the
-    literal. None for any other source."""
+    """A literal argument built at its parameter of `callee_fi` (of declared
+    type `ptype`, holding `inst`): its type and spelling come from the
+    slot, not from the literal. None for any other source."""
     loc = getattr(a, "loc", None)
     if inst is not ptype:
         owned = param_takes_ownership(ptype)
@@ -16637,7 +17211,9 @@ def _literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
         return None
     if isinstance(a, TpyStrLiteral) and _eligible_char(ptype):
         return _lower_char_targeted(a, ptype, lc, declared)
-    view_slot = _bytes_param_view_slot(ptype)
+    # The keep plan's decision at the parameter's type at this call
+    # (`bytes_literal_view_slot`).
+    view_slot = bytes_literal_view_slot(callee_fi, ptype)
     lit = _peel_coerce(a)
     if view_slot is not None and isinstance(lit, TpyBytesLiteral):
         return _lower_expr(lit, lc, declared,
@@ -16711,13 +17287,16 @@ def _arg_holds_dying(a: TpyExpr, ptype: 'TpyType | None',
                 and view_slot_source_is_temporary(analyzer.ctx, ptype, a)))
 
 
+@contextmanager
+def _bound_entry(e: TpyExpr, lc: '_LowerCtx') -> Iterator[None]:
+    """Lower `e` under the keep plan of its statement (`lc.bounded`); an
+    expression no statement plans is planned on entry as a value that
+    escapes."""
+    with lc.bounded((Hand(e, HandleUse.ESCAPES, False, None),)):
+        yield
+
+
 def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
-                    declared: dict[str, TpyType], **kw) -> THIRExpr:
-    """One call argument against its param slot (`_lower_call_arg_at`)."""
-    return _lower_call_arg_at(a, ptype, lc, declared, **kw)
-
-
-def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     declared: dict[str, TpyType], *, temp_args: bool = False,
                     nested_temps: bool = False,
                     readonly_target: bool = False,
@@ -16860,10 +17439,12 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     if (isinstance(a, (TpyCall, TpyMethodCall))
             and _native_iterable_call_arg(a, ptype, lc.analyzer)
             and (inline_template
-                 or not _dict_view_call_result(a, lc.analyzer))):
+                 or not _dict_view_call_result(a, lc.analyzer))
+            and not _seat_needed(a, lc)):
         # A container-returning call rvalue at a native Iterable/Sized
         # slot binds bare -- the ITERABLE result family wires the inner
-        # call's container return (the foreach capture's admission). A
+        # call's container return (the foreach capture's admission) --
+        # unless the keep plan seats it. A
         # dict-VIEW result binds bare only under the native/template loop:
         # at a USER callee's structural slot it hoists `auto __tmp_N =`
         # and passes the temp, which a bare bind would drop.
@@ -16923,10 +17504,10 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             raise ThirUnsupported("arg.own_proto_container_live")
         _witness("argtemp.own_proto_container")
         _opc = lowered.result_type
-        return _hoisted(THIRArgTemp(result_type=_opc, cpp_type=lc.render_type(_opc),
+        return held_temp(THIRArgTemp(result_type=_opc, cpp_type=lc.render_type(_opc),
                                     init=lowered, move=True, form=Form.STORAGE,
                                     movable=unwrap_ref_type(_opc).is_movable(),
-                                    loc=getattr(a, "loc", None)), lc)
+                                    loc=getattr(a, "loc", None)), lc, a)
     if (method_arg_stub
             and _wrapper_union_elem_name_arg(a, ptype, declared,
                                              lc.narrow.narrowed, lc.analyzer)
@@ -17331,10 +17912,10 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         _witness("argtemp.protocol_union_literal")
         # Movable comes off the temp's own (demoted sema) type, so the
         # conditional-region defer decision matches.
-        return _hoisted(THIRArgTemp(result_type=_pul, cpp_type=lc.render_type(_pul),
+        return held_temp(THIRArgTemp(result_type=_pul, cpp_type=lc.render_type(_pul),
                                     init=init, addr_of=True, form=Form.BORROW,
                                     movable=unwrap_ref_type(_pul).is_movable(),
-                                    loc=getattr(a, "loc", None)), lc)
+                                    loc=getattr(a, "loc", None)), lc, a)
     if (not method_arg
             and (_pui := _protocol_union_iter_temp_arg(
                 a, ptype, declared, lc.analyzer)) is not None):
@@ -17350,10 +17931,10 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             use=replace(_NESTED_ARG_USE, result=_ExprResultUse.ITERABLE,
                         allow_temps=True))
         _witness("argtemp.protocol_union_iter")
-        return _hoisted(THIRArgTemp(result_type=_pui, cpp_type=lc.render_type(_pui),
+        return held_temp(THIRArgTemp(result_type=_pui, cpp_type=lc.render_type(_pui),
                                     init=init, addr_of=True, form=Form.BORROW,
                                     movable=unwrap_ref_type(_pui).is_movable(),
-                                    loc=getattr(a, "loc", None)), lc)
+                                    loc=getattr(a, "loc", None)), lc, a)
     if _required_protocol_union_slot(ptype):
         # Everywhere ELSE that same slot renders the plain value:
         # a required multi-protocol union is claimed ahead of the
@@ -17428,6 +18009,9 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # `protocol_slots` marks the loops that actually run those pre-arms; the
     # builtins loop does not, and renders a protocol slot bare.
     proto = protocol_slot(ptype) if protocol_slots else None
+    if proto is not None and _awaited_capture(a, ptype, lc):
+        # The awaited call's frame captures the argument as it is.
+        proto = None
     if proto is not None:
         if _coro_factory_structural_arg(a, proto, lc.analyzer):
             # The coro-factory structural temp (`auto __tmp_N = f();`):
@@ -17437,7 +18021,7 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 raise ThirUnsupported(
                     "protocol arg-temp outside a flush position")
             _witness("argtemp.protocol")
-            return _hoisted(THIRArgTemp(
+            return held_temp(THIRArgTemp(
                 result_type=proto, cpp_type=None,
                 init=_lower_expr(
                     a, lc, declared,
@@ -17445,7 +18029,7 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                 forms=_call_arg_forms(whole_tuple=False,
                                                       coro_factory=True,
                                                       ptr_opt_pass=False))),
-                form=Form.BORROW, loc=getattr(a, "loc", None)), lc)
+                form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
         if isinstance(a, TpyStrLiteral) and not is_dyn_protocol(proto):
             # The str-literal structural temp (`auto __tmp_N = "hello";`):
             # un-spelled, so the protocol deduces on the raw char array.
@@ -17453,10 +18037,10 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 raise ThirUnsupported(
                     "protocol arg-temp outside a flush position")
             _witness("argtemp.protocol")
-            return _hoisted(THIRArgTemp(
+            return held_temp(THIRArgTemp(
                 result_type=proto, cpp_type=None,
                 init=_lower_expr(a, lc, declared),
-                form=Form.BORROW, loc=getattr(a, "loc", None)), lc)
+                form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
         if _iter_rvalue_structural_arg(a, proto, declared, lc.analyzer):
             # The iterator sibling (gen-factory / iter() / dict-view
             # rvalues): the same un-spelled auto temp; the init lowers
@@ -17470,14 +18054,14 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # temps flush at the same statement, before this temp (`int32_t
             # __tmp_2 = 7;` then `auto __tmp_3 = repeat_n<int32_t>(__tmp_2,
             # 5);` -- the cascade's creation order).
-            return _hoisted(THIRArgTemp(
+            return held_temp(THIRArgTemp(
                 result_type=proto, cpp_type=None,
                 init=_lower_expr(
                     a, lc, declared,
                     use=replace(_NESTED_ARG_USE,
                                 result=_ExprResultUse.ITERABLE,
                                 allow_temps=True)),
-                form=Form.BORROW, loc=getattr(a, "loc", None)), lc)
+                form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
         if (isinstance(a, TpyGeneratorExpression)
                 and not is_dyn_protocol(proto)):
             # A genexpr at a STRUCTURAL slot (`sum_items(x * x for x in
@@ -17488,10 +18072,26 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     "protocol arg-temp outside a flush position")
             from .comprehensions import _lower_genexpr
             _witness("argtemp.genexpr_proto")
-            return _hoisted(THIRArgTemp(
+            return held_temp(THIRArgTemp(
                 result_type=proto, cpp_type=None,
                 init=_lower_genexpr(a, lc, declared),
-                form=Form.BORROW, loc=getattr(a, "loc", None)), lc)
+                form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
+        comp_c = (_comp_own_container(a, lc.analyzer)
+                  if not is_dyn_protocol(proto) else None)
+        if comp_c is not None:
+            # A container comprehension at a STRUCTURAL slot: the literal's
+            # twin, its own container held in the same un-spelled temp.
+            if not temp_args:
+                raise ThirUnsupported(
+                    "protocol arg-temp outside a flush position")
+            from .comprehensions import _lower_comprehension
+            pointers = _comp_shadow_pointers(lc.names_with("pointer"),
+                                             declared, lc.analyzer)
+            _witness("argtemp.comprehension_proto")
+            return held_temp(THIRArgTemp(
+                result_type=proto, cpp_type=None,
+                init=_lower_comprehension(a, comp_c, lc, declared, pointers),
+                form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
         at = lc.analyzer.get_expr_type(a)
         if isinstance(a, (TpyArrayLiteral, TpyName)):
             # A container literal's expr type is still PENDING, and so is a
@@ -17509,11 +18109,20 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             proto, at, lc.render_type, lc.analyzer, rvalue=rvalue,
             const=(not rvalue and is_dyn_protocol(proto)
                    and _walrus_src_is_const(a, lc)))
+        dyn_slot = spec is not None and spec[0] is not None
+        # A structural slot's const reference binds the fresh argument
+        # inline (it deduces the same type from it) unless the keep plan
+        # seats it; a forwarding one keeps the named temp.
+        inline = (spec is not None and not dyn_slot
+                  and _deduced_const_ref(callee_fi, arg_index, ptype,
+                                         lc, signature)
+                  and not _seat_needed(a, lc))
         if spec is not None:
             # Admitted only under `temps_ok`; a silent fall-through would drop
             # the adapter wrap and pass the concrete. A match guard admits calls
             # but is never a flush point, so reject here instead of asserting.
-            if not temp_args:
+            # A @dynamic slot's adapter is built inline instead (below).
+            if not temp_args and not dyn_slot and not inline:
                 raise ThirUnsupported("protocol arg-temp outside a flush position")
             cpp_type, brace_init = spec
             if isinstance(a, TpyArrayLiteral):
@@ -17543,16 +18152,45 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     use=replace(_NESTED_ARG_USE,
                                 result=_ExprResultUse.STORAGE))
             else:
+                # The temp direct-initializes its storage from the argument,
+                # so a select of fresh operands is built straight into it.
+                seated = not (inline or dyn_slot)
                 init = _lower_expr(a, lc, declared,
                                    use=replace(_NESTED_ARG_USE,
                                                pos=SinkPos.CALL_ARG,
                                                forms=_POS_FORMS[
                                                    SinkPos.CALL_ARG]
-                                               | _lend_forms))
+                                               | _lend_forms
+                                               | (_ONLY_SELECT_FRESH_PRVALUE
+                                                  if seated else _NO_FORMS),
+                                               result=(
+                                                   _ExprResultUse.STORAGE
+                                                   if seated else
+                                                   _ExprResultUse.VALUE),
+                                               allow_temps=(
+                                                   seated and temp_args)))
+            if inline:
+                _witness("arg.protocol_inline")
+                return init
+            if dyn_slot:
+                # The @dynamic slot's adapter (or conformer) built from the
+                # argument for the call, a temporary of the full expression:
+                # bound as it is by the const base reference, as an lvalue by
+                # a mutable one.
+                _witness("arg.dyn_adapter_inline")
+                return _inline_temp(
+                    a, lc, result_type=proto,
+                    value=init, cpp_type=cpp_type,
+                    brace_init=brace_init, mutable=not readonly_target,
+                    form=Form.BORROW, loc=getattr(a, "loc", None))
             _witness("argtemp.protocol")
-            return _hoisted(THIRArgTemp(result_type=proto, cpp_type=cpp_type,
-                                        init=init, brace_init=brace_init,
-                                        form=Form.BORROW, loc=getattr(a, "loc", None)), lc)
+            # A callee frame keeps the argument for its handle's life: the
+            # temp is its seat (`held_temp`).
+            return held_temp(
+                THIRArgTemp(result_type=proto, cpp_type=cpp_type,
+                            init=init, brace_init=brace_init,
+                            form=Form.BORROW, loc=getattr(a, "loc", None)),
+                lc, a)
     # A container LITERAL into an `Own[genrec]` slot renders the ru-instance
     # spelling INLINE (`Holder(std::vector<Tree<int32_t>>{1, 2})` -- a
     # prvalue into the by-value Own slot, no temp and no flush needed; the
@@ -17594,65 +18232,62 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return _lower_expr(a, lc, declared,
                            use=replace(_NESTED_ARG_USE,
                                        allow_temps=temp_args))
-    if temp_args:
-        # A list/dict LITERAL into a recursive-union WRAPPER slot
-        # (`json.dumps([1, 2, 3])`): the union arg's value branch hoists
-        # `JsonValue __tmp_N = std::vector<JsonValue>{...};` (the `= init`
-        # form) and passes the bare temp name.
-        ru = _ru_wrapper_arg_slot(ptype)
-        if ru is not None and _ru_container_literal_ok(a, lc.analyzer):
-            _witness("argtemp.recursive_union_literal")
-            return _hoisted(THIRArgTemp(result_type=ru, cpp_type=lc.render_type(ru), movable=unwrap_ref_type(ru).is_movable(),
-                                        init=_lower_ru_literal(_peel_coerce(a), ru,
-                                                               lc, declared),
-                                        form=Form.VALUE,
-                                        loc=getattr(a, "loc", None)), lc)
-        # The scalar/str LITERAL sibling: the init is the literal's own
-        # target-less render, hoisted by the same create_typed branch.
-        ru_l = _ru_wrapper_scalar_literal_arg(a, ptype, lc.analyzer)
-        if ru_l is not None:
-            _witness("argtemp.ru_wrapper_literal")
-            return _hoisted(THIRArgTemp(
-                result_type=ru_l, cpp_type=lc.render_type(ru_l), movable=unwrap_ref_type(ru_l).is_movable(),
-                init=_lower_expr(a, lc, declared, use=_NESTED_ARG_USE),
-                form=Form.VALUE, loc=getattr(a, "loc", None)), lc)
-        # The member-CTOR-rvalue sibling: `eval_expr(Lit(42))` hoists
-        # `Expr __tmp_N = Lit(...);` -- the prvalue init needs no move.
-        ru_c = _ru_wrapper_member_rvalue_arg(a, ptype, lc.analyzer)
-        if ru_c is not None:
-            _witness("argtemp.ru_wrapper_ctor")
-            return _hoisted(THIRArgTemp(
-                result_type=ru_c, cpp_type=lc.render_type(ru_c), movable=unwrap_ref_type(ru_c).is_movable(),
-                init=_lower_expr(a, lc, declared, use=_NESTED_ARG_USE),
-                form=Form.VALUE, loc=getattr(a, "loc", None)), lc)
-        # The Own[genrec]-returning CALL sibling: `leaf_count(make_leaf())`
-        # hoists `Tree<int32_t> __tmp_N = make_leaf();` -- the by-value
-        # return binds the prvalue directly, bare temp name passed.
-        ru_call = _ru_wrapper_own_call_arg(a, ptype, lc.analyzer)
-        if ru_call is not None:
-            _witness("argtemp.ru_wrapper_call")
-            return _hoisted(THIRArgTemp(
-                result_type=ru_call, cpp_type=lc.render_type(ru_call), movable=unwrap_ref_type(ru_call).is_movable(),
-                init=_lower_expr(
-                    a, lc, declared,
-                    use=replace(_NESTED_ARG_USE,
-                                result=_ExprResultUse.STORAGE)),
-                form=Form.VALUE, loc=getattr(a, "loc", None)), lc)
-        # M4c: a member-typed NAME into the wrapper slot hoists the typed
-        # temp (`Tree __tmp_N = std::move(b);`), the init `_maybe_move`-
-        # wrapped at a movable last use.
-        ru_m = _ru_wrapper_member_name_arg(a, ptype, declared, frozenset())
-        if ru_m is not None and not (a.name in lc.narrow.narrowed
-                                     or a.name in lc.inline_narrowed):
-            _witness("argtemp.ru_wrapper_member")
-            init = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
-            if _node_moves(init):
-                init = THIRMove(result_type=init.result_type, value=init,
-                                form=init.form, loc=getattr(a, "loc", None))
-            return _hoisted(THIRArgTemp(result_type=ru_m,
-                                        cpp_type=lc.render_type(ru_m), movable=unwrap_ref_type(ru_m).is_movable(),
-                                        init=init, form=Form.VALUE,
-                                        loc=getattr(a, "loc", None)), lc)
+    # A list/dict LITERAL into a recursive-union WRAPPER slot
+    # (`json.dumps([1, 2, 3])`): the wrapper built from it inline
+    # (`JsonValue(std::vector<JsonValue>{...})`, `_ru_wrapper_inline`).
+    # A wrapper parameter a TPy callee writes renders a mutable reference,
+    # which binds no temporary; a body-less callee's declared signature
+    # binds what it is handed.
+    ru_contract = (param_contract(callee_fi, arg_index, ptype,
+                                  analyzer=lc.analyzer)
+                   if callee_fi is not None and arg_index >= 0 else None)
+    ru_mutable = (ru_contract is not None and not readonly_target
+                  and not ru_contract.const
+                  and not ru_contract.declared_only)
+    ru = _ru_wrapper_arg_slot(ptype)
+    if ru is not None and _ru_container_literal_ok(a, lc.analyzer):
+        _witness("argtemp.recursive_union_literal")
+        return _ru_wrapper_inline(
+            ru, _lower_ru_literal(_peel_coerce(a), ru, lc, declared),
+            a, lc, mutable=ru_mutable)
+    # The scalar/str LITERAL sibling: built from the literal's own
+    # target-less render.
+    ru_l = _ru_wrapper_scalar_literal_arg(a, ptype, lc.analyzer)
+    if ru_l is not None:
+        _witness("argtemp.ru_wrapper_literal")
+        return _ru_wrapper_inline(
+            ru_l, _lower_expr(a, lc, declared, use=_NESTED_ARG_USE), a, lc,
+            mutable=ru_mutable)
+    # The member-CTOR-rvalue sibling: `eval_expr(Expr(Lit(42)))` -- the
+    # prvalue needs no move.
+    ru_c = _ru_wrapper_member_rvalue_arg(a, ptype, lc.analyzer)
+    if ru_c is not None:
+        _witness("argtemp.ru_wrapper_ctor")
+        return _ru_wrapper_inline(
+            ru_c, _lower_expr(a, lc, declared, use=_NESTED_ARG_USE), a, lc,
+            mutable=ru_mutable)
+    # The Own[genrec]-returning CALL sibling: `leaf_count(make_leaf())`
+    # -- the by-value return binds the parameter as it is.
+    ru_call = _ru_wrapper_own_call_arg(a, ptype, lc.analyzer)
+    if ru_call is not None:
+        _witness("argtemp.ru_wrapper_call")
+        return _ru_wrapper_inline(
+            ru_call, _lower_expr(
+                a, lc, declared,
+                use=replace(_NESTED_ARG_USE,
+                            result=_ExprResultUse.STORAGE)), a, lc,
+            mutable=ru_mutable)
+    # M4c: a member-typed NAME into the wrapper slot builds the wrapper
+    # (`Tree(std::move(b))`), the name moved at a movable last use.
+    ru_m = _ru_wrapper_member_name_arg(a, ptype, declared, frozenset())
+    if ru_m is not None and not (a.name in lc.narrow.narrowed
+                                 or a.name in lc.inline_narrowed):
+        _witness("argtemp.ru_wrapper_member")
+        init = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
+        if _node_moves(init):
+            init = THIRMove(result_type=init.result_type, value=init,
+                            form=init.form, loc=getattr(a, "loc", None))
+        return _ru_wrapper_inline(ru_m, init, a, lc, mutable=ru_mutable)
     # `copy(name)` of a plain F1-record into a SAME-nominal `Own[record]`
     # slot -- or its Own-OPTIONAL sibling (the shared
     # `_plain_or_opt_own_slot` peel): the copy-construct rvalue
@@ -17933,11 +18568,11 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                      else inner)
             # Movable comes off the temp's own type, so the defer decision
             # inside a conditional region matches the temp it describes.
-            return _hoisted(THIRArgTemp(result_type=tmp_t, cpp_type=lc.render_type(tmp_t),
+            return held_temp(THIRArgTemp(result_type=tmp_t, cpp_type=lc.render_type(tmp_t),
                                         init=_lower_expr(a, lc, declared, use=init_use),
                                         addr_of=True,
                                         movable=unwrap_ref_type(tmp_t).is_movable(),
-                                        form=Form.BORROW, loc=loc), lc)
+                                        form=Form.BORROW, loc=loc), lc, a)
         if isinstance(opt_face, DynSlotEntry):
             # Structural conformer at an Optional[@dynamic P] slot: the
             # vtable rides the classifier's adapter temp -- Adapter<P, C>
@@ -17959,10 +18594,10 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                        replace(_NESTED_ARG_USE, pos=SinkPos.CALL_ARG,
                                forms=_POS_FORMS[SinkPos.CALL_ARG]))
             _witness("optptr.adapter_temp")
-            return _hoisted(THIRArgTemp(
+            return held_temp(THIRArgTemp(
                 result_type=inner, cpp_type=adapter_cpp, brace_init=True,
                 init=_lower_expr(a, lc, declared, use=src_use),
-                addr_of=True, form=Form.BORROW, loc=loc), lc)
+                addr_of=True, form=Form.BORROW, loc=loc), lc, a)
         if opt_face == 'pass' or (isinstance(a, TpyName)
                                   and lc.binding(a.name).reads_as_pointer):
             _witness("optptr.pass")
@@ -18297,7 +18932,7 @@ def _record_key(sub: TpySubscript, key: TpyExpr, fi: 'FunctionInfo',
     the sink asks for a value temp the subscript cannot hold, the bare
     render: a literal pinned to the parameter's own type
     (`_pinned_literal_arg`), so C++ binds that variant, a bytes key read
-    through the view at that parameter (`_bytes_param_view_slot`). Any
+    through the view at that parameter (`bytes_literal_view_slot`). Any
     other refusal is the explicit call's, so it propagates."""
     compiler = get_current_compiler()
     detail = ((compiler._thir_reject_detail,
@@ -18321,7 +18956,8 @@ def _record_key(sub: TpySubscript, key: TpyExpr, fi: 'FunctionInfo',
              compiler._thir_reject_detail_loc) = detail
     return (_pinned_literal_arg(key, fi.params[0].type, fi, lc, declared)
             or _lower_expr(key, lc, declared, use=_ExprUse(
-                slot_target=_bytes_param_view_slot(fi.root.params[0].type))))
+                slot_target=bytes_literal_view_slot(fi, instantiated_param(
+                    fi.params[0].type, key, lc.analyzer)))))
 
 def _narrowed_opt_char_vs_str_literal(
         subj: TpyExpr, other: TpyExpr, lc: '_LowerCtx',
@@ -18696,9 +19332,7 @@ def _cond_mixed_walrus_temps(cond: THIRExpr, *,
             if walrus_nested_ok:
                 inside_walrus = True
         if not (inside_walrus and walrus_nested_ok) and (
-                isinstance(n, (THIRArgTemp, THIRVarargPack)) or (
-                    isinstance(n, THIRUnionArgLift)
-                    and n.temp_cpp is not None)):
+                isinstance(n, (THIRArgTemp, THIRVarargPack))):
             has_temp = True
         for f in dataclass_fields(n):
             v = getattr(n, f.name)
@@ -19113,30 +19747,50 @@ def _str_ternary_form(str_rt: TpyType, then_view: bool,
             else Form.STORAGE)
 
 
-def _str_select_form(rtype: 'TpyType | None', e: TpyIfExpr,
-                     lc: '_LowerCtx') -> 'Form | None':
-    """A str-family ternary's `_str_ternary_form` (None for any other
-    result), decided before its arms lower so a VIEW select's literal arm
-    can take the self-typed view render."""
+class StrSelectArms(NamedTuple):
+    then: THIRExpr
+    orelse: THIRExpr
+    # `_str_ternary_form` of a str-family result; None for any other.
+    form: 'Form | None'
+    then_view: bool
+    else_view: bool
+
+
+def _lower_str_select_arms(
+        e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
+        lower_arm: 'Callable[[TpyExpr, bool], THIRExpr]') -> StrSelectArms:
+    """A ternary's arms, lowered once each by `lower_arm(arm, self_typed)`,
+    with a str-family result's whole-select form. Whether an arm is a view
+    at runtime is its lowered form where it is itself a select (its own
+    arms decided it); a literal arm, which is a view, lowers last, so a VIEW
+    select's literal takes the self-typed view render."""
+    arms = (e.then_expr, e.else_expr)
     str_rt = _resolved_str_value(rtype, lc.analyzer)
     if str_rt is None:
-        return None
-    return _str_ternary_form(str_rt, _str_view_arm(e.then_expr, lc),
-                             _str_view_arm(e.else_expr, lc))
+        return StrSelectArms(lower_arm(arms[0], False),
+                             lower_arm(arms[1], False), None, False, False)
+    lowered: 'list[THIRExpr | None]' = [
+        None if isinstance(a, TpyStrLiteral) else lower_arm(a, False)
+        for a in arms]
+    views = [low.form is Form.BORROW
+             if low is not None and _select_node(a)
+             else _str_view_arm(a, lc)
+             for a, low in zip(arms, lowered)]
+    form = _str_ternary_form(str_rt, views[0], views[1])
+    then, orelse = (low if low is not None
+                    else lower_arm(a, form is Form.BORROW)
+                    for a, low in zip(arms, lowered))
+    return StrSelectArms(then, orelse, form, views[0], views[1])
 
 
 def _str_view_arm(e: TpyExpr, lc: '_LowerCtx') -> bool:
-    """Whether an admitted ternary arm spells std::string_view at C++
-    runtime: a str literal and a `str`-declared PARAM are runtime
-    string_views; a nested ternary is a view iff both its arms are; a coerce
-    reads its expected type; everything else
-    keys on its resolved type. Drives the mixed-arm materialization and the
-    whole-ternary form verdict in _lower_if_expr."""
+    """Whether an admitted ternary arm that is no select spells
+    std::string_view at C++ runtime: a str literal and a `str`-declared
+    PARAM are runtime string_views; a coerce reads its expected type;
+    everything else keys on its resolved type. A select arm is read off
+    its lowered form instead (`_lower_str_select_arms`)."""
     if isinstance(e, TpyStrLiteral):
         return True
-    if isinstance(e, TpyIfExpr):
-        return (_str_view_arm(e.then_expr, lc)
-                and _str_view_arm(e.else_expr, lc))
     if isinstance(e, TpyName) and e.name in lc.prescan.param_names:
         pt = next((t for n, t in lc.params if n == e.name), None)
         if is_str_type(pt) or (isinstance(pt, LiteralType)
@@ -19532,11 +20186,9 @@ def _lower_narrowed_ternary(e: TpyIfExpr, ifn, slot, rtype,
     cond = _lower_isinstance_cond((var, u, (then_m,), False), e.condition,
                                   lc, declared)
 
-    str_form = _str_select_form(rbare, e, lc)
-    arm_use = (_ExprUse(forms=_ONLY_SELF_TYPED)
-               if str_form is Form.BORROW else _ExprUse())
-
-    def _arm(arm_expr, member):
+    def _arm(arm_expr, member, self_typed):
+        arm_use = (_ExprUse(forms=_ONLY_SELF_TYPED) if self_typed
+                   else _ExprUse())
         if member is None:
             # No inline fact for this arm (the complement is a union): a
             # subject read here takes its ordinary un-narrowed path.
@@ -19555,11 +20207,12 @@ def _lower_narrowed_ternary(e: TpyIfExpr, ifn, slot, rtype,
         finally:
             lc.inline_narrowed = saved
 
-    then = _arm(e.then_expr, then_m)
-    orelse = _arm(e.else_expr, else_m)
+    then, orelse, str_form, tv, ev = _lower_str_select_arms(
+        e, rbare, lc, lambda a, st: _arm(
+            a, then_m if a is e.then_expr else else_m, st))
     form = Form.VALUE
     if str_form is not None:
-        if _str_view_arm(e.then_expr, lc) != _str_view_arm(e.else_expr, lc):
+        if tv != ev:
             # A MIXED view/owned arm pair needs the general select's per-arm
             # materialization, which has no narrowed witness.
             raise ThirUnsupported("ifexpr.narrow_str_mixed", detail=True)
@@ -20093,10 +20746,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                 if fresh is None:
                     note_detail("ifexpr.ref_mixed_fresh_arm")
                     raise ThirUnsupported("expr.ifexpr")
-                arms.append(_hoisted(THIRSlotEmplace(
-                    result_type=rec_t, value=fresh,
-                    cpp_type=lc.render_type(rec_t), form=Form.BORROW,
-                    loc=loc), lc))
+                arms.append(_select_fresh_seat(arm, fresh, rec_t, lc, loc))
             _witness("ifexpr.ref_mixed_slot")
             return THIRIfExpr(result_type=result_t, cond=cond,
                               then=arms[0], orelse=arms[1],
@@ -20115,18 +20765,15 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     # IF_EXPR_ARM row is what says a value bound out of a ternary outlives the
     # expression that built it.
     # A nested select arm is consumed exactly as this select is.
-    _arm_forms = _ONLY_SELECT_SLOT if slot_ok else _NO_FORMS
-    str_form = _str_select_form(rtype, e, lc)
-    if str_form is Form.BORROW:
+    _base_forms = _ONLY_SELECT_SLOT if slot_ok else _NO_FORMS
+    _cont_slot = _ifexpr_container(slot, analyzer)
+
+    def _container_arm_use(arm: TpyExpr, self_typed: bool) -> _ExprUse:
         # A view select spells its C++ type off its arms, so a literal arm
         # renders the view of its static storage: a bare `"a"` beside
         # `"bc"` decays both to `const char*`.
-        _arm_forms = _arm_forms | _ONLY_SELF_TYPED
-    _arm_use = _ExprUse(allow_temps=cond_temps_ok,
-                        pos=SinkPos.IF_EXPR_ARM, forms=_arm_forms)
-    _cont_slot = _ifexpr_container(slot, analyzer)
-
-    def _container_arm_use(arm: TpyExpr) -> _ExprUse:
+        _arm_forms = (_base_forms | _ONLY_SELF_TYPED if self_typed
+                      else _base_forms)
         # A container-returning CALL arm owns its result, so the ternary is
         # the arm's storage sink exactly as a direct decl init would be --
         # same bare render, so it takes the storage admission rather than
@@ -20136,34 +20783,35 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
             return _ExprUse(result=_ExprResultUse.STORAGE,
                             pos=SinkPos.IF_EXPR_ARM, forms=_arm_forms,
                             allow_temps=cond_temps_ok)
-        return _arm_use
-    # A str-family FIELD arm (`r.s if cond else t.s`) is the same bare
-    # member read a binop operand admits -- thread the form tag exactly
-    # like the binop operand sites.
-    then = _slot_literal_retype(
-        _lower_char_targeted(e.then_expr, slot, lc, declared,
-                             use=_container_arm_use(e.then_expr),
-                             cond_eager=cond_temps_ok,
-                             field_owned_str_ok=isinstance(
-                                 e.then_expr, TpyFieldAccess)),
-        slot, lc)
-    orelse = _slot_literal_retype(
-        _lower_char_targeted(e.else_expr, slot, lc, declared,
-                             use=_container_arm_use(e.else_expr),
-                             cond_eager=cond_temps_ok,
-                             field_owned_str_ok=isinstance(
-                                 e.else_expr, TpyFieldAccess)),
-        slot, lc)
+        return _ExprUse(allow_temps=cond_temps_ok,
+                        pos=SinkPos.IF_EXPR_ARM, forms=_arm_forms)
+
+    def _lower_arm(arm: TpyExpr, self_typed: bool) -> THIRExpr:
+        # A str-family FIELD arm (`r.s if cond else t.s`) is the same bare
+        # member read a binop operand admits -- thread the form tag exactly
+        # like the binop operand sites.
+        return _slot_literal_retype(
+            _lower_char_targeted(arm, slot, lc, declared,
+                                 use=_container_arm_use(arm, self_typed),
+                                 cond_eager=cond_temps_ok,
+                                 field_owned_str_ok=isinstance(
+                                     arm, TpyFieldAccess)),
+            slot, lc)
+    then, orelse, str_form, tv, ev = _lower_str_select_arms(
+        e, rtype, lc, _lower_arm)
     form = Form.VALUE
     str_rt = _resolved_str_value(rtype, analyzer)
     if str_rt is not None:
-        tv = _str_view_arm(e.then_expr, lc)
-        ev = _str_view_arm(e.else_expr, lc)
         if is_str_type(str_rt) and tv != ev:
-            if tv and not isinstance(e.then_expr, TpyStrLiteral):
+            # A view arm is copied into the owned result -- unless it
+            # already lowers as storage: a resumable frame holds a `str`
+            # parameter owned.
+            if (tv and not isinstance(e.then_expr, TpyStrLiteral)
+                    and then.form is not Form.STORAGE):
                 then = THIRFormConvert(result_type=str_rt, value=then,
                                        form=Form.STORAGE, loc=loc)
-            if ev and not isinstance(e.else_expr, TpyStrLiteral):
+            if (ev and not isinstance(e.else_expr, TpyStrLiteral)
+                    and orelse.form is not Form.STORAGE):
                 orelse = THIRFormConvert(result_type=str_rt, value=orelse,
                                          form=Form.STORAGE, loc=loc)
             _witness("ifexpr.str_mixed")
@@ -20516,21 +21164,19 @@ def _dunder_param_side(rb: 'ResolvedBinop | None') -> int | None:
 
 def _rb_operand_view_slots(rb) -> 'tuple[TpyType | None, TpyType | None]':
     """Per operand of a resolved arithmetic binop, the `BytesView` it is
-    read through where its slot is a C++ PARAMETER of the operator
-    (`_bytes_param_view_slot`), else None: the dunder's param always is one,
-    and so is the receiver of a native FREE function
-    (`::tpy::bytes_concat(BytesView, BytesView)` takes `self` as its first
-    param). A bytes literal there renders against the view, its static span
-    -- the owning render would build a heap vector the operator only reads
-    through; the str twin's literal is static already."""
+    read through (`bytes_literal_view_slot`, at the dunder's parameter or
+    as its receiver -- `::tpy::bytes_concat(BytesView, BytesView)` takes
+    `self` as its first param), else None. A bytes literal there renders
+    against the view, its static span -- the owning render would build a
+    heap vector the operator only reads through; the str twin's literal is
+    static already."""
     if rb is None or rb.method is None:
         return None, None
     lslot, rslot = _rb_operand_slots(rb)
-    recv_is_param = bool(rb.method.native_function)
-    l_param = rb.is_reverse or recv_is_param
-    r_param = (not rb.is_reverse) or recv_is_param
-    return (_bytes_param_view_slot(lslot) if l_param else None,
-            _bytes_param_view_slot(rslot) if r_param else None)
+    return (bytes_literal_view_slot(rb.method, lslot,
+                                    receiver=not rb.is_reverse),
+            bytes_literal_view_slot(rb.method, rslot,
+                                    receiver=rb.is_reverse))
 
 def _field_cpp(e: TpyFieldAccess) -> str:
     """The rendered C++ member name for a field access. A `@native` record

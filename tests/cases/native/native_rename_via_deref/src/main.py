@@ -36,5 +36,13 @@ def main() -> None:
     # the Deref chain: built into the wrapper as at the direct call.
     a = A(1)
     print(r.Echo(a), r.Echo(A(2)))  # tpyc: ok
+    # A member still live after the call is copied into the alias, through
+    # the Deref chain and at the direct call alike; copy() says so, and the
+    # last use moves in.
+    c = A(3)
+    print(r.Echo(c))  # tpyc: warning(/copies A into Tree parameter 't' of Widget.Echo/)
+    print(w.Echo(c))  # tpyc: warning(/copies A into Tree parameter 't' of Widget.Echo/)
+    print(w.Echo(copy(c)), c.n)  # tpyc: ok
+    print(w.Echo(c))  # tpyc: ok
 
 main()

@@ -12,8 +12,7 @@ namespace tpyapp::part_unowned {
 //     print("unowned", len(out), out[0].n, out[4].n)
 void main() {
     std::vector<Q> out = std::vector<Q>{};
-    Q __tmp_1 = Q(1);
-    ::tpyapp::part_unowned::both<Q>(__tmp_1, out);
+    ::tpyapp::part_unowned::both<Q>(::tpy::as_mut_lvalue(Q(1)), out);
     ::tpyapp::part_unowned::both<::tpy::own_arg<Q>>(Q(2), out);
     std::cout << "unowned" << " " << ::tpy::__len__(out) << " " << ::tpy::__getitem__(out, 0).n << " " << ::tpy::__getitem__(out, 4).n << "\n" << ::tpy::check_signals;
 }

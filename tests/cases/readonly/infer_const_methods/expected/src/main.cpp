@@ -166,8 +166,7 @@ void main() {
     std::cout << o.sum_items() << "\n" << ::tpy::check_signals;
     WithOpt wo = WithOpt();
     std::cout << wo.get_child_value() << "\n" << ::tpy::check_signals;
-    Valued __tmp_1{Valued(7)};
-    ::tpyapp::main::show(__tmp_1);
+    ::tpyapp::main::show(::tpy::as_mut_lvalue(Valued{Valued(7)}));
     Counter pc = Counter();
     std::cout << "param:" << " " << ::tpyapp::main::read_counter(pc) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump_counter(pc);
@@ -177,8 +176,7 @@ void main() {
     std::cout << "param:" << " " << ::tpyapp::main::read_holder(ph) << "\n" << ::tpy::check_signals;
     ph.inner.value = 10;
     std::cout << "param:" << " " << ::tpyapp::main::read_holder(ph) << "\n" << ::tpy::check_signals;
-    Valued __tmp_2 = Valued(8);
-    std::cout << "param:" << " " << ::tpyapp::main::read_valued(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "param:" << " " << ::tpyapp::main::read_valued(::tpy::as_mut_lvalue(Valued(8))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::poke_holder(ph, 11);
     ph.inner.value = ::tpy::add_check<int32_t>(ph.inner.value, 1);
     std::cout << "field write:" << " " << ::tpyapp::main::read_holder(ph) << "\n" << ::tpy::check_signals;

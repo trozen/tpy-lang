@@ -60,10 +60,8 @@ void readonly_ok(const Holder& h) {
 //     mutating(Holder())
 //     readonly_ok(Holder())
 void main() {
-    Holder __tmp_1 = Holder();
-    ::tpyapp::main::mutating(__tmp_1);
-    Holder __tmp_2 = Holder();
-    ::tpyapp::main::readonly_ok(__tmp_2);
+    ::tpyapp::main::mutating(::tpy::as_mut_lvalue(Holder()));
+    ::tpyapp::main::readonly_ok(Holder());
 }
 
 // main()

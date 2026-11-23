@@ -127,8 +127,7 @@ void main() {
     std::array<R, 2> ri = {R(1), R(2)};
     std::cout << "rows iter" << " " << ::tpyapp::part_slots::take_rows(::tpy::__iter__(ri)) << " " << ::tpy::__len__(ri) << "\n" << ::tpy::check_signals;
     std::cout << "rows iter fresh" << " " << ::tpyapp::part_slots::take_rows(::tpy::__iter__(::tpyapp::part_slots::mk())) << "\n" << ::tpy::check_signals;
-    ::tpy::Adapter<Bag<R>, OneBag> __tmp_1{OneBag(R(4))};
-    std::cout << "dynamic bag" << " " << ::tpyapp::part_slots::take_bag(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "dynamic bag" << " " << ::tpyapp::part_slots::take_bag(::tpy::as_mut_lvalue(::tpy::Adapter<Bag<R>, OneBag>{OneBag(R(4))})) << "\n" << ::tpy::check_signals;
     std::array<R, 1> cc = {R(3)};
     std::cout << "counted copy" << " " << ::tpyapp::part_slots::take_counted(std::array<R, 1>(cc)) << " " << ::tpy::__getitem__(cc, 0).v << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<R, int32_t>> ps = ::tpy::make_vector<std::tuple<R, int32_t>>(std::tuple<R, int32_t>{R(1), 1});

@@ -19,7 +19,7 @@ from ..typesys import own_tuple_target, strip_own_type_args
 from ..typesys import binds_runtime_symbol, body_function_info
 from ..typesys import contains_reference_type, loan_class, Loan, classify_result_representation, ResultPosition, ResultRepresentation, bound_as_spelled, is_void_like_type
 from ..typesys import answers_as_call, element_access_getitem, store_slot_type, store_takes_elements
-from ..typesys import (
+from ..typesys import (frame_module_qual,
     same_class,
     TpyType, IntLiteralType, FloatLiteralType, PendingNumType, RecordInfo,
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_list, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType, unify_literal_types,
@@ -90,7 +90,7 @@ from .arg_binding import peel_coercions, source_view
 from ..value_category import (frame_factory_callee, peel_coerce, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands, origin_shared, call_operands,
-                             consuming_only)
+                             consuming_only, method_owner_type)
 from .alias_rebind import stamp_bind_kind, unpack_target_records
 from .binding_ownership import CompMove, step_handover_paths
 from .elem_paths import leaf_paths
@@ -138,7 +138,7 @@ from .storage_walk import Leaf, LeafKind, StorageKey, leaves
 from ..storage_trace import StepKind
 from .call_lends import ContractReturnLend, unrooted_callable_result
 from .nonlocal_binding import enclosing_scope_facts
-from .iter_loans import (_record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage, record_iteration_pull,
+from .iter_loans import (keep_head_arguments, _record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage, record_iteration_pull,
                          register_iteration_loans)
 from .loop_frames import comp_live_region, decide_copies_var, worth_const_ref
 from .protocols import REPRESENTABLE_PROTOCOL, STRINGABLE_PROTOCOL, text_leaves
@@ -890,9 +890,8 @@ class ExpressionAnalyzer:
                 return iterator
         owner = None
         if isinstance(init, TpyMethodCall):
-            recv_type = self.ctx.get_expr_type(init.obj)
-            recv_inner = unwrap_own(unwrap_ref_type(recv_type)) if recv_type else None
-            if not isinstance(recv_inner, NominalType):
+            recv_inner = self.method_call_receiver_type(init)
+            if recv_inner is None:
                 return iterator
             owner = coro_struct_owner(
                 fi.owning_type_qname, recv_inner,
@@ -903,10 +902,8 @@ class ExpressionAnalyzer:
             if any(contains_type_param(a) for a in owner.type_args
                    if isinstance(a, TpyType)):
                 return iterator
-        module_qual = None
-        if (owner is None and fi.originating_module is not None
-                and fi.originating_module != self.ctx.module_name):
-            module_qual = fi.originating_module
+        module_qual = (frame_module_qual(fi, self.ctx.module_name)
+                       if owner is None else None)
         targs = getattr(init, "inferred_type_args", None)
         return make_concrete_gen(
             it, fi.frame_cpp_name, owner=owner,
@@ -4823,6 +4820,9 @@ class ExpressionAnalyzer:
         # Analyzing the call resolves it (a set's variant, a generic async
         # def's substituted signature) onto `resolved_function_info`.
         operand_type = self.analyze_expr(operand)
+        # The awaited frame runs across the suspension: what its operand
+        # keeps of fresh values lives that long, as a compound head's does.
+        keep_head_arguments(self.ctx, operand)
         async_fi = (operand.resolved_function_info
                     if isinstance(operand, TpyCall) else None)
         if (async_fi is not None and async_fi.is_async
@@ -4847,22 +4847,8 @@ class ExpressionAnalyzer:
         if isinstance(operand, TpyMethodCall):
             mfi = operand.resolved_function_info
             if mfi is not None and mfi.is_async:
-                # Receiver must be a stable lvalue: the coro captures it as
-                # `<Class>&` across polls, so a temporary would dangle at
-                # the emplace expression's semicolon. Mirrors
-                # `AsyncCoroCodegen._is_stable_lvalue` in codegen.
-                if not is_stable_address_lvalue(operand.obj):
-                    raise self.ctx.error(
-                        "receiver of an awaited async method must be "
-                        "a stable lvalue (a local, parameter, or "
-                        "field chain rooted at one) -- the coro "
-                        "captures it by reference across "
-                        "suspensions, so a temporary would dangle. "
-                        "Bind the receiver to a local first: "
-                        "`r = <expr>; await r.method(...)`",
-                        operand)
                 expr.awaited_inline = True
-                owner_type = self._method_call_receiver_type(operand)
+                owner_type = self.method_call_receiver_type(operand)
                 if owner_type is not None:
                     expr.awaited_method_owner_type = coro_struct_owner(
                         mfi.owning_type_qname, owner_type,
@@ -5021,20 +5007,13 @@ class ExpressionAnalyzer:
                 return (ret.type_args[0], bool(fi.is_readonly))
         return (None, True)
 
-    def _method_call_receiver_type(self, call) -> 'NominalType | None':
-        """For a TpyMethodCall whose receiver resolves to a known record,
-        return the receiver's NominalType (carrying class-level
-        type_args). Used to name and qualify async-method coro structs
-        as `__coro_<Record>_<method>` plus a `<owner_type_args>` suffix
-        for receivers with non-empty class-level type args.
-        """
-        recv_type = self.ctx.get_expr_type(call.obj)
-        if recv_type is None:
-            return None
-        inner = unwrap_own(unwrap_ref_type(recv_type))
-        if isinstance(inner, NominalType):
-            return inner
-        return None
+    def method_call_receiver_type(self, call) -> 'NominalType | None':
+        """The record a method call's method runs on (`method_owner_type`),
+        carrying its class-level type args: what names and qualifies the
+        call's coroutine or generator frame struct
+        (`__coro_<Record>_<method>`)."""
+        inner = method_owner_type(call, self.ctx.get_expr_type(call.obj))
+        return inner if isinstance(inner, NominalType) else None
 
     # -- Ternary expression analysis ------------------------------------------
 
@@ -7749,7 +7728,10 @@ class ExpressionAnalyzer:
         # Detect captures: names in body that are local variables from the outer scope
         # (not lambda params, not global functions, not builtins)
         param_set = set(expr.param_names)
-        free_names = collect_name_refs(expr.body)
+        # A nested lambda reads through this one, which must hold what the
+        # nested one captures.
+        free_names = collect_name_refs(expr.body) | _comp_free_names(
+            expr.body)
         captured = sorted((free_names - param_set) & outer_locals)
         expr.captured_names = captured
         expr.body_captures = (outer_scope.body_reads(captured)

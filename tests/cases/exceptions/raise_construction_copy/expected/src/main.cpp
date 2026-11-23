@@ -42,8 +42,7 @@ void own_stmt(const std::vector<P>& ps) {
 //     e = Bump(max(walk(ps), key=key_of))  # tpyc: warning(/copies P into argument 'p' of 'Bump/)
 //     raise e
 void bump_twin(std::vector<P>& ps) {
-    P __tmp_1 = ::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of);
-    Bump e = Bump(__tmp_1);
+    Bump e = Bump(::tpy::as_mut_lvalue(::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of)));
     e.__raise__();
 }
 
@@ -51,8 +50,7 @@ void bump_twin(std::vector<P>& ps) {
 //     # a generator's borrowed element into a parameter the constructor writes
 //     raise Bump(max(walk(ps), key=key_of))  # tpyc: warning(/copies P into argument 'p' of 'Bump/)
 void bump_stmt(std::vector<P>& ps) {
-    P __tmp_1 = ::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of);
-    throw Bump(__tmp_1);
+    throw Bump(::tpy::as_mut_lvalue(::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of)));
 }
 
 // def gen_stmt(ys: list[int32]) -> None:

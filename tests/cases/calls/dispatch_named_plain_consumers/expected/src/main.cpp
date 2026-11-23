@@ -53,8 +53,7 @@ void main() {
     std::cout << "protocol:" << " " << ::tpyapp::main::feed<Box>(b) << " " << b.total << "\n" << ::tpy::check_signals;
     Sq sq = Sq(2);
     sq.scale__int32(3);
-    ::tpy::RefAdapter<Shape, Sq> __tmp_1{sq};
-    std::cout << "dynamic:" << " " << ::tpyapp::main::total_area(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "dynamic:" << " " << ::tpyapp::main::total_area(::tpy::as_mut_lvalue(::tpy::RefAdapter<Shape, Sq>{sq})) << "\n" << ::tpy::check_signals;
     Adder a = Adder(10);
     std::cout << "callable:" << " " << ::tpyapp::main::apply([a](int32_t x) -> int32_t { return a.__call____int32(x); }) << " " << a.__call____int32(1) << " " << a.__call____str("xyz") << "\n" << ::tpy::check_signals;
 }

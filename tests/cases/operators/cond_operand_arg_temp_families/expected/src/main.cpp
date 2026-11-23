@@ -119,8 +119,7 @@ bool held(std::string_view tag, const Outer& o) {
 //     # the comprehension must see the SHORTENED list.
 //     return flag or (src.pop() >= 0 and sized("comp", [v * 2 for v in src]))
 bool comprehension(std::vector<int32_t>& src, bool flag) {
-    std::optional<std::vector<int32_t>> __tmp_1;
-    return (flag || ((::tpy::pop_back(src) >= 0) && (__tmp_1.emplace(({
+    return (flag || ((::tpy::pop_back(src) >= 0) && ::tpyapp::main::sized("comp", ({
         std::vector<int32_t> __result;
         auto& __obj_0 = src;
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -131,7 +130,7 @@ bool comprehension(std::vector<int32_t>& src, bool flag) {
             __result.push_back((::tpy::mul_check<int32_t>(v, 2)));
         }
         std::move(__result);
-    })), ::tpyapp::main::sized("comp", (*__tmp_1)))));
+    }))));
 }
 
 // def covariant(flag: bool) -> bool:
@@ -141,8 +140,7 @@ bool comprehension(std::vector<int32_t>& src, bool flag) {
 //     return flag or shaped("cov", bc)
 bool covariant(bool flag) {
     ::tpystd::tplib::box::Box<Circle> bc = ::tpystd::tplib::box::Box<Circle>(Circle(5.0));
-    std::optional<::tpystd::tplib::box::Box<Shape>> __tmp_1;
-    return (flag || (__tmp_1.emplace(std::move(bc)), ::tpyapp::main::shaped("cov", (*__tmp_1))));
+    return (flag || ::tpyapp::main::shaped("cov", ::tpy::as_mut_lvalue(::tpystd::tplib::box::Box<Shape>(std::move(bc)))));
 }
 
 // def generic_ref_slot(flag: bool) -> bool:
@@ -156,8 +154,7 @@ bool generic_ref_slot(bool flag) {
 //     # `or` RHS, a list literal at a `list[T]` slot of a generic function.
 //     return flag or listslot("gencont", [1, 2, 3])
 bool generic_container_literal(bool flag) {
-    std::optional<std::vector<int32_t>> __tmp_1;
-    return (flag || (__tmp_1.emplace(std::vector<int32_t>{1, 2, 3}), ::tpyapp::main::listslot<int32_t>("gencont", (*__tmp_1))));
+    return (flag || ::tpyapp::main::listslot<int32_t>("gencont", {1, 2, 3}));
 }
 
 // def optptr_container_literal(s: Sink, flag: bool) -> bool:
@@ -165,32 +162,28 @@ bool generic_container_literal(bool flag) {
 //     # slot -- the temp is passed by address.
 //     return flag or s.take("optptr", [1, 2, 3])
 bool optptr_container_literal(Sink& s, bool flag) {
-    std::optional<std::vector<int32_t>> __tmp_1;
-    return (flag || (__tmp_1.emplace(std::vector<int32_t>{1, 2, 3}), s.take("optptr", &((*__tmp_1)))));
+    return (flag || s.take("optptr", &::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3})));
 }
 
 // def recursive_union_literal(flag: bool) -> int32:
 //     # `or` RHS, a list literal at a recursive-union wrapper slot.
 //     return int32(0) if flag else show("rulit", [1, 2, 3])
 int32_t recursive_union_literal(bool flag) {
-    std::optional<Value> __tmp_1;
-    return ((flag) ? (0) : (__tmp_1.emplace(std::vector<Value>{1, 2, 3}), ::tpyapp::main::show("rulit", (*__tmp_1))));
+    return ((flag) ? (0) : (::tpyapp::main::show("rulit", Value(std::vector<Value>{1, 2, 3}))));
 }
 
 // def ru_wrapper_literal(flag: bool) -> int32:
 //     # Ternary arm, a scalar literal at the same wrapper slot.
 //     return int32(0) if flag else show("ruscalar", 9)
 int32_t ru_wrapper_literal(bool flag) {
-    std::optional<Value> __tmp_1;
-    return ((flag) ? (0) : (__tmp_1.emplace(9), ::tpyapp::main::show("ruscalar", (*__tmp_1))));
+    return ((flag) ? (0) : (::tpyapp::main::show("ruscalar", Value(9))));
 }
 
 // def ru_wrapper_ctor(flag: bool) -> int32:
 //     # Ternary arm, a member-record ctor rvalue at the wrapper slot.
 //     return int32(0) if flag else show("ructor", Neg(3))
 int32_t ru_wrapper_ctor(bool flag) {
-    std::optional<Value> __tmp_1;
-    return ((flag) ? (0) : (__tmp_1.emplace(Neg(3)), ::tpyapp::main::show("ructor", (*__tmp_1))));
+    return ((flag) ? (0) : (::tpyapp::main::show("ructor", Value(Neg(3)))));
 }
 
 // def ru_wrapper_call(flag: bool) -> int32:
@@ -198,17 +191,14 @@ int32_t ru_wrapper_ctor(bool flag) {
 //     # the build print says whether the skipped arm ran it.
 //     return int32(0) if flag else leaf_count("rucall", make_leaf())
 int32_t ru_wrapper_call(bool flag) {
-    std::optional<Tree<int32_t>> __tmp_1;
-    return ((flag) ? (0) : (__tmp_1.emplace(::tpyapp::main::make_leaf()), ::tpyapp::main::leaf_count("rucall", (*__tmp_1))));
+    return ((flag) ? (0) : (::tpyapp::main::leaf_count("rucall", Tree<int32_t>(::tpyapp::main::make_leaf()))));
 }
 
 // def ctor_mut_rvalue(flag: bool) -> bool:
 //     # `or` RHS, a record rvalue at a MUTATED constructor slot.
 //     return flag or held("ctormut", Outer(Inner(3)))
 bool ctor_mut_rvalue(bool flag) {
-    std::optional<Inner> __tmp_1;
-    std::optional<Outer> __tmp_2;
-    return (flag || (__tmp_1.emplace(Inner(3)), __tmp_2.emplace(Outer((*__tmp_1))), ::tpyapp::main::held("ctormut", (*__tmp_2))));
+    return (flag || ::tpyapp::main::held("ctormut", Outer(::tpy::as_mut_lvalue(Inner(3)))));
 }
 
 // def gen_recv_temp(flag: bool) -> bool:
@@ -216,19 +206,20 @@ bool ctor_mut_rvalue(bool flag) {
 //     # the receiver, so the receiver itself hoists a temp inside the operand.
 //     return flag or sized("genrecv", [v for v in Counter(3).items()])
 bool gen_recv_temp(bool flag) {
-    std::optional<Counter> __tmp_1;
-    std::optional<std::vector<int32_t>> __tmp_2;
-    return (flag || (__tmp_1.emplace(Counter(3)), __tmp_2.emplace(({
+    return (flag || ::tpyapp::main::sized("genrecv", ({
         std::vector<int32_t> __result;
-        auto __obj_0 = (*__tmp_1).items();
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            int32_t v = *__beg_0;
-            __result.push_back(v);
+        {
+            Counter __tmp_1 = Counter(3);
+            auto __obj_0 = __tmp_1.items();
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                int32_t v = *__beg_0;
+                __result.push_back(v);
+            }
         }
         std::move(__result);
-    })), ::tpyapp::main::sized("genrecv", (*__tmp_2))));
+    })));
 }
 
 // def shown(tag: str, p: Point) -> bool:
@@ -327,11 +318,9 @@ bool deref_ternary(const Ref& r, bool flag) {
 //     n2 = deref_ternary(n, False)
 //     print("dereftern taken", n2)
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    bool a1 = ::tpyapp::main::comprehension(__tmp_1, true);
+    bool a1 = ::tpyapp::main::comprehension(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3}), true);
     std::cout << "comp skipped" << " " << ::tpy::print_bool(a1) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = {1, 2, 3};
-    bool a2 = ::tpyapp::main::comprehension(__tmp_2, false);
+    bool a2 = ::tpyapp::main::comprehension(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3}), false);
     std::cout << "comp taken" << " " << ::tpy::print_bool(a2) << "\n" << ::tpy::check_signals;
     bool b1 = ::tpyapp::main::covariant(true);
     std::cout << "cov skipped" << " " << ::tpy::print_bool(b1) << "\n" << ::tpy::check_signals;

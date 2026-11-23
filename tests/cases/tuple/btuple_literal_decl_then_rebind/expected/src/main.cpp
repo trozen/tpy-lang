@@ -24,8 +24,7 @@ int32_t use(Holder& h, Box& b) {
 //     print(first, h.pair[1].val)
 void main() {
     Holder h = Holder(Box(5));
-    Box __tmp_1 = Box(3);
-    int32_t first = ::tpyapp::main::use(h, __tmp_1);
+    int32_t first = ::tpyapp::main::use(h, ::tpy::as_mut_lvalue(Box(3)));
     std::cout << first << " " << std::get<1>(h.pair).val << "\n" << ::tpy::check_signals;
 }
 

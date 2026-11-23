@@ -1,0 +1,143 @@
+main::__tpy_init: uncovered (module initialization)
+main::pick@32:0: certified, summary: known
+main::gen@36:0: covered (storage: no_facts: storage facts have not been published)
+main::gen_t@41:0: uncovered (generic body)
+main::gen_gen@46:0: uncovered (generic body)
+main::n5@50:0: covered (storage: no_proof_required), summary: known
+main::consume@54:0: uncovered (unsupported parameter type)
+main::drain_src@61:0: uncovered (unsupported parameter type)
+main::scalar_and_generic@68:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::main@85:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Src.val@28:4: covered (storage: no_proof_required), summary: known
+main::Src.__init__@25:4: covered (storage: no_proof_required), summary: known
+main::Holder.__init__@81:4: covered (storage: no_proof_required), summary: known
+part_arms_await::__tpy_init: uncovered (module initialization)
+part_arms_await::gen@23:0: covered (storage: no_facts: storage facts have not been published)
+part_arms_await::gen_src@28:0: covered (storage: no_facts: storage facts have not been published)
+part_arms_await::drain@33:0: uncovered (async body)
+part_arms_await::use@41:0: uncovered (async body)
+part_arms_await::awaited@47:0: uncovered (async body)
+part_arms_await::field@55:0: uncovered (async body)
+part_arms_await::main@59:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_arms_await::Src.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_arms_await::Holder.__init__@19:4: covered (storage: no_proof_required), summary: known
+part_arms_generic::__tpy_init: uncovered (module initialization)
+part_arms_generic::pick@28:0: certified, summary: known
+part_arms_generic::gen_t@32:0: uncovered (generic body)
+part_arms_generic::genb@36:0: uncovered (reference yield)
+part_arms_generic::co_g@40:0: uncovered (async body)
+part_arms_generic::consume_b@45:0: uncovered (unsupported parameter type)
+part_arms_generic::drain@53:0: uncovered (unsupported parameter type)
+part_arms_generic::mk@61:0: covered (storage: no_proof_required), summary: known
+part_arms_generic::tick@65:0: uncovered (async body)
+part_arms_generic::gen_generic@70:0: uncovered (call needs resolved ordinary callee)
+part_arms_generic::co_generic@74:0: uncovered (async body)
+part_arms_generic::values@78:0: uncovered (async body)
+part_arms_generic::gen_gen_str@91:0: covered (storage: no_facts: storage facts have not been published)
+part_arms_generic::main@95:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_arms_generic::Box.__init__@15:4: covered (storage: no_proof_required), summary: known
+part_arms_generic::Src.__init__@23:4: covered (storage: no_proof_required), summary: known
+part_arms_heads::__tpy_init: uncovered (module initialization)
+part_arms_heads::gen@36:0: covered (storage: no_facts: storage facts have not been published)
+part_arms_heads::consume@41:0: uncovered (unsupported parameter type)
+part_arms_heads::walk_method@49:0: uncovered (argument held across a suspension)
+part_arms_heads::walk_field@54:0: uncovered (argument held across a suspension)
+part_arms_heads::walk_box@59:0: uncovered (argument held across a suspension)
+part_arms_heads::matcher@64:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_arms_heads::elifp@72:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_arms_heads::g_it@80:0: uncovered (unsupported parameter type)
+part_arms_heads::drain_it@85:0: uncovered (async body)
+part_arms_heads::comp_plain@93:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+part_arms_heads::comp_gen_head@98:0: uncovered (argument held across a suspension)
+part_arms_heads::comp_awaited@106:0: uncovered (async body)
+part_arms_heads::main@114:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_arms_heads::Src.me@17:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_arms_heads::Src.__init__@14:4: covered (storage: no_proof_required), summary: known
+part_arms_heads::Holder.__init__@24:4: covered (storage: no_proof_required), summary: known
+part_arms_heads::Box.__init__@31:4: covered (storage: no_proof_required), summary: known
+part_arms_mixed::__tpy_init: uncovered (module initialization)
+part_arms_mixed::gen_src@25:0: uncovered (reference yield)
+part_arms_mixed::take_mixed@29:0: uncovered (container holds a borrow), summary: opaque (container holds a borrow)
+part_arms_mixed::use_mixed@36:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_arms_mixed::independent@40:0: uncovered (async body)
+part_arms_mixed::fresh_copy@53:0: uncovered (async body)
+part_arms_mixed::main@62:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_arms_mixed::Src.__init__@14:4: covered (storage: no_proof_required), summary: known
+part_arms_mixed::W.__init__@21:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+part_arms_receivers::__tpy_init: uncovered (module initialization)
+part_arms_receivers::gen@34:0: covered (storage: no_facts: storage facts have not been published)
+part_arms_receivers::consume@39:0: uncovered (unsupported parameter type)
+part_arms_receivers::in_gen@47:0: uncovered (call needs resolved ordinary callee)
+part_arms_receivers::tick@51:0: uncovered (async body)
+part_arms_receivers::in_co@56:0: uncovered (async body)
+part_arms_receivers::main@60:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_arms_receivers::Src.me@15:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_arms_receivers::Src.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_arms_receivers::Box.__init__@22:4: covered (storage: no_proof_required), summary: known
+part_arms_receivers::Holder.__init__@30:4: covered (storage: no_proof_required), summary: known
+part_arms_tuples::__tpy_init: uncovered (module initialization)
+part_arms_tuples::pick@26:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_arms_tuples::wrap_tup@30:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_arms_tuples::wrap_opt@34:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_arms_tuples::gen_tup@38:0: uncovered (unsupported pointer capture)
+part_arms_tuples::use_gen@43:0: covered (storage: no_facts: storage facts have not been published)
+part_arms_tuples::use_opt@47:0: uncovered (unsupported pointer capture)
+part_arms_tuples::walk_tup@52:0: uncovered (unsupported pointer capture)
+part_arms_tuples::consume@56:0: uncovered (unsupported parameter type)
+part_arms_tuples::bound@64:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_arms_tuples::in_gen@70:0: uncovered (call needs resolved ordinary callee)
+part_arms_tuples::tick@76:0: uncovered (async body)
+part_arms_tuples::in_co@81:0: uncovered (async body)
+part_arms_tuples::main@87:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_arms_tuples::Box.__init__@13:4: covered (storage: no_proof_required), summary: known
+part_arms_tuples::Src.__init__@21:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_frame_lib::__tpy_init: uncovered (module initialization)
+part_frame_lib::total@15:0: uncovered (async body)
+part_frame_lib::gen_lib@23:0: uncovered (generic body)
+part_frame_lib::consume_rec@27:0: uncovered (unsupported parameter type)
+part_frame_lib::Rec.__init__@11:4: covered (storage: no_proof_required), summary: known
+part_frame_order::__tpy_init: uncovered (module initialization)
+part_frame_order::awaited_cross_module@11:0: uncovered (async body)
+part_frame_order::head_in_generator@16:0: uncovered (argument held across a suspension)
+part_frame_order::head_in_coroutine@22:0: uncovered (async body)
+part_frame_order::bound_generic_in_loop@30:0: uncovered (argument held across a suspension)
+part_frame_order::doubled@37:0: uncovered (unsupported parameter type)
+part_frame_order::nums@42:0: covered (storage: no_facts: storage facts have not been published)
+part_frame_order::main@47:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_keep_await::__tpy_init: uncovered (module initialization)
+part_keep_await::wrap_tup@19:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_keep_await::wrap_opt@23:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_keep_await::mk@27:0: covered (storage: no_proof_required), summary: known
+part_keep_await::use@31:0: uncovered (async body)
+part_keep_await::use_opt@37:0: uncovered (async body)
+part_keep_await::peek@44:0: covered (storage: no_proof_required), summary: known
+part_keep_await::co_tup@49:0: uncovered (async body)
+part_keep_await::co_g@54:0: uncovered (async body)
+part_keep_await::double@59:0: uncovered (async body)
+part_keep_await::run_twice@64:0: uncovered (async body)
+part_keep_await::body@71:0: uncovered (async body)
+part_keep_await::main@90:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+part_keep_await::Src.__init__@15:4: covered (storage: no_proof_required), summary: known
+part_keep_fields::__tpy_init: uncovered (module initialization)
+part_keep_fields::gen_t@72:0: uncovered (generic body)
+part_keep_fields::gen_src@76:0: uncovered (reference yield)
+part_keep_fields::gen_sv@80:0: uncovered (by-value capture of a borrowed parameter)
+part_keep_fields::use_sv@84:0: uncovered (async body)
+part_keep_fields::gen_own@91:0: uncovered (unsupported owned_value capture)
+part_keep_fields::co_own@96:0: uncovered (async body)
+part_keep_fields::g_it@102:0: uncovered (unsupported parameter type)
+part_keep_fields::consume@107:0: uncovered (unsupported parameter type)
+part_keep_fields::heads@115:0: uncovered (argument held across a suspension)
+part_keep_fields::awaits@127:0: uncovered (async body)
+part_keep_fields::main@135:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_keep_fields::Mgr.__enter__@40:4: covered (storage: no_proof_required), summary: known
+part_keep_fields::Mgr.__exit__@44:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_keep_fields::Holder.guard@54:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_keep_fields::PtrMgr.__enter__@65:4: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
+part_keep_fields::PtrMgr.__exit__@68:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_keep_fields::Src.__init__@14:4: covered (storage: no_proof_required), summary: known
+part_keep_fields::Mid.__init__@22:4: covered (storage: no_proof_required), summary: known
+part_keep_fields::Top.__init__@30:4: covered (storage: no_proof_required), summary: known
+part_keep_fields::Mgr.__init__@37:4: covered (storage: no_proof_required), summary: known
+part_keep_fields::Holder.__init__@51:4: covered (storage: no_proof_required), summary: known
+part_keep_fields::PtrMgr.__init__@61:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

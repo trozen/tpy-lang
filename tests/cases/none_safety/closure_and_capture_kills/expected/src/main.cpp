@@ -931,8 +931,7 @@ void main() {
     ::tpyapp::main::field_loop_other();
     ::tpyapp::main::field_handler();
     ::tpyapp::main::field_condition();
-    std::vector<::tpy::BigInt> __tmp_1 = {1, 2};
-    ::tpyapp::main::receiver_len(__tmp_1);
+    ::tpyapp::main::receiver_len(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{1, 2}));
     ::tpyapp::main::local_alias();
     ::tpyapp::main::projection();
     ::tpyapp::main::param_shadow();
@@ -950,8 +949,7 @@ void main() {
     ::tpyapp::main::handler_other();
     ::tpyapp::main::closure_try_nocall();
     ::tpyapp::main::field_condition_other();
-    std::vector<::tpy::BigInt> __tmp_2 = {1, 2};
-    ::tpyapp::main::receiver_len_other(__tmp_2);
+    ::tpyapp::main::receiver_len_other({1, 2});
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_body()));
     ::tpyapp::main::comprehension_cond();
     ::tpyapp::main::with_body();

@@ -1,0 +1,1 @@
+main.py:14: error: in function 'outer': a generator expression over a fresh source, passed to a generator or coroutine whose frame keeps it across a suspension, is not supported yet; bind the generator expression's source to a local first

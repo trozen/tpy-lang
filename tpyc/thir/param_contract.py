@@ -40,19 +40,25 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 from ..codegen_cpp.param_const import decide_param_const, declared_param_consts
-from ..parse.nodes import TpyExpr
+from ..parse.nodes import TpyExpr, TpyTupleLiteral
 from ..sema.call_lends import Retention, retention_channel
 from ..type_def_registry import ParamPassing, has_view_param_form
 from ..typesys import (
-    CONST_PARAMS_METHODS, FunctionInfo, PtrType, ReadonlyType, ResolvedBinop, ResolvedUnaryop,
-    TpyType, TypeParamRef, contains_type_param, is_bodyless_binding, is_dyn_protocol,
+    CONST_PARAMS_METHODS, FunctionInfo,
+    PtrType, ReadonlyType, ResolvedBinop, ResolvedUnaryop,
+    TpyType, TupleType, TypeParamRef, ValueForm, contains_type_param,
+    is_bodyless_binding, is_dyn_protocol,
     is_readonly_ptr, param_takes_ownership, pointer_repr_optional, pointer_variant_union,
     signature_only,
     unwrap_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from ..value_category import (ValueCategoryAnalyzer, frame_factory_callee,
+                              carries_borrow,
+                              frame_param_lends,
+                              peel_coerce,
+                              param_type_can_lend,
                               param_written, protocol_slot,
-                              protocol_twin_slot)
+                              protocol_twin_slot, instantiated_slot)
 from .nodes import THIRCallableSignature, THIRParam
 
 
@@ -160,7 +166,7 @@ def forced_param_const(fi: FunctionInfo | None, index: int, ptype: TpyType | Non
         return None
     inplace = fi.is_method and fi.name in CONST_PARAMS_METHODS
     if isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype))), TypeParamRef):
-        forced = inplace or fi.is_constructor or (fi.is_method and fi.name == "__init__")
+        forced = inplace or fi.initializes_type
     else:
         forced = inplace and not is_bodyless_binding(fi)
     if not forced:
@@ -304,6 +310,136 @@ def frame_captured(fi: FunctionInfo | None) -> bool:
     """The callee is a generator or coroutine factory: its frame borrows its
     reference arguments past the statement (`frame_factory_callee`)."""
     return fi is not None and (frame_factory_callee(fi) or fi.is_async)
+
+
+# --- handle use
+
+
+class HandleUse(Enum):
+    """What a consuming parameter does with an operand that borrows a seat
+    (`handle_use`)."""
+    # The borrow ends with the call: the parameter borrows only for it.
+    CONSUMED = auto()
+    # The callee's frame keeps it, or its result borrows it: the call's
+    # result carries it on.
+    KEPT_BY_RESULT = auto()
+    # Anything else, the default: taken over (`Own`, an owning element
+    # slot), copied or stored, or a callee nothing is known of.
+    ESCAPES = auto()
+
+
+def handle_use(fi: FunctionInfo | None, index: int, call: TpyExpr | None,
+               analyzer: ValueCategoryAnalyzer | None,
+               operand: TpyExpr | None = None) -> HandleUse:
+    """How callee `fi` takes operand `index` (-1: the receiver) at `call`,
+    answered from sema's retention verdict (`retention_channel`): sound by
+    default -- what is not known to end with the call or ride its result
+    ESCAPES. An `Own` parameter takes the argument over."""
+    if fi is None or index < -1:
+        return HandleUse.ESCAPES
+    ptype = fi.params[index].type if 0 <= index < len(fi.params) else None
+    if own_param_takes(fi, index, operand):
+        return HandleUse.ESCAPES
+    if index == -1 and frame_captured(fi):
+        # The frame keeps its receiver; sema records no other fact of it
+        # (BUGS.md#generator-method-receiver-borrow-unrepresented).
+        return HandleUse.KEPT_BY_RESULT
+    kept = retention_channel(fi, index, call, analyzer, operand)
+    escapes = kept is not None and bool(
+        kept & Retention.COPIES
+        or (kept & Retention.MEASURED
+            and not kept & (Retention.MEASURED_RESULT
+                            | Retention.CONSTRUCTED)))
+    if escapes:
+        return HandleUse.ESCAPES
+    iterated = kept is not None and bool(kept & Retention.ITERATED)
+    if frame_captured(fi):
+        # Measured to keep it nowhere else: the frame the call builds does,
+        # where the frame borrows the parameter (`frame_param_lends`); a
+        # `str` it copies into an owned `std::string` it does not.
+        lent = instantiated_param(ptype, operand, analyzer)
+        if lent is not None and not frame_param_lends(lent):
+            return (HandleUse.KEPT_BY_RESULT if iterated
+                    else HandleUse.CONSUMED)
+        return HandleUse.KEPT_BY_RESULT
+    if kept is None:
+        return HandleUse.CONSUMED
+    if kept & (
+            Retention.RESULT | Retention.DECLARED_RESULT
+            | Retention.MEASURED_RESULT | Retention.CONSTRUCTED
+            | Retention.ITERATED):
+        return HandleUse.KEPT_BY_RESULT
+    return HandleUse.ESCAPES
+
+
+def own_param_takes(fi: FunctionInfo | None, index: int | None,
+                    operand: TpyExpr | None) -> bool:
+    """Parameter `index` of `fi` is an `Own` parameter that takes argument
+    `operand` over whole -- not a tuple passing some of its leaves on as
+    borrows (`owned_tuple_leaves`)."""
+    if fi is None or index is None or not 0 <= index < len(fi.params):
+        return False
+    ptype = fi.params[index].type
+    return (ptype is not None and param_takes_ownership(ptype)
+            and owned_tuple_leaves(fi, index, operand) is None)
+
+
+def instantiated_param(ptype: TpyType | None, operand: TpyExpr | None,
+                       analyzer: ValueCategoryAnalyzer | None
+                       ) -> TpyType | None:
+    """The type a generator or coroutine factory's parameter `ptype` holds
+    at argument `operand` (`instantiated_slot`)."""
+    return instantiated_slot(ptype, operand, analyzer, frame=True)
+
+
+def _mixed_tuple(ptype: TpyType | None) -> TupleType | None:
+    """A parameter taking ownership (`param_takes_ownership`) that also
+    passes some leaves on as borrows: a tuple whose non-`Own` elements can
+    lend (`param_type_can_lend`)."""
+    if ptype is None:
+        return None
+    bare = unwrap_readonly(unwrap_send_sync(unwrap_ref_type(ptype)))
+    if isinstance(bare, TupleType) and any(
+            e.value_form() is not ValueForm.OWN
+            and param_type_can_lend(e, callables=False)
+            for e in bare.element_types):
+        return bare
+    return None
+
+
+def owned_tuple_leaves(fi: FunctionInfo | None, index: int,
+                       operand: TpyExpr | None) -> list[TpyExpr] | None:
+    """THE per-leaf rule for a tuple handed to a parameter that takes its
+    `Own` leaves over and passes the others on (`_mixed_tuple`): the
+    elements of `operand` that escape into the callee, while its other
+    leaves follow the call. A tuple literal's leaves are told apart: its
+    `Own` elements. Any other source is one value: when an `Own` leaf may
+    hold a borrow (`carries_borrow`), which operand it borrows is not
+    known, so the whole value escapes (None); otherwise nothing escapes.
+    None as well for a parameter that is not such a tuple."""
+    if fi is None or not 0 <= index < len(fi.params):
+        return None
+    bare = _mixed_tuple(fi.params[index].type)
+    if bare is None:
+        return None
+    owned = [i for i, et in enumerate(bare.element_types)
+             if et.value_form() is ValueForm.OWN]
+    lit = peel_coerce(operand) if operand is not None else None
+    if isinstance(lit, TpyTupleLiteral):
+        return [lit.elements[i] for i in owned if i < len(lit.elements)]
+    if any(carries_borrow(unwrap_own(bare.element_types[i])) for i in owned):
+        return None
+    return []
+
+
+def awaited_result_keeps(result_t: TpyType | None,
+                         borrow_form: bool = False) -> bool:
+    """Whether what an `await` hands back may keep what the awaited frame
+    was given: a value that carries a borrow (`carries_borrow`) does -- a
+    borrowed result (sema's `await_result_is_borrow`), or one that may hold
+    a pointer (a `Task` over a coroutine that borrows its argument); sema
+    measures no such fact of a coroutine's result."""
+    return carries_borrow(result_t, borrow_form=borrow_form)
 
 
 # --- adapts

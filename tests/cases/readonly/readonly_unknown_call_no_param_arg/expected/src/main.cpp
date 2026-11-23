@@ -27,8 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    Box __tmp_1 = Box(5);
-    std::cout << ::tpyapp::main::ok(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ok(Box(5)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

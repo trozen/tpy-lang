@@ -383,8 +383,7 @@ void main() {
     std::cout << "in_closure" << " " << ::tpyapp::main::in_closure(::tpy::Union<Other*, Rec*>{&(i)}) << " " << i.n << "\n" << ::tpy::check_signals;
     Rec j = Rec(9, 0);
     std::cout << "in_match_arm" << " " << ::tpyapp::main::in_match_arm(::tpy::Union<Other*, Rec*>{&(j)}, 1) << " " << j.n << "\n" << ::tpy::check_signals;
-    Other __tmp_1 = Other(1);
-    std::cout << "other" << " " << ::tpyapp::main::free_fn(::tpy::Union<Other*, Rec*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
+    std::cout << "other" << " " << ::tpyapp::main::free_fn(::tpy::Union<Other*, Rec*>{&(::tpy::as_mut_lvalue(Other(1)))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

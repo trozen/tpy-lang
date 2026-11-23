@@ -44,15 +44,17 @@ void main() {
         }
     }
     std::cout << ::tpy::ListPrinter(out) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = ::tpyapp::main::repeat_n<int32_t>(8, 5);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_2 = ::tpyapp::main::take<int32_t>(__tmp_2, 2);
-        auto __beg_2 = __obj_2.begin();
-        auto __end_2 = __obj_2.end();
-        for (; __beg_2 != __end_2; ++__beg_2) {
-            int32_t v = *__beg_2;
-            __result.push_back(v);
+        {
+            auto __tmp_2 = ::tpyapp::main::repeat_n<int32_t>(8, 5);
+            auto __obj_2 = ::tpyapp::main::take<int32_t>(__tmp_2, 2);
+            auto __beg_2 = __obj_2.begin();
+            auto __end_2 = __obj_2.end();
+            for (; __beg_2 != __end_2; ++__beg_2) {
+                int32_t v = *__beg_2;
+                __result.push_back(v);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
@@ -67,27 +69,31 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = ::tpyapp::main::repeat_n<int32_t>(9, 4);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_4 = ::tpyapp::main::take_iter<int32_t>(__tmp_3, 2);
-        auto __beg_4 = __obj_4.begin();
-        auto __end_4 = __obj_4.end();
-        for (; __beg_4 != __end_4; ++__beg_4) {
-            int32_t v = *__beg_4;
-            __result.push_back(v);
+        {
+            auto __tmp_3 = ::tpyapp::main::repeat_n<int32_t>(9, 4);
+            auto __obj_4 = ::tpyapp::main::take_iter<int32_t>(__tmp_3, 2);
+            auto __beg_4 = __obj_4.begin();
+            auto __end_4 = __obj_4.end();
+            for (; __beg_4 != __end_4; ++__beg_4) {
+                int32_t v = *__beg_4;
+                __result.push_back(v);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_4 = {1, 2, 3};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_5 = ::tpyapp::main::doubled(__tmp_4);
-        auto __beg_5 = __obj_5.begin();
-        auto __end_5 = __obj_5.end();
-        for (; __beg_5 != __end_5; ++__beg_5) {
-            int32_t v = *__beg_5;
-            __result.push_back(v);
+        {
+            std::vector<int32_t> __tmp_4 = {1, 2, 3};
+            auto __obj_5 = ::tpyapp::main::doubled(__tmp_4);
+            auto __beg_5 = __obj_5.begin();
+            auto __end_5 = __obj_5.end();
+            for (; __beg_5 != __end_5; ++__beg_5) {
+                int32_t v = *__beg_5;
+                __result.push_back(v);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;

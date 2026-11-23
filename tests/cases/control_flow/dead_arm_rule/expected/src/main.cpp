@@ -1299,8 +1299,7 @@ std::string builtin_ctor() {
 //     return kw_sink(n=7 if k else 10**30)  # tpyc: ok
 std::string typed_dict() {
     bool k = true;
-    Opt __tmp_1 = Opt(7);
-    return ::tpyapp::main::kw_sink(__tmp_1);
+    return ::tpyapp::main::kw_sink(Opt(7));
 }
 
 // # overloaded callee: the variant receives the live list itself.
@@ -3011,42 +3010,28 @@ std::string guard_dead_str(std::string_view s) {
 //     # kin.py warns on its tests: a Ray would take the arms in CPython.
 //     print("mi", mi_isinstance(Fin()), mi_pattern(Fin()), mi_union(Fin()))
 void main() {
-    Animal __tmp_1 = Animal("d");
-    std::cout << "if" << " " << ::tpyapp::main::if_arm(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "if" << " " << ::tpyapp::main::if_arm(Animal("d")) << "\n" << ::tpy::check_signals;
     std::cout << "elif" << " " << ::tpyapp::main::elif_arm("a") << "\n" << ::tpy::check_signals;
-    Dog __tmp_2 = Dog("t");
-    std::cout << "ternary" << " " << ::tpyapp::main::ternary(__tmp_2) << "\n" << ::tpy::check_signals;
-    Dog __tmp_3 = Dog("x");
-    std::cout << "and_or" << " " << ::tpy::print_bool(::tpyapp::main::and_or(__tmp_3)) << "\n" << ::tpy::check_signals;
-    Dog __tmp_4 = Dog("w");
-    std::cout << "while" << " " << ::tpyapp::main::while_arm(__tmp_4) << "\n" << ::tpy::check_signals;
-    Dog __tmp_5 = Dog("a");
-    std::cout << "assert" << " " << ::tpyapp::main::assert_arm(__tmp_5) << "\n" << ::tpy::check_signals;
-    std::vector<Dog> __tmp_6 = {Dog("c"), Dog("e")};
-    std::cout << "comprehension" << " " << ::tpyapp::main::comprehension(__tmp_6) << "\n" << ::tpy::check_signals;
-    Dog __tmp_7 = Dog("m");
-    Cat __tmp_8 = Cat();
-    std::cout << "match" << " " << ::tpyapp::main::match_arm(::tpy::Union<const Cat*, const Dog*>{&__tmp_7}) << " " << ::tpyapp::main::match_arm(::tpy::Union<const Cat*, const Dog*>{&__tmp_8}) << "\n" << ::tpy::check_signals;
-    Animal __tmp_9 = Animal("m");
-    std::cout << "match_record" << " " << ::tpyapp::main::match_record(__tmp_9) << "\n" << ::tpy::check_signals;
-    Dog __tmp_10 = Dog("o");
-    std::cout << "match_optional" << " " << ::tpyapp::main::match_optional(nullptr) << " " << ::tpyapp::main::match_optional(&(__tmp_10)) << "\n" << ::tpy::check_signals;
+    std::cout << "ternary" << " " << ::tpyapp::main::ternary(Dog("t")) << "\n" << ::tpy::check_signals;
+    std::cout << "and_or" << " " << ::tpy::print_bool(::tpyapp::main::and_or(Dog("x"))) << "\n" << ::tpy::check_signals;
+    std::cout << "while" << " " << ::tpyapp::main::while_arm(Dog("w")) << "\n" << ::tpy::check_signals;
+    std::cout << "assert" << " " << ::tpyapp::main::assert_arm(Dog("a")) << "\n" << ::tpy::check_signals;
+    std::cout << "comprehension" << " " << ::tpyapp::main::comprehension({Dog("c"), Dog("e")}) << "\n" << ::tpy::check_signals;
+    std::cout << "match" << " " << ::tpyapp::main::match_arm(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("m")))}) << " " << ::tpyapp::main::match_arm(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat()))}) << "\n" << ::tpy::check_signals;
+    std::cout << "match_record" << " " << ::tpyapp::main::match_record(Animal("m")) << "\n" << ::tpy::check_signals;
+    std::cout << "match_optional" << " " << ::tpyapp::main::match_optional(nullptr) << " " << ::tpyapp::main::match_optional(&::tpy::as_mut_lvalue(Dog("o"))) << "\n" << ::tpy::check_signals;
     std::cout << "match_literal" << " " << ::tpyapp::main::match_literal("a") << " " << ::tpyapp::main::match_literal("b") << "\n" << ::tpy::check_signals;
-    Dog __tmp_11 = Dog("r");
-    std::cout << "after" << " " << ::tpyapp::main::after_terminating(__tmp_11) << "\n" << ::tpy::check_signals;
-    Dog __tmp_12 = Dog("b");
-    std::cout << "bound" << " " << ::tpyapp::main::bound_in_arm(__tmp_12) << "\n" << ::tpy::check_signals;
+    std::cout << "after" << " " << ::tpyapp::main::after_terminating(Dog("r")) << "\n" << ::tpy::check_signals;
+    std::cout << "bound" << " " << ::tpyapp::main::bound_in_arm(Dog("b")) << "\n" << ::tpy::check_signals;
     std::cout << "loop" << " " << ::tpyapp::main::loop_rebind() << "\n" << ::tpy::check_signals;
-    Dog __tmp_13 = Dog("y");
-    std::cout << "try" << " " << ::tpyapp::main::try_finally(__tmp_13) << "\n" << ::tpy::check_signals;
-    Dog __tmp_14 = Dog("g");
-    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen(__tmp_14))) << "\n" << ::tpy::check_signals;
-    Dog __tmp_15 = Dog("z");
-    std::cout << "async" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro(__tmp_15))) << "\n" << ::tpy::check_signals;
+    std::cout << "try" << " " << ::tpyapp::main::try_finally(Dog("y")) << "\n" << ::tpy::check_signals;
+    Dog __tmp_1 = Dog("g");
+    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen(__tmp_1))) << "\n" << ::tpy::check_signals;
+    Dog __tmp_2 = Dog("z");
+    std::cout << "async" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro(__tmp_2))) << "\n" << ::tpy::check_signals;
     std::cout << "method" << " " << Kennel(Dog("k")).label() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1, 2};
-    Dog __tmp_16 = Dog("q");
-    int32_t n = ::tpyapp::main::mutate_dead(__tmp_16, xs);
+    int32_t n = ::tpyapp::main::mutate_dead(Dog("q"), xs);
     xs.push_back(3);
     std::cout << "mutate" << " " << n << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::cout << "impure" << " " << ::tpyapp::main::impure("i") << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
@@ -3059,22 +3044,17 @@ void main() {
         __after_try_4:;
     }
     std::cout << "impure_await" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::impure_await("w"))) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
-    Dog __tmp_17 = Dog("v");
-    std::cout << "non_member" << " " << ::tpyapp::main::non_member(::tpy::Union<const Cat*, const Dog*>{&__tmp_17}) << "\n" << ::tpy::check_signals;
+    std::cout << "non_member" << " " << ::tpyapp::main::non_member(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("v")))}) << "\n" << ::tpy::check_signals;
     std::cout << "ternary_types" << " " << ::tpyapp::main::ternary_types() << "\n" << ::tpy::check_signals;
     std::cout << "literal_truth" << " " << ::tpyapp::main::literal_truth(true) << "\n" << ::tpy::check_signals;
     std::cout << "while_literal" << " " << ::tpyapp::main::while_literal("r") << " " << ::tpyapp::main::while_literal("w") << "\n" << ::tpy::check_signals;
     std::cout << "match_membership" << " " << ::tpyapp::main::match_membership("w") << " " << ::tpyapp::main::match_membership("a") << "\n" << ::tpy::check_signals;
     std::cout << "literal" << " " << ::tpyapp::main::literal_true(1) << "\n" << ::tpy::check_signals;
     std::cout << "local" << " " << ::tpyapp::main::local_constant() << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_18 = {"a", "b"};
-    std::cout << "local none" << " " << ::tpyapp::main::local_none() << " " << ::tpyapp::main::none_closure() << " " << ::tpyapp::main::none_loop(__tmp_18) << "\n" << ::tpy::check_signals;
-    Dog __tmp_19 = Dog("n");
-    std::cout << "none" << " " << ::tpyapp::main::never_none(__tmp_19) << "\n" << ::tpy::check_signals;
-    Bat __tmp_20 = Bat();
-    std::cout << "multi" << " " << ::tpyapp::main::multi(__tmp_20) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_21 = {1, 2};
-    std::cout << "range_loop" << " " << ::tpyapp::main::range_loop(__tmp_21) << "\n" << ::tpy::check_signals;
+    std::cout << "local none" << " " << ::tpyapp::main::local_none() << " " << ::tpyapp::main::none_closure() << " " << ::tpyapp::main::none_loop({"a", "b"}) << "\n" << ::tpy::check_signals;
+    std::cout << "none" << " " << ::tpyapp::main::never_none(Dog("n")) << "\n" << ::tpy::check_signals;
+    std::cout << "multi" << " " << ::tpyapp::main::multi(Bat()) << "\n" << ::tpy::check_signals;
+    std::cout << "range_loop" << " " << ::tpyapp::main::range_loop({1, 2}) << "\n" << ::tpy::check_signals;
     std::cout << "range_walrus" << " " << ::tpyapp::main::range_walrus() << "\n" << ::tpy::check_signals;
     std::cout << "comp_shadow" << " " << ::tpyapp::main::comp_shadow() << "\n" << ::tpy::check_signals;
     std::cout << "nested_local" << " " << ::tpyapp::main::nested_local() << "\n" << ::tpy::check_signals;
@@ -3082,59 +3062,40 @@ void main() {
     std::cout << "second" << " " << ::tpyapp::main::second_write(true) << "\n" << ::tpy::check_signals;
     std::cout << "ptr_range" << " " << ::tpyapp::main::ptr_range() << "\n" << ::tpy::check_signals;
     calls->clear();
-    Truth __tmp_22 = Truth("b");
-    std::cout << "user_bool" << " " << ::tpyapp::main::user_bool(__tmp_22) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
-    AnyEq __tmp_23 = AnyEq();
-    std::cout << "user_eq" << " " << ::tpyapp::main::user_eq(__tmp_23) << "\n" << ::tpy::check_signals;
+    std::cout << "user_bool" << " " << ::tpyapp::main::user_bool(Truth("b")) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "user_eq" << " " << ::tpyapp::main::user_eq(AnyEq()) << "\n" << ::tpy::check_signals;
     std::cout << "value" << " " << ::tpyapp::main::value_compare("rb", "w") << "\n" << ::tpy::check_signals;
     calls->clear();
     std::cout << "guard_impure" << " " << ::tpyapp::main::guard_impure(true) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
-    Dog __tmp_24 = Dog("c");
-    std::cout << "match_covered" << " " << ::tpyapp::main::match_covered(nullptr) << " " << ::tpyapp::main::match_covered(&(__tmp_24)) << "\n" << ::tpy::check_signals;
+    std::cout << "match_covered" << " " << ::tpyapp::main::match_covered(nullptr) << " " << ::tpyapp::main::match_covered(&::tpy::as_mut_lvalue(Dog("c"))) << "\n" << ::tpy::check_signals;
     std::cout << "match_none" << " " << ::tpyapp::main::match_none(std::monostate{}) << "\n" << ::tpy::check_signals;
     calls->clear();
     std::cout << "match_none_call" << " " << ::tpyapp::main::match_none_call() << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
-    Cat __tmp_25 = Cat();
-    std::cout << "keyword" << " " << ::tpyapp::main::keyword_pattern(::tpy::Union<const Cat*, const Dog*>{&__tmp_25}) << "\n" << ::tpy::check_signals;
+    std::cout << "keyword" << " " << ::tpyapp::main::keyword_pattern(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat()))}) << "\n" << ::tpy::check_signals;
     std::cout << "loop_narrowed" << " " << ::tpyapp::main::loop_rebind_narrowed() << "\n" << ::tpy::check_signals;
-    std::vector<Dog> __tmp_26 = {Dog("p"), Dog("q")};
-    std::cout << "comp_ternary" << " " << ::tpyapp::main::comp_ternary(__tmp_26) << "\n" << ::tpy::check_signals;
+    std::cout << "comp_ternary" << " " << ::tpyapp::main::comp_ternary({Dog("p"), Dog("q")}) << "\n" << ::tpy::check_signals;
     std::cout << "ctor" << " " << Ctor(Dog("c")).v << "\n" << ::tpy::check_signals;
-    Dog __tmp_27 = Dog("z");
-    std::cout << "closure" << " " << ::tpyapp::main::closure(__tmp_27) << "\n" << ::tpy::check_signals;
-    Dog __tmp_28 = Dog("w");
-    std::cout << "with" << " " << ::tpyapp::main::with_body(__tmp_28) << "\n" << ::tpy::check_signals;
+    std::cout << "closure" << " " << ::tpyapp::main::closure(Dog("z")) << "\n" << ::tpy::check_signals;
+    std::cout << "with" << " " << ::tpyapp::main::with_body(Dog("w")) << "\n" << ::tpy::check_signals;
     std::cout << "literal_zero" << " " << ::tpyapp::main::literal_zero(0) << "\n" << ::tpy::check_signals;
-    Dog __tmp_29 = Dog("s");
-    std::cout << "not_none" << " " << ::tpyapp::main::not_none(__tmp_29) << "\n" << ::tpy::check_signals;
+    std::cout << "not_none" << " " << ::tpyapp::main::not_none(Dog("s")) << "\n" << ::tpy::check_signals;
     std::cout << "own_arg" << " " << ::tpyapp::main::own_arg() << "\n" << ::tpy::check_signals;
     std::cout << "alias_binding" << " " << ::tpyapp::main::alias_binding() << "\n" << ::tpy::check_signals;
     std::cout << "frame_arg" << " " << ::tpyapp::main::frame_arg() << "\n" << ::tpy::check_signals;
     std::cout << "async_frame_arg" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::async_frame_arg())) << "\n" << ::tpy::check_signals;
     std::cout << "protocol_arg" << " " << ::tpyapp::main::protocol_arg() << "\n" << ::tpy::check_signals;
     calls->clear();
-    Gate __tmp_30 = Gate("a1", true);
-    Gate __tmp_31 = Gate("a2", true);
-    std::cout << "kept_and" << " " << ::tpyapp::main::kept_and(__tmp_30, __tmp_31) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "kept_and" << " " << ::tpyapp::main::kept_and(Gate("a1", true), Gate("a2", true)) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
-    Gate __tmp_32 = Gate("t1", true);
-    Gate __tmp_33 = Gate("t2", true);
-    std::cout << "kept_ternary" << " " << ::tpyapp::main::kept_ternary(__tmp_32, __tmp_33, true) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "kept_ternary" << " " << ::tpyapp::main::kept_ternary(Gate("t1", true), Gate("t2", true), true) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
-    Gate __tmp_34 = Gate("o1", false);
-    Gate __tmp_35 = Gate("o2", false);
-    std::cout << "kept_or" << " " << ::tpyapp::main::kept_or(__tmp_34, __tmp_35) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "kept_or" << " " << ::tpyapp::main::kept_or(Gate("o1", false), Gate("o2", false)) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
-    Gate __tmp_36 = Gate("w1", false);
-    Gate __tmp_37 = Gate("w2", false);
-    std::cout << "kept_while" << " " << ::tpyapp::main::kept_while(__tmp_36, __tmp_37) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "kept_while" << " " << ::tpyapp::main::kept_while(Gate("w1", false), Gate("w2", false)) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
-    Gate __tmp_38 = Gate("n1", true);
-    Gate __tmp_39 = Gate("n2", false);
-    std::cout << "kept_not" << " " << ::tpyapp::main::kept_not(__tmp_38, __tmp_39) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "kept_not" << " " << ::tpyapp::main::kept_not(Gate("n1", true), Gate("n2", false)) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
-    Pouch __tmp_40 = Pouch();
-    std::cout << "kept_len" << " " << ::tpyapp::main::kept_len(__tmp_40) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "kept_len" << " " << ::tpyapp::main::kept_len(Pouch()) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     std::cout << "nested_decided" << " " << ::tpyapp::main::nested_decided() << "\n" << ::tpy::check_signals;
     std::cout << "builtin_ctor" << " " << ::tpyapp::main::builtin_ctor() << "\n" << ::tpy::check_signals;
     std::cout << "typed_dict" << " " << ::tpyapp::main::typed_dict() << "\n" << ::tpy::check_signals;
@@ -3144,8 +3105,7 @@ void main() {
     std::cout << "coverage" << " " << ::tpyapp::main::coverage("b") << "\n" << ::tpy::check_signals;
     std::cout << "false_and" << " " << ::tpyapp::main::false_and() << "\n" << ::tpy::check_signals;
     calls->clear();
-    Dog __tmp_41 = Dog("p");
-    std::cout << "call_and_none" << " " << ::tpyapp::main::call_and_none(__tmp_41) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "call_and_none" << " " << ::tpyapp::main::call_and_none(Dog("p")) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
     std::cout << "builtin_truth" << " " << ::tpyapp::main::builtin_truth() << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
@@ -3165,35 +3125,27 @@ void main() {
     calls->clear();
     std::cout << "non_member_call" << " " << ::tpyapp::main::non_member_call() << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
-    Dog __tmp_42 = Dog("e");
-    std::cout << "elif_impure" << " " << ::tpyapp::main::elif_impure(false, __tmp_42) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
-    Dog __tmp_43 = Dog("f");
-    Dog __tmp_44 = Dog("f");
-    Dog __tmp_45 = Dog("f");
-    std::cout << "false_head_chain" << " " << ::tpyapp::main::false_head_chain(2, __tmp_43) << " " << ::tpyapp::main::false_head_chain(1, __tmp_44) << " " << ::tpyapp::main::false_head_chain(0, __tmp_45) << "\n" << ::tpy::check_signals;
+    std::cout << "elif_impure" << " " << ::tpyapp::main::elif_impure(false, Dog("e")) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "false_head_chain" << " " << ::tpyapp::main::false_head_chain(2, Dog("f")) << " " << ::tpyapp::main::false_head_chain(1, Dog("f")) << " " << ::tpyapp::main::false_head_chain(0, Dog("f")) << "\n" << ::tpy::check_signals;
     calls->clear();
     std::cout << "walrus_live" << " " << ::tpyapp::main::walrus_live() << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
-    std::vector<std::string> __tmp_46 = {"c1", "c2"};
-    std::cout << "comp_impure" << " " << ::tpyapp::main::comp_impure(__tmp_46) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "comp_impure" << " " << ::tpyapp::main::comp_impure({"c1", "c2"}) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     std::cout << "while_impure" << " " << ::tpyapp::main::while_impure(1) << "\n" << ::tpy::check_signals;
     calls->clear();
-    Gate __tmp_47 = Gate("wr", false);
-    std::cout << "while_true_return" << " " << ::tpyapp::main::while_true_return(__tmp_47) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "while_true_return" << " " << ::tpyapp::main::while_true_return(Gate("wr", false)) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
     std::cout << "while_true_call" << " " << ::tpyapp::main::while_true_call() << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
     std::cout << "while_true_passes" << " " << ::tpyapp::main::while_true_passes() << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
-    Dog __tmp_48 = Dog("g");
-    std::cout << "gen_impure" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_impure(__tmp_48))) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    Dog __tmp_3 = Dog("g");
+    std::cout << "gen_impure" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_impure(__tmp_3))) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
-    Dog __tmp_49 = Dog("c");
-    std::cout << "coro_impure" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro_impure(__tmp_49))) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
-    Dog __tmp_50 = Dog("w");
-    std::cout << "while_dead_local" << " " << ::tpyapp::main::while_dead_local(__tmp_50) << "\n" << ::tpy::check_signals;
-    Dog __tmp_51 = Dog("d");
-    std::cout << "dead_capture_after" << " " << ::tpyapp::main::dead_capture_after(__tmp_51) << "\n" << ::tpy::check_signals;
+    Dog __tmp_4 = Dog("c");
+    std::cout << "coro_impure" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro_impure(__tmp_4))) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "while_dead_local" << " " << ::tpyapp::main::while_dead_local(Dog("w")) << "\n" << ::tpy::check_signals;
+    std::cout << "dead_capture_after" << " " << ::tpyapp::main::dead_capture_after(Dog("d")) << "\n" << ::tpy::check_signals;
     std::cout << "guard_capture" << " " << ::tpyapp::main::guard_capture(5) << "\n" << ::tpy::check_signals;
     std::cout << "guard_true" << " " << ::tpyapp::main::guard_true(6) << "\n" << ::tpy::check_signals;
     std::cout << "arm_local" << " " << ::tpyapp::main::arm_local() << "\n" << ::tpy::check_signals;
@@ -3201,12 +3153,10 @@ void main() {
     std::cout << "dead_global_decl" << " " << ::tpyapp::main::dead_global_decl() << " " << shadowed << "\n" << ::tpy::check_signals;
     std::cout << "dead_nonlocal_decl" << " " << ::tpyapp::main::dead_nonlocal_decl() << "\n" << ::tpy::check_signals;
     std::cout << "inner_scope_nonlocal" << " " << ::tpyapp::main::inner_scope_nonlocal() << "\n" << ::tpy::check_signals;
-    Dog __tmp_52 = Dog("m");
-    std::cout << "dead_match_global" << " " << ::tpyapp::main::dead_match_global(__tmp_52) << " " << shadowed << "\n" << ::tpy::check_signals;
+    std::cout << "dead_match_global" << " " << ::tpyapp::main::dead_match_global(Dog("m")) << " " << shadowed << "\n" << ::tpy::check_signals;
     std::cout << "decl_ctor" << " " << DeclCtor(11).n << " " << shadowed << "\n" << ::tpy::check_signals;
     calls->clear();
-    Dog __tmp_53 = Dog("n");
-    std::cout << "match_no_arm" << " " << ::tpyapp::main::match_no_arm(__tmp_53) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "match_no_arm" << " " << ::tpyapp::main::match_no_arm(Dog("n")) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     std::string r;
     {
         try {
@@ -3215,8 +3165,7 @@ void main() {
             r = "raised";
         }
     }
-    Tag __tmp_54 = Tag(1, Bird(2));
-    std::cout << "no_arm_checked" << " " << r << " " << ::tpyapp::main::no_arm_checked(&(__tmp_54)) << "\n" << ::tpy::check_signals;
+    std::cout << "no_arm_checked" << " " << r << " " << ::tpyapp::main::no_arm_checked(&::tpy::as_mut_lvalue(Tag(1, Bird(2)))) << "\n" << ::tpy::check_signals;
     {
         try {
             r = ::tpyapp::main::fold_checked(nullptr);
@@ -3224,14 +3173,12 @@ void main() {
             r = "raised";
         }
     }
-    Tag __tmp_55 = Tag(1, Bird(2));
-    std::cout << "fold_checked" << " " << r << " " << ::tpyapp::main::fold_checked(&(__tmp_55)) << "\n" << ::tpy::check_signals;
+    std::cout << "fold_checked" << " " << r << " " << ::tpyapp::main::fold_checked(&::tpy::as_mut_lvalue(Tag(1, Bird(2)))) << "\n" << ::tpy::check_signals;
     std::cout << "del_after" << " " << ::tpyapp::main::del_after() << "\n" << ::tpy::check_signals;
     std::cout << "del_rebind" << " " << ::tpyapp::main::del_rebind() << "\n" << ::tpy::check_signals;
     std::cout << "del_cond_walrus" << " " << ::tpyapp::main::del_cond_walrus(false) << " " << ::tpyapp::main::del_cond_walrus(true) << "\n" << ::tpy::check_signals;
     std::cout << "finally_arm" << " " << ::tpyapp::main::finally_arm() << "\n" << ::tpy::check_signals;
-    Animal __tmp_56 = Animal("q");
-    std::cout << "capture_rebind" << " " << ::tpyapp::main::capture_rebind(__tmp_56, "ab") << "\n" << ::tpy::check_signals;
+    std::cout << "capture_rebind" << " " << ::tpyapp::main::capture_rebind(Animal("q"), "ab") << "\n" << ::tpy::check_signals;
     calls->clear();
     std::cout << "none_call_once" << " " << ::tpyapp::main::none_call_once() << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     std::cout << "none_then_dead" << " " << ::tpyapp::main::none_then_dead(std::monostate{}) << "\n" << ::tpy::check_signals;
@@ -3286,23 +3233,16 @@ void main() {
     std::cout << "none_await_in_if" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::none_await_in_if(true))) << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::none_await_in_if(false))) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     std::cout << "walrus" << " " << ::tpyapp::main::walrus_subject() << " " << ::tpyapp::main::walrus_stmt() << "\n" << ::tpy::check_signals;
     std::cout << "none_tail" << " " << ::tpyapp::main::none_tail(std::monostate{}) << "\n" << ::tpy::check_signals;
-    NoneHolder __tmp_57 = NoneHolder();
-    NoneHolder __tmp_58 = NoneHolder();
-    std::cout << "none_field" << " " << ::tpyapp::main::none_field(__tmp_57, true) << " " << ::tpyapp::main::none_field(__tmp_58, false) << "\n" << ::tpy::check_signals;
+    std::cout << "none_field" << " " << ::tpyapp::main::none_field(NoneHolder(), true) << " " << ::tpyapp::main::none_field(NoneHolder(), false) << "\n" << ::tpy::check_signals;
     calls->clear();
     std::cout << "guard_dead_chain" << " " << ::tpyapp::main::guard_dead_chain(::tpy::BigInt(1)) << " " << ::tpyapp::main::guard_dead_chain(::tpy::BigInt(2)) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
-    ::tpy::Union<::tpy::BigInt, std::string> __tmp_59 = 3;
-    ::tpy::Union<::tpy::BigInt, std::string> __tmp_60 = "s";
-    std::cout << "guard_dead_union" << " " << ::tpyapp::main::guard_dead_union(__tmp_59) << " " << ::tpyapp::main::guard_dead_union(__tmp_60) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "guard_dead_union" << " " << ::tpyapp::main::guard_dead_union(::tpy::Union<::tpy::BigInt, std::string>(3)) << " " << ::tpyapp::main::guard_dead_union(::tpy::Union<::tpy::BigInt, std::string>("s")) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
     std::cout << "guard_dead_switch" << " " << ::tpyapp::main::guard_dead_switch(1, true) << " " << ::tpyapp::main::guard_dead_switch(1, false) << " " << ::tpyapp::main::guard_dead_switch(2, false) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
     std::cout << "guard_dead_str" << " " << ::tpyapp::main::guard_dead_str("a") << " " << ::tpyapp::main::guard_dead_str("eeeee") << " " << ::tpyapp::main::guard_dead_str("z") << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
-    ::tpyapp::kin::Fin __tmp_61 = ::tpyapp::kin::Fin();
-    ::tpyapp::kin::Fin __tmp_62 = ::tpyapp::kin::Fin();
-    ::tpyapp::kin::Fin __tmp_63 = ::tpyapp::kin::Fin();
-    std::cout << "mi" << " " << ::tpyapp::kin::mi_isinstance(__tmp_61) << " " << ::tpyapp::kin::mi_pattern(__tmp_62) << " " << ::tpyapp::kin::mi_union(::tpy::Union<const ::tpyapp::kin::Fin*, const int32_t*>{&__tmp_63}) << "\n" << ::tpy::check_signals;
+    std::cout << "mi" << " " << ::tpyapp::kin::mi_isinstance(::tpyapp::kin::Fin()) << " " << ::tpyapp::kin::mi_pattern(::tpyapp::kin::Fin()) << " " << ::tpyapp::kin::mi_union(::tpy::Union<const ::tpyapp::kin::Fin*, const int32_t*>{&(::tpy::as_mut_lvalue(::tpyapp::kin::Fin()))}) << "\n" << ::tpy::check_signals;
 }
 
 // # A test whose value sema proves leaves the arm it rules out unanalyzed and

@@ -219,22 +219,14 @@ int32_t in_match(std::vector<int32_t>& xs, int32_t k, bool big) {
 //     print("in_with:", in_with([1, 2], False))
 //     print("in_match:", in_match([1, 2], 1, False))
 void main() {
-    std::vector<int32_t> __tmp_1 = {1};
-    std::cout << "key_first:" << " " << ::tpyapp::part_unlowered::key_first(std::vector<std::string>{"a", "bb"}, __tmp_1, false) << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<int32_t, int32_t>> __tmp_2 = {std::tuple<int32_t, int32_t>{1, 2}};
-    std::cout << "unpack_head:" << " " << ::tpyapp::part_unlowered::unpack_head(__tmp_2, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = {1, 2};
-    ::tpyapp::part_unlowered::printed(__tmp_3, false);
-    std::vector<int32_t> __tmp_4 = {1};
-    std::cout << "array_comp:" << " " << ::tpyapp::part_unlowered::array_comp(__tmp_4, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_5 = {1, 2};
-    std::cout << "walrus_pre:" << " " << ::tpyapp::part_unlowered::walrus_pre(__tmp_5, true) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_6 = {1, 2};
-    std::cout << "in_try:" << " " << ::tpyapp::part_unlowered::in_try(__tmp_6, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_7 = {1, 2};
-    std::cout << "in_with:" << " " << ::tpyapp::part_unlowered::in_with(__tmp_7, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_8 = {1, 2};
-    std::cout << "in_match:" << " " << ::tpyapp::part_unlowered::in_match(__tmp_8, 1, false) << "\n" << ::tpy::check_signals;
+    std::cout << "key_first:" << " " << ::tpyapp::part_unlowered::key_first(std::vector<std::string>{"a", "bb"}, ::tpy::as_mut_lvalue(std::vector<int32_t>{1}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "unpack_head:" << " " << ::tpyapp::part_unlowered::unpack_head(::tpy::as_mut_lvalue(std::vector<std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{1, 2}}), false) << "\n" << ::tpy::check_signals;
+    ::tpyapp::part_unlowered::printed(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false);
+    std::cout << "array_comp:" << " " << ::tpyapp::part_unlowered::array_comp(::tpy::as_mut_lvalue(std::vector<int32_t>{1}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "walrus_pre:" << " " << ::tpyapp::part_unlowered::walrus_pre({1, 2}, true) << "\n" << ::tpy::check_signals;
+    std::cout << "in_try:" << " " << ::tpyapp::part_unlowered::in_try(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "in_with:" << " " << ::tpyapp::part_unlowered::in_with(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "in_match:" << " " << ::tpyapp::part_unlowered::in_match(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), 1, false) << "\n" << ::tpy::check_signals;
 }
 
 // from fixtures import grow

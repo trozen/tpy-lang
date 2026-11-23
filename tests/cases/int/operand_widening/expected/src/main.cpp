@@ -229,8 +229,7 @@ void main() {
     std::cout << "module" << " " << gm << "\n" << ::tpy::check_signals;
     std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::gen(3, b, 30))) << "\n" << ::tpy::check_signals;
     std::cout << "async" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::async_fn(a, b))) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {3, -3, 2};
-    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp(static_cast<int64_t>(3000000000), __tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp(static_cast<int64_t>(3000000000), {3, -3, 2})) << "\n" << ::tpy::check_signals;
     std::cout << "closure" << " " << ::tpyapp::main::closure(a, b) << "\n" << ::tpy::check_signals;
     std::cout << "cm_body" << " " << ::tpyapp::main::cm_body(a, b) << "\n" << ::tpy::check_signals;
     int64_t t = ::tpyapp::main::try_finally(a, b);

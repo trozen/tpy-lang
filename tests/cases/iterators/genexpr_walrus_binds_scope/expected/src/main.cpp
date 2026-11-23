@@ -297,13 +297,13 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_listcomp_in_genexpr_12_fr
     while ((*__for_i_0) < (*__for_stop_0)) {
         i = ((*__for_i_0))++;
         return ::tpy::__len__(({
-    std::vector<int32_t> __result;
-    if (3 > 0) __result.reserve(static_cast<size_t>(3));
-    for (int32_t j = 0; j < 3; ++j) {
-        __result.push_back((last = (::tpy::mul_check<int32_t>(i, j))));
-    }
-    std::move(__result);
-}));
+            std::vector<int32_t> __result;
+            if (3 > 0) __result.reserve(static_cast<size_t>(3));
+            for (int32_t j = 0; j < 3; ++j) {
+                __result.push_back((last = (::tpy::mul_check<int32_t>(i, j))));
+            }
+            std::move(__result);
+        }));
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
@@ -2345,21 +2345,16 @@ void __tpy_init() {
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(__tmp_2))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::nested(2);
     ::tpyapp::main::listcomp_in_genexpr();
-    std::vector<::tpy::BigInt> __tmp_3 = {3, 1};
-    ::tpyapp::main::uses_global(__tmp_3);
+    ::tpyapp::main::uses_global({3, 1});
     ::tpyapp::main::nonlocal_def();
-    std::vector<int32_t> __tmp_4 = {4, 6};
-    ::tpyapp::main::kept(__tmp_4);
-    std::vector<int32_t> __tmp_5 = {0, 2, 5};
-    ::tpyapp::main::lazy(__tmp_5);
+    ::tpyapp::main::kept({4, 6});
+    ::tpyapp::main::lazy({0, 2, 5});
     ::tpyapp::main::match_arm(1);
     ::tpyapp::main::try_finally();
     ::tpyapp::main::with_body();
     ::tpyapp::main::param_target(9);
     ::tpyapp::main::optional_target();
-    std::vector<std::string> __tmp_6 = {"ab", "cd"};
-    std::vector<::tpy::Bytes> __tmp_7 = {::tpy::bytes_literal_owned("q", 1), ::tpy::bytes_literal_owned("rs", 2)};
-    ::tpyapp::main::str_target(__tmp_6, __tmp_7);
+    ::tpyapp::main::str_target({"ab", "cd"}, {::tpy::bytes_literal_owned("q", 1), ::tpy::bytes_literal_owned("rs", 2)});
     ::tpyapp::main::pull_kills();
     ::tpyapp::main::in_pull();
     ::tpyapp::main::capture_resume();
@@ -2369,8 +2364,7 @@ void __tpy_init() {
     ::tpyapp::main::record_iter();
     ::tpyapp::main::genexpr_in_listcomp();
     ::tpyapp::main::nested_def_own();
-    std::vector<int32_t> __tmp_8 = {1, 2};
-    ::tpyapp::main::zip_pull(__tmp_8);
+    ::tpyapp::main::zip_pull({1, 2});
     ::tpyapp::main::ternary_genexpr(true);
     ::tpyapp::main::array_list_pull();
 }

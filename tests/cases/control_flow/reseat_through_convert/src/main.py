@@ -351,9 +351,8 @@ def warned_tuple_temp(a: LA) -> int32:
 
 
 # --- warned: a loop rebind to a call lending back a temporary operand of
-# `min`. Never called: the operand is hoisted into the loop body, which ends
-# before the read. The bare `m = min(...)` rebind is still refused
-# (BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling).
+# `min`. Never called: the operand lives for its statement, which ends before
+# the read.
 class V:
     v: int
 

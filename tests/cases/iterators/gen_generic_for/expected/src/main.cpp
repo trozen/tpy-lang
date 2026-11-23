@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //         print(v)
 void main() {
     {
-        std::vector<int32_t> __tmp_1 = {1, 2, 3};
+        std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2, 3};
         auto __src_0 = ::tpyapp::main::doubled<int32_t>(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {

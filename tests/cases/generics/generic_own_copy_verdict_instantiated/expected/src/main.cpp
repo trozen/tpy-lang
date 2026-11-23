@@ -240,8 +240,7 @@ void body_positions() {
 void other_positions() {
     Cell c = Cell(5);
     std::cout << "forward" << " " << ::tpyapp::main::outer_fwd<Cell>(c) << " " << ::tpyapp::main::outer_fwd<int32_t>(6) << "\n" << ::tpy::check_signals;
-    Tag __tmp_1 = Tag(1);
-    std::cout << "two_instantiations" << " " << ::tpyapp::main::two_instantiations<Cell>(c) << " " << ::tpyapp::main::two_instantiations<Tag>(__tmp_1) << " " << ::tpyapp::main::two_instantiations<int32_t>(7) << "\n" << ::tpy::check_signals;
+    std::cout << "two_instantiations" << " " << ::tpyapp::main::two_instantiations<Cell>(c) << " " << ::tpyapp::main::two_instantiations<Tag>(::tpy::as_mut_lvalue(Tag(1))) << " " << ::tpyapp::main::two_instantiations<int32_t>(7) << "\n" << ::tpy::check_signals;
     std::cout << "cross_module" << " " << ::tpyapp::gencontainer::cross_slot<Cell>(c) << " " << ::tpyapp::gencontainer::cross_slot<int32_t>(8) << "\n" << ::tpy::check_signals;
     OptHolder<Cell> oh = OptHolder<Cell>();
     oh.store(&(c));

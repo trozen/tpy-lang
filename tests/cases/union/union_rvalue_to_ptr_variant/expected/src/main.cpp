@@ -38,19 +38,15 @@ void greet(::tpy::Union<const Cat*, const Dog*> pet) {
 //     if isinstance(r2, Cat):
 //         print(r2.name)
 void main() {
-    Dog __tmp_1 = Dog("Rex");
-    ::tpyapp::main::greet(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
-    Cat __tmp_2 = Cat("Whiskers");
-    ::tpyapp::main::greet(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
-    Dog __tmp_3 = Dog("Buddy");
-    Pen p = Pen(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
+    ::tpyapp::main::greet(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("Rex")))});
+    ::tpyapp::main::greet(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("Whiskers")))});
+    Pen p = Pen(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("Buddy")))});
     ::tpy::Union<Cat*, Dog*> r = ::tpy::to_ptr_variant(p.pet);
     if (std::holds_alternative<Dog*>(r)) {
         auto& __r = *std::get<Dog*>(r);
         std::cout << __r.name << "\n" << ::tpy::check_signals;
     }
-    Cat __tmp_4 = Cat("Mittens");
-    p.set_pet(::tpy::Union<const Cat*, const Dog*>{&__tmp_4});
+    p.set_pet(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("Mittens")))});
     ::tpy::Union<Cat*, Dog*> r2 = ::tpy::to_ptr_variant(p.pet);
     if (std::holds_alternative<Cat*>(r2)) {
         auto& __r2 = *std::get<Cat*>(r2);

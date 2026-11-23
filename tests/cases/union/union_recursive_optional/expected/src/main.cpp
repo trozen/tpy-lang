@@ -138,8 +138,7 @@ void main() {
     std::vector<Tree> items = ::tpy::make_vector<Tree>(std::move(branch), std::move(leaf));
     Tree* r = ::tpyapp::main::first_or_none(items);
     std::cout << ::tpyapp::main::maybe_depth(r) << "\n" << ::tpy::check_signals;
-    std::vector<Tree> __tmp_1 = std::vector<Tree>{};
-    std::cout << ::tpyapp::main::maybe_depth(::tpyapp::main::first_or_none(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::maybe_depth(::tpyapp::main::first_or_none(::tpy::as_mut_lvalue(std::vector<Tree>{}))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

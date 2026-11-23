@@ -49,12 +49,9 @@ void via_dyn(std::string_view tag, DSink& sk, const std::vector<int32_t>& pv, co
     std::cout << tag << " " << "str_own owned" << " " << sk.take_str(std::move(__tmp_6)) << " " << s << "\n" << ::tpy::check_signals;
     int32_t n = 7;
     std::array<int32_t, 2> xs = {1, 22};
-    ::tpy::Union<int32_t, std::string> __tmp_7 = n;
-    std::cout << tag << " " << "union local" << " " << sk.take_union(__tmp_7) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<int32_t, std::string> __tmp_8 = ::tpy::__getitem__(xs, 1);
-    std::cout << tag << " " << "union subscript" << " " << sk.take_union(__tmp_8) << "\n" << ::tpy::check_signals;
-    R __tmp_9 = R(6);
-    std::cout << tag << " " << "union ctor" << " " << sk.take_ru(::tpy::Union<const Other*, const R*>{&__tmp_9}) << "\n" << ::tpy::check_signals;
+    std::cout << tag << " " << "union local" << " " << sk.take_union(::tpy::Union<int32_t, std::string>(n)) << "\n" << ::tpy::check_signals;
+    std::cout << tag << " " << "union subscript" << " " << sk.take_union(::tpy::Union<int32_t, std::string>(::tpy::__getitem__(xs, 1))) << "\n" << ::tpy::check_signals;
+    std::cout << tag << " " << "union ctor" << " " << sk.take_ru(::tpy::Union<const Other*, const R*>{&(::tpy::as_mut_lvalue(R(6)))}) << "\n" << ::tpy::check_signals;
 }
 
 // def via_own(tag: str, sk: Own[DSink], pv: list[int32],
@@ -103,12 +100,9 @@ std::unique_ptr<DSink> via_own(std::string_view tag, std::unique_ptr<DSink> sk, 
     std::cout << tag << " " << "str_own owned" << " " << sk->take_str(std::move(__tmp_6)) << " " << s << "\n" << ::tpy::check_signals;
     int32_t n = 7;
     std::array<int32_t, 2> xs = {1, 22};
-    ::tpy::Union<int32_t, std::string> __tmp_7 = n;
-    std::cout << tag << " " << "union local" << " " << sk->take_union(__tmp_7) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<int32_t, std::string> __tmp_8 = ::tpy::__getitem__(xs, 1);
-    std::cout << tag << " " << "union subscript" << " " << sk->take_union(__tmp_8) << "\n" << ::tpy::check_signals;
-    R __tmp_9 = R(6);
-    std::cout << tag << " " << "union ctor" << " " << sk->take_ru(::tpy::Union<const Other*, const R*>{&__tmp_9}) << "\n" << ::tpy::check_signals;
+    std::cout << tag << " " << "union local" << " " << sk->take_union(::tpy::Union<int32_t, std::string>(n)) << "\n" << ::tpy::check_signals;
+    std::cout << tag << " " << "union subscript" << " " << sk->take_union(::tpy::Union<int32_t, std::string>(::tpy::__getitem__(xs, 1))) << "\n" << ::tpy::check_signals;
+    std::cout << tag << " " << "union ctor" << " " << sk->take_ru(::tpy::Union<const Other*, const R*>{&(::tpy::as_mut_lvalue(R(6)))}) << "\n" << ::tpy::check_signals;
     return sk;
 }
 
@@ -116,8 +110,7 @@ std::unique_ptr<DSink> via_own(std::string_view tag, std::unique_ptr<DSink> sk, 
 //     # A conformer rvalue at a @dynamic-protocol slot of a @dynamic receiver.
 //     print("dyn param ctor", sk.take_p(Counter()))  # tpyc: ok
 void via_dyn_param(Taker& sk) {
-    Counter __tmp_1{Counter()};
-    std::cout << "dyn param ctor" << " " << sk.take_p(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "dyn param ctor" << " " << sk.take_p(::tpy::as_mut_lvalue(Counter{Counter()})) << "\n" << ::tpy::check_signals;
 }
 
 // def via_opt_dyn(o: Optional[DSink], xs: list[str]) -> None:
@@ -134,10 +127,9 @@ void via_opt_dyn(DSink* o, const std::vector<std::string>& xs) {
     }
     int32_t n = 7;
     ::tpy::String s = (::tpy::str_concat(::tpy::__getitem__(xs, 0), "x"));
-    ::tpy::Union<int32_t, std::string> __tmp_1 = n;
-    std::cout << "optdyn union local" << " " << o->take_union(__tmp_1) << "\n" << ::tpy::check_signals;
-    std::string __tmp_2{s};
-    std::cout << "optdyn str_own owned" << " " << o->take_str(std::move(__tmp_2)) << " " << s << "\n" << ::tpy::check_signals;
+    std::cout << "optdyn union local" << " " << o->take_union(::tpy::Union<int32_t, std::string>(n)) << "\n" << ::tpy::check_signals;
+    std::string __tmp_1{s};
+    std::cout << "optdyn str_own owned" << " " << o->take_str(std::move(__tmp_1)) << " " << s << "\n" << ::tpy::check_signals;
 }
 
 // def via_elem(r: ElemReader, d: dict[str, Elem]) -> None:
@@ -166,35 +158,18 @@ void via_elem(const ElemReader& r, ::tpy::ordered_map<std::string, Elem>& d) {
 //     via_opt_dyn(Impl(), ["b"])
 //     via_elem(ElemReader(), {"k": Elem()})
 void main() {
-    Impl __tmp_1 = Impl();
-    std::vector<int32_t> __tmp_2 = {1, 2};
-    std::vector<int32_t> __tmp_3 = std::vector<int32_t>{3};
-    ::tpyapp::main::via_proto("proto", __tmp_1, __tmp_2, &(__tmp_3));
-    Impl __tmp_4{Impl()};
-    std::vector<int32_t> __tmp_5 = {1, 2};
-    std::vector<int32_t> __tmp_6 = std::vector<int32_t>{3};
-    ::tpyapp::main::via_dyn("dyn", __tmp_4, __tmp_5, &(__tmp_6));
-    Impl __tmp_7 = Impl();
-    std::vector<int32_t> __tmp_8 = {1, 2};
-    std::vector<int32_t> __tmp_9 = std::vector<int32_t>{3};
-    ::tpyapp::main::via_bound<Impl>("bound", __tmp_7, __tmp_8, &(__tmp_9));
-    std::vector<int32_t> __tmp_10 = {1, 2};
-    std::vector<int32_t> __tmp_11 = std::vector<int32_t>{3};
-    ::tpyapp::main::via_own("own", std::make_unique<Impl>(Impl()), __tmp_10, &(__tmp_11));
-    OptImpl __tmp_12 = OptImpl();
-    ::tpyapp::main::via_opt(__tmp_12);
+    ::tpyapp::main::via_proto("proto", ::tpy::as_mut_lvalue(Impl()), {1, 2}, &::tpy::as_mut_lvalue(std::vector<int32_t>{3}));
+    ::tpyapp::main::via_dyn("dyn", ::tpy::as_mut_lvalue(Impl{Impl()}), {1, 2}, &::tpy::as_mut_lvalue(std::vector<int32_t>{3}));
+    ::tpyapp::main::via_bound<Impl>("bound", ::tpy::as_mut_lvalue(Impl()), {1, 2}, &::tpy::as_mut_lvalue(std::vector<int32_t>{3}));
+    ::tpyapp::main::via_own("own", std::make_unique<Impl>(Impl()), {1, 2}, &::tpy::as_mut_lvalue(std::vector<int32_t>{3}));
+    ::tpyapp::main::via_opt(::tpy::as_mut_lvalue(OptImpl()));
     Bag<std::string> b = Bag<std::string>();
-    std::vector<std::string> __tmp_13 = {"a"};
-    ::tpyapp::main::via_generic(b, __tmp_13);
+    ::tpyapp::main::via_generic(b, {"a"});
     std::cout << "generic items" << " " << ::tpy::ListPrinter(b.items) << "\n" << ::tpy::check_signals;
-    TakerImpl __tmp_14{TakerImpl()};
-    ::tpyapp::main::via_dyn_param(__tmp_14);
-    Impl __tmp_15 = Impl();
-    std::vector<std::string> __tmp_16 = {"b"};
-    ::tpyapp::main::via_opt_dyn(&(__tmp_15), __tmp_16);
-    ElemReader __tmp_17 = ElemReader();
-    ::tpy::ordered_map<std::string, Elem> __tmp_18 = ::tpy::ordered_map<std::string, Elem>({{"k", Elem()}});
-    ::tpyapp::main::via_elem(__tmp_17, __tmp_18);
+    ::tpyapp::main::via_dyn_param(::tpy::as_mut_lvalue(TakerImpl{TakerImpl()}));
+    Impl __tmp_1 = Impl();
+    ::tpyapp::main::via_opt_dyn(&(__tmp_1), {"b"});
+    ::tpyapp::main::via_elem(ElemReader(), ::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, Elem>({{"k", Elem()}})));
 }
 
 // main()

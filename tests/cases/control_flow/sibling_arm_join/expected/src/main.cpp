@@ -505,14 +505,10 @@ void main() {
     ::tpyapp::main::none_if(false);
     ::tpyapp::main::widen_existing(true, static_cast<int64_t>(10000000000));
     ::tpyapp::main::widen_existing(false, static_cast<int64_t>(10000000000));
-    Cat __tmp_1 = Cat(9);
-    ::tpyapp::main::capture_types(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
-    Dog __tmp_2 = Dog("rex");
-    ::tpyapp::main::capture_types(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
-    Cat __tmp_3 = Cat(9);
-    ::tpyapp::main::capture_or_stmt(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
-    Dog __tmp_4 = Dog("rex");
-    ::tpyapp::main::capture_or_stmt(::tpy::Union<const Cat*, const Dog*>{&__tmp_4});
+    ::tpyapp::main::capture_types(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat(9)))});
+    ::tpyapp::main::capture_types(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("rex")))});
+    ::tpyapp::main::capture_or_stmt(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat(9)))});
+    ::tpyapp::main::capture_or_stmt(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("rex")))});
     {
         auto __src_0 = ::tpyapp::main::gen_arms(1, static_cast<int64_t>(10000000000));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

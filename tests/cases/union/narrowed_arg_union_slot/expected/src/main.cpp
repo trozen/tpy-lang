@@ -1059,8 +1059,7 @@ void main() {
     std::cout << "const-member" << " " << ::tpyapp::main::const_member(cm) << " " << Reader(1000).read(mv.as_const()) << "\n" << ::tpy::check_signals;
     std::cout << "ctor-call-arg" << " " << ::tpyapp::main::ctor_call_arg(cm) << " " << ::tpyapp::main::own_forward(A(220)) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Union<A, B>> cxs = {A(1), A(2)};
-    Reader __tmp_1 = Reader(1000);
-    std::cout << "loop-const" << " " << ::tpyapp::main::loop_const(cxs) << " " << ::tpyapp::main::loop_method(cxs, __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "loop-const" << " " << ::tpyapp::main::loop_const(cxs) << " " << ::tpyapp::main::loop_method(cxs, Reader(1000)) << "\n" << ::tpy::check_signals;
     std::cout << "closure" << " " << ::tpyapp::main::closure_narrow(mv.as_const()) << " " << ::tpyapp::main::closure_forward(mv.as_const()) << "\n" << ::tpy::check_signals;
     int32_t gt3 = 0;
     {
@@ -1091,33 +1090,17 @@ void main() {
         std::cout << "return-match" << " " << __ret2.n << " " << s.n << "\n" << ::tpy::check_signals;
     }
     int32_t vv = 180;
-    ::tpy::Union<double, int32_t> __tmp_2 = vv;
-    ::tpy::Union<double, int32_t> __tmp_3 = vv;
-    std::cout << "value-union" << " " << ::tpyapp::main::value_union(__tmp_2) << " " << ::tpyapp::main::vu_total(__tmp_3) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<double, int32_t> __tmp_4 = vv;
-    ::tpy::Union<double, int32_t> __tmp_5 = vv;
-    std::cout << "value-union-match" << " " << ::tpyapp::main::value_union_match(__tmp_4) << " " << ::tpyapp::main::vu_total(__tmp_5) << "\n" << ::tpy::check_signals;
+    std::cout << "value-union" << " " << ::tpyapp::main::value_union(::tpy::Union<double, int32_t>(vv)) << " " << ::tpyapp::main::vu_total(::tpy::Union<double, int32_t>(vv)) << "\n" << ::tpy::check_signals;
+    std::cout << "value-union-match" << " " << ::tpyapp::main::value_union_match(::tpy::Union<double, int32_t>(vv)) << " " << ::tpyapp::main::vu_total(::tpy::Union<double, int32_t>(vv)) << "\n" << ::tpy::check_signals;
     VuBox box = VuBox(1);
-    ::tpy::Union<double, int32_t> __tmp_6 = vv;
-    ::tpy::Union<double, int32_t> __tmp_7 = vv;
-    std::cout << "value-union-method" << " " << ::tpyapp::main::value_union_method(__tmp_6, box) << " " << box.go(__tmp_7) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<double, int32_t> __tmp_8 = vv;
-    ::tpy::Union<double, int32_t> __tmp_9 = vv;
-    std::cout << "value-union-ctor" << " " << ::tpyapp::main::value_union_ctor(__tmp_8) << " " << VuSink(__tmp_9).k << "\n" << ::tpy::check_signals;
-    ::tpy::Union<double, int32_t> __tmp_10 = vv;
-    ::tpy::Union<double, int32_t> __tmp_11 = vv;
-    std::cout << "value-union-comp" << " " << ::tpyapp::main::value_union_comp(__tmp_10) << " " << ::tpyapp::main::vu_total(__tmp_11) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<double, int32_t> __tmp_12 = vv;
-    ::tpy::Union<double, int32_t> __tmp_13 = vv;
-    std::cout << "value-union-readonly" << " " << ::tpyapp::main::value_union_readonly(__tmp_12) << " " << ::tpyapp::main::vu_peek(__tmp_13) << "\n" << ::tpy::check_signals;
+    std::cout << "value-union-method" << " " << ::tpyapp::main::value_union_method(::tpy::Union<double, int32_t>(vv), box) << " " << box.go(::tpy::Union<double, int32_t>(vv)) << "\n" << ::tpy::check_signals;
+    std::cout << "value-union-ctor" << " " << ::tpyapp::main::value_union_ctor(::tpy::Union<double, int32_t>(vv)) << " " << VuSink(::tpy::Union<double, int32_t>(vv)).k << "\n" << ::tpy::check_signals;
+    std::cout << "value-union-comp" << " " << ::tpyapp::main::value_union_comp(::tpy::Union<double, int32_t>(vv)) << " " << ::tpyapp::main::vu_total(::tpy::Union<double, int32_t>(vv)) << "\n" << ::tpy::check_signals;
+    std::cout << "value-union-readonly" << " " << ::tpyapp::main::value_union_readonly(::tpy::Union<double, int32_t>(vv)) << " " << ::tpyapp::main::vu_peek(::tpy::Union<double, int32_t>(vv)) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt bb = ::tpy::BigInt(190);
-    ::tpy::Union<double, ::tpy::BigInt> __tmp_14 = bb;
-    ::tpy::Union<double, ::tpy::BigInt> __tmp_15 = bb;
-    std::cout << "value-union-big" << " " << ::tpyapp::main::value_union_big(__tmp_14) << " " << ::tpyapp::main::big_total(__tmp_15) << "\n" << ::tpy::check_signals;
+    std::cout << "value-union-big" << " " << ::tpyapp::main::value_union_big(::tpy::Union<double, ::tpy::BigInt>(bb)) << " " << ::tpyapp::main::big_total(::tpy::Union<double, ::tpy::BigInt>(bb)) << "\n" << ::tpy::check_signals;
     Pt pp = Pt(3);
-    ::tpy::Union<Pt, double> __tmp_16 = pp;
-    ::tpy::Union<Pt, double> __tmp_17 = pp;
-    std::cout << "value-union-record" << " " << ::tpyapp::main::value_union_record(__tmp_16) << " " << ::tpyapp::main::pt_total(__tmp_17) << "\n" << ::tpy::check_signals;
+    std::cout << "value-union-record" << " " << ::tpyapp::main::value_union_record(::tpy::Union<Pt, double>(pp)) << " " << ::tpyapp::main::pt_total(::tpy::Union<Pt, double>(pp)) << "\n" << ::tpy::check_signals;
     std::cout << "assign-narrowed" << " " << ::tpyapp::main::assign_narrowed() << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_main()));
 }

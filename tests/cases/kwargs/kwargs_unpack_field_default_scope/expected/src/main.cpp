@@ -59,10 +59,8 @@ void pair(const Pair& kw) {
 //     # A later field passed: the earlier one takes its default.
 //     pair(b=9)  # tpyc: ok
 void main(int32_t E) {
-    Opts __tmp_1 = Opts(E, E::B);
-    std::cout << ::tpyapp::main::opts(__tmp_1) << "\n" << ::tpy::check_signals;
-    Pair __tmp_2 = Pair(2, 9);
-    ::tpyapp::main::pair(__tmp_2);
+    std::cout << ::tpyapp::main::opts(Opts(E, E::B)) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::pair(Pair(2, 9));
 }
 
 // # A TypedDict field default naming an enum member is the member it names

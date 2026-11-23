@@ -387,8 +387,8 @@ def twins_read(t: readonly[Twins]) -> None:
 
 async def atwins_read(t: readonly[Twins]) -> int32:
     # a readonly receiver: the @readonly coroutine twin's frame, through a
-    # bound handle (an inline await there is
-    # BUGS.md#await-readonly-receiver-coro-unowned)
+    # bound handle that holds that frame itself, not a type-erased
+    # adapter over it
     h = t.step(2)  # tpyc: ok
     return await h
 

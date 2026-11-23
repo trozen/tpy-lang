@@ -10,8 +10,7 @@ namespace tpyapp::main {
 //     e = Holder(None)
 //     print(e.found, e.present)
 void main() {
-    Node __tmp_1 = Node(::tpy::BigInt(5));
-    Holder h = Holder(&(__tmp_1));
+    Holder h = Holder(&::tpy::as_mut_lvalue(Node(::tpy::BigInt(5))));
     std::cout << h.found << " " << ::tpy::print_bool(h.present) << "\n" << ::tpy::check_signals;
     Holder e = Holder(nullptr);
     std::cout << e.found << " " << ::tpy::print_bool(e.present) << "\n" << ::tpy::check_signals;

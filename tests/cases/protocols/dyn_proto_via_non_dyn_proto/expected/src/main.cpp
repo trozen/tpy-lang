@@ -15,8 +15,7 @@ std::string use(DynBase& x) {
 //     print(use(obj))
 void main() {
     Impl obj = Impl();
-    ::tpy::RefAdapter<DynBase, Impl> __tmp_1{obj};
-    std::cout << ::tpyapp::main::use(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use(::tpy::as_mut_lvalue(::tpy::RefAdapter<DynBase, Impl>{obj})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

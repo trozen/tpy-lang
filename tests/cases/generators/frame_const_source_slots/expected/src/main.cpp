@@ -380,8 +380,10 @@ void main() {
         }
     }
     {
-        std::vector<P> __tmp_2 = {P({1, 2}), P({3})};
-        auto __src_2 = ::tpyapp::main::fieldhop(__tmp_2);
+        std::vector<int32_t> __tmp_2 = std::vector<int32_t>{1, 2};
+        std::vector<int32_t> __tmp_3 = std::vector<int32_t>{3};
+        std::vector<P> __tmp_4 = {P(__tmp_2), P(__tmp_3)};
+        auto __src_2 = ::tpyapp::main::fieldhop(__tmp_4);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -391,8 +393,8 @@ void main() {
         }
     }
     {
-        std::vector<::tpy::ordered_map<int32_t, int32_t>> __tmp_3 = {::tpy::ordered_map<int32_t, int32_t>({{1, 10}}), ::tpy::ordered_map<int32_t, int32_t>({{2, 20}})};
-        auto __src_4 = ::tpyapp::main::items(__tmp_3);
+        std::vector<::tpy::ordered_map<int32_t, int32_t>> __tmp_5 = {::tpy::ordered_map<int32_t, int32_t>({{1, 10}}), ::tpy::ordered_map<int32_t, int32_t>({{2, 20}})};
+        auto __src_4 = ::tpyapp::main::items(__tmp_5);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -494,8 +496,8 @@ void main() {
         }
     }
     {
-        H __tmp_4 = H(5);
-        auto __src_22 = ::tpyapp::main::unpack_field(__tmp_4);
+        H __tmp_6 = H(5);
+        auto __src_22 = ::tpyapp::main::unpack_field(__tmp_6);
         auto&& __itr_22 = ::tpy::__iter__(__src_22);
         for (;;) {
             auto __r_23 = __itr_22.__next__();
@@ -515,8 +517,8 @@ void main() {
         }
     }
     {
-        std::vector<std::vector<Box>> __tmp_5 = {{Box(7)}, {Box(8)}};
-        auto __src_26 = ::tpyapp::main::alias_in_loop(__tmp_5);
+        std::vector<std::vector<Box>> __tmp_7 = {{Box(7)}, {Box(8)}};
+        auto __src_26 = ::tpyapp::main::alias_in_loop(__tmp_7);
         auto&& __itr_26 = ::tpy::__iter__(__src_26);
         for (;;) {
             auto __r_27 = __itr_26.__next__();
@@ -526,8 +528,9 @@ void main() {
         }
     }
     {
-        Bag __tmp_6 = Bag({{1, 2}, {3}});
-        auto __src_28 = __tmp_6.scan();
+        std::vector<std::vector<int32_t>> __tmp_8 = std::vector<std::vector<int32_t>>{{1, 2}, {3}};
+        Bag __tmp_9 = Bag(__tmp_8);
+        auto __src_28 = __tmp_9.scan();
         auto&& __itr_28 = ::tpy::__iter__(__src_28);
         for (;;) {
             auto __r_29 = __itr_28.__next__();
@@ -536,8 +539,8 @@ void main() {
             std::cout << "method" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::vector<std::vector<int32_t>> __tmp_7 = {{1, 2}, {3}};
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::anested(__tmp_7))) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<int32_t>> __tmp_10 = {{1, 2}, {3}};
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::anested(__tmp_10))) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<Box>> boxes = {{Box(1)}, {Box(2)}};
     {
         auto __src_30 = ::tpyapp::main::mutated(boxes);

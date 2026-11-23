@@ -21,24 +21,21 @@ void mutate_rec(A& r) {
 // def use_ret() -> int32:
 //     return take_rec(A(7))
 int32_t use_ret() {
-    A __tmp_1 = A(7);
-    return ::tpyapp::main::take_rec(__tmp_1);
+    return ::tpyapp::main::take_rec(A(7));
 }
 
 // def use_decl() -> int32:
 //     r = take_rec(A(8))
 //     return r
 int32_t use_decl() {
-    A __tmp_1 = A(8);
-    int32_t r = ::tpyapp::main::take_rec(__tmp_1);
+    int32_t r = ::tpyapp::main::take_rec(A(8));
     return r;
 }
 
 // def use_stmt() -> None:
 //     mutate_rec(A(9))
 void use_stmt() {
-    A __tmp_1 = A(9);
-    ::tpyapp::main::mutate_rec(__tmp_1);
+    ::tpyapp::main::mutate_rec(::tpy::as_mut_lvalue(A(9)));
 }
 
 // def main() -> None:

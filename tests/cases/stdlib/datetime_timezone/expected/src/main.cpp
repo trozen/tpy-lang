@@ -136,17 +136,14 @@ void main() {
         }
     }
     std::cout << std::string(::tpy::repr_of(::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(999999), ::tpy::BigInt(0), ::tpy::BigInt(59), ::tpy::BigInt(23))))) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ist;
-    ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_1);
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::UTC;
-    ::tpystd::datetime::datetime u = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_2);
+    ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(ist));
+    ::tpystd::datetime::datetime u = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(::tpystd::datetime::UTC));
     std::cout << std::string(::tpy::repr_of(dt)) << "\n" << ::tpy::check_signals;
     std::cout << dt.isoformat() << " " << std::string(::tpy::__str__(dt)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val(dt.utcoffset()) << " " << ::tpy::print_optional_val(dt.tzname()) << " " << ::tpy::print_bool((!dt.dst().has_value())) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((dt) == (u))) << " " << ::tpy::print_bool(((dt) <= (u))) << " " << ::tpy::print_bool(((dt) >= (u))) << " " << ::tpy::print_bool((::tpy::__hash__(dt) == ::tpy::__hash__(u))) << "\n" << ::tpy::check_signals;
     std::cout << ((u).__sub____datetime(dt)) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::UTC;
-    std::cout << ((dt).__sub____datetime(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(4), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_3))) << "\n" << ::tpy::check_signals;
+    std::cout << ((dt).__sub____datetime(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(4), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(::tpystd::datetime::UTC)))) << "\n" << ::tpy::check_signals;
     std::cout << ((dt) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)))) << "\n" << ::tpy::check_signals;
     std::cout << ((dt).__sub____timedelta(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(45)))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime naive = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456));
@@ -187,24 +184,18 @@ void main() {
             std::cout << "ValueError-replace-day" << "\n" << ::tpy::check_signals;
         }
     }
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_4 = std::monostate{};
-    std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_4) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_5 = ::tpystd::datetime::UTC;
-    std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_5) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_6 = std::monostate{};
-    std::cout << dt.replace(1999, std::nullopt, std::nullopt, std::nullopt, 0, std::nullopt, std::nullopt, __tmp_6) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_7 = ist;
-    std::cout << naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_7) << "\n" << ::tpy::check_signals;
+    std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(std::monostate{})) << "\n" << ::tpy::check_signals;
+    std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(::tpystd::datetime::UTC)) << "\n" << ::tpy::check_signals;
+    std::cout << dt.replace(1999, std::nullopt, std::nullopt, std::nullopt, 0, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(std::monostate{})) << "\n" << ::tpy::check_signals;
+    std::cout << naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(ist)) << "\n" << ::tpy::check_signals;
     {
         try {
-            ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_8 = false;
-            std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_8) << "\n" << ::tpy::check_signals;
+            std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(false)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::TypeError&) {
             std::cout << "TypeError-replace-tzinfo" << "\n" << ::tpy::check_signals;
         }
     }
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = withsec;
-    ::tpystd::datetime::datetime t = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(999999), __tmp_9);
+    ::tpystd::datetime::datetime t = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(999999), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(withsec));
     std::cout << t.isoformat() << "\n" << ::tpy::check_signals;
     std::cout << t.isoformat("T", "hours") << "\n" << ::tpy::check_signals;
     std::cout << t.isoformat("T", "minutes") << "\n" << ::tpy::check_signals;
@@ -218,18 +209,13 @@ void main() {
             std::cout << "ValueError-timespec" << "\n" << ::tpy::check_signals;
         }
     }
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_10 = ::tpystd::datetime::UTC;
-    std::cout << datetime::combine(::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5)), ::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(15)), __tmp_10) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_11 = ::tpystd::datetime::UTC;
-    std::cout << datetime::fromtimestamp(1614937200.5, __tmp_11) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_12 = ist;
-    std::cout << datetime::fromtimestamp(1614937200.5, __tmp_12) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_13 = ist;
-    std::cout << std::string(::tpy::repr_of(ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_13)))) << "\n" << ::tpy::check_signals;
+    std::cout << datetime::combine(::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5)), ::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(15)), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(::tpystd::datetime::UTC)) << "\n" << ::tpy::check_signals;
+    std::cout << datetime::fromtimestamp(1614937200.5, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(::tpystd::datetime::UTC)) << "\n" << ::tpy::check_signals;
+    std::cout << datetime::fromtimestamp(1614937200.5, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(ist)) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::repr_of(ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(ist))))) << "\n" << ::tpy::check_signals;
     {
         try {
-            ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_14 = ::tpystd::datetime::UTC;
-            ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_14));
+            ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(::tpystd::datetime::UTC)));
         } catch (const ::tpy::ValueError&) {
             std::cout << "ValueError-fromutc" << "\n" << ::tpy::check_signals;
         }

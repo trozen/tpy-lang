@@ -268,7 +268,7 @@ inline _Pump::_Pump()
 // def output(self) -> bytes:
 //     return b"".join(self.parts)
 inline ::tpy::Bytes _Pump::output() const {
-    return ::tpy::bytes_join(::tpy::Bytes{}, this->parts);
+    return ::tpy::bytes_join(::tpy::BytesView{}, this->parts);
 }
 
 // def __init__(self, level: int32 = Z_DEFAULT_COMPRESSION,

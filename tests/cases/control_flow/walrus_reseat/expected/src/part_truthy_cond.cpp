@@ -209,11 +209,8 @@ void membership_walrus(int32_t c) {
 //     guard_walrus(0)
 //     membership_walrus(2)
 void main() {
-    ::tpyapp::fixtures::T __tmp_1 = ::tpyapp::fixtures::T(1);
-    ::tpyapp::fixtures::T __tmp_2 = ::tpyapp::fixtures::T(2);
-    ::tpyapp::part_truthy_cond::truthy(__tmp_1, &(__tmp_2));
-    ::tpyapp::fixtures::T __tmp_3 = ::tpyapp::fixtures::T(0);
-    ::tpyapp::part_truthy_cond::truthy(__tmp_3, nullptr);
+    ::tpyapp::part_truthy_cond::truthy(::tpy::as_mut_lvalue(::tpyapp::fixtures::T(1)), &::tpy::as_mut_lvalue(::tpyapp::fixtures::T(2)));
+    ::tpyapp::part_truthy_cond::truthy(::tpy::as_mut_lvalue(::tpyapp::fixtures::T(0)), nullptr);
     ::tpyapp::part_truthy_cond::maybe_walrus(2);
     ::tpyapp::part_truthy_cond::assert_message(true);
     ::tpyapp::part_truthy_cond::value_opt_truthy(0);

@@ -333,16 +333,11 @@ __coro_coro_find_loop coro_find_loop(const std::vector<Tree>& ts) {
 //     print("coro find loop:", asyncio.run(coro_find_loop([Tree(2), Tree(3)])))
 void main() {
     std::cout << "none then literal:" << " " << ::tpyapp::main::none_then_literal(true) << " " << ::tpyapp::main::none_then_literal(false) << "\n" << ::tpy::check_signals;
-    F __tmp_1 = F(3);
-    std::cout << "call then literal:" << " " << ::tpyapp::main::call_then_literal(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "call then literal:" << " " << ::tpyapp::main::call_then_literal(F(3)) << "\n" << ::tpy::check_signals;
     std::cout << "literal then literal:" << " " << ::tpyapp::main::literal_then_literal(true) << " " << ::tpyapp::main::literal_then_literal(false) << "\n" << ::tpy::check_signals;
     std::cout << "literal none literal:" << " " << ::tpyapp::main::literal_none_literal(true) << " " << ::tpyapp::main::literal_none_literal(false) << "\n" << ::tpy::check_signals;
     std::cout << "dict:" << " " << Holder(3).build(true) << " " << Holder(3).build(false) << "\n" << ::tpy::check_signals;
-    F __tmp_2 = F(3);
-    F __tmp_3 = F(3);
-    F __tmp_4 = F(3);
-    F __tmp_5 = F(3);
-    std::cout << "branch hoisted:" << " " << ::tpyapp::main::branch_hoisted(__tmp_2, true, true) << " " << ::tpyapp::main::branch_hoisted(__tmp_3, true, false) << " " << ::tpyapp::main::branch_hoisted(__tmp_4, false, true) << " " << ::tpyapp::main::branch_hoisted(__tmp_5, false, false) << "\n" << ::tpy::check_signals;
+    std::cout << "branch hoisted:" << " " << ::tpyapp::main::branch_hoisted(F(3), true, true) << " " << ::tpyapp::main::branch_hoisted(F(3), true, false) << " " << ::tpyapp::main::branch_hoisted(F(3), false, true) << " " << ::tpyapp::main::branch_hoisted(F(3), false, false) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen_literal(true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -364,8 +359,8 @@ void main() {
         }
     }
     {
-        F __tmp_6 = F(3);
-        auto __src_4 = ::tpyapp::main::gen_call_then_literal(__tmp_6);
+        F __tmp_1 = F(3);
+        auto __src_4 = ::tpyapp::main::gen_call_then_literal(__tmp_1);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -375,8 +370,8 @@ void main() {
         }
     }
     std::cout << "coro literal:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_literal(true))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_literal(false))) << "\n" << ::tpy::check_signals;
-    F __tmp_7 = F(3);
-    std::cout << "coro call then literal:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_call_then_literal(__tmp_7))) << "\n" << ::tpy::check_signals;
+    F __tmp_2 = F(3);
+    std::cout << "coro call then literal:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_call_then_literal(__tmp_2))) << "\n" << ::tpy::check_signals;
     std::vector<Tree> ts = {Tree(5)};
     {
         auto __src_6 = ::tpyapp::main::gen_find_loop(ts);
@@ -401,8 +396,8 @@ void main() {
             ::tpy::__getitem__(t.nodes, 0).v = 8;
         }
     }
-    std::vector<Tree> __tmp_8 = {Tree(2), Tree(3)};
-    std::cout << "coro find loop:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_find_loop(__tmp_8))) << "\n" << ::tpy::check_signals;
+    std::vector<Tree> __tmp_3 = {Tree(2), Tree(3)};
+    std::cout << "coro find loop:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_find_loop(__tmp_3))) << "\n" << ::tpy::check_signals;
 }
 
 // # REBINDING a pointer-repr `Optional[container]` local to a container LITERAL.

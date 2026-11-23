@@ -68,11 +68,10 @@ void enum_name_view() {
 //     view.v += 1  # a write through the target after the block
 //     print("enter_through_method", view.v)
 void enter_through_method() {
-    std::optional<Mgr> __slot_1;
     Node* view;
+    std::optional<Mgr> __with_root_0;
     for (int32_t k = 0; k < 1; ++k) {
-        __slot_1.emplace(Mgr(::tpy::BigInt((::tpy::add_check<int32_t>(22, k)))));
-        auto& __ctx_1 = (*__slot_1);
+        auto& __ctx_1 = __with_root_0.emplace(Mgr(::tpy::BigInt((::tpy::add_check<int32_t>(22, k)))));
         view = &(__ctx_1.__enter__());
         try {
             goto __with_exit_1;

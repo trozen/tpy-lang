@@ -69,12 +69,9 @@ int32_t ref_union(::tpy::Union<Leaf*, Node*> u, bool flag) {
 //     print(ref_union(n, True))
 //     print(n.v)
 void main() {
-    ::tpy::Union<A, B> __tmp_1 = A(3);
-    std::cout << ::tpyapp::main::and_not(__tmp_1, true) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<A, B> __tmp_2 = B(4);
-    std::cout << ::tpyapp::main::and_not(__tmp_2, true) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<A, B> __tmp_3 = B(7);
-    std::cout << ::tpyapp::main::not_or(__tmp_3, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::and_not(::tpy::Union<A, B>(A(3)), true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::and_not(::tpy::Union<A, B>(B(4)), true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::not_or(::tpy::Union<A, B>(B(7)), false) << "\n" << ::tpy::check_signals;
     Node n = Node(1);
     std::cout << ::tpyapp::main::ref_union(::tpy::Union<Leaf*, Node*>{&(n)}, true) << "\n" << ::tpy::check_signals;
     std::cout << n.v << "\n" << ::tpy::check_signals;

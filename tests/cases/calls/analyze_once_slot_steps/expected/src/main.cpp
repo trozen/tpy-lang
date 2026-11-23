@@ -197,11 +197,10 @@ void steps() {
     std::cout << "loser-first:" << " " << ::tpyapp::main::w8__int64(((c) ? (300) : (1))) << "\n" << ::tpy::check_signals;
     std::cout << "select-mixed-sign:" << " " << ::tpyapp::main::wu__int64(((c) ? (200) : (-1))) << " " << ::tpyapp::main::wu__int64(((c) ? (-1) : (200))) << "\n" << ::tpy::check_signals;
     std::cout << "select-declared:" << " " << ::tpyapp::main::h8(((c) ? (1) : (2))) << "\n" << ::tpy::check_signals;
-    std::vector<int64_t> __tmp_1 = {1, 2};
-    std::cout << "two-slots:" << " " << ::tpyapp::main::fl__list_int64(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "two-slots:" << " " << ::tpyapp::main::fl__list_int64({1, 2}) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> xs = {1, 2};
     std::cout << "pending-cells:" << " " << ::tpyapp::main::fl__list_int64(xs) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = ({
+    std::cout << "comp-lambda:" << " " << ::tpyapp::main::show<int32_t>(({
         std::vector<int32_t> __result;
         auto __obj_0 = {1, 2};
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -212,8 +211,7 @@ void steps() {
             __result.push_back(::tpyapp::main::apply_to<int32_t>([y](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, y)); }, 0));
         }
         std::move(__result);
-    });
-    std::cout << "comp-lambda:" << " " << ::tpyapp::main::show<int32_t>(__tmp_2, 0) << "\n" << ::tpy::check_signals;
+    }), 0) << "\n" << ::tpy::check_signals;
     std::cout << "genexpr:" << " " << ::tpy::print_float(::tpyapp::main::twice__float(::tpy::builtin_sum_float(::tpyapp::main::__genexpr_steps_1(std::in_place, [&]() { return std::array<::tpy::BigInt, 2>{n, ::tpy::BigInt(2)}; })))) << "\n" << ::tpy::check_signals;
 }
 

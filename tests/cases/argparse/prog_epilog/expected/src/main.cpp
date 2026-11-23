@@ -17,8 +17,7 @@ namespace tpyapp::main {
 //     print(args.file)
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = {"-h"};
-    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1({"-h"});
     std::cout << args.file << "\n" << ::tpy::check_signals;
     return 0;
 }

@@ -68,8 +68,7 @@ void main() {
     std::cout << ::tpyapp::main::feed(c) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::feed(::tpy::Union<std::monostate, Cat*, Dog*>{std::monostate{}}) << "\n" << ::tpy::check_signals;
     std::cout << (*std::get<Cat*>(c)).hunger << "\n" << ::tpy::check_signals;
-    Fox __tmp_1 = Fox(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*>{&(::tpy::as_mut_lvalue(Fox(::tpy::BigInt(3))))}) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*>{std::monostate{}}) << "\n" << ::tpy::check_signals;
 }
 

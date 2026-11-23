@@ -152,27 +152,20 @@ void main() {
     ::tpy::Union<Box<Box<int32_t>>*, Box<Box<std::string>>*> a2 = ::tpy::to_ptr_variant(__slot_2);
     std::cout << ::tpyapp::main::nested_param(a1.as_const()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::nested_param(a2.as_const()) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<int32_t, std::string> __tmp_1 = "world";
-    ::tpy::Union<Container, int32_t> __slot_3 = Container(__tmp_1);
+    ::tpy::Union<Container, int32_t> __slot_3 = Container(::tpy::Union<int32_t, std::string>("world"));
     ::tpy::Union<Container*, int32_t*> b1 = ::tpy::to_ptr_variant(__slot_3);
-    ::tpy::Union<int32_t, std::string> __tmp_2 = 7;
-    ::tpy::Union<Container, int32_t> __slot_4 = Container(__tmp_2);
+    ::tpy::Union<Container, int32_t> __slot_4 = Container(::tpy::Union<int32_t, std::string>(7));
     ::tpy::Union<Container*, int32_t*> b2 = ::tpy::to_ptr_variant(__slot_4);
     ::tpy::Union<Container, int32_t> __slot_5 = 99;
     ::tpy::Union<Container*, int32_t*> b3 = ::tpy::to_ptr_variant(__slot_5);
     std::cout << ::tpyapp::main::union_subj_union_field(b1.as_const()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::union_subj_union_field(b2.as_const()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::union_subj_union_field(b3.as_const()) << "\n" << ::tpy::check_signals;
-    Box<std::string> __tmp_3 = Box<std::string>("abc");
-    Outer c1 = Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*>{&__tmp_3});
-    Box<int32_t> __tmp_4 = Box<int32_t>(10);
-    Outer c2 = Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*>{&__tmp_4});
+    Outer c1 = Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*>{&(::tpy::as_mut_lvalue(Box<std::string>("abc")))});
+    Outer c2 = Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*>{&(::tpy::as_mut_lvalue(Box<int32_t>(10)))});
     std::cout << ::tpyapp::main::union_field_param(c1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::union_field_param(c2) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<int32_t, std::string> __tmp_5 = "hi";
-    ::tpy::Union<int32_t, std::string> __tmp_6 = 5;
-    ::tpy::Union<int32_t, std::string> __tmp_7 = "x";
-    std::vector<Tagged> items = {Tagged("s", __tmp_5), Tagged("n", __tmp_6), Tagged("?", __tmp_7)};
+    std::vector<Tagged> items = {Tagged("s", ::tpy::Union<int32_t, std::string>("hi")), Tagged("n", ::tpy::Union<int32_t, std::string>(5)), Tagged("?", ::tpy::Union<int32_t, std::string>("x"))};
     ::tpyapp::main::double_union(items);
 }
 

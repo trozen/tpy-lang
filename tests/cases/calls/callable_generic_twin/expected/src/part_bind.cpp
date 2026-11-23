@@ -92,13 +92,11 @@ void main() {
     ::tpy::ordered_map<int32_t, Q> d = ::tpy::ordered_map<int32_t, Q>();
     ::tpyapp::part_bind::stored<Q>(q, d);
     std::cout << "bind-dict" << " " << ::tpy::__len__(q.items) << " " << ::tpy::__len__(::tpy::__getitem__(d, 1).items) << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_1 = {"a", "b", "c"};
-    std::cout << "bind-red-str" << " " << ::tpyapp::part_bind::red<std::string>(concat, __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "bind-red-str" << " " << ::tpyapp::part_bind::red<std::string>(concat, ::tpy::as_mut_lvalue(std::vector<std::string>{"a", "b", "c"})) << "\n" << ::tpy::check_signals;
     std::cout << "bind-fwd" << " " << ::tpyapp::part_bind::fwd<Q>(q) << "\n" << ::tpy::check_signals;
     Ops().via<Q>(ident, q).items.push_back(5);
     std::cout << "bind-method" << " " << ::tpy::__len__(q.items) << "\n" << ::tpy::check_signals;
-    std::vector<Q> __tmp_2 = {Q(1), Q(2)};
-    std::cout << "bind-own-list" << " " << ::tpyapp::part_bind::walk(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "bind-own-list" << " " << ::tpyapp::part_bind::walk(::tpy::as_mut_lvalue(std::vector<Q>(std::vector<Q>{Q(1), Q(2)}))) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init() {

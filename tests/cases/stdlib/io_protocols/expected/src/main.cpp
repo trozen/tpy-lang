@@ -31,14 +31,12 @@ namespace tpyapp::main {
 //     print("closed-after-protocol:", s3.closed)
 void main() {
     ::tpystd::io::StringIO sink = ::tpystd::io::StringIO();
-    std::vector<std::string> __tmp_1 = {"alpha", "beta", "gamma"};
-    ::tpyapp::main::emit_text(sink, __tmp_1);
+    ::tpyapp::main::emit_text(sink, {"alpha", "beta", "gamma"});
     std::cout << "sink-text:" << " " << sink.getvalue() << "\n" << ::tpy::check_signals;
     ::tpystd::io::StringIO src = ::tpystd::io::StringIO("first\nsecond\n");
     std::cout << "src-text:" << " " << ::tpyapp::main::consume_text(src) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BytesIO bsink = ::tpystd::io::BytesIO();
-    std::vector<::tpy::Bytes> __tmp_2 = {::tpy::bytes_literal_owned("abc", 3), ::tpy::bytes_literal_owned("def", 3)};
-    ::tpyapp::main::emit_bytes(bsink, __tmp_2);
+    ::tpyapp::main::emit_bytes(bsink, {::tpy::bytes_literal_owned("abc", 3), ::tpy::bytes_literal_owned("def", 3)});
     std::cout << "bsink-bytes:" << " " << ::tpy::BytesPrinter(bsink.getvalue()) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BytesIO bsrc = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("xyz123", 6));
     std::cout << "bsrc-bytes:" << " " << ::tpy::BytesPrinter(::tpyapp::main::consume_bytes(bsrc)) << "\n" << ::tpy::check_signals;

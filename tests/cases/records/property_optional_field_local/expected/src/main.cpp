@@ -12,8 +12,7 @@ namespace tpyapp::main {
 //     h2 = Holder(None)
 //     print(h2.value is None)
 void main() {
-    Inner __tmp_1 = Inner("hi");
-    Holder h = Holder(&(__tmp_1));
+    Holder h = Holder(&::tpy::as_mut_lvalue(Inner("hi")));
     std::optional<std::string> v1 = h.value();
     if ((v1.has_value())) {
         std::cout << ::tpy::print_optional_val(v1) << "\n" << ::tpy::check_signals;

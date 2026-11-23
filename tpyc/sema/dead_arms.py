@@ -521,7 +521,8 @@ def replace_child(parent: object, old: TpyExpr, new: TpyExpr) -> bool:
     """Put `new` in every slot of `parent` holding `old`, looking through the
     containers and non-statement nodes `parent` holds (a coercion built
     around `old` after it was analyzed, a comprehension clause, a `with`
-    item) but not into nested statements. Returns whether one was found."""
+    item, a dict literal's entry) but not into nested statements. Returns
+    whether one was found."""
     seen: set[int] = set()
     found = False
 
@@ -545,6 +546,13 @@ def replace_child(parent: object, old: TpyExpr, new: TpyExpr) -> bool:
                 if item is old:
                     v[i] = new
                     found = True
+                elif isinstance(item, tuple):
+                    # A dict literal's (key, value) entry.
+                    if any(x is old for x in item):
+                        v[i] = tuple(new if x is old else x for x in item)
+                        found = True
+                    for x in v[i]:
+                        walk(x)
                 else:
                     walk(item)
         elif isinstance(v, dict):

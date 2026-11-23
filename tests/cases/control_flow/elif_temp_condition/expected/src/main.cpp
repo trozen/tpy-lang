@@ -20,13 +20,10 @@ bool has_items(const std::vector<int32_t>& items) {
 int32_t test(int32_t x) {
     if ((x < 0)) {
         return -1;
+    } else if (::tpyapp::main::has_items({10, 20})) {
+        return 0;
     } else {
-        std::vector<int32_t> __tmp_1 = {10, 20};
-        if (::tpyapp::main::has_items(__tmp_1)) {
-            return 0;
-        } else {
-            return 1;
-        }
+        return 1;
     }
 }
 

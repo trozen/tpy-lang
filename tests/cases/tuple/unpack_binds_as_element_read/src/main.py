@@ -349,9 +349,8 @@ def grow_while_borrowed(h: H) -> None:
     print(len(a.data), k)
 
 
-# never called: the temporary argument is hoisted to the end of the block,
-# so the shape is safe; the warning is the filed false positive
-# BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling, as on its twin
+# never called: the temporary argument lives for its statement only, so the
+# warning is right, as on its twin
 def temp_arg() -> None:
     a, k = pick(M())  # tpyc: warning(/Result borrows from temporary argument/)
     print(len(a.data), k)

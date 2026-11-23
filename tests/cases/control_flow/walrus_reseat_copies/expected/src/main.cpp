@@ -199,8 +199,7 @@ void tuple_append_live() {
 //     print("tuple_finally_borrowed", q2.n, u[0].n)
 //     tuple_append_live()
 void main() {
-    H __tmp_1 = H();
-    ::tpyapp::main::borrowed_sink(__tmp_1);
+    ::tpyapp::main::borrowed_sink(::tpy::as_mut_lvalue(H()));
     ::tpyapp::main::old_alias();
     ::tpyapp::main::guard_alias(1);
     ::tpyapp::main::guard_list(0);

@@ -61,9 +61,9 @@ def own_argument(xs: list[int32], big: bool) -> int32:  # tpyc: mir(conflict /re
     return len(ys)
 
 
-def borrowed_argument(xs: list[int32], big: bool) -> int32:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
+def borrowed_argument(xs: list[int32], big: bool) -> int32:  # tpyc: mir(conflict /replacement/)
     # lent to a borrowed parameter of a user function
-    return count([v for v in xs if big and grow(xs)])  # tpyc: warning(/Passing borrowed container 'xs' to non-readonly parameter/)
+    return count([v for v in xs if big and grow(xs)])  # tpyc: warning(/Passing borrowed container 'xs' to non-readonly parameter/) warning(/may move the elements of 'xs'. but the iteration over 'xs' still walks them/)
 
 
 def ternary_arm(xs: list[int32], big: bool) -> int32:  # tpyc: mir(uncovered /unsupported record initializer/)

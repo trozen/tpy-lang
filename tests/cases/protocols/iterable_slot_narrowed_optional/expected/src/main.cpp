@@ -67,14 +67,10 @@ int32_t mutate_through(std::vector<int32_t>* maybe) {
 //     print("method", Reader("r").sum_of([10, 20]))
 void main() {
     std::cout << "local" << " " << ::tpyapp::main::local_name() << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{4, 5};
-    std::cout << "param" << " " << ::tpyapp::main::param_name(&(__tmp_1)) << " " << ::tpyapp::main::param_name(nullptr) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = {8, 9};
-    std::cout << "plain" << " " << ::tpyapp::main::plain(__tmp_2) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = std::vector<int32_t>{1, 2};
-    std::cout << "mutate" << " " << ::tpyapp::main::mutate_through(&(__tmp_3)) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_4 = std::vector<int32_t>{10, 20};
-    std::cout << "method" << " " << Reader("r").sum_of(&(__tmp_4)) << "\n" << ::tpy::check_signals;
+    std::cout << "param" << " " << ::tpyapp::main::param_name(&::tpy::as_mut_lvalue(std::vector<int32_t>{4, 5})) << " " << ::tpyapp::main::param_name(nullptr) << "\n" << ::tpy::check_signals;
+    std::cout << "plain" << " " << ::tpyapp::main::plain({8, 9}) << "\n" << ::tpy::check_signals;
+    std::cout << "mutate" << " " << ::tpyapp::main::mutate_through(&::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Reader("r").sum_of(&::tpy::as_mut_lvalue(std::vector<int32_t>{10, 20})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

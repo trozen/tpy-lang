@@ -32,16 +32,11 @@ std::string classify(const P& p) {
 //     print(classify(P(4)))
 //     print(classify(P(9)))
 void main() {
-    P __tmp_1 = P(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::classify(__tmp_1) << "\n" << ::tpy::check_signals;
-    P __tmp_2 = P(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::classify(__tmp_2) << "\n" << ::tpy::check_signals;
-    P __tmp_3 = P(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::classify(__tmp_3) << "\n" << ::tpy::check_signals;
-    P __tmp_4 = P(::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::classify(__tmp_4) << "\n" << ::tpy::check_signals;
-    P __tmp_5 = P(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::classify(__tmp_5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(P(::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(P(::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(P(::tpy::BigInt(3))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(P(::tpy::BigInt(4))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(P(::tpy::BigInt(9))) << "\n" << ::tpy::check_signals;
 }
 
 // # Parenthesized or-pattern groups on a single-record subject, where each

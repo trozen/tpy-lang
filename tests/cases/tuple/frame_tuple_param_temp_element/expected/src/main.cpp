@@ -151,15 +151,17 @@ void optional_element() {
 //     print("comp", xs, r.v)
 void comprehension_iterable() {
     A r = A(::tpy::BigInt(5));
-    A __tmp_1 = A(::tpy::BigInt(17));
     std::vector<::tpy::BigInt> xs = ({
         std::vector<::tpy::BigInt> __result;
-        auto __obj_0 = ::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_1), &(r)});
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const ::tpy::BigInt& x = *__beg_0;
-            __result.push_back(x);
+        {
+            A __tmp_1 = A(::tpy::BigInt(17));
+            auto __obj_0 = ::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_1), &(r)});
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                const ::tpy::BigInt& x = *__beg_0;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     });
@@ -227,9 +229,7 @@ void generator_body() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         r.emplace(A(::tpy::BigInt(3)));
-        __coro_arg_0.emplace(A(::tpy::BigInt(4)));
-        __coro_arg_1 = std::tuple<A*, A*>{&((*__coro_arg_0)), &((*r))};
-        __sub_0.emplace(__coro_arg_1);
+        __sub_0.emplace(std::tuple<A*, A*>{&(__head_arg_0.emplace(A(::tpy::BigInt(4)))), &((*r))});
         __state = S_RESUME_0;
         continue;
     }
@@ -266,8 +266,7 @@ __coro_await_caller await_caller() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         r.emplace(A(::tpy::BigInt(3)));
-        __coro_arg_0.emplace(A(::tpy::BigInt(5)));
-        task.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co(std::tuple<A*, A*>{&((*__coro_arg_0)), &((*r))}))));
+        task.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co(std::tuple<A*, A*>{&(__head_arg_0.emplace(A(::tpy::BigInt(5)))), &((*r))}))));
         (*r).v = ::tpy::BigInt(6);
         junk.emplace(::tpy::array_from_index<A, 50>([&](std::size_t __i_0) -> A {
             int32_t i = int32_t(__i_0);
@@ -514,8 +513,7 @@ __coro_abump abump(std::tuple<A*, ::tpy::BigInt> p) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = std::tuple<A*, ::tpy::BigInt>{&(a), ::tpy::BigInt(10)};
-        __sub_0.emplace(__coro_arg_0);
+        __sub_0.emplace(std::tuple<A*, ::tpy::BigInt>{&(a), ::tpy::BigInt(10)});
         __state = S_RESUME_0;
         continue;
     }
@@ -545,8 +543,7 @@ __coro_async_callee async_callee(A& a) {
 //     print("callee async", asyncio.run(async_callee(a)), a.v)
 void callee_kinds() {
     A a = A(::tpy::BigInt(0));
-    K __tmp_1 = K();
-    std::cout << "callee method" << " " << ::tpyapp::main::meth_callee(__tmp_1, a) << " " << a.v << "\n" << ::tpy::check_signals;
+    std::cout << "callee method" << " " << ::tpyapp::main::meth_callee(K(), a) << " " << a.v << "\n" << ::tpy::check_signals;
     std::cout << "callee async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::async_callee(a))) << " " << a.v << "\n" << ::tpy::check_signals;
 }
 
@@ -729,8 +726,7 @@ void unbacked_local(Named& n, std::string_view s) {
 //     a = A(5)
 //     print("unbacked method", U().bump(a, "s"), a.v)
 void unbacked_elements() {
-    Named __tmp_1 = Named("unbacked-name-long-enough-to-defeat-sso");
-    ::tpyapp::main::unbacked_local(__tmp_1, "s");
+    ::tpyapp::main::unbacked_local(::tpy::as_mut_lvalue(Named("unbacked-name-long-enough-to-defeat-sso")), "s");
     A a = A(::tpy::BigInt(5));
     std::cout << "unbacked method" << " " << U().bump(a, "s") << " " << a.v << "\n" << ::tpy::check_signals;
 }

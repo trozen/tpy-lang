@@ -32,12 +32,9 @@ __match_end_2:;
 //     print(describe(Dog(2)))
 //     print(describe(Cat("x")))
 void main() {
-    Dog __tmp_1 = Dog(::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    Dog __tmp_2 = Dog(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
-    Cat __tmp_3 = Cat("x");
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog(::tpy::BigInt(4))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog(::tpy::BigInt(2))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("x")))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

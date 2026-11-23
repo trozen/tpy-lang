@@ -479,9 +479,7 @@ void union_member(int32_t p) {
 //     print("union_literal:", code_of(code))  # tpyc: ok
 void union_literal(int32_t k, const ::tpy::Union<std::monostate, int32_t, std::string>& code) {
     V v = V();
-    ::tpy::Union<::tpy::BigInt, std::string> __tmp_1 = 3;
-    ::tpy::Union<::tpy::BigInt, std::string> __tmp_2 = 3;
-    std::cout << "union_literal:" << " " << ::tpyapp::main::u__int_str(__tmp_1) << " " << ::tpyapp::main::u__int_str(::tpy::BigInt(k)) << " " << v.u__int_str(__tmp_2) << " " << v.u__int_str(::tpy::BigInt(k)) << "\n" << ::tpy::check_signals;
+    std::cout << "union_literal:" << " " << ::tpyapp::main::u__int_str(::tpy::Union<::tpy::BigInt, std::string>(3)) << " " << ::tpyapp::main::u__int_str(::tpy::BigInt(k)) << " " << v.u__int_str(::tpy::Union<::tpy::BigInt, std::string>(3)) << " " << v.u__int_str(::tpy::BigInt(k)) << "\n" << ::tpy::check_signals;
     std::cout << "union_literal:" << " " << ::tpyapp::main::code_of__None_int32_str(3) << " " << ::tpyapp::main::code_of__noargs() << "\n" << ::tpy::check_signals;
     if ((std::holds_alternative<std::monostate>(code))) {
         return;
@@ -516,10 +514,9 @@ void union_render() {
     std::cout << "union_render:" << " " << v.pk__str_uint8(::tpy::Union<std::string, uint8_t>(static_cast<uint8_t>((y = 3)))) << " " << v.pk__str_uint8(::tpy::Union<std::string, uint8_t>(static_cast<uint8_t>(((::tpyapp::main::ticked(calls)) ? (3) : (3))))) << "\n" << ::tpy::check_signals;
     std::cout << "union_render:" << " " << x << " " << y << " " << ::tpy::__len__(calls) << "\n" << ::tpy::check_signals;
     std::cout << "union_render:" << " " << v.huge__float(static_cast<double>(::tpy::BigInt::from_str("100000000000000000000"))) << " " << ::tpyapp::main::huge(::tpy::Union<float, std::string>(static_cast<float>(static_cast<double>(::tpy::BigInt::from_str("100000000000000000000"))))) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<int64_t, std::string> __tmp_1 = ::tpy::Union<int64_t, std::string>(static_cast<int64_t>(-5));
     std::cout << "union_render:" << " " << ::tpy::ListPrinter(({
         std::vector<int64_t> __result;
-        auto __obj_0 = ::tpyapp::main::yield_union(__tmp_1);
+        auto __obj_0 = ::tpyapp::main::yield_union(::tpy::Union<int64_t, std::string>(static_cast<int64_t>(-5)));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {

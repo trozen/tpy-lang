@@ -50,8 +50,7 @@ __gen_gen gen(const Tracer& t) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        Chrome __tmp_1 = Chrome();
-        std::string __tpy_async_ret = t.run(__tmp_1);
+        std::string __tpy_async_ret = t.run(::tpy::as_mut_lvalue(Chrome()));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -69,16 +68,14 @@ __coro_coro coro(const Tracer& t) {
 //     # a @dynamic protocol receiver's method: a temporary binds no `Mat&`
 //     return r.run(Chrome())  # tpyc: ok
 std::string dyn_call(Runner& r) {
-    Chrome __tmp_1 = Chrome();
-    return r.run(__tmp_1);
+    return r.run(::tpy::as_mut_lvalue(Chrome()));
 }
 
 // def fill_call(f: Filler) -> int:
 //     # a list literal at a @dynamic protocol method's mutable list parameter
 //     return f.fill([1, 2])  # tpyc: ok
 ::tpy::BigInt fill_call(Filler& f) {
-    std::vector<::tpy::BigInt> __tmp_1 = {1, 2};
-    return f.fill(__tmp_1);
+    return f.fill(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{1, 2}));
 }
 
 // def opt_free(m: Mat | None) -> str:
@@ -169,29 +166,21 @@ std::string box_free(const ::tpystd::tplib::box::Box<Mat>& b) {
 //     print("box", box_free(Box[Chrome](Chrome())))  # tpyc: ok
 void main() {
     Tracer t = Tracer();
-    Chrome __tmp_1 = Chrome();
-    std::cout << "method" << " " << t.run(__tmp_1) << "\n" << ::tpy::check_signals;
-    Chrome __tmp_2 = Chrome();
-    std::cout << "kwarg" << " " << t.run(__tmp_2) << "\n" << ::tpy::check_signals;
-    Chrome __tmp_3 = Chrome();
-    std::cout << "ctor" << " " << Holder(__tmp_3).s << "\n" << ::tpy::check_signals;
-    Chrome __tmp_4 = Chrome();
-    Chrome __tmp_5 = Chrome();
-    std::cout << "nested_ctor" << " " << Pair(t.run(__tmp_4), __tmp_5).s << "\n" << ::tpy::check_signals;
-    Chrome __tmp_6 = Chrome();
-    std::cout << "nested_call" << " " << ::tpyapp::main::wrap(t.run(__tmp_6)) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << t.run(::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
+    std::cout << "kwarg" << " " << t.run(::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor" << " " << Holder(::tpy::as_mut_lvalue(Chrome())).s << "\n" << ::tpy::check_signals;
+    std::cout << "nested_ctor" << " " << Pair(t.run(::tpy::as_mut_lvalue(Chrome())), ::tpy::as_mut_lvalue(Chrome())).s << "\n" << ::tpy::check_signals;
+    std::cout << "nested_call" << " " << ::tpyapp::main::wrap(t.run(::tpy::as_mut_lvalue(Chrome()))) << "\n" << ::tpy::check_signals;
     std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpyapp::main::gen(t))) << "\n" << ::tpy::check_signals;
     std::cout << "async" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro(t))) << "\n" << ::tpy::check_signals;
     std::cout << "comp" << " " << ::tpy::ListPrinter(::tpy::array_from_index<std::string, 2>([&](std::size_t __i_0) -> std::string {
         int32_t _ = int32_t(__i_0);
-        Chrome __tmp_7 = Chrome();
-        return t.run(__tmp_7);
+        return t.run(::tpy::as_mut_lvalue(Chrome()));
     })) << "\n" << ::tpy::check_signals;
     auto __ctx_1 = Tracer();
     auto& w = __ctx_1.__enter__();
     try {
-        Chrome __tmp_8 = Chrome();
-        std::cout << "with" << " " << w.run(__tmp_8) << "\n" << ::tpy::check_signals;
+        std::cout << "with" << " " << w.run(::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (...) {
         __ctx_1.__exit__({}, {}, {});
@@ -201,43 +190,29 @@ void main() {
     __ctx_1.__exit__({}, {}, {});
     {
         try {
-            Chrome __tmp_9 = Chrome();
-            std::cout << "try" << " " << t.run(__tmp_9) << "\n" << ::tpy::check_signals;
+            std::cout << "try" << " " << t.run(::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
         } catch (...) {
             throw;
         }
     }
-    Chrome __tmp_10 = ::tpyapp::main::make();
-    std::cout << "call_result" << " " << t.run(__tmp_10) << "\n" << ::tpy::check_signals;
-    Chrome __tmp_11 = Chrome();
-    std::cout << "gen_method" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(t.gen_m(__tmp_11))) << "\n" << ::tpy::check_signals;
-    Chrome __tmp_12 = Chrome();
-    std::cout << "generic" << " " << Reader<Mat>().run(__tmp_12) << "\n" << ::tpy::check_signals;
-    DynTracer __tmp_13{DynTracer()};
-    std::cout << "dyn_receiver" << " " << ::tpyapp::main::dyn_call(__tmp_13) << "\n" << ::tpy::check_signals;
-    Tracer __tmp_14 = Tracer();
-    std::cout << "structural_receiver" << " " << ::tpyapp::main::s_call(__tmp_14) << "\n" << ::tpy::check_signals;
-    LFill __tmp_15{LFill()};
-    std::cout << "list_literal" << " " << ::tpyapp::main::fill_call(__tmp_15) << "\n" << ::tpy::check_signals;
+    std::cout << "call_result" << " " << t.run(::tpy::as_mut_lvalue(::tpyapp::main::make())) << "\n" << ::tpy::check_signals;
+    Chrome __tmp_1 = Chrome();
+    std::cout << "gen_method" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(t.gen_m(__tmp_1))) << "\n" << ::tpy::check_signals;
+    std::cout << "generic" << " " << Reader<Mat>().run(::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
+    std::cout << "dyn_receiver" << " " << ::tpyapp::main::dyn_call(::tpy::as_mut_lvalue(DynTracer{DynTracer()})) << "\n" << ::tpy::check_signals;
+    std::cout << "structural_receiver" << " " << ::tpyapp::main::s_call(::tpy::as_mut_lvalue(Tracer())) << "\n" << ::tpy::check_signals;
+    std::cout << "list_literal" << " " << ::tpyapp::main::fill_call(::tpy::as_mut_lvalue(LFill{LFill()})) << "\n" << ::tpy::check_signals;
     Chrome ch = Chrome();
-    Chrome __tmp_16 = Chrome(ch);
-    std::cout << "copy" << " " << t.run(__tmp_16) << " " << ch.hits << "\n" << ::tpy::check_signals;
-    Chrome __tmp_17 = Chrome();
-    std::cout << "free" << " " << ::tpyapp::main::use(__tmp_17) << "\n" << ::tpy::check_signals;
-    Chrome __tmp_18 = Chrome();
-    std::cout << "static" << " " << Tracer::st(__tmp_18) << "\n" << ::tpy::check_signals;
-    Chrome __tmp_19 = Chrome();
-    std::cout << "optional" << " " << ::tpyapp::main::opt_free(&(__tmp_19)) << "\n" << ::tpy::check_signals;
-    Chrome __tmp_20 = Chrome();
-    std::cout << "union" << " " << ::tpyapp::main::union_free(::tpy::Union<Mat*, Other*>{&__tmp_20}) << "\n" << ::tpy::check_signals;
-    Chrome __tmp_21{Chrome()};
-    std::cout << "protocol" << " " << ::tpyapp::main::proto_free(__tmp_21) << "\n" << ::tpy::check_signals;
+    std::cout << "copy" << " " << t.run(::tpy::as_mut_lvalue(Chrome(ch))) << " " << ch.hits << "\n" << ::tpy::check_signals;
+    std::cout << "free" << " " << ::tpyapp::main::use(::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
+    std::cout << "static" << " " << Tracer::st(::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
+    std::cout << "optional" << " " << ::tpyapp::main::opt_free(&::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
+    std::cout << "union" << " " << ::tpyapp::main::union_free(::tpy::Union<Mat*, Other*>{&(::tpy::as_mut_lvalue(Chrome()))}) << "\n" << ::tpy::check_signals;
+    std::cout << "protocol" << " " << ::tpyapp::main::proto_free(Chrome{Chrome()}) << "\n" << ::tpy::check_signals;
     std::cout << "readonly" << " " << t.ro(Chrome()) << "\n" << ::tpy::check_signals;
     std::cout << "const_method" << " " << t.peek(Chrome()) << "\n" << ::tpy::check_signals;
-    Chrome __tmp_22 = Chrome();
-    std::cout << "const_free" << " " << ::tpyapp::main::peek_free(__tmp_22) << "\n" << ::tpy::check_signals;
-    ::tpystd::tplib::box::Box<Mat> __tmp_23 = ::tpystd::tplib::box::Box<Chrome>(Chrome());
-    std::cout << "box" << " " << ::tpyapp::main::box_free(__tmp_23) << "\n" << ::tpy::check_signals;
+    std::cout << "const_free" << " " << ::tpyapp::main::peek_free(Chrome()) << "\n" << ::tpy::check_signals;
+    std::cout << "box" << " " << ::tpyapp::main::box_free(::tpystd::tplib::box::Box<Mat>(::tpystd::tplib::box::Box<Chrome>(Chrome()))) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -257,8 +232,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpyapp::main::main();
-    Chrome __tmp_1 = Chrome();
-    std::cout << "module" << " " << Tracer().run(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "module" << " " << Tracer().run(::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

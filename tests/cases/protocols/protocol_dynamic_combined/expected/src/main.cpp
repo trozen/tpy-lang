@@ -44,10 +44,8 @@ void main() {
     __slot_4.emplace(Dog());
     n = &*__slot_4;
     ::tpyapp::main::show_noise((*n));
-    Dog __tmp_1{Dog()};
-    ::tpyapp::main::show_desc(__tmp_1);
-    Cat __tmp_2{Cat()};
-    ::tpyapp::main::show_noise(__tmp_2);
+    ::tpyapp::main::show_desc(::tpy::as_mut_lvalue(Dog{Dog()}));
+    ::tpyapp::main::show_noise(::tpy::as_mut_lvalue(Cat{Cat()}));
 }
 
 // main()

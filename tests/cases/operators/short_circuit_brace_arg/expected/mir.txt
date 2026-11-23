@@ -11,30 +11,30 @@ main::take_dict@57:0: covered (storage: no_proof_required), summary: known
 main::take_set@62:0: covered (storage: no_proof_required), summary: known
 main::take_any@67:0: uncovered (generic body)
 main::gen@71:0: incomplete (suspension: loan of caller storage held across a suspension)
-main::free_call@106:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::free_call@106:0: covered (storage: no_proof_required), summary: known
 main::user_ctor@110:0: uncovered (unsupported metadata: lhs_cast), summary: opaque (unsupported metadata: lhs_cast)
 main::generic_ctor@114:0: uncovered (missing or invalid full-expression storage), summary: opaque (missing or invalid full-expression storage)
 main::free_type_param@118:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::free_generator@122:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::method_generator@129:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::protocol_union@136:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
-main::narrow_int@141:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::narrow_float@145:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::fixed_array@149:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::nested_list@155:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::same_width_int@162:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::same_width_float@166:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::empty_literal@173:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::repeat_literal@177:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::dict_literal@181:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::set_literal@185:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::and_rhs@192:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::or_rhs@196:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::ternary_then@200:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::ternary_else@204:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::chained@208:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::relocated_decl@213:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
-main::side_effect@223:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::narrow_int@141:0: covered (storage: no_proof_required), summary: known
+main::narrow_float@145:0: covered (storage: no_proof_required), summary: known
+main::fixed_array@149:0: covered (storage: no_proof_required), summary: known
+main::nested_list@155:0: covered (storage: no_proof_required), summary: known
+main::same_width_int@162:0: covered (storage: no_proof_required), summary: known
+main::same_width_float@166:0: covered (storage: no_proof_required), summary: known
+main::empty_literal@173:0: covered (storage: no_proof_required), summary: known
+main::repeat_literal@177:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+main::dict_literal@181:0: covered (storage: no_proof_required), summary: known
+main::set_literal@185:0: covered (storage: no_proof_required), summary: known
+main::and_rhs@192:0: covered (storage: no_proof_required), summary: known
+main::or_rhs@196:0: covered (storage: no_proof_required), summary: known
+main::ternary_then@200:0: covered (storage: no_proof_required), summary: known
+main::ternary_else@204:0: covered (storage: no_proof_required), summary: known
+main::chained@208:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::relocated_decl@213:0: covered (storage: no_proof_required), summary: known
+main::side_effect@223:0: covered (storage: no_proof_required), summary: known
 main::main@229:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Bx.gen@98:4: incomplete (suspension: loan of caller storage held across a suspension)
 main::Tally.__init__@12:4: covered (storage: no_proof_required), summary: known

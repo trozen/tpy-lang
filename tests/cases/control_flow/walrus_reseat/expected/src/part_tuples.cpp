@@ -152,10 +152,8 @@ void tuple_append() {
 //     print("whole_tuple_finally", wf[0].n, wf[1])
 //     tuple_append()
 void main() {
-    ::tpyapp::fixtures::H __tmp_1 = ::tpyapp::fixtures::H();
-    ::tpyapp::part_tuples::borrow_tuple(__tmp_1);
-    ::tpyapp::fixtures::H __tmp_2 = ::tpyapp::fixtures::H();
-    int32_t k = ::tpyapp::part_tuples::own_tuple(__tmp_2);
+    ::tpyapp::part_tuples::borrow_tuple(::tpy::as_mut_lvalue(::tpyapp::fixtures::H()));
+    int32_t k = ::tpyapp::part_tuples::own_tuple(::tpy::as_mut_lvalue(::tpyapp::fixtures::H()));
     std::cout << "own_tuple" << " " << k << "\n" << ::tpy::check_signals;
     std::tuple<::tpyapp::fixtures::A, int32_t> ta = ::tpyapp::part_tuples::tuple_return();
     std::get<0>(ta).n = ::tpy::add_check<int32_t>(std::get<0>(ta).n, 10);

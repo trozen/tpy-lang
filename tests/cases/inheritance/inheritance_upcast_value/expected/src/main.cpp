@@ -28,8 +28,7 @@ void main() {
     Animal a = Dog("Buddy", "Poodle");
     std::cout << a.name << "\n" << ::tpy::check_signals;
     ::tpyapp::main::greet(d);
-    Dog __tmp_1 = Dog("Max", "Beagle");
-    ::tpyapp::main::greet(__tmp_1);
+    ::tpyapp::main::greet(Dog("Max", "Beagle"));
     Puppy p = Puppy("Tiny", "Corgi", ::tpy::BigInt(8));
     ::tpyapp::main::greet(p);
     Animal a2 = std::move(p);

@@ -1046,9 +1046,8 @@ with inline arguments. Temporary arguments reuse direct-call materialization;
 their ordering remains subject to `BUGS.md#subexpression-right-to-left-eval`
 and the postponed evaluation-order policy.
 Named, indexed and direct-field callable invocations share argument admission
-and temporary materialization. Four lowering checks keep their existing
-lambda-body restriction identical where argument temporaries cannot flush
-(`BUGS.md#lambda-body-reference-argument-temp`).
+and temporary materialization; a lambda body binds a fresh argument as a
+temporary of its own expression (2026-11-17).
 Mutation after invocation proves reference arguments remain shared; paired
 bounds annotations check argument-fact invalidation through indexed callbacks,
 direct callable fields and ordinary methods. Methods reuse the free-call

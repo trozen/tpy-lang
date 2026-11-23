@@ -26,8 +26,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_caller::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(::tpyapp::part_frames::mk());
-        __for_src_0.emplace(::tpyapp::part_frames::gen(std::move((*__coro_arg_0))));
+        __for_src_0.emplace(::tpyapp::part_frames::gen(::tpyapp::part_frames::mk()));
         __state = S_JOIN_0;
         continue;
     }
@@ -55,11 +54,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_caller::__next__() {
         return z;
     }
     case S_JOIN_2: {
-        __coro_arg_1.emplace(::tpy::array_from_index<R, 3>([&](std::size_t __i_0) -> R {
-            int32_t i = int32_t(__i_0);
-            return R(i);
-        }));
-        __for_src_1.emplace(::tpyapp::part_frames::gen(std::move((*__coro_arg_1))));
+        __for_src_1.emplace(::tpyapp::part_frames::gen(({
+            std::vector<R> __result;
+            if (3 > 0) __result.reserve(static_cast<size_t>(3));
+            for (int32_t i = 0; i < 3; ++i) {
+                __result.push_back(R(i));
+            }
+            std::move(__result);
+        })));
         __state = S_JOIN_1;
         continue;
     }
@@ -124,8 +126,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_select_caller::__next__()
     }
     case S_JOIN_2: {
         auto&& __tmp_1 = ::tpyapp::part_frames::mk();
-        __coro_arg_0.emplace(((::tpy::__len__(__tmp_1) != 0) ? std::move(__tmp_1) : std::vector<R>{R(8)}));
-        __for_src_1.emplace(::tpyapp::part_frames::gen(std::move((*__coro_arg_0))));
+        __for_src_1.emplace(::tpyapp::part_frames::gen(((::tpy::__len__(__tmp_1) != 0) ? std::move(__tmp_1) : std::vector<R>{R(8)})));
         __state = S_JOIN_1;
         continue;
     }
@@ -178,8 +179,7 @@ __gen_gen_select_caller gen_select_caller(bool c) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        __coro_arg_2.emplace(std::array<std::string, 2>{"ab", "c"});
-        __sub_2.emplace(std::move((*__coro_arg_2)));
+        __sub_2.emplace(std::array<std::string, 2>{"ab", "c"});
         __state = S_RESUME_2;
         continue;
     }
@@ -189,8 +189,7 @@ __gen_gen_select_caller gen_select_caller(bool c) {
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
         std::cout << "async values" << " " << __await_lift_1 << " " << __await_lift_2 << "\n" << ::tpy::check_signals;
-        __coro_arg_3.emplace(::tpyapp::part_frames::mk());
-        __sub_3.emplace(std::move((*__coro_arg_3)));
+        __sub_3.emplace(::tpyapp::part_frames::mk());
         __state = S_RESUME_3;
         continue;
     }
@@ -211,8 +210,7 @@ __gen_gen_select_caller gen_select_caller(bool c) {
         __await_lift_4 = std::move(__r4).value();
         __sub_4.reset();
         std::cout << "async dead" << " " << __await_lift_4 << "\n" << ::tpy::check_signals;
-        __coro_arg_4.emplace(std::array<R, 1>{R(5)});
-        __sub_5.emplace(std::move((*__coro_arg_4)));
+        __sub_5.emplace(std::array<R, 1>{R(5)});
         __state = S_RESUME_5;
         continue;
     }
@@ -222,11 +220,14 @@ __gen_gen_select_caller gen_select_caller(bool c) {
         __await_lift_5 = std::move(__r5).value();
         __sub_5.reset();
         std::cout << "async literal" << " " << __await_lift_5 << "\n" << ::tpy::check_signals;
-        __coro_arg_5.emplace(::tpy::array_from_index<R, 4>([&](std::size_t __i_0) -> R {
-            int32_t i = int32_t(__i_0);
-            return R(i);
+        __sub_6.emplace(({
+            std::vector<R> __result;
+            if (4 > 0) __result.reserve(static_cast<size_t>(4));
+            for (int32_t i = 0; i < 4; ++i) {
+                __result.push_back(R(i));
+            }
+            std::move(__result);
         }));
-        __sub_6.emplace(std::move((*__coro_arg_5)));
         __state = S_RESUME_6;
         continue;
     }
@@ -241,14 +242,12 @@ __gen_gen_select_caller gen_select_caller(bool c) {
     }
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
-            __coro_arg_1.emplace(std::array<int32_t, 3>{1, 2, 3});
-            __sub_1.emplace(std::move((*__coro_arg_1)));
+            __sub_1.emplace(std::array<int32_t, 3>{1, 2, 3});
             __state = S_RESUME_1;
             continue;
         }
         i = ((*__for_i_0))++;
-        __coro_arg_0.emplace(::tpyapp::part_frames::mk());
-        task.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::part_frames::atake_n(i, std::move((*__coro_arg_0))))));
+        task.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::part_frames::atake_n(i, ::tpyapp::part_frames::mk()))));
         __sub_0 = &((*task));
         __state = S_RESUME_0;
         continue;

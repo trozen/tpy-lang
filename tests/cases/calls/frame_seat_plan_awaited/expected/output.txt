@@ -1,0 +1,52 @@
+awaited rep 6
+awaited rep gen [3, 3]
+awaited rep task 6
+awaited plain total 8
+awaited uneval abc_2 cmp_True yes abc_7 cmp_False no_7
+sel f zz qx pp
+sel g yy p
+sel h zz q!
+sel gen pp
+sel gen pp
+sel fresh x?xq ?azz yyy
+sel awaited abcdefghijklmnopqrstuvwx|XX
+sel awaited ABCDEFGHIJKLMNOPQRSTUVWX|XX
+sel awaited fallback|XX
+generic repeat gen [5, 1, 5, 1]
+generic repeat co 3
+generic or co 33
+head select param ['T', 'r', 'u', 'e', 'a', 'b', 'c'] ['x', 'y']
+head select lit lit False0123456789012345678901234
+head select or b0012345678901234567890123470 q01
+head select comps [0, 1, 2] [0, 2, 4]
+captured field 11 11
+captured element 21 21
+captured select 2 2 2
+captured global 51 51
+captured get 12 12
+captured prop 13 13
+captured pick 22 22
+captured fresh 4
+captured field 14 14
+captured element 31 31
+captured select 6 4 6
+captured global 52 52
+captured get 15 15
+captured prop 16 16
+captured pick 32 32
+captured fresh 4
+captured bind co abc_1|pp pp|pp abc_2|tt_2
+captured bind gen ['a', 'qq'] ['a', 'abc_2']
+captured nested sync hello lit fresh_0
+captured nested co hi hi hi lit lit lit fresh_abcdefghijklmnop_0 fresh_abcdefghijklmnop_0 fresh_0
+recv gen split 7|bcdefghijklmnopqrstuvwxyz0123|
+recv gen strip 7|a|b|c|d|e|f|g|h|i|j|
+recv gen user view a|b|c|d|e|f|g|h|i|j|
+recv awaited split 7|bcdefghij| Q
+recv awaited strip 7|a|b|c|d|e|f|g|h|i|j| R
+recv awaited literal slice c|d|e|f|g|h|i|j|k|l| R
+recv task split 7abcd|fghij| Q
+slice gen owned param bcde|bcde|
+slice owned param bcde Q
+slice of view  abcdefgh R
+slice index call bcdefghij Q

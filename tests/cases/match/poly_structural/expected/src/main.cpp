@@ -31,10 +31,8 @@ std::string classify(const Shape& s) {
 //     print(classify(Square(3)))
 //     print(classify(Rect(2, 5)))
 void main() {
-    ::tpy::Adapter<Shape, Square> __tmp_1{Square(::tpy::BigInt(3))};
-    std::cout << ::tpyapp::main::classify(__tmp_1) << "\n" << ::tpy::check_signals;
-    ::tpy::Adapter<Shape, Rect> __tmp_2{Rect(::tpy::BigInt(2), ::tpy::BigInt(5))};
-    std::cout << ::tpyapp::main::classify(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(::tpy::Adapter<Shape, Square>{Square(::tpy::BigInt(3))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(::tpy::Adapter<Shape, Rect>{Rect(::tpy::BigInt(2), ::tpy::BigInt(5))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

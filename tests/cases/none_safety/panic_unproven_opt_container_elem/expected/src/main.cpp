@@ -14,8 +14,7 @@ int32_t first_x(const std::vector<P>* d) {
 //     print(first_x([P(3)]))
 //     print(first_x(None))
 void main() {
-    std::vector<P> __tmp_1 = std::vector<P>{P(3)};
-    std::cout << ::tpyapp::main::first_x(&(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_x(&::tpy::as_mut_lvalue(std::vector<P>{P(3)})) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::first_x(nullptr) << "\n" << ::tpy::check_signals;
 }
 

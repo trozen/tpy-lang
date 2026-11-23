@@ -136,8 +136,7 @@ void main() {
     auto __tup_1 = ::tpyapp::main::handshaken_pair();
     auto&& cli = std::move(std::get<0>(__tup_1));
     auto&& srv = std::move(std::get<1>(__tup_1));
-    ::tpystd::ssl::SSLContext __tmp_1 = ::tpystd::ssl::create_default_context();
-    ::tpystd::http::client::HTTPSConnection conn = ::tpystd::http::client::HTTPSConnection("localhost", ::tpystd::http::client::HTTPS_PORT, std::nullopt, &(__tmp_1));
+    ::tpystd::http::client::HTTPSConnection conn = ::tpystd::http::client::HTTPSConnection("localhost", ::tpystd::http::client::HTTPS_PORT, std::nullopt, &::tpy::as_mut_lvalue(::tpystd::ssl::create_default_context()));
     conn._tls = std::move(cli);
     conn.request("GET", "/v1/resource");
     std::string req = ::tpy::bytes_decode(srv.recv(4096));

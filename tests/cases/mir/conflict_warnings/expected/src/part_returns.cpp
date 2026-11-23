@@ -322,11 +322,8 @@ void main() {
     }
     ::tpyapp::part_returns::try_body(false);
     ::tpyapp::part_returns::match_arm(1, false);
-    ::tpyapp::fixtures::Tok __tmp_1 = ::tpyapp::fixtures::Tok("ab", 1);
-    std::vector<std::string> __tmp_2 = {"c"};
-    std::cout << "through_param" << " " << ::tpyapp::part_returns::through_param(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<int32_t, int32_t> __tmp_3 = ::tpy::ordered_map<int32_t, int32_t>({{1, 1}, {2, 2}});
-    std::cout << "dict_insert" << " " << ::tpyapp::part_returns::dict_insert(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "through_param" << " " << ::tpyapp::part_returns::through_param(::tpyapp::fixtures::Tok("ab", 1), ::tpy::as_mut_lvalue(std::vector<std::string>{"c"})) << "\n" << ::tpy::check_signals;
+    std::cout << "dict_insert" << " " << ::tpyapp::part_returns::dict_insert(::tpy::as_mut_lvalue(::tpy::ordered_map<int32_t, int32_t>({{1, 1}, {2, 2}}))) << "\n" << ::tpy::check_signals;
     ::tpyapp::part_returns::drop_and_read_call();
     ::tpyapp::part_returns::replace_and_read_call();
     ::tpyapp::part_returns::summary_inverse_call();

@@ -61,9 +61,7 @@ void cookies_arg_not_persisted() {
     ::tpystd::http::client::HTTPConnection c1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     c1.sock = std::move(a1);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(c1));
-    ::tpy::Union<bool, std::string> __tmp_1 = true;
-    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"tok", "1"}});
-    s.get("http://api.test/one", nullptr, nullptr, std::nullopt, true, __tmp_1, &(__tmp_2));
+    s.get("http://api.test/one", nullptr, nullptr, std::nullopt, true, ::tpy::Union<bool, std::string>(true), &::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"tok", "1"}})));
     ::tpyapp::main::_cookie_line(b1.recv(65536));
     b1.close();
     auto __tup_2 = ::tpystd::socket::socketpair();

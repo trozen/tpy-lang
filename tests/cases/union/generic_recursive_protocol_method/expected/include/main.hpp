@@ -85,8 +85,7 @@ inline Tree<int32_t> Counter::sprout() const {
 //     return s.absorb(t) + leaf_count(s.sprout())
 template<TreeSink T_s>
 int32_t use(T_s&& s, Tree<int32_t>& t) {
-    Tree<int32_t> __tmp_1 = s.sprout();
-    return (::tpy::add_check<int32_t>(s.absorb(t), ::tpyapp::main::leaf_count(__tmp_1)));
+    return (::tpy::add_check<int32_t>(s.absorb(t), ::tpyapp::main::leaf_count(Tree<int32_t>(s.sprout()))));
 }
 
 void __tpy_init();

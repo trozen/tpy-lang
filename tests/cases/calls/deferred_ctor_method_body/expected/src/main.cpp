@@ -61,10 +61,8 @@ void main() {
     p.gen<int32_t>(7);
     Plain::stat();
     Plain::clsm();
-    std::vector<int32_t> __tmp_1 = {1};
-    std::cout << "cls local" << " " << Wipe<int32_t>::local_cls(__tmp_1) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = {2};
-    std::cout << "cls ranked" << " " << Wipe<int32_t>::ranked_cls(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "cls local" << " " << Wipe<int32_t>::local_cls(::tpy::as_mut_lvalue(std::vector<int32_t>{1})) << "\n" << ::tpy::check_signals;
+    std::cout << "cls ranked" << " " << Wipe<int32_t>::ranked_cls(::tpy::as_mut_lvalue(std::vector<int32_t>{2})) << "\n" << ::tpy::check_signals;
     p.nested();
     std::cout << "ar" << " " << p.ar() << "\n" << ::tpy::check_signals;
     {
@@ -79,10 +77,8 @@ void main() {
     }
     std::cout << "co" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(p.co())) << "\n" << ::tpy::check_signals;
     std::cout << "self2" << " " << Self2<int32_t>().fresh() << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = {0};
-    p.comp(__tmp_3);
-    std::vector<int32_t> __tmp_4 = {1};
-    p.disp(__tmp_4);
+    p.comp(::tpy::as_mut_lvalue(std::vector<int32_t>{0}));
+    p.disp(::tpy::as_mut_lvalue(std::vector<int32_t>{1}));
     ::tpyapp::bags::Bag<int32_t> a = p.alias();
     std::cout << "alias" << " " << ::tpy::ListPrinter(a.items) << "\n" << ::tpy::check_signals;
     ::tpyapp::bags::Cell<int32_t> c = p.reexported();

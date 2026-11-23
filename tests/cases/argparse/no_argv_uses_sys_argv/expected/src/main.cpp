@@ -13,8 +13,7 @@ namespace tpyapp::main {
 //     print(args.count)
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = ::tpy::construct<std::vector<std::string>>(::tpy::list_slice((*::tpystd::sys::argv), ::tpy::BasicSlice{1, std::nullopt}));
-    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(::tpy::construct<std::vector<std::string>>(::tpy::list_slice((*::tpystd::sys::argv), ::tpy::BasicSlice{1, std::nullopt})));
     std::cout << args.name << "\n" << ::tpy::check_signals;
     std::cout << args.count << "\n" << ::tpy::check_signals;
     return 0;

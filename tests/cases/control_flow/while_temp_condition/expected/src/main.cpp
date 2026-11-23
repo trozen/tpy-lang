@@ -49,9 +49,7 @@ int32_t take_vu(const ::tpy::Union<double, int32_t>& v) {
 //     return it
 int32_t countdown(int32_t total) {
     int32_t it = 0;
-    while (true) {
-        ::tpy::Union<double, int32_t> __tmp_1 = total;
-        if (!((::tpyapp::main::take_vu(__tmp_1) > 0))) break;
+    while ((::tpyapp::main::take_vu(::tpy::Union<double, int32_t>(total)) > 0)) {
         total = ::tpy::sub_check<int32_t>(total, 1);
         it = ::tpy::add_check<int32_t>(it, 1);
         if ((it > 50)) {
@@ -72,9 +70,7 @@ int32_t countdown(int32_t total) {
 //     return it
 ::tpy::BigInt fresh_literal() {
     int32_t it = 0;
-    while (true) {
-        std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
-        if (!((::tpyapp::main::eat(__tmp_1) > 1))) break;
+    while ((::tpyapp::main::eat(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{1, 2, 3})) > 1)) {
         it = ::tpy::add_check<int32_t>(it, 1);
         if ((it > 20)) {
             return ::tpy::BigInt(it);
@@ -97,9 +93,7 @@ int32_t countdown(int32_t total) {
 ::tpy::BigInt literal_reads_loop_var(const ::tpy::BigInt& start) {
     ::tpy::BigInt n = start;
     int32_t it = 0;
-    while (true) {
-        std::vector<::tpy::BigInt> __tmp_1 = {n};
-        if (!((::tpyapp::main::head(__tmp_1) > 0))) break;
+    while ((::tpyapp::main::head({n}) > 0)) {
         n = (n) - (::tpy::BigInt(1));
         it = ::tpy::add_check<int32_t>(it, 1);
         if ((it > 50)) {
@@ -128,9 +122,7 @@ int32_t countdown(int32_t total) {
 ::tpy::BigInt else_break_continue(const ::tpy::BigInt& start, const ::tpy::BigInt& stop_at) {
     ::tpy::BigInt n = start;
     int32_t steps = 0;
-    while (true) {
-        std::vector<::tpy::BigInt> __tmp_1 = {n};
-        if (!((::tpyapp::main::head(__tmp_1) > 0))) break;
+    while ((::tpyapp::main::head({n}) > 0)) {
         n = (n) - (::tpy::BigInt(1));
         if ((n == stop_at)) {
             goto __after_else_0;
@@ -166,9 +158,7 @@ int32_t weigh(const Pack& p) {
 int32_t ctor_rvalue_cond(int32_t start) {
     int32_t n = start;
     int32_t it = 0;
-    while (true) {
-        Pack __tmp_1 = Pack(n);
-        if (!((::tpyapp::main::weigh(__tmp_1) > 0))) break;
+    while ((::tpyapp::main::weigh(Pack(n)) > 0)) {
         n = ::tpy::sub_check<int32_t>(n, 1);
         it = ::tpy::add_check<int32_t>(it, 1);
         if ((it > 50)) {
@@ -191,9 +181,7 @@ int32_t ctor_rvalue_cond(int32_t start) {
     int32_t hits = 0;
     for (int32_t _ = 0; _ < 2; ++_) {
         int32_t n = 2;
-        while (true) {
-            std::vector<::tpy::BigInt> __tmp_1 = {n};
-            if (!((::tpyapp::main::head(__tmp_1) > 0))) break;
+        while ((::tpyapp::main::head({n}) > 0)) {
             n = ::tpy::sub_check<int32_t>(n, 1);
             hits = ::tpy::add_check<int32_t>(hits, 1);
         }

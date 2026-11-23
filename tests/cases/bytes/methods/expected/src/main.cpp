@@ -46,7 +46,7 @@ void main() {
     std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("world", 5))) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes replaced = ::tpy::bytes_replace(data, ::tpy::bytes_literal("world", 5), ::tpy::bytes_literal("bytes", 5));
     std::cout << ::tpy::BytesPrinter(replaced) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::Bytes> parts = ::tpy::bytes_split(::tpy::bytes_literal_owned("a,b,c", 5), ::tpy::bytes_literal(",", 1));
+    std::vector<::tpy::Bytes> parts = ::tpy::bytes_split(::tpy::bytes_literal("a,b,c", 5), ::tpy::bytes_literal(",", 1));
     auto& __obj_0 = parts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -54,7 +54,7 @@ void main() {
         ::tpy::BytesView p = *__beg_0;
         std::cout << ::tpy::BytesPrinter(p) << "\n" << ::tpy::check_signals;
     }
-    ::tpy::Bytes joined = ::tpy::bytes_join(::tpy::bytes_literal_owned(", ", 2), parts);
+    ::tpy::Bytes joined = ::tpy::bytes_join(::tpy::bytes_literal(", ", 2), parts);
     std::cout << ::tpy::BytesPrinter(joined) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView v = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11});
     std::cout << ::tpy::bytes_find(v, ::tpy::bytes_literal("world", 5)) << "\n" << ::tpy::check_signals;

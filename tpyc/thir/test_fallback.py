@@ -198,10 +198,10 @@ def test_constructor_lowering_reject_falls_back():
         "ctor:stmt.nested_def:nesteddef.param_type") == 1
 
 
-def test_base_init_arg_lowering_reject_falls_back():
-    # A base-init arg whose conversion needs a statement temporary (the list
-    # a mutating callee is lent) rejects inside its lowering -- it must land
-    # on the ctor's fallback boundary, not escape as a crash.
+def test_base_init_fresh_arg_at_written_param_lowers():
+    # A base-init arg at a parameter its callee writes (the list a mutating
+    # callee is lent) binds as a temporary of its own expression: the
+    # initializer needs no statement to hold it.
     compiler, modules = _compile(
         "from tpy import int32\n"
         "def eat(xs: list[int32]) -> int32:\n"
@@ -227,8 +227,7 @@ def test_base_init_arg_lowering_reject_falls_back():
             record, init, entry.analyzer, self_type=self_type)
         if ctor is None:
             _record_reject("ctor")
-    assert ctor is None
-    _assert_rejects_at(_tally(compiler), "ctor:expr.call", count=1)
+    assert ctor is not None
 
 
 def test_global_lowering_reject_falls_back_at_sync_boundary():
@@ -560,32 +559,25 @@ def test_for_each_gen_call_record_rvalue_arg_routes():
         "auto __src_0 = ::tpyapp::main::gen(__tmp_1);")
 
 
-def test_for_each_container_route_literal_arg_still_rejects():
-    # The begin/end container route's iterable renders into the loop header
-    # -- NO flush point -- so a temp-hoisting arg there must keep rejecting
-    # (widening it would be the stale-snapshot miscompile the validator
-    # guards). Only the iter_proto route admits temps. A container literal
-    # arg always needs the hoisted temp, whether the callee mutates it or
-    # not.
-    compiler, entry, f = _fn_body(
+def test_for_each_container_route_literal_arg_is_kept_by_the_head():
+    # The begin/end container route's iterable is a loop head: a fresh
+    # argument there lives until the loop ends, declared in a scope the loop
+    # opens before its capture.
+    _, body = _emitted(
         "from tpy import int32, Own\n"
         "def make(xs: list[int32]) -> Own[list[int32]]:\n"
         "    xs.append(0)\n"
         "    return [x * 2 for x in xs]\n"
-        "def rejected() -> int32:\n"
+        "def kept() -> int32:\n"
         "    t = 0\n"
         "    for x in make([1, 2]):\n"
         "        t = t + x\n"
         "    return t\n",
-        "rejected")
-    with activate_compiler(compiler):
-        begin_attempt()
-        fn = lower_function(f, entry.analyzer, self_type=None)
-        if fn is None:
-            _record_reject("body")
-    assert fn is None
-    _assert_rejects_at(_tally(compiler), "body:expr.call",
-                       "call.arg_shape.container")
+        "kept")
+    flush = body.index("__tmp_1 = std::vector<int32_t>{1, 2};")
+    capture = body.index("auto __obj_0 = ::tpyapp::main::make(__tmp_1);")
+    scope = body.index("{\n", body.index("{\n") + 1)
+    assert scope < flush < capture
 
 
 def test_for_each_method_generator_call_routes():

@@ -16,11 +16,9 @@ namespace tpyapp::main {
 //     print(a2.name)
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = std::vector<std::string>{};
-    __tpy_builder_argparse_args_1 a1 = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 a1 = ::tpyapp::main::__tpy_builder_argparse_parse_1(std::vector<std::string>{});
     std::cout << a1.name << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_2 = {"alice"};
-    __tpy_builder_argparse_args_2 a2 = ::tpyapp::main::__tpy_builder_argparse_parse_2(__tmp_2);
+    __tpy_builder_argparse_args_2 a2 = ::tpyapp::main::__tpy_builder_argparse_parse_2({"alice"});
     std::cout << a2.name << "\n" << ::tpy::check_signals;
     return 0;
 }

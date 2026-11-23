@@ -668,7 +668,7 @@ struct __gen_closing : public ::tpy::next_iter_mixin<__gen_closing, int32_t> {
 // def outer_lift() -> Iterator[int32]:
 struct __gen_outer_lift : public ::tpy::next_iter_mixin<__gen_outer_lift, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_0;
+    ::tpy::frame_slot<std::vector<int32_t>> __head_arg_0;
     ::tpy::frame_slot<__gen_iter_list> g;
 
     enum : int32_t {

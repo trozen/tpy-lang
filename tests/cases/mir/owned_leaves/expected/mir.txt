@@ -40,18 +40,18 @@ main::expression_arguments@228:0: covered (storage: no_proof_required), summary:
 main::print_call@233:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::bytes_literal@238:0: covered (storage: no_proof_required), summary: known
 main::take_point@243:0: covered (storage: no_proof_required), summary: known
-main::rvalue_temp@248:0: certified, summary: known
+main::rvalue_temp@248:0: covered (storage: no_proof_required), summary: known
 main::lent_big@259:0: covered (storage: no_proof_required), summary: known
 main::take_big@263:0: covered (storage: no_proof_required), summary: known
-main::lent_temp_return@268:0: certified, summary: known
-main::lent_temp_bind@273:0: certified, summary: known
-main::lent_temp_cond@279:0: certified, summary: known
-main::lent_temp_scoped@286:0: certified, summary: known
-main::lent_temp_and@293:0: certified, summary: known
-main::lent_temp_select@298:0: certified, summary: known
+main::lent_temp_return@268:0: covered (storage: no_proof_required), summary: known
+main::lent_temp_bind@273:0: covered (storage: no_proof_required), summary: known
+main::lent_temp_cond@279:0: covered (storage: no_proof_required), summary: known
+main::lent_temp_scoped@286:0: covered (storage: no_proof_required), summary: known
+main::lent_temp_and@293:0: covered (storage: no_proof_required), summary: known
+main::lent_temp_select@298:0: covered (storage: no_proof_required), summary: known
 main::made@309:0: covered (storage: no_proof_required), summary: known
 main::view_len@313:0: covered (storage: no_proof_required), summary: known
-main::lent_view_temp@318:0: uncovered (named temporary needs stable scalar operands), summary: opaque (named temporary needs stable scalar operands)
+main::lent_view_temp@318:0: covered (storage: no_proof_required), summary: known
 main::make@338:0: covered (storage: no_proof_required), summary: known
 main::temp_ctor_bump@343:0: covered (storage: no_proof_required), summary: known
 main::temp_call_bump@348:0: covered (storage: no_proof_required), summary: known

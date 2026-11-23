@@ -30,8 +30,7 @@ void main() {
     std::cout << "field:" << " " << k.m<int32_t>(std::move(*c).take().v) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_3;
     c = &*(__slot_3 = B(3));
-    std::vector<int32_t> __tmp_1 = {std::move(*c).take().v};
-    std::cout << "list:" << " " << k.first<int32_t>(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "list:" << " " << k.first<int32_t>(::tpy::as_mut_lvalue(std::vector<int32_t>{std::move(*c).take().v})) << "\n" << ::tpy::check_signals;
     std::cout << "calls:" << " " << k.n << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_4;
     c = &*(__slot_4 = B(4));

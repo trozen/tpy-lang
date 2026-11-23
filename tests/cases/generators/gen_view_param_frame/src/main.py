@@ -275,8 +275,8 @@ async def outer_task() -> str:
 # -- the seated field re-emplaced by a LOOP ----------------------------------
 # There is one seat per call SITE, so a site inside a loop shares it across
 # iterations. That is sound exactly where no handle built there is still alive
-# when the site re-executes; a site whose handle outlives the iteration is a
-# loud reject instead (`tests/cases/async/error_task_temp_in_loop`).
+# when the site re-executes; a handle that outlives the iteration dangles, as
+# its ordinary-function twin does (BUGS.md#frame-handle-outlives-fresh-argument).
 
 
 # enclosing generator, `for` head inside a loop: the loop statement drains and
@@ -306,9 +306,7 @@ async def outer_loop_bind(n: int32) -> str:
 # handle's whole life, exactly like a borrowed argument, so inside a resumable
 # body it is seated on a field of the ENCLOSING frame too. Each section reads a
 # receiver FIELD (`self.base` / `self.step`) after the outer frame has
-# suspended. An rvalue receiver at a local BIND or an inline `await` stays a
-# loud reject instead (`tests/cases/async/error_bind_receiver_temp`,
-# `error_await_temp_receiver`): there the receiver is named by the user.
+# suspended.
 
 
 # enclosing async def, `for` head over a generator method: the receiver

@@ -1169,11 +1169,7 @@ void owning_property_kinds(::tpy::ordered_map<std::string, int32_t>& d1, ::tpy::
 //     owning_property_kinds({"q": 1}, {5}, arr, bytearray(b"x"), Box(P(4)))
 void owning_property_kinds_call() {
     std::array<int32_t, 2> arr = {3, 4};
-    ::tpy::ordered_map<std::string, int32_t> __tmp_1 = ::tpy::ordered_map<std::string, int32_t>({{"q", 1}});
-    ::tpy::ordered_set<int32_t> __tmp_2 = ::tpy::ordered_set<int32_t>({5});
-    ::tpy::ByteArray __tmp_3 = ::tpy::ByteArray(::tpy::bytes_literal("x", 1));
-    ::tpystd::tplib::box::Box<P> __tmp_4 = ::tpystd::tplib::box::Box<P>(P(4));
-    ::tpyapp::main::owning_property_kinds(__tmp_1, __tmp_2, arr, __tmp_3, __tmp_4);
+    ::tpyapp::main::owning_property_kinds(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, int32_t>({{"q", 1}})), ::tpy::as_mut_lvalue(::tpy::ordered_set<int32_t>({5})), arr, ::tpy::as_mut_lvalue(::tpy::ByteArray(::tpy::bytes_literal("x", 1))), ::tpy::as_mut_lvalue(::tpystd::tplib::box::Box<P>(P(4))));
 }
 
 // def declaration_rows(o: P) -> None:
@@ -1562,21 +1558,16 @@ void __tpy_init() {
         std::cout << "error_return" << " " << "unreachable" << "\n" << ::tpy::check_signals;
         __after_try_2:;
     }
-    Outer __tmp_1 = Outer(3);
-    ::tpyapp::main::declarations(__tmp_1);
+    ::tpyapp::main::declarations(::tpy::as_mut_lvalue(Outer(3)));
     ::tpyapp::main::inverse();
     std::cout << "inverse" << " " << "own_param" << " " << ::tpyapp::main::own_param(P(7)).n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::nonlocal_rebind();
     ::tpyapp::main::with_lent();
     ::tpyapp::main::loop_escape_hoist();
-    P __tmp_2 = P(1);
-    std::vector<int32_t> __tmp_3 = {1};
-    ::tpy::ByteArray __tmp_4 = ::tpy::ByteArray(::tpy::bytes_literal("x", 1));
-    ::tpyapp::main::ref_sink_forms(__tmp_2, __tmp_3, __tmp_4);
+    ::tpyapp::main::ref_sink_forms(::tpy::as_mut_lvalue(P(1)), ::tpy::as_mut_lvalue(std::vector<int32_t>{1}), ::tpy::as_mut_lvalue(::tpy::ByteArray(::tpy::bytes_literal("x", 1))));
     ::tpyapp::main::elif_head(false);
     ::tpyapp::main::while_last_pass();
-    std::vector<P> __tmp_5 = {P(1), P(2)};
-    ::tpyapp::main::while_borrowed(__tmp_5);
+    ::tpyapp::main::while_borrowed(::tpy::as_mut_lvalue(std::vector<P>{P(1), P(2)}));
     ::tpyapp::main::containers();
     ::tpyapp::main::for_own_to_lvalue();
     ::tpyapp::main::print_arg_copy();
@@ -1586,8 +1577,7 @@ void __tpy_init() {
     ::tpyapp::main::optional_reseat();
     ::tpyapp::main::optional_reseat_temp_receiver(false);
     ::tpyapp::main::owning_property_kinds_call();
-    P __tmp_6 = P(1);
-    ::tpyapp::main::declaration_rows(__tmp_6);
+    ::tpyapp::main::declaration_rows(P(1));
     ::tpyapp::main::compare_operands();
     static std::optional<P> __global_slot_2;
     {

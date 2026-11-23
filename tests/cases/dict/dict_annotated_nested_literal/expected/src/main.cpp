@@ -155,8 +155,7 @@ void main() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>> built = ::tpyapp::main::build();
     ::tpy::__getitem__(built, "r").push_back(3);
     std::cout << "return" << " " << ::tpy::DictPrinter(built) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, std::vector<int32_t>> __tmp_1 = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"p", {1, 2}}});
-    std::cout << "arg" << " " << ::tpyapp::main::take(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "arg" << " " << ::tpyapp::main::take(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::vector<int32_t>>({{"p", {1, 2}}}))) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::ordered_map<std::string, std::vector<int32_t>>> stack = std::vector<::tpy::ordered_map<std::string, std::vector<int32_t>>>{};
     stack.push_back(::tpy::ordered_map<std::string, std::vector<int32_t>>({{"a", {1, 2}}}));
     ::tpy::__getitem__(::tpy::__getitem__(stack, 0), "a").push_back(3);

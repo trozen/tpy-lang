@@ -34,14 +34,18 @@ from typing import TYPE_CHECKING, NamedTuple, Union
 from ..identity_map import IdentityMap, IdentitySet
 from ..resumable_shape import ResumableShape
 from ..frame_capture import FrameCaptureKind, classify_param_kind  # noqa: F401 (re-exported)
+from ..typesys import (ConcreteFrameType, body_function_info, frame_module_qual,
+                       unwrap_own, unwrap_readonly, unwrap_ref_type)
+from ..value_category import peel_coerce
 from ..parse.nodes import (
     TpyExceptHandler, TpyExpr, TpyForEach, TpyMatch, TpyMethodCall, TpyRaise,
     TpyReturn, TpyStmt, TpyWithItem, TpyYield, TpyAwait,
+    TpyCall, TpyGeneratorExpression,
 )
 
 if TYPE_CHECKING:
     from ..parse.nodes import SourceLocation, TpyFunction
-    from ..typesys import TpyType
+    from ..typesys import FunctionInfo, TpyType
     from .nodes import THIRBorrowedRecord, THIRParam
 
 
@@ -223,6 +227,9 @@ class HolderRole(Enum):
     WITH_CONTEXT = "with_context"  # a `with` item's manager (owned, or a pointer to it)
     PTR_SLOT = "ptr_slot"          # the storage a pointer-form local's write site re-points at
     TRY_FINALLY = "try_finally"    # a decomposed finally's in-flight exception / pending return
+    # a fresh argument a compound head keeps across a suspension,
+    # filled where the argument is evaluated
+    HEAD_ARG = "head_arg"
 
 
 @dataclass(frozen=True, eq=False)
@@ -248,6 +255,109 @@ class THIRFrameHolder:
     value: 'TpyExpr | None' = None
     loop: 'FrameLoopOwner | None' = None
     drop_runs_user_code: bool = False
+    # A HEAD_ARG holder of a deduced temp: the initializer its type is
+    # spelled off (`decltype`), with `value` the source it lowers.
+    deduced: 'THIRExpr | None' = None
+    # A HEAD_ARG holder of a generator or coroutine object of this module:
+    # the embedding edge of the frame it holds by value
+    # (`frame_embedding_edge`), which the struct order reads.
+    embeds: 'tuple[str, str | None] | None' = None
+
+
+def same_module_dep_unit(owner: 'NominalType | None', frame_name: str,
+                         current_module: 'str | None',
+                         ) -> 'tuple[str, str | None] | None':
+    """The embedding-edge entry for embedding the frame of `owner`'s method
+    named `frame_name` (its `FunctionInfo.frame_cpp_name`), or None when it
+    is not an ordering edge.
+
+    Only a callee defined in the module being emitted is one. A cross-module
+    struct is already complete via its included header, and the unit index is
+    keyed on the BARE `(method, record)` pair -- so recording a cross-module
+    callee matches a same-named LOCAL unit instead and fabricates a cycle out
+    of valid code. Membership in a same-module map cannot stand in for this
+    check for the same reason: those maps are bare-name keyed too.
+
+    An owner whose module qname is unstamped is not matched. Every
+    user-declared record carries one, so an unknown owner is not a local unit,
+    and guessing would risk the false edge this exists to prevent.
+    """
+    if owner is None or current_module is None:
+        return None
+    qname = owner.qualified_name()
+    if not qname or "." not in qname:
+        return None
+    if qname.rsplit(".", 1)[0] != current_module:
+        return None
+    return (frame_name, owner.name)
+
+
+def held_frame_function(source: 'TpyExpr | None', registry: object,
+                        current_module: 'str | None'
+                        ) -> 'FunctionInfo | None':
+    """The function whose generator or coroutine object `source` builds
+    where its type does not name the frame: a generator expression's
+    (`frame_func`), or a free generator or coroutine function of this
+    module a call sema typed as the protocol it returns. None for any
+    other source."""
+    src = peel_coerce(source) if source is not None else None
+    if isinstance(src, TpyGeneratorExpression) and src.frame_func is not None:
+        return body_function_info(registry, src.frame_func)
+    fi = getattr(src, "resolved_function_info", None) if isinstance(
+        src, TpyCall) else None
+    if (fi is not None and (fi.is_generator or fi.is_async)
+            and frame_module_qual(fi, current_module) is None
+            and fi.frame_cpp_name):
+        return fi
+    return None
+
+
+def held_frame_name(source: 'TpyExpr | None', registry: object,
+                    current_module: 'str | None') -> 'str | None':
+    """The frame name of the object `source` builds where its type does
+    not name it (`held_frame_function`)."""
+    src = peel_coerce(source) if source is not None else None
+    fi = held_frame_function(source, registry, current_module)
+    if fi is not None:
+        return fi.frame_cpp_name
+    if isinstance(src, TpyGeneratorExpression) and src.frame_func is not None:
+        return src.frame_func.name
+    return None
+
+
+def frame_embedding_edge(t: 'TpyType | None', current_module: 'str | None',
+                         named_frame: 'str | None' = None
+                         ) -> 'tuple[str, str | None] | None':
+    """The embedding-edge entry of a frame field holding a value of type
+    `t` by value: a generator or coroutine object whose frame struct is
+    defined in the module being emitted (`same_module_dep_unit`), or one
+    the type does not name (`named_frame`, from `held_frame_name`); None
+    for any other value."""
+    if t is None:
+        return None
+    if named_frame is not None and not isinstance(
+            unwrap_readonly(unwrap_own(unwrap_ref_type(t))), ConcreteFrameType):
+        return (named_frame, None)
+    inner = unwrap_readonly(unwrap_own(unwrap_ref_type(t)))
+    if not isinstance(inner, ConcreteFrameType):
+        return None
+    return frame_struct_edge(inner.frame_owner, inner.frame_func_name,
+                             inner.frame_module_qual, current_module)
+
+
+def frame_struct_edge(owner: 'NominalType | None', frame_name: str,
+                      module_qual: 'str | None',
+                      current_module: 'str | None'
+                      ) -> 'tuple[str, str | None] | None':
+    """The embedding-edge entry of the frame struct named `frame_name`:
+    a method's of `owner` defined in this module (`same_module_dep_unit`),
+    or a free function's spelled without a module qualifier (one of this
+    module); None for any other struct, complete via its header."""
+    if owner is not None:
+        return same_module_dep_unit(owner, frame_name, current_module)
+    if module_qual is not None:
+        return None
+    return (frame_name, None)
 
 
 @dataclass(frozen=True, eq=False)
@@ -325,6 +435,9 @@ class THIRAwaitSuspension:
     # The TpyAwait node itself (sema attaches awaited_inline /
     # awaited_task_inner here; emit consults them).
     await_node: TpyAwait
+    # An await lifted out of an expression: the read of its lifted name and
+    # the statement that read sits in.
+    lifted_read: 'tuple[TpyExpr, TpyStmt] | None' = None
     # Prebuilt-slot await: the operand is a bound coroutine handle whose
     # frame local IS the slot -- emit declares no __sub field, skips the
     # emplace, and polls/resets that local's field instead.
@@ -543,6 +656,8 @@ class THIRBranch:
     cond: THIRLeafSlot
     then_bb: int
     else_bb: int
+    # The statement whose condition this is.
+    host: 'TpyStmt | None' = None
 
 
 @dataclass(frozen=True)
@@ -666,6 +781,8 @@ class THIRForIterSetup:
     # file no ITER loan for this iterable, so the lowering refuses it here
     # exactly as the sync for-each route does.
     iter_borrow_unplaceable: bool = False
+    # The loop statement this sets up.
+    host: 'TpyStmt | None' = None
     # The source loop gives its source up to its consuming `__iter__`
     # (`TpyForEach.consuming_iter_fi`): the setup renders the consuming call.
     consuming: bool = False
@@ -736,6 +853,8 @@ class THIRWithEnter:
     ctx_n: int
     item: TpyWithItem
     manager: THIRLeafSlot
+    # The `with` statement the item belongs to.
+    host: 'TpyStmt | None' = None
 
 
 @dataclass(frozen=True)
@@ -757,6 +876,8 @@ class THIRAsyncWithSetup:
     ctx_n: int
     item: TpyWithItem
     manager: THIRLeafSlot
+    # The `async with` statement the item belongs to.
+    host: 'TpyStmt | None' = None
 
 
 THIRBlockStmt = Union[THIRLeafSlot, THIRForIterSetup, THIRWithEnter,
@@ -977,6 +1098,9 @@ class THIRResumableFrame:
     nested_defs: 'tuple[THIRLeafSlot, ...]'
     # -- the body the blocks were built over (await-lifted, arguments seated)
     lifted_body: 'list[TpyStmt]'
+    # The names that body carries a handle out of the statement binding it
+    # with (`frame_seat.escaping_names`).
+    escaping_names: 'frozenset[str]'
     # -- loop / with / pointer-slot / try-finally holders, as decided
     for_loop_info: IdentityMap
     for_info_by_uid: 'dict[int, GeneratorForInfo]'
@@ -997,9 +1121,6 @@ class THIRResumableFrame:
     # Write site -> {element (None: the scalar) -> its PTR_SLOT holder}.
     ptr_slot_map: IdentityMap
     try_finally_fields: 'tuple[THIRFrameHolder, ...]'
-    # Argument lifts: holder name -> (the expression it holds, the local
-    # the call binds, if any).
-    arg_lifts: 'dict[str, tuple[TpyExpr, str | None]]'
     # Const borrow edges between frame bindings (root -> targets).
     const_source_edges: 'dict[str, list[str]]'
     const_bindings: frozenset[str]

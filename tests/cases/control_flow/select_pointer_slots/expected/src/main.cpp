@@ -193,25 +193,16 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         bool c = *__beg_0;
-        C __tmp_1 = C(1);
-        C __tmp_2 = C(2);
-        ::tpyapp::main::receiver_pointer_local(c, __tmp_1, __tmp_2);
+        ::tpyapp::main::receiver_pointer_local(c, ::tpy::as_mut_lvalue(C(1)), ::tpy::as_mut_lvalue(C(2)));
         ::tpyapp::main::local_records(c);
         ::tpyapp::main::local_containers(c);
-        C __tmp_3 = C(1);
-        C __tmp_4 = C(2);
-        ::tpyapp::main::local_narrowed(c, &(__tmp_3), &(__tmp_4));
-        C __tmp_5 = C(1);
-        ::tpyapp::main::local_narrowed_plain(c, &(__tmp_5));
+        ::tpyapp::main::local_narrowed(c, &::tpy::as_mut_lvalue(C(1)), &::tpy::as_mut_lvalue(C(2)));
+        ::tpyapp::main::local_narrowed_plain(c, &::tpy::as_mut_lvalue(C(1)));
         ::tpyapp::main::local_none_arm(c);
         ::tpyapp::main::return_select(c);
         ::tpyapp::main::arg_select(c);
-        C __tmp_6 = C(1);
-        C __tmp_7 = C(2);
-        ::tpyapp::main::receiver_mutate(c, &(__tmp_6), &(__tmp_7));
-        C __tmp_8 = C(1);
-        C __tmp_9 = C(3);
-        ::tpyapp::main::receiver_read(c, &(__tmp_8), &(__tmp_9));
+        ::tpyapp::main::receiver_mutate(c, &::tpy::as_mut_lvalue(C(1)), &::tpy::as_mut_lvalue(C(2)));
+        ::tpyapp::main::receiver_read(c, &::tpy::as_mut_lvalue(C(1)), &::tpy::as_mut_lvalue(C(3)));
     }
 }
 

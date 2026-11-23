@@ -33,8 +33,7 @@ void poke(Outer& o) {
 // def main() -> None:
 //     poke(Outer())
 void main() {
-    Outer __tmp_1 = Outer();
-    ::tpyapp::main::poke(__tmp_1);
+    ::tpyapp::main::poke(::tpy::as_mut_lvalue(Outer()));
 }
 
 // main()

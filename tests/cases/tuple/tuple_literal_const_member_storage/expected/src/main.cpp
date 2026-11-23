@@ -35,10 +35,8 @@ void comp_member(const std::vector<P>& cells) {
 //     param_member(P(5))
 //     comp_member([P(7)])
 void main() {
-    P __tmp_1 = P(5);
-    ::tpyapp::main::param_member(__tmp_1);
-    std::vector<P> __tmp_2 = {P(7)};
-    ::tpyapp::main::comp_member(__tmp_2);
+    ::tpyapp::main::param_member(P(5));
+    ::tpyapp::main::comp_member({P(7)});
 }
 
 // main()

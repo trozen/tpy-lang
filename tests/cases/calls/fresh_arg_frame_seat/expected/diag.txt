@@ -1,0 +1,22 @@
+part_frame_seat_copies.py:74: warning: copies Src into owned storage; use copy() to make this explicit
+part_frame_seat_copies.py:75: warning: copies Src into owned storage; use copy() to make this explicit
+part_frame_seat_copies.py:88: warning: lambda at line 88 copies the object 'x' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_frame_seat_copies.py:88: warning: 'x' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_frame_seat_copies.py:104: warning: lambda at line 104 copies the object 'r' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_frame_seat_copies.py:104: warning: 'r' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_frame_seat_copies.py:147: warning: Own[list[Callable[[], int32]]] param 'fs' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_frame_seat_copies.py:156: warning: lambda at line 156 copies the object 'y' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_frame_seat_copies.py:156: warning: 'y' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_frame_seat_leaves.py:107: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+part_frame_seat_leaves.py:122: warning: copies Src into owned storage; use copy() to make this explicit
+part_frame_seat_leaves.py:164: warning: lambda at line 164 may keep its own copy of 't'; changes made after it is created may not be seen
+part_frame_seat_leaves.py:164: warning: 't' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_frame_seat_leaves.py:166: warning: copies tuple[Src, Src] into owned storage; use copy() to make this explicit
+part_frame_seat_owned_params.py:52: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+part_frame_seat_owned_params.py:56: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+part_frame_seat_owned_params.py:110: warning: lambda at line 110 copies 's' when it is created
+part_frame_seat_owned_params.py:111: warning: lambda at line 111 copies 'w' when it is created
+part_frame_seat_owned_params.py:111: warning: 'w' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_frame_seat_owned_params.py:110: warning: 's' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_frame_seat_owned_params.py:130: warning: copies tuple[Src, Src] into owned storage; use copy() to make this explicit
+part_frame_seat_owned_params.py:131: warning: copies tuple[Src, Src] into owned storage; use copy() to make this explicit

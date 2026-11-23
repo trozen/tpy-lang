@@ -36,9 +36,7 @@ void merge_and_clear() {
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"limit", "10"}});
-    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"X-App", "override"}});
-    ::tpystd::tplib::requests::Response r = s.get("http://api.test/v1/tables", &(__tmp_1), &(__tmp_2));
+    ::tpystd::tplib::requests::Response r = s.get("http://api.test/v1/tables", &::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"limit", "10"}})), &::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"X-App", "override"}})));
     std::cout << r.status_code << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n" << ::tpy::check_signals;
     if ((!s._connection.has_value())) {
@@ -69,8 +67,7 @@ void session_post() {
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("payload", 7);
-    ::tpystd::tplib::requests::Response r = s.post("http://api.test/v1/items", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1});
+    ::tpystd::tplib::requests::Response r = s.post("http://api.test/v1/items", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&(::tpy::as_mut_lvalue(::tpy::bytes_literal_owned("payload", 7)))});
     std::cout << r.status_code << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n" << ::tpy::check_signals;
     b.close();

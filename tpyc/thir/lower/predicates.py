@@ -12,6 +12,7 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from ...parse.nodes import (
+    TpyForEach,
     as_name_read,
     const_tuple_index,
     NarrowFacts,
@@ -159,10 +160,11 @@ from ...value_category import (
     CONTAINER_LITERAL_NODES, open_type_param_call_result,
     call_hands_back_value, call_value_optional,
     call_result_is_reference, call_result_holdable,
-    call_returns_cpp_ref, getitem_call_of,
+    call_returns_cpp_ref, getitem_call_of, method_owner_type,
     const_place, deref_step_const,
     receiver_const, call_result_const,
     FrameTempElem,
+    for_hands_source_over,
     frame_temp_elem_plan,
     frame_temp_arg_source,
     is_rvalue_source,
@@ -5935,7 +5937,8 @@ def _open_ref_return(fi) -> bool:
 
 def _record_getitem_borrow_subscript(sub: TpyExpr,
                                      locals_: dict[str, TpyType], analyzer,
-                                     pointers: 'AbstractSet[str]') -> bool:
+                                     pointers: 'AbstractSet[str]', *,
+                                     held_recv_ok: bool = False) -> bool:
     """A borrow-returning user-record `__getitem__` subscript source
     (`r = e[k]` -> `Node& r = e[k];`): the record's bare operator[] `T&`
     lvalue, rooted in the receiver, whose result is a record or a container
@@ -5957,7 +5960,8 @@ def _record_getitem_borrow_subscript(sub: TpyExpr,
     if not (_f1_record(result_t, analyzer)
             or _nested_container_elem_type(result_t)):
         return False
-    if _record_getitem_idx_recv_ok(sub, locals_, analyzer, pointers):
+    if _record_getitem_idx_recv_ok(sub, locals_, analyzer, pointers,
+                                   held_recv_ok=held_recv_ok):
         return True
     idx = sub.index
     recv_ok = (isinstance(sub.obj, TpyName) and sub.obj.name in locals_
@@ -5968,15 +5972,16 @@ def _record_getitem_borrow_subscript(sub: TpyExpr,
 
 
 def _getitem_container_lvalue(sub: TpyExpr, locals_: dict[str, TpyType],
-                              analyzer, pointers: 'AbstractSet[str]') -> bool:
+                              analyzer, pointers: 'AbstractSet[str]', *,
+                              held_recv_ok: bool = False) -> bool:
     """A user `__getitem__` subscript whose reference-returned result is a
     container (`g[k]` -> `V&` on a dict-backed wrapper): a container lvalue
     rooted in the receiver, exactly like a builtin nested element
     (`rows[0]` of `list[list[int]]`), so every consumer of that element
     admits it through the same verdict."""
     return (_nested_container_elem_type(analyzer.get_expr_type(sub))
-            and _record_getitem_borrow_subscript(sub, locals_, analyzer,
-                                                 pointers))
+            and _record_getitem_borrow_subscript(
+                sub, locals_, analyzer, pointers, held_recv_ok=held_recv_ok))
 
 
 def _field_over_record_getitem_ok(e: TpyExpr, locals_: dict[str, TpyType],
@@ -8160,7 +8165,7 @@ def _compare_op_dunders(op: str) -> tuple[str, ...]:
 
 def _record_dunder_operand_slot(
         op: str, e: TpyBinOp, lt: TpyType | None, rt: TpyType | None,
-        analyzer) -> 'tuple[TpyExpr, TpyType] | None':
+        analyzer) -> "tuple[TpyExpr, 'FunctionInfo', TpyType] | None":
     """A user record compared against a NON-record operand its own comparison
     dunder DECLARES (`__eq__(self, other: str)`), for the spelling sema
     resolves no binop for -- the `!=` C++20 rewrites from `operator==`.
@@ -8180,10 +8185,10 @@ def _record_dunder_operand_slot(
     a spaceship, so the record stays pinned left there (CPython reflects the
     same pair through `Tag.__eq__`).
 
-    Returns the non-record operand paired with that dunder param slot, so the
-    render can thread the slot the way a call arg threads its param (a bytes
-    literal's owned-vs-span spelling is target-driven); None when no dunder
-    admits the pair."""
+    Returns the non-record operand paired with that dunder and its param
+    slot, so the render can thread the slot the way a call arg threads its
+    param (a bytes literal's owned-vs-span spelling is target-driven); None
+    when no dunder admits the pair."""
     recv, other_e, other_t = _record_compare_operand(lt), e.right, rt
     if recv is None and op in ("==", "!="):
         recv, other_e, other_t = _record_compare_operand(rt), e.left, lt
@@ -8215,7 +8220,7 @@ def _record_dunder_operand_slot(
                     and _bytes_compare_operand(other_e, other_t, analyzer))
                 or (_eligible_char(pt)
                     and _char_compare_operand(other_e, other_t, analyzer))):
-            return (other_e, pt)
+            return (other_e, m, pt)
     return None
 
 
@@ -8257,6 +8262,22 @@ def _bytes_param_view_slot(pt: 'TpyType | None') -> 'TpyType | None':
                                     or is_bytes_view_type(pt)):
         return BYTES_FAMILY.view_type
     return None
+
+
+def bytes_literal_view_slot(fi: 'FunctionInfo | None',
+                            slot_t: 'TpyType | None', *,
+                            receiver: bool = False) -> 'TpyType | None':
+    """THE decision whether a `bytes` literal handed to `fi` -- at a
+    parameter bound at `slot_t`, the parameter's type at this call, or as
+    its `receiver` of type `slot_t` -- is read through its view
+    (`_bytes_param_view_slot`: its static storage), or None (rendered
+    owned). The receiver binds `self` as a parameter only of a
+    free-function render (a `{self}` template, a native one)."""
+    if fi is None:
+        return None
+    if receiver and not (fi.cpp_template or fi.native_function):
+        return None
+    return _bytes_param_view_slot(slot_t)
 
 
 def _optional_narrow_facts_ok(facts: dict[str, TpyType],
@@ -11028,9 +11049,9 @@ def base_part_receiver_type(e: TpyMethodCall) -> 'TpyType | None':
 
 def call_dispatch_type(e: TpyMethodCall) -> 'TpyType | None':
     """The type method call `e` runs on where it is not its written
-    receiver's: the type a Deref chain reaches (`deref_receiver_type`), else
+    receiver's: the type a Deref chain reaches (`method_owner_type`), else
     the base part a `super()` call to a bodyless method runs on."""
-    return e.deref_receiver_type or base_part_receiver_type(e)
+    return method_owner_type(e, None) or base_part_receiver_type(e)
 
 def _plain_member_call_markers_ok(e: TpyMethodCall, *,
                                   targs_ok: bool = False) -> bool:
@@ -11239,3 +11260,38 @@ def _inst_slice_arg_ok(arg: 'TpyExpr', analyzer) -> bool:
     sb = unwrap_readonly(unwrap_ref_type(
         unwrap_send_sync(analyzer.get_expr_type(arg))))
     return is_list(sb) or is_span(sb)
+
+
+def resolved_loop_elem_type(stmt: TpyForEach, analyzer) -> 'TpyType | None':
+    """The element type a for statement binds its variable to, resolved
+    as the lowering spells it."""
+    # resolve_int_literals: a literal-seeded container's elem_type is still
+    # IntLiteral (IntLiteralType.to_cpp() would emit the VALUE), so the loop
+    # binding needs the resolved default-int spelling -- a list literal
+    # written as the iterable, or a module-level one; a function-local
+    # list's element is its cells' settled type. A str/bytes loop var
+    # (list[str] element / owned-str dict key / a bytes-yielding iterator)
+    # resolves its pending view type the same way, matching the lowering's
+    # `et`.
+    if stmt.elem_type is None:
+        return None
+    et = resolve_int_literals(unwrap_ref_type(stmt.elem_type),
+                              analyzer.ctx.default_int_for_literal)
+    view_et = _resolved_viewfam_value(et, analyzer)
+    return view_et if view_et is not None else et
+
+
+def for_consuming_shape(stmt: TpyForEach, analyzer) -> bool:
+    """The part of the consuming route (`_for_consuming_route`) the
+    statement's own facts decide: everything but whether the body already
+    declares its variable."""
+    if not for_hands_source_over(stmt):
+        return False
+    if (stmt.is_async or stmt.enum_iterable is not None
+            or stmt.hoist_loop_var):
+        return False
+    if analyzer.if_branch_decls.get(stmt):
+        return False
+    return _for_each_elem_binding_ok(resolved_loop_elem_type(stmt, analyzer))
+
+

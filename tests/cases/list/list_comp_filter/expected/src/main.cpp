@@ -100,8 +100,7 @@ void main() {
         for (; __beg_4 != __end_4; ++__beg_4) {
             int32_t x = *__beg_4;
             if ((x > 3)) {
-                Probe __tmp_1 = Probe(x);
-                if (::tpyapp::main::keep(__tmp_1)) {
+                if (::tpyapp::main::keep(Probe(x))) {
                     __result.push_back(x);
                 }
             }

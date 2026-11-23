@@ -22,8 +22,7 @@ int32_t f(const std::vector<int32_t>& xs) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            Box<int32_t> __tmp_1 = ::tpyapp::main::wrap<int32_t>(1);
-            if (::tpyapp::main::ok(__tmp_1)) {
+            if (::tpyapp::main::ok(::tpyapp::main::wrap<int32_t>(1))) {
                 __result.push_back(x);
             }
         }
@@ -35,8 +34,7 @@ int32_t f(const std::vector<int32_t>& xs) {
 // def main() -> None:
 //     print(f([1, 2, 3]))
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << ::tpyapp::main::f(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f({1, 2, 3}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

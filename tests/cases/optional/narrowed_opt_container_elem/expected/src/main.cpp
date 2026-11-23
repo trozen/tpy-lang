@@ -546,8 +546,7 @@ void main() {
     ::tpyapp::main::elif_form();
     ::tpyapp::main::else_form();
     ::tpyapp::main::while_form();
-    ::tpy::ordered_map<std::string, std::vector<int32_t>> __tmp_1 = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"o", {1, 2}}});
-    ::tpyapp::main::early_return(&(__tmp_1));
+    ::tpyapp::main::early_return(&::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::vector<int32_t>>({{"o", {1, 2}}})));
     ::tpyapp::main::early_return(nullptr);
     ::tpyapp::main::assert_form();
     ::tpyapp::main::and_form();

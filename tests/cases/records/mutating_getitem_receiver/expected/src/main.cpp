@@ -299,11 +299,10 @@ void main() {
     std::cout << "generic:" << " " << ::tpyapp::main::generic(g, "x") << " " << ::tpy::__len__(g.data) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::generic_alias(g);
     PtRows r = PtRows();
-    std::vector<int32_t> __tmp_1 = {1, 3};
-    std::cout << "comprehension:" << " " << ::tpy::ListPrinter(::tpyapp::main::comprehension(r, __tmp_1)) << " " << ::tpy::__len__(r.ps) << "\n" << ::tpy::check_signals;
+    std::cout << "comprehension:" << " " << ::tpy::ListPrinter(::tpyapp::main::comprehension(r, {1, 3})) << " " << ::tpy::__len__(r.ps) << "\n" << ::tpy::check_signals;
     {
-        std::vector<std::string> __tmp_2 = {"w1", "w2"};
-        auto __src_0 = ::tpyapp::main::walk(c, __tmp_2);
+        std::vector<std::string> __tmp_1 = {"w1", "w2"};
+        auto __src_0 = ::tpyapp::main::walk(c, __tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -320,8 +319,7 @@ void main() {
     std::cout << "optional:" << " " << ::tpyapp::main::optional_result(s) << " " << ::tpy::__len__(s.ps) << "\n" << ::tpy::check_signals;
     Tally t = Tally();
     std::cout << "protocol:" << " " << ::tpyapp::main::protocol_param(t, 3) << " " << ::tpy::__len__(t.xs) << "\n" << ::tpy::check_signals;
-    Plain __tmp_3 = Plain();
-    std::cout << "plain:" << " " << ::tpyapp::main::plain_reader(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "plain:" << " " << ::tpyapp::main::plain_reader(Plain()) << "\n" << ::tpy::check_signals;
     Two two = Two();
     std::cout << "overload:" << " " << ::tpyapp::main::int_key(two) << " " << ::tpy::__len__(two.d) << "\n" << ::tpy::check_signals;
     int64_t k64 = 0;

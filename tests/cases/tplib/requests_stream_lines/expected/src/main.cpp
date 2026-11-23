@@ -32,12 +32,10 @@ void lines_chunked() {
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
-    ::tpy::Union<bool, std::string> __tmp_1 = true;
-    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/log", __tmp_1);
+    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/log", ::tpy::Union<bool, std::string>(true));
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n8\r\nalpha\nbe\r\n8\r\nta\ngamma\r\n0\r\n\r\n", 78));
-    ::tpy::Union<bool, std::string> __tmp_2 = true;
-    ::tpystd::tplib::requests::Response r = s.get("http://api.test/log", nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, true);
+    ::tpystd::tplib::requests::Response r = s.get("http://api.test/log", nullptr, nullptr, std::nullopt, true, ::tpy::Union<bool, std::string>(true), nullptr, true);
     {
         auto __src_0 = r.iter_lines();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -79,12 +77,10 @@ void lines_trailing_newline() {
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
-    ::tpy::Union<bool, std::string> __tmp_1 = true;
-    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/log2", __tmp_1);
+    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/log2", ::tpy::Union<bool, std::string>(true));
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 8\r\n\r\none\ntwo\n", 46));
-    ::tpy::Union<bool, std::string> __tmp_2 = true;
-    ::tpystd::tplib::requests::Response r = s.get("http://api.test/log2", nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, true);
+    ::tpystd::tplib::requests::Response r = s.get("http://api.test/log2", nullptr, nullptr, std::nullopt, true, ::tpy::Union<bool, std::string>(true), nullptr, true);
     std::vector<std::string> lines = std::vector<std::string>{};
     {
         auto __src_0 = r.iter_lines();
@@ -133,12 +129,10 @@ void lines_crlf() {
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
-    ::tpy::Union<bool, std::string> __tmp_1 = true;
-    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/log3", __tmp_1);
+    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/log3", ::tpy::Union<bool, std::string>(true));
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 20\r\n\r\nalpha\r\nbeta\r\ngamma\r\n", 59));
-    ::tpy::Union<bool, std::string> __tmp_2 = true;
-    ::tpystd::tplib::requests::Response r = s.get("http://api.test/log3", nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, true);
+    ::tpystd::tplib::requests::Response r = s.get("http://api.test/log3", nullptr, nullptr, std::nullopt, true, ::tpy::Union<bool, std::string>(true), nullptr, true);
     {
         auto __src_0 = r.iter_lines();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

@@ -91,8 +91,7 @@ void main() {
     std::array<int32_t, 3> data = {1, 2, 3};
     std::cout << "span" << " " << ::tpyapp::main::from_span(::tpy::as_mut_span(data)) << "\n" << ::tpy::check_signals;
     std::cout << "array" << " " << ::tpyapp::main::from_array() << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << "borrow" << " " << ::tpyapp::main::from_borrow_call(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "borrow" << " " << ::tpyapp::main::from_borrow_call(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
     std::cout << "method" << " " << Reader("r").count(6) << "\n" << ::tpy::check_signals;
 }
 

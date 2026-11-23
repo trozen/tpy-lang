@@ -296,8 +296,7 @@ void next_fn() {
     std::cout << "next bound" << " " << x.v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump(::tpy::next_or(it, d));
     std::cout << "next default" << " " << d.v << "\n" << ::tpy::check_signals;
-    P __tmp_1 = P(::tpy::BigInt(7));
-    P w = ::tpy::next_or(it, __tmp_1);
+    P w = ::tpy::next_or(it, ::tpy::as_mut_lvalue(P(::tpy::BigInt(7))));
     std::cout << "next fresh" << " " << w.v << "\n" << ::tpy::check_signals;
 }
 
@@ -341,8 +340,7 @@ void next_param(std::vector<P>& ps, P& d) {
 void copy_arg_fn() {
     std::vector<P> ps = {P(::tpy::BigInt(3)), P(::tpy::BigInt(9)), P(::tpy::BigInt(2))};
     ::tpy::BigInt r = ::tpyapp::main::show_v(::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of));
-    P __tmp_1 = P(::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of));
-    ::tpy::BigInt c = ::tpyapp::main::bump_ret(__tmp_1);
+    ::tpy::BigInt c = ::tpyapp::main::bump_ret(::tpy::as_mut_lvalue(P(::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of))));
     P(::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of)).inc();
     std::cout << "explicit copy" << " " << c << " " << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
@@ -356,8 +354,7 @@ void copy_arg_fn() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    P __tmp_2 = ::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of);
-    ::tpy::BigInt w = ::tpyapp::main::bump_ret(__tmp_2);
+    ::tpy::BigInt w = ::tpyapp::main::bump_ret(::tpy::as_mut_lvalue(::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of)));
     std::cout << "arg copy" << " " << r << " " << w << "\n" << ::tpy::check_signals;
 }
 
@@ -423,8 +420,7 @@ void next_positions() {
     };
     inner();
     std::cout << "next closure" << " " << ::tpy::__getitem__(ps, 0).v << " " << d.v << "\n" << ::tpy::check_signals;
-    std::vector<P> __tmp_1 = {P(::tpy::BigInt(3)), P(::tpy::BigInt(8))};
-    std::cout << "own" << " " << ::tpyapp::main::best_own(__tmp_1).v << "\n" << ::tpy::check_signals;
+    std::cout << "own" << " " << ::tpyapp::main::best_own(::tpy::as_mut_lvalue(std::vector<P>{P(::tpy::BigInt(3)), P(::tpy::BigInt(8))})).v << "\n" << ::tpy::check_signals;
 }
 
 
@@ -577,15 +573,12 @@ void main() {
     ::tpyapp::main::rows_fn();
     ::tpyapp::main::next_fn();
     std::vector<P> nps = {P(::tpy::BigInt(1)), P(::tpy::BigInt(2))};
-    P __tmp_1 = P(::tpy::BigInt(0));
-    ::tpyapp::main::next_param(nps, __tmp_1);
+    ::tpyapp::main::next_param(nps, ::tpy::as_mut_lvalue(P(::tpy::BigInt(0))));
     ::tpyapp::main::show("next param", nps);
     ::tpyapp::main::copy_arg_fn();
     ::tpyapp::main::dict_values_fn();
     ::tpyapp::main::projected_fn();
-    auto __tmp_2 = std::array<P, 2>{P(::tpy::BigInt(3)), P(::tpy::BigInt(8))};
-    std::vector<P> __tmp_3 = {P(::tpy::BigInt(4)), P(::tpy::BigInt(6))};
-    std::cout << "generic" << " " << ::tpyapp::main::top_any<P>(__tmp_2).v << " " << ::tpyapp::main::top_list<P>(__tmp_3).v << "\n" << ::tpy::check_signals;
+    std::cout << "generic" << " " << ::tpyapp::main::top_any<P>(std::array<P, 2>{P(::tpy::BigInt(3)), P(::tpy::BigInt(8))}).v << " " << ::tpyapp::main::top_list<P>({P(::tpy::BigInt(4)), P(::tpy::BigInt(6))}).v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::next_positions();
     {
         auto __src_0 = ::tpyapp::main::gen_body(ps);

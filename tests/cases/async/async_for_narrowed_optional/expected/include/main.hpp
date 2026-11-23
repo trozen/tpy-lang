@@ -63,9 +63,7 @@ struct __coro_main_coro {
     bool __cancel_pending;
     ::tpy::BigInt total;
     ::tpy::BigInt v;
-    std::string __coro_arg_1;
     ::tpy::BigInt __await_lift_0;
-    ::tpy::Bytes __coro_arg_0;
     std::optional<__coro_count_chars> __sub_0;
 
     enum : int32_t {

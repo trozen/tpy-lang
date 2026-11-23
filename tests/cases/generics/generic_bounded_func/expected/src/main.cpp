@@ -5,16 +5,18 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
-//     # list[int] satisfies Sized, so inference should work
-//     items = identity([1, 2, 3])
+//     # list[int] satisfies Sized, so inference should work; the result is the
+//     # argument itself, so it is a local (a fresh one lives for its statement)
+//     xs = [1, 2, 3]
+//     items = identity(xs)
 //     print(len(items))  # Should print 3
 //
 //     # str satisfies Sized too
 //     s = identity("hello")
 //     print(len(s))  # Should print 5
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::vector<int32_t>& items = ::tpyapp::main::identity<std::vector<int32_t>>(__tmp_1);
+    std::vector<int32_t> xs = {1, 2, 3};
+    std::vector<int32_t>& items = ::tpyapp::main::identity<std::vector<int32_t>>(xs);
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     std::string s = ::tpyapp::main::identity<std::string>("hello");
     std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;

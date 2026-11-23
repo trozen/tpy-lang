@@ -234,8 +234,7 @@ void main() {
     H h4 = H();
     std::cout << "inst rebound" << " " << ::tpy::__getitem__(::tpyapp::part_builtins::inst_rebound(h4), 0).v << " " << ::tpy::__getitem__(h4.rs, 0).v << "\n" << ::tpy::check_signals;
     ::tpyapp::part_builtins::inst_ternary();
-    H __tmp_1 = H();
-    ::tpyapp::part_builtins::dict_rebound(__tmp_1);
+    ::tpyapp::part_builtins::dict_rebound(::tpy::as_mut_lvalue(H()));
     std::cout << "subclass list" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::part_builtins::mk_sevens())) << "\n" << ::tpy::check_signals;
     std::cout << "subclass sorted" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpyapp::part_builtins::mk_sevens())) << "\n" << ::tpy::check_signals;
 }

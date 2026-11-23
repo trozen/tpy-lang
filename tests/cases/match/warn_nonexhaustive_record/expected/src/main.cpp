@@ -54,16 +54,11 @@ std::string describe_exhaustive(const Point& p) {
 //     print(describe_literal(Point(1, 5)))
 //     print(describe_exhaustive(Point(3, 4)))
 void main() {
-    Point __tmp_1 = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::describe_guarded(__tmp_1) << "\n" << ::tpy::check_signals;
-    Point __tmp_2 = Point(::tpy::BigInt(-1), ::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::describe_guarded(__tmp_2) << "\n" << ::tpy::check_signals;
-    Point __tmp_3 = Point(::tpy::BigInt(0), ::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::describe_literal(__tmp_3) << "\n" << ::tpy::check_signals;
-    Point __tmp_4 = Point(::tpy::BigInt(1), ::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::describe_literal(__tmp_4) << "\n" << ::tpy::check_signals;
-    Point __tmp_5 = Point(::tpy::BigInt(3), ::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::describe_exhaustive(__tmp_5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe_guarded(Point(::tpy::BigInt(1), ::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe_guarded(Point(::tpy::BigInt(-1), ::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe_literal(Point(::tpy::BigInt(0), ::tpy::BigInt(5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe_literal(Point(::tpy::BigInt(1), ::tpy::BigInt(5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe_exhaustive(Point(::tpy::BigInt(3), ::tpy::BigInt(4))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

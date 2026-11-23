@@ -29,8 +29,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_temp_gen::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         i = ((*__for_i_0))++;
-        std::vector<int32_t> __tmp_1 = std::vector<int32_t>{::tpyapp::main::mark("gen", i)};
-        if ((*f).__contains__(&(__tmp_1))) {
+        if ((*f).__contains__(&::tpy::as_mut_lvalue(std::vector<int32_t>{::tpyapp::main::mark("gen", i)}))) {
             __state = S_RESUME_0;
             return i;
         } else {

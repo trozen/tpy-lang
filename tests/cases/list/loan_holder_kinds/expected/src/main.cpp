@@ -274,21 +274,13 @@ void slice_store_holder(std::vector<P>& ps, bool go) {
 //     slice_store_holder([P(1), P(2)], False)
 void main() {
     ::tpyapp::main::comp_in_iterable();
-    std::vector<P> __tmp_1 = {P(1)};
-    std::vector<int32_t> __tmp_2 = {1, 2};
-    ::tpyapp::main::named_like_iterator(__tmp_1, __tmp_2, false);
+    ::tpyapp::main::named_like_iterator(::tpy::as_mut_lvalue(std::vector<P>{P(1)}), {1, 2}, false);
     ::tpyapp::main::generator_alias();
     ::tpyapp::main::named_like_sink(false);
-    std::vector<int32_t> __tmp_3 = {1, 2};
-    Box __tmp_4 = Box();
-    ::tpyapp::main::iterating_wording(__tmp_3, __tmp_4, false);
-    std::vector<std::vector<int32_t>> __tmp_5 = {{1, 2}};
-    std::vector<int32_t> __tmp_6 = {3};
-    ::tpyapp::main::outer_loop_kept(__tmp_5, __tmp_6, false);
-    std::vector<std::vector<int32_t>> __tmp_7 = {{1}, {2, 3}, {}};
-    ::tpyapp::main::distinct_elements(__tmp_7);
-    std::vector<P> __tmp_8 = {P(1), P(2)};
-    ::tpyapp::main::slice_store_holder(__tmp_8, false);
+    ::tpyapp::main::iterating_wording(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), ::tpy::as_mut_lvalue(Box()), false);
+    ::tpyapp::main::outer_loop_kept(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}}), ::tpy::as_mut_lvalue(std::vector<int32_t>{3}), false);
+    ::tpyapp::main::distinct_elements(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1}, {2, 3}, {}}));
+    ::tpyapp::main::slice_store_holder(::tpy::as_mut_lvalue(std::vector<P>{P(1), P(2)}), false);
 }
 
 // main()

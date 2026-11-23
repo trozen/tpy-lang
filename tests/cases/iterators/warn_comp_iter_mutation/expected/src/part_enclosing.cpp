@@ -254,23 +254,14 @@ int32_t rows_for(std::vector<std::vector<int32_t>>& xss, bool big) {
 //     print("rows:", rows([[1, 2], [3]], False))
 //     print("rows_for:", rows_for([[1, 2], [3]], False))
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::vector<int32_t> __tmp_2 = {3};
-    std::cout << "in_for_body:" << " " << ::tpyapp::part_enclosing::in_for_body(__tmp_1, __tmp_2, false) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_3 = {{1, 2}, {3}};
-    std::cout << "enclosing_element_loan:" << " " << ::tpyapp::part_enclosing::enclosing_element_loan(__tmp_3, false) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_4 = {{1, 2}, {3}};
-    std::cout << "enclosing_sibling:" << " " << ::tpyapp::part_enclosing::enclosing_sibling(__tmp_4, false) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_5 = {{1, 2}, {3}};
-    std::cout << "enclosing_unknown_index:" << " " << ::tpyapp::part_enclosing::enclosing_unknown_index(__tmp_5, 1, false) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_6 = {{1, 2}, {3}};
-    std::cout << "for_nest_element:" << " " << ::tpyapp::part_enclosing::for_nest_element(__tmp_6, false) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_7 = {{1, 2}, {3}};
-    std::cout << "for_nest_sibling:" << " " << ::tpyapp::part_enclosing::for_nest_sibling(__tmp_7, false) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_8 = {{1, 2}, {3}};
-    std::cout << "rows:" << " " << ::tpyapp::part_enclosing::rows(__tmp_8, false) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_9 = {{1, 2}, {3}};
-    std::cout << "rows_for:" << " " << ::tpyapp::part_enclosing::rows_for(__tmp_9, false) << "\n" << ::tpy::check_signals;
+    std::cout << "in_for_body:" << " " << ::tpyapp::part_enclosing::in_for_body(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), {3}, false) << "\n" << ::tpy::check_signals;
+    std::cout << "enclosing_element_loan:" << " " << ::tpyapp::part_enclosing::enclosing_element_loan(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}, {3}}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "enclosing_sibling:" << " " << ::tpyapp::part_enclosing::enclosing_sibling(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}, {3}}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "enclosing_unknown_index:" << " " << ::tpyapp::part_enclosing::enclosing_unknown_index(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}, {3}}), 1, false) << "\n" << ::tpy::check_signals;
+    std::cout << "for_nest_element:" << " " << ::tpyapp::part_enclosing::for_nest_element(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}, {3}}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "for_nest_sibling:" << " " << ::tpyapp::part_enclosing::for_nest_sibling(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}, {3}}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "rows:" << " " << ::tpyapp::part_enclosing::rows(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}, {3}}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "rows_for:" << " " << ::tpyapp::part_enclosing::rows_for(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}, {3}}), false) << "\n" << ::tpy::check_signals;
 }
 
 // from fixtures import grow_rows

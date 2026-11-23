@@ -19,11 +19,9 @@ Inner make_inner(int32_t v) {
 //     print(a.x, b.x, c.x, d.x, e.y)
 void main() {
     HolderConst a = HolderConst(Inner(1));
-    Inner __tmp_1 = Inner(2);
-    HolderMut b = HolderMut(__tmp_1);
+    HolderMut b = HolderMut(::tpy::as_mut_lvalue(Inner(2)));
     HolderConst c = HolderConst(::tpyapp::main::make_inner(3));
-    Inner __tmp_2 = ::tpyapp::main::make_inner(4);
-    HolderMut d = HolderMut(__tmp_2);
+    HolderMut d = HolderMut(::tpy::as_mut_lvalue(::tpyapp::main::make_inner(4)));
     Outer e = Outer(HolderConst(Inner(5)));
     std::cout << a.x << " " << b.x << " " << c.x << " " << d.x << " " << e.y << "\n" << ::tpy::check_signals;
 }

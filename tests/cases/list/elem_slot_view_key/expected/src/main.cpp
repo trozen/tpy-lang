@@ -172,9 +172,7 @@ void main() {
     std::cout << ::tpy::__len__(bs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::drop_bytes_param(bs, ::tpy::bytes_literal("a", 1));
     std::cout << ::tpy::__len__(bs) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(bs, 0)) << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_1 = {"", "a"};
-    std::vector<::tpy::Bytes> __tmp_2 = {::tpy::Bytes{}, ::tpy::bytes_literal_owned("a", 1)};
-    ::tpyapp::main::empty_keys(__tmp_1, __tmp_2, "", ::tpy::BytesView{});
+    ::tpyapp::main::empty_keys(::tpy::as_mut_lvalue(std::vector<std::string>{"", "a"}), ::tpy::as_mut_lvalue(std::vector<::tpy::Bytes>{::tpy::Bytes{}, ::tpy::bytes_literal_owned("a", 1)}), "", ::tpy::BytesView{});
     std::cout << ::tpyapp::main::key_len("abcd") << "\n" << ::tpy::check_signals;
 }
 

@@ -1,0 +1,40 @@
+module 6 4
+free 6 3 6
+free repeat 6
+free written 4 2 2 8
+free nested 8
+method 6 6
+method written 4 3
+method receiver 3 3
+ctor Pin 6
+ctor member 6
+ctor Pin 3
+ctor written 3
+ctor after 6 7
+ctor base 5
+ctor base view box-6
+ctor body
+ctor body 12
+gen [6, 2]
+async 10
+comp [6, 7]
+lambda 8
+with 7 4
+try 4
+finally 4
+error_return 8
+match 2
+union overload 1
+union free int
+frame kept [1, 2, 3]
+frame ternary [1, 2, 3]
+own copy [5, 6, 0, 9]
+varargs 3
+opened base-init 2
+opened nested ctor 3
+opened while 1
+opened guard big
+opened tuple 0
+opened return True 0 1
+opened ternary True
+opened lambda chrome1

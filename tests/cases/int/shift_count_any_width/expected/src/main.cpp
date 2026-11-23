@@ -299,8 +299,7 @@ void main() {
     std::vector<int8_t> __tmp_1 = {0, 1, 62};
     std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<uint64_t>>(::tpyapp::main::gen(static_cast<uint64_t>(9223372036854775808ull), __tmp_1))) << "\n" << ::tpy::check_signals;
     std::cout << "async" << " " << static_cast<int>(::tpystd::asyncio::run<int8_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int8_t>>(::tpyapp::main::async_fn(3, 5)))) << "\n" << ::tpy::check_signals;
-    std::vector<int64_t> __tmp_2 = {31, 16, 0};
-    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp(static_cast<uint32_t>(2147483648), __tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp(static_cast<uint32_t>(2147483648), {31, 16, 0})) << "\n" << ::tpy::check_signals;
     std::cout << "closure" << " " << ::tpyapp::main::closure(3, 20) << "\n" << ::tpy::check_signals;
     std::cout << "cm_body" << " " << ::tpyapp::main::cm_body(-1024, 3) << "\n" << ::tpy::check_signals;
     uint8_t tf = ::tpyapp::main::try_finally(3, 6);

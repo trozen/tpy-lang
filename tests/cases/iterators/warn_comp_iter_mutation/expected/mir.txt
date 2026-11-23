@@ -13,7 +13,7 @@ fixtures::Cell.__init__@41:4: covered (storage: no_proof_required), summary: kno
 fixtures::Box.__init__@52:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
 main::free_fn@13:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-main::main@19:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@19:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
 part_bound::__tpy_init: uncovered (module initialization)
 part_bound::element_loan_bound@7:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_bound::unknown_index_bound@17:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
@@ -22,7 +22,7 @@ part_bound::self_named_bound@36:0: covered (storage: no_proof_required), summary
 part_bound::self_named_for@47:0: covered (storage: no_proof_required), summary: known
 part_bound::other_named_bound@57:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_bound::other_named_for@67:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-part_bound::main@77:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+part_bound::main@77:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
 part_enclosing::__tpy_init: uncovered (module initialization)
 part_enclosing::in_for_body@7:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_enclosing::enclosing_element_loan@17:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
@@ -32,7 +32,7 @@ part_enclosing::for_nest_element@42:0: covered (storage: no_proof_required), con
 part_enclosing::for_nest_sibling@53:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_enclosing::rows@64:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_enclosing::rows_for@69:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-part_enclosing::main@78:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+part_enclosing::main@78:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
 part_operands::__tpy_init: uncovered (module initialization)
 part_operands::grow_and_len@7:0: covered (storage: no_proof_required), summary: known
 part_operands::pair@12:0: covered (storage: no_proof_required), summary: known
@@ -45,7 +45,7 @@ part_operands::via_pick@40:0: covered (storage: no_proof_required), conflicts: r
 part_operands::via_pick_for@45:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_operands::nested_places@53:0: covered (storage: no_proof_required), conflicts: replacement, alias_obligation, summary: known
 part_operands::own_argument@58:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-part_operands::borrowed_argument@64:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+part_operands::borrowed_argument@64:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_operands::ternary_arm@69:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 part_operands::range_shadow@75:0: covered (storage: no_proof_required), summary: known
 part_operands::record_element@82:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
@@ -75,20 +75,20 @@ part_positions::main@106:0: uncovered (missing or invalid full-expression storag
 part_positions::Bag.run@18:4: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_positions::Bag.__init__@13:4: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_scope::__tpy_init: uncovered (module initialization)
-part_scope::temp_receiver@8:0: uncovered (temporary needs full-expression boundary), summary: opaque (temporary needs full-expression boundary)
-part_scope::self_named_source@17:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
-part_scope::self_named_nested@28:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
-part_scope::other_named_source@39:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
-part_scope::other_container@48:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-part_scope::other_container_for@53:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-part_scope::param_shadow@61:0: covered (storage: no_proof_required), summary: known
-part_scope::param_shadow_for@67:0: covered (storage: no_proof_required), summary: known
-part_scope::range_bound@77:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
-part_scope::range_bound_for@82:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
-part_scope::after_comp@90:0: covered (storage: no_proof_required), summary: known
-part_scope::range_source@98:0: covered (storage: no_proof_required), summary: known
-part_scope::read_only@103:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
-part_scope::main@108:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_scope::temp_receiver@8:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+part_scope::self_named_source@18:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_scope::self_named_nested@29:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_scope::other_named_source@40:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_scope::other_container@49:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_scope::other_container_for@54:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_scope::param_shadow@62:0: covered (storage: no_proof_required), summary: known
+part_scope::param_shadow_for@68:0: covered (storage: no_proof_required), summary: known
+part_scope::range_bound@78:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+part_scope::range_bound_for@83:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+part_scope::after_comp@91:0: covered (storage: no_proof_required), summary: known
+part_scope::range_source@99:0: covered (storage: no_proof_required), summary: known
+part_scope::read_only@104:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+part_scope::main@109:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 part_unlowered::__tpy_init: uncovered (module initialization)
 part_unlowered::grow_pairs@7:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 part_unlowered::key_first@12:0: uncovered (unsupported metadata: presize_if_sized), summary: opaque (unsupported metadata: presize_if_sized)

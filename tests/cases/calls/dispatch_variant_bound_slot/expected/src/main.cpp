@@ -18,10 +18,8 @@ R mkr() {
 //     print("first-writes:", c.m(R(7)), c.m(mkr()), c.m([2.0]))  # tpyc: ok
 void main() {
     P c = P();
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << "first-reads:" << " " << c.tk2__list_int32(__tmp_1) << "\n" << ::tpy::check_signals;
-    std::vector<double> __tmp_2 = {2.0};
-    std::cout << "first-writes:" << " " << c.m__R(R(7)) << " " << c.m__R(::tpyapp::main::mkr()) << " " << c.m__list_float(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "first-reads:" << " " << c.tk2__list_int32(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "first-writes:" << " " << c.m__R(R(7)) << " " << c.m__R(::tpyapp::main::mkr()) << " " << c.m__list_float(::tpy::as_mut_lvalue(std::vector<double>{2.0})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

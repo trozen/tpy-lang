@@ -9,8 +9,9 @@ namespace tpyapp::main {
 //         print(v)
 void main() {
     {
-        Holder<int32_t> __tmp_1 = Holder<int32_t>({1, 2, 3});
-        auto __src_0 = __tmp_1.walk();
+        std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2, 3};
+        Holder<int32_t> __tmp_2 = Holder<int32_t>(__tmp_1);
+        auto __src_0 = __tmp_2.walk();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

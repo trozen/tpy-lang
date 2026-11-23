@@ -8,7 +8,7 @@ main::mk_set@86:0: covered (storage: no_proof_required), summary: known
 main::mkd@90:0: covered (storage: no_proof_required), summary: known
 main::word@94:0: covered (storage: no_proof_required), summary: known
 main::mk_ba@98:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::gen_adopt@102:0: uncovered (argument held across a suspension)
+main::gen_adopt@102:0: uncovered (unsupported hoisted value)
 main::main@108:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::<genexpr>@178:34: incomplete (suspension: loan of caller storage held across a suspension)
 main::P.__copy__@13:4: uncovered (custom record special member)

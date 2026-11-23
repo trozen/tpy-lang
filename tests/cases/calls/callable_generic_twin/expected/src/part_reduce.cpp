@@ -64,18 +64,16 @@ P add_p(const P& a, const P& b) {
 //     ru = red_u(own_acc, ps, P(10))  # tpyc: warning(/copies P into owned storage/)
 //     print("red-unbounded", ru.x)
 void main() {
-    std::vector<P> __tmp_1 = {P(1), P(2), P(3)};
-    P r = ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<::tpy::own_arg<P>>(own_add2, __tmp_1);
+    P r = ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<::tpy::own_arg<P>>(own_add2, ::tpy::as_mut_lvalue(std::vector<P>{P(1), P(2), P(3)}));
     std::cout << "reduce-own2" << " " << r.x << "\n" << ::tpy::check_signals;
     std::vector<P> ps = {P(1), P(2), P(3)};
     P r2 = ::tpystd::functools::reduce__Fn_U_T_U__list_T__U<P, ::tpy::own_arg<P>>(own_acc, ps, P(10));
     std::cout << "reduce-acc-temp" << " " << r2.x << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = {1, 2, 3};
-    std::cout << "reduce-add" << " " << ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<int32_t>(add, __tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "reduce-add" << " " << ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<int32_t>(add, ::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3})) << "\n" << ::tpy::check_signals;
     std::vector<P> qs = {P(1), P(2)};
     {
-        auto&& __tmp_3 = ::tpystd::functools::reduce__Fn_T_T_T__list_T<P>(bigger, qs);
-        __tmp_3.x = ::tpy::add_check<int32_t>(__tmp_3.x, 100);
+        auto&& __tmp_1 = ::tpystd::functools::reduce__Fn_T_T_T__list_T<P>(bigger, qs);
+        __tmp_1.x = ::tpy::add_check<int32_t>(__tmp_1.x, 100);
     }
     std::cout << "reduce-lend" << " " << ::tpy::__getitem__(qs, 1).x << "\n" << ::tpy::check_signals;
     P s = ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<P>(add_p, qs);

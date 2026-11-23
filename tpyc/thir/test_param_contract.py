@@ -137,7 +137,8 @@ def test_result_borrowing_a_parameter_is_retained(registry) -> None:
     # `first` returns a borrow of parameter 0; parameter 1 is only read.
     fi = _fn(registry, "first")
     assert 0 in fi.root.return_borrows_from
-    assert param_contract(fi, 0, fi.params[0].type).retention is Retention.MEASURED
+    assert param_contract(fi, 0, fi.params[0].type).retention == (
+        Retention.MEASURED | Retention.MEASURED_RESULT)
     assert param_contract(fi, 1, fi.params[1].type).retention is None
 
 

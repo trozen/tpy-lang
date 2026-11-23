@@ -628,17 +628,14 @@ void main() {
     std::cout << "genexpr-param" << " " << ::tpyapp::main::genexpr_param(std::tuple<Box, Box*>{Box(20), &(b)}) << " " << b.n << "\n" << ::tpy::check_signals;
     std::cout << "genexpr-local" << " " << ::tpyapp::main::genexpr_local(b) << " " << b.n << "\n" << ::tpy::check_signals;
     std::cout << "operator" << " " << ((Adder(30)) - (Tok(4))) << "\n" << ::tpy::check_signals;
-    ::tpy::Adapter<Taker, TakerImpl> __tmp_1{TakerImpl(40)};
-    std::cout << "adapter" << " " << ::tpyapp::main::use_taker(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "adapter" << " " << ::tpyapp::main::use_taker(::tpy::as_mut_lvalue(::tpy::Adapter<Taker, TakerImpl>{TakerImpl(40)})) << "\n" << ::tpy::check_signals;
     Init ini = Init(std::tuple<Tok, Box*>{Tok(21), &(b)}, std::tuple<Tok, Tok>{Tok(22), Tok(23)});
     std::cout << "member-init" << " " << ini.n << " " << ini.m << " " << b.n << "\n" << ::tpy::check_signals;
     Slot sl = Slot();
     sl.put(std::tuple<Box, const Box*>{Box(24), &(b)});
     std::cout << "field-write" << " " << std::get<0>(sl.pair).n << " " << std::get<1>(sl.pair).n << "\n" << ::tpy::check_signals;
-    Box __tmp_2 = Box(3);
-    std::cout << "borrow-local" << " " << ::tpyapp::main::borrow_local(__tmp_2, b) << " " << b.n << "\n" << ::tpy::check_signals;
-    Box __tmp_3 = Box(4);
-    auto rt = ::tpyapp::main::borrow_local_return(__tmp_3, b);
+    std::cout << "borrow-local" << " " << ::tpyapp::main::borrow_local(::tpy::as_mut_lvalue(Box(3)), b) << " " << b.n << "\n" << ::tpy::check_signals;
+    auto rt = ::tpyapp::main::borrow_local_return(::tpy::as_mut_lvalue(Box(4)), b);
     std::get<1>(rt)->n = ::tpy::add_check<int32_t>(std::get<1>(rt)->n, 1);
     std::cout << "borrow-local-return" << " " << std::get<0>(rt).n << " " << b.n << "\n" << ::tpy::check_signals;
 }

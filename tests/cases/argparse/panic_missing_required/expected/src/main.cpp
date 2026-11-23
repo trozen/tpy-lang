@@ -10,8 +10,7 @@ namespace tpyapp::main {
 //     parser.parse_args([])
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = std::vector<std::string>{};
-    ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    ::tpyapp::main::__tpy_builder_argparse_parse_1(std::vector<std::string>{});
     return 0;
 }
 

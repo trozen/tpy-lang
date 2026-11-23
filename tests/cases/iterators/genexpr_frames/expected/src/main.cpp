@@ -2924,10 +2924,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_63_frame::__next__()
     }
     while ((*__for_i_0) < (*__for_stop_0)) {
         i = ((*__for_i_0))++;
-        Node __tmp_1 = Node(i);
-        if ((::tpyapp::main::score(__tmp_1) > 0)) {
-            Node __tmp_2 = Node(i);
-            return ::tpyapp::main::score(__tmp_2);
+        if ((::tpyapp::main::score(Node(i)) > 0)) {
+            return ::tpyapp::main::score(Node(i));
         }
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -4348,15 +4346,14 @@ void main() {
     }
     std::cout << "enclosing_loop_var" << " " << t << "\n" << ::tpy::check_signals;
     std::cout << "walrus" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_48(xs)) << "\n" << ::tpy::check_signals;
-    std::vector<double> __tmp_3 = {1.5, 2.5};
-    std::cout << "generic" << " " << ::tpy::print_bool(::tpyapp::main::first_big<int32_t>(xs, 2)) << " " << ::tpy::print_bool(::tpyapp::main::first_big<double>(__tmp_3, 3.0)) << "\n" << ::tpy::check_signals;
+    std::cout << "generic" << " " << ::tpy::print_bool(::tpyapp::main::first_big<int32_t>(xs, 2)) << " " << ::tpy::print_bool(::tpyapp::main::first_big<double>({1.5, 2.5}, 3.0)) << "\n" << ::tpy::check_signals;
     std::cout << "narrowed" << " " << ::tpyapp::main::narrowed(xs, 2) << " " << ::tpyapp::main::narrowed(xs, std::nullopt) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::narrowed_rebound(xs, 2);
     Acc acc = Acc(xs);
     std::cout << "ctor_init" << " " << acc.t << " " << "method" << " " << acc.tot() << "\n" << ::tpy::check_signals;
     int32_t m2 = 10;
-    auto __tmp_4 = ::tpyapp::main::__genexpr_main_49(xs, m2);
-    auto kept_gen = ::tpyapp::main::relay(__tmp_4);
+    auto __tmp_3 = ::tpyapp::main::__genexpr_main_49(xs, m2);
+    auto kept_gen = ::tpyapp::main::relay(__tmp_3);
     auto& __src_12 = kept_gen;
     auto&& __itr_12 = ::tpy::__iter__(__src_12);
     for (;;) {

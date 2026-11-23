@@ -298,8 +298,7 @@ void main() {
     ::tpyapp::main::dict_items_literal();
     ::tpyapp::main::static_method();
     ::tpyapp::main::module_qualified();
-    Maker __tmp_1 = Maker();
-    ::tpyapp::main::protocol_generic<Maker>(__tmp_1);
+    ::tpyapp::main::protocol_generic<Maker>(::tpy::as_mut_lvalue(Maker()));
     ::tpyapp::main::record_elem();
     ::tpyapp::main::nocopy_elem();
 }

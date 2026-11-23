@@ -169,22 +169,14 @@ void match_arm(::tpyapp::fixtures::H& h, int32_t k) {
 //     error_return_body(H())
 //     match_arm(H(), 1)
 void main() {
-    ::tpyapp::fixtures::H __tmp_1 = ::tpyapp::fixtures::H();
-    ::tpyapp::part_positions::loop_clobber(__tmp_1);
-    ::tpyapp::fixtures::H __tmp_2 = ::tpyapp::fixtures::H();
-    M().run(__tmp_2);
-    ::tpyapp::fixtures::H __tmp_3 = ::tpyapp::fixtures::H();
-    (void)(C(__tmp_3));
-    ::tpyapp::fixtures::H __tmp_4 = ::tpyapp::fixtures::H();
-    ::tpyapp::part_positions::closure(__tmp_4);
-    ::tpyapp::fixtures::H __tmp_5 = ::tpyapp::fixtures::H();
-    ::tpyapp::part_positions::with_body(__tmp_5);
-    ::tpyapp::fixtures::H __tmp_6 = ::tpyapp::fixtures::H();
-    ::tpyapp::part_positions::try_finally(__tmp_6);
-    ::tpyapp::fixtures::H __tmp_7 = ::tpyapp::fixtures::H();
-    ::tpyapp::part_positions::error_return_body(__tmp_7);
-    ::tpyapp::fixtures::H __tmp_8 = ::tpyapp::fixtures::H();
-    ::tpyapp::part_positions::match_arm(__tmp_8, 1);
+    ::tpyapp::part_positions::loop_clobber(::tpy::as_mut_lvalue(::tpyapp::fixtures::H()));
+    M().run(::tpy::as_mut_lvalue(::tpyapp::fixtures::H()));
+    (void)(C(::tpy::as_mut_lvalue(::tpyapp::fixtures::H())));
+    ::tpyapp::part_positions::closure(::tpy::as_mut_lvalue(::tpyapp::fixtures::H()));
+    ::tpyapp::part_positions::with_body(::tpy::as_mut_lvalue(::tpyapp::fixtures::H()));
+    ::tpyapp::part_positions::try_finally(::tpy::as_mut_lvalue(::tpyapp::fixtures::H()));
+    ::tpyapp::part_positions::error_return_body(::tpy::as_mut_lvalue(::tpyapp::fixtures::H()));
+    ::tpyapp::part_positions::match_arm(::tpy::as_mut_lvalue(::tpyapp::fixtures::H()), 1);
 }
 
 // from fixtures import A, Ctx, Err, H

@@ -33,8 +33,7 @@ void bump(::tpy::Union<A*, B*> p, Holder& h, bool c) {
 //     if isinstance(pet, B):
 //         print(pet.y)             # 107 -- visible on the field
 void main() {
-    B __tmp_1 = B(::tpy::BigInt(7));
-    Holder h = Holder(::tpy::Union<const A*, const B*>{&__tmp_1});
+    Holder h = Holder(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(7))))});
     A param = A(::tpy::BigInt(3));
     ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(param)}, h, true);
     std::cout << param.x << "\n" << ::tpy::check_signals;

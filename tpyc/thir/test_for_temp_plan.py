@@ -11,7 +11,7 @@ from .temp_plan import prepare_temporaries, validate_plan
 from .testutil import _compile, _entry
 
 
-SOURCE = '''from tpy import int32, nocopy, Array, readonly
+SOURCE = '''from tpy import int32, nocopy, Array, readonly, Own
 
 @nocopy
 class Cell:
@@ -19,35 +19,39 @@ class Cell:
     def __init__(self, value: int32):
         self.value = value
 
-def read(cell: Cell) -> int32:
-    return cell.value
+# An owned parameter's copy of a live name is the argument temporary every
+# position holds (a fresh argument binds inline).
+NAME = "n"
 
-def positive(cell: Cell) -> bool:
-    return cell.value > 0
+def read(text: Own[str]) -> int32:
+    return len(text)
+
+def positive(text: Own[str]) -> bool:
+    return len(text) > 0
 
 def ranges(n: int32, flag: bool) -> int32:
     result = 0
     for i in range(n):
-        result = read(Cell(i)) if flag else read(Cell(0))
+        result = read(NAME) if flag else read(NAME)
         flag = not flag
     else:
-        result = read(Cell(result))
+        result = read(NAME)
     return result
 
 def descending(n: int32) -> int32:
     last = 42
     for last in range(n, 0, -1):
-        if positive(Cell(last)):
+        if positive(NAME):
             continue
         break
     else:
-        last = read(Cell(7))
+        last = read(NAME)
     return last
 
 def written(start: int32, stop: int32) -> int32:
     last = 42
     for i in range(start, stop):
-        last = read(Cell(i))
+        last = read(NAME)
         start = 99
         stop = 99
         i = 88
@@ -56,15 +60,15 @@ def written(start: int32, stop: int32) -> int32:
 def native(values: list[int32], flag: bool) -> int32:
     result = 0
     for value in values:
-        result = read(Cell(value)) if flag else 0
+        result = read(NAME) if flag else 0
     else:
-        result = read(Cell(result))
+        result = read(NAME)
     return result
 
 def records(values: list[Cell], n: int32) -> int32:
     result = 0
     for cell in values:
-        cell.value = read(Cell(n))
+        cell.value = read(NAME)
         result = cell.value
     return result
 
@@ -72,53 +76,53 @@ def readonly_records(values: readonly[list[Cell]], n: int32) -> int32:
     result = 0
     for cell in values:
         value = cell.value
-        result = read(Cell(value))
+        result = read(NAME)
     return result
 
 def array(values: Array[int32, 2]) -> int32:
     result = 0
     for value in values:
-        result = read(Cell(value))
+        result = read(NAME)
     return result
 
 def keys(values: dict[int32, int32]) -> int32:
     result = 0
     for value in values:
-        result = read(Cell(value))
+        result = read(NAME)
     return result
 
 def members(values: set[int32]) -> int32:
     result = 0
     for value in values:
-        result = read(Cell(value))
+        result = read(NAME)
     return result
 
 def nested(values: list[int32], n: int32, skip: bool) -> int32:
     result = 0
     for value in values:
         for i in range(n):
-            while positive(Cell(i)):
-                result = read(Cell(value))
+            while positive(NAME):
+                result = read(NAME)
                 break
         else:
-            result = read(Cell(value))
+            result = read(NAME)
             if skip:
                 continue
             break
         result = 99
     else:
-        result = read(Cell(7))
+        result = read(NAME)
     return result
 
 def early(n: int32, take: bool) -> int32:
     for i in range(n):
         if take:
-            return read(Cell(i))
-        if positive(Cell(i)):
+            return read(NAME)
+        if positive(NAME):
             break
         continue
     else:
-        return read(Cell(7))
+        return read(NAME)
     return 9
 
 class Runner:
@@ -126,11 +130,11 @@ class Runner:
     def __init__(self, n: int32):
         self.result = 0
         for i in range(n):
-            self.result = read(Cell(i))
+            self.result = read(NAME)
     def method(self, values: list[int32]) -> int32:
         result = 0
         for value in values:
-            result = read(Cell(value))
+            result = read(NAME)
         return result
 '''
 
@@ -215,10 +219,23 @@ def test_unhandled_native_metadata_leaves_body_unplanned(
     assert prepare_temporaries((replace(loop, **{field: value}),)) is None
 
 
-def test_native_head_arguments_leave_body_unplanned(functions: dict[str, th.THIRFunction]) -> None:
+def test_native_head_arguments_open_a_head_scope(functions: dict[str, th.THIRFunction]) -> None:
+    # A temporary of the loop's head lives until the statement ends: it is
+    # declared at the loop in a scope of its own, which the loop's body and
+    # else nest in.
     loop = functions["native"].body[1]
-    damaged = replace(loop, iterable=loop.body[0].value.then, body=(), orelse=())
-    assert prepare_temporaries((damaged,)) is None
+    headed = replace(loop, iterable=loop.body[0].value.then, body=(), orelse=loop.orelse,
+                     head_scope=True)
+    # The scope is the lowering's decision: a head declaring a temporary it
+    # was not given a scope for leaves the body unplanned.
+    assert prepare_temporaries((replace(headed, head_scope=False),)) is None
+    plan = prepare_temporaries((headed,))
+    assert plan is not None
+    head = plan.scope(headed, "head")
+    assert head is not None and plan.scopes[head].parent == 0
+    first = plan.placements[0]
+    assert first.declaration is headed and first.scope == head
+    assert plan.scopes[plan.scope(headed, "else")].parent == head
 
 
 def test_explicit_range_step_leaves_body_unplanned(functions: dict[str, th.THIRFunction]) -> None:

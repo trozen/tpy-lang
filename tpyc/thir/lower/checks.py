@@ -104,13 +104,14 @@ from ...typesys import (
 )
 from ...coercions import CoercionContext
 from ...modules.type_resolution import is_native_iterable, owning_element_slot
-from ...sema.call_lends import Retention
+from ...sema.call_lends import Retention, separate_iterator_record_temp
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...sema.alias_rebind import bare_tuple
 from ...sema.source_records import Disposition, moves_place, verdict
-from ..param_contract import arg_retention, const_ref_slot, param_const, protocol_slot
+from ..param_contract import arg_retention, param_const, protocol_slot
 from ...storage_trace import MEMBER_PATH, path_root
 from ...type_def_registry import (
+    is_borrowing_view_type,
     is_varargs,
     type_def_of,
     enum_info_of, is_value_text_enum_type,
@@ -144,13 +145,13 @@ from ...sema.dyn_erasure import (DynSlotEntry, classify_dyn_own_arg,
                                  resolve_own_source_type)
 from ...value_category import (
     call_hands_back_value, call_result_holdable, call_result_is_reference,
-    call_result_live_in_statement, call_returns_cpp_ref,
-    is_rvalue_source,
+    call_returns_cpp_ref, frame_receiver_temp,
+    is_lvalue_iterable, is_rvalue_source,
     property_getter_of, origin_shared,
 )
+from ...codegen_cpp.protocols import dynamic_base_name
 from ...codegen_cpp.context import (
     escape_cpp_name,
-    is_lvalue_iterable,
     free_callee_cpp,
     imported_free_callee_cpp,
     module_qualified_callee_cpp,
@@ -4751,8 +4752,7 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
 
 
 def _record_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
-                            analyzer, *, frame_capturing: bool = False,
-                            const_slot: bool = False) -> bool:
+                            analyzer, *, frame_capturing: bool = False) -> bool:
     """A borrow-returning call arg at a record ref slot
     (`bump(find_first(pts))` / `bump(holder.get())` -- the T&-returning
     call binds the ref param directly, no temp): the call's F1-record
@@ -4768,16 +4768,13 @@ def _record_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
     at = analyzer.get_expr_type(a)
     atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
            if at is not None else None)
-    # A result live for the whole statement binds in place too -- but not
-    # in a frame, which keeps the argument past the statement and so is an
-    # owning sink (`record_rvalue_temp_factory` hoists the copy), and a
-    # copy the callee hands back only at a CONST slot: a mutable one takes
-    # the statement temporary of the rvalue rows.
-    live = (call_result_live_in_statement(analyzer, a) if const_slot
-            else call_result_is_reference(analyzer, a))
+    # A reference result binds in place too -- but not in a frame, which
+    # keeps the argument past the statement and so is an owning sink
+    # (`record_rvalue_temp_factory` hoists the copy).
     return (atu == slot
             and (not is_rvalue_source(analyzer, a)
-                 or (not frame_capturing and live)))
+                 or (not frame_capturing
+                     and call_result_is_reference(analyzer, a))))
 
 
 def _recursive_union_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -5197,7 +5194,8 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
                           storage_tuple_locals: 'AbstractSet[str]'
                           = frozenset(),
                           overload=None,
-                          retains: 'Retention | None') -> bool:
+                          retains: 'Retention | None',
+                          frame_taken: bool = False) -> bool:
     """The generic free-callee family's arg rows, decided against the
     SUBSTITUTED slot -- which is why the sink is handed `resolved` as its
     slot and keeps the unsubstituted one as `open_ptype`.
@@ -5211,7 +5209,8 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
                   param_names=param_names, narrowed=narrowed,
                   temps_ok=temps_ok,
                   storage_tuple_locals=storage_tuple_locals,
-                  open_ptype=ptype, overload=overload, retains=retains)
+                  open_ptype=ptype, overload=overload, retains=retains,
+                  frame_taken=frame_taken)
 
 
 def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -5664,11 +5663,8 @@ def _native_record_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
     rt = analyzer.get_expr_type(a)
     rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
            if rt is not None else None)
-    # A borrow-declared call stamped a fresh value is a reference live for
-    # the statement too (`str(min(a, P(0), key=f))`).
     return (_f1_record(rtu, analyzer)
-            and (not is_rvalue_source(analyzer, a)
-                 or call_result_live_in_statement(analyzer, a))
+            and not is_rvalue_source(analyzer, a)
             and bool(_witness("call.native_record_borrow_arg")))
 
 def _native_value_call_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -5880,9 +5876,10 @@ def _slice_ctor_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     return (_slice_object_type(analyzer.get_expr_type(a))
             and fi is not None and fi.is_method and fi.name == "__init__")
 
+
 def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
                        locals_: dict[str, TpyType], analyzer, *,
-                       temps_ok: bool) -> bool:
+                       temps_ok: bool, frame_taken: bool = False) -> bool:
     """An arg crossing into a protocol param slot -- the structural and
     @dynamic protocol pre-arms of the plain call loop, reduced to the
     two arg shapes whose wrap `_protocol_arg_temp` spells: a bare in-scope NAME
@@ -5951,12 +5948,22 @@ def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
         return temps_ok
     elif isinstance(a, TpyStrLiteral) and not is_dyn_protocol(proto):
         # A str LITERAL at a STRUCTURAL slot (`count_chars("hello")` at
-        # `Iterable[char]`): the same un-spelled auto temp, binding the raw
-        # `const char[N]` the protocol deduces on -- NOT the string_view the
+        # `Iterable[char]`): the same un-spelled auto temp, binding the
+        # decayed literal the protocol deduces on -- NOT the string_view the
         # spelled temp would give, so it takes the direct row rather than
         # `_protocol_arg_temp`. The @dynamic exclusion matches the sibling
         # arms but has no constructible witness: sema rejects a str at a
         # @dynamic slot for non-conformance before lowering sees it.
+        return temps_ok and _witness("argtemp.protocol")
+    elif (frame_taken and not is_dyn_protocol(proto)
+          and is_rvalue_source(analyzer, a)
+          and not is_borrowing_view_type(unwrap_readonly(unwrap_ref_type(
+              unwrap_send_sync(at))))):
+        # A fresh value (an f-string, a list repeat, a select of fresh
+        # lists) handed to a coroutine or generator call the keep plan has
+        # the frame hold with what it borrows (`frame_taken`): its seat
+        # takes the value itself, whatever the protocol's type arguments.
+        # A view of a fresh value (a slice) would dangle.
         return temps_ok and _witness("argtemp.protocol")
     elif (isinstance(a, TpySubscript) and not is_dyn_protocol(proto)
           and _record_getitem_rvalue_arg(a, analyzer)):
@@ -5980,6 +5987,11 @@ def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
         if not _container_literal_shape_ok(a, unwrap_readonly(
                 unwrap_ref_type(unwrap_send_sync(at_res))), analyzer):
             return False
+        rvalue = True
+    elif (not is_dyn_protocol(proto)
+          and _comp_own_container(a, analyzer) is not None):
+        # A container comprehension into a STRUCTURAL slot: the literal's
+        # twin, a fresh container the same un-spelled temp holds.
         rvalue = True
     else:
         return False
@@ -8310,9 +8322,10 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
         # the view arm gates the method itself.
         return _witness("method.recv.str_literal")
     if isinstance(recv, TpyBytesLiteral):
-        # The bytes twin (`b"a,b,c".split(b",")`): the receiver renders
-        # OWNED (`::tpy::bytes_literal_owned`), the `{self}` substitution
-        # the slice arm already spells; the view family gates the method.
+        # The bytes twin (`b"a,b,c".split(b",")`): the receiver reads its
+        # static storage where the method's `{self}` takes a view
+        # (`bytes_literal_view_slot`), else renders owned; the view family
+        # gates the method.
         return _witness("method.recv.bytes_literal")
     if isinstance(recv, TpyFString):
         # An f-string receiver (`f"<p>{n}</p>".encode()`): the interpolation
@@ -9777,14 +9790,15 @@ def _stub_method_arg_ok(
         overload=None,
         movable_locals: 'set[str] | frozenset[str]' = frozenset(),
         func_name: 'str | None' = None,
-        retains: 'Retention | None') -> bool:
+        retains: 'Retention | None',
+        frame_taken: bool = False) -> bool:
     """The builtin-stub receivers' call into the one method-arg sink --
     container, bytearray, str/bytes view, scalar, and the ptr-template arm,
     which all render their args through the builtin-stub loop. No resolved
     overload and no flush slot to thread, which is the whole difference from
     the record entry (`_record_method_arg_ok`); prologue + rows:
-    `_METHOD_ARG_SINK`. The position's `temps_ok`, `index` and `overload`
-    are accepted for the uniform family call and dropped
+    `_METHOD_ARG_SINK`. The position's `temps_ok`, `index`, `overload` and
+    `frame_taken` are accepted for the uniform family call and dropped
     (BUGS.md#stub-value-union-insert-rejects); `retains` is the retention
     verdict the render takes too (`arg_retention`).
 
@@ -10151,7 +10165,8 @@ def _method_call_arg_ok(
         tparam_bounds: 'dict | None' = None,
         movable_locals: 'set[str] | frozenset[str]' = frozenset(),
         func_name: 'str | None' = None,
-        retains: 'Retention | None') -> bool:
+        retains: 'Retention | None',
+        frame_taken: bool = False) -> bool:
     if isinstance(a, TpyGeneratorExpression):
         # A genexpr arg renders its frame creation in place at any method
         # slot (`", ".join(str(x) for x in nums)` -- the render is
@@ -10174,7 +10189,7 @@ def _method_call_arg_ok(
                           temps_ok=temps_ok, index=index,
                           overload=call.fi,
                           movable_locals=movable_locals, func_name=func_name,
-                          retains=retains)
+                          retains=retains, frame_taken=frame_taken)
 
     if recv_type is not None and recv_type.is_pointer():
         # The ptr-template arm's args (`p.span(n)`): scalar positional
@@ -10242,7 +10257,8 @@ def _method_call_arg_ok(
         temps_ok=temps_ok, narrowed=narrowed, param_names=param_names,
         frame_capturing=(mfi is not None
                          and (mfi.is_generator or mfi.is_async)),
-        movable_locals=movable_locals, func_name=func_name, retains=retains)
+        movable_locals=movable_locals, func_name=func_name, retains=retains,
+        frame_taken=frame_taken)
 
 def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
                                    analyzer, *, stmt_position: bool,
@@ -10518,6 +10534,51 @@ def _r_tuple_literal(req: _ArgReq) -> bool:
     return _tuple_literal_arg(req.a, req.ptype)
 
 
+def _async_factory_wrap_cpp_facts(e: 'TpyName', target: 'TpyType | None',
+                                  analyzer) -> 'str | None':
+    """`_async_factory_wrap_cpp` over the analyzer alone -- the lowering
+    context was the only thing it needed one for, and the arg table carries
+    discrete facts rather than the context."""
+    fi = e.function_ref_info
+    if fi is None or not fi.is_async:
+        return None
+    if (e.function_ref_type_args or fi.native_function or fi.type_params
+            or fi.linkage != FunctionLinkage.DEFAULT):
+        return None
+    if not isinstance(target, CallableType):
+        return None
+    ret = target.return_type
+    if not (isinstance(ret, OwnType) and is_dyn_protocol(ret.wrapped)):
+        return None
+    # The lambda body CALLS the factory, so a bare same-module spelling would
+    # be ADL-visible inside `namespace tpyapp::<mod>`.
+    factory = free_callee_cpp(analyzer.ctx.module_attributes,
+                              analyzer.ctx.module_name,
+                              analyzer.ctx.cpp_module_name, e.name, fi)
+    if factory is None:
+        return None
+    base_cpp = dynamic_base_name(ret.wrapped, analyzer)
+    params = []
+    forwards = []
+    for i, ptype in enumerate(target.param_types):
+        pname = f"__a{i}"
+        params.append(CallableType._callable_param_cpp(ptype) + " " + pname)
+        if isinstance(ptype, OwnType) or not ptype.is_value_type():
+            forwards.append(f"std::move({pname})")
+        else:
+            forwards.append(pname)
+    return (f"[]({', '.join(params)}) -> {ret.to_cpp()} {{ "
+            f"return ::tpy::make_adapter<{base_cpp}>("
+            f"{factory}({', '.join(forwards)})); }}")
+
+
+def _r_async_factory_wrap(req: _ArgReq) -> bool:
+    return (isinstance(req.a, TpyName)
+            and _async_factory_wrap_cpp_facts(
+                req.a, req.analyzer.get_expr_type(req.a),
+                req.analyzer) is not None)
+
+
 def _r_func_ref(req: _ArgReq) -> bool:
     return _func_ref_routable(req.a, req.analyzer)
 
@@ -10572,7 +10633,8 @@ def _r_native_record_borrow_call(req: _ArgReq) -> bool:
 
 def _r_protocol_slot(req: _ArgReq) -> bool:
     return _protocol_slot_arg(req.a, req.ptype, req.locals_, req.analyzer,
-                              temps_ok=req.temps_ok)
+                              temps_ok=req.temps_ok,
+                              frame_taken=req.frame_taken)
 
 
 def _r_native_protocol_tuple_literal(req: _ArgReq) -> bool:
@@ -10903,9 +10965,7 @@ def _r_wrapper_ref_tuple_elem(req: _ArgReq) -> bool:
 
 def _r_record_borrow_call(req: _ArgReq) -> bool:
     return (_record_borrow_call_arg(req.a, req.ptype, req.analyzer,
-                                    frame_capturing=req.frame_capturing,
-                                    const_slot=const_ref_slot(
-                                        req.ptype, req.readonly_target))
+                                    frame_capturing=req.frame_capturing)
             and not (req.mutated_slots and _fresh_value_at_written_slot(req)))
 
 
@@ -11635,6 +11695,10 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         # call site knows the body has.
         _ArgRow("lambda", _r_lambda),
         _ArgRow("func_ref", _r_func_ref),
+        # An async-def NAME at a Callable slot (`run_twice(double, ..)`):
+        # the coroutine-factory wrapper lambda, the name arm's
+        # async_factory_wrap row -- the ctor ladder's row.
+        _ArgRow("async_factory_wrap", _r_async_factory_wrap),
         _ArgRow("callable_value_pass", _r_callable_value_pass),
         # The FIELD twin of the callable-value name pass: a Callable
         # field read binds a callable slot bare (`apply(handler.cb, 10)`
@@ -11855,7 +11919,8 @@ def _protocol_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                             overload=None,
                             movable_locals: 'set[str] | frozenset[str]' = frozenset(),
                             func_name: 'str | None' = None,
-                            retains: 'Retention | None') -> bool:
+                            retains: 'Retention | None',
+                            frame_taken: bool = False) -> bool:
     """The bare-protocol / Own[@dynamic P] receiver family's arg rows.
     Rows: `_PROTOCOL_ARG_SINK`. `overload` is the protocol method's resolved
     fi, passed as the record entry passes its own; no protocol row reads it
@@ -11865,7 +11930,7 @@ def _protocol_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                   param_names=param_names, narrowed=narrowed, temps_ok=temps_ok,
                   index=index, overload=overload,
                   movable_locals=movable_locals, func_name=func_name,
-                  retains=retains)
+                  retains=retains, frame_taken=frame_taken)
 
 
 def method_literal_mangled_cpp(e: TpyMethodCall, analyzer) -> 'str | None':
@@ -12378,7 +12443,8 @@ def _record_method_arg_ok(
         frame_capturing: bool = False,
         movable_locals: 'set[str] | frozenset[str]' = frozenset(),
         func_name: 'str | None' = None,
-        retains: 'Retention | None') -> bool:
+        retains: 'Retention | None',
+        frame_taken: bool = False) -> bool:
     """A user record's method call into the one method-arg sink: the position,
     the resolved overload and the flush slot the signature-reading rows want.
     Prologue + rows: `_METHOD_ARG_SINK`."""
@@ -12387,7 +12453,7 @@ def _record_method_arg_ok(
                   temps_ok=temps_ok, index=index, overload=overload,
                   frame_capturing=frame_capturing,
                   movable_locals=movable_locals, func_name=func_name,
-                  retains=retains)
+                  retains=retains, frame_taken=frame_taken)
 
 
 def _view_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
@@ -12761,59 +12827,10 @@ def _native_iter_combinator(it, analyzer) -> bool:
                                    analyzer.get_expr_type(it))
 
 
-def _self_iterator_record(ri, analyzer) -> bool:
-    """Whether a compiled record is its own iterator: every `__iter__` it
-    declares or inherits returns a REFERENCE to exactly this record. An
-    ancestor's type does not count -- `return self` inherited from a base and
-    `return self.inner` delegating to a base-typed member have the same
-    signature -- and neither does a fresh instance of its own class
-    (`-> Own[Cur]`). The runtime asks the same question of the C++ type
-    (`is_self_iterator_v`, dunder.hpp)."""
-    overloads = analyzer.registry.get_method_overloads_with_parents(
-        ri, "__iter__")
-    if not overloads:
-        return False
-    for fi in overloads:
-        rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-            fi.return_type)))
-        if isinstance(rt, OwnType):
-            return False
-        if analyzer.registry.get_record_for_type(rt) is not ri:
-            return False
-    return True
-
-
-def _separate_iterator_record_temp(a: TpyExpr, analyzer) -> 'TpyType | None':
-    """A TEMPORARY of a compiled record whose `__iter__` returns a separate
-    iterator object: the record type, else None. Its `__iter__` is user code
-    that runs at the combinator call, and the iterator may point into the
-    record, so a combinator that OWNS one is pinned -- the pair cannot move.
-    A self-iterator record, a runtime or @native type and an lvalue are never
-    this kind."""
-    at = analyzer.get_expr_type(a)
-    if at is None:
-        return None
-    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-    if isinstance(at, OwnType):
-        at = unwrap_readonly(at.wrapped)
-    if not isinstance(at, NominalType) or at.is_protocol:
-        return None
-    ri = analyzer.registry.get_record_for_type(at)
-    if ri is None or ri.is_native:
-        return None
-    if not analyzer.registry.get_method_overloads_with_parents(ri, "__iter__"):
-        return None
-    if _self_iterator_record(ri, analyzer):
-        return None
-    if is_lvalue_iterable(a, analyzer.registry.get_record):
-        return None
-    return at
-
-
 def _separate_iterator_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
                                 callee, index: int,
                                 analyzer) -> 'TpyType | None':
-    """A `_separate_iterator_record_temp` worth binding to a local at a
+    """A `separate_iterator_record_temp` worth binding to a local at a
     parameter that adopts its fresh argument (`adopts=`, `zip(Noisy(2),
     xs)`): the record type to declare the local as, else None. Adopted, such
     a record pins the result (the iterator may point into it); bound first,
@@ -12831,7 +12848,7 @@ def _separate_iterator_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
     pb = _protocol_binding(ptype)
     if pb is None or pb.name != "Iterable":
         return None
-    at = _separate_iterator_record_temp(a, analyzer)
+    at = separate_iterator_record_temp(a, analyzer)
     if at is None or not at.is_movable():
         return None
     return at
@@ -12839,10 +12856,10 @@ def _separate_iterator_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
 
 def _combinator_pins_source(it, analyzer) -> bool:
     """Whether the combinator call `it`, lowered where no arg temp can be made
-    (a genexpr's source), OWNS a `_separate_iterator_record_temp` and is
+    (a genexpr's source), OWNS a `separate_iterator_record_temp` and is
     therefore pinned: it cannot be moved, and neither can a closure built
     over it."""
-    return any(_separate_iterator_record_temp(a, analyzer) is not None
+    return any(separate_iterator_record_temp(a, analyzer) is not None
                for a in it.args)
 
 
@@ -12910,21 +12927,10 @@ def gen_recv_ctor_temp(obj: TpyExpr, analyzer) -> bool:
     """A generator-method receiver lifted into a named local
     (`for v in Counter(3).each():` -> `Counter __tmp_N = Counter(..);` +
     `__tmp_N.each()`): the resumable frame / peephole captures the receiver
-    by reference, so a temporary would dangle (the is_temporary lift).
-    Restricted to the witnessed slice: a same-nominal
-    ctor RVALUE whose expansion the ctor rows already render."""
-    if not isinstance(obj, TpyCall):
-        return False
-    fi = obj.resolved_function_info
-    if fi is None or not fi.is_constructor:
-        return False
-    if not is_rvalue_source(analyzer, obj):
-        return False
-    t = analyzer.get_expr_type(obj)
-    if not isinstance(t, NominalType):
-        return False
-    return _ctor_shape_ok(obj, analyzer) or _ctor_instantiation_ok(
-        obj, analyzer)
+    by reference, so a temporary would dangle (the is_temporary lift):
+    sema's constructed-receiver verdict (`frame_receiver_temp`), the one
+    the dangle warnings read."""
+    return frame_receiver_temp(obj, analyzer)
 
 
 def _member_gen_call_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],

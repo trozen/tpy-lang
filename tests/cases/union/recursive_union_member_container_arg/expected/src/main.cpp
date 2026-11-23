@@ -29,8 +29,7 @@ std::string first_kind(const V& v) {
 //     print(first_kind(xs))
 void main() {
     std::vector<V> xs = {1, 2, 3};
-    V __tmp_1 = std::move(xs);
-    std::cout << ::tpyapp::main::first_kind(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_kind(V(std::move(xs))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

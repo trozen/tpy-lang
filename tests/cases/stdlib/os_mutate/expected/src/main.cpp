@@ -84,20 +84,23 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view n = *__beg_0;
-        auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat((::tpy::str_concat(base, "/")), n)), "w");
-        auto& fh = __ctx_1.__enter__();
-        try {
-            fh.write(n);
-            goto __with_exit_1;
-        } catch (::tpy::BaseException& __exc_1) {
-            __ctx_1.__exit__({}, &__exc_1, {});
-            throw;
-        } catch (...) {
+        {
+            ::tpy::String __tmp_1 = (::tpy::str_concat((::tpy::str_concat(base, "/")), n));
+            auto __ctx_1 = ::tpy::builtin_open_mode(__tmp_1, "w");
+            auto& fh = __ctx_1.__enter__();
+            try {
+                fh.write(n);
+                goto __with_exit_1;
+            } catch (::tpy::BaseException& __exc_1) {
+                __ctx_1.__exit__({}, &__exc_1, {});
+                throw;
+            } catch (...) {
+                __ctx_1.__exit__({}, nullptr, {});
+                throw;
+            }
+            __with_exit_1:
             __ctx_1.__exit__({}, nullptr, {});
-            throw;
         }
-        __with_exit_1:
-        __ctx_1.__exit__({}, nullptr, {});
     }
     std::cout << "listdir:" << " " << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir(base))) << "\n" << ::tpy::check_signals;
     ::tpy::stdlib::os::symlink("one.txt", (::tpy::str_concat(base, "/lnk")));

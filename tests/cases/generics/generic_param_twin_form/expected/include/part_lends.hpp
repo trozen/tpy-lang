@@ -210,7 +210,6 @@ __coro_fin_return<T> fin_return(::tpy::param_val_or_ref_t<T> x) {
 struct __coro_co_main {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpyapp::fixtures::V __coro_arg_0{};
     ::tpyapp::fixtures::V ra{};
     std::optional<__coro_fin_return<::tpyapp::fixtures::V>> __sub_0;
 

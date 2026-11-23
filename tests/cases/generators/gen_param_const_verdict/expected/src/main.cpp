@@ -467,13 +467,10 @@ void main() {
     }
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
     std::cout << "views" << " " << ::tpyapp::main::drive_views(d) << "\n" << ::tpy::check_signals;
-    Box __tmp_1 = Box(7, true);
-    std::cout << "match" << " " << ::tpyapp::main::drive_match(__tmp_1) << "\n" << ::tpy::check_signals;
-    Box __tmp_2 = Box(7, false);
-    std::cout << "match none" << " " << ::tpyapp::main::drive_match(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "match" << " " << ::tpyapp::main::drive_match(Box(7, true)) << "\n" << ::tpy::check_signals;
+    std::cout << "match none" << " " << ::tpyapp::main::drive_match(Box(7, false)) << "\n" << ::tpy::check_signals;
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::drive_aro(xs))) << "\n" << ::tpy::check_signals;
-    Bag __tmp_3 = Bag(100);
-    std::cout << "method" << " " << ::tpyapp::main::drive_scan(__tmp_3, xs) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << ::tpyapp::main::drive_scan(Bag(100), xs) << "\n" << ::tpy::check_signals;
 }
 
 

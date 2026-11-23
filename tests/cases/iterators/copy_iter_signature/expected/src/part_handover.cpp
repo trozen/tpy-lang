@@ -41,25 +41,22 @@ std::vector<::tpyapp::fixtures::Cell> mk() {
 //     k = take(ys)  # tpyc: warning(/copies Cell elements/)
 //     print("owning local alias", len(k), len(xs))
 void main() {
-    Cursor __tmp_1 = Cursor(3);
-    std::vector<Token> got = ::tpyapp::part_handover::keep_tokens(::tpyapp::part_handover::identity<Cursor>(__tmp_1));
+    std::vector<Token> got = ::tpyapp::part_handover::keep_tokens(::tpyapp::part_handover::identity<Cursor>(::tpy::as_mut_lvalue(Cursor(3))));
     std::cout << "identity cursor" << " " << ::tpy::__len__(got) << " " << ::tpy::__getitem__(got, 0).v << "\n" << ::tpy::check_signals;
     std::vector<::tpyapp::fixtures::Cell> cs = {::tpyapp::fixtures::Cell(1), ::tpyapp::fixtures::Cell(2)};
-    auto __tmp_2 = ::tpyapp::part_handover::pairs(cs);
-    int32_t direct = ::tpyapp::part_handover::count_pairs(__tmp_2);
+    auto __tmp_1 = ::tpyapp::part_handover::pairs(cs);
+    int32_t direct = ::tpyapp::part_handover::count_pairs(__tmp_1);
     __gen_pairs pt = ::tpyapp::part_handover::pairs(cs);
     int32_t named = ::tpyapp::part_handover::count_pairs(pt);
     ::tpy::__getitem__(cs, 0).v = 9;
     std::cout << "named pairs argument" << " " << direct << " " << named << " " << ::tpy::__getitem__(cs, 0).v << "\n" << ::tpy::check_signals;
-    Cursor __tmp_3 = Cursor(2);
-    std::vector<Token> bt = ::tpyapp::part_handover::collect<Cursor>(__tmp_3);
-    auto __tmp_4 = Cursor(2);
-    std::vector<Token> ct = ::tpyapp::part_handover::keep_tokens(__tmp_4);
+    std::vector<Token> bt = ::tpyapp::part_handover::collect<Cursor>(::tpy::as_mut_lvalue(Cursor(2)));
+    auto __tmp_2 = Cursor(2);
+    std::vector<Token> ct = ::tpyapp::part_handover::keep_tokens(__tmp_2);
     std::cout << "bounded nocopy" << " " << ::tpy::__len__(bt) << " " << ::tpy::__getitem__(bt, 1).v << " " << ::tpy::__len__(ct) << " " << ::tpy::__getitem__(ct, 1).v << "\n" << ::tpy::check_signals;
-    CellCursor __tmp_5 = CellCursor(2);
-    std::vector<::tpyapp::fixtures::Cell> bg = ::tpyapp::part_handover::grab<CellCursor>(__tmp_5);
-    auto __tmp_6 = CellCursor(2);
-    std::vector<::tpyapp::fixtures::Cell> tg = ::tpyapp::fixtures::take(__tmp_6);
+    std::vector<::tpyapp::fixtures::Cell> bg = ::tpyapp::part_handover::grab<CellCursor>(::tpy::as_mut_lvalue(CellCursor(2)));
+    auto __tmp_3 = CellCursor(2);
+    std::vector<::tpyapp::fixtures::Cell> tg = ::tpyapp::fixtures::take(__tmp_3);
     ::tpy::__getitem__(bg, 0).v = 80;
     std::cout << "bounded copyable" << " " << ::tpy::__len__(bg) << " " << ::tpy::__getitem__(bg, 0).v << " " << ::tpy::__getitem__(bg, 1).v << " " << ::tpy::__len__(tg) << " " << ::tpy::__getitem__(tg, 1).v << "\n" << ::tpy::check_signals;
     std::vector<::tpyapp::fixtures::Cell> xs = ::tpyapp::part_handover::mk();

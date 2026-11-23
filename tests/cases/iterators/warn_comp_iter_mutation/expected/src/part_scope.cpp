@@ -4,25 +4,29 @@
 namespace tpyapp::part_scope {
 
 
-// def temp_receiver(big: bool) -> int32:  # tpyc: mir(uncovered /temporary needs full-expression boundary/)
+// def temp_receiver(big: bool) -> int32:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
 //     n = 0
 //     if big:
-//         # the source borrows from a temporary receiver that dies before the
-//         # loop runs (so this never runs)
-//         n = len([e * 2 for e in mk_box().items_m()])  # tpyc: warning(/Iterator borrows from temporary receiver object/)
+//         # the source borrows from a temporary receiver: the comprehension's
+//         # clause source keeps it until the comprehension ends (so this never
+//         # runs, but would be safe)
+//         n = len([e * 2 for e in mk_box().items_m()])  # tpyc: ok
 //     return n
 int32_t temp_receiver(bool big) {
     int32_t n = 0;
     if (big) {
         n = ::tpy::__len__(({
             std::vector<int32_t> __result;
-            auto& __obj_0 = ::tpyapp::fixtures::mk_box().items_m();
-            __result.reserve(static_cast<std::size_t>(__obj_0.size()));
-            auto __beg_0 = __obj_0.begin();
-            auto __end_0 = __obj_0.end();
-            for (; __beg_0 != __end_0; ++__beg_0) {
-                int32_t e = *__beg_0;
-                __result.push_back((::tpy::mul_check<int32_t>(e, 2)));
+            {
+                ::tpyapp::fixtures::Box __tmp_1 = ::tpyapp::fixtures::mk_box();
+                auto& __obj_0 = __tmp_1.items_m();
+                __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+                auto __beg_0 = __obj_0.begin();
+                auto __end_0 = __obj_0.end();
+                for (; __beg_0 != __end_0; ++__beg_0) {
+                    int32_t e = *__beg_0;
+                    __result.push_back((::tpy::mul_check<int32_t>(e, 2)));
+                }
             }
             std::move(__result);
         }));
@@ -352,12 +356,8 @@ void main() {
     std::cout << "temp_receiver:" << " " << ::tpyapp::part_scope::temp_receiver(false) << "\n" << ::tpy::check_signals;
     std::cout << "self_named_source:" << " " << ::tpyapp::part_scope::self_named_source() << "\n" << ::tpy::check_signals;
     std::cout << "other_named_source:" << " " << ::tpyapp::part_scope::other_named_source(false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::vector<int32_t> __tmp_2 = {0};
-    std::cout << "other_container:" << " " << ::tpyapp::part_scope::other_container(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = {1, 2};
-    std::vector<int32_t> __tmp_4 = {0};
-    std::cout << "other_container_for:" << " " << ::tpyapp::part_scope::other_container_for(__tmp_3, __tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << "other_container:" << " " << ::tpyapp::part_scope::other_container({1, 2}, ::tpy::as_mut_lvalue(std::vector<int32_t>{0})) << "\n" << ::tpy::check_signals;
+    std::cout << "other_container_for:" << " " << ::tpyapp::part_scope::other_container_for({1, 2}, ::tpy::as_mut_lvalue(std::vector<int32_t>{0})) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1};
     std::vector<std::vector<int32_t>> xss = {{1, 2}, {3}};
     std::cout << "param_shadow:" << " " << ::tpyapp::part_scope::param_shadow(xs, xss, true) << " " << ::tpy::__len__(xs) << " " << ::tpy::__len__(::tpy::__getitem__(xss, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(xss, 1)) << "\n" << ::tpy::check_signals;
@@ -365,16 +365,11 @@ void main() {
     std::vector<std::vector<int32_t>> yss = {{1, 2}, {3}};
     std::cout << "param_shadow_for:" << " " << ::tpyapp::part_scope::param_shadow_for(ys, yss, true) << " " << ::tpy::__len__(ys) << " " << ::tpy::__len__(::tpy::__getitem__(yss, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(yss, 1)) << "\n" << ::tpy::check_signals;
     std::cout << "self_named_nested:" << " " << ::tpyapp::part_scope::self_named_nested(false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_5 = std::vector<int32_t>{};
-    std::cout << "range_bound:" << " " << ::tpyapp::part_scope::range_bound(__tmp_5) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_6 = std::vector<int32_t>{};
-    std::cout << "range_bound_for:" << " " << ::tpyapp::part_scope::range_bound_for(__tmp_6) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_7 = {1, 2};
-    std::cout << "after_comp:" << " " << ::tpyapp::part_scope::after_comp(__tmp_7) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_8 = {1};
-    std::cout << "range_source:" << " " << ::tpyapp::part_scope::range_source(__tmp_8) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_9 = {1, 2};
-    std::cout << "read_only:" << " " << ::tpyapp::part_scope::read_only(__tmp_9) << "\n" << ::tpy::check_signals;
+    std::cout << "range_bound:" << " " << ::tpyapp::part_scope::range_bound(::tpy::as_mut_lvalue(std::vector<int32_t>{})) << "\n" << ::tpy::check_signals;
+    std::cout << "range_bound_for:" << " " << ::tpyapp::part_scope::range_bound_for(::tpy::as_mut_lvalue(std::vector<int32_t>{})) << "\n" << ::tpy::check_signals;
+    std::cout << "after_comp:" << " " << ::tpyapp::part_scope::after_comp(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "range_source:" << " " << ::tpyapp::part_scope::range_source(::tpy::as_mut_lvalue(std::vector<int32_t>{1})) << "\n" << ::tpy::check_signals;
+    std::cout << "read_only:" << " " << ::tpyapp::part_scope::read_only({1, 2}) << "\n" << ::tpy::check_signals;
 }
 
 // from fixtures import grow, grow_len, grow_rows, mk_box

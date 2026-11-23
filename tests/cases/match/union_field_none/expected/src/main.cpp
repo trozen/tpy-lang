@@ -38,12 +38,9 @@ std::string describe(::tpy::Union<const Other*, const Wrapper*> w) {
 //     print(describe(Wrapper("hi")))
 //     print(describe(Other(1)))
 void main() {
-    Wrapper __tmp_1 = Wrapper(std::nullopt);
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    Wrapper __tmp_2 = Wrapper("hi");
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
-    Other __tmp_3 = Other(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&(::tpy::as_mut_lvalue(Wrapper(std::nullopt)))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&(::tpy::as_mut_lvalue(Wrapper("hi")))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&(::tpy::as_mut_lvalue(Other(::tpy::BigInt(1))))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

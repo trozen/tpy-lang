@@ -802,7 +802,7 @@ inline ::tpy::Bytes BytesIO::getvalue() const {
     if ((::tpy::__len__(this->_chunks) == 1)) {
         return ::tpy::__getitem__(this->_chunks, 0);
     }
-    return ::tpy::bytes_join(::tpy::Bytes{}, this->_chunks);
+    return ::tpy::bytes_join(::tpy::BytesView{}, this->_chunks);
 }
 
 // def tell(self) -> int32:
@@ -881,7 +881,7 @@ inline void BytesIO::__exit__(std::monostate exc_type, const ::tpy::BaseExceptio
 //         self._chunks = [b""]
 inline void BytesIO::_collapse() {
     if ((::tpy::__len__(this->_chunks) > 1)) {
-        this->_chunks = {::tpy::bytes_join(::tpy::Bytes{}, this->_chunks)};
+        this->_chunks = {::tpy::bytes_join(::tpy::BytesView{}, this->_chunks)};
     } else if (((::tpy::__len__(this->_chunks) == 0) && (this->_total > 0))) {
         this->_chunks = {::tpy::Bytes{}};
     }
@@ -992,7 +992,7 @@ inline ::tpy::Bytes FileIO::_readall() const {
         }
         chunks.push_back(std::move(chunk));
     }
-    return ::tpy::bytes_join(::tpy::Bytes{}, chunks);
+    return ::tpy::bytes_join(::tpy::BytesView{}, chunks);
 }
 
 // def _os_read(self, n: int64) -> bytes:

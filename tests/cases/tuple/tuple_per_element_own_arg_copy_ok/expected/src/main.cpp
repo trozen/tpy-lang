@@ -21,8 +21,7 @@ int32_t f(const Box& b) {
 // def main() -> None:
 //     print(f(Box(5)))  # 5
 void main() {
-    Box __tmp_1 = Box(5);
-    std::cout << ::tpyapp::main::f(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f(Box(5)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

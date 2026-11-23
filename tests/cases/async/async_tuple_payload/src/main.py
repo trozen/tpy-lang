@@ -241,9 +241,9 @@ async def amain() -> None:
     # generic storage tuple at a value T
     ot = await opt_solo(5)  # tpyc: ok
     print("opt generic", ot[0], ot[1] is None)
-    # a temporary argument sits in this frame, warned falsely as in sync
-    # (BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling)
-    tu = await solo(Box(99))  # tpyc: warning(/temporary/)
+    # a temporary argument the awaited frame keeps sits in this frame, and
+    # what the await hands back may borrow it: nothing dangles
+    tu = await solo(Box(99))  # tpyc: ok
     await asyncio.sleep(0)
     print("temp arg", tu[0].v, tu[1])
     # async for: the loop var holds the element's pointer

@@ -53,8 +53,7 @@ void main() {
     Snap s = Snap();
     ::tpyapp::main::use(s);
     std::cout << "owner:" << " " << ::tpy::__len__(s._items) << "\n" << ::tpy::check_signals;
-    Snap __tmp_1 = Snap();
-    ::tpyapp::main::use_method(__tmp_1);
+    ::tpyapp::main::use_method(Snap());
     std::cout << "in_method:" << " " << Snap().total() << "\n" << ::tpy::check_signals;
 }
 

@@ -91,8 +91,7 @@ void main() {
     if ((first != nullptr)) {
         std::cout << first->n << "\n" << ::tpy::check_signals;
     }
-    Rec __tmp_1 = Rec(::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::readonly_recv(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::readonly_recv(Rec(::tpy::BigInt(7))) << "\n" << ::tpy::check_signals;
 }
 
 // G = Rec(3)

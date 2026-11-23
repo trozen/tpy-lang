@@ -31,8 +31,7 @@ namespace tpyapp::main {
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    ::tpy::Union<bool, std::string> __tmp_1 = true;
-    ::tpystd::tplib::requests::Response r = s.get("http://api.test/x", nullptr, headers, std::nullopt, true, __tmp_1, cookies);
+    ::tpystd::tplib::requests::Response r = s.get("http://api.test/x", nullptr, headers, std::nullopt, true, ::tpy::Union<bool, std::string>(true), cookies);
     std::cout << r.status_code << "\n" << ::tpy::check_signals;
     ::tpy::Bytes sent = b.recv(65536);
     b.close();
@@ -66,12 +65,9 @@ void _cookie_line(::tpy::BytesView sent) {
 //     # An explicit Cookie header wins over cookies=.
 //     _cookie_line(_send({"Cookie": "manual=1"}, {"sid": "abc"}))
 void main() {
-    ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"sid", "abc"}, {"k", "v"}});
-    ::tpyapp::main::_cookie_line(::tpyapp::main::_send(nullptr, &(__tmp_1)));
+    ::tpyapp::main::_cookie_line(::tpyapp::main::_send(nullptr, &::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"sid", "abc"}, {"k", "v"}}))));
     ::tpyapp::main::_cookie_line(::tpyapp::main::_send(nullptr, nullptr));
-    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"Cookie", "manual=1"}});
-    ::tpy::ordered_map<std::string, std::string> __tmp_3 = ::tpy::ordered_map<std::string, std::string>({{"sid", "abc"}});
-    ::tpyapp::main::_cookie_line(::tpyapp::main::_send(&(__tmp_2), &(__tmp_3)));
+    ::tpyapp::main::_cookie_line(::tpyapp::main::_send(&::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"Cookie", "manual=1"}})), &::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"sid", "abc"}}))));
 }
 
 // # A `cookies=` dict is serialized into a Cookie: request header (name=value

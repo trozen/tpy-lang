@@ -197,8 +197,7 @@ void main() {
     ::tpyapp::main::local_buf_named(true);
     Bag b = Bag();
     std::cout << "grow" << " " << b.grow() << " " << b.grow_copy() << "\n" << ::tpy::check_signals;
-    std::vector<::tpyapp::fixtures::P> __tmp_1 = {::tpyapp::fixtures::P(1)};
-    std::cout << "kept" << " " << ::tpyapp::main::kept(__tmp_1, false) << "\n" << ::tpy::check_signals;
+    std::cout << "kept" << " " << ::tpyapp::main::kept(::tpy::as_mut_lvalue(std::vector<::tpyapp::fixtures::P>{::tpyapp::fixtures::P(1)}), false) << "\n" << ::tpy::check_signals;
     std::cout << "block_view" << " " << ::tpy::print_bool(::tpyapp::main::block_view(false)) << " " << ::tpy::print_bool(::tpyapp::main::block_view_outer(true)) << "\n" << ::tpy::check_signals;
     std::cout << "temp_view_bound" << " " << ::tpy::print_bool(::tpyapp::main::temp_view_bound("x")) << "\n" << ::tpy::check_signals;
     ::tpyapp::fixtures::Tok t = ::tpyapp::fixtures::Tok("x", 3);

@@ -256,10 +256,8 @@ std::expected<int32_t, Err> err_bind(std::string_view s) {
 //         print("err_bind failed")
 void main() {
     ::tpyapp::main::free_fn();
-    std::vector<Coord> __tmp_1 = {Coord(1, 0), Coord(5, 0), Coord(9, 0)};
-    ::tpyapp::main::loop_var(__tmp_1);
-    std::vector<Coord> __tmp_2 = {Coord(3, 0), Coord(4, 0)};
-    ::tpyapp::main::subscript(__tmp_2);
+    ::tpyapp::main::loop_var({Coord(1, 0), Coord(5, 0), Coord(9, 0)});
+    ::tpyapp::main::subscript({Coord(3, 0), Coord(4, 0)});
     Coord p = Coord(6, 0);
     ::tpyapp::main::param(p);
     ::tpyapp::main::branch(true);

@@ -468,8 +468,7 @@ void main() {
     std::cout << "ctor.base" << " " << d.ia.v << " " << d.ib.v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::nested(std::vector<int32_t>{1, 2, 3});
     Opt o = Opt();
-    std::vector<P> __tmp_1 = {P(7)};
-    o.elem(__tmp_1);
+    o.elem(::tpy::as_mut_lvalue(std::vector<P>{P(7)}));
     ::tpyapp::main::own_args(xs);
     ::tpyapp::main::comp_elems();
     ::tpyapp::main::slot_writes();

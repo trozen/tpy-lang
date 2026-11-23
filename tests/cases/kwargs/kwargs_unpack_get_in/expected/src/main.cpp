@@ -50,14 +50,10 @@ void show_config(const Config& kwargs) {
 //     show_config(host="myhost")
 //     show_config()
 void main() {
-    Config __tmp_1 = Config("example.com", 8080, true);
-    ::tpyapp::main::connect(__tmp_1);
-    Config __tmp_2 = Config(std::nullopt, std::nullopt, std::nullopt);
-    ::tpyapp::main::connect(__tmp_2);
-    Config __tmp_3 = Config("myhost", std::nullopt, std::nullopt);
-    ::tpyapp::main::show_config(__tmp_3);
-    Config __tmp_4 = Config(std::nullopt, std::nullopt, std::nullopt);
-    ::tpyapp::main::show_config(__tmp_4);
+    ::tpyapp::main::connect(Config("example.com", 8080, true));
+    ::tpyapp::main::connect(Config(std::nullopt, std::nullopt, std::nullopt));
+    ::tpyapp::main::show_config(Config("myhost", std::nullopt, std::nullopt));
+    ::tpyapp::main::show_config(Config(std::nullopt, std::nullopt, std::nullopt));
 }
 
 // main()

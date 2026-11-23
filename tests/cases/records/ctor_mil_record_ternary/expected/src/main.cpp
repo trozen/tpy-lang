@@ -15,8 +15,7 @@ namespace tpyapp::main {
 void main() {
     Material a = Material(V3(1.0));
     std::cout << ::tpy::print_float(a.color.x) << " " << ::tpy::print_float(a.emission.x) << "\n" << ::tpy::check_signals;
-    V3 __tmp_1 = V3(7.0);
-    Material b = Material(V3(2.0), &(__tmp_1));
+    Material b = Material(V3(2.0), &::tpy::as_mut_lvalue(V3(7.0)));
     std::cout << ::tpy::print_float(b.color.x) << " " << ::tpy::print_float(b.emission.x) << "\n" << ::tpy::check_signals;
     Layer c = Layer(V3(3.0), true);
     Layer d = Layer(V3(4.0), false);

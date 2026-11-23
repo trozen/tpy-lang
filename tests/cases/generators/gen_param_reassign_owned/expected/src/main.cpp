@@ -73,8 +73,7 @@ void main() {
         }
     }
     {
-        ::tpy::String __tmp_1 = ::tpy::String("x");
-        auto __src_6 = ::tpyapp::main::gstr(__tmp_1, 2);
+        auto __src_6 = ::tpyapp::main::gstr(::tpy::String("x"), 2);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();

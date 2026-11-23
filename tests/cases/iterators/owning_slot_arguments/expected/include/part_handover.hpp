@@ -323,8 +323,6 @@ struct __coro_akept {
     int32_t __await_lift_1;
     int32_t __await_lift_2;
     int32_t __await_lift_3;
-    ::tpy::frame_slot<std::array<R, 2>> __coro_arg_0;
-    ::tpy::frame_slot<std::vector<R>> __coro_arg_1;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;

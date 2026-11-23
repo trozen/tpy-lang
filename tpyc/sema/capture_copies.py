@@ -509,14 +509,26 @@ def warn_closure_captures(ctx: 'SemanticContext', body: list[TpyStmt],
             loops.append(s)
 
     walk_body_stmts(body, lambda e: None, on_stmt)
-    closures: list[Closure] = [*defs, *(lam for lam, _ in
-                                        value_capture_lambdas(body,
-                                                              nested=True))]
+    lambdas = value_capture_lambdas(body, nested=True)
+    closures: list[Closure] = [*defs, *(lam for lam, _ in lambdas)]
+    reads_of: IdentityMap = IdentityMap(
+        (closure, closure_bindings(ctx, closure)) for closure in closures)
+    # A lambda inside one that copies the same binding copies that copy,
+    # which nothing else reaches: the enclosing lambda's warning speaks
+    # for it.
+    inherited: IdentityMap = IdentityMap(
+        (lam, {n for outer in chain if outer.captures_by_value
+               for n in outer.captured_names
+               if _same_binding(reads_of[lam].bindings.get(n),
+                                reads_of[outer].bindings.get(n))})
+        for lam, chain in lambdas)
     captures: IdentityMap = IdentityMap()
     for closure in closures:
-        reads = closure_bindings(ctx, closure)
+        reads = reads_of[closure]
         bindings = reads.bindings
-        names = by_value_captures(closure, bindings)
+        copied = by_value_captures(closure, bindings)
+        names = [n for n in copied
+                 if n not in (inherited.get(closure) or ())]
         captures[closure] = (names, bindings)
         reasons = (def_reasons.get(closure) if def_reasons is not None
                    else None) or {}
@@ -528,16 +540,21 @@ def warn_closure_captures(ctx: 'SemanticContext', body: list[TpyStmt],
             if held is not None:
                 warn_once(ctx, sibling_copy_message(
                     closure, name, held, reasons.get(name)), closure)
-        for name in names:
+        owned: list[str] = []
+        for name in copied:
             if name in sibling_defs:
                 continue
             binding = bindings.get(name)
             verdict = classify_capture(ctx, name, binding,
                                        capture_type(closure, name, binding),
                                        reads.read_types.get(name), closure)
-            if verdict is not CaptureCopy.NONE:
+            if verdict in (CaptureCopy.DEFINITE, CaptureCopy.COST):
+                owned.append(name)
+            if verdict is not CaptureCopy.NONE and name in names:
                 warn_once(ctx, copy_message(closure, name, verdict,
                                             reasons.get(name)), closure)
+        if isinstance(closure, TpyLambda):
+            closure.owned_captures = frozenset(owned)
     for closure in closures:
         names, bindings = captures[closure]
         for name in names:
@@ -548,6 +565,12 @@ def warn_closure_captures(ctx: 'SemanticContext', body: list[TpyStmt],
     _warn_rebound_after(ctx, body, captures)
     for loop in loops:
         _warn_loop_rebinds(ctx, loop, captures)
+
+
+def _same_binding(a: ReadBinding | None, b: ReadBinding | None) -> bool:
+    """Whether two closures' reads of a name resolve to one binding."""
+    return (a is not None and b is not None and a.kind is b.kind
+            and a.name == b.name and a.node is b.node)
 
 
 def _warn_rebound_after(ctx: 'SemanticContext', body: list[TpyStmt],

@@ -277,12 +277,10 @@ void main() {
     std::cout << "shadow-local" << " " << ::tpyapp::main::shadowed_local("abc") << "\n" << ::tpy::check_signals;
     std::cout << "shadow-unpack" << " " << ::tpyapp::main::shadowed_unpack(std::tuple<int32_t, int32_t>{1, 2}) << "\n" << ::tpy::check_signals;
     std::cout << "shadow-walrus" << " " << ::tpyapp::main::shadowed_walrus(1) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "shadow-for" << " " << ::tpyapp::main::shadowed_for(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "shadow-for" << " " << ::tpyapp::main::shadowed_for({1, 2, 3}) << "\n" << ::tpy::check_signals;
     std::cout << "shadow-with" << " " << ::tpyapp::main::shadowed_with() << "\n" << ::tpy::check_signals;
     std::cout << "shadow-nested" << " " << ::tpyapp::main::shadowed_nested() << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = {4, 5};
-    std::cout << "shadow-comp" << " " << ::tpyapp::main::shadowed_comp(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "shadow-comp" << " " << ::tpyapp::main::shadowed_comp({4, 5}) << "\n" << ::tpy::check_signals;
     std::cout << "shadow-except" << " " << ::tpyapp::main::shadowed_except(6) << " " << ::tpyapp::main::shadowed_except(-6) << "\n" << ::tpy::check_signals;
     std::cout << "shadow-lambda" << " " << ::tpyapp::main::shadowed_lambda(2) << "\n" << ::tpy::check_signals;
     std::cout << "shadow-match" << " " << ::tpyapp::main::shadowed_match(0) << " " << ::tpyapp::main::shadowed_match(5) << "\n" << ::tpy::check_signals;

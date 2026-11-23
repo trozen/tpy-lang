@@ -634,8 +634,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_reversed_temp_src:
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(::tpyapp::main::make_cells());
-        __for_src_0.emplace(::tpy::builtin_reversed((*__coro_arg_0)));
+        __for_src_0.emplace(::tpy::builtin_reversed(::tpyapp::main::make_cells()));
         __state = S_JOIN_0;
         continue;
     }
@@ -949,8 +948,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_arg_temp_src::__ne
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        Cell __tmp_1 = Cell(5);
-        __for_src_0.emplace(::tpyapp::main::take(__tmp_1, 2));
+        __for_src_0.emplace(::tpyapp::main::take(__head_arg_0.emplace(Cell(5)), 2));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
         __state = S_JOIN_0;
@@ -1021,8 +1019,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_combinator_temp_src::_
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(Deleg(3));
-        __for_src_0.emplace(::tpy::builtin_enumerate((*__coro_arg_0)));
+        __for_src_0.emplace(::tpy::builtin_enumerate(__head_arg_0.emplace(Deleg(3))));
         __state = S_JOIN_0;
         continue;
     }

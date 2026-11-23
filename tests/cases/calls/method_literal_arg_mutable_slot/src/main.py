@@ -113,9 +113,10 @@ def main() -> None:
     print("temp_recv", K().fill([1, 2]))  # tpyc: ok
     # method whose slot stays mutable only because the return borrows it
     print("lend_back", len(k.pick([3, 4])))  # tpyc: ok
-    # ... and the borrowed result BOUND: the declaration is a flush position
-    # too, so the literal hoists to a named temporary the alias then outlives
-    got = k.pick([3, 4])  # tpyc: ok
+    # ... and the borrowed result BOUND: a fresh literal would live for its
+    # statement only (warned), so the alias keeps a local
+    lit = [3, 4]
+    got = k.pick(lit)  # tpyc: ok
     got.append(5)
     print("lend_back_bound", got)
     # ... and bound from a callee that lends the receiver's own storage: the

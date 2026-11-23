@@ -40,13 +40,11 @@ int64_t spread(int64_t a, int64_t b, ::tpy::varargs<const int64_t> rest, int64_t
 //     r = g3(5, k=4)  # tpyc: ok
 //     print("g3-gap", r)
 void main() {
-    Options __tmp_1 = Options("a");
-    std::cout << ::tpyapp::main::probe(Fixed(3), __tmp_1) << "\n" << ::tpy::check_signals;
-    Options __tmp_2 = Options("b");
-    std::cout << ::tpyapp::main::probe(std::nullopt, __tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::probe(Fixed(3), Options("a")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::probe(std::nullopt, Options("b")) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::spread(1, 2, ::tpy::varargs<const int64_t>(), 9) << "\n" << ::tpy::check_signals;
-    std::array<const int64_t, 2> __tmp_3{5, 6};
-    std::cout << ::tpyapp::main::spread(1, 2, ::tpy::varargs<const int64_t>(__tmp_3), 9) << "\n" << ::tpy::check_signals;
+    std::array<const int64_t, 2> __tmp_1{5, 6};
+    std::cout << ::tpyapp::main::spread(1, 2, ::tpy::varargs<const int64_t>(__tmp_1), 9) << "\n" << ::tpy::check_signals;
     int32_t r = ::tpyapp::main::g3<int32_t>(5, nullptr, ::tpy::BigInt(4));
     std::cout << "g3-gap" << " " << r << "\n" << ::tpy::check_signals;
 }

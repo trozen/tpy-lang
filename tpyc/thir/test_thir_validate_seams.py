@@ -17,7 +17,7 @@ from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
 from ..typesys import (BOOL, CHAR, INT32, NominalType, TupleType, UnionType,
                        VoidType, unwrap_readonly, unwrap_ref_type)
-from .nodes import (Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp,
+from .nodes import (Form, HoistDecl, SeatLifetime, THIRArgTemp, THIRInlineTemp, THIRBaseInit, THIRBinOp,
     THIRCall, THIRCoerce, THIRComprehensionBlock, THIRCompInsert, THIRCtorCall,
     THIRConstructor, THIRExpr, THIRExprStmt, THIRForEach, THIRForRange,
     THIRMilInit, THIRFieldAccess, THIRFieldIdentity, THIRFormConvert,
@@ -36,7 +36,7 @@ from .validate import (
     THIRValidationError, validate_constructor, validate_function,
     validate_resumable_leaves, validate_stmts,
 )
-from .frame import LeafRole, THIRLeafSlot
+from .frame import HolderRole, LeafRole, THIRFrameHolder, THIRLeafSlot
 from ..identity_map import IdentityMap
 
 # The whole-function / constructor validator rules: no compiling program can
@@ -236,36 +236,34 @@ class TestNarrowedRules:
 
 class TestArgListFlushRight:
     """The one arg-list walk carries a per-position flush right. The raise arm
-    grants it (its ctor arg temps, union lift included, hoist before the throw
-    line); sharing the walk must not have loosened what a NON-flush position
-    rejects."""
+    grants it (its ctor arg temps hoist before the throw line); sharing the
+    walk must not have loosened what a NON-flush position rejects."""
 
     @staticmethod
-    def _lift(value=None, temp=True):
+    def _lift(value):
         return THIRUnionArgLift(
             result_type=INT32, variant_cpp="std::variant<int32_t*>",
-            value=value if value is not None
-            else THIRLiteral(result_type=INT32, value=1),
-            temp_cpp="std::variant<int32_t*>" if temp else None)
+            value=value)
 
-    def test_temp_bearing_lift_at_a_cond_seam_raises(self):
+    @staticmethod
+    def _temp():
+        return THIRArgTemp(result_type=INT32,
+                           init=THIRLiteral(result_type=INT32, value=1),
+                           cpp_type="int32_t", movable=True)
+
+    def test_temp_at_a_cond_seam_raises(self):
         # A resumable CONDITION has no flush point in the skeleton.
-        body = _at(LeafRole.COND, self._lift())
-        with pytest.raises(THIRValidationError,
-                           match="THIRUnionArgLift outside a call arg"):
-            validate_resumable_leaves("f", body)
-
-    def test_nested_temp_under_a_lift_raises_even_where_temps_flush(self):
-        # A temp is admitted only as a DIRECT arg: nesting one inside a lift's
-        # value is rejected in an arg list that DOES grant the flush right,
-        # so the raise arm's widened right cannot reach it either.
-        nested = THIRArgTemp(result_type=INT32,
-                             init=THIRLiteral(result_type=INT32, value=1),
-                             cpp_type="int32_t")
-        body = _at(LeafRole.AWAIT_ARGS, (self._lift(value=nested),))
+        body = _at(LeafRole.COND, self._temp())
         with pytest.raises(THIRValidationError,
                            match="THIRArgTemp outside a call arg"):
             validate_resumable_leaves("f", body)
+
+    def test_temp_under_a_lift_keeps_the_flush_right(self):
+        # A pointer-variant lift renders its value in place (`V{&(...)}`), so
+        # a temp under it flushes where the lift's own position does, as one
+        # under a form conversion does.
+        validate_resumable_leaves(
+            "f", _at(LeafRole.AWAIT_ARGS, (self._lift(self._temp()),)))
 
     @staticmethod
     def _raise(*args):
@@ -275,23 +273,18 @@ class TestArgListFlushRight:
 
     def test_raise_args_grant_the_flush_right(self):
         # A raised construction's args ARE a flush position: its temps hoist
-        # before the throw line, so a temp-bearing lift is admitted there and
+        # before the throw line, so a temp is admitted there and
         # the same node at a cond seam, which has no flush point, is not.
-        body = _at(LeafRole.RAISE, self._raise(self._lift()))
+        body = _at(LeafRole.RAISE, self._raise(self._temp()))
         validate_resumable_leaves("f", body)
 
-    def test_raise_args_still_reject_a_nested_temp(self):
-        nested = THIRArgTemp(result_type=INT32,
-                             init=THIRLiteral(result_type=INT32, value=1),
-                             cpp_type="int32_t")
-        body = _at(LeafRole.RAISE, self._raise(self._lift(value=nested)))
-        with pytest.raises(THIRValidationError,
-                           match="THIRArgTemp outside a call arg"):
-            validate_resumable_leaves("f", body)
+    def test_raise_args_admit_a_temp_under_a_lift(self):
+        body = _at(LeafRole.RAISE, self._raise(self._lift(self._temp())))
+        validate_resumable_leaves("f", body)
 
-    def test_plain_temp_bearing_lift_in_an_arg_list_passes(self):
+    def test_plain_temp_in_an_arg_list_passes(self):
         # The emplace arg list IS a flush position, like a call's or a raise's.
-        body = _at(LeafRole.AWAIT_ARGS, (self._lift(),))
+        body = _at(LeafRole.AWAIT_ARGS, (self._temp(),))
         validate_resumable_leaves("f", body)
 
 
@@ -585,18 +578,13 @@ class TestValidator:
                          then=comp, orelse=comp)
         return self._fn_of(THIRExprStmt(expr=sel))
 
-    def test_first_loop_source_temp_takes_the_comprehension_right(self):
-        # The first source evaluates in the enclosing statement, so its temp
-        # is legal exactly where one would be at the comprehension itself:
-        # at a statement, and audited under a conditional operand ...
+    def test_first_loop_source_temp_flushes_in_the_block(self):
+        # The first source's temps flush inside the comprehension's block
+        # too, so the conditional-operand rule of its position is moot.
         validate_function(self._fn_of(THIRExprStmt(
             expr=self._comp_over(self._call_with_unaudited_temp()))))
         validate_function(self._in_ternary_arm(
-            self._comp_over(self._call_with_temp())))
-        # ... but not unaudited there.
-        with pytest.raises(THIRValidationError, match="unaudited THIRArgTemp"):
-            validate_function(self._in_ternary_arm(
-                self._comp_over(self._call_with_unaudited_temp())))
+            self._comp_over(self._call_with_unaudited_temp())))
 
     def test_inner_loop_source_temp_flushes_in_the_block(self):
         # An inner loop flushes its own source temps inside the block, so the
@@ -605,9 +593,9 @@ class TestValidator:
             THIRLiteral(result_type=INT32, value=0),
             inner_source=self._call_with_unaudited_temp())))
 
-    def test_first_loop_source_temp_in_a_mil_cell_raises(self):
-        # The cell has no statement to declare the first source's temp
-        # before; an inner source's temp flushes inside the block.
+    def test_loop_source_temps_flush_in_a_mil_cell_block(self):
+        # The comprehension's block declares every loop source's temps, the
+        # first's included, so a member-init cell holds none of them.
         def ctor(comp: THIRComprehensionBlock) -> THIRConstructor:
             return THIRConstructor(
                 record_name="R", params=(),
@@ -616,10 +604,8 @@ class TestValidator:
             THIRLiteral(result_type=INT32, value=0),
             inner_source=self._call_with_temp())))
         for range_first in (False, True):
-            with pytest.raises(THIRValidationError,
-                               match="statement temp in a member-init"):
-                validate_constructor(ctor(self._comp_over(
-                    self._call_with_temp(), range_first=range_first)))
+            validate_constructor(ctor(self._comp_over(
+                self._call_with_temp(), range_first=range_first)))
 
     def test_range_bound_temp_flushes_before_its_capture(self):
         # Each bound's temps are declared right before its `__start_N` /
@@ -916,3 +902,83 @@ class TestDecidedBranch:
     def test_match_guard_decided_false_keeping_its_arm_raises(self):
         with pytest.raises(THIRValidationError, match="ruled-out arm"):
             validate_stmts("f", (self._match((self._stmt(),)),))
+
+
+class TestHeldArgumentKeepPlan:
+    """What an argument temp holds is the keep plan's: a temporary inside
+    it is one the plan left to its full expression, and the held value is
+    neither that temporary's address nor a borrow out of a construction
+    built inside it."""
+
+    _REC = NominalType("Src")
+
+    @staticmethod
+    def _stmt(temp):
+        return (THIRExprStmt(expr=THIRCall(result_type=INT32, callee="f",
+                                           args=(temp,))),)
+
+    def _inline(self, **kw):
+        return THIRInlineTemp(result_type=INT32,
+                              value=THIRLiteral(result_type=INT32, value=1),
+                              cpp_type="int32_t", **kw)
+
+    def _held(self, init, form=Form.VALUE):
+        return THIRArgTemp(result_type=INT32, init=init, cpp_type="int32_t",
+                           movable=True, form=form)
+
+    def test_full_expression_temp_inside_passes(self):
+        init = THIRCall(result_type=INT32, callee="g",
+                        args=(self._inline(
+                            lifetime=SeatLifetime.FULL_EXPRESSION),))
+        validate_stmts("f", self._stmt(self._held(init)))
+
+    def test_unplanned_temp_inside_raises(self):
+        init = THIRCall(result_type=INT32, callee="g",
+                        args=(self._inline(),))
+        with pytest.raises(THIRValidationError, match="keep plan"):
+            validate_stmts("f", self._stmt(self._held(init)))
+
+    def test_address_of_a_full_expression_temp_raises(self):
+        init = self._inline(lifetime=SeatLifetime.FULL_EXPRESSION,
+                            addr_of=True)
+        with pytest.raises(THIRValidationError, match="address of"):
+            validate_stmts("f", self._stmt(self._held(init)))
+
+    def test_borrow_out_of_a_construction_raises(self):
+        ctor = THIRCtorCall(result_type=self._REC, type_cpp="Src", args=(),
+                            form=Form.STORAGE)
+        field = THIRFieldAccess(result_type=INT32, receiver=ctor,
+                                field_cpp="n", form=Form.BORROW)
+        with pytest.raises(THIRValidationError, match="fresh object"):
+            validate_stmts("f", self._stmt(self._held(field, Form.BORROW)))
+
+    def test_value_read_of_a_construction_passes(self):
+        ctor = THIRCtorCall(result_type=self._REC, type_cpp="Src", args=(),
+                            form=Form.STORAGE)
+        field = THIRFieldAccess(result_type=INT32, receiver=ctor,
+                                field_cpp="n", form=Form.VALUE)
+        validate_stmts("f", self._stmt(self._held(field)))
+
+    def test_frame_planned_temp_hoisted_raises(self):
+        temp = dataclasses.replace(
+            self._held(THIRLiteral(result_type=INT32, value=1)),
+            lifetime=SeatLifetime.FRAME)
+        with pytest.raises(THIRValidationError, match="keeps on the frame"):
+            validate_stmts("f", self._stmt(temp))
+
+    def test_frame_holder_for_unplanned_lifetime_raises(self):
+        holder = THIRFrameHolder(HolderRole.HEAD_ARG, "__head_arg_0",
+                                 "int32_t")
+        temp = dataclasses.replace(
+            self._held(THIRLiteral(result_type=INT32, value=1)),
+            lifetime=SeatLifetime.STATEMENT, frame_holder=holder)
+        with pytest.raises(THIRValidationError, match="does not keep on"):
+            validate_stmts("f", self._stmt(temp))
+
+    def test_borrow_out_of_a_fresh_call_result_raises(self):
+        call = THIRCall(result_type=self._REC, callee="mk", args=(),
+                        form=Form.STORAGE)
+        field = THIRFieldAccess(result_type=INT32, receiver=call,
+                                field_cpp="n", form=Form.BORROW)
+        with pytest.raises(THIRValidationError, match="fresh object"):
+            validate_stmts("f", self._stmt(self._held(field, Form.BORROW)))

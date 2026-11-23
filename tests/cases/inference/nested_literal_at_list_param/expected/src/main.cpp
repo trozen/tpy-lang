@@ -314,11 +314,10 @@ void main() {
     std::cout << "items" << " " << ::tpy::__len__(::tpy::__getitem__(di, "k")) << "\n" << ::tpy::check_signals;
     std::vector<Row> s1 = {Row(1)};
     K k = K();
-    std::vector<Row> __tmp_1 = std::vector<Row>(s1);
-    k.take(__tmp_1);
+    k.take(::tpy::as_mut_lvalue(std::vector<Row>(s1)));
     std::cout << "copy" << " " << k.c << " " << ::tpy::__len__(s1) << "\n" << ::tpy::check_signals;
-    std::vector<Row> __tmp_2 = ::tpy::__getitem__(ll, 0);
-    std::vector<Row> kept = ::tpyapp::main::keep(std::move(__tmp_2));
+    std::vector<Row> __tmp_1 = ::tpy::__getitem__(ll, 0);
+    std::vector<Row> kept = ::tpyapp::main::keep(std::move(__tmp_1));
     std::cout << "own" << " " << ::tpy::__len__(kept) << "\n" << ::tpy::check_signals;
     std::vector<Row> a = {Row(1)};
     std::array<std::vector<Row>, 2> na = {{a, {Row(2)}}};
@@ -344,8 +343,7 @@ void main() {
     std::cout << "replaced_rows" << " " << ::tpyapp::main::pins(::tpy::__getitem__(::tpy::__getitem__(rp, 0), 1)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> d7 = {7};
     Filler f7 = Filler();
-    std::vector<int32_t> __tmp_3 = std::vector<int32_t>(d7);
-    f7.fill(__tmp_3);
+    f7.fill(::tpy::as_mut_lvalue(std::vector<int32_t>(d7)));
     std::cout << "copy_int" << " " << f7.n << " " << ::tpy::__len__(d7) << "\n" << ::tpy::check_signals;
     std::array<std::vector<int32_t>, 2> li = {{{5}, {6}}};
     std::cout << "int_rows" << " " << ::tpyapp::main::nsi(::tpy::__getitem__(li, 0)) << "\n" << ::tpy::check_signals;

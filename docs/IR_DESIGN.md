@@ -1637,7 +1637,7 @@ prove still apply to the committed-snapshot oracle that replaced them.
 **Resumable frames (async / generators).**
 
 - **The resumable CFG is THIR proper (2026-10-28).** The frame's decisions -- capture kinds,
-  the await-lift / argument-seat pre-pass, placement, holders, the coarse CFG with region
+  the await-lift pre-pass, placement, holders, the coarse CFG with region
   stacks, case entries, abandonment cleanup, embedding edges -- are made by the frame builder
   (`thir/lower/frame.py`, `frame_cfg.py`) and published as `THIRResumableFrame`
   (`thir/frame.py`) where the body is first needed; its leaves follow as `THIRResumableLeaves`,

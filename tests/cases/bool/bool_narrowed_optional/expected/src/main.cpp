@@ -112,25 +112,12 @@ namespace tpyapp::main {
 //     print(len_if(Bag(0)), len_if(Bag(3)))
 //     print(plain_if(Plain(0)))
 void main() {
-    Flag __tmp_1 = Flag(false);
-    Flag __tmp_2 = Flag(true);
-    std::cout << ::tpyapp::main::bool_if(nullptr) << " " << ::tpyapp::main::bool_if(&(__tmp_1)) << " " << ::tpyapp::main::bool_if(&(__tmp_2)) << "\n" << ::tpy::check_signals;
-    Flag __tmp_3 = Flag(false);
-    Flag __tmp_4 = Flag(true);
-    std::cout << ::tpyapp::main::bool_not(&(__tmp_3)) << " " << ::tpyapp::main::bool_not(&(__tmp_4)) << "\n" << ::tpy::check_signals;
-    Flag __tmp_5 = Flag(false);
-    Flag __tmp_6 = Flag(true);
-    std::cout << ::tpyapp::main::bool_while(&(__tmp_5)) << " " << ::tpyapp::main::bool_while(&(__tmp_6)) << "\n" << ::tpy::check_signals;
-    Flag __tmp_7 = Flag(false);
-    Flag __tmp_8 = Flag(true);
-    Flag __tmp_9 = Flag(true);
-    Flag __tmp_10 = Flag(true);
-    std::cout << ::tpyapp::main::bool_and(&(__tmp_7), &(__tmp_8)) << " " << ::tpyapp::main::bool_and(&(__tmp_9), &(__tmp_10)) << "\n" << ::tpy::check_signals;
-    Bag __tmp_11 = Bag(::tpy::BigInt(0));
-    Bag __tmp_12 = Bag(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::len_if(&(__tmp_11)) << " " << ::tpyapp::main::len_if(&(__tmp_12)) << "\n" << ::tpy::check_signals;
-    Plain __tmp_13 = Plain(::tpy::BigInt(0));
-    std::cout << ::tpyapp::main::plain_if(&(__tmp_13)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::bool_if(nullptr) << " " << ::tpyapp::main::bool_if(&::tpy::as_mut_lvalue(Flag(false))) << " " << ::tpyapp::main::bool_if(&::tpy::as_mut_lvalue(Flag(true))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::bool_not(&::tpy::as_mut_lvalue(Flag(false))) << " " << ::tpyapp::main::bool_not(&::tpy::as_mut_lvalue(Flag(true))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::bool_while(&::tpy::as_mut_lvalue(Flag(false))) << " " << ::tpyapp::main::bool_while(&::tpy::as_mut_lvalue(Flag(true))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::bool_and(&::tpy::as_mut_lvalue(Flag(false)), &::tpy::as_mut_lvalue(Flag(true))) << " " << ::tpyapp::main::bool_and(&::tpy::as_mut_lvalue(Flag(true)), &::tpy::as_mut_lvalue(Flag(true))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::len_if(&::tpy::as_mut_lvalue(Bag(::tpy::BigInt(0)))) << " " << ::tpyapp::main::len_if(&::tpy::as_mut_lvalue(Bag(::tpy::BigInt(3)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::plain_if(&::tpy::as_mut_lvalue(Plain(::tpy::BigInt(0)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -53,6 +53,7 @@ from .context import (binding_source,
                       register_capture_alias_borrow)
 from ..symbol_binding import SymbolKind
 from .receiver_calls import is_invalidating_method
+from .iter_loans import keep_head_arguments
 
 if TYPE_CHECKING:
     from ..diagnostics import Scope
@@ -168,6 +169,7 @@ class MatchAnalyzer:
     def analyze_match(self, stmt: TpyMatch) -> None:
         """Analyze a match/case statement."""
         subject_type = self.expr.analyze_expr(stmt.subject)
+        keep_head_arguments(self.ctx, stmt.subject)
         # `unwrap_own` handles an rvalue subject returned by value
         # (`match make_box():` -> `Own[Box[T]]`); the match reads the owned
         # value, so dispatch sees its inner type. Reachable only since

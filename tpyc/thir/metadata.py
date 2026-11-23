@@ -5,10 +5,12 @@ from dataclasses import MISSING, fields
 # Facts every consumer may pass over: where a node sits and what it binds,
 # and the rebind slot a write fills and the statement it is declared
 # before (`own_slot`, `anchored_slots`) -- the slot's storage is the
-# site's own either way.
+# site's own either way -- and the keep plan's lifetime of a temporary
+# (`lifetime`), which its placement (a frame holder, a hoist) already
+# shows.
 _ALWAYS_ALLOWED = frozenset({"loc", "result_type", "form", "source",
                              "normalized", "binding", "bindings",
-                             "own_slot", "anchored_slots"})
+                             "own_slot", "anchored_slots", "lifetime"})
 
 
 def unsupported_metadata(node: object, allowed: set[str]) -> str | None:

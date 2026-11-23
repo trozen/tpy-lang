@@ -22,8 +22,7 @@ int32_t f(const Point* p) {
 //     print(f(Point(3)))
 void main() {
     std::cout << ::tpyapp::main::f(nullptr) << "\n" << ::tpy::check_signals;
-    Point __tmp_1 = Point(3);
-    std::cout << ::tpyapp::main::f(&(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f(&::tpy::as_mut_lvalue(Point(3))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

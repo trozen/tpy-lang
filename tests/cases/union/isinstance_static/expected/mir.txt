@@ -8,6 +8,6 @@ main::record_other@41:0: covered (storage: no_proof_required), summary: known
 main::negate@47:0: covered (storage: no_proof_required), summary: known
 main::compound@51:0: covered (storage: no_proof_required), summary: known
 main::match_guard@55:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::main@63:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@63:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::A.__init__@8:4: covered (storage: no_proof_required), summary: known
 main::B.__init__@14:4: covered (storage: no_proof_required), summary: known

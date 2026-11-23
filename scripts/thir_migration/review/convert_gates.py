@@ -884,7 +884,7 @@ def return_audit():
 # and the generator yield value (a ladder inside `_lower_resumable`, entered
 # through the functions it calls). The async return payload converts
 # through the return's own result sink.
-ARG_AUDIT_ENTRIES = ("_lower_call_arg_at",)
+ARG_AUDIT_ENTRIES = ("_lower_call_arg",)
 RESUMABLE_FILE = os.path.join(LOWER, "resumable.py")
 
 

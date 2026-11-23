@@ -1,4 +1,4 @@
-"""Returned argument aliases retain named backing identity through calls and loop activations."""
+"""Returned argument aliases of a loop head's backing retain its identity through calls and loop activations."""
 
 from collections.abc import Iterator
 from dataclasses import replace
@@ -11,18 +11,13 @@ from ..compilation_context import activate_compiler
 from ..compiler import Compiler
 from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from ..thir import nodes as th
-from ..thir.storage_facts import collect_storage_facts
-from ..thir.temp_plan import prepare_temporaries
 from ..thir.testutil import _compile, _entry
-from ..typesys import BOOL
 from .testutil import compiled_definitions, placed_storage, prepared, workspace_functions
 from .call_contract import MIRSummaryState
 from .collect import call_definitions
 from .definitions import MIRDefinitions
 from .testutil import lower_constructor, lower_function
 from .nodes import (
-    MIRWrap,
-    MIRStorageInit,
     MIRAlias, MIRAssign, MIRBodyId, MIRCall,
     MIRCopy, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint,
     MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
@@ -37,60 +32,68 @@ SOURCE = '''from tpy import int32, readonly, nocopy
 @nocopy
 class Cell:
     value: int32
+    xs: list[int32]
     def __init__(self, value: int32):
         self.value = value
+        self.xs = [value]
     def method(self, value: int32) -> int32:
-        saved = observe(Cell(value))
-        return saved.value
+        answer = 0
+        for v in observe(Cell(value)):
+            answer = v
+        return answer
 
 class Caller:
     value: int32
     def __init__(self, value: int32):
         self.value = 0
-        saved = observe(Cell(value))
-        self.value = saved.value
+        for v in observe(Cell(value)):
+            self.value = v
 
-def observe(cell: Cell) -> readonly[Cell]:
-    return cell
+def observe(cell: readonly[Cell]) -> readonly[list[int32]]:
+    return cell.xs
 
-def choose(flag: bool, a: Cell, b: Cell) -> readonly[Cell]:
-    return a if flag else b
+def choose(flag: bool, a: readonly[Cell], b: readonly[Cell]) -> readonly[list[int32]]:
+    if flag:
+        return a.xs
+    return b.xs
 
-def independent(a: Cell, b: Cell) -> readonly[Cell]:
+def independent(a: readonly[Cell], b: readonly[Cell]) -> readonly[list[int32]]:
     value = b.value
-    return a
+    return a.xs
 
 def eager(value: int32) -> int32:
-    saved = observe(Cell(value))
-    return saved.value
-
-def selected(flag: bool, value: int32) -> int32:
-    saved = observe(Cell(value))
-    return saved.value
+    answer = 0
+    for v in observe(Cell(value)):
+        answer = v
+    return answer
 
 def mixed(flag: bool, owner: Cell) -> int32:
-    saved = choose(flag, owner, Cell(7))
+    answer = 0
+    for v in choose(flag, owner, Cell(7)):
+        answer = v
     owner.value = 9
-    return saved.value
+    return answer
 
 def unreturned(owner: Cell) -> int32:
-    saved = independent(owner, Cell(7))
+    answer = 0
+    for v in independent(owner, Cell(7)):
+        answer = v
     owner.value = 9
-    return saved.value
+    return answer
 
-def loop(flag: bool, value: int32, seed: Cell) -> int32:
+def loop(flag: bool, value: int32, seed: readonly[list[int32]]) -> int32:
     answer = 0
     while flag:
-        saved = observe(Cell(value))
-        answer = saved.value
+        for v in observe(Cell(value)):
+            answer = v
         flag = False
     return answer
 
-def ranges(value: int32, seed: Cell) -> int32:
+def ranges(value: int32, seed: readonly[list[int32]]) -> int32:
     answer = 0
     for i in range(2):
-        saved = observe(Cell(value))
-        answer = saved.value
+        for v in observe(Cell(value)):
+            answer = v
     return answer
 '''
 
@@ -143,26 +146,8 @@ def _lower(artifacts: Artifacts, fn: th.THIRFunction) -> MIRFunction | MIRNotCov
                           definitions=definitions, summaries=workspace.summaries)
 
 
-def _lazy(artifacts: Artifacts) -> MIRFunction:
-    # No admitted source selects between temporary-bearing borrowed calls; build that shape.
-    fn = _thir(artifacts, "selected")
-    decl, *rest = fn.body
-    other = replace(decl.init, args=tuple(replace(arg, init=replace(arg.init)) for arg in decl.init.args))
-    select = th.THIRIfExpr(decl.init.result_type, th.THIRName(BOOL, "flag"), decl.init, other,
-                           form=th.Form.BORROW)
-    body = (replace(decl, init=select), *rest)
-    plan = prepare_temporaries(body)
-    assert [p.optional for p in plan.placements] == [True, True]
-    result = _lower(artifacts, replace(fn, body=body, temp_plan=plan,
-                                       storage_facts=collect_storage_facts(body, plan)))
-    assert isinstance(result, MIRFunction), result
-    return result
-
-
 def _body(artifacts: Artifacts, name: str) -> MIRFunction:
     ctx, workspace, definitions, _ = artifacts
-    if name == "lazy":
-        return _lazy(artifacts)
     if name == "method":
         fn = next(fn for fn in ctx.thir_functions.values() if fn.name == name)
         result = lower_function(fn, MIRBodyId("main", name),
@@ -182,7 +167,7 @@ def _storage(body: MIRFunction) -> list[MIRSlot]:
     return placed_storage(body)
 
 
-@pytest.mark.parametrize("name", ["eager", "lazy", "mixed", "unreturned", "loop", "ranges", "method", "Caller"])
+@pytest.mark.parametrize("name", ["eager", "mixed", "unreturned", "loop", "ranges", "method", "Caller"])
 def test_returned_temporaries_are_valid_aliases(artifacts: Artifacts, name: str) -> None:
     body = _body(artifacts, name)
     validate_function(body)
@@ -192,7 +177,7 @@ def test_returned_temporaries_are_valid_aliases(artifacts: Artifacts, name: str)
     assert not any(isinstance(value, MIRCopy) for value in values)
     result = inspect_scope_lifetimes(prepared(body))
     assert not isinstance(result, MIRNotCovered) and not result.conflicts
-    if name not in ("lazy", "method", "Caller"):
+    if name not in ("method", "Caller"):
         # The temporary is the caller's private storage: the borrow returned
         # through it publishes no return origin, and only the write through
         # the `owner` parameter is published.
@@ -204,7 +189,7 @@ def test_returned_temporaries_are_valid_aliases(artifacts: Artifacts, name: str)
                            else set())
 
 
-@pytest.mark.parametrize("name", ["eager", "lazy", "mixed", "unreturned"])
+@pytest.mark.parametrize("name", ["eager", "mixed", "unreturned"])
 def test_return_origins_substitute_only_selected_arguments(artifacts: Artifacts, name: str) -> None:
     body = _body(artifacts, name)
     deps = prepared(body).dependencies
@@ -218,25 +203,12 @@ def test_return_origins_substitute_only_selected_arguments(artifacts: Artifacts,
             actual = deps.referents[MIRPoint(block.id, index + 1)][stmt.target]
             expected = frozenset(root for origin in stmt.value.summary.returns
                                  for root in before[MIRPlace(stmt.value.arguments[origin.parameter])])
-            assert actual == expected and actual
+            # The result is the argument's field (`cell.xs`): the same roots.
+            assert {(r.place.root, r.external) for r in actual} == {(r.place.root, r.external) for r in expected}
+            assert actual
             assert all(root.external or root.place.root in backing for root in actual)
             assert any(root.external for root in actual) is (name in ("mixed", "unreturned"))
             assert any(not root.external for root in actual) is (name != "unreturned")
-
-
-def test_lazy_backing_initializes_in_each_selected_arm(artifacts: Artifacts) -> None:
-    body = _lazy(artifacts)
-    backing = _storage(body)
-    assert len(backing) == 2 and all(slot.shape.owned_sum for slot in backing)
-    declarations = [block.id for block in body.blocks for stmt in block.statements
-                    if isinstance(stmt, MIRStorageInit)]
-    assert declarations == [body.entry, body.entry]
-    # Each arm builds its record and moves it into its sum.
-    constructions = [(block.id, stmt.target.root) for block in body.blocks for stmt in block.statements
-                     if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRWrap)]
-    assert len({block for block, _ in constructions}) == 2
-    assert all(block != body.entry for block, _ in constructions)
-    assert {slot for _, slot in constructions} == {slot.id for slot in backing}
 
 
 @pytest.mark.parametrize("name", ["loop", "ranges"])
@@ -263,7 +235,9 @@ def test_missing_plan_does_not_invent_backing(artifacts: Artifacts) -> None:
 def test_retained_call_result_observes_iteration_end(artifacts: Artifacts, name: str) -> None:
     body = _body(artifacts, name)
     seed = next(slot for slot in body.slots if slot.name == "seed")
-    saved = next(slot for slot in body.slots if slot.name == "saved")
+    call = next(stmt for block in body.blocks for stmt in block.statements
+                if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall) and stmt.value.summary.returns)
+    saved = body.slots[call.target.root.index]
     holder, copied = (MIRSlotId(body.id, len(body.slots) + i) for i in range(2))
     slots = body.slots + tuple(replace(saved, id=sid, kind=MIRSlotKind.LOCAL,
                                       name=None, residence=MIRRegionId(body.id, 0)) for sid in (holder, copied))
@@ -293,26 +267,29 @@ def test_retained_call_result_observes_iteration_end(artifacts: Artifacts, name:
 
 
 @pytest.mark.parametrize("extra, reason", [
-    ('''def mutable(cell: Cell) -> Cell:
+    ('''def mutable(cell: Cell) -> readonly[list[int32]]:
     cell.value = 2
-    return cell
+    return cell.xs
 def rejected() -> int32:
-    saved = mutable(Cell(1))
-    return saved.value
+    for v in mutable(Cell(1)):
+        return v
+    return 0
 ''', "named argument needs readonly record constructor"),
     ('''def identity(value: int32) -> int32:
     return value
 def rejected(value: int32) -> int32:
-    saved = observe(Cell(identity(value)))
-    return saved.value
+    for v in observe(Cell(identity(value))):
+        return v
+    return 0
 ''', "named temporary needs stable scalar operands"),
-    ('''def writes(owner: Cell, other: Cell) -> readonly[Cell]:
+    ('''def writes(owner: Cell, other: readonly[Cell]) -> readonly[list[int32]]:
     owner.value = 2
-    return other
+    return other.xs
 def rejected(owner: Cell) -> int32:
-    saved = writes(owner, Cell(1))
-    return saved.value
-''', "named argument crosses unproven evaluation order"),
+    for v in writes(owner, Cell(1)):
+        return v
+    return 0
+''', "order-sensitive eager operands"),
 ])
 def test_unverified_actuals_and_order_stay_uncovered(extra: str, reason: str) -> None:
     workspace = _compile_workspace(SOURCE + extra).workspace

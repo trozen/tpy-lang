@@ -336,13 +336,10 @@ void main() {
     std::cout << "constructor" << " " << number.value << "\n" << ::tpy::check_signals;
     std::cout << "method" << " " << ::tpy::print_bool(number.check(::tpy::BigInt(-5))) << "\n" << ::tpy::check_signals;
     std::cout << "generic twin" << " " << ::tpy::print_bool(::tpyapp::main::compare(low, high)) << " " << ::tpy::print_bool(::tpyapp::main::generic_compare<::tpy::BigInt>(low, high)) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<::tpy::BigInt, std::string> __tmp_1 = high;
-    ::tpyapp::main::wrappers(-17, __tmp_1, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(-17), ::tpy::BigInt(3)});
-    ::tpy::Union<::tpy::BigInt, std::string> __tmp_2 = "inverse";
-    ::tpyapp::main::wrappers(std::nullopt, __tmp_2, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(17), ::tpy::BigInt(3)});
+    ::tpyapp::main::wrappers(-17, ::tpy::Union<::tpy::BigInt, std::string>(high), std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(-17), ::tpy::BigInt(3)});
+    ::tpyapp::main::wrappers(std::nullopt, ::tpy::Union<::tpy::BigInt, std::string>("inverse"), std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(17), ::tpy::BigInt(3)});
     {
-        ::tpy::BigInt __tmp_3 = ::tpy::BigInt(-17);
-        auto __src_3 = ::tpyapp::main::generated(__tmp_3, ::tpy::BigInt(3));
+        auto __src_3 = ::tpyapp::main::generated(::tpy::BigInt(-17), ::tpy::BigInt(3));
         auto&& __itr_3 = ::tpy::__iter__(__src_3);
         for (;;) {
             auto __r_4 = __itr_3.__next__();
@@ -351,8 +348,7 @@ void main() {
             std::cout << "generator" << " " << value << "\n" << ::tpy::check_signals;
         }
     }
-    ::tpy::BigInt __tmp_4 = ::tpy::BigInt(-17);
-    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::async_ops(__tmp_4, ::tpy::BigInt(3)))) << "\n" << ::tpy::check_signals;
+    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::async_ops(::tpy::BigInt(-17), ::tpy::BigInt(3)))) << "\n" << ::tpy::check_signals;
     std::array<::tpy::BigInt, 4> values = {low, -(one), one, high};
     std::vector<::tpy::BigInt> results = ({
         std::vector<::tpy::BigInt> __result;

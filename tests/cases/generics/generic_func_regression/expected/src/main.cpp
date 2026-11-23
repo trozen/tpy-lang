@@ -67,13 +67,10 @@ void __tpy_init() {
     points = &__global_slot_5;
     p = &(::tpyapp::main::get_item<Point>((*points), 0));
     std::cout << p->x << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {10, 20, 30};
-    first_num = ::tpyapp::main::First<int32_t>(__tmp_1);
-    std::vector<int32_t> __tmp_2 = {first_num, 40, 50};
-    second_num = ::tpyapp::main::First<int32_t>(__tmp_2);
+    first_num = ::tpyapp::main::First<int32_t>(::tpy::as_mut_lvalue(std::vector<int32_t>{10, 20, 30}));
+    second_num = ::tpyapp::main::First<int32_t>(::tpy::as_mut_lvalue(std::vector<int32_t>{first_num, 40, 50}));
     std::cout << second_num << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = {5, 6, 7};
-    result = (::tpy::add_check<int32_t>(::tpyapp::main::First<int32_t>(__tmp_3), 10));
+    result = (::tpy::add_check<int32_t>(::tpyapp::main::First<int32_t>(::tpy::as_mut_lvalue(std::vector<int32_t>{5, 6, 7})), 10));
     std::cout << result << "\n" << ::tpy::check_signals;
 }
 

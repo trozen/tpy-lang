@@ -216,13 +216,11 @@ struct __coro_amain {
     bool __cancel_pending;
     ::tpy::frame_slot<::tpyapp::fixtures::P> q;
     int32_t n;
-    ::tpyapp::fixtures::V __coro_arg_0{};
     std::string __await_lift_0;
-    std::string __coro_arg_1;
     std::string __await_lift_1;
     std::string __await_lift_2;
-    std::string __coro_arg_2;
     std::string __await_lift_3;
+    ::tpy::frame_slot<std::string> __head_arg_0;
     std::optional<__coro_aname> __sub_0;
     std::optional<__coro_atext> __sub_1;
     std::optional<__coro_atuple> __sub_2;

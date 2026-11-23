@@ -13,8 +13,7 @@ std::expected<::tpy::BigInt, Failed> run(bool ok) {
     if (ok) {
         return ::tpy::BigInt(1);
     }
-    Node __tmp_1 = Node(::tpy::BigInt(9));
-    return ::tpy::make_unexpected(Failed(&(__tmp_1)));
+    return ::tpy::make_unexpected(Failed(&::tpy::as_mut_lvalue(Node(::tpy::BigInt(9)))));
 }
 
 // def main() -> None:

@@ -30,8 +30,7 @@ int32_t f(Point& p) {
 //     print(f(pt))
 //     print(pt.y)
 void main() {
-    Point __tmp_1 = Point(1, 0);
-    std::cout << ::tpyapp::main::f(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f(::tpy::as_mut_lvalue(Point(1, 0))) << "\n" << ::tpy::check_signals;
     Point pt = Point(2, 3);
     std::cout << ::tpyapp::main::f(pt) << "\n" << ::tpy::check_signals;
     std::cout << pt.y << "\n" << ::tpy::check_signals;

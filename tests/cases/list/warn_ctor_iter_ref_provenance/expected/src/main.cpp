@@ -312,11 +312,10 @@ void main() {
     ::tpyapp::main::quiet();
     ::tpyapp::main::acknowledged();
     Bag().field_source();
-    std::vector<C> __tmp_1 = {C(::tpy::BigInt(40)), C(::tpy::BigInt(41))};
-    ::tpyapp::main::param_source(__tmp_1);
+    ::tpyapp::main::param_source({C(::tpy::BigInt(40)), C(::tpy::BigInt(41))});
     {
-        std::vector<C> __tmp_2 = {C(::tpy::BigInt(50)), C(::tpy::BigInt(51))};
-        auto __src_0 = ::tpyapp::main::generator_body(__tmp_2);
+        std::vector<C> __tmp_1 = {C(::tpy::BigInt(50)), C(::tpy::BigInt(51))};
+        auto __src_0 = ::tpyapp::main::generator_body(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

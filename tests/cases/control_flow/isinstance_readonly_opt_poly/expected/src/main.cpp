@@ -33,14 +33,10 @@ std::string classify(const ::tpy::BaseException* e) {
 //     print(classify(KeyError("k")))
 void main() {
     std::cout << ::tpyapp::main::classify(nullptr) << "\n" << ::tpy::check_signals;
-    ::tpy::ValueError __tmp_1 = ::tpy::ValueError("v");
-    std::cout << ::tpyapp::main::classify(&(__tmp_1)) << "\n" << ::tpy::check_signals;
-    ::tpy::OSError __tmp_2 = ::tpy::OSError(std::string_view("o"));
-    std::cout << ::tpyapp::main::classify(&(__tmp_2)) << "\n" << ::tpy::check_signals;
-    ::tpy::RuntimeError __tmp_3 = ::tpy::RuntimeError("r");
-    std::cout << ::tpyapp::main::classify(&(__tmp_3)) << "\n" << ::tpy::check_signals;
-    ::tpy::KeyError __tmp_4 = ::tpy::KeyError("k");
-    std::cout << ::tpyapp::main::classify(&(__tmp_4)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(&::tpy::as_mut_lvalue(::tpy::ValueError("v"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(&::tpy::as_mut_lvalue(::tpy::OSError(std::string_view("o")))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(&::tpy::as_mut_lvalue(::tpy::RuntimeError("r"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(&::tpy::as_mut_lvalue(::tpy::KeyError("k"))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

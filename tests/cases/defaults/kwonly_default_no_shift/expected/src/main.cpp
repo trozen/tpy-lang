@@ -140,11 +140,9 @@ int64_t neg(int64_t v) {
 //     print("builtin-min-key", m)
 void builtin_keywords() {
     std::vector<int64_t> xs = {3, 1, 2};
-    std::vector<int64_t> __tmp_1 = ::tpy::builtin_sorted<int64_t>(xs, true);
-    int64_t r = ::tpyapp::main::outer_seq__list_int64(__tmp_1);
+    int64_t r = ::tpyapp::main::outer_seq__list_int64(::tpy::builtin_sorted<int64_t>(xs, true));
     std::cout << "builtin-reverse" << " " << r << "\n" << ::tpy::check_signals;
-    std::vector<int64_t> __tmp_2 = ::tpy::builtin_sorted_key<int64_t>(std::move(xs), neg);
-    int64_t k = ::tpyapp::main::outer_seq__list_int64(__tmp_2);
+    int64_t k = ::tpyapp::main::outer_seq__list_int64(::tpy::builtin_sorted_key<int64_t>(std::move(xs), neg));
     std::cout << "builtin-key" << " " << k << "\n" << ::tpy::check_signals;
     int64_t m = ::tpyapp::main::outer__int64(::tpy::min_key(4, 7, neg));
     std::cout << "builtin-min-key" << " " << m << "\n" << ::tpy::check_signals;
@@ -179,8 +177,7 @@ void callee_reentry() {
     std::cout << "dispatch-method-outer" << " " << ::tpyapp::main::outer__int64(d.m__int64__int64(static_cast<int64_t>(2), static_cast<int64_t>(3))) << "\n" << ::tpy::check_signals;
     int64_t dl = ::tpyapp::main::apply__Fn_int64_U__int64<int64_t>([&d](int64_t a) -> int64_t { return d.m__int64__int64(a, static_cast<int64_t>(3)); }, 2);
     std::cout << "dispatch-method-lambda" << " " << dl << "\n" << ::tpy::check_signals;
-    Opts __tmp_1 = Opts(2);
-    std::cout << "td-outer" << " " << ::tpyapp::main::outer__int64(::tpyapp::main::td_x(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << "td-outer" << " " << ::tpyapp::main::outer__int64(::tpyapp::main::td_x(Opts(2))) << "\n" << ::tpy::check_signals;
     int64_t tl = ::tpyapp::main::apply__Fn_int64_U__int64<int64_t>([](int64_t a) -> int64_t { return ::tpyapp::main::td_x(Opts(a)); }, 4);
     std::cout << "td-lambda" << " " << tl << "\n" << ::tpy::check_signals;
     std::cout << "ctor-group-outer" << " " << ::tpyapp::main::outer__int64(static_cast<int64_t>(::tpy::OSError(2, std::string_view("nope")).error_number)) << "\n" << ::tpy::check_signals;
@@ -314,8 +311,7 @@ void sections_reentry() {
     Scaler s = Scaler();
     std::cout << "call-kw" << " " << ::tpyapp::main::outer__int64(s.__call__(1, 2)) << "\n" << ::tpy::check_signals;
     std::cout << "module-kw" << " " << ::tpyapp::main::outer__int64(::tpyapp::kwmod::scaled(1, 3)) << "\n" << ::tpy::check_signals;
-    Outer::Inner __tmp_2 = Outer::Inner(1, 4);
-    std::cout << "dotted-ctor-kw" << " " << ::tpyapp::main::describe__Outer_Inner(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "dotted-ctor-kw" << " " << ::tpyapp::main::describe__Outer_Inner(Outer::Inner(1, 4)) << "\n" << ::tpy::check_signals;
     for (int32_t n = 0; n < 2; ++n) {
         {
             try {

@@ -101,41 +101,28 @@ __gen_gen gen() {
 //     xs = [opt(V3(7.0))]
 //     print("local:", own_ints(xs))
 void main() {
-    V3 __tmp_1 = V3(2.0);
-    Scene s = Scene(::tpy::make_vector<Body>(Body(::tpystd::tplib::box::Box<Material>(Material(V3(1.0), &(__tmp_1))))));
+    Scene s = Scene(::tpy::make_vector<Body>(Body(::tpystd::tplib::box::Box<Material>(Material(V3(1.0), &::tpy::as_mut_lvalue(V3(2.0)))))));
     std::cout << "scene:" << " " << ::tpy::print_float(::tpy::__getitem__(s.objects, 0).material.get().emission.x) << "\n" << ::tpy::check_signals;
-    V3 __tmp_2 = V3(2.0);
-    std::cout << "own:" << " " << ::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::opt(&(__tmp_2)), ::tpyapp::main::opt()}) << "\n" << ::tpy::check_signals;
-    V3 __tmp_3 = V3(3.0);
-    std::cout << "set:" << " " << ::tpy::__len__(::tpyapp::main::own_set(::tpy::ordered_set<::tpy::BigInt>({::tpyapp::main::opt(&(__tmp_3))}))) << "\n" << ::tpy::check_signals;
-    V3 __tmp_4 = V3(2.0);
-    std::cout << "binop:" << " " << ::tpyapp::main::take_i(((::tpyapp::main::opt(&(__tmp_4))) + (::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
-    V3 __tmp_5 = V3(2.0);
-    std::cout << "open:" << " " << ::tpy::__len__(::tpyapp::main::take_open_own<std::vector<::tpy::BigInt>>(std::vector<::tpy::BigInt>{::tpyapp::main::opt(&(__tmp_5))})) << "\n" << ::tpy::check_signals;
+    std::cout << "own:" << " " << ::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::opt(&::tpy::as_mut_lvalue(V3(2.0))), ::tpyapp::main::opt()}) << "\n" << ::tpy::check_signals;
+    std::cout << "set:" << " " << ::tpy::__len__(::tpyapp::main::own_set(::tpy::ordered_set<::tpy::BigInt>({::tpyapp::main::opt(&::tpy::as_mut_lvalue(V3(3.0)))}))) << "\n" << ::tpy::check_signals;
+    std::cout << "binop:" << " " << ::tpyapp::main::take_i(((::tpyapp::main::opt(&::tpy::as_mut_lvalue(V3(2.0)))) + (::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
+    std::cout << "open:" << " " << ::tpy::__len__(::tpyapp::main::take_open_own<std::vector<::tpy::BigInt>>(std::vector<::tpy::BigInt>{::tpyapp::main::opt(&::tpy::as_mut_lvalue(V3(2.0)))})) << "\n" << ::tpy::check_signals;
     V3 v = V3(1.0);
-    V3 __tmp_6 = V3(8.0);
-    std::cout << "method:" << " " << ::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{v.opt_m(&(__tmp_6))}) << "\n" << ::tpy::check_signals;
-    V3 __tmp_7 = V3(6.0);
-    std::vector<std::vector<::tpy::BigInt>> nest = ::tpyapp::main::own_nested(std::vector<std::vector<::tpy::BigInt>>{{::tpyapp::main::opt(&(__tmp_7))}});
+    std::cout << "method:" << " " << ::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{v.opt_m(&::tpy::as_mut_lvalue(V3(8.0)))}) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<::tpy::BigInt>> nest = ::tpyapp::main::own_nested(std::vector<std::vector<::tpy::BigInt>>{{::tpyapp::main::opt(&::tpy::as_mut_lvalue(V3(6.0)))}});
     std::cout << "nested:" << " " << ::tpy::__getitem__(::tpy::__getitem__(nest, 0), 0) << "\n" << ::tpy::check_signals;
-    V3 __tmp_8 = V3(2.0);
-    std::cout << "union param:" << " " << ::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::uni(::tpy::Union<const V3*, const int32_t*>{&__tmp_8})}) << "\n" << ::tpy::check_signals;
+    std::cout << "union param:" << " " << ::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::uni(::tpy::Union<const V3*, const int32_t*>{&(::tpy::as_mut_lvalue(V3(2.0)))})}) << "\n" << ::tpy::check_signals;
     std::cout << "gen:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen())) << "\n" << ::tpy::check_signals;
     int32_t n = 0;
-    while (true) {
-        V3 __tmp_9 = V3(1.0);
-        if (!((::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::opt(&(__tmp_9)), n}) < 3))) break;
+    while ((::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::opt(&::tpy::as_mut_lvalue(V3(1.0))), n}) < 3)) {
         n = ::tpy::add_check<int32_t>(n, 1);
     }
     std::cout << "while:" << " " << n << "\n" << ::tpy::check_signals;
-    std::optional<V3> __tmp_10;
-    std::cout << "and:" << " " << ::tpy::print_bool(((n > 0) && (__tmp_10.emplace(V3(2.0)), (::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::opt(&((*__tmp_10)))}) == 2)))) << "\n" << ::tpy::check_signals;
-    V3 __tmp_11 = V3(2.0);
-    ::tpy::BigInt r_order = ::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::first(), ::tpyapp::main::opt(&(__tmp_11))});
+    std::cout << "and:" << " " << ::tpy::print_bool(((n > 0) && (::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::opt(&::tpy::as_mut_lvalue(V3(2.0)))}) == 2))) << "\n" << ::tpy::check_signals;
+    ::tpy::BigInt r_order = ::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::first(), ::tpyapp::main::opt(&::tpy::as_mut_lvalue(V3(2.0)))});
     std::cout << "order:" << " " << r_order << "\n" << ::tpy::check_signals;
     std::cout << "value:" << " " << ::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::vopt(C(2))}) << "\n" << ::tpy::check_signals;
-    V3 __tmp_12 = V3(7.0);
-    std::vector<::tpy::BigInt> xs = {::tpyapp::main::opt(&(__tmp_12))};
+    std::vector<::tpy::BigInt> xs = {::tpyapp::main::opt(&::tpy::as_mut_lvalue(V3(7.0)))};
     std::cout << "local:" << " " << ::tpyapp::main::own_ints(std::move(xs)) << "\n" << ::tpy::check_signals;
 }
 

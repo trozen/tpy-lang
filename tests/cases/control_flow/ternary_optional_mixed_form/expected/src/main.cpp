@@ -24,8 +24,7 @@ void bump(Box* p, Holder& h, bool c) {
 //     if h.opt is not None:
 //         print(h.opt.val)         # 107 -- visible on the field
 void main() {
-    Box __tmp_1 = Box(::tpy::BigInt(7));
-    Holder h = Holder(&(__tmp_1));
+    Holder h = Holder(&::tpy::as_mut_lvalue(Box(::tpy::BigInt(7))));
     Box param = Box(::tpy::BigInt(3));
     ::tpyapp::main::bump(&(param), h, true);
     std::cout << param.val << "\n" << ::tpy::check_signals;

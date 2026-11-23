@@ -244,8 +244,8 @@ def take_point(p: Point) -> int32:  # tpyc: mir(covered) mir_summary(known)
     return p.x
 
 
-# free function: the record rvalue lives in a temporary the call borrows, and the certificate binds it
-def rvalue_temp() -> int32:  # tpyc: mir(certified)
+# free function: the record rvalue is a temporary of the call's own expression: nothing to certify
+def rvalue_temp() -> int32:  # tpyc: mir(covered)
     return take_point(Point(7, 0))
 
 
@@ -314,8 +314,8 @@ def view_len(v: ViewP) -> int32:
     return len(v.s)
 
 
-# refused: the temporary's view operand is a call result, not a stable operand
-def lent_view_temp(t: str) -> int32:  # tpyc: mir(uncovered /named temporary needs stable scalar operands/)
+# the temporary's view operand is a call result, bound for the call's own expression
+def lent_view_temp(t: str) -> int32:  # tpyc: mir(covered)
     y = view_len(ViewP(made(t)))
     return y
 

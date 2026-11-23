@@ -4,4 +4,4 @@ _bindings.pcre2::compile_pattern@11:0: covered (storage: no_proof_required), sum
 _bindings.pcre2::Code.__init__@7:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
 main::use@11:0: covered (storage: no_proof_required), summary: known
-main::main@15:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@15:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)

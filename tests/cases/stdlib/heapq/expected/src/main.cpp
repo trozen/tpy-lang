@@ -97,14 +97,10 @@ void main() {
     std::vector<int32_t> nums = {9, 2, 7, 1, 8, 4, 6, 3, 5};
     std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(3, nums)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(3, nums)) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = {3, 1, 2};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(20, __tmp_2)) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = {3, 1, 2};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(20, __tmp_3)) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_4 = {3, 1, 2};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(0, __tmp_4)) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_5 = {3, 1, 2};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(0, __tmp_5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(20, {3, 1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(20, {3, 1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(0, {3, 1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(0, {3, 1, 2})) << "\n" << ::tpy::check_signals;
     std::vector<std::string> words = std::vector<std::string>{};
     ::tpystd::heapq::heappush<std::string>(words, "cherry");
     ::tpystd::heapq::heappush<std::string>(words, "apple");

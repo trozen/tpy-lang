@@ -57,8 +57,7 @@ void main() {
     Printer<MyValue> printer = Printer<MyValue>();
     std::cout << printer.get_str(v) << "\n" << ::tpy::check_signals;
     Printer<Point> point_printer = Printer<Point>();
-    Point __tmp_1 = Point(10, 20);
-    std::cout << point_printer.get_str(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << point_printer.get_str(::tpy::as_mut_lvalue(Point(10, 20))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::process_both<std::vector<int32_t>, MyValue>(items, v) << "\n" << ::tpy::check_signals;
     Widget w = Widget("test", 99);
     ::tpyapp::main::use_multi<Widget>(w);

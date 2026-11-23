@@ -74,8 +74,7 @@ void main() {
     std::cout << "move rebind" << " " << ::tpyapp::part_moves::rebind<::tpyapp::fixtures::V>(v, w).s << " " << v.s << " " << w.s << "\n" << ::tpy::check_signals;
     std::cout << "move rebind str" << " " << ::tpyapp::part_moves::rebind<std::string>("a", "b") << "\n" << ::tpy::check_signals;
     std::cout << "move app" << " " << ::tpyapp::part_moves::app<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, 4) << "\n" << ::tpy::check_signals;
-    ::tpy::Adapter<Sink<::tpyapp::fixtures::V>, VSink> __tmp_1{VSink()};
-    std::cout << "move dynamic" << " " << ::tpyapp::part_moves::use_sink(__tmp_1, v) << " " << v.s << "\n" << ::tpy::check_signals;
+    std::cout << "move dynamic" << " " << ::tpyapp::part_moves::use_sink(::tpy::as_mut_lvalue(::tpy::Adapter<Sink<::tpyapp::fixtures::V>, VSink>{VSink()}), v) << " " << v.s << "\n" << ::tpy::check_signals;
 }
 
 // # A by-value parameter is copied or moved where the function written for the

@@ -325,7 +325,7 @@ inline ::tpy::Bytes _GzipReader::_readall() {
         }
         chunks.push_back(std::move(data));
     }
-    return ::tpy::bytes_join(::tpy::Bytes{}, chunks);
+    return ::tpy::bytes_join(::tpy::BytesView{}, chunks);
 }
 
 // def close(self) -> None:

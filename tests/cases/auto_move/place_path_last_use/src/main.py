@@ -474,7 +474,11 @@ def temp_del_reads() -> None:
     # call and a borrowed parameter on it copy nothing
     HD(mka(27)).a.bump()  # tpyc: ok
     mkld("temp_del_reads_list").xs.append(4)  # tpyc: ok
-    print("temp_del_reads", grow(mkld("temp_del_reads_grow").xs))  # tpyc: ok
+    # the owner dies with the statement, after the call (CPython drops it at
+    # the attribute read): the count is bound first so the output does not
+    # depend on where the `__del__` runs, which is no contract
+    g = grow(mkld("temp_del_reads_grow").xs)  # tpyc: ok
+    print("temp_del_reads", g)
     # a local bound to one copies nothing either: it takes the member as
     # the temporary hands it over (BUGS.md#temporary-finalized-owner-member-moved)
     x = mkld("temp_del_reads_local").xs  # tpyc: ok

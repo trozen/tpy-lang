@@ -63,12 +63,8 @@ int32_t tuple_dict(Box& b) {
 //     print(singleton_append(Box(2)), tuple_append(Box(2)))
 //     print(singleton_dict(Box(2)), tuple_dict(Box(2)))
 void main() {
-    Box __tmp_1 = Box(2);
-    Box __tmp_2 = Box(2);
-    std::cout << ::tpyapp::main::singleton_append(__tmp_1) << " " << ::tpyapp::main::tuple_append(__tmp_2) << "\n" << ::tpy::check_signals;
-    Box __tmp_3 = Box(2);
-    Box __tmp_4 = Box(2);
-    std::cout << ::tpyapp::main::singleton_dict(__tmp_3) << " " << ::tpyapp::main::tuple_dict(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::singleton_append(Box(2)) << " " << ::tpyapp::main::tuple_append(::tpy::as_mut_lvalue(Box(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::singleton_dict(Box(2)) << " " << ::tpyapp::main::tuple_dict(::tpy::as_mut_lvalue(Box(2))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

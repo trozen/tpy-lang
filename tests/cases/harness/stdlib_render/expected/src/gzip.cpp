@@ -145,7 +145,7 @@ void _put_u32le(::tpy::ByteArray& out, uint32_t v) {
     while (true) {
         ::tpystd::io::BytesIO fp = ::tpystd::io::BytesIO(rest);
         if ((!(::tpystd::gzip::_read_gzip_header(fp)))) {
-            return ::tpy::bytes_join(::tpy::Bytes{}, members);
+            return ::tpy::bytes_join(::tpy::BytesView{}, members);
         }
         ::tpystd::zlib::_Decompress do_ = ::tpystd::zlib::decompressobj(::tpy::neg_check<int32_t>(::tpystd::zlib::MAX_WBITS));
         ::tpy::Bytes decompressed = do_.decompress(::tpy::Bytes(::tpy::bytes_slice(rest, ::tpy::BasicSlice{fp.tell(), std::nullopt})));

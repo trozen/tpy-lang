@@ -17,7 +17,7 @@ from .emit import ModuleCounter, TempSink, emit_thir_body
 from ..typesys import BOOL, INT32, TupleType
 
 
-SOURCE = '''from tpy import int32, nocopy
+SOURCE = '''from tpy import int32, nocopy, Own
 
 @nocopy
 class Cell:
@@ -25,35 +25,39 @@ class Cell:
     def __init__(self, value: int32):
         self.value = value
 
-def read(cell: Cell) -> int32:
-    return cell.value
+# An owned parameter's copy of a live name is the argument temporary every
+# position holds (a fresh argument binds inline).
+NAME = "n"
 
-def positive(cell: Cell) -> bool:
-    return cell.value > 0
+def read(text: Own[str]) -> int32:
+    return len(text)
+
+def positive(text: Own[str]) -> bool:
+    return len(text) > 0
 
 def eager(value: int32) -> int32:
-    answer = read(Cell(value))
+    answer = read(NAME)
     return answer
 
 def lazy(value: int32, flag: bool) -> int32:
-    return read(Cell(value)) if flag else 0
+    return read(NAME) if flag else 0
 
 def branches(value: int32, flag: bool) -> int32:
-    if positive(Cell(value)):
+    if positive(NAME):
         result = 1
-    elif positive(Cell(value)):
+    elif positive(NAME):
         result = 2
     else:
         result = 3
     return result
 
 def loop(value: int32) -> int32:
-    while positive(Cell(value)):
+    while positive(NAME):
         value = 0
     return value
 
 def multiple(value: int32, flag: bool) -> bool:
-    return flag and (positive(Cell(value)) or positive(Cell(0)))
+    return flag and (positive(NAME) or positive(NAME))
 
 def select(flag: bool, owner: Cell) -> int32:
     saved = owner if flag else Cell(2)
@@ -264,7 +268,7 @@ def test_select_while_head_stays_outside_repeated_argument_storage(functions: di
     assert cpp == _render(functions["select"], body, planned=False)
     assert cpp.index("std::optional<Cell> __select_slot_1;") < cpp.index("while (")
     if argument:
-        assert cpp.index("while (true)") < cpp.index("Cell __tmp_2 = Cell(value);")
+        assert cpp.index("while (true)") < cpp.index("std::string __tmp_2{NAME};")
     assert "__select_slot_1.emplace(Cell(2))" in cpp
 
 
@@ -298,7 +302,7 @@ def test_named_and_argument_declaration_channels_preserve_identity_and_order(fun
     assert [type(p.node) for p in plan.placements] == [th.THIRSlotEmplace] * 2 + [th.THIRArgTemp] * 2
     cpp = _render(functions["select"], body, planned=True)
     assert cpp == _render(functions["select"], body, planned=False)
-    assert cpp.index("__select_slot_2;") < cpp.index("__select_slot_3;") < cpp.index("__tmp_1 =") < cpp.index("__tmp_4 =")
+    assert cpp.index("__select_slot_2;") < cpp.index("__select_slot_3;") < cpp.index("__tmp_1{") < cpp.index("__tmp_4{")
 
 
 @pytest.mark.parametrize("kind", [th.THIRArgTemp, th.THIRSlotEmplace])

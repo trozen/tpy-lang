@@ -25,6 +25,7 @@ from .nodes import (
     Form, body_header,
     TruthinessMode,
     THIRArgTemp,
+    THIRInlineTemp,
     THIRTempRead,
     BOUND_SOURCE_READ,
     THIRAssert,
@@ -75,6 +76,7 @@ from .nodes import (
     THIRConsumingIter,
     THIRCopy,
     THIRSlotEmplace,
+    THIRRootSlot,
     THIRDecayCopy,
     THIRNoneCheck,
     THIRMove,
@@ -294,6 +296,8 @@ def _expr(e: THIRExpr) -> str:
         return f"%argtmp#{e.read_id}"
     if isinstance(e, THIRSlotEmplace):
         return f"slot_emplace[{e.cpp_type}]({_expr(e.value)})"
+    if isinstance(e, THIRRootSlot):
+        return f"root_slot[{e.name}]({_expr(e.value)})"
     if isinstance(e, THIRCopy):
         return f"copy[{e.cpp_type}]({_expr(e.value)})"
     if isinstance(e, THIRConsumingIter):
@@ -302,6 +306,10 @@ def _expr(e: THIRExpr) -> str:
         return f"move({_expr(e.value)})"
     if isinstance(e, THIRDecayCopy):
         return f"decay_copy({_expr(e.value)})"
+    if isinstance(e, THIRInlineTemp):
+        typed = f"[{e.cpp_type}]" if e.cpp_type is not None else ""
+        kind = ("addr_of" if e.addr_of else "mut" if e.mutable else "const")
+        return f"inline_temp{typed}<{kind}>({_expr(e.value)})"
     if isinstance(e, THIROptionalPtrArg):
         if e.value is None:
             inner = "nullptr"

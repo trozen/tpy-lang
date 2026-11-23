@@ -82,20 +82,24 @@ void main() {
     ::tpyapp::main::teardown(base);
     ::tpystd::os::mkdir(base);
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/sub")));
-    auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat(base, "/f.txt")), "w");
-    ::tpy::TextFile* fh = &(__ctx_1.__enter__());
-    try {
-        fh->write("x");
-        goto __with_exit_1;
-    } catch (::tpy::BaseException& __exc_1) {
-        __ctx_1.__exit__({}, &__exc_1, {});
-        throw;
-    } catch (...) {
+    ::tpy::TextFile* fh = nullptr;
+    {
+        ::tpy::String __tmp_1 = (::tpy::str_concat(base, "/f.txt"));
+        auto __ctx_1 = ::tpy::builtin_open_mode(__tmp_1, "w");
+        fh = &(__ctx_1.__enter__());
+        try {
+            fh->write("x");
+            goto __with_exit_1;
+        } catch (::tpy::BaseException& __exc_1) {
+            __ctx_1.__exit__({}, &__exc_1, {});
+            throw;
+        } catch (...) {
+            __ctx_1.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        throw;
     }
-    __with_exit_1:
-    __ctx_1.__exit__({}, nullptr, {});
     {
         try {
             ::tpystd::os::mkdir(base);
@@ -155,20 +159,23 @@ void main() {
         }
     }
     ::tpystd::os::makedirs((::tpy::str_concat(base, "/d1/d2")));
-    auto __ctx_2 = ::tpy::builtin_open_mode((::tpy::str_concat(base, "/d1/keep.txt")), "w");
-    fh = &(__ctx_2.__enter__());
-    try {
-        fh->write("k");
-        goto __with_exit_2;
-    } catch (::tpy::BaseException& __exc_2) {
-        __ctx_2.__exit__({}, &__exc_2, {});
-        throw;
-    } catch (...) {
+    {
+        ::tpy::String __tmp_2 = (::tpy::str_concat(base, "/d1/keep.txt"));
+        auto __ctx_2 = ::tpy::builtin_open_mode(__tmp_2, "w");
+        fh = &(__ctx_2.__enter__());
+        try {
+            fh->write("k");
+            goto __with_exit_2;
+        } catch (::tpy::BaseException& __exc_2) {
+            __ctx_2.__exit__({}, &__exc_2, {});
+            throw;
+        } catch (...) {
+            __ctx_2.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
-        throw;
     }
-    __with_exit_2:
-    __ctx_2.__exit__({}, nullptr, {});
     ::tpystd::os::removedirs((::tpy::str_concat(base, "/d1/d2")));
     std::cout << "removedirs-stopped:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/d1")))) << "\n" << ::tpy::check_signals;
     ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/d1/keep.txt")));

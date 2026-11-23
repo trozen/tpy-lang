@@ -208,8 +208,7 @@ void main() {
     std::cout << ::tpyapp::main::depth_nested(branch, 1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::depth_nested(leaf, 1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::eval_expr(42) << "\n" << ::tpy::check_signals;
-    Expr __tmp_1 = std::vector<Expr>{1, "two", std::vector<Expr>{3}};
-    std::cout << ::tpyapp::main::eval_expr(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::eval_expr(Expr(std::vector<Expr>{1, "two", std::vector<Expr>{3}})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

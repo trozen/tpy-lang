@@ -364,16 +364,15 @@ struct __coro_coros {
     ::tpy::frame_slot<H> h;
     V v{};
     std::string __await_lift_0;
-    A* __coro_arg_0 = nullptr;
-    std::optional<A> __ptr_slot_f0;
     std::string __await_lift_1;
-    ::tpy::frame_slot<::tpy::Union<A, B>> __coro_arg_1;
     std::string __await_lift_2;
     int32_t __await_lift_3;
     int32_t __await_lift_4;
+    ::tpy::frame_slot<std::optional<A>> __head_arg_0;
+    ::tpy::frame_slot<::tpy::Union<A, B>> __head_arg_1;
     std::optional<__coro_atext<::tpy::await_arg_capture_t<decltype((::tpy::optional_to_ptr((*h).o)))>>> __sub_0;
-    std::optional<__coro_atext<::tpy::await_arg_capture_t<decltype((auto(__coro_arg_0)))>>> __sub_1;
-    std::optional<__coro_atext<::tpy::await_arg_capture_t<decltype((::tpy::to_const_ptr_variant((*__coro_arg_1))))>>> __sub_2;
+    std::optional<__coro_atext<::tpy::await_arg_capture_t<decltype((::tpy::optional_to_ptr(std::declval<std::optional<A>&>())))>>> __sub_1;
+    std::optional<__coro_atext<::tpy::await_arg_capture_t<decltype((::tpy::to_const_ptr_variant(std::declval<::tpy::Union<A, B>&>())))>>> __sub_2;
     std::optional<__coro_arebind<::tpy::await_arg_capture_t<decltype((auto(v)))>>> __sub_3;
     std::optional<__coro_arebind<::tpy::await_arg_capture_t<decltype((auto(V(2))))>>> __sub_4;
 

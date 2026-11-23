@@ -7,9 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print("generic_explicit", two[Mat](Mat(), Chrome()))  # tpyc: ok
 void main() {
-    Mat __tmp_1 = Mat();
-    Chrome __tmp_2 = Chrome();
-    std::cout << "generic_explicit" << " " << ::tpyapp::main::two<Mat>(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "generic_explicit" << " " << ::tpyapp::main::two<Mat>(::tpy::as_mut_lvalue(Mat()), ::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
 }
 
 // main()

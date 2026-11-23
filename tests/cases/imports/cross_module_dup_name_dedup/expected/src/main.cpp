@@ -13,8 +13,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(get_x(Point(42)))
 void main() {
-    ::tpyapp::shp::Point __tmp_1 = ::tpyapp::shp::Point(::tpy::BigInt(42));
-    std::cout << ::tpyapp::main::get_x(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_x(::tpyapp::shp::Point(::tpy::BigInt(42))) << "\n" << ::tpy::check_signals;
 }
 
 // # Inverse guard for the same-short-name union fix: the SAME record imported

@@ -90,13 +90,10 @@ void loops() {
 //     for s in gtext(make_uni()):  # tpyc: ok
 //         print("fresh gen union", s)
 void fresh() {
-    std::optional<A> __tmp_1 = ::tpyapp::main::make_opt();
-    std::optional<A> __tmp_2 = ::tpyapp::main::make_none();
-    ::tpy::Union<A, B> __tmp_3 = ::tpyapp::main::make_uni();
-    std::cout << "fresh plain" << " " << ::tpyapp::main::text(::tpy::optional_to_ptr(__tmp_1)) << " " << ::tpyapp::main::text(::tpy::optional_to_ptr(__tmp_2)) << " " << ::tpyapp::main::text(::tpy::to_const_ptr_variant(__tmp_3)) << "\n" << ::tpy::check_signals;
+    std::cout << "fresh plain" << " " << ::tpyapp::main::text(::tpy::optional_to_ptr(::tpy::as_mut_lvalue(::tpyapp::main::make_opt()))) << " " << ::tpyapp::main::text(::tpy::optional_to_ptr(::tpy::as_mut_lvalue(::tpyapp::main::make_none()))) << " " << ::tpyapp::main::text(::tpy::to_const_ptr_variant(::tpy::as_mut_lvalue(::tpyapp::main::make_uni()))) << "\n" << ::tpy::check_signals;
     {
-        std::optional<A> __tmp_4 = ::tpyapp::main::make_opt();
-        auto __src_0 = ::tpyapp::main::gtext(::tpy::optional_to_ptr(__tmp_4));
+        std::optional<A> __tmp_1 = ::tpyapp::main::make_opt();
+        auto __src_0 = ::tpyapp::main::gtext(::tpy::optional_to_ptr(__tmp_1));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -106,8 +103,8 @@ void fresh() {
         }
     }
     {
-        ::tpy::Union<A, B> __tmp_5 = ::tpyapp::main::make_uni();
-        auto __src_2 = ::tpyapp::main::gtext(::tpy::to_const_ptr_variant(__tmp_5));
+        ::tpy::Union<A, B> __tmp_2 = ::tpyapp::main::make_uni();
+        auto __src_2 = ::tpyapp::main::gtext(::tpy::to_const_ptr_variant(__tmp_2));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -141,9 +138,7 @@ void fresh() {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         std::cout << "async field" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
-        __ptr_slot_f0 = ::tpyapp::main::make_opt();
-        __coro_arg_0 = ::tpy::optional_to_ptr(__ptr_slot_f0);
-        __sub_1.emplace(auto(__coro_arg_0));
+        __sub_1.emplace(::tpy::optional_to_ptr(__head_arg_0.emplace(::tpyapp::main::make_opt())));
         __state = S_RESUME_1;
         continue;
     }
@@ -152,8 +147,7 @@ void fresh() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        __coro_arg_1.emplace(::tpyapp::main::make_uni());
-        __sub_2.emplace(::tpy::to_const_ptr_variant((*__coro_arg_1)));
+        __sub_2.emplace(::tpy::to_const_ptr_variant(__head_arg_1.emplace(::tpyapp::main::make_uni())));
         __state = S_RESUME_2;
         continue;
     }

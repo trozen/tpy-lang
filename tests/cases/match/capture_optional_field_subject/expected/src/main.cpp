@@ -12,8 +12,7 @@ namespace tpyapp::main {
 //     if h.opt is not None:
 //         print(h.opt.v)   # 99 -- q aliased the field's Box
 void main() {
-    Box __tmp_1 = Box(::tpy::BigInt(1));
-    Holder h = Holder(&(__tmp_1));
+    Holder h = Holder(&::tpy::as_mut_lvalue(Box(::tpy::BigInt(1))));
     Box* q;
     auto __match_subject_1 = ::tpy::optional_to_ptr(h.opt);
     {

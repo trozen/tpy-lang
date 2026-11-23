@@ -33,8 +33,7 @@ void main() {
     Tree a = Leaf(42);
     std::vector<Tree> b = {Leaf(1)};
     std::cout << ::tpyapp::main::head(a) << "\n" << ::tpy::check_signals;
-    Tree __tmp_1 = std::move(b);
-    std::cout << ::tpyapp::main::head(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::head(Tree(std::move(b))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

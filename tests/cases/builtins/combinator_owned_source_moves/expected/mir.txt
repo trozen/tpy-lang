@@ -11,7 +11,7 @@ main::checked@183:0: uncovered (error-return body)
 main::by_match@191:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::dbl@199:0: covered (storage: no_proof_required), summary: known
 main::odd@203:0: covered (storage: no_proof_required), summary: known
-main::pairs@210:0: uncovered (argument held across a suspension)
+main::pairs@210:0: uncovered (unsupported hoisted value)
 main::main@221:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::<genexpr>@251:61: uncovered (unsupported parameter type)
 main::<genexpr>@251:33: uncovered (unsupported parameter type)

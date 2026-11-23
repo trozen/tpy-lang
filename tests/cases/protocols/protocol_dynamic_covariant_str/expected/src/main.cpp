@@ -16,14 +16,10 @@ void greet(Named& x) {
 //     greet(Bird("Tweety"))
 //     greet(Fish("Nemo"))
 void main() {
-    ::tpy::Adapter<Named, Dog> __tmp_1{Dog("Rex")};
-    ::tpyapp::main::greet(__tmp_1);
-    ::tpy::Adapter<Named, Cat> __tmp_2{Cat("Whiskers")};
-    ::tpyapp::main::greet(__tmp_2);
-    Bird __tmp_3{Bird("Tweety")};
-    ::tpyapp::main::greet(__tmp_3);
-    Fish __tmp_4{Fish("Nemo")};
-    ::tpyapp::main::greet(__tmp_4);
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(::tpy::Adapter<Named, Dog>{Dog("Rex")}));
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(::tpy::Adapter<Named, Cat>{Cat("Whiskers")}));
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(Bird{Bird("Tweety")}));
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(Fish{Fish("Nemo")}));
 }
 
 // main()

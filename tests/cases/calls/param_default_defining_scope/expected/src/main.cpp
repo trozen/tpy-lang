@@ -197,8 +197,7 @@ std::string_view static_recv() {
 // def static_recv_call() -> StrView:
 //     return defs.read(defs.C())  # tpyc: ok
 std::string_view static_recv_call() {
-    ::tpyapp::defs::C __tmp_1 = ::tpyapp::defs::C();
-    return ::tpyapp::defs::read(__tmp_1);
+    return ::tpyapp::defs::read(::tpyapp::defs::C());
 }
 
 // # A Final class constant read off a temporary receiver is the class's
@@ -328,8 +327,7 @@ void main(bool flag) {
     ::tpyapp::defs::MadeLater fresh = ::tpyapp::defs::MadeLater();
     std::cout << "factory order" << " " << ::tpy::__len__(late.xs) << " " << late.list << " " << ::tpy::__len__(fresh.xs) << " " << fresh.list << "\n" << ::tpy::check_signals;
     std::cout << "classvar" << " " << ::tpyapp::defs::fcv(::tpyapp::defs::CV::V, 9) << " " << ::tpyapp::defs::fcv() << "\n" << ::tpy::check_signals;
-    ::tpyapp::defs::Stepper __tmp_1 = ::tpyapp::defs::Stepper();
-    std::cout << "protocol" << " " << ::tpyapp::main::through_protocol(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "protocol" << " " << ::tpyapp::main::through_protocol(::tpy::as_mut_lvalue(::tpyapp::defs::Stepper())) << "\n" << ::tpy::check_signals;
     std::cout << "param" << " " << ::tpyapp::main::param(5) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::ctor_param(8);
     std::cout << "class ctor order" << " " << ::tpyapp::defs::LateCtor().m(::tpy::int_cast_check<int64_t>(::tpyapp::defs::K), 9) << " " << ::tpyapp::defs::LateCtor().m() << "\n" << ::tpy::check_signals;
@@ -388,8 +386,8 @@ void main(bool flag) {
     std::cout << "static receiver" << " " << ::tpyapp::main::static_recv() << " " << ::tpyapp::main::static_recv_call() << "\n" << ::tpy::check_signals;
     std::cout << "static temporary" << " " << ::tpyapp::main::static_temp() << " " << ::tpyapp::main::static_temp_generic<int32_t>(4) << "\n" << ::tpy::check_signals;
     {
-        auto __tmp_2 = ::tpyapp::main::source();
-        auto __src_5 = ::tpyapp::main::relay(__tmp_2);
+        auto __tmp_1 = ::tpyapp::main::source();
+        auto __src_5 = ::tpyapp::main::relay(__tmp_1);
         auto&& __itr_5 = ::tpy::__iter__(__src_5);
         for (;;) {
             auto __r_6 = __itr_5.__next__();

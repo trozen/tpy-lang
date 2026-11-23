@@ -281,7 +281,7 @@ struct __coro_async_head {
 struct __coro_run_head {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __coro_arg_0;
+    ::tpy::frame_slot<std::string> __head_arg_0;
     std::optional<__coro_async_head> __sub_0;
 
     enum : int32_t {
@@ -332,7 +332,7 @@ struct __coro_bump_async {
 struct __coro_run_bump {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::frame_slot<std::array<int32_t, 2>> __coro_arg_0;
+    ::tpy::frame_slot<std::array<int32_t, 2>> __head_arg_0;
     std::optional<__coro_bump_async> __sub_0;
 
     enum : int32_t {
@@ -357,7 +357,7 @@ struct __coro_run_bump {
 struct __coro_outer_bind {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __coro_arg_0;
+    ::tpy::frame_slot<std::string> __head_arg_0;
     std::optional<__coro_async_head> c;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
@@ -386,8 +386,8 @@ struct __coro_outer_bind {
 struct __coro_outer_task {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __coro_arg_0;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::string>> t;
+    ::tpy::frame_slot<std::string> __head_arg_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
     ::tpystd::asyncio::_executor::Task<std::string>* __sub_1 = nullptr;
 
@@ -417,8 +417,8 @@ struct __coro_outer_loop_bind {
     int32_t n;
     std::string out;
     int32_t i;
-    std::string __coro_arg_0;
     std::string __await_lift_0;
+    ::tpy::frame_slot<std::string> __head_arg_0;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     std::optional<__coro_async_head> c;
@@ -449,9 +449,9 @@ struct __coro_outer_loop_bind {
 struct __coro_outer_task_recv {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::frame_slot<Adder> __coro_arg_0;
-    ::tpy::frame_slot<std::array<int32_t, 2>> __coro_arg_1;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t;
+    ::tpy::frame_slot<Adder> __head_arg_0;
+    ::tpy::frame_slot<std::array<int32_t, 2>> __head_arg_1;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_1 = nullptr;
 
@@ -696,8 +696,8 @@ struct __gen_ends : public ::tpy::next_iter_mixin<__gen_ends, int32_t> {
 struct __gen_outer_for : public ::tpy::next_iter_mixin<__gen_outer_for, std::string> {
     ::tpy::frame_state __state;
     std::string v;
-    std::string __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::head_tail(__coro_arg_0)))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::head_tail(std::declval<std::string&>())))>;
+    ::tpy::frame_slot<std::string> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
@@ -723,8 +723,8 @@ struct __gen_outer_for : public ::tpy::next_iter_mixin<__gen_outer_for, std::str
 struct __gen_outer_span : public ::tpy::next_iter_mixin<__gen_outer_span, int32_t> {
     ::tpy::frame_state __state;
     int32_t v;
-    ::tpy::frame_slot<std::array<int32_t, 2>> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::read_pair(::tpy::as_span((*__coro_arg_0)))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::read_pair(::tpy::as_span(std::declval<std::array<int32_t, 2>&>()))))>;
+    ::tpy::frame_slot<std::array<int32_t, 2>> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
@@ -751,8 +751,8 @@ struct __gen_outer_comp : public ::tpy::next_iter_mixin<__gen_outer_comp, int32_
     ::tpy::frame_state __state;
     const std::vector<int32_t>& src;
     int32_t v;
-    ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::ends((*__coro_arg_0))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::ends(std::declval<std::vector<int32_t>&>())))>;
+    ::tpy::frame_slot<std::vector<int32_t>> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
@@ -781,8 +781,8 @@ struct __gen_outer_fstring : public ::tpy::next_iter_mixin<__gen_outer_fstring, 
     ::tpy::frame_state __state;
     int32_t n;
     std::string v;
-    std::string __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::head_tail(__coro_arg_0)))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::head_tail(std::declval<std::string&>())))>;
+    ::tpy::frame_slot<std::string> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
@@ -812,8 +812,8 @@ struct __gen_outer_loop_for : public ::tpy::next_iter_mixin<__gen_outer_loop_for
     int32_t n;
     int32_t v;
     int32_t i;
-    ::tpy::frame_slot<std::array<int32_t, 2>> __coro_arg_0;
-    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::main::read_pair(::tpy::as_span((*__coro_arg_0)))))>;
+    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::main::read_pair(::tpy::as_span(std::declval<std::array<int32_t, 2>&>()))))>;
+    ::tpy::frame_slot<std::array<int32_t, 2>> __head_arg_0;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     ::tpy::frame_loop_slot<__for_src_1_t> __for_src_1;
@@ -936,8 +936,8 @@ struct __coro_outer_async_recv {
     const std::vector<int32_t>& src;
     int32_t n;
     int32_t v;
-    ::tpy::frame_slot<Summer> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype(((*__coro_arg_0).pair(src)))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::declval<Summer&>().pair(src)))>;
+    ::tpy::frame_slot<Summer> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -969,9 +969,9 @@ struct __gen_outer_comp_method : public ::tpy::next_iter_mixin<__gen_outer_comp_
     ::tpy::frame_state __state;
     const std::vector<int32_t>& src;
     int32_t v;
-    ::tpy::frame_slot<Summer> __coro_arg_0;
-    ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_1;
-    using __for_src_0_t = ::tpy::for_source_t<decltype(((*__coro_arg_0).pair((*__coro_arg_1))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::declval<Summer&>().pair(std::declval<std::vector<int32_t>&>())))>;
+    ::tpy::frame_slot<Summer> __head_arg_0;
+    ::tpy::frame_slot<std::vector<int32_t>> __head_arg_1;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
@@ -1000,8 +1000,8 @@ struct __gen_Outer_run : public ::tpy::next_iter_mixin<__gen_Outer_run, std::str
     ::tpy::frame_state __state;
     const Outer& __self;
     std::string v;
-    std::string __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::head_tail(__coro_arg_0)))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::head_tail(std::declval<std::string&>())))>;
+    ::tpy::frame_slot<std::string> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
@@ -1035,8 +1035,8 @@ struct __gen_Outer_run_recv : public ::tpy::next_iter_mixin<__gen_Outer_run_recv
     const Outer& __self;
     const std::vector<int32_t>& xs;
     int32_t v;
-    ::tpy::frame_slot<Summer> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype(((*__coro_arg_0).pair(xs)))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::declval<Summer&>().pair(xs)))>;
+    ::tpy::frame_slot<Summer> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 

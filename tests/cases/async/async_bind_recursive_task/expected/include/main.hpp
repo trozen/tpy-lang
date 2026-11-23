@@ -24,7 +24,6 @@ struct __coro_fact {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
-    ::tpy::BigInt __coro_arg_0;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<::tpy::BigInt>> t;
     ::tpy::BigInt r;
     ::tpystd::asyncio::_executor::Task<::tpy::BigInt>* __sub_0 = nullptr;

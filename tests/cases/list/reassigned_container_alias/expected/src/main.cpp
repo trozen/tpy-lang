@@ -151,38 +151,21 @@ void readonly_params(const std::vector<int32_t>& a, const std::vector<int32_t>& 
 //     r = [2, 2]
 //     readonly_params([1], r, r)
 void main() {
-    std::vector<int32_t> __tmp_1 = {1};
-    std::vector<int32_t> __tmp_2 = {2, 2};
-    ::tpyapp::main::params(__tmp_1, __tmp_2);
+    ::tpyapp::main::params(::tpy::as_mut_lvalue(std::vector<int32_t>{1}), ::tpy::as_mut_lvalue(std::vector<int32_t>{2, 2}));
     ::tpyapp::main::locals_();
-    std::vector<std::vector<int32_t>> __tmp_3 = {{1}, {2, 2}};
-    ::tpyapp::main::elements(__tmp_3);
-    std::vector<int32_t> __tmp_4 = {1};
-    std::vector<int32_t> __tmp_5 = {2, 2};
-    ::tpyapp::main::branch(__tmp_4, __tmp_5, true);
-    ::tpy::ordered_map<std::string, int32_t> __tmp_6 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    ::tpy::ordered_map<std::string, int32_t> __tmp_7 = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}});
-    ::tpyapp::main::dicts(__tmp_6, __tmp_7);
-    ::tpy::ordered_set<int32_t> __tmp_8 = ::tpy::ordered_set<int32_t>({1});
-    ::tpy::ordered_set<int32_t> __tmp_9 = ::tpy::ordered_set<int32_t>({2, 3});
-    ::tpyapp::main::sets(__tmp_8, __tmp_9);
-    std::vector<Node> __tmp_10 = {Node(1)};
-    std::vector<Node> __tmp_11 = {Node(2)};
-    ::tpyapp::main::records(__tmp_10, __tmp_11);
-    ::tpy::ByteArray __tmp_12 = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
-    ::tpy::ByteArray __tmp_13 = ::tpy::ByteArray(::tpy::bytes_literal("bc", 2));
-    ::tpyapp::main::bytearrays(__tmp_12, __tmp_13, true);
-    ::tpy::ByteArray __tmp_14 = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
-    ::tpy::ByteArray __tmp_15 = ::tpy::ByteArray(::tpy::bytes_literal("bc", 2));
-    ::tpyapp::main::bytearrays(__tmp_14, __tmp_15, false);
-    std::vector<std::vector<int32_t>> __tmp_16 = {{1}, {2, 2}};
-    Holder h = Holder(__tmp_16);
+    ::tpyapp::main::elements(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1}, {2, 2}}));
+    ::tpyapp::main::branch(::tpy::as_mut_lvalue(std::vector<int32_t>{1}), ::tpy::as_mut_lvalue(std::vector<int32_t>{2, 2}), true);
+    ::tpyapp::main::dicts(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})), ::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, int32_t>({{"b", 2}})));
+    ::tpyapp::main::sets(::tpy::as_mut_lvalue(::tpy::ordered_set<int32_t>({1})), ::tpy::as_mut_lvalue(::tpy::ordered_set<int32_t>({2, 3})));
+    ::tpyapp::main::records(::tpy::as_mut_lvalue(std::vector<Node>{Node(1)}), ::tpy::as_mut_lvalue(std::vector<Node>{Node(2)}));
+    ::tpyapp::main::bytearrays(::tpy::as_mut_lvalue(::tpy::ByteArray(::tpy::bytes_literal("a", 1))), ::tpy::as_mut_lvalue(::tpy::ByteArray(::tpy::bytes_literal("bc", 2))), true);
+    ::tpyapp::main::bytearrays(::tpy::as_mut_lvalue(::tpy::ByteArray(::tpy::bytes_literal("a", 1))), ::tpy::as_mut_lvalue(::tpy::ByteArray(::tpy::bytes_literal("bc", 2))), false);
+    Holder h = Holder(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1}, {2, 2}}));
     std::vector<int32_t> p = {1};
     std::vector<int32_t> q = {2, 2};
     h.swap(p, q);
     std::vector<int32_t> r = {2, 2};
-    std::vector<int32_t> __tmp_17 = {1};
-    ::tpyapp::main::readonly_params(__tmp_17, r, r);
+    ::tpyapp::main::readonly_params({1}, r, r);
 }
 
 // main()

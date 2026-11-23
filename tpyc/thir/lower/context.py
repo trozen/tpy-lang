@@ -8,8 +8,9 @@ from collections.abc import (Callable, Iterable, Iterator, Mapping,
 from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, replace
 from enum import Enum, auto
-from typing import NamedTuple
-from ..frame import FrameCaptureKind, THIRResumableFrame, classify_param_kind
+from typing import TYPE_CHECKING, NamedTuple
+from ..frame import (FrameCaptureKind, THIRFrameHolder, THIRResumableFrame,
+                     classify_param_kind)
 from ...parse.nodes import (TpyAssign, TpyExpr, TpyMatch,
                             TpyFunction, TpyGlobal, TpyName,
                             TpyNamedExpr, TpyStmt, TpyTupleUnpack,
@@ -57,6 +58,7 @@ from ..nodes import (THIRAssign, THIRCallableSignature, THIRErrorReturnBind, THI
                      THIRSelf, THIRStmt, THIRStmtSeq, THIRTupleElemTarget,
                      THIRTupleUnpack, THIRUnionExtraction, THIRUnionLayout,
                      THIRWalrus)
+from .frame_seat import EMPTY_PLAN, BoundScope, Hand, KeepPlan, plan_keeps
 from ..param_contract import Materializer, ParamContract, PointerKind
 from ..validate import _iter_children
 from .captures import CaptureSites
@@ -80,6 +82,10 @@ from .predicates import (
     _value_tuple_element_ok,
     record_like,
 )
+
+if TYPE_CHECKING:
+    from ..nodes import HoistDecl, THIRExpr
+    from .expressions import RootPlacement
 
 
 class _ExprResultUse(Enum):
@@ -734,6 +740,13 @@ class Slot:
     # a protocol parameter whose type C++ deduces from the argument, handed a
     # prvalue where its concrete twin holds a value.
     materializer: 'Materializer | None' = None
+    # The compound statement whose head passes the argument keeps it until
+    # the statement ends (sema's `keep_head_arguments`): what the
+    # parameter binds of a fresh value -- the value itself, the owner a view
+    # is built over, what the call builds from the argument -- is held in
+    # storage the statement's scope declares, not a temporary of the full
+    # expression. Retention only: how the parameter binds is `lifetime`'s.
+    retained: bool = False
     # An argument slot of sema's `OPEN_SAME_T` class
     # (`SemanticContext.open_same_t_args`), the body's own open `T` the
     # callee parameter is at: borrowed at `T = P`, owned at `T = Own[P]`.
@@ -1237,13 +1250,15 @@ def param_slot_class(t: TpyType, contract: 'ParamContract'
 
 def param_slot(t: TpyType, contract: 'ParamContract', analyzer, *,
                placement: SlotPlacement = SlotPlacement.STATEMENT,
-               instantiated: 'TpyType | None' = None) -> Slot:
+               instantiated: 'TpyType | None' = None,
+               retained: bool = False) -> Slot:
     """The slot of a call's parameter of declared type `t`, held as the
     callee's published contract passes it -- a `str` view as the view, an
     open `T` through its trait, a reference const where the callee's
     verdict says so -- and bound for the call (`FULL_EXPRESSION`). A
     generic callee's parameter holds the type its call `instantiated` it
-    at."""
+    at; `retained`: the argument's compound statement keeps it
+    (`Slot.retained`)."""
     passing = contract.passing or t.param_passing(contract.const)
     if passing is ParamPassing.POINTER:
         rep = (Representation.STORAGE
@@ -1266,12 +1281,13 @@ def param_slot(t: TpyType, contract: 'ParamContract', analyzer, *,
                        placement=placement, const=const,
                        trait=TraitAbi.OPT_PARAM if open_opt else None)
     return replace(slot, lifetime=SlotLifetime.FULL_EXPRESSION,
-                   materializer=contract.materializes)
+                   materializer=contract.materializes, retained=retained)
 
 
 def deduced_slot(contract: 'ParamContract', twin: TpyType,
                  twin_contract: 'ParamContract', analyzer, *,
-                 placement: SlotPlacement = SlotPlacement.STATEMENT) -> Slot:
+                 placement: SlotPlacement = SlotPlacement.STATEMENT,
+                 retained: bool = False) -> Slot:
     """The slot a deduced protocol parameter under `contract`
     (`Materializer.DEDUCED`) takes its argument at, as its concrete twin --
     a parameter of type `twin` under `twin_contract` -- takes it: at a
@@ -1282,7 +1298,7 @@ def deduced_slot(contract: 'ParamContract', twin: TpyType,
         return frame_member_slot(twin, twin_contract, analyzer,
                                  placement=placement)
     return replace(param_slot(twin, twin_contract, analyzer,
-                              placement=placement),
+                              placement=placement, retained=retained),
                    materializer=Materializer.DEDUCED)
 
 
@@ -1939,6 +1955,11 @@ _SHADOWED_NARROW_FACTS = ("narrowed", "subject_union", "union_layouts",
 _SHADOWED_LC_BY_HAND = ("params", "narrow", "self_receiver", "member_self",
                         "stmt_entry")
 _LC_NOT_NAME_KEYED = (
+    # Whether the expression being lowered is a compound head whose state
+    # crosses a suspension, and the count naming its frame holders.
+    "head_holder_count", "head_holders",
+    "bound_roots", "compound_decls",
+    "root_place", "root_slot_count",
     "analyzer", "func", "frame", "prescan", "render_type", "render_type_stored",
     "render_resolve", "render_concept", "record_name", "self_cpp",
     "self_is_pointer", "error_return_cpp",
@@ -2046,6 +2067,16 @@ class StmtEntry:
     leaf: 'Callable[[TpyStmt], THIRStmt] | None' = None
 
 
+class CompoundEntry(NamedTuple):
+    """A compound statement being lowered: the names its scope declares,
+    the pre-declarations nested statements place in front of it
+    (`root_placement`), and the loop depth it sits at."""
+    stmt: TpyStmt
+    declared: 'dict[str, TpyType]'
+    decls: 'list[HoistDecl]'
+    loop_depth: int
+
+
 class _LowerCtx:
     """Per-function lowering state threaded through `_lower_stmt`.
 
@@ -2082,7 +2113,10 @@ class _LowerCtx:
                  "table", "cursor", "shadow_report", "move_region",
                  "storage_slots", "lowered_capture", "signature",
                  "staged_results", "prelowered", "temp_read_ids",
-                 "stmt_entry")
+                 "stmt_entry", "head_holder_count",
+                 "head_holders", "bound_roots",
+                 "compound_decls", "root_place",
+                 "root_slot_count")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -2099,6 +2133,25 @@ class _LowerCtx:
         # pointer slots, the kept-whole loop sources, the promoted with
         # managers); None outside a resumable body.
         self.frame: 'THIRResumableFrame | None' = None
+        # The expression being lowered and how long its value lives
+        # (`frame_seat.Hand`), or, at a statement, what the statement hands
+        # each of its expressions (`stmt_bound`): every operand below takes
+        # its bound from these through `bound_rule` (`bound_of`), and its
+        # keep from the statement's plan (`planned`).
+        self.bound_roots = BoundScope(())
+        # Each enclosing compound statement being lowered: the statement,
+        # the names its scope declares (`declared`), the pre-declarations a
+        # statement nested in it adds in front of it (`root_slot`), and the
+        # loop depth it sits at.
+        self.compound_decls: 'list[CompoundEntry]' = []
+        # Where the root a `with` item's target borrows goes while the item
+        # is lowered (`root_placement`).
+        self.root_place: 'RootPlacement | None' = None
+        self.root_slot_count = 0
+        self.head_holder_count = 0
+        # Every HEAD_ARG holder the body's leaves were given, in order: the
+        # frame declares a field for each one a leaf still names.
+        self.head_holders: list[THIRFrameHolder] = []
         self.capture_sites = CaptureSites(func, eligible=not (
             top_level_scope or func.is_async or func.is_generator or func.error_return
             or func.type_params
@@ -2322,6 +2375,19 @@ class _LowerCtx:
                 | self.narrow.persistent_aliases)
 
     @contextmanager
+    def prelowering(self, node: object, value: 'THIRExpr | None'):
+        """`value` stands for parse node `node` wherever `_lower_expr` meets
+        it inside the region (`prelowered`); no-op for a None `value`."""
+        saved = self.prelowered
+        if value is not None:
+            self.prelowered = IdentityMap([*(saved.items() if saved is not None
+                                             else ()), (node, value)])
+        try:
+            yield
+        finally:
+            self.prelowered = saved
+
+    @contextmanager
     def staged_region(self, staged: bool):
         """A region whose exits run a finally / `__exit__` chain (`staged`):
         a `return` inside it stages its result before the chain runs."""
@@ -2520,6 +2586,64 @@ class _LowerCtx:
         select would emplace a slot, and where an optional iterator temp
         is a render choice."""
         return self.placement is SlotPlacement.STATEMENT
+
+    @contextmanager
+    def targeting(self, place: 'RootPlacement') -> Iterator[None]:
+        """Lower a `with` item's parts knowing where the root its target
+        borrows goes (`root_place`)."""
+        saved = self.root_place
+        self.root_place = place
+        try:
+            yield
+        finally:
+            self.root_place = saved
+
+    @contextmanager
+    def bounded(self, roots: 'tuple[Hand, ...]') -> Iterator[None]:
+        """Lower a position of the statement being lowered whose values
+        live as `roots` say (`bound_roots`). Its statement's plan reaches
+        every node lowered under it; code outside any statement (a member
+        initializer, a default) is planned on entry, with its region's
+        facts (`plan_keeps`)."""
+        saved = self.bound_roots
+        plan = saved.plan
+        if plan is EMPTY_PLAN:
+            plan = KeepPlan(in_frame=self.frame is not None, crosses=False)
+            plan_keeps(plan, roots, self.analyzer)
+        else:
+            assert all(plan.covers(h.node) for h in roots), (
+                "keep plan has no entry for "
+                + ", ".join(f"{type(h.node).__name__} at line "
+                            f"{getattr(getattr(h.node, 'loc', None), 'line', '?')}"
+                            for h in roots if not plan.covers(h.node))
+                + f" [{self.analyzer.ctx.module_name}; under "
+                + ", ".join(f"{type(h.node).__name__}@"
+                            f"{getattr(getattr(h.node, 'loc', None), 'line', '?')}"
+                            for h in saved.roots) + "]")
+        self.bound_roots = BoundScope(roots, plan)
+        try:
+            yield
+        finally:
+            self.bound_roots = saved
+
+    @contextmanager
+    def planning(self, roots: 'tuple[Hand, ...]', *,
+                 crosses: bool = False,
+                 apart: bool = False) -> Iterator[None]:
+        """Lower a statement whose values live as `roots` say, with its keep
+        plan decided on entry (`plan_keeps`): `crosses`, a suspension of the
+        frame falls while its values are needed (`suspension_crossing`);
+        `apart`, code that runs apart from the frame's body (a lambda's
+        body), whose temporaries no frame holder keeps."""
+        saved = self.bound_roots
+        plan = KeepPlan(in_frame=self.frame is not None and not apart,
+                        crosses=crosses)
+        plan_keeps(plan, roots, self.analyzer)
+        self.bound_roots = BoundScope(roots, plan)
+        try:
+            yield
+        finally:
+            self.bound_roots = saved
 
     @contextmanager
     def placement_scope(self, placement: SlotPlacement):

@@ -370,8 +370,7 @@ void main() {
     ::tpyapp::part_may::b_ctor_else(false);
     ::tpyapp::part_may::h_field(false);
     Sites(false).run(false);
-    std::vector<std::string> __tmp_1 = std::vector<std::string>{};
-    ::tpyapp::part_may::store_break(__tmp_1);
+    ::tpyapp::part_may::store_break(std::vector<std::string>{});
     ::tpyapp::part_may::cursor_join(false);
     ::tpyapp::part_may::field_cursor(false);
     ::tpyapp::part_may::leaf_cursor(false);

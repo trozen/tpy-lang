@@ -1211,8 +1211,7 @@ __gen_gen_retain gen_retain(bool c) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        Box __tmp_1 = Box(99);
-        k.emplace(Keeper(__tmp_1));
+        k.emplace(Keeper(::tpy::as_mut_lvalue(Box(99))));
         auto __tup_1 = std::tuple<Box, int32_t>{Box(1), 0};
         std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
         std::get<1>(t) = std::move(std::get<1>(__tup_1));
@@ -1267,8 +1266,7 @@ __gen_gen_setter_retain gen_setter_retain(bool c) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        Box __tmp_1 = Box(99);
-        k.emplace(Keeper(__tmp_1));
+        k.emplace(Keeper(::tpy::as_mut_lvalue(Box(99))));
         s = &*(__ptr_slot_f0 = Setter(1, (*k)));
         s->set_value(3);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -1674,8 +1672,10 @@ void main() {
     }
     {
         Box __tmp_5 = Box(1);
-        H __tmp_6 = H(Box(3), Box(4));
-        auto __src_46 = ::tpyapp::main::gen_field_store(__tmp_5, __tmp_6);
+        Box __tmp_6 = Box(3);
+        Box __tmp_7 = Box(4);
+        H __tmp_8 = H(__tmp_6, __tmp_7);
+        auto __src_46 = ::tpyapp::main::gen_field_store(__tmp_5, __tmp_8);
         auto&& __itr_46 = ::tpy::__iter__(__src_46);
         for (;;) {
             auto __r_47 = __itr_46.__next__();
@@ -1685,8 +1685,8 @@ void main() {
         }
     }
     {
-        Box __tmp_7 = Box(1);
-        auto __src_48 = ::tpyapp::main::gen_append(__tmp_7);
+        Box __tmp_9 = Box(1);
+        auto __src_48 = ::tpyapp::main::gen_append(__tmp_9);
         auto&& __itr_48 = ::tpy::__iter__(__src_48);
         for (;;) {
             auto __r_49 = __itr_48.__next__();

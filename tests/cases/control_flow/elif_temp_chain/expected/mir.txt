@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
 main::take@6:0: covered (storage: no_proof_required), summary: known
-main::test@11:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::test@11:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
 main::main@22:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

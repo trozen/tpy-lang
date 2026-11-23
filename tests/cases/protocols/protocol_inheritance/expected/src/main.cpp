@@ -13,10 +13,7 @@ void main() {
     Message msg = Message("hello");
     Container<Message> c = Container<Message>(msg);
     c.describe();
-    std::vector<int32_t> __tmp_1 = {3, 9, 2};
-    std::vector<std::string> __tmp_2 = {"a", "c"};
-    std::vector<int32_t> __tmp_3 = {1, 2, 3};
-    std::cout << "marker_parents:" << " " << ::tpyapp::main::top<int32_t>(__tmp_1) << " " << ::tpyapp::main::top<std::string>(__tmp_2) << " " << ::tpyapp::main::size_of<std::vector<int32_t>>(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "marker_parents:" << " " << ::tpyapp::main::top<int32_t>(::tpy::as_mut_lvalue(std::vector<int32_t>{3, 9, 2})) << " " << ::tpyapp::main::top<std::string>(::tpy::as_mut_lvalue(std::vector<std::string>{"a", "c"})) << " " << ::tpyapp::main::size_of<std::vector<int32_t>>(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

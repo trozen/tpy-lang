@@ -293,7 +293,6 @@ void test_body_record_var_survives_scope() {
 //         v.log("second")
 //     v.log("after reuse")
 void test_reuse_with_var_name() {
-    std::optional<Logger> __slot_1;
     auto __ctx_12 = Logger("V1");
     Logger* v = &(__ctx_12.__enter__());
     try {
@@ -308,8 +307,7 @@ void test_reuse_with_var_name() {
     }
     __with_exit_12:
     __ctx_12.__exit__({}, nullptr, {});
-    __slot_1.emplace(Logger("V2"));
-    auto& __ctx_13 = (*__slot_1);
+    auto __ctx_13 = Logger("V2");
     v = &(__ctx_13.__enter__());
     try {
         v->log("second");
@@ -622,10 +620,8 @@ int32_t later_comp_names_target(const std::vector<int32_t>& xs) {
 //     print("comp_target:", comp_names_target([1, 2]))
 //     print("later_comp_target:", later_comp_names_target([1, 2]))
 void test_comp_names_target() {
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << "comp_target:" << " " << ::tpyapp::main::comp_names_target(__tmp_1) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = {1, 2};
-    std::cout << "later_comp_target:" << " " << ::tpyapp::main::later_comp_names_target(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "comp_target:" << " " << ::tpyapp::main::comp_names_target({1, 2}) << "\n" << ::tpy::check_signals;
+    std::cout << "later_comp_target:" << " " << ::tpyapp::main::later_comp_names_target({1, 2}) << "\n" << ::tpy::check_signals;
 }
 
 // def test_comp_names_body_hoist(xs: list[int32]) -> None:
@@ -777,10 +773,8 @@ void __tpy_init() {
     ::tpyapp::main::test_later_item_reads_target();
     std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_comp_names_target();
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    ::tpyapp::main::test_comp_names_body_hoist(__tmp_1);
-    std::vector<::tpy::BigInt> __tmp_2 = {5, 6};
-    ::tpyapp::main::test_comp_names_ref_body_hoist(__tmp_2);
+    ::tpyapp::main::test_comp_names_body_hoist({1, 2});
+    ::tpyapp::main::test_comp_names_ref_body_hoist({5, 6});
 }
 
 } // namespace tpyapp::main

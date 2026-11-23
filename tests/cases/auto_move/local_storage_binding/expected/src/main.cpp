@@ -914,8 +914,7 @@ void main() {
     int32_t closure_value = ::tpyapp::main::closure_collision();
     std::cout << "closure owner" << " " << closure_value << "\n" << ::tpy::check_signals;
     std::cout << "hoisted loops" << " " << ::tpyapp::main::hoisted_loops() << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {2, 3};
-    std::cout << "native" << " " << ::tpyapp::main::native_loop(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "native" << " " << ::tpyapp::main::native_loop({2, 3}) << "\n" << ::tpy::check_signals;
     int32_t managed_value = ::tpyapp::main::managed();
     std::cout << "with" << " " << managed_value << "\n" << ::tpy::check_signals;
     int32_t finalized_value = ::tpyapp::main::finalized();

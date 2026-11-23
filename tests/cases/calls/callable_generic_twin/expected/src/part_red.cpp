@@ -24,22 +24,19 @@ std::string concat(std::string_view a, std::string_view b) {
 //     fin(x).n += 1
 //     print("red-fin", x.n)
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "red-int" << " " << ::tpyapp::part_red::red<int32_t>(::tpyapp::fixtures::add, __tmp_1) << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_2 = {"a", "b", "c"};
-    std::cout << "red-str" << " " << ::tpyapp::part_red::red<std::string>(concat, __tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "red-int" << " " << ::tpyapp::part_red::red<int32_t>(::tpyapp::fixtures::add, ::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3})) << "\n" << ::tpy::check_signals;
+    std::cout << "red-str" << " " << ::tpyapp::part_red::red<std::string>(concat, ::tpy::as_mut_lvalue(std::vector<std::string>{"a", "b", "c"})) << "\n" << ::tpy::check_signals;
     std::vector<::tpyapp::fixtures::P> ps = {::tpyapp::fixtures::P(1), ::tpyapp::fixtures::P(5), ::tpyapp::fixtures::P(3)};
     {
-        auto&& __tmp_3 = ::tpyapp::part_red::red_touch(::tpyapp::fixtures::bigger, ps);
-        __tmp_3.n = ::tpy::add_check<int32_t>(__tmp_3.n, 100);
+        auto&& __tmp_1 = ::tpyapp::part_red::red_touch(::tpyapp::fixtures::bigger, ps);
+        __tmp_1.n = ::tpy::add_check<int32_t>(__tmp_1.n, 100);
     }
     std::cout << "red-ref" << " " << ::tpy::__getitem__(ps, 1).n << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_4 = {1, 2};
-    std::cout << "red-snap-int" << " " << ::tpyapp::part_red::red_snapshot<int32_t>(::tpyapp::fixtures::add, __tmp_4, 10) << "\n" << ::tpy::check_signals;
+    std::cout << "red-snap-int" << " " << ::tpyapp::part_red::red_snapshot<int32_t>(::tpyapp::fixtures::add, ::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), 10) << "\n" << ::tpy::check_signals;
     ::tpyapp::fixtures::P x = ::tpyapp::fixtures::P(4);
     {
-        auto&& __tmp_5 = ::tpyapp::part_red::fin<::tpyapp::fixtures::P>(x);
-        __tmp_5.n = ::tpy::add_check<int32_t>(__tmp_5.n, 1);
+        auto&& __tmp_2 = ::tpyapp::part_red::fin<::tpyapp::fixtures::P>(x);
+        __tmp_2.n = ::tpy::add_check<int32_t>(__tmp_2.n, 1);
     }
     std::cout << "red-fin" << " " << x.n << "\n" << ::tpy::check_signals;
 }

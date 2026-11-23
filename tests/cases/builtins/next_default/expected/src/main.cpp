@@ -60,11 +60,9 @@ void main() {
     std::cout << "list:" << " " << ::tpy::next_or(it, -1) << " " << ::tpy::next_or(it, -1) << " " << ::tpy::next_or(it, -1) << " " << ::tpy::next_or(it, -1) << " " << ::tpy::next_or(it, -1) << "\n" << ::tpy::check_signals;
     __gen_letters g = ::tpyapp::main::letters();
     std::cout << "generator:" << " " << ::tpy::next_or(g, "?") << " " << ::tpy::next_or(g, "?") << " " << ::tpy::next_or(g, "?") << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_1 = {7, 8};
-    std::vector<::tpy::BigInt> __tmp_2 = std::vector<::tpy::BigInt>{};
-    std::cout << "param:" << " " << ::tpyapp::main::first_or(__tmp_1, ::tpy::BigInt(0)) << " " << ::tpyapp::main::first_or(__tmp_2, ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = ::tpyapp::main::counting();
-    std::cout << "generator_body:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::pairs(__tmp_3))) << "\n" << ::tpy::check_signals;
+    std::cout << "param:" << " " << ::tpyapp::main::first_or({7, 8}, ::tpy::BigInt(0)) << " " << ::tpyapp::main::first_or(std::vector<::tpy::BigInt>{}, ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
+    auto __tmp_1 = ::tpyapp::main::counting();
+    std::cout << "generator_body:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::pairs(__tmp_1))) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> pair = {10, 20};
     auto nums = ::tpy::__iter__(pair);
     int32_t total = 0;

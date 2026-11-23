@@ -526,8 +526,7 @@ void main() {
     ::tpyapp::part_loops::view_local(0);
     ::tpyapp::part_loops::cond_store(2);
     ::tpyapp::part_loops::field_store(0);
-    std::vector<std::string> __tmp_1 = std::vector<std::string>{};
-    ::tpyapp::part_loops::loop_var(__tmp_1);
+    ::tpyapp::part_loops::loop_var(std::vector<std::string>{});
     ::tpyapp::part_loops::temp_in_loop(0);
     ::tpyapp::part_loops::store_break(0);
     ::tpyapp::part_loops::second_exit(0);
@@ -535,18 +534,12 @@ void main() {
     ::tpyapp::part_loops::read_old_after_reentry(0);
     ::tpyapp::part_loops::family_reused(0);
     ::tpyapp::part_loops::family_reused_after_end(0);
-    Buf __tmp_2 = Buf((::tpy::str_repeat("o", 40)));
-    ::tpyapp::part_loops::external_loop(__tmp_2, 0);
-    Buf __tmp_3 = Buf((::tpy::str_repeat("o", 40)));
-    ::tpyapp::part_loops::external_once(__tmp_3, false);
+    ::tpyapp::part_loops::external_loop(::tpy::as_mut_lvalue(Buf((::tpy::str_repeat("o", 40)))), 0);
+    ::tpyapp::part_loops::external_once(::tpy::as_mut_lvalue(Buf((::tpy::str_repeat("o", 40)))), false);
     ::tpyapp::part_loops::local_field_loop(0);
-    Buf __tmp_4 = Buf((::tpy::str_repeat("o", 40)));
-    ::tpyapp::part_loops::external_loop_reset(__tmp_4, 2);
-    std::vector<int32_t> __tmp_5 = std::vector<int32_t>{};
-    ::tpyapp::part_loops::cursor_inner(__tmp_5);
-    std::vector<int32_t> __tmp_6 = {1};
-    std::vector<int32_t> __tmp_7 = {2};
-    ::tpyapp::part_loops::cursor_joined(__tmp_6, __tmp_7, false);
+    ::tpyapp::part_loops::external_loop_reset(::tpy::as_mut_lvalue(Buf((::tpy::str_repeat("o", 40)))), 2);
+    ::tpyapp::part_loops::cursor_inner(::tpy::as_mut_lvalue(std::vector<int32_t>{}));
+    ::tpyapp::part_loops::cursor_joined(::tpy::as_mut_lvalue(std::vector<int32_t>{1}), {2}, false);
     std::cout << "span_loop" << " " << ::tpyapp::part_loops::span_loop(0) << "\n" << ::tpy::check_signals;
     ::tpyapp::part_loops::spin_then_read(0, false);
 }

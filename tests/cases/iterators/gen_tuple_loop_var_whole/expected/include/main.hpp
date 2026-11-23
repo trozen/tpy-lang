@@ -146,8 +146,8 @@ struct __coro_async_section {
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<std::tuple<int32_t, A>>> ays;
     int32_t __await_lift_0;
-    ::tpy::frame_slot<::tpy::ordered_map<int32_t, int32_t>> __coro_arg_0;
     int32_t __await_lift_1;
+    ::tpy::frame_slot<::tpy::ordered_map<int32_t, int32_t>> __head_arg_0;
     std::optional<__coro_walk_async> __sub_0;
     std::optional<__coro_sum_items> __sub_1;
 

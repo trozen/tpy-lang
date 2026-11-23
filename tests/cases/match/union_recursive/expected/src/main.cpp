@@ -34,8 +34,7 @@ void main() {
     Tree a = Leaf(::tpy::BigInt(42));
     std::vector<Tree> b = {Leaf(::tpy::BigInt(1)), Leaf(::tpy::BigInt(2))};
     std::cout << ::tpyapp::main::describe(a) << "\n" << ::tpy::check_signals;
-    Tree __tmp_1 = std::move(b);
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Tree(std::move(b))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

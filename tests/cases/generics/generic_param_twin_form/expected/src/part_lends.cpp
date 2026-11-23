@@ -60,8 +60,7 @@ bool eat_v(::tpyapp::fixtures::V v) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = ::tpyapp::fixtures::V("af");
-        __sub_0.emplace(__coro_arg_0);
+        __sub_0.emplace(::tpyapp::fixtures::V("af"));
         __state = S_RESUME_0;
         continue;
     }
@@ -119,8 +118,7 @@ void main() {
     std::vector<::tpyapp::fixtures::V> out = std::vector<::tpyapp::fixtures::V>{};
     ::tpyapp::part_lends::local_append<::tpyapp::fixtures::V>(src, same_v, out);
     std::cout << "lends local append" << " " << ::tpy::__getitem__(out, 0).s << " " << src.s << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_1 = {"a", "b", "c"};
-    std::cout << "lends local return" << " " << ::tpyapp::part_lends::red<std::string>(concat, __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "lends local return" << " " << ::tpyapp::part_lends::red<std::string>(concat, ::tpy::as_mut_lvalue(std::vector<std::string>{"a", "b", "c"})) << "\n" << ::tpy::check_signals;
     ::tpyapp::fixtures::V tv = ::tpyapp::fixtures::V("tw");
     std::cout << "lends local rebound return" << " " << ::tpyapp::part_lends::twice<::tpyapp::fixtures::V>(tv, same_v).s << " " << tv.s << "\n" << ::tpy::check_signals;
     ::tpyapp::fixtures::V rl = ::tpyapp::part_lends::fin_local<::tpyapp::fixtures::V>(::tpyapp::fixtures::V("fl"), same_v);

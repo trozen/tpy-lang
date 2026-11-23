@@ -85,14 +85,12 @@ void nested_narrowed(std::vector<int32_t>* o) {
 //     print("async_field_write", asyncio.run(async_field_write(Src())))
 void main() {
     ::tpyapp::main::global_alias();
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2};
-    Holder().narrowed(&(__tmp_1));
+    Holder().narrowed(&::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}));
     (void)(CtorWriter(Src()));
-    std::vector<int32_t> __tmp_2 = std::vector<int32_t>{1};
-    ::tpyapp::main::nested_narrowed(&(__tmp_2));
+    ::tpyapp::main::nested_narrowed(&::tpy::as_mut_lvalue(std::vector<int32_t>{1}));
     {
-        Src __tmp_3 = Src();
-        auto __src_0 = ::tpyapp::main::gen_field_write(__tmp_3);
+        Src __tmp_1 = Src();
+        auto __src_0 = ::tpyapp::main::gen_field_write(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -101,8 +99,8 @@ void main() {
             std::cout << "gen_field_write" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    Src __tmp_4 = Src();
-    std::cout << "async_field_write" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_field_write(__tmp_4))) << "\n" << ::tpy::check_signals;
+    Src __tmp_2 = Src();
+    std::cout << "async_field_write" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_field_write(__tmp_2))) << "\n" << ::tpy::check_signals;
 }
 
 // import asyncio

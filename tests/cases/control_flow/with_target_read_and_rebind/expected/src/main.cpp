@@ -15,12 +15,11 @@ namespace tpyapp::main {
 //     g = g.next()  # the read of the old `g` happens before the rebind
 //     return g.n
 int32_t probe(bool flag) {
-    std::optional<Reg> __slot_1;
-    std::optional<Reg> __slot_2;
     Reg* g;
+    std::optional<Reg> __with_root_0;
+    std::optional<Reg> __with_root_1;
     if (flag) {
-        __slot_1.emplace(Reg(11));
-        auto& __ctx_1 = (*__slot_1);
+        auto& __ctx_1 = __with_root_1.emplace(11);
         g = &(__ctx_1.__enter__());
         try {
             goto __with_exit_1;
@@ -34,8 +33,7 @@ int32_t probe(bool flag) {
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
     } else {
-        __slot_2.emplace(Reg(22));
-        auto& __ctx_2 = (*__slot_2);
+        auto& __ctx_2 = __with_root_0.emplace(22);
         g = &(__ctx_2.__enter__());
         try {
             goto __with_exit_2;
@@ -49,8 +47,8 @@ int32_t probe(bool flag) {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
-    std::optional<Reg> __slot_3;
-    g = &*(__slot_3 = g->next());
+    std::optional<Reg> __slot_1;
+    g = &*(__slot_1 = g->next());
     return g->n;
 }
 

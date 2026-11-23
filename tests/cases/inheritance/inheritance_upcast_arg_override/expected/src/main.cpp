@@ -186,8 +186,7 @@ void callbacks() {
     std::cout << "generic-value" << " " << ::tpyapp::main::ap<Child>(hb, c) << "\n" << ::tpy::check_signals;
     std::cout << "global" << " " << G(c) << "\n" << ::tpy::check_signals;
     std::cout << "generic-open" << " " << ::tpyapp::main::fwd<Child>(f, c) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {1};
-    std::cout << "open-list" << " " << ::tpyapp::main::forward_l<int32_t>(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "open-list" << " " << ::tpyapp::main::forward_l<int32_t>(::tpy::as_mut_lvalue(std::vector<int32_t>{1})) << "\n" << ::tpy::check_signals;
     std::vector<std::function<std::string(Child&)>> fc = ({
         std::vector<std::function<std::string(Child&)>> __result;
         if (2 > 0) __result.reserve(static_cast<size_t>(2));

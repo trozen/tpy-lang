@@ -72,6 +72,16 @@ def signature_is_template(func: TpyFunction) -> bool:
     return any(is_fn_type(pt) for _, pt in func.params)
 
 
+def frame_struct_is_template(func: TpyFunction,
+                             record_type_params: Sequence[str] = ()) -> bool:
+    """Is the generator or coroutine struct of `func` a C++ template: its
+    signature is (`signature_is_template`), its record is generic, or it
+    takes a lexical capture (a genexpr's `F_<name>`)? The printer's head and
+    every spelling of the struct's type ask this one question."""
+    return (bool(record_type_params) or signature_is_template(func)
+            or any(func.is_capture(pname) for pname, _ in func.params))
+
+
 def protocol_return(return_type: TpyType) -> NominalType | None:
     """The protocol a return type renders through, or None. Unwraps
     Own[Protocol] so a consuming __iter__ returning Own[Iterator[T]] gets

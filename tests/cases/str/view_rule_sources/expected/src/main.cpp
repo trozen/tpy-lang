@@ -81,8 +81,8 @@ std::tuple<Rec*, std::string> pick(H& h) {
 
 // def sec_static() -> None:
 //     # static storage: a literal, a Final global, an enum member's name, a
-//     # slice of a str literal; a bytes literal's slice renders over a
-//     # temporary span, so it owns.
+//     # slice of a str literal; a bytes literal's slice reads static storage
+//     # but is deduced owned (BUGS.md#bytes-literal-slice-owned-temporary).
 //     a = "literal"  # tpyc: type(StrView) ok
 //     ab = b"literal"  # tpyc: type(BytesView) ok
 //     g = GREETING  # tpyc: type(StrView) ok
@@ -96,7 +96,7 @@ void sec_static() {
     std::string_view g = GREETING;
     std::string_view nm = ::tpy::EnumUtil<Color>::name(Color::RED);
     std::string_view sl = ::tpy::str_slice("xalpha", ::tpy::BasicSlice{1, std::nullopt});
-    ::tpy::Bytes bl = ::tpy::Bytes(::tpy::bytes_slice(::tpy::bytes_literal_owned("xbytes", 6), ::tpy::BasicSlice{1, std::nullopt}));
+    ::tpy::Bytes bl = ::tpy::Bytes(::tpy::bytes_slice(::tpy::bytes_literal("xbytes", 6), ::tpy::BasicSlice{1, std::nullopt}));
     std::cout << "static" << " " << a << " " << ::tpy::BytesPrinter(ab) << " " << g << " " << nm << " " << sl << " " << ::tpy::BytesPrinter(bl) << "\n" << ::tpy::check_signals;
 }
 
@@ -1391,22 +1391,16 @@ void main() {
     ::tpy::ByteArray ba2 = ::tpy::ByteArray(::tpy::bytes_literal("abcdef", 6));
     ::tpyapp::main::sec_mutable_name(ba1, ba2);
     ::tpyapp::main::sec_method_local();
-    H __tmp_3 = H(9);
-    (void)(CtorViews("ctor", ::tpy::bytes_literal("ctor", 4), __tmp_3));
+    (void)(CtorViews("ctor", ::tpy::bytes_literal("ctor", 4), ::tpy::as_mut_lvalue(H(9))));
     ::tpyapp::main::sec_select_rebound_param("", "x", ::tpy::BytesView{}, ::tpy::bytes_literal("y", 1));
     ::tpyapp::main::sec_loop_order(3);
     ::tpyapp::main::sec_block_clauses("xyz", ::tpy::bytes_literal("xyz", 3), 2);
     ::tpyapp::main::sec_rebind_spellings();
     ::tpyapp::main::sec_loop_var_block_container("a/b", ::tpy::bytes_literal("c/d", 3), false);
     ::tpyapp::main::sec_tuple_alias_closure();
-    ::tpy::ByteArray __tmp_4 = ::tpy::ByteArray(::tpy::bytes_literal("abcdef", 6));
-    BaHolder __tmp_5 = BaHolder(::tpy::ByteArray(::tpy::bytes_literal("abcdef", 6)));
-    ::tpyapp::main::sec_indirect_writes(__tmp_4, __tmp_5);
-    ::tpy::ByteArray __tmp_6 = ::tpy::ByteArray(::tpy::bytes_literal("abcd", 4));
-    ::tpy::ByteArray __tmp_7 = ::tpy::ByteArray(::tpy::bytes_literal("abcd", 4));
-    ::tpyapp::main::sec_call_write_loop(__tmp_6, __tmp_7);
-    BaMeth __tmp_8 = BaMeth(::tpy::ByteArray(::tpy::bytes_literal("abcd", 4)));
-    ::tpyapp::main::sec_field_alias_loop(__tmp_8);
+    ::tpyapp::main::sec_indirect_writes(::tpy::as_mut_lvalue(::tpy::ByteArray(::tpy::bytes_literal("abcdef", 6))), ::tpy::as_mut_lvalue(BaHolder(::tpy::ByteArray(::tpy::bytes_literal("abcdef", 6)))));
+    ::tpyapp::main::sec_call_write_loop(::tpy::as_mut_lvalue(::tpy::ByteArray(::tpy::bytes_literal("abcd", 4))), ::tpy::as_mut_lvalue(::tpy::ByteArray(::tpy::bytes_literal("abcd", 4))));
+    ::tpyapp::main::sec_field_alias_loop(::tpy::as_mut_lvalue(BaMeth(::tpy::ByteArray(::tpy::bytes_literal("abcd", 4)))));
     ::tpyapp::main::sec_global_getter();
     ::tpyapp::main::sec_tuple_unpack_over_field();
     ::tpyapp::main::sec_string_elem_move();

@@ -19,10 +19,8 @@ std::string describe(Pet& p) {
 //     print(describe(Dog("rex")))
 //     print(describe(Fish("nemo")))
 void main() {
-    Dog __tmp_1{Dog("rex")};
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
-    Fish __tmp_2{Fish("nemo")};
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::as_mut_lvalue(Dog{Dog("rex")})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::as_mut_lvalue(Fish{Fish("nemo")})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

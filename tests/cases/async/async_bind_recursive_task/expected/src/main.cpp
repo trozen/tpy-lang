@@ -21,8 +21,7 @@ namespace tpyapp::main {
             ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(1);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
-        __coro_arg_0 = ((n) - (::tpy::BigInt(1)));
-        t.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::fact(__coro_arg_0))));
+        t.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::fact(((n) - (::tpy::BigInt(1)))))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;

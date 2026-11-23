@@ -117,10 +117,10 @@ struct __coro_a_guarded {
 struct __coro_amain {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::frame_slot<Cat> __coro_arg_0;
     int32_t __await_lift_0;
-    ::tpy::frame_slot<Dog> __coro_arg_1;
     int32_t __await_lift_1;
+    ::tpy::frame_slot<Cat> __head_arg_0;
+    ::tpy::frame_slot<Dog> __head_arg_1;
     std::optional<__coro_a_guarded> __sub_0;
     std::optional<__coro_a_guarded> __sub_1;
 

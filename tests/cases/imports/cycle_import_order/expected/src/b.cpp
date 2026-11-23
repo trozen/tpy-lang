@@ -31,8 +31,7 @@ namespace tpyapp::b {
 void show(::tpyapp::a::Item& it) {
     std::vector<::tpyapp::a::Item> items = {::tpyapp::a::Item(::tpy::BigInt(2)), ::tpyapp::a::Item(::tpy::BigInt(3))};
     it.n = (it.n) + (::tpy::BigInt(10));
-    ::tpyapp::t2::B __tmp_1 = ::tpyapp::t2::B(::tpy::BigInt(7));
-    std::cout << "b:" << " " << ::tpyapp::b::quoted(it) << " " << ::tpyapp::b::quoted_leaf(items) << " " << ::tpyapp::b::bound_early(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "b:" << " " << ::tpyapp::b::quoted(it) << " " << ::tpyapp::b::quoted_leaf(items) << " " << ::tpyapp::b::bound_early(::tpyapp::t2::B(::tpy::BigInt(7))) << "\n" << ::tpy::check_signals;
 }
 
 // # Reads of the suspended `a` that CPython does not evaluate at import, and

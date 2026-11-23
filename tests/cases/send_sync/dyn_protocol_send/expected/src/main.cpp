@@ -34,12 +34,9 @@ void consume(std::unique_ptr<Pet> p) {
 //     print("local:", q.speak())
 void main() {
     Dog d = Dog(3);
-    ::tpy::RefAdapter<Pet, Dog> __tmp_1{d};
-    ::tpyapp::main::greet(__tmp_1);
-    ::tpy::Adapter<Pet, Dog> __tmp_2{Dog(7)};
-    ::tpyapp::main::greet(__tmp_2);
-    ::tpy::RefAdapter<Pet, Dog> __tmp_3{d};
-    ::tpyapp::main::greet_bare(__tmp_3);
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(::tpy::RefAdapter<Pet, Dog>{d}));
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(::tpy::Adapter<Pet, Dog>{Dog(7)}));
+    ::tpyapp::main::greet_bare(::tpy::as_mut_lvalue(::tpy::RefAdapter<Pet, Dog>{d}));
     ::tpyapp::main::consume(::tpy::make_adapter<Pet>(Dog(5)));
     ::tpy::RefAdapter<Pet, Dog> __slot_1{d};
     Pet* q = &__slot_1;

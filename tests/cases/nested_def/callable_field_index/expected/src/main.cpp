@@ -228,29 +228,22 @@ void main() {
     std::vector<int32_t> values = std::vector<int32_t>{};
     std::cout << "mutation" << " " << (::tpy::__getitem__(app.writers, "touch"))(values) << " " << ::tpy::ListPrinter(values) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::mutate_then_read(app, values);
-    std::vector<int32_t> __tmp_1 = {1};
-    std::cout << "literal-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_1) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(2, {1}));
-    std::cout << "repeat-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_2) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = ({
+    std::cout << "literal-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(::tpy::as_mut_lvalue(std::vector<int32_t>{1})) << "\n" << ::tpy::check_signals;
+    std::cout << "repeat-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(::tpy::as_mut_lvalue(::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(2, {1})))) << "\n" << ::tpy::check_signals;
+    std::cout << "comp-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(::tpy::as_mut_lvalue(({
         std::vector<int32_t> __result;
         if (2 > 0) __result.reserve(static_cast<size_t>(2));
         for (int32_t _ = 0; _ < 2; ++_) {
             __result.push_back(1);
         }
         std::move(__result);
-    });
-    std::cout << "comp-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_3) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_4 = ::tpyapp::main::make_values();
-    std::cout << "return-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_4) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_5 = {1};
-    std::cout << "local-arg" << " " << (::tpy::__getitem__(commands, "inc"))(1) << " " << app.direct_writer(__tmp_5) << "\n" << ::tpy::check_signals;
+    }))) << "\n" << ::tpy::check_signals;
+    std::cout << "return-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(::tpy::as_mut_lvalue(::tpyapp::main::make_values())) << "\n" << ::tpy::check_signals;
+    std::cout << "local-arg" << " " << (::tpy::__getitem__(commands, "inc"))(1) << " " << app.direct_writer(::tpy::as_mut_lvalue(std::vector<int32_t>{1})) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::function<int32_t(std::vector<int32_t>&)>>& writers = app.writers;
-    std::vector<int32_t> __tmp_6 = {1};
-    std::cout << "computed-local-arg" << " " << (::tpy::__getitem__(writers, "touch"))(__tmp_6) << "\n" << ::tpy::check_signals;
+    std::cout << "computed-local-arg" << " " << (::tpy::__getitem__(writers, "touch"))(::tpy::as_mut_lvalue(std::vector<int32_t>{1})) << "\n" << ::tpy::check_signals;
     std::cout << "temp-skipped" << " " << ::tpy::print_bool(false) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_7 = {::tpyapp::main::arg(events)};
-    std::cout << "temp-taken" << " " << ::tpy::print_bool(((::tpy::__getitem__(app.writers, "touch"))(__tmp_7) > 0)) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
+    std::cout << "temp-taken" << " " << ::tpy::print_bool(((::tpy::__getitem__(app.writers, "touch"))(::tpy::as_mut_lvalue(std::vector<int32_t>{::tpyapp::main::arg(events)})) > 0)) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
     std::cout << "comprehension" << " " << ::tpy::ListPrinter(::tpy::array_from_index<int32_t, 3>([&](std::size_t __i_1) -> int32_t {
         int32_t x = int32_t(__i_1);
         return (::tpy::__getitem__(app.callbacks, 0))(x);

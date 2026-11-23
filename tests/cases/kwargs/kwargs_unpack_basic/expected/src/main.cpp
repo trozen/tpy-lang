@@ -16,10 +16,8 @@ void connect(const Options& kwargs) {
 //     connect(host="localhost", port=int32(8080))
 //     connect(host="example.com", port=int32(443))
 void main() {
-    Options __tmp_1 = Options("localhost", 8080);
-    ::tpyapp::main::connect(__tmp_1);
-    Options __tmp_2 = Options("example.com", 443);
-    ::tpyapp::main::connect(__tmp_2);
+    ::tpyapp::main::connect(Options("localhost", 8080));
+    ::tpyapp::main::connect(Options("example.com", 443));
 }
 
 // main()

@@ -15,7 +15,6 @@ namespace tpyapp::main {
 //             pass
 //     return total
 int32_t run() {
-    std::optional<Reg> __slot_1;
     auto __ctx_1 = Reg(100);
     Reg* g = &(__ctx_1.__enter__());
     try {
@@ -30,10 +29,10 @@ int32_t run() {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     int32_t total = 0;
+    std::optional<Reg> __with_root_0;
     for (int32_t i = 0; i < 3; ++i) {
         total = ::tpy::add_check<int32_t>(total, g->n);
-        __slot_1.emplace(Reg(i));
-        auto& __ctx_2 = (*__slot_1);
+        auto& __ctx_2 = __with_root_0.emplace(Reg(i));
         g = &(__ctx_2.__enter__());
         try {
             goto __with_exit_2;

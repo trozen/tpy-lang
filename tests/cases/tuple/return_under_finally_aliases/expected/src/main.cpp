@@ -453,11 +453,9 @@ std::tuple<Box, int32_t, int32_t> arg_temp_member() {
     {
         bool __fin_ran_18 = false;
         try {
-            std::vector<int32_t> __tmp_1 = {1};
-            Box __tmp_2 = ::tpyapp::main::mk(2);
             auto* __tpy_retp_0 = &(b);
-            int32_t __tpy_rete_1 = ::tpyapp::main::bump(__tmp_1);
-            int32_t __tpy_rete_2 = ::tpyapp::main::peek(__tmp_2);
+            int32_t __tpy_rete_1 = ::tpyapp::main::bump(::tpy::as_mut_lvalue(std::vector<int32_t>{1}));
+            int32_t __tpy_rete_2 = ::tpyapp::main::peek(::tpy::as_mut_lvalue(::tpyapp::main::mk(2)));
             __fin_ran_18 = true;
             b.n = ::tpy::add_check<int32_t>(b.n, 1);
             return std::tuple<Box, int32_t, int32_t>{std::move(*__tpy_retp_0), __tpy_rete_1, __tpy_rete_2};

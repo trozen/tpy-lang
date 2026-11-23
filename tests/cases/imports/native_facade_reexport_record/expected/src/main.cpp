@@ -13,8 +13,7 @@ int32_t use(const ::repro_rec::pkg::types::Counter& c) {
 // def main() -> None:
 //     print(use(Counter(int32(42))))
 void main() {
-    ::repro_rec::pkg::types::Counter __tmp_1 = ::repro_rec::pkg::types::Counter(42);
-    std::cout << ::tpyapp::main::use(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use(::repro_rec::pkg::types::Counter(42)) << "\n" << ::tpy::check_signals;
 }
 
 // # Native_module facade re-exporting a *record* (not just a variable).

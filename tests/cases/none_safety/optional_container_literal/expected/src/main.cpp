@@ -74,12 +74,9 @@ void local_init() {
 //     if bag.items is not None and bag.by_key is not None:
 //         print(bag.items[0], bag.by_key["x"])
 void main() {
-    std::vector<::tpy::BigInt> __tmp_1 = std::vector<::tpy::BigInt>{1, 2, 3};
-    ::tpyapp::main::take_list(&(__tmp_1));
-    ::tpy::ordered_map<std::string, int32_t> __tmp_2 = ::tpy::ordered_map<std::string, int32_t>({{"a", 42}});
-    ::tpyapp::main::take_dict(&(__tmp_2));
-    ::tpy::ordered_set<int32_t> __tmp_3 = ::tpy::ordered_set<int32_t>({1});
-    ::tpyapp::main::take_set(&(__tmp_3));
+    ::tpyapp::main::take_list(&::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{1, 2, 3}));
+    ::tpyapp::main::take_dict(&::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, int32_t>({{"a", 42}})));
+    ::tpyapp::main::take_set(&::tpy::as_mut_lvalue(::tpy::ordered_set<int32_t>({1})));
     ::tpyapp::main::take_list(nullptr);
     ::tpyapp::main::take_dict(nullptr);
     ::tpyapp::main::take_set(nullptr);

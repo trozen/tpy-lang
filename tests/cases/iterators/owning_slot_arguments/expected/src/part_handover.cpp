@@ -182,12 +182,10 @@ std::vector<R> inst_dead() {
         __state = S_DONE;  // until a yield sets where to resume
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         for (int32_t i = 1; i < 4; ++i) {
-            __coro_arg_0.emplace(std::array<R, 2>{R(i), R((::tpy::mul_check<int32_t>(i, 10)))});
-            (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::part_handover::atake_slow(i, std::move((*__coro_arg_0))))));
+            (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::part_handover::atake_slow(i, std::array<R, 2>{R(i), R((::tpy::mul_check<int32_t>(i, 10)))}))));
         }
         for (int32_t i = 1; i < 3; ++i) {
-            __coro_arg_1.emplace(::tpyapp::part_handover::mk());
-            (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::part_handover::atake_slow((::tpy::mul_check<int32_t>(i, 100)), std::move((*__coro_arg_1))))));
+            (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::part_handover::atake_slow((::tpy::mul_check<int32_t>(i, 100)), ::tpyapp::part_handover::mk()))));
         }
         auto& __for_obj_0 = (*tasks);
         __for_it_0.emplace((__for_obj_0).begin());

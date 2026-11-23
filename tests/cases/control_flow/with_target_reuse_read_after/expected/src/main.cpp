@@ -12,7 +12,6 @@ namespace tpyapp::main {
 //             pass
 //     return view.n
 int32_t probe(bool flag) {
-    std::optional<Reg> __slot_1;
     auto __ctx_1 = Reg(11);
     Reg* view = &(__ctx_1.__enter__());
     try {
@@ -26,9 +25,9 @@ int32_t probe(bool flag) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
+    std::optional<Reg> __with_root_0;
     if (flag) {
-        __slot_1.emplace(Reg(22));
-        auto& __ctx_2 = (*__slot_1);
+        auto& __ctx_2 = __with_root_0.emplace(22);
         view = &(__ctx_2.__enter__());
         try {
             goto __with_exit_2;
@@ -52,7 +51,6 @@ int32_t probe(bool flag) {
 //         pass
 //     return v.n
 int32_t rebound_needs_no_hoist() {
-    std::optional<Reg> __slot_1;
     auto __ctx_3 = Reg(33);
     Reg* v = &(__ctx_3.__enter__());
     try {
@@ -66,8 +64,7 @@ int32_t rebound_needs_no_hoist() {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    __slot_1.emplace(Reg(44));
-    auto& __ctx_4 = (*__slot_1);
+    auto __ctx_4 = Reg(44);
     v = &(__ctx_4.__enter__());
     try {
         goto __with_exit_4;

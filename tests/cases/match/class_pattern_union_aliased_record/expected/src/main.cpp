@@ -40,12 +40,9 @@ namespace tpyapp::main {
 //     print(pick(Other(4)))
 //     print(use_foreign(Foreign(7)))
 void main() {
-    Point __tmp_1 = Point(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::pick(::tpy::Union<const Other*, const Point*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    Other __tmp_2 = Other(::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::pick(::tpy::Union<const Other*, const Point*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
-    ::tpyapp::shapes::Point __tmp_3 = ::tpyapp::shapes::Point(::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::use_foreign(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(::tpy::Union<const Other*, const Point*>{&(::tpy::as_mut_lvalue(Point(::tpy::BigInt(9))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(::tpy::Union<const Other*, const Point*>{&(::tpy::as_mut_lvalue(Other(::tpy::BigInt(4))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_foreign(::tpyapp::shapes::Point(::tpy::BigInt(7))) << "\n" << ::tpy::check_signals;
 }
 
 // # A class pattern for a LOCAL record in a union must still match under a

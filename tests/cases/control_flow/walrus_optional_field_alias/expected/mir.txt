@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@17:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@17:0: uncovered (unsupported optional test), summary: opaque (unsupported optional test)
 main::Box.__init__@7:4: covered (storage: no_proof_required), summary: known
 main::Holder.__init__@13:4: covered (storage: no_proof_required), summary: known

@@ -31,8 +31,7 @@ void test(Holder& h) {
 // def main() -> None:
 //     test(Holder())
 void main() {
-    Holder __tmp_1 = Holder();
-    ::tpyapp::main::test(__tmp_1);
+    ::tpyapp::main::test(::tpy::as_mut_lvalue(Holder()));
 }
 
 // main()

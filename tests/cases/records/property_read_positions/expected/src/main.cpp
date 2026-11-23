@@ -307,14 +307,10 @@ void main() {
     std::cout << "module_level:" << " " << global_len << " " << ::tpy::__len__(global_bag->_items) << "\n" << ::tpy::check_signals;
     Bag cb = Bag();
     std::cout << "constructor:" << " " << Holder(cb).n << " " << Holder(cb).first << " " << ::tpy::__len__(cb._items) << "\n" << ::tpy::check_signals;
-    Bag __tmp_1 = Bag();
-    ::tpyapp::main::comprehension(__tmp_1);
-    Bag __tmp_2 = Bag();
-    ::tpyapp::main::closure(__tmp_2);
-    Bag __tmp_3 = Bag();
-    ::tpyapp::main::context_manager(__tmp_3);
-    Bag __tmp_4 = Bag();
-    ::tpyapp::main::manager_is_getter(__tmp_4);
+    ::tpyapp::main::comprehension(::tpy::as_mut_lvalue(Bag()));
+    ::tpyapp::main::closure(::tpy::as_mut_lvalue(Bag()));
+    ::tpyapp::main::context_manager(::tpy::as_mut_lvalue(Bag()));
+    ::tpyapp::main::manager_is_getter(::tpy::as_mut_lvalue(Bag()));
     Bag fb = Bag();
     {
         auto __src_0 = ::tpyapp::main::frame_manager(fb);
@@ -327,8 +323,7 @@ void main() {
         }
     }
     std::cout << "frame_manager owner:" << " " << fb._guard.n << "\n" << ::tpy::check_signals;
-    Bag __tmp_5 = Bag();
-    ::tpyapp::main::try_finally(__tmp_5);
+    ::tpyapp::main::try_finally(::tpy::as_mut_lvalue(Bag()));
     Bag eb = Bag();
     {
         std::cout << "error_return:" << " " << ({ auto __er_2 = ::tpyapp::main::error_return_body(eb); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << " " << ::tpy::__len__(eb._items) << "\n" << ::tpy::check_signals;
@@ -338,18 +333,12 @@ void main() {
         std::cout << "error_return: raised" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
-    Bag __tmp_6 = Bag();
-    ::tpyapp::main::match_subject(__tmp_6);
-    Bag __tmp_7 = Bag();
-    ::tpyapp::main::free_fn_arg(__tmp_7);
-    Bag __tmp_8 = Bag();
-    ::tpyapp::main::method_arg(__tmp_8);
-    Bag __tmp_9 = Bag();
-    ::tpyapp::main::return_pos(__tmp_9);
-    Bag __tmp_10 = Bag();
-    ::tpyapp::main::container_insert(__tmp_10);
-    Bag __tmp_11 = Bag();
-    ::tpyapp::main::tuple_literal(__tmp_11);
+    ::tpyapp::main::match_subject(::tpy::as_mut_lvalue(Bag()));
+    ::tpyapp::main::free_fn_arg(::tpy::as_mut_lvalue(Bag()));
+    ::tpyapp::main::method_arg(::tpy::as_mut_lvalue(Bag()));
+    ::tpyapp::main::return_pos(::tpy::as_mut_lvalue(Bag()));
+    ::tpyapp::main::container_insert(::tpy::as_mut_lvalue(Bag()));
+    ::tpyapp::main::tuple_literal(::tpy::as_mut_lvalue(Bag()));
 }
 
 // # module-level statement: top-level codegen binds globals through pointer slots,

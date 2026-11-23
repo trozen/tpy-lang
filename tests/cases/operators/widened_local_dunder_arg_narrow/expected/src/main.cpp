@@ -51,12 +51,9 @@ void composite(const Bag& b) {
 //     composite(Bag())
 //     reflected(Bag())
 void main() {
-    Bag __tmp_1 = Bag();
-    ::tpyapp::main::forward(__tmp_1);
-    Bag __tmp_2 = Bag();
-    ::tpyapp::main::composite(__tmp_2);
-    Bag __tmp_3 = Bag();
-    ::tpyapp::main::reflected(__tmp_3);
+    ::tpyapp::main::forward(Bag());
+    ::tpyapp::main::composite(Bag());
+    ::tpyapp::main::reflected(Bag());
 }
 
 // main()

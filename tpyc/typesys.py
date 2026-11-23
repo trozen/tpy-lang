@@ -6699,6 +6699,15 @@ class ConcreteGenType(ConcreteFrameType):
     """A generator object with a known frame struct (`g = gen()`)."""
 
 
+def frame_module_qual(fi: 'FunctionInfo', current_module: 'str | None'
+                      ) -> 'str | None':
+    """The module a free generator or coroutine function's frame struct is
+    spelled in, where it is not the current one: a specialization of a
+    generic is defined where its root is."""
+    origin = fi.root.originating_module
+    return origin if origin is not None and origin != current_module else None
+
+
 def make_concrete_coro(awaited_type: 'TpyType', func_name: str,
                        owner: 'NominalType | None' = None,
                        inferred_type_args: 'tuple[TpyType, ...] | None' = None,
@@ -9153,6 +9162,10 @@ class FunctionInfo:
     # @pure implies the promise
     # without setting this flag, so a reader of the promise checks both.
     is_transient: bool = False
+    # Retention only: the callee keeps no argument past the call and its
+    # result keeps none (`print`, whose FunctionInfo sema builds). Unlike
+    # `is_transient` it says nothing about what code the call runs.
+    keeps_no_argument: bool = False
     # `checks_signals=True` on the binding: the stub's C++ is a Ctrl-C
     # check point (it may raise KeyboardInterrupt), so a cleanup body
     # calling it is not inert (`may_interrupt`).
@@ -9256,6 +9269,9 @@ class FunctionInfo:
     # field: the callee keeps the argument past the call (retention), while
     # its `const T&` signature stands.
     readonly_addr_escapes_params: frozenset[int] = frozenset()
+    # The indices of either set above whose address the body also stores
+    # into a field of an object other than `self`.
+    foreign_addr_escapes_params: frozenset[int] = frozenset()
     _structural_mutated_params: Optional[frozenset[int]] = field(default=None, compare=False)
     # Like mutated_params, but only structural mutations (append/insert/clear/del/etc.) that
     # invalidate element references. Excludes element-ref taking (a=items[0]) and field writes.
@@ -9460,6 +9476,12 @@ class FunctionInfo:
     # run user code, decided by sema/frame_close.py once every body of the
     # defining module is analyzed; None until then (read as yes).
     frame_close_runs_user_code: bool | None = None
+
+    @property
+    def initializes_type(self) -> bool:
+        """The callee is a type: sema's synthetic record constructor, or a
+        type's `__init__` overload."""
+        return self.is_constructor or (self.is_method and self.name == "__init__")
 
     @property
     def is_callable_value(self) -> bool:

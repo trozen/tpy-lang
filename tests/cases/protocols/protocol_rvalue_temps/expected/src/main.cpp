@@ -25,12 +25,10 @@ namespace tpyapp::main {
 //     show(container[0])
 //     show(container[2])
 void main() {
-    IntBox __tmp_1 = IntBox(42);
-    ::tpyapp::main::show(__tmp_1);
+    ::tpyapp::main::show(::tpy::as_mut_lvalue(IntBox(42)));
     BoxContainer container = BoxContainer();
     ::tpyapp::main::show(container[1]);
-    IntBox __tmp_2 = IntBox(100);
-    ::tpyapp::main::show(__tmp_2);
+    ::tpyapp::main::show(::tpy::as_mut_lvalue(IntBox(100)));
     ::tpyapp::main::show(container[0]);
     ::tpyapp::main::show(container[2]);
 }

@@ -1714,8 +1714,7 @@ void main() {
     std::cout << "enumerate_in_loop:" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(::tpy::__getitem__((*rows), 0))) << " " << ::tpy::ListPrinter(::tpyapp::main::ns(::tpy::__getitem__((*rows), 1))) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<P>> __slot_29;
     ps = &*(__slot_29 = std::vector<P>{P(1), P(2)});
-    Poker __tmp_2 = Poker();
-    ::tpyapp::main::other_method(__tmp_2, (*ps));
+    ::tpyapp::main::other_method(Poker(), (*ps));
     std::cout << "other_method:" << " " << ::tpy::ListPrinter(::tpyapp::main::ns((*ps))) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<P>> __slot_30;
     ps = &*(__slot_30 = std::vector<P>{P(1), P(2)});
@@ -1762,8 +1761,7 @@ void main() {
     ::tpyapp::main::comp_shadow_alias(alias_src, qs3);
     std::cout << "comp_shadow_alias after:" << " " << alias_src.n << " " << ::tpy::ListPrinter(::tpyapp::main::ns(qs3)) << "\n" << ::tpy::check_signals;
     std::vector<P> ps3 = {P(1), P(2)};
-    std::vector<P> __tmp_3 = {P(5)};
-    ::tpyapp::main::loop_shadow_alias(ps3, __tmp_3);
+    ::tpyapp::main::loop_shadow_alias(ps3, {P(5)});
     std::cout << "loop_shadow_alias after:" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(ps3)) << "\n" << ::tpy::check_signals;
     std::vector<H> __slot_39 = {H(1)};
     std::vector<H>* ros = &__slot_39;
@@ -1806,12 +1804,10 @@ void main() {
     ::tpyapp::main::aug_nonlocal_iadd(ia);
     std::cout << "aug_nonlocal_iadd:" << " " << ::tpy::__getitem__(ia, 0).n << " " << ::tpy::__getitem__(ia, 1).n << "\n" << ::tpy::check_signals;
     std::vector<IAcc> xs = {IAcc(1), IAcc(2)};
-    std::vector<int32_t> __tmp_4 = {10, 20};
-    ::tpyapp::main::aug_iadd_zip(xs, __tmp_4);
+    ::tpyapp::main::aug_iadd_zip(xs, {10, 20});
     std::cout << "aug_iadd_zip:" << " " << ::tpy::__getitem__(xs, 0).n << " " << ::tpy::__getitem__(xs, 1).n << "\n" << ::tpy::check_signals;
     std::vector<Acc> vs = {Acc(1), Acc(2)};
-    std::vector<int32_t> __tmp_5 = {10, 20};
-    ::tpyapp::main::rebind_zip(vs, __tmp_5);
+    ::tpyapp::main::rebind_zip(vs, {10, 20});
     std::cout << "rebind_zip:" << " " << ::tpy::__getitem__(vs, 0).n << " " << ::tpy::__getitem__(vs, 1).n << "\n" << ::tpy::check_signals;
 }
 

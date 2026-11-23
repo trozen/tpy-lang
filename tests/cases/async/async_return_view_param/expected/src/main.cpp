@@ -190,8 +190,7 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
         std::cout << __await_lift_2 << "\n" << ::tpy::check_signals;
-        __coro_arg_0 = "d";
-        __sub_3.emplace(__coro_arg_0);
+        __sub_3.emplace("d");
         __state = S_RESUME_3;
         continue;
     }

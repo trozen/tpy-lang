@@ -22,9 +22,7 @@ void f(::tpy::Union<const Item*, const std::string*> v, const Holder& h) {
 // def main() -> None:
 //     f(Item(2), Holder())
 void main() {
-    Item __tmp_1 = Item(2);
-    Holder __tmp_2 = Holder();
-    ::tpyapp::main::f(::tpy::Union<const Item*, const std::string*>{&__tmp_1}, __tmp_2);
+    ::tpyapp::main::f(::tpy::Union<const Item*, const std::string*>{&(::tpy::as_mut_lvalue(Item(2)))}, Holder());
 }
 
 // main()

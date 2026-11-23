@@ -17,7 +17,7 @@ main::spawned@131:0: covered (storage: no_proof_required), summary: known
 main::take@139:0: covered (storage: no_proof_required), summary: known
 main::give@143:0: covered (storage: no_proof_required), summary: known
 main::read@147:0: covered (storage: no_proof_required), summary: known
-main::lend_temp@152:0: certified, summary: known
+main::lend_temp@152:0: covered (storage: no_proof_required), summary: known
 main::maybe@157:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::make_pinned@175:0: uncovered (owned record result needs movable record), summary: opaque (owned record result needs movable record)
 main::pin_holder@188:0: covered (storage: no_proof_required), summary: known

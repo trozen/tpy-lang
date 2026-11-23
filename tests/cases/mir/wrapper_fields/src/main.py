@@ -451,8 +451,8 @@ def built_forms() -> int32:  # tpyc: mir(covered)
     return 0
 
 
-# kept refusal: a constructed argument needs THIR's temporary plan, which this body lacks
-def local_temporary() -> None:  # tpyc: mir(uncovered /temporary plan/)
+# a constructed argument is a temporary of the constructor call's own expression
+def local_temporary() -> None:  # tpyc: mir(covered)
     h = H(P(1), 2)
     if h.p is not None:
         print("local_temporary", h.p.x)

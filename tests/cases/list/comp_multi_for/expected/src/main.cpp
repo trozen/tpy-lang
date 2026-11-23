@@ -2224,10 +2224,11 @@ void lc_sources(const std::vector<std::tuple<C, ::tpy::BigInt>>& pairs, const st
 //     both = 0
 //     out_in = [c.n for x in [1, 2] for c in pick([C(x)]) if (both := c.n + x) > 0]  # tpyc: ok
 //     print("lc src walrus inner", out_in, both)
-//     # clause 0's source is evaluated in the enclosing scope: the temporary
-//     # list `pick` lends from outlives the comprehension, so a pointer stored
-//     # in an element is still valid after the statement
-//     hs = [CPtr(c) for c in pick([C(100), C(200)]) for k in range(1)]  # tpyc: ok
+//     # a pointer stored in an element is read after the statement: the source
+//     # it points into outlives it only as a local (a fresh argument of the
+//     # clause lives for the comprehension's statement, no longer)
+//     src = [C(100), C(200)]
+//     hs = [CPtr(c) for c in pick(src) for k in range(1)]  # tpyc: ok
 //     junk2 = [C(7), C(8), C(9)]
 //     h1 = hs[1]
 //     q = h1.p
@@ -2237,17 +2238,19 @@ void lc_sources(const std::vector<std::tuple<C, ::tpy::BigInt>>& pairs, const st
 //     print("lc src nested", [[c.n + k for c in pick([C(k), C(9)])] for k in range(2)])  # tpyc: ok
 void lc_src_temps() {
     ::tpy::BigInt last = ::tpy::BigInt(0);
-    std::vector<C> __tmp_1 = {C(::tpy::BigInt(100)), C(::tpy::BigInt(200))};
     std::vector<::tpy::BigInt> out = ({
         std::vector<::tpy::BigInt> __result;
-        auto& __obj_0 = ::tpyapp::main::pick(__tmp_1);
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& c = *__beg_0;
-            for (int32_t k = 0; k < 1; ++k) {
-                if (((last = c.n) > k)) {
-                    __result.push_back(c.bump());
+        {
+            std::vector<C> __tmp_1 = std::vector<C>{C(::tpy::BigInt(100)), C(::tpy::BigInt(200))};
+            auto& __obj_0 = ::tpyapp::main::pick(__tmp_1);
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                auto&& c = *__beg_0;
+                for (int32_t k = 0; k < 1; ++k) {
+                    if (((last = c.n) > k)) {
+                        __result.push_back(c.bump());
+                    }
                 }
             }
         }
@@ -2263,24 +2266,26 @@ void lc_src_temps() {
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             int32_t x = *__beg_2;
-            std::vector<C> __tmp_2 = {C(x)};
-            auto& __obj_3 = ::tpyapp::main::pick(__tmp_2);
-            auto __beg_3 = __obj_3.begin();
-            auto __end_3 = __obj_3.end();
-            for (; __beg_3 != __end_3; ++__beg_3) {
-                const auto& c = *__beg_3;
-                if (((both = ((c.n) + (x))) > 0)) {
-                    __result.push_back(c.n);
+            {
+                std::vector<C> __tmp_2 = std::vector<C>{C(x)};
+                auto& __obj_3 = ::tpyapp::main::pick(__tmp_2);
+                auto __beg_3 = __obj_3.begin();
+                auto __end_3 = __obj_3.end();
+                for (; __beg_3 != __end_3; ++__beg_3) {
+                    const auto& c = *__beg_3;
+                    if (((both = ((c.n) + (x))) > 0)) {
+                        __result.push_back(c.n);
+                    }
                 }
             }
         }
         std::move(__result);
     });
     std::cout << "lc src walrus inner" << " " << ::tpy::ListPrinter(out_in) << " " << both << "\n" << ::tpy::check_signals;
-    std::vector<C> __tmp_3 = {C(::tpy::BigInt(100)), C(::tpy::BigInt(200))};
+    std::vector<C> src = {C(::tpy::BigInt(100)), C(::tpy::BigInt(200))};
     std::vector<CPtr> hs = ({
         std::vector<CPtr> __result;
-        auto& __obj_4 = ::tpyapp::main::pick(__tmp_3);
+        auto& __obj_4 = ::tpyapp::main::pick(src);
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
@@ -2297,16 +2302,18 @@ void lc_src_temps() {
     std::cout << "lc src ptr" << " " << ::tpy::none_attr(q, "n").n << " " << ::tpy::__len__(junk2) << "\n" << ::tpy::check_signals;
     std::cout << "lc src nested" << " " << ::tpy::ListPrinter(::tpy::array_from_index<std::vector<::tpy::BigInt>, 2>([&](std::size_t __i_6) -> std::vector<::tpy::BigInt> {
         int32_t k = int32_t(__i_6);
-        std::vector<C> __tmp_4 = {C(::tpy::BigInt(k)), C(::tpy::BigInt(9))};
         return ({
         std::vector<::tpy::BigInt> __result;
-        auto& __obj_7 = ::tpyapp::main::pick(__tmp_4);
-        __result.reserve(static_cast<std::size_t>(__obj_7.size()));
-        auto __beg_7 = __obj_7.begin();
-        auto __end_7 = __obj_7.end();
-        for (; __beg_7 != __end_7; ++__beg_7) {
-            const auto& c = *__beg_7;
-            __result.push_back(((c.n) + (::tpy::BigInt(k))));
+        {
+            std::vector<C> __tmp_3 = std::vector<C>{C(::tpy::BigInt(k)), C(::tpy::BigInt(9))};
+            auto& __obj_7 = ::tpyapp::main::pick(__tmp_3);
+            __result.reserve(static_cast<std::size_t>(__obj_7.size()));
+            auto __beg_7 = __obj_7.begin();
+            auto __end_7 = __obj_7.end();
+            for (; __beg_7 != __end_7; ++__beg_7) {
+                const auto& c = *__beg_7;
+                __result.push_back(((c.n) + (::tpy::BigInt(k))));
+            }
         }
         std::move(__result);
     });
@@ -2394,29 +2401,33 @@ void lc_range_bounds() {
     std::vector<int32_t> bounded = ({
         std::vector<int32_t> __result;
         for (int32_t i = 0; i < 2; ++i) {
-            std::vector<C> __tmp_1 = {C(::tpy::BigInt(i))};
             int32_t __start_1 = ::tpy::__len__(({
                 std::vector<::tpy::BigInt> __result;
-                auto& __obj_2 = ::tpyapp::main::loud(__tmp_1, "start");
-                __result.reserve(static_cast<std::size_t>(__obj_2.size()));
-                auto __beg_2 = __obj_2.begin();
-                auto __end_2 = __obj_2.end();
-                for (; __beg_2 != __end_2; ++__beg_2) {
-                    const auto& c = *__beg_2;
-                    __result.push_back(c.n);
+                {
+                    std::vector<C> __tmp_1 = std::vector<C>{C(::tpy::BigInt(i))};
+                    auto& __obj_2 = ::tpyapp::main::loud(__tmp_1, "start");
+                    __result.reserve(static_cast<std::size_t>(__obj_2.size()));
+                    auto __beg_2 = __obj_2.begin();
+                    auto __end_2 = __obj_2.end();
+                    for (; __beg_2 != __end_2; ++__beg_2) {
+                        const auto& c = *__beg_2;
+                        __result.push_back(c.n);
+                    }
                 }
                 std::move(__result);
             }));
-            std::vector<C> __tmp_2 = {C(::tpy::BigInt(i)), C(::tpy::BigInt(i)), C(::tpy::BigInt(i))};
             int32_t __stop_1 = ::tpy::__len__(({
                 std::vector<::tpy::BigInt> __result;
-                auto& __obj_3 = ::tpyapp::main::loud(__tmp_2, "stop");
-                __result.reserve(static_cast<std::size_t>(__obj_3.size()));
-                auto __beg_3 = __obj_3.begin();
-                auto __end_3 = __obj_3.end();
-                for (; __beg_3 != __end_3; ++__beg_3) {
-                    const auto& c = *__beg_3;
-                    __result.push_back(c.n);
+                {
+                    std::vector<C> __tmp_2 = std::vector<C>{C(::tpy::BigInt(i)), C(::tpy::BigInt(i)), C(::tpy::BigInt(i))};
+                    auto& __obj_3 = ::tpyapp::main::loud(__tmp_2, "stop");
+                    __result.reserve(static_cast<std::size_t>(__obj_3.size()));
+                    auto __beg_3 = __obj_3.begin();
+                    auto __end_3 = __obj_3.end();
+                    for (; __beg_3 != __end_3; ++__beg_3) {
+                        const auto& c = *__beg_3;
+                        __result.push_back(c.n);
+                    }
                 }
                 std::move(__result);
             }));
@@ -2427,61 +2438,69 @@ void lc_range_bounds() {
         std::move(__result);
     });
     std::cout << "lc range bound temps" << " " << ::tpy::ListPrinter(bounded) << "\n" << ::tpy::check_signals;
-    std::vector<C> __tmp_3 = {C(::tpy::BigInt(1)), C(::tpy::BigInt(2))};
     int32_t __stop_4 = ::tpy::__len__(({
         std::vector<::tpy::BigInt> __result;
-        auto& __obj_5 = ::tpyapp::main::pick(__tmp_3);
-        __result.reserve(static_cast<std::size_t>(__obj_5.size()));
-        auto __beg_5 = __obj_5.begin();
-        auto __end_5 = __obj_5.end();
-        for (; __beg_5 != __end_5; ++__beg_5) {
-            const auto& c = *__beg_5;
-            __result.push_back(c.n);
+        {
+            std::vector<C> __tmp_3 = std::vector<C>{C(::tpy::BigInt(1)), C(::tpy::BigInt(2))};
+            auto& __obj_5 = ::tpyapp::main::pick(__tmp_3);
+            __result.reserve(static_cast<std::size_t>(__obj_5.size()));
+            auto __beg_5 = __obj_5.begin();
+            auto __end_5 = __obj_5.end();
+            for (; __beg_5 != __end_5; ++__beg_5) {
+                const auto& c = *__beg_5;
+                __result.push_back(c.n);
+            }
         }
         std::move(__result);
     }));
     for (int32_t i = 0; i < __stop_4; ++i) {
         std::cout << "lc for range bound" << " " << i << "\n" << ::tpy::check_signals;
     }
-    std::vector<C> __tmp_4 = {C(::tpy::BigInt(1)), C(::tpy::BigInt(2))};
     int32_t __start_6 = ::tpy::__len__(({
         std::vector<::tpy::BigInt> __result;
-        auto& __obj_7 = ::tpyapp::main::pick(__tmp_4);
-        __result.reserve(static_cast<std::size_t>(__obj_7.size()));
-        auto __beg_7 = __obj_7.begin();
-        auto __end_7 = __obj_7.end();
-        for (; __beg_7 != __end_7; ++__beg_7) {
-            const auto& c = *__beg_7;
-            __result.push_back(c.n);
+        {
+            std::vector<C> __tmp_4 = std::vector<C>{C(::tpy::BigInt(1)), C(::tpy::BigInt(2))};
+            auto& __obj_7 = ::tpyapp::main::pick(__tmp_4);
+            __result.reserve(static_cast<std::size_t>(__obj_7.size()));
+            auto __beg_7 = __obj_7.begin();
+            auto __end_7 = __obj_7.end();
+            for (; __beg_7 != __end_7; ++__beg_7) {
+                const auto& c = *__beg_7;
+                __result.push_back(c.n);
+            }
         }
         std::move(__result);
     }));
     for (int32_t i = __start_6; i < 4; ++i) {
         std::cout << "lc for range start" << " " << i << "\n" << ::tpy::check_signals;
     }
-    std::vector<C> __tmp_5 = {C(::tpy::BigInt(1))};
     int32_t __start_8 = ::tpy::__len__(({
         std::vector<::tpy::BigInt> __result;
-        auto& __obj_9 = ::tpyapp::main::pick(__tmp_5);
-        __result.reserve(static_cast<std::size_t>(__obj_9.size()));
-        auto __beg_9 = __obj_9.begin();
-        auto __end_9 = __obj_9.end();
-        for (; __beg_9 != __end_9; ++__beg_9) {
-            const auto& c = *__beg_9;
-            __result.push_back(c.n);
+        {
+            std::vector<C> __tmp_5 = std::vector<C>{C(::tpy::BigInt(1))};
+            auto& __obj_9 = ::tpyapp::main::pick(__tmp_5);
+            __result.reserve(static_cast<std::size_t>(__obj_9.size()));
+            auto __beg_9 = __obj_9.begin();
+            auto __end_9 = __obj_9.end();
+            for (; __beg_9 != __end_9; ++__beg_9) {
+                const auto& c = *__beg_9;
+                __result.push_back(c.n);
+            }
         }
         std::move(__result);
     }));
-    std::vector<C> __tmp_6 = {C(::tpy::BigInt(1)), C(::tpy::BigInt(2)), C(::tpy::BigInt(3))};
     int32_t __step_8 = ::tpy::__len__(({
         std::vector<::tpy::BigInt> __result;
-        auto& __obj_10 = ::tpyapp::main::pick(__tmp_6);
-        __result.reserve(static_cast<std::size_t>(__obj_10.size()));
-        auto __beg_10 = __obj_10.begin();
-        auto __end_10 = __obj_10.end();
-        for (; __beg_10 != __end_10; ++__beg_10) {
-            const auto& c = *__beg_10;
-            __result.push_back(c.n);
+        {
+            std::vector<C> __tmp_6 = std::vector<C>{C(::tpy::BigInt(1)), C(::tpy::BigInt(2)), C(::tpy::BigInt(3))};
+            auto& __obj_10 = ::tpyapp::main::pick(__tmp_6);
+            __result.reserve(static_cast<std::size_t>(__obj_10.size()));
+            auto __beg_10 = __obj_10.begin();
+            auto __end_10 = __obj_10.end();
+            for (; __beg_10 != __end_10; ++__beg_10) {
+                const auto& c = *__beg_10;
+                __result.push_back(c.n);
+            }
         }
         std::move(__result);
     }));
@@ -2508,16 +2527,18 @@ __gen_lc_gen_src lc_gen_src() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::vector<C> __tmp_1 = {C(::tpy::BigInt(100)), C(::tpy::BigInt(200))};
         vals.emplace(({
             std::vector<::tpy::BigInt> __result;
-            auto& __obj_0 = ::tpyapp::main::pick(__tmp_1);
-            auto __beg_0 = __obj_0.begin();
-            auto __end_0 = __obj_0.end();
-            for (; __beg_0 != __end_0; ++__beg_0) {
-                const auto& c = *__beg_0;
-                for (int32_t k = 0; k < 1; ++k) {
-                    __result.push_back(((c.n) + (::tpy::BigInt(k))));
+            {
+                std::vector<C> __tmp_1 = std::vector<C>{C(::tpy::BigInt(100)), C(::tpy::BigInt(200))};
+                auto& __obj_0 = ::tpyapp::main::pick(__tmp_1);
+                auto __beg_0 = __obj_0.begin();
+                auto __end_0 = __obj_0.end();
+                for (; __beg_0 != __end_0; ++__beg_0) {
+                    const auto& c = *__beg_0;
+                    for (int32_t k = 0; k < 1; ++k) {
+                        __result.push_back(((c.n) + (::tpy::BigInt(k))));
+                    }
                 }
             }
             std::move(__result);
@@ -3033,8 +3054,7 @@ void lc_owned_outer() {
         auto __end_16 = __obj_16.end();
         for (; __beg_16 != __end_16; ++__beg_16) {
             auto&& cs = ::tpy::take_elem(__beg_16);
-            int32_t __tmp_1 = ::tpy::__len__(cs);
-            auto __obj_17 = ::tpyapp::main::widgets(::tpy::BigInt(__tmp_1));
+            auto __obj_17 = ::tpyapp::main::widgets(::tpy::BigInt(::tpy::__len__(cs)));
             auto __beg_17 = __obj_17.begin();
             auto __end_17 = __obj_17.end();
             for (; __beg_17 != __end_17; ++__beg_17) {
@@ -3834,30 +3854,20 @@ void lc_main() {
     ::tpy::BigInt async_n = ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::lc_async_src()));
     std::cout << "lc async src" << " " << async_n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::lc_ranges(::tpy::BigInt(10), ::tpy::BigInt(4), ::tpy::BigInt(0));
-    std::vector<std::string> __tmp_1 = {"ab", "c"};
-    std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>> __tmp_2 = {std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(3), ::tpy::BigInt(4)}};
-    std::vector<std::tuple<::tpy::BigInt, std::string>> __tmp_3 = {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "a"}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "b"}};
-    ::tpyapp::main::lc_free(grid, __tmp_1, __tmp_2, __tmp_3);
+    ::tpyapp::main::lc_free(grid, {"ab", "c"}, {std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(3), ::tpy::BigInt(4)}}, {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "a"}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "b"}});
     ::tpyapp::main::lc_walrus_source();
-    std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>> __tmp_4 = {std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(3), ::tpy::BigInt(4)}};
-    ::tpyapp::main::lc_holder_names(__tmp_4);
-    std::vector<std::tuple<C, ::tpy::BigInt>> __tmp_5 = {std::tuple<C, ::tpy::BigInt>{C(::tpy::BigInt(1)), ::tpy::BigInt(2)}, std::tuple<C, ::tpy::BigInt>{C(::tpy::BigInt(2)), ::tpy::BigInt(1)}};
-    std::vector<::tpy::ordered_map<std::string, ::tpy::BigInt>> __tmp_6 = {::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}}), ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"b", ::tpy::BigInt(2)}, {"c", ::tpy::BigInt(3)}})};
-    std::vector<std::vector<std::optional<C>>> __tmp_7 = {{C(::tpy::BigInt(1)), std::nullopt}, {C(::tpy::BigInt(5))}};
-    std::vector<std::vector<::tpy::BigInt>> __tmp_8 = {{1, 2}, {3}};
-    std::vector<::tpy::BigInt> __tmp_9 = {10, 20};
-    ::tpyapp::main::lc_sources(__tmp_5, __tmp_6, __tmp_7, __tmp_8, __tmp_9);
+    ::tpyapp::main::lc_holder_names({std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(3), ::tpy::BigInt(4)}});
+    ::tpyapp::main::lc_sources({std::tuple<C, ::tpy::BigInt>{C(::tpy::BigInt(1)), ::tpy::BigInt(2)}, std::tuple<C, ::tpy::BigInt>{C(::tpy::BigInt(2)), ::tpy::BigInt(1)}}, {::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}}), ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"b", ::tpy::BigInt(2)}, {"c", ::tpy::BigInt(3)}})}, {{C(::tpy::BigInt(1)), std::nullopt}, {C(::tpy::BigInt(5))}}, {{1, 2}, {3}}, {10, 20});
     ::tpyapp::main::lc_grow();
     ::tpyapp::main::lc_owned();
-    std::vector<std::vector<::tpy::BigInt>> __tmp_10 = {{1}, {2}};
-    ::tpyapp::main::lc_copy(__tmp_10);
+    ::tpyapp::main::lc_copy({{1}, {2}});
     ::tpyapp::main::lc_bump();
     std::cout << "lc method" << " " << ::tpy::ListPrinter(Grid().crossed_list()) << "\n" << ::tpy::check_signals;
     std::cout << "lc ctor" << " " << ::tpy::ListPrinter(Pairs(::tpy::BigInt(3)).pairs) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<::tpy::BigInt>> __tmp_11 = {{1, 2}, {3}};
-    std::cout << "lc generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::lc_gen(__tmp_11))) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<::tpy::BigInt>> __tmp_12 = {{1, 2}, {3}};
-    std::cout << "lc async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::lc_async(__tmp_12))) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<::tpy::BigInt>> __tmp_1 = {{1, 2}, {3}};
+    std::cout << "lc generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::lc_gen(__tmp_1))) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<::tpy::BigInt>> __tmp_2 = {{1, 2}, {3}};
+    std::cout << "lc async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::lc_async(__tmp_2))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::lc_nested();
     ::tpyapp::main::lc_try(grid);
     ::tpyapp::main::lc_with(grid);
@@ -3892,10 +3902,7 @@ void lc_main() {
 //     lc_main()
 //     own_main()
 void main() {
-    std::vector<std::vector<::tpy::BigInt>> __tmp_1 = {{1, 2}, {3, 4, 5}, {6}};
-    std::vector<std::string> __tmp_2 = {"ab", "c"};
-    std::vector<std::tuple<::tpy::BigInt, std::string>> __tmp_3 = {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "a"}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "b"}};
-    ::tpyapp::main::free(__tmp_1, __tmp_2, __tmp_3);
+    ::tpyapp::main::free({{1, 2}, {3, 4, 5}, {6}}, {"ab", "c"}, {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "a"}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "b"}});
     Grid g = Grid();
     std::cout << "method total" << " " << g.total() << "\n" << ::tpy::check_signals;
     std::cout << "method crossed" << " " << ::tpy::ListPrinter(g.crossed()) << "\n" << ::tpy::check_signals;
@@ -3903,16 +3910,14 @@ void main() {
     std::cout << "bump sum" << " " << ::tpyapp::main::bump_all(grid) << "\n" << ::tpy::check_signals;
     std::cout << "bump seen" << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 0), 0).n << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 0), 1).n << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 1), 0).n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump_nested();
-    std::vector<std::vector<::tpy::BigInt>> __tmp_4 = {{1, 2}, {3}};
-    std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen(__tmp_4))) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<::tpy::BigInt>> __tmp_5 = {{1, 2}, {3}};
-    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::work(__tmp_5))) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<::tpy::BigInt>> __tmp_1 = {{1, 2}, {3}};
+    std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen(__tmp_1))) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<::tpy::BigInt>> __tmp_2 = {{1, 2}, {3}};
+    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::work(__tmp_2))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::captured();
     ::tpyapp::main::captured_places(::tpy::BigInt(1000));
-    std::vector<int32_t> __tmp_6 = {1, 2};
-    ::tpyapp::main::kept(__tmp_6);
-    std::vector<std::vector<::tpy::BigInt>> __tmp_7 = {{1, 2}, {3}};
-    ::tpyapp::main::genexpr_positions(__tmp_7);
+    ::tpyapp::main::kept({1, 2});
+    ::tpyapp::main::genexpr_positions(::tpy::as_mut_lvalue(std::vector<std::vector<::tpy::BigInt>>{{1, 2}, {3}}));
     ::tpyapp::main::lc_main();
     ::tpyapp::main::own_main();
 }
@@ -4090,16 +4095,18 @@ void __tpy_init() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    std::vector<C> __tmp_1 = {C(::tpy::BigInt(5))};
     std::cout << "lc module src" << " " << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
-        auto& __obj_6 = ::tpyapp::main::pick(__tmp_1);
-        auto __beg_6 = __obj_6.begin();
-        auto __end_6 = __obj_6.end();
-        for (; __beg_6 != __end_6; ++__beg_6) {
-            const auto& c = *__beg_6;
-            for (int32_t j = 0; j < 2; ++j) {
-                __result.push_back(c.n);
+        {
+            std::vector<C> __tmp_1 = std::vector<C>{C(::tpy::BigInt(5))};
+            auto& __obj_6 = ::tpyapp::main::pick(__tmp_1);
+            auto __beg_6 = __obj_6.begin();
+            auto __end_6 = __obj_6.end();
+            for (; __beg_6 != __end_6; ++__beg_6) {
+                const auto& c = *__beg_6;
+                for (int32_t j = 0; j < 2; ++j) {
+                    __result.push_back(c.n);
+                }
             }
         }
         std::move(__result);

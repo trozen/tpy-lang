@@ -7,8 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(first(IntListBox([7, 8, 9])))   # tpyc: ok
 void main() {
-    IntListBox __tmp_1 = IntListBox({7, 8, 9});
-    std::cout << ::tpyapp::main::first<::tpy::BigInt, IntListBox>(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first<::tpy::BigInt, IntListBox>(::tpy::as_mut_lvalue(IntListBox({7, 8, 9}))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

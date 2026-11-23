@@ -69,12 +69,9 @@ void main() {
     std::vector<std::string> empty_list = std::vector<std::string>{};
     ::tpy::ordered_map<std::string, std::string> empty_dict = ::tpy::ordered_map<std::string, std::string>();
     ::tpy::ordered_set<std::string> empty_set = ::tpy::ordered_set<std::string>();
-    std::vector<std::string> __tmp_1 = std::vector<std::string>{"a"};
-    std::cout << ::tpyapp::main::narrowed_list(&(empty_list)) << " " << ::tpyapp::main::narrowed_list(&(__tmp_1)) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"k", "v"}});
-    std::cout << ::tpyapp::main::narrowed_dict(&(empty_dict)) << " " << ::tpyapp::main::narrowed_dict(&(__tmp_2)) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_set<std::string> __tmp_3 = ::tpy::ordered_set<std::string>({"x"});
-    std::cout << ::tpyapp::main::narrowed_set(&(empty_set)) << " " << ::tpyapp::main::narrowed_set(&(__tmp_3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::narrowed_list(&(empty_list)) << " " << ::tpyapp::main::narrowed_list(&::tpy::as_mut_lvalue(std::vector<std::string>{"a"})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::narrowed_dict(&(empty_dict)) << " " << ::tpyapp::main::narrowed_dict(&::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"k", "v"}}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::narrowed_set(&(empty_set)) << " " << ::tpyapp::main::narrowed_set(&::tpy::as_mut_lvalue(::tpy::ordered_set<std::string>({"x"}))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

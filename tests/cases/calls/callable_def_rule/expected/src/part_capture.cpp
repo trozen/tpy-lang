@@ -363,8 +363,7 @@ void sec_nested_locals() {
 //     sec_nested_locals()
 void main() {
     ::tpyapp::part_capture::sec_order();
-    ::tpyapp::fixtures::P __tmp_1 = ::tpyapp::fixtures::P(41);
-    ::tpyapp::part_capture::sec_siblings(__tmp_1);
+    ::tpyapp::part_capture::sec_siblings(::tpy::as_mut_lvalue(::tpyapp::fixtures::P(41)));
     ::tpyapp::part_capture::sec_nested_locals();
 }
 

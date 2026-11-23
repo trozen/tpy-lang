@@ -294,8 +294,7 @@ void main() {
         }
     }
     std::cout << "borrow_calls" << " " << hs.a.v << "\n" << ::tpy::check_signals;
-    A __tmp_1 = A(8);
-    ::tpyapp::main::genexpr_rebind(__tmp_1);
+    ::tpyapp::main::genexpr_rebind(::tpy::as_mut_lvalue(A(8)));
     {
         auto __src_14 = ::tpyapp::main::to_name(p);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);

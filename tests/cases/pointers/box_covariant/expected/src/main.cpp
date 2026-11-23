@@ -34,11 +34,9 @@ void print_area(::tpystd::tplib::box::Box<Shape>& b) {
 //     print(b3.get().area())
 void main() {
     ::tpystd::tplib::box::Box<Circle> bc = ::tpystd::tplib::box::Box<Circle>(Circle(5.0));
-    ::tpystd::tplib::box::Box<Shape> __tmp_1 = std::move(bc);
-    ::tpyapp::main::print_area(__tmp_1);
+    ::tpyapp::main::print_area(::tpy::as_mut_lvalue(::tpystd::tplib::box::Box<Shape>(std::move(bc))));
     ::tpystd::tplib::box::Box<Square> bs = ::tpystd::tplib::box::Box<Square>(Square(3.0));
-    ::tpystd::tplib::box::Box<Shape> __tmp_2 = std::move(bs);
-    ::tpyapp::main::print_area(__tmp_2);
+    ::tpyapp::main::print_area(::tpy::as_mut_lvalue(::tpystd::tplib::box::Box<Shape>(std::move(bs))));
     ::tpystd::tplib::box::Box<Circle> bc2 = ::tpystd::tplib::box::Box<Circle>(Circle(2.0));
     ::tpystd::tplib::box::Box<Shape> b_shape = std::move(bc2);
     std::cout << ::tpy::print_float(b_shape.get().area()) << "\n" << ::tpy::check_signals;

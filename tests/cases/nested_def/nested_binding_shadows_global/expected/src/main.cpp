@@ -169,8 +169,7 @@ void param_vs_box_global() {
     auto show = [](::tpystd::tplib::box::Box<int32_t>& bx) {
         std::cout << "param_box:" << " " << bx << "\n" << ::tpy::check_signals;
     };
-    ::tpystd::tplib::box::Box<int32_t> __tmp_1 = ::tpystd::tplib::box::Box<int32_t>(3);
-    show(__tmp_1);
+    show(::tpy::as_mut_lvalue(::tpystd::tplib::box::Box<int32_t>(3)));
     std::cout << "param_box global:" << " " << (*bx) << "\n" << ::tpy::check_signals;
 }
 
@@ -228,8 +227,7 @@ int32_t lambda_param_vs_opt_param(Holder* p) {
     std::function<int32_t(Holder&)> k = [](Holder& p) -> int32_t { return p.v; };
     std::function<int32_t(int32_t)> t = [](int32_t p) -> int32_t { return ((p) ? (1) : (0)); };
     if ((p == nullptr)) {
-        Holder __tmp_1 = Holder(4);
-        return (::tpy::add_check<int32_t>(k(__tmp_1), t(0)));
+        return (::tpy::add_check<int32_t>(k(::tpy::as_mut_lvalue(Holder(4))), t(0)));
     }
     return (::tpy::add_check<int32_t>(k((*p)), t(3)));
 }
@@ -569,15 +567,14 @@ void main() {
     ::tpyapp::main::param_vs_imported_global();
     std::cout << "native_local:" << " " << ::tpyapp::main::native_global_branch_local(true) << " " << ::tpyapp::main::native_global_branch_local(false) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::lambda_param_vs_slot_global();
-    Holder __tmp_1 = Holder(10);
-    std::cout << "lambda_opt_param:" << " " << ::tpyapp::main::lambda_param_vs_opt_param(&(__tmp_1)) << " " << ::tpyapp::main::lambda_param_vs_opt_param(nullptr) << "\n" << ::tpy::check_signals;
+    std::cout << "lambda_opt_param:" << " " << ::tpyapp::main::lambda_param_vs_opt_param(&::tpy::as_mut_lvalue(Holder(10))) << " " << ::tpyapp::main::lambda_param_vs_opt_param(nullptr) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::block_binders();
     ::tpyapp::main::walrus_local();
     K().m();
     std::cout << "enum_method:" << " " << __enum_Tone{Tone::LOW}.bump() << " " << __enum_Tone{Tone::HIGH}.bump() << "\n" << ::tpy::check_signals;
     {
-        std::vector<Holder> __tmp_2 = {Holder(1), Holder(3)};
-        auto __src_0 = ::tpyapp::main::gen(__tmp_2);
+        std::vector<Holder> __tmp_1 = {Holder(1), Holder(3)};
+        auto __src_0 = ::tpyapp::main::gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -587,8 +584,7 @@ void main() {
         }
     }
     ::tpyapp::main::reads_only();
-    Holder __tmp_3 = Holder(8);
-    ::tpyapp::main::narrowed(&(__tmp_3));
+    ::tpyapp::main::narrowed(&::tpy::as_mut_lvalue(Holder(8)));
     ::tpyapp::main::narrowed(nullptr);
     Holder h1 = Holder(1);
     Holder h2 = Holder(2);

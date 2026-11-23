@@ -83,34 +83,41 @@ std::vector<std::string> walk_rows(std::string_view root, std::optional<std::fun
 void build(std::string_view root) {
     ::tpystd::os::mkdir(root);
     ::tpystd::os::mkdir((::tpy::str_concat(root, "/sub")));
-    auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/top.txt")), "w");
-    ::tpy::TextFile* f = &(__ctx_1.__enter__());
-    try {
-        f->write("t");
-        goto __with_exit_1;
-    } catch (::tpy::BaseException& __exc_1) {
-        __ctx_1.__exit__({}, &__exc_1, {});
-        throw;
-    } catch (...) {
+    ::tpy::TextFile* f = nullptr;
+    {
+        ::tpy::String __tmp_1 = (::tpy::str_concat(root, "/top.txt"));
+        auto __ctx_1 = ::tpy::builtin_open_mode(__tmp_1, "w");
+        f = &(__ctx_1.__enter__());
+        try {
+            f->write("t");
+            goto __with_exit_1;
+        } catch (::tpy::BaseException& __exc_1) {
+            __ctx_1.__exit__({}, &__exc_1, {});
+            throw;
+        } catch (...) {
+            __ctx_1.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        throw;
     }
-    __with_exit_1:
-    __ctx_1.__exit__({}, nullptr, {});
-    auto __ctx_2 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/sub/a.txt")), "w");
-    f = &(__ctx_2.__enter__());
-    try {
-        f->write("a");
-        goto __with_exit_2;
-    } catch (::tpy::BaseException& __exc_2) {
-        __ctx_2.__exit__({}, &__exc_2, {});
-        throw;
-    } catch (...) {
+    {
+        ::tpy::String __tmp_2 = (::tpy::str_concat(root, "/sub/a.txt"));
+        auto __ctx_2 = ::tpy::builtin_open_mode(__tmp_2, "w");
+        f = &(__ctx_2.__enter__());
+        try {
+            f->write("a");
+            goto __with_exit_2;
+        } catch (::tpy::BaseException& __exc_2) {
+            __ctx_2.__exit__({}, &__exc_2, {});
+            throw;
+        } catch (...) {
+            __ctx_2.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
-        throw;
     }
-    __with_exit_2:
-    __ctx_2.__exit__({}, nullptr, {});
 }
 
 // def teardown(root: str) -> None:

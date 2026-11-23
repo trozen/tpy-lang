@@ -33,16 +33,11 @@ void main() {
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::vector<int32_t>{})) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpy::builtin_all(std::vector<int32_t>{})) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpy::builtin_any(std::vector<int32_t>{})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::tag<int32_t>(std::vector<int32_t>{}) << "\n" << ::tpy::check_signals;
     auto __tmp_1 = std::vector<int32_t>{};
-    std::cout << ::tpyapp::main::tag<int32_t>(__tmp_1) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = std::vector<int32_t>{};
-    std::cout << ::tpyapp::main::pick_or<int32_t>(__tmp_2, 7) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = std::array<int32_t, 2>{1, 2};
-    auto __tmp_4 = std::vector<int32_t>{};
-    std::cout << ::tpyapp::main::pair<int32_t>(__tmp_3, __tmp_4) << "\n" << ::tpy::check_signals;
-    auto __tmp_5 = std::vector<int32_t>{};
-    auto __tmp_6 = std::array<int32_t, 2>{1, 2};
-    std::cout << ::tpyapp::main::pair<int32_t>(__tmp_5, __tmp_6) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_or<int32_t>(__tmp_1, 7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pair<int32_t>(std::array<int32_t, 2>{1, 2}, std::vector<int32_t>{}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pair<int32_t>(std::vector<int32_t>{}, std::array<int32_t, 2>{1, 2}) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpy::builtin_enumerate(std::vector<int32_t>{});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

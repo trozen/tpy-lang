@@ -99,8 +99,7 @@ __coro_async_head async_head(std::string_view t) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = ::tpyapp::main::make_str(2);
-        __sub_0.emplace(__coro_arg_0);
+        __sub_0.emplace(__head_arg_0.emplace(::tpyapp::main::make_str(2)));
         __state = S_RESUME_0;
         continue;
     }
@@ -174,8 +173,7 @@ __coro_bump_async bump_async(std::span<int32_t> s) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(std::array<int32_t, 2>{7, 8});
-        __sub_0.emplace(::tpy::as_mut_span((*__coro_arg_0)));
+        __sub_0.emplace(::tpy::as_mut_span(__head_arg_0.emplace(std::array<int32_t, 2>{7, 8})));
         __state = S_RESUME_0;
         continue;
     }
@@ -253,8 +251,7 @@ __gen_outer_fstring outer_fstring(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        __coro_arg_0 = ::tpyapp::main::make_str(2);
-        c.emplace(::tpyapp::main::async_head(__coro_arg_0));
+        c.emplace(::tpyapp::main::async_head(__head_arg_0.emplace(::tpyapp::main::make_str(2))));
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_1;
         continue;
@@ -295,8 +292,7 @@ __coro_outer_bind outer_bind() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = ::tpyapp::main::make_str(2);
-        t.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::async_head(__coro_arg_0))));
+        t.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::async_head(__head_arg_0.emplace(::tpyapp::main::make_str(2))))));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -379,8 +375,7 @@ __gen_outer_loop_for outer_loop_for(int32_t n) {
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
         i = ((*__for_i_0))++;
-        __coro_arg_0 = std::format("val{}-tailpad{}", i, i);
-        c.emplace(::tpyapp::main::async_head(__coro_arg_0));
+        c.emplace(::tpyapp::main::async_head(__head_arg_0.emplace(std::format("val{}-tailpad{}", i, i))));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -419,8 +414,7 @@ __coro_outer_loop_bind outer_loop_bind(int32_t n) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         n = 0;
-        __coro_arg_0.emplace(Summer(100));
-        __for_src_0.emplace((*__coro_arg_0).pair(src));
+        __for_src_0.emplace(__head_arg_0.emplace(Summer(100)).pair(src));
         __state = S_JOIN_0;
         continue;
     }
@@ -466,9 +460,7 @@ __coro_outer_async_recv outer_async_recv(const std::vector<int32_t>& src) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(Adder(5));
-        __coro_arg_1.emplace(std::array<int32_t, 2>{7, 8});
-        t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>((*__coro_arg_0).add(::tpy::as_mut_span((*__coro_arg_1))))));
+        t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(__head_arg_0.emplace(Adder(5)).add(::tpy::as_mut_span(__head_arg_1.emplace(std::array<int32_t, 2>{7, 8}))))));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -939,15 +931,17 @@ void main() {
     std::array<int32_t, 2> __tmp_19 = std::array<int32_t, 2>{5, 6};
     auto __tmp_20 = ::tpyapp::main::read_pair(::tpy::as_span(__tmp_19));
     std::cout << "lit-nested:" << " " << ::tpyapp::main::total(__tmp_20) << "\n" << ::tpy::check_signals;
-    std::array<int32_t, 2> __tmp_21 = std::array<int32_t, 2>{5, 6};
     std::vector<int32_t> comp = ({
         std::vector<int32_t> __result;
-        auto __obj_38 = ::tpyapp::main::read_pair(::tpy::as_span(__tmp_21));
-        auto __beg_38 = __obj_38.begin();
-        auto __end_38 = __obj_38.end();
-        for (; __beg_38 != __end_38; ++__beg_38) {
-            int32_t v = *__beg_38;
-            __result.push_back(v);
+        {
+            std::array<int32_t, 2> __tmp_21 = std::array<int32_t, 2>{5, 6};
+            auto __obj_38 = ::tpyapp::main::read_pair(::tpy::as_span(__tmp_21));
+            auto __beg_38 = __obj_38.begin();
+            auto __end_38 = __obj_38.end();
+            for (; __beg_38 != __end_38; ++__beg_38) {
+                int32_t v = *__beg_38;
+                __result.push_back(v);
+            }
         }
         std::move(__result);
     });

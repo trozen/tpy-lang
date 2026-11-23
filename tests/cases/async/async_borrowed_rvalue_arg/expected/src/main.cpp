@@ -178,8 +178,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(Dog("rex"));
-        __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
+        __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&(__head_arg_0.emplace(Dog("rex")))});
         __state = S_RESUME_0;
         continue;
     }
@@ -189,8 +188,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
-        __coro_arg_1.emplace(Cat("tom"));
-        __sub_1.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_1))});
+        __sub_1.emplace(::tpy::Union<const Cat*, const Dog*>{&(__head_arg_1.emplace(Cat("tom")))});
         __state = S_RESUME_1;
         continue;
     }
@@ -200,8 +198,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
         std::cout << __await_lift_1 << "\n" << ::tpy::check_signals;
-        __coro_arg_2.emplace(Dog("fido"));
-        __sub_2.emplace(&((*__coro_arg_2)));
+        __sub_2.emplace(&(__head_arg_2.emplace(Dog("fido"))));
         __state = S_RESUME_2;
         continue;
     }
@@ -211,8 +208,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
         std::cout << __await_lift_2 << "\n" << ::tpy::check_signals;
-        __coro_arg_3.emplace(Dog("spot"));
-        __sub_3.emplace((*__coro_arg_3));
+        __sub_3.emplace(__head_arg_3.emplace(Dog("spot")));
         __state = S_RESUME_3;
         continue;
     }
@@ -243,8 +239,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         __await_lift_5 = std::move(__r5).value();
         __sub_5.reset();
         std::cout << __await_lift_5 << "\n" << ::tpy::check_signals;
-        __coro_arg_4.emplace(Dog("max"));
-        __sub_6.emplace("tag", ::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_4))});
+        __sub_6.emplace("tag", ::tpy::Union<const Cat*, const Dog*>{&(__head_arg_4.emplace(Dog("max")))});
         __state = S_RESUME_6;
         continue;
     }
@@ -274,8 +269,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
             return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
         i = ((*__for_i_0))++;
-        __coro_arg_5.emplace(Dog("loop"));
-        __sub_7.emplace((*__coro_arg_5));
+        __sub_7.emplace(__head_arg_5.emplace(Dog("loop")));
         __state = S_RESUME_7;
         continue;
     }

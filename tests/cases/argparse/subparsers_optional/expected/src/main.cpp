@@ -18,8 +18,7 @@ namespace tpyapp::main {
 //     print("cmd is None: " + str(args.cmd is None))
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = std::vector<std::string>{};
-    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(std::vector<std::string>{});
     std::cout << (::tpy::str_concat("cmd is None: ", std::string(::tpy::bool_to_str((!args.cmd.has_value()))))) << "\n" << ::tpy::check_signals;
     return 0;
 }
@@ -70,8 +69,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         if ((__tpy_argparse_tok == "a")) {
             __tpy_argparse_acc_cmd = "a";
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
-            std::vector<std::string> __tmp_1 = ::tpy::construct<std::vector<std::string>>(::tpy::list_slice(argv, ::tpy::BasicSlice{__tpy_argparse_i, std::nullopt}));
-            __tpy_builder_argparse_a_args_1 __tpy_argparse_sub_a = ::tpyapp::main::__tpy_builder_argparse_a_parse_1(__tmp_1);
+            __tpy_builder_argparse_a_args_1 __tpy_argparse_sub_a = ::tpyapp::main::__tpy_builder_argparse_a_parse_1(::tpy::construct<std::vector<std::string>>(::tpy::list_slice(argv, ::tpy::BasicSlice{__tpy_argparse_i, std::nullopt})));
             __tpy_argparse_flat_x = __tpy_argparse_sub_a.x;
             break;
         } else if (::tpy::str_startswith(__tpy_argparse_tok, "-")) {

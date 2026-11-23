@@ -1225,16 +1225,11 @@ void dyn_for(Plant& p) {
 //     dyn_with(Plant(1))
 //     dyn_for(Plant(1))
 void main() {
-    Holder __tmp_1 = Holder(3);
-    std::cout << "for_const_tuple" << " " << ::tpyapp::main::for_const_tuple(__tmp_1) << "\n" << ::tpy::check_signals;
-    Holder __tmp_2 = Holder(1);
-    ::tpyapp::main::try_error_return(__tmp_2);
-    Holder __tmp_3 = Holder(1);
-    ::tpyapp::main::while_error_return(__tmp_3);
-    Holder __tmp_4 = Holder(1);
-    ::tpyapp::main::for_error_return(__tmp_4);
-    Holder __tmp_5 = Holder(1);
-    ::tpyapp::main::with_error_return(__tmp_5);
+    std::cout << "for_const_tuple" << " " << ::tpyapp::main::for_const_tuple(Holder(3)) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::try_error_return(::tpy::as_mut_lvalue(Holder(1)));
+    ::tpyapp::main::while_error_return(::tpy::as_mut_lvalue(Holder(1)));
+    ::tpyapp::main::for_error_return(::tpy::as_mut_lvalue(Holder(1)));
+    ::tpyapp::main::with_error_return(::tpy::as_mut_lvalue(Holder(1)));
     Box a = Box(0);
     ::tpyapp::main::while_reseat(a, 1);
     ::tpyapp::main::try_reseat(a, 1);
@@ -1254,12 +1249,9 @@ void main() {
     ::tpyapp::main::cr_while(a, src);
     ::tpyapp::main::cr_with(a, src);
     ::tpyapp::main::cr_for(a, src);
-    BoxPair __tmp_6 = BoxPair(1);
-    ::tpyapp::main::wal_for(__tmp_6);
-    BoxPair __tmp_7 = BoxPair(1);
-    ::tpyapp::main::wal_try(__tmp_7);
-    BoxPair __tmp_8 = BoxPair(1);
-    ::tpyapp::main::wal_with(__tmp_8);
+    ::tpyapp::main::wal_for(::tpy::as_mut_lvalue(BoxPair(1)));
+    ::tpyapp::main::wal_try(::tpy::as_mut_lvalue(BoxPair(1)));
+    ::tpyapp::main::wal_with(::tpy::as_mut_lvalue(BoxPair(1)));
     ::tpyapp::main::addr_for(1);
     ::tpyapp::main::addr_while(1);
     ::tpyapp::main::addr_with(1);
@@ -1273,10 +1265,8 @@ void main() {
         x->val = ::tpy::add_check<int32_t>(x->val, 1);
         std::cout << "ret_opt" << " " << x->val << "\n" << ::tpy::check_signals;
     }
-    OptHolder __tmp_9 = OptHolder();
-    ::tpyapp::main::field_opt(__tmp_9, 7);
-    OptHolder __tmp_10 = OptHolder();
-    ::tpyapp::main::field_opt_kept(__tmp_10, 7);
+    ::tpyapp::main::field_opt(::tpy::as_mut_lvalue(OptHolder()), 7);
+    ::tpyapp::main::field_opt_kept(::tpy::as_mut_lvalue(OptHolder()), 7);
     std::vector<std::optional<Box>> opts = {Box(4), std::nullopt};
     ::tpyapp::main::storage_opt_elem(opts);
     auto& __obj_0 = opts;
@@ -1289,8 +1279,7 @@ void main() {
         }
     }
     Walker(1).nbt_while();
-    Holder __tmp_11 = Holder(1);
-    ::tpyapp::main::closure_bt_with(__tmp_11);
+    ::tpyapp::main::closure_bt_with(::tpy::as_mut_lvalue(Holder(1)));
     {
         auto __src_1 = ::tpyapp::main::gen_addr(3);
         auto&& __itr_1 = ::tpy::__iter__(__src_1);
@@ -1301,14 +1290,10 @@ void main() {
             std::cout << "gen_addr" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    Plant __tmp_12 = Plant(1);
-    ::tpyapp::main::dyn_try(__tmp_12);
-    Plant __tmp_13 = Plant(1);
-    ::tpyapp::main::dyn_while(__tmp_13);
-    Plant __tmp_14 = Plant(1);
-    ::tpyapp::main::dyn_with(__tmp_14);
-    Plant __tmp_15 = Plant(1);
-    ::tpyapp::main::dyn_for(__tmp_15);
+    ::tpyapp::main::dyn_try(::tpy::as_mut_lvalue(Plant(1)));
+    ::tpyapp::main::dyn_while(::tpy::as_mut_lvalue(Plant(1)));
+    ::tpyapp::main::dyn_with(::tpy::as_mut_lvalue(Plant(1)));
+    ::tpyapp::main::dyn_for(::tpy::as_mut_lvalue(Plant(1)));
 }
 
 // main()

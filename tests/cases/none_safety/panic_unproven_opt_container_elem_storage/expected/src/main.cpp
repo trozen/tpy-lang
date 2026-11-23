@@ -14,10 +14,8 @@ int32_t first_x(const H& h) {
 //     print(first_x(H(True)))
 //     print(first_x(H(False)))
 void main() {
-    H __tmp_1 = H(true);
-    std::cout << ::tpyapp::main::first_x(__tmp_1) << "\n" << ::tpy::check_signals;
-    H __tmp_2 = H(false);
-    std::cout << ::tpyapp::main::first_x(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_x(H(true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_x(H(false)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

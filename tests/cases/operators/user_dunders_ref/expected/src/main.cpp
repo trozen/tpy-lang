@@ -125,8 +125,7 @@ void main() {
     ::tpyapp::main::test_param_ops();
     ::tpyapp::main::test_chained();
     ::tpyapp::main::test_binop_assign();
-    Vec __tmp_1 = Vec(5.0, 7.0);
-    ::tpyapp::main::test_iadd_ref(__tmp_1);
+    ::tpyapp::main::test_iadd_ref(Vec(5.0, 7.0));
 }
 
 // main()

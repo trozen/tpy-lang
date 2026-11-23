@@ -5,8 +5,8 @@
 # bindable as a reference (it would dangle), and the decl has no render.
 # The METHOD spelling of the same read is a conceded warn-and-emit tier
 # (BUGS.md#readonly-borrow-of-temporary-receiver) and is not this subject.
-# The for-each and call-argument positions of the same read are
-# tests/cases/records/error_property_off_temporary_receiver_foreach.
+# In a compound statement's head the same read compiles: the statement keeps
+# the receiver until it ends (calls/fresh_arg_statement_lifetime).
 from tpy import Own, int32
 
 

@@ -36,12 +36,9 @@ std::string describe(::tpystd::tplib::box::Box<Pet>& b) {
 //     print(describe(Box(Dog(0))))
 //     print(describe(Box(Bird())))
 void main() {
-    ::tpystd::tplib::box::Box<Pet> __tmp_1 = ::tpystd::tplib::box::Box<Dog>(Dog(::tpy::BigInt(5)));
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
-    ::tpystd::tplib::box::Box<Pet> __tmp_2 = ::tpystd::tplib::box::Box<Dog>(Dog(::tpy::BigInt(0)));
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
-    ::tpystd::tplib::box::Box<Pet> __tmp_3 = ::tpystd::tplib::box::Box<Bird>(Bird());
-    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::as_mut_lvalue(::tpystd::tplib::box::Box<Pet>(::tpystd::tplib::box::Box<Dog>(Dog(::tpy::BigInt(5)))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::as_mut_lvalue(::tpystd::tplib::box::Box<Pet>(::tpystd::tplib::box::Box<Dog>(Dog(::tpy::BigInt(0)))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::as_mut_lvalue(::tpystd::tplib::box::Box<Pet>(::tpystd::tplib::box::Box<Bird>(Bird())))) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

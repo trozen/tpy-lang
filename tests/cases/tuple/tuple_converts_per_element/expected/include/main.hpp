@@ -772,11 +772,9 @@ struct __coro_frame_seat {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     A& a;
-    ::tpy::frame_slot<A> __coro_arg_0;
-    std::tuple<A*, int32_t> __coro_arg_1;
     int32_t x;
-    std::tuple<A*, int32_t> __coro_arg_2;
     int32_t y;
+    ::tpy::frame_slot<A> __head_arg_0;
     std::optional<__coro_seated> __sub_0;
     std::optional<__coro_seated> __sub_1;
 
@@ -1031,7 +1029,8 @@ struct __gen_frame_select : public ::tpy::next_iter_mixin<__gen_frame_select, in
     ::tpy::frame_state __state;
     int32_t n;
     int32_t c;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::count_to(::tpy::__len__(((!std::declval<std::remove_reference_t<decltype((::tpyapp::main::make_s(n)))>&>().empty()) ? std::declval<std::remove_reference_t<decltype((::tpyapp::main::make_s(n)))>&>() : std::string(std::string_view("xyz")))))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::count_to(::tpy::__len__(std::declval<std::string&>()))))>;
+    ::tpy::frame_slot<std::string> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 

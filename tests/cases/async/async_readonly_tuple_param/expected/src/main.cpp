@@ -72,8 +72,7 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
         __state = S_DONE;  // until a yield sets where to resume
         a.emplace(Tag(3));
         b.emplace(Tag(4));
-        __coro_arg_0 = std::tuple<Tag*, Tag*>{&((*a)), &((*b))};
-        __sub_0.emplace(__coro_arg_0);
+        __sub_0.emplace(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))});
         __state = S_RESUME_0;
         continue;
     }
@@ -84,8 +83,7 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
         __sub_0.reset();
         std::cout << "asum:" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
         (*a).n = 100;
-        __coro_arg_1 = std::tuple<Tag*, Tag*>{&((*a)), &((*b))};
-        __sub_1.emplace(__coro_arg_1);
+        __sub_1.emplace(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))});
         __state = S_RESUME_1;
         continue;
     }

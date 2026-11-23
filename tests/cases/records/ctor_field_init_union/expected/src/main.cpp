@@ -8,10 +8,8 @@ namespace tpyapp::main {
 //     print(Pick(A(3)).val)
 //     print(Pick(B(4)).val)
 void main() {
-    A __tmp_1 = A(::tpy::BigInt(3));
-    std::cout << Pick(::tpy::Union<const A*, const B*>{&__tmp_1}).val << "\n" << ::tpy::check_signals;
-    B __tmp_2 = B(::tpy::BigInt(4));
-    std::cout << Pick(::tpy::Union<const A*, const B*>{&__tmp_2}).val << "\n" << ::tpy::check_signals;
+    std::cout << Pick(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(3))))}).val << "\n" << ::tpy::check_signals;
+    std::cout << Pick(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(4))))}).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

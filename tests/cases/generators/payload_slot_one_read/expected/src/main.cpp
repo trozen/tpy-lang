@@ -445,8 +445,7 @@ void move_lend_section() {
 //     except StopIteration:
 //         print("opt_str_param done")
 void opt_section() {
-    std::string __tmp_1 = "x";
-    __gen_opt_str_param g = ::tpyapp::main::opt_str_param(__tmp_1);
+    __gen_opt_str_param g = ::tpyapp::main::opt_str_param("x");
     {
         std::cout << "opt_str_param" << " " << ::tpy::print_optional_val(({ auto __er_2 = ::tpy::next(g); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); })) << "\n" << ::tpy::check_signals;
         std::cout << "opt_str_param" << " " << ::tpy::print_optional_val(({ auto __er_3 = ::tpy::next(g); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); })) << "\n" << ::tpy::check_signals;

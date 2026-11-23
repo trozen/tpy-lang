@@ -32,28 +32,24 @@ void main() {
     std::cout << "field_list" << " " << ::tpyapp::main::take_list<int32_t>(1, b.items) << " " << ::tpy::ListPrinter(b.items) << "\n" << ::tpy::check_signals;
     std::cout << "field_dict" << " " << ::tpyapp::main::take_dict<int32_t>(1, b.counts) << " " << ::tpy::DictPrinter(b.counts) << "\n" << ::tpy::check_signals;
     std::cout << "field_recs" << " " << ::tpyapp::main::take_recs<int32_t>(1, b.recs) << " " << ::tpy::__len__(b.recs) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = ({
+    std::cout << "comp_list" << " " << ::tpyapp::main::take_list<int32_t>(1, ::tpy::as_mut_lvalue(({
         std::vector<int32_t> __result;
         if (2 > 0) __result.reserve(static_cast<size_t>(2));
         for (int32_t i = 0; i < 2; ++i) {
             __result.push_back(i);
         }
         std::move(__result);
-    });
-    std::cout << "comp_list" << " " << ::tpyapp::main::take_list<int32_t>(1, __tmp_1) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, int32_t> __tmp_2 = ({
+    }))) << "\n" << ::tpy::check_signals;
+    std::cout << "comp_dict" << " " << ::tpyapp::main::take_dict<int32_t>(1, ::tpy::as_mut_lvalue(({
         ::tpy::ordered_map<std::string, int32_t> __result;
         for (int32_t i = 0; i < 2; ++i) {
             __result.insert_or_assign(::tpy::fixed_to_str<int32_t>(i), i);
         }
         std::move(__result);
-    });
-    std::cout << "comp_dict" << " " << ::tpyapp::main::take_dict<int32_t>(1, __tmp_2) << "\n" << ::tpy::check_signals;
+    }))) << "\n" << ::tpy::check_signals;
     std::cout << "elem_rec" << " " << ::tpyapp::main::take_rec<int32_t>(1, ::tpy::__getitem__(b.recs, 0)) << " " << ::tpy::__getitem__(b.recs, 0).x << "\n" << ::tpy::check_signals;
-    Rec __tmp_3 = Rec(3);
-    std::cout << "ctor_rvalue" << " " << ::tpyapp::main::take_rec<int32_t>(1, __tmp_3) << "\n" << ::tpy::check_signals;
-    Rec __tmp_4 = ::tpyapp::main::mk_rec();
-    std::cout << "own_call" << " " << ::tpyapp::main::take_rec<int32_t>(1, __tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor_rvalue" << " " << ::tpyapp::main::take_rec<int32_t>(1, ::tpy::as_mut_lvalue(Rec(3))) << "\n" << ::tpy::check_signals;
+    std::cout << "own_call" << " " << ::tpyapp::main::take_rec<int32_t>(1, ::tpy::as_mut_lvalue(::tpyapp::main::mk_rec())) << "\n" << ::tpy::check_signals;
     std::string_view name = "abcd";
     std::cout << "str_owned" << " " << ::tpyapp::main::take_str<int32_t>(1, std::string(name)) << " " << name << "\n" << ::tpy::check_signals;
 }

@@ -26,11 +26,9 @@ namespace tpyapp::main {
 //     got.append(12)
 //     print("alias:", len(k.item), k.item[4])
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    K k = K(__tmp_1);
+    K k = K(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}));
     std::cout << "method:" << " " << ::tpy::__len__(k.get()) << " " << ::tpy::__getitem__(k.get(), 0) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = {4, 5, 6};
-    k.put(__tmp_2);
+    k.put(::tpy::as_mut_lvalue(std::vector<int32_t>{4, 5, 6}));
     std::cout << "method_put:" << " " << ::tpy::__len__(k.get()) << "\n" << ::tpy::check_signals;
     std::cout << "ctor:" << " " << k.tag << " " << ::tpy::__len__(k.item) << "\n" << ::tpy::check_signals;
     std::cout << "base_call:" << " " << k.via_base() << "\n" << ::tpy::check_signals;
@@ -38,8 +36,7 @@ void main() {
     k.tag = "k";
     std::cout << "field:" << " " << k.tag << " " << ::tpy::__len__(k.item) << " " << ::tpy::__getitem__(k.item, 3) << "\n" << ::tpy::check_signals;
     std::cout << "property:" << " " << ::tpy::__len__(k.first()) << " " << ::tpy::__getitem__(k.first(), 0) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = {3};
-    M m = M(__tmp_3);
+    M m = M(::tpy::as_mut_lvalue(std::vector<int32_t>{3}));
     std::cout << "super_multi:" << " " << m.describe() << " " << m.size() << "\n" << ::tpy::check_signals;
     std::vector<int32_t>& got = k.get();
     got.push_back(12);

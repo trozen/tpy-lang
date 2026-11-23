@@ -28,10 +28,8 @@ std::string classify(const Root* r) {
 //     print(classify(Root("b")))
 //     print(classify(None))
 void main() {
-    Sub __tmp_1 = Sub("a", ::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::classify(&(__tmp_1)) << "\n" << ::tpy::check_signals;
-    Root __tmp_2 = Root("b");
-    std::cout << ::tpyapp::main::classify(&(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(&::tpy::as_mut_lvalue(Sub("a", ::tpy::BigInt(7)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(&::tpy::as_mut_lvalue(Root("b"))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::classify(nullptr) << "\n" << ::tpy::check_signals;
 }
 

@@ -103,8 +103,7 @@ void test_non_mutating_subscript_read() {
 void test_mutating_append_warns() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    Point __tmp_1 = Point(9, 9);
-    ::tpyapp::main::add_point(items, __tmp_1);
+    ::tpyapp::main::add_point(items, Point(9, 9));
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
@@ -118,8 +117,7 @@ void test_mutating_append_warns() {
 void test_mutating_subscript_write_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    Point __tmp_1 = Point(9, 9);
-    ::tpyapp::main::replace_first(items, __tmp_1);
+    ::tpyapp::main::replace_first(items, Point(9, 9));
     std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
 }
 
@@ -160,8 +158,7 @@ void test_second_param_not_mutated() {
 //     print(len(items))
 void test_no_borrow_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
-    Point __tmp_1 = Point(9, 9);
-    ::tpyapp::main::add_point(items, __tmp_1);
+    ::tpyapp::main::add_point(items, Point(9, 9));
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
@@ -179,8 +176,7 @@ void test_loop_var_non_mutating_callee() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        std::vector<Point> __tmp_1 = std::vector<Point>{};
-        ::tpyapp::main::sum_points(__tmp_1);
+        ::tpyapp::main::sum_points(std::vector<Point>{});
         std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
@@ -198,8 +194,7 @@ void test_loop_var_mutating_callee() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        Point __tmp_1 = Point(9, 9);
-        ::tpyapp::main::add_point(items, __tmp_1);
+        ::tpyapp::main::add_point(items, Point(9, 9));
         break;
     }
 }
@@ -228,8 +223,7 @@ int32_t read_wrapper(const std::vector<Point>& items) {
 void test_transitive_mutation_warns() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    Point __tmp_1 = Point(9, 9);
-    ::tpyapp::main::add_point_wrapper(items, __tmp_1);
+    ::tpyapp::main::add_point_wrapper(items, Point(9, 9));
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
@@ -316,8 +310,7 @@ void cycle_b(std::vector<Point>& items, const Point& p) {
 void test_cycle_mutation_warns() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    Point __tmp_1 = Point(9, 9);
-    ::tpyapp::main::cycle_b(items, __tmp_1);
+    ::tpyapp::main::cycle_b(items, Point(9, 9));
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
@@ -338,8 +331,7 @@ void deep_wrapper(std::vector<Point>& items, const Point& p) {
 void test_multi_hop_mutation_warns() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    Point __tmp_1 = Point(9, 9);
-    ::tpyapp::main::deep_wrapper(items, __tmp_1);
+    ::tpyapp::main::deep_wrapper(items, Point(9, 9));
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 

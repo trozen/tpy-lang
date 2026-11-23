@@ -950,44 +950,29 @@ void owned_copy(H& h) {
 void main() {
     ::tpyapp::main::dead_free();
     ::tpyapp::main::through_free();
-    H __tmp_1 = H();
-    ::tpyapp::main::through_method(__tmp_1);
+    ::tpyapp::main::through_method(::tpy::as_mut_lvalue(H()));
     ::tpyapp::main::dead_nested();
     ::tpyapp::main::dead_big();
     ::tpyapp::main::dead_keyed();
-    H __tmp_2 = H();
-    ::tpyapp::main::dead_tail(__tmp_2);
-    H __tmp_3 = H();
-    ::tpyapp::main::through_tail(__tmp_3);
-    H __tmp_4 = H();
-    ::tpyapp::main::dead_tail_annotated(__tmp_4);
-    H __tmp_5 = H();
-    ::tpyapp::main::through_tail_annotated(__tmp_5);
-    H __tmp_6 = H();
-    ::tpyapp::main::dead_ro_tail(__tmp_6);
+    ::tpyapp::main::dead_tail(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::through_tail(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::dead_tail_annotated(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::through_tail_annotated(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::dead_ro_tail(::tpy::as_mut_lvalue(H()));
     ::tpyapp::main::dead_whole();
     G g = G();
     ::tpyapp::main::own_write_flat(g);
     ::tpyapp::main::own_write_span(g);
     ::tpyapp::main::own_write_deep(g);
     ::tpyapp::main::own_write_field(g);
-    G __tmp_7 = G();
-    ::tpyapp::main::own_write_rebind(__tmp_7);
-    G __tmp_8 = G();
-    std::cout << "own_write_returned" << " " << ::tpyapp::main::own_write_returned(__tmp_8).x << "\n" << ::tpy::check_signals;
-    G __tmp_9 = G();
-    ::tpyapp::main::own_write_loop(__tmp_9);
-    std::vector<P> __tmp_10 = {P(1)};
-    ::tpyapp::main::own_write_free(__tmp_10);
-    G __tmp_11 = G();
-    K __tmp_12 = K();
-    ::tpyapp::main::own_write_field_target(__tmp_11, __tmp_12);
-    G __tmp_13 = G();
-    ::tpyapp::main::own_write_tuple_target(__tmp_13);
-    H __tmp_14 = H();
-    ::tpyapp::main::getter_only_leaf(__tmp_14);
-    H __tmp_15 = H();
-    ::tpyapp::main::owned_copy(__tmp_15);
+    ::tpyapp::main::own_write_rebind(::tpy::as_mut_lvalue(G()));
+    std::cout << "own_write_returned" << " " << ::tpyapp::main::own_write_returned(::tpy::as_mut_lvalue(G())).x << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::own_write_loop(::tpy::as_mut_lvalue(G()));
+    ::tpyapp::main::own_write_free(::tpy::as_mut_lvalue(std::vector<P>{P(1)}));
+    ::tpyapp::main::own_write_field_target(::tpy::as_mut_lvalue(G()), ::tpy::as_mut_lvalue(K()));
+    ::tpyapp::main::own_write_tuple_target(::tpy::as_mut_lvalue(G()));
+    ::tpyapp::main::getter_only_leaf(H());
+    ::tpyapp::main::owned_copy(::tpy::as_mut_lvalue(H()));
 }
 
 // main()

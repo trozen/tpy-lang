@@ -121,15 +121,17 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    Counter __tmp_1 = Counter(10);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_6 = __tmp_1.around();
-        auto __beg_6 = __obj_6.begin();
-        auto __end_6 = __obj_6.end();
-        for (; __beg_6 != __end_6; ++__beg_6) {
-            int32_t x = *__beg_6;
-            __result.push_back(x);
+        {
+            Counter __tmp_1 = Counter(10);
+            auto __obj_6 = __tmp_1.around();
+            auto __beg_6 = __obj_6.begin();
+            auto __end_6 = __obj_6.end();
+            for (; __beg_6 != __end_6; ++__beg_6) {
+                int32_t x = *__beg_6;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;

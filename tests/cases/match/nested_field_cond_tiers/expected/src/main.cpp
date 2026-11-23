@@ -81,20 +81,13 @@ __gen_steps steps(const Outer& o) {
 //     for v in steps(Outer(Inner(7))):
 //         print("gen_other:", v)
 void main() {
-    Outer __tmp_1 = Outer(Inner(1));
-    Outer __tmp_2 = Outer(Inner(7));
-    std::cout << "opt_chain:" << " " << ::tpyapp::main::opt_chain(&(__tmp_1)) << " " << ::tpyapp::main::opt_chain(nullptr) << " " << ::tpyapp::main::opt_chain(&(__tmp_2)) << "\n" << ::tpy::check_signals;
-    Dog __tmp_3{Dog(Collar("x"))};
-    Dog __tmp_4{Dog(Collar("y"))};
-    Cat __tmp_5{Cat()};
-    std::cout << "poly:" << " " << ::tpyapp::main::poly(__tmp_3) << " " << ::tpyapp::main::poly(__tmp_4) << " " << ::tpyapp::main::poly(__tmp_5) << "\n" << ::tpy::check_signals;
-    Outer __tmp_6 = Outer(Inner(1));
-    Outer __tmp_7 = Outer(Inner(7));
-    std::cout << "record:" << " " << ::tpyapp::main::record(__tmp_6) << " " << ::tpyapp::main::record(__tmp_7) << "\n" << ::tpy::check_signals;
+    std::cout << "opt_chain:" << " " << ::tpyapp::main::opt_chain(&::tpy::as_mut_lvalue(Outer(Inner(1)))) << " " << ::tpyapp::main::opt_chain(nullptr) << " " << ::tpyapp::main::opt_chain(&::tpy::as_mut_lvalue(Outer(Inner(7)))) << "\n" << ::tpy::check_signals;
+    std::cout << "poly:" << " " << ::tpyapp::main::poly(Dog{Dog(Collar("x"))}) << " " << ::tpyapp::main::poly(Dog{Dog(Collar("y"))}) << " " << ::tpyapp::main::poly(Cat{Cat()}) << "\n" << ::tpy::check_signals;
+    std::cout << "record:" << " " << ::tpyapp::main::record(Outer(Inner(1))) << " " << ::tpyapp::main::record(Outer(Inner(7))) << "\n" << ::tpy::check_signals;
     std::cout << "method:" << " " << Kennel(Outer(Inner(1))).label() << " " << Kennel(Outer(Inner(7))).label() << "\n" << ::tpy::check_signals;
     {
-        Outer __tmp_8 = Outer(Inner(1));
-        auto __src_0 = ::tpyapp::main::steps(__tmp_8);
+        Outer __tmp_1 = Outer(Inner(1));
+        auto __src_0 = ::tpyapp::main::steps(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -104,8 +97,8 @@ void main() {
         }
     }
     {
-        Outer __tmp_9 = Outer(Inner(7));
-        auto __src_2 = ::tpyapp::main::steps(__tmp_9);
+        Outer __tmp_2 = Outer(Inner(7));
+        auto __src_2 = ::tpyapp::main::steps(__tmp_2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

@@ -421,15 +421,15 @@
  ],
  "comp_iter__items__meth__temp": [
   "ok",
-  "Iterator borrows from temporary receiver object; the temporary is destroyed befo"
+  ""
  ],
  "comp_iter__items__prop__named": [
   "ok",
   ""
  ],
  "comp_iter__items__prop__temp": [
-  "expr.method_call:foreach.iter_lends_from_temporary",
-  "Iterator borrows from temporary receiver object; the temporary is destroyed befo"
+  "ok",
+  ""
  ],
  "comp_iter__own__meth__named": [
   "ok",
@@ -933,15 +933,15 @@
  ],
  "foreach__items__meth__temp": [
   "ok",
-  "Iterator borrows from temporary receiver object; the temporary is destroyed befo"
+  ""
  ],
  "foreach__items__prop__named": [
   "ok",
   ""
  ],
  "foreach__items__prop__temp": [
-  "expr.method_call:foreach.iter_lends_from_temporary",
-  "Iterator borrows from temporary receiver object; the temporary is destroyed befo"
+  "ok",
+  ""
  ],
  "foreach__own__meth__named": [
   "ok",
@@ -2996,7 +2996,7 @@
   ""
  ],
  "with_mgr__guard__meth__temp": [
-  "stmt.with",
+  "ok",
   ""
  ],
  "with_mgr__guard__prop__named": [
@@ -3004,7 +3004,7 @@
   ""
  ],
  "with_mgr__guard__prop__temp": [
-  "expr.method_call:with_manager.lends_from_temporary",
+  "ok",
   ""
  ],
  "yield_val__items__meth__named": [

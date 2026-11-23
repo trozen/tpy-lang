@@ -38,10 +38,8 @@ void f(const Point* p) {
 //     f(Point(2))
 //     f(None)
 void main() {
-    Point __tmp_1 = Point(50);
-    ::tpyapp::main::f(&(__tmp_1));
-    Point __tmp_2 = Point(2);
-    ::tpyapp::main::f(&(__tmp_2));
+    ::tpyapp::main::f(&::tpy::as_mut_lvalue(Point(50)));
+    ::tpyapp::main::f(&::tpy::as_mut_lvalue(Point(2)));
     ::tpyapp::main::f(nullptr);
 }
 

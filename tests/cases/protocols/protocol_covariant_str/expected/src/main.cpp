@@ -9,12 +9,9 @@ namespace tpyapp::main {
 //     greet(Cat("Whiskers"))
 //     greet(Bird("Tweety"))
 void main() {
-    Dog __tmp_1 = Dog("Rex");
-    ::tpyapp::main::greet(__tmp_1);
-    Cat __tmp_2 = Cat("Whiskers");
-    ::tpyapp::main::greet(__tmp_2);
-    Bird __tmp_3 = Bird("Tweety");
-    ::tpyapp::main::greet(__tmp_3);
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(Dog("Rex")));
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(Cat("Whiskers")));
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(Bird("Tweety")));
 }
 
 // main()

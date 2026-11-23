@@ -953,7 +953,6 @@ struct __coro_amain {
     std::tuple<int32_t, int32_t> tf;
     std::tuple<int32_t, int32_t> wf;
     std::tuple<int32_t, std::optional<int32_t>> ot;
-    ::tpy::frame_slot<Box> __coro_arg_0;
     std::tuple<Box*, int32_t> tu;
     ::tpy::frame_slot<Ctx> c;
     std::tuple<int32_t, Box*> ct;
@@ -966,6 +965,7 @@ struct __coro_amain {
     std::tuple<Box*, int32_t> __await_lift_4;
     std::tuple<int32_t, Box*> __await_lift_5;
     std::tuple<int32_t, const Box*> __await_lift_6;
+    ::tpy::frame_slot<Box> __head_arg_0;
     ::tpy::frame_loop_slot<::tpy::aiter_type_t<Gen>> __for_itr_0;
     Ctx* __with_ctx_0 = nullptr;
     std::exception_ptr __finally_exc_0;

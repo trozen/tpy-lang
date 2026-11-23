@@ -17,16 +17,11 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_region_gen::__next__()
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-        std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-        std::vector<int32_t> __tmp_3 = std::vector<int32_t>{};
-        xs.emplace(std::vector<Sink>{Sink(1, __tmp_1), Sink(2, __tmp_2), Sink(3, __tmp_3)});
+        xs.emplace(std::vector<Sink>{Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(2, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(3, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))});
         e = &(::tpy::__getitem__((*xs), 0));
-        Num __tmp_4 = Num(::tpyapp::main::touch((*xs)));
-        c.emplace(KwC<int32_t>(__tmp_4));
+        c.emplace(KwC<int32_t>(::tpy::as_mut_lvalue(Num(::tpyapp::main::touch((*xs))))));
         (*c).put(1);
-        Num __tmp_5 = Num(::tpyapp::main::touch((*xs)));
-        (void)(KwC<int32_t>(__tmp_5));
+        (void)(KwC<int32_t>(::tpy::as_mut_lvalue(Num(::tpyapp::main::touch((*xs))))));
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(e->n, ::tpy::__len__((*xs))));
     }

@@ -77,12 +77,9 @@ void main() {
     std::cout << ::tpyapp::main::read_narrowed(::tpy::Union<A*, B*>{&(a)}) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::mutate_narrowed(::tpy::Union<A*, B*>{&(a)}) << "\n" << ::tpy::check_signals;
     std::cout << a.x << "\n" << ::tpy::check_signals;
-    B __tmp_1 = B(9);
-    std::cout << ::tpyapp::main::read_narrowed(::tpy::Union<A*, B*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    A __tmp_2 = A(5);
-    std::cout << ::tpyapp::main::inline_narrowed(::tpy::Union<A*, B*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
-    A __tmp_3 = A(1);
-    std::cout << ::tpyapp::main::inline_narrowed(::tpy::Union<A*, B*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_narrowed(::tpy::Union<A*, B*>{&(::tpy::as_mut_lvalue(B(9)))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::inline_narrowed(::tpy::Union<A*, B*>{&(::tpy::as_mut_lvalue(A(5)))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::inline_narrowed(::tpy::Union<A*, B*>{&(::tpy::as_mut_lvalue(A(1)))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

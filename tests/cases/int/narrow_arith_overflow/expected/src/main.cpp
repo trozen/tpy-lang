@@ -344,9 +344,7 @@ void er_checked(int8_t a8) {
 //     deferred_elision()
 void main() {
     ::tpyapp::main::free_fn(127, 60000, 60000, -1);
-    Holder __tmp_1 = Holder();
-    std::vector<int8_t> __tmp_2 = std::vector<int8_t>{};
-    ::tpyapp::main::stores(__tmp_1, __tmp_2, 300);
+    ::tpyapp::main::stores(::tpy::as_mut_lvalue(Holder()), ::tpy::as_mut_lvalue(std::vector<int8_t>{}), 300);
     ::tpyapp::main::lookups(300);
     {
         try {

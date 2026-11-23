@@ -33,16 +33,14 @@ void check(::tpy::Union<const Cat*, const Dog*> pet) {
 void main() {
     {
         try {
-            Cat __tmp_1 = Cat(::tpy::BigInt(2));
-            ::tpyapp::main::check(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
+            ::tpyapp::main::check(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat(::tpy::BigInt(2))))});
         } catch (const PetError& e) {
             std::cout << e.code << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            Dog __tmp_2 = Dog(::tpy::BigInt(1));
-            ::tpyapp::main::check(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
+            ::tpyapp::main::check(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog(::tpy::BigInt(1))))});
         } catch (const PetError& e) {
             std::cout << e.code << "\n" << ::tpy::check_signals;
         }

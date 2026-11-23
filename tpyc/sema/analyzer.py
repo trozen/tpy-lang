@@ -97,6 +97,7 @@ def _assert_no_pending_locals(locals_dict: dict, func_name: str) -> None:
 
 from ..diagnostics import Scope, Diagnostic, SemanticError
 from .. import qnames
+from .iter_loans import enclose_head_roots
 from .context import (
     SemanticContext, RecordContext, ParkedFunctionState, LoanInfo, OwnSlot,
     CLASS_CONSTANT_CONTEXT, contains_pending_leaf)
@@ -1097,7 +1098,18 @@ class SemanticAnalyzer:
         rooting checks and the deferred escapes answer independently of
         definition order -- across the component's modules too."""
         self._settle_yield_root_checks()
+        self._settle_head_enclosures()
         self.stmts.scopes.settle_deferred_escapes()
+
+    def _settle_head_enclosures(self) -> None:
+        """Record what each `with` target read after its statement borrows
+        (`enclose_head_roots`) under its own function state, once every
+        callee's return-borrow fact is final."""
+        parked_all = self.ctx.deferred_head_enclosures
+        self.ctx.deferred_head_enclosures = []
+        for parked, value, target_t in parked_all:
+            with self.ctx.reenter(parked):
+                enclose_head_roots(self.ctx, value, target_t)
 
     def publish_phase2_facts(self, module: TpyModule) -> None:
         """Sub-phase 5, after the component's mutation-fact propagation and
@@ -1843,6 +1855,21 @@ class SemanticAnalyzer:
             locals_dict, func, self.ctx.func.write_history)
         func.generator_locals = list(locals_dict.items())
 
+    def _publish_addr_escapes(self, fi: FunctionInfo,
+                              param_list: list[str]) -> None:
+        """The body's address-escape record, by parameter index, onto `fi`."""
+        f = self.ctx.func
+
+        def indices(names: set[str]) -> frozenset[int]:
+            return frozenset(i for i, pname in enumerate(param_list)
+                             if pname in names)
+
+        fi.addr_escapes_params = indices(f.current_addr_escape_param_names)
+        fi.readonly_addr_escapes_params = indices(
+            f.current_readonly_addr_escape_param_names)
+        fi.foreign_addr_escapes_params = indices(
+            f.current_foreign_addr_escape_param_names)
+
     def _park_yield_root_checks(self) -> None:
         """Park a generator with yield rooting checks for the component-end
         settle; runs after the post-body drain, once frame locals exist."""
@@ -2033,14 +2060,7 @@ class SemanticAnalyzer:
                 i for i, pname in enumerate(param_list)
                 if pname in self.ctx.func.current_returned_param_names
             )
-            func_info.addr_escapes_params = frozenset(
-                i for i, pname in enumerate(param_list)
-                if pname in self.ctx.func.current_addr_escape_param_names
-            )
-            func_info.readonly_addr_escapes_params = frozenset(
-                i for i, pname in enumerate(param_list)
-                if pname in self.ctx.func.current_readonly_addr_escape_param_names
-            )
+            self._publish_addr_escapes(func_info, param_list)
             # Generator and async functions: the returned frame stores
             # non-value params as T& references (or &ref lambda captures), and
             # str/view params as views of the argument's storage, so the
@@ -3383,14 +3403,7 @@ class SemanticAnalyzer:
                     method_fi.return_borrows_from = returned
                     method_fi.return_lends_self_storage = (
                         "self" in self.ctx.func.current_storage_returned_param_names)
-                    method_fi.addr_escapes_params = frozenset(
-                        i for i, pname in enumerate(param_list)
-                        if pname in self.ctx.func.current_addr_escape_param_names
-                    )
-                    method_fi.readonly_addr_escapes_params = frozenset(
-                        i for i, pname in enumerate(param_list)
-                        if pname in self.ctx.func.current_readonly_addr_escape_param_names
-                    )
+                    self._publish_addr_escapes(method_fi, param_list)
 
             self._warn_unconsumed_own_params(method)
             self._store_analysis_results(method, scan)
@@ -3749,6 +3762,21 @@ class SemanticAnalyzer:
     def get_expr_type(self, expr: TpyExpr) -> Optional[TpyType]:
         """Get the cached type of an expression."""
         return self.ctx.get_expr_type(expr)
+
+    @property
+    def head_kept_args(self) -> 'IdentitySet':
+        """The fresh arguments compound heads keep (`SemanticContext`)."""
+        return self.ctx.head_kept_args
+
+    @property
+    def head_kept_borrows(self) -> 'IdentitySet':
+        """The borrows out of kept arguments heads make (`SemanticContext`)."""
+        return self.ctx.head_kept_borrows
+
+    @property
+    def head_enclosed_roots(self) -> 'IdentitySet':
+        """The head objects a later-read binding borrows (`SemanticContext`)."""
+        return self.ctx.head_enclosed_roots
 
     def is_last_use(self, expr: 'TpyExpr | None') -> bool:
         """Sema's last-use verdict for one name read (`SemanticContext.is_last_use`)."""

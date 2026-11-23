@@ -61,8 +61,7 @@ void main() {
     std::cout << gauge().read().n << "\n" << ::tpy::check_signals;
     std::cout << sub().build().n << "\n" << ::tpy::check_signals;
     std::cout << factory::day().n << " " << factory().relabel(day(::tpy::BigInt(4))) << "\n" << ::tpy::check_signals;
-    ::tpy::Adapter<shape, square> __tmp_1{square(::tpy::BigInt(4))};
-    std::cout << canvas().shape() << " " << canvas().draw(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << canvas().shape() << " " << canvas().draw(::tpy::as_mut_lvalue(::tpy::Adapter<shape, square>{square(::tpy::BigInt(4))})) << "\n" << ::tpy::check_signals;
     std::cout << meter().build().n << " " << meter().day() << "\n" << ::tpy::check_signals;
     std::cout << fsub(::tpy::BigInt(8)).build().n << "\n" << ::tpy::check_signals;
     std::cout << printer().emit().n << "\n" << ::tpy::check_signals;

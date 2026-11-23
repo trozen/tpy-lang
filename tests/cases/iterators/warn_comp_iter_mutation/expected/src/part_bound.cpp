@@ -238,12 +238,9 @@ int32_t other_named_for(bool big) {
 //     print("other_named_bound:", other_named_bound(False))
 //     print("other_named_for:", other_named_for(False))
 void main() {
-    std::vector<std::vector<int32_t>> __tmp_1 = {{1, 2}, {3}};
-    std::cout << "element_loan_bound:" << " " << ::tpyapp::part_bound::element_loan_bound(__tmp_1, false) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_2 = {{1, 2}, {3}};
-    std::cout << "unknown_index_bound:" << " " << ::tpyapp::part_bound::unknown_index_bound(__tmp_2, 1, false) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_3 = {{1, 2}, {3}};
-    std::cout << "unknown_index_for:" << " " << ::tpyapp::part_bound::unknown_index_for(__tmp_3, 1, false) << "\n" << ::tpy::check_signals;
+    std::cout << "element_loan_bound:" << " " << ::tpyapp::part_bound::element_loan_bound(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}, {3}}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "unknown_index_bound:" << " " << ::tpyapp::part_bound::unknown_index_bound(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}, {3}}), 1, false) << "\n" << ::tpy::check_signals;
+    std::cout << "unknown_index_for:" << " " << ::tpyapp::part_bound::unknown_index_for(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}, {3}}), 1, false) << "\n" << ::tpy::check_signals;
     std::cout << "self_named_bound:" << " " << ::tpyapp::part_bound::self_named_bound() << "\n" << ::tpy::check_signals;
     std::cout << "self_named_for:" << " " << ::tpyapp::part_bound::self_named_for() << "\n" << ::tpy::check_signals;
     std::cout << "other_named_bound:" << " " << ::tpyapp::part_bound::other_named_bound(false) << "\n" << ::tpy::check_signals;

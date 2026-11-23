@@ -13,8 +13,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_adopt::__next__() 
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(::tpyapp::main::mk());
-        __for_src_0.emplace(::tpy::builtin_enumerate((*__coro_arg_0)));
+        __for_src_0.emplace(::tpy::builtin_enumerate(::tpyapp::main::mk()));
         __state = S_JOIN_0;
         continue;
     }

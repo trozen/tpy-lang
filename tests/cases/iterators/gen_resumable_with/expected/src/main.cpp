@@ -177,17 +177,17 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_comp_target::__next
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0.emplace(Count(::tpy::builtin_sum_bigint(({
-    std::vector<::tpy::BigInt> __result;
-    auto& __obj_0 = xs;
-    __result.reserve(static_cast<std::size_t>(__obj_0.size()));
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        const ::tpy::BigInt& n = *__beg_0;
-        __result.push_back(n);
-    }
-    std::move(__result);
-}))));
+            std::vector<::tpy::BigInt> __result;
+            auto& __obj_0 = xs;
+            __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                const ::tpy::BigInt& n = *__beg_0;
+                __result.push_back(n);
+            }
+            std::move(__result);
+        }))));
         n = (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;
         continue;

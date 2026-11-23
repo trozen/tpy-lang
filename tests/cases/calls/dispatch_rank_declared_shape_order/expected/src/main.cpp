@@ -771,9 +771,7 @@ void coerce_tie_escape() {
 void coerce_container() {
     int64_t n64 = 1;
     int8_t n8 = 1;
-    std::vector<int64_t> __tmp_1 = {1, 2};
-    std::vector<int64_t> __tmp_2 = {1, 2};
-    std::cout << "coerce_container:" << " " << ::tpyapp::main::ccw__list_int64__int64__int64(__tmp_1, n64, static_cast<int64_t>(n8)) << " " << ::tpyapp::main::ccw__list_int64__int64__int64(__tmp_2, n64, n64) << "\n" << ::tpy::check_signals;
+    std::cout << "coerce_container:" << " " << ::tpyapp::main::ccw__list_int64__int64__int64({1, 2}, n64, static_cast<int64_t>(n8)) << " " << ::tpyapp::main::ccw__list_int64__int64__int64({1, 2}, n64, n64) << "\n" << ::tpy::check_signals;
 }
 
 // def coerce_callable() -> None:

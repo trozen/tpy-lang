@@ -1192,8 +1192,7 @@ void main() {
     b.first_method();
     std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::gen())) << "\n" << ::tpy::check_signals;
     std::cout << "async" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::async_fn())) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp({1, 2})) << "\n" << ::tpy::check_signals;
     int64_t c = ::tpyapp::main::closure();
     std::cout << "closure" << " " << c << "\n" << ::tpy::check_signals;
     ::tpyapp::main::cm_body();
@@ -1213,16 +1212,14 @@ void main() {
         __after_try_1:;
     }
     ::tpyapp::main::match_arm(0);
-    std::vector<::tpy::BigInt> __tmp_2 = {1, 2, ::tpy::BigInt::from_str("100000000000000000000")};
-    std::cout << "acc" << " " << ::tpyapp::main::accumulate(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "acc" << " " << ::tpyapp::main::accumulate({1, 2, ::tpy::BigInt::from_str("100000000000000000000")}) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::derived();
     ::tpyapp::main::unsigned_store(250);
     ::tpyapp::main::negative_seed();
     ::tpyapp::main::wide_literal();
     ::tpyapp::main::wide_literal_operand();
     ::tpyapp::main::overload_trial();
-    std::vector<int32_t> __tmp_3 = {10, 20};
-    ::tpy::BigInt u = ::tpyapp::main::uses(__tmp_3, 5);
+    ::tpy::BigInt u = ::tpyapp::main::uses({10, 20}, 5);
     std::cout << "uses" << " " << u << "\n" << ::tpy::check_signals;
     ::tpyapp::main::declared_aug();
     ::tpyapp::main::float_literal(15, 7, 1.5f);
@@ -1239,17 +1236,14 @@ void main() {
     ::tpyapp::main::arm_match(2, 7);
     ::tpyapp::main::arm_try(false);
     ::tpyapp::main::arm_try(true);
-    std::vector<int8_t> __tmp_4 = {1, 2};
-    ::tpyapp::main::first_accum(__tmp_4);
+    ::tpyapp::main::first_accum({1, 2});
     ::tpyapp::main::first_annotation();
-    std::vector<uint8_t> __tmp_5 = {200, 100};
-    ::tpyapp::main::first_unchanged(__tmp_5);
+    ::tpyapp::main::first_unchanged({200, 100});
     ::tpyapp::main::first_float_explicit(2.5);
     std::cout << "first_gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::first_gen())) << "\n" << ::tpy::check_signals;
     int32_t va = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::first_async()));
     std::cout << "first_async" << " " << va << "\n" << ::tpy::check_signals;
-    std::vector<int8_t> __tmp_6 = {1, 2};
-    ::tpyapp::main::first_comp(__tmp_6);
+    ::tpyapp::main::first_comp({1, 2});
     ::tpyapp::main::first_closure();
     ::tpyapp::main::first_with();
     ::tpyapp::main::first_try();
@@ -1271,8 +1265,7 @@ void main() {
     std::cout << "gen_yield" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::gen_yield())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::literal_only();
     ::tpyapp::main::mixed_widths(static_cast<int64_t>(3000000000), 2);
-    std::vector<int32_t> __tmp_7 = {1, 2, 3};
-    ::tpyapp::main::slice_bound(__tmp_7);
+    ::tpyapp::main::slice_bound(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3}));
 }
 
 

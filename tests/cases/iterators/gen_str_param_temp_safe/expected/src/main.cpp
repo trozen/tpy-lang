@@ -24,8 +24,7 @@ std::string make_name() {
 //         print(msg)
 void main() {
     {
-        std::string __tmp_1 = ::tpyapp::main::make_name();
-        auto __src_0 = ::tpyapp::main::greetings(__tmp_1);
+        auto __src_0 = ::tpyapp::main::greetings(::tpyapp::main::make_name());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

@@ -455,9 +455,7 @@ __coro_seated seated(std::tuple<A*, int32_t> t) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(A(50));
-        __coro_arg_1 = std::tuple<A*, int32_t>{&((*__coro_arg_0)), 1};
-        __sub_0.emplace(__coro_arg_1);
+        __sub_0.emplace(std::tuple<A*, int32_t>{&(__head_arg_0.emplace(A(50))), 1});
         __state = S_RESUME_0;
         continue;
     }
@@ -466,8 +464,7 @@ __coro_seated seated(std::tuple<A*, int32_t> t) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         x = std::move(__r0).value();
         __sub_0.reset();
-        __coro_arg_2 = std::tuple<A*, int32_t>{&(a), 2};
-        __sub_1.emplace(__coro_arg_2);
+        __sub_1.emplace(std::tuple<A*, int32_t>{&(a), 2});
         __state = S_RESUME_1;
         continue;
     }
@@ -1179,8 +1176,7 @@ void main() {
     std::cout << "finally" << " " << std::get<0>(f)->v << " " << std::get<1>(f) << "\n" << ::tpy::check_signals;
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::aget(h))) << "\n" << ::tpy::check_signals;
     std::function<std::tuple<A, int32_t>(A&)> lam = [](A& x) -> std::tuple<A, int32_t> { return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A, int32_t>{(*std::get<0>(__t)), std::get<1>(__t)}; }(::tpyapp::main::pair(x)); };
-    A __tmp_1 = A(16);
-    std::tuple<A, int32_t> lr = lam(__tmp_1);
+    std::tuple<A, int32_t> lr = lam(::tpy::as_mut_lvalue(A(16)));
     std::cout << "lambda" << " " << std::get<0>(lr).v << " " << std::get<1>(lr) << "\n" << ::tpy::check_signals;
     HO ho = HO(std::tuple<std::optional<A>, int32_t>{A(1), 2});
     auto orr = ::tpyapp::main::opt_get(ho);
@@ -1201,12 +1197,10 @@ void main() {
     auto cr = ::tpyapp::main::cget(h);
     std::get<0>(h.p).v = 61;
     std::cout << "const" << " " << std::get<0>(cr)->v << " " << std::get<1>(cr) << "\n" << ::tpy::check_signals;
-    A __tmp_2 = A(70);
-    Holder hold = Holder(__tmp_2);
+    Holder hold = Holder(::tpy::as_mut_lvalue(A(70)));
     std::cout << "ctor" << " " << std::get<0>(hold.t).v << " " << std::get<1>(hold.t).v << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<A, A>> xs = std::vector<std::tuple<A, A>>{};
-    A __tmp_3 = A(80);
-    ::tpyapp::main::keep(xs, __tmp_3);
+    ::tpyapp::main::keep(xs, ::tpy::as_mut_lvalue(A(80)));
     std::cout << "container" << " " << std::get<0>(::tpy::__getitem__(xs, 0)).v << " " << std::get<1>(::tpy::__getitem__(xs, 0)).v << "\n" << ::tpy::check_signals;
     A a = A(90);
     bool c = (::tpy::__len__("x") > 0);
@@ -1215,8 +1209,8 @@ void main() {
     bool r2 = (c && ::tpyapp::main::take([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A, int32_t>{(*std::get<0>(__t)), std::get<1>(__t)}; }(::tpyapp::main::mkb(a))));
     std::cout << "and" << " " << ::tpy::print_bool(r2) << "\n" << ::tpy::check_signals;
     {
-        A __tmp_4 = A(91);
-        auto __src_2 = ::tpyapp::main::frame_for(__tmp_4);
+        A __tmp_1 = A(91);
+        auto __src_2 = ::tpyapp::main::frame_for(__tmp_1);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -1225,9 +1219,9 @@ void main() {
             std::cout << "frame_for" << " " << fv << "\n" << ::tpy::check_signals;
         }
     }
-    A __tmp_5 = A(92);
-    std::vector<int32_t> __tmp_6 = {93};
-    std::cout << "await_arg" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::await_arg(__tmp_5, __tmp_6))) << "\n" << ::tpy::check_signals;
+    A __tmp_2 = A(92);
+    std::vector<int32_t> __tmp_3 = std::vector<int32_t>{93};
+    std::cout << "await_arg" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::await_arg(__tmp_2, __tmp_3))) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<A, int32_t>> hx = ::tpy::make_vector<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(40), 1});
     {
         auto __src_4 = ::tpyapp::main::held_yield(hx);
@@ -1305,13 +1299,10 @@ void main() {
     std::cout << "arg.ctor" << " " << std::get<0>(hl.p).v << " " << std::get<1>(hl.p) << "\n" << ::tpy::check_signals;
     std::cout << "arg.optional" << " " << ::tpyapp::main::read_opt([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const A*>{std::get<0>(__t), &(std::get<1>(__t))}; }(std::tuple<int32_t, A>{1, A(3)})) << "\n" << ::tpy::check_signals;
     std::cout << "arg.union" << " " << ::tpyapp::main::read_uni([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, ::tpy::Union<const A*, const B*>>{std::get<0>(__t), ::tpy::to_const_ptr_variant(std::get<1>(__t))}; }(std::tuple<int32_t, ::tpy::Union<A, B>>{1, A(4)})) << "\n" << ::tpy::check_signals;
-    K __tmp_7 = K(1);
-    ::tpyapp::main::keyed(__tmp_7);
-    A __tmp_8 = A(10);
-    std::cout << "own_param.mixed" << " " << ::tpyapp::main::mixed_last(__tmp_8) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::keyed(K(1));
+    std::cout << "own_param.mixed" << " " << ::tpyapp::main::mixed_last(::tpy::as_mut_lvalue(A(10))) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<B, A>> mx = std::vector<std::tuple<B, A>>{};
-    A __tmp_9 = A(20);
-    ::tpyapp::main::mixed_ins(__tmp_9, mx);
+    ::tpyapp::main::mixed_ins(::tpy::as_mut_lvalue(A(20)), mx);
     std::cout << "own_elem.mixed" << " " << std::get<0>(::tpy::__getitem__(mx, 0)).w << " " << std::get<1>(::tpy::__getitem__(mx, 0)).v << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<A, A>> ro = std::vector<std::tuple<A, A>>{};
     A a30 = A(30);
@@ -1330,11 +1321,9 @@ void main() {
     HI hi = HI(zs, 0);
     HJ hj = HJ(zs);
     std::cout << "held.ctor" << " " << hi.r.v << " " << hj.r.v << " " << std::get<1>(::tpy::__getitem__(zs, 0)).v << "\n" << ::tpy::check_signals;
-    Loud __tmp_10 = Loud(3);
-    HV hv = HV(__tmp_10);
+    HV hv = HV(::tpy::as_mut_lvalue(Loud(3)));
     std::cout << "held.ctor.value" << " " << hv.r.v << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<int32_t, A>> __tmp_11 = {std::tuple<int32_t, A>{1, A(2)}, std::tuple<int32_t, A>{3, A(4)}};
-    std::cout << "held.bounds" << " " << ::tpyapp::main::held_bounds(__tmp_11, 1) << "\n" << ::tpy::check_signals;
+    std::cout << "held.bounds" << " " << ::tpyapp::main::held_bounds({std::tuple<int32_t, A>{1, A(2)}, std::tuple<int32_t, A>{3, A(4)}}, 1) << "\n" << ::tpy::check_signals;
     std::cout << "match.lent" << " " << ::tpyapp::main::match_lent_type([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::tpy::Union<const A*, const B*>, int32_t>{::tpy::to_const_ptr_variant(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<::tpy::Union<A, B>, int32_t>{A(5), 1})) << " " << ::tpyapp::main::match_lent_type([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::tpy::Union<const A*, const B*>, int32_t>{::tpy::to_const_ptr_variant(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<::tpy::Union<A, B>, int32_t>{B(7), 1})) << "\n" << ::tpy::check_signals;
     {
         auto __src_12 = ::tpyapp::main::frame_select(1);

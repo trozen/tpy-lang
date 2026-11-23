@@ -36,8 +36,7 @@ void main() {
     ::tpyapp::main::bump(mc);
     std::cout << mc.value() << "\n" << ::tpy::check_signals;
     Tally t = Tally();
-    ::tpy::RefAdapter<Counter, Tally> __tmp_1{t};
-    ::tpyapp::main::bump(__tmp_1);
+    ::tpyapp::main::bump(::tpy::as_mut_lvalue(::tpy::RefAdapter<Counter, Tally>{t}));
     std::cout << t.value() << "\n" << ::tpy::check_signals;
     MyCounter __slot_1{MyCounter()};
     Counter* c = &__slot_1;

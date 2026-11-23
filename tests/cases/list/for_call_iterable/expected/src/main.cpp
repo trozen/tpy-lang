@@ -95,8 +95,7 @@ void main() {
     std::vector<Cell> cells = {Cell(1), Cell(2)};
     ::tpyapp::main::bump(cells);
     std::cout << ::tpy::__getitem__(cells, 0).v << " " << ::tpy::__getitem__(cells, 1).v << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {7, 8};
-    std::cout << ::tpyapp::main::readonly_sum(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::readonly_sum({7, 8}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

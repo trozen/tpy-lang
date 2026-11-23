@@ -49,13 +49,10 @@ __match_end_2:;
 //     f(None, True)
 //     f(B(), True)
 void main() {
-    A __tmp_1 = A();
-    ::tpyapp::main::f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_1}, true);
-    A __tmp_2 = A();
-    ::tpyapp::main::f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_2}, false);
+    ::tpyapp::main::f(::tpy::Union<std::monostate, const A*, const B*>{&(::tpy::as_mut_lvalue(A()))}, true);
+    ::tpyapp::main::f(::tpy::Union<std::monostate, const A*, const B*>{&(::tpy::as_mut_lvalue(A()))}, false);
     ::tpyapp::main::f(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}, true);
-    B __tmp_3 = B();
-    ::tpyapp::main::f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_3}, true);
+    ::tpyapp::main::f(::tpy::Union<std::monostate, const A*, const B*>{&(::tpy::as_mut_lvalue(B()))}, true);
 }
 
 // main()

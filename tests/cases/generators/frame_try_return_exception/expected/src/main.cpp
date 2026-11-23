@@ -123,8 +123,7 @@ __coro_a_dead a_dead(int32_t n) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(Indices(1));
-        __sub_0.emplace((*__coro_arg_0));
+        __sub_0.emplace(__head_arg_0.emplace(Indices(1)));
         __state = S_RESUME_0;
         continue;
     }
@@ -133,8 +132,7 @@ __coro_a_dead a_dead(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        __coro_arg_1.emplace(Indices(0));
-        __sub_1.emplace((*__coro_arg_1));
+        __sub_1.emplace(__head_arg_1.emplace(Indices(0)));
         __state = S_RESUME_1;
         continue;
     }
@@ -296,27 +294,31 @@ void main() {
         }
     }
     std::cout << "nested" << " " << ::tpy::__getitem__(nested_nodes, 0).v << " " << ::tpy::__getitem__(nested_nodes, 1).v << "\n" << ::tpy::check_signals;
-    std::vector<Node> __tmp_3 = ::tpyapp::main::fresh();
     std::cout << "dead_break" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_10 = ::tpyapp::main::dead_break(__tmp_3);
-        auto __beg_10 = __obj_10.begin();
-        auto __end_10 = __obj_10.end();
-        for (; __beg_10 != __end_10; ++__beg_10) {
-            const auto& n = *__beg_10;
-            __result.push_back(n.v);
+        {
+            std::vector<Node> __tmp_3 = ::tpyapp::main::fresh();
+            auto __obj_10 = ::tpyapp::main::dead_break(__tmp_3);
+            auto __beg_10 = __obj_10.begin();
+            auto __end_10 = __obj_10.end();
+            for (; __beg_10 != __end_10; ++__beg_10) {
+                const auto& n = *__beg_10;
+                __result.push_back(n.v);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    std::vector<Node> __tmp_4 = ::tpyapp::main::fresh();
     std::cout << "dead_return" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_11 = ::tpyapp::main::dead_return(__tmp_4);
-        auto __beg_11 = __obj_11.begin();
-        auto __end_11 = __obj_11.end();
-        for (; __beg_11 != __end_11; ++__beg_11) {
-            const auto& n = *__beg_11;
-            __result.push_back(n.v);
+        {
+            std::vector<Node> __tmp_4 = ::tpyapp::main::fresh();
+            auto __obj_11 = ::tpyapp::main::dead_return(__tmp_4);
+            auto __beg_11 = __obj_11.begin();
+            auto __end_11 = __obj_11.end();
+            for (; __beg_11 != __end_11; ++__beg_11) {
+                const auto& n = *__beg_11;
+                __result.push_back(n.v);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;

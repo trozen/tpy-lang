@@ -71,13 +71,12 @@ void main() {
     P r = ::tpyapp::part_bounds::pick<int32_t, ::tpy::own_arg<P>>(make, 1, std::move(__tmp_1));
     r.x = 5;
     std::cout << "bounds-pick" << " " << d.x << " " << r.x << "\n" << ::tpy::check_signals;
-    std::vector<P> __tmp_2 = {P(1), P(2), P(3)};
-    P f = ::tpyapp::part_bounds::fold__Fn_T_T_Own_T__list_T<::tpy::own_arg<P>>(own_add2, __tmp_2);
+    P f = ::tpyapp::part_bounds::fold__Fn_T_T_Own_T__list_T<::tpy::own_arg<P>>(own_add2, ::tpy::as_mut_lvalue(std::vector<P>{P(1), P(2), P(3)}));
     std::cout << "bounds-fold-own" << " " << f.x << "\n" << ::tpy::check_signals;
     std::vector<P> qs = {P(1), P(2)};
     {
-        auto&& __tmp_3 = ::tpyapp::part_bounds::fold__Fn_T_T_T__list_T<P>(bigger, qs);
-        __tmp_3.x = ::tpy::add_check<int32_t>(__tmp_3.x, 100);
+        auto&& __tmp_2 = ::tpyapp::part_bounds::fold__Fn_T_T_T__list_T<P>(bigger, qs);
+        __tmp_2.x = ::tpy::add_check<int32_t>(__tmp_2.x, 100);
     }
     std::cout << "bounds-fold-lend" << " " << ::tpy::__getitem__(qs, 1).x << "\n" << ::tpy::check_signals;
     P k = ::tpyapp::part_bounds::keep<::tpy::own_arg<P>>(P(7));

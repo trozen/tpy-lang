@@ -644,9 +644,17 @@ const Cell& via_ptr(const HP& h) {
 }
 
 // def ro_warnings(p: P) -> None:
-//     _a = ro_alias(Outer())  # tpyc: warning(/Result borrows from temporary argument 'p'/)
-//     _b = ro_loop(Outer())  # tpyc: warning(/Result borrows from temporary argument 'p'/)
-//     _c = ro_two_line(Outer())  # tpyc: warning(/Result borrows from temporary argument 'p'/)
+//     # each result borrows its argument (a fresh one would live only for the
+//     # statement), so a later replacement of the argument's field is warned
+//     oa = Outer()
+//     _a = ro_alias(oa)
+//     oa.inner = Inner()  # tpyc: warning(/Mutation of 'oa' while borrowed/)
+//     ob = Outer()
+//     _b = ro_loop(ob)
+//     ob.inner = Inner()  # tpyc: warning(/Mutation of 'ob' while borrowed/)
+//     oc = Outer()
+//     _c = ro_two_line(oc)
+//     oc.inner = Inner()  # tpyc: warning(/Mutation of 'oc' while borrowed/)
 //     _d = via_ptr(HP(p))  # tpyc: ok
 //     o = Outer()
 //     r = ro_alias(o)
@@ -657,14 +665,16 @@ const Cell& via_ptr(const HP& h) {
 //     o.inner = Inner()  # tpyc: warning(/Mutation of 'o' while borrowed/)
 //     print("ro_warnings", seen, _d.n)
 void ro_warnings(P& p) {
-    Outer __tmp_1 = Outer();
-    const Cell& _a = ::tpyapp::main::ro_alias(__tmp_1);
-    Outer __tmp_2 = Outer();
-    const Cell& _b = ::tpyapp::main::ro_loop(__tmp_2);
-    Outer __tmp_3 = Outer();
-    const Cell& _c = ::tpyapp::main::ro_two_line(__tmp_3);
-    HP __tmp_4 = HP(p);
-    const Cell& _d = ::tpyapp::main::via_ptr(__tmp_4);
+    Outer oa = Outer();
+    const Cell& _a = ::tpyapp::main::ro_alias(oa);
+    oa.inner = Inner();
+    Outer ob = Outer();
+    const Cell& _b = ::tpyapp::main::ro_loop(ob);
+    ob.inner = Inner();
+    Outer oc = Outer();
+    const Cell& _c = ::tpyapp::main::ro_two_line(oc);
+    oc.inner = Inner();
+    const Cell& _d = ::tpyapp::main::via_ptr(HP(p));
     Outer o = Outer();
     const Cell& r = ::tpyapp::main::ro_alias(o);
     int32_t seen = r.n;
@@ -972,8 +982,7 @@ void main() {
     h.self_ptr();
     std::cout << "self_ptr" << " " << c.n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::fn_member_loop_narrowed(&(p));
-    HP __tmp_1 = HP(p);
-    ::tpyapp::main::inv_ptr_member_loop(__tmp_1);
+    ::tpyapp::main::inv_ptr_member_loop(HP(p));
     std::cout << "member_loop" << " " << ::tpy::__getitem__(p.cells, 0).n << " " << ::tpyapp::main::fn_comprehension(p) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::fn_walrus(p);
     ::tpyapp::main::fn_rc(p);

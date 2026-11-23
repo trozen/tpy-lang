@@ -24,18 +24,12 @@ int32_t take(std::vector<int32_t>& items) {
 int32_t test(int32_t x) {
     if ((x < 0)) {
         return -1;
+    } else if ((::tpyapp::main::take(::tpy::as_mut_lvalue(std::vector<int32_t>{10})) == x)) {
+        return 0;
+    } else if ((::tpyapp::main::take(::tpy::as_mut_lvalue(std::vector<int32_t>{20, 30})) == x)) {
+        return 1;
     } else {
-        std::vector<int32_t> __tmp_1 = {10};
-        if ((::tpyapp::main::take(__tmp_1) == x)) {
-            return 0;
-        } else {
-            std::vector<int32_t> __tmp_2 = {20, 30};
-            if ((::tpyapp::main::take(__tmp_2) == x)) {
-                return 1;
-            } else {
-                return 2;
-            }
-        }
+        return 2;
     }
 }
 

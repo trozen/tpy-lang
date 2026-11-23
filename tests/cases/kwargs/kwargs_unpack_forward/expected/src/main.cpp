@@ -23,8 +23,7 @@ void wrapper(const Options& kwargs) {
 // def main() -> None:
 //     wrapper(host="example.com", port=int32(443))
 void main() {
-    Options __tmp_1 = Options("example.com", 443);
-    ::tpyapp::main::wrapper(__tmp_1);
+    ::tpyapp::main::wrapper(Options("example.com", 443));
 }
 
 // main()

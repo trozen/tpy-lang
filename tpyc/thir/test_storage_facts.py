@@ -20,33 +20,49 @@ SOURCE = '''from tpy import int32, readonly, nocopy
 @nocopy
 class Cell:
     value: int32
+    xs: list[int32]
     def __init__(self, value: int32):
         self.value = value
+        self.xs = [value]
 
 class Caller:
     value: int32
     def __init__(self, value: int32):
         self.value = 0
-        saved = observe(Cell(value))
-        self.value = saved.value
+        for v in items(Cell(value)):
+            self.value = v
 
 def observe(cell: Cell) -> readonly[Cell]:
     return cell
 
+def items(cell: readonly[Cell]) -> readonly[list[int32]]:
+    return cell.xs
+
 def eager(value: int32) -> int32:
+    for v in items(Cell(value)):
+        return v
+    return 0
+
+def borrowed(value: int32) -> int32:
     saved = observe(Cell(value))
     return saved.value
 
 def printed(value: int32):
-    saved = observe(Cell(value))
-    print(saved.value)
+    for v in items(Cell(value)):
+        print(v)
 
 def select(flag: bool, owner: Cell) -> int32:
     saved = owner if flag else Cell(2)
     return saved.value
 
+@nocopy
+class Pod:
+    value: int32
+    def __init__(self, value: int32):
+        self.value = value
+
 def inline(value: int32) -> int32:
-    return Cell(value).value
+    return Pod(value).value
 
 def stable(owner: Cell) -> int32:
     saved = observe(owner)
@@ -94,7 +110,9 @@ def functions(compiled) -> dict[str, th.THIRFunction]:
     return compiled[0]
 
 
-def test_planned_argument_links_placement_and_sink(functions: dict[str, th.THIRFunction]) -> None:
+def test_planned_argument_links_placement_and_head(functions: dict[str, th.THIRFunction]) -> None:
+    # The fresh argument a loop head keeps: its backing is placed at the loop,
+    # whose head expression is its full expression.
     fn = functions["eager"]
     facts = fn.storage_facts
     backing, = facts.backings
@@ -102,21 +120,16 @@ def test_planned_argument_links_placement_and_sink(functions: dict[str, th.THIRF
     assert backing.kind is THIRBackingKind.ARGUMENT and backing.uncovered is None
     assert backing.node is placement.node and backing.placement is placement
     assert backing.holder is fn.body[0] is placement.declaration
-    assert backing.full_expression is fn.body[0].init and backing.loc.line == 20
-    obligation, = facts.obligations
-    assert obligation.sink is fn.body[0] and obligation.value is fn.body[0].init
-    assert obligation.backings == (backing.index,)
+    assert backing.full_expression == fn.body[0].iterable and backing.loc.line == 25
     assert facts.backing(backing.node) is backing
 
 
-def test_missing_plan_keeps_backing_and_obligation(functions: dict[str, th.THIRFunction]) -> None:
+def test_missing_plan_keeps_backing(functions: dict[str, th.THIRFunction]) -> None:
     fn = functions["printed"]
     assert fn.temp_plan is None
     backing, = fn.storage_facts.backings
     assert backing.kind is THIRBackingKind.ARGUMENT and backing.placement is None
     assert backing.uncovered == "argument storage has no temporary plan"
-    obligation, = fn.storage_facts.obligations
-    assert obligation.backings == (backing.index,)
 
 
 def test_select_slot_publishes_placement_without_claiming_mir_coverage(functions: dict[str, th.THIRFunction]) -> None:
@@ -244,7 +257,8 @@ def test_foreign_stale_and_missing_plan_facts_reject(functions: dict[str, th.THI
     with pytest.raises(ValueError, match="invalid or stale"):
         validate_storage_facts(fn.body, fn.temp_plan, collect_storage_facts(fn.body, None))
     with pytest.raises(ValueError, match="invalid or stale"):
-        validate_storage_facts(fn.body, fn.temp_plan, replace(fn.storage_facts, obligations=()))
+        validate_storage_facts(fn.body, fn.temp_plan,
+                               replace(fn.storage_facts, backings=fn.storage_facts.backings * 2))
     with pytest.raises(ValueError, match="foreign"):
         fn.storage_facts.backing(replace(fn.storage_facts.backings[0].node))
 
@@ -260,8 +274,9 @@ def test_equal_but_foreign_backing_anchors_reject(functions: dict[str, th.THIRFu
 
 
 def test_pointer_sink_shares_argument_planning(functions: dict[str, th.THIRFunction]) -> None:
-    # No admitted source reaches a temporary-bearing PTR_ADDR sink; build the reseatable twin.
-    decl, *rest = functions["eager"].body
+    # No admitted source reaches a temporary-bearing PTR_ADDR sink; build the reseatable twin
+    # from a borrow binding and the argument temporary a loop head keeps.
+    decl, *rest = _held_borrow(functions)
     pointer = th.THIRPtrLocalDecl(name=decl.name, resolved_type=decl.resolved_type, kind=th.PtrSlotKind.PTR_ADDR,
                                   init=decl.init, cpp_type=decl.cpp_type, is_const=decl.is_const, loc=decl.loc)
     body = (pointer, *rest)
@@ -278,8 +293,8 @@ def test_pointer_sink_shares_argument_planning(functions: dict[str, th.THIRFunct
 
 def test_pointer_declaration_and_reseat_flush_backing_before_binding(functions: dict[str, th.THIRFunction]) -> None:
     # Source admission stays closed; these same-block borrows test the emitter's flush contract.
-    original = functions["eager"]
-    decl, ret = original.body
+    original = functions["borrowed"]
+    decl, ret = _held_borrow(functions)
     call = decl.init
     assert isinstance(call, th.THIRCall)
     temp, = call.args
@@ -326,8 +341,17 @@ def test_pointer_declaration_and_reseat_flush_backing_before_binding(functions: 
     ]
 
 
+def _held_borrow(functions: dict[str, th.THIRFunction]) -> tuple[th.THIRStmt, ...]:
+    """`saved = observe(Cell(value))` with its argument held in the temporary
+    a loop head keeps (a fresh argument is no named temp elsewhere)."""
+    decl, *rest = functions["borrowed"].body
+    held, = functions["eager"].body[0].iterable.args
+    assert isinstance(held, th.THIRArgTemp)
+    return (replace(decl, init=replace(decl.init, args=(held,))), *rest)
+
+
 def test_nested_body_storage_is_uncovered(functions: dict[str, th.THIRFunction]) -> None:
-    decl = functions["eager"].body[0]
+    decl = _held_borrow(functions)[0]
     lam = th.THIRLambda(decl.resolved_type, capture_cpp="&", params_cpp=(), body=decl.init)
     body = (th.THIRExprStmt(lam),)
     backing, = collect_storage_facts(body, prepare_temporaries(body)).backings

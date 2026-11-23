@@ -28,10 +28,8 @@ std::string show(const Value& v) {
 //     print(show(42))
 //     print(show("hello"))
 void main() {
-    Value __tmp_1 = 42;
-    std::cout << ::tpyapp::main::show(__tmp_1) << "\n" << ::tpy::check_signals;
-    Value __tmp_2 = "hello";
-    std::cout << ::tpyapp::main::show(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show(Value(42)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show(Value("hello")) << "\n" << ::tpy::check_signals;
 }
 
 // # Mutual recursion with mix of primitives and records

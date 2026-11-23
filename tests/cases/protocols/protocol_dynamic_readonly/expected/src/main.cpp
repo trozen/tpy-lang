@@ -25,10 +25,8 @@ void main() {
     __slot_2.emplace(Cat());
     pet = &*__slot_2;
     std::cout << pet->name() << "\n" << ::tpy::check_signals;
-    Dog __tmp_1{Dog()};
-    ::tpyapp::main::greet(__tmp_1);
-    ::tpy::Adapter<Pet, Cat> __tmp_2{Cat()};
-    ::tpyapp::main::greet(__tmp_2);
+    ::tpyapp::main::greet(Dog{Dog()});
+    ::tpyapp::main::greet(::tpy::Adapter<Pet, Cat>{Cat()});
 }
 
 // main()

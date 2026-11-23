@@ -146,9 +146,7 @@ void main() {
     Cat d = Cat(5);
     ::tpyapp::main::bump_guarded(d, true);
     std::cout << "bump_guarded:" << " " << c.lives << " " << d.lives << "\n" << ::tpy::check_signals;
-    Cat __tmp_1 = Cat(1);
-    Cat __tmp_2 = Cat(4);
-    std::cout << "irrefutable_group:" << " " << ::tpyapp::main::irrefutable_group(__tmp_1) << " " << ::tpyapp::main::irrefutable_group(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "irrefutable_group:" << " " << ::tpyapp::main::irrefutable_group(Cat(1)) << " " << ::tpyapp::main::irrefutable_group(Cat(4)) << "\n" << ::tpy::check_signals;
     std::cout << "scalar_inner:" << " " << ::tpyapp::main::scalar_inner(2) << " " << ::tpyapp::main::scalar_inner(std::nullopt) << " " << ::tpyapp::main::scalar_inner(9) << "\n" << ::tpy::check_signals;
     Cat e = Cat(2);
     ::tpyapp::main::opt_record(&(e));

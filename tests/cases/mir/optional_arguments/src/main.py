@@ -109,7 +109,7 @@ def call_ctor(q: Q, h: H) -> int32:  # tpyc: mir(covered)
 
 
 # a temporary at a constructor's Optional parameter, bound as any call's argument
-def call_ctor_temp() -> int32:  # tpyc: mir(certified)
+def call_ctor_temp() -> int32:  # tpyc: mir(covered)
     d = H(Q(4))
     return d.n
 

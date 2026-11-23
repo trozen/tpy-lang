@@ -124,8 +124,7 @@ void main() {
     ::tpystd::http::client::HTTPSConnection conn = ::tpystd::http::client::HTTPSConnection("das.test", 443, std::nullopt, nullptr);
     conn._tls = std::move(cli);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(std::move(conn));
-    ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"db", "das"}});
-    ::tpystd::tplib::requests::Response r = s.get("https://das.test/v1/tables", &(__tmp_1));
+    ::tpystd::tplib::requests::Response r = s.get("https://das.test/v1/tables", &::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"db", "das"}})));
     std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << " " << r.reason << "\n" << ::tpy::check_signals;
     std::cout << r.headers["Content-Type"] << "\n" << ::tpy::check_signals;
     ::tpystd::json::JsonValue d = r.json();

@@ -31,10 +31,8 @@ std::string describe(const Owner& o) {
 //     print(describe(Owner(Box(Dog()))))
 //     print(describe(Owner(Box(Snake()))))
 void main() {
-    Owner __tmp_1 = Owner(::tpystd::tplib::box::Box<Dog>(Dog()));
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
-    Owner __tmp_2 = Owner(::tpystd::tplib::box::Box<Snake>(Snake()));
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Owner(::tpystd::tplib::box::Box<Dog>(Dog()))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Owner(::tpystd::tplib::box::Box<Snake>(Snake()))) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

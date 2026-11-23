@@ -36,11 +36,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_caller::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(::tpy::array_from_index<N, 3>([&](std::size_t __i_0) -> N {
-            int32_t i = int32_t(__i_0);
-            return N(i);
-        }));
-        __for_src_0.emplace(::tpyapp::part_nocopy::gen(std::move((*__coro_arg_0))));
+        __for_src_0.emplace(::tpyapp::part_nocopy::gen(({
+            std::vector<N> __result;
+            if (3 > 0) __result.reserve(static_cast<size_t>(3));
+            for (int32_t i = 0; i < 3; ++i) {
+                __result.push_back(N(i));
+            }
+            std::move(__result);
+        })));
         __state = S_JOIN_0;
         continue;
     }
@@ -68,8 +71,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_caller::__next__() {
         return z;
     }
     case S_JOIN_2: {
-        __coro_arg_1.emplace(std::array<N, 1>{N(7)});
-        __for_src_1.emplace(::tpyapp::part_nocopy::gen(std::move((*__coro_arg_1))));
+        __for_src_1.emplace(::tpyapp::part_nocopy::gen(std::array<N, 1>{N(7)}));
         __state = S_JOIN_1;
         continue;
     }
@@ -108,8 +110,7 @@ __gen_gen_caller gen_caller() {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         std::cout << "nocopy async dead" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
-        __coro_arg_0.emplace(::tpyapp::part_nocopy::mk());
-        __sub_1.emplace(std::move((*__coro_arg_0)));
+        __sub_1.emplace(::tpyapp::part_nocopy::mk());
         __state = S_RESUME_1;
         continue;
     }
@@ -119,11 +120,14 @@ __gen_gen_caller gen_caller() {
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
         std::cout << "nocopy async fresh" << " " << __await_lift_1 << "\n" << ::tpy::check_signals;
-        __coro_arg_1.emplace(::tpy::array_from_index<N, 4>([&](std::size_t __i_0) -> N {
-            int32_t i = int32_t(__i_0);
-            return N(i);
+        __sub_2.emplace(({
+            std::vector<N> __result;
+            if (4 > 0) __result.reserve(static_cast<size_t>(4));
+            for (int32_t i = 0; i < 4; ++i) {
+                __result.push_back(N(i));
+            }
+            std::move(__result);
         }));
-        __sub_2.emplace(std::move((*__coro_arg_1)));
         __state = S_RESUME_2;
         continue;
     }

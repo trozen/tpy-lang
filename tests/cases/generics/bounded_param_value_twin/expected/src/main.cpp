@@ -38,8 +38,7 @@ std::string read_cell(const Cell<std::string>& c) {
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
         std::cout << "async" << " " << __await_lift_0 << " " << __await_lift_1 << "\n" << ::tpy::check_signals;
-        __coro_arg_0.emplace(std::array<int32_t, 2>{1, 2});
-        __sub_2.emplace(std::move((*__coro_arg_0)));
+        __sub_2.emplace(std::array<int32_t, 2>{1, 2});
         __state = S_RESUME_2;
         continue;
     }
@@ -48,8 +47,7 @@ std::string read_cell(const Cell<std::string>& c) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        __coro_arg_1.emplace(std::array<std::string, 2>{"p", "q"});
-        __sub_3.emplace(std::move((*__coro_arg_1)));
+        __sub_3.emplace(std::array<std::string, 2>{"p", "q"});
         __state = S_RESUME_3;
         continue;
     }
@@ -101,8 +99,7 @@ void main() {
     std::cout << "fopt" << " " << ::tpy::print_optional_val(::tpyapp::main::fopt<int32_t>(5)) << " " << ::tpy::print_optional_val(::tpyapp::main::fopt<std::string>("s")) << " " << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(::tpyapp::main::fopt<::tpy::Bytes>(::tpy::bytes_literal_owned("b", 1))) << "\n" << ::tpy::check_signals;
     std::cout << "tag" << " " << ::tpy::print_optional_val(Holder<int32_t>(1).tag<int32_t>(3)) << " " << ::tpy::print_optional_val(Holder<int32_t>(1).tag<std::string>("t")) << "\n" << ::tpy::check_signals;
     std::cout << "opt" << " " << ::tpy::print_optional_val(C<int32_t>().opt(4)) << " " << ::tpy::print_optional_val(C<std::string>().opt("o")) << "\n" << ::tpy::check_signals;
-    Cell<std::string> __tmp_1 = Cell<std::string>("g");
-    std::cout << "getter" << " " << ::tpyapp::main::read_cell(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "getter" << " " << ::tpyapp::main::read_cell(Cell<std::string>("g")) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen<std::string>("gs");
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

@@ -68,8 +68,7 @@ void main() {
     c3.set(7);
     ::tpyapp::main::consume(c3);
     std::cout << c3.get() << "\n" << ::tpy::check_signals;
-    Container<int32_t> __tmp_1 = Container<int32_t>();
-    ::tpyapp::main::consume(__tmp_1);
+    ::tpyapp::main::consume(::tpy::as_mut_lvalue(Container<int32_t>()));
 }
 
 // main()

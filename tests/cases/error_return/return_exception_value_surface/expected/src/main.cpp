@@ -296,9 +296,8 @@ void main() {
     int32_t v_builtin;
     {
         std::optional<::tpy::StopIteration> __err_opt_13;
-        std::vector<int32_t> __tmp_1 = {1, 3};
         {
-            auto __try_tmp_14 = ::tpyapp::main::first_even(__tmp_1);
+            auto __try_tmp_14 = ::tpyapp::main::first_even({1, 3});
             if (!__try_tmp_14.has_value()) { __err_opt_13 = std::move(__try_tmp_14.error()); goto __except_13; }
             v_builtin = ::tpy::unwrap_ref_move(*__try_tmp_14);
         }
@@ -531,8 +530,8 @@ void main() {
     Reader r = Reader();
     std::cout << "method:" << " " << r.read("ok") << " " << r.read("q") << " " << r.seen << "\n" << ::tpy::check_signals;
     {
-        auto __tmp_2 = ::tpyapp::main::count(2);
-        auto __src_0 = ::tpyapp::main::pairs(__tmp_2);
+        auto __tmp_1 = ::tpyapp::main::count(2);
+        auto __src_0 = ::tpyapp::main::pairs(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

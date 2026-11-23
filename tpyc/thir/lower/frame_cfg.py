@@ -446,7 +446,7 @@ class CFGBuilder:
         self._finish(cur, THIRBranch(cond=THIRLeafSlot(LeafRole.COND,
                                                       stmt.condition),
                                      then_bb=then_bb,
-                                  else_bb=else_bb))
+                                  else_bb=else_bb, host=stmt))
         # Each arm carries the condition's narrowing facts so a suspension
         # inside the arm re-establishes the narrowed binding at its resume
         # case. then_bb/else_bb were created in the outer context, so stamp
@@ -486,7 +486,7 @@ class CFGBuilder:
         self._finish(check_bb, THIRBranch(cond=THIRLeafSlot(LeafRole.COND,
                                                            stmt.condition),
                                           then_bb=body_bb,
-                                       else_bb=exit_bb))
+                                       else_bb=exit_bb, host=stmt))
         after_bb = self._new_bb() if stmt.orelse else exit_bb
         self._loop_stack.append(_LoopCtx(
             continue_bb=check_bb,
@@ -571,7 +571,7 @@ class CFGBuilder:
                 uid=uid, source=stmt.iterable, iterable=iterable,
                 bounds=bounds, elem_type=stmt.elem_type,
                 iter_borrow_unplaceable=stmt.iter_borrow_unplaceable,
-                consuming=stmt.consuming_iter_fi is not None))
+                consuming=stmt.consuming_iter_fi is not None, host=stmt))
         self._finish(iter_init_bb, THIRFall(next_bb=cond_bb))
         # cond_bb: THIRForAdvance terminator (advance + branch).
         self._finish(cond_bb, THIRForAdvance(
@@ -651,7 +651,8 @@ class CFGBuilder:
                 iterable=THIRLeafSlot(LeafRole.ASYNC_FOR_ITERABLE,
                                       stmt.iterable),
                 is_async=True,
-                iter_borrow_unplaceable=stmt.iter_borrow_unplaceable))
+                iter_borrow_unplaceable=stmt.iter_borrow_unplaceable,
+                host=stmt))
 
         # The handler body is a synthesized TpyBreak -- _build_block
         # routes it through _loop_stack to the loop's break_bb, so
@@ -992,7 +993,8 @@ class CFGBuilder:
             self._blocks[cur].stmts.append(
                 THIRWithEnter(ctx_n=ctx_n, item=item,
                               manager=THIRLeafSlot(LeafRole.WITH_MANAGER,
-                                                   item.context_expr)))
+                                                   item.context_expr),
+                              host=stmt))
             self._region_stack.append(region)
             regions.append(region)
         try:
@@ -1089,7 +1091,8 @@ class CFGBuilder:
         self._blocks[cur].stmts.append(
             THIRAsyncWithSetup(ctx_n=ctx_n, item=item,
                                manager=THIRLeafSlot(LeafRole.WITH_MANAGER,
-                                                    item.context_expr)))
+                                                    item.context_expr),
+                               host=stmt))
 
         # 2. THIRSuspend for `__aenter__()`. Synthesize a minimal TpyAwait so
         # the payload's dataclass invariants hold; emit branches on

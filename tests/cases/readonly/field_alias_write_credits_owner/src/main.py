@@ -562,9 +562,17 @@ def via_ptr(h: HP) -> readonly[Cell]:
 
 
 def ro_warnings(p: P) -> None:
-    _a = ro_alias(Outer())  # tpyc: warning(/Result borrows from temporary argument 'p'/)
-    _b = ro_loop(Outer())  # tpyc: warning(/Result borrows from temporary argument 'p'/)
-    _c = ro_two_line(Outer())  # tpyc: warning(/Result borrows from temporary argument 'p'/)
+    # each result borrows its argument (a fresh one would live only for the
+    # statement), so a later replacement of the argument's field is warned
+    oa = Outer()
+    _a = ro_alias(oa)
+    oa.inner = Inner()  # tpyc: warning(/Mutation of 'oa' while borrowed/)
+    ob = Outer()
+    _b = ro_loop(ob)
+    ob.inner = Inner()  # tpyc: warning(/Mutation of 'ob' while borrowed/)
+    oc = Outer()
+    _c = ro_two_line(oc)
+    oc.inner = Inner()  # tpyc: warning(/Mutation of 'oc' while borrowed/)
     _d = via_ptr(HP(p))  # tpyc: ok
     o = Outer()
     r = ro_alias(o)

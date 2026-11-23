@@ -332,8 +332,7 @@ void main() {
     std::vector<std::vector<::tpyapp::fixtures::P>> grid = {{::tpyapp::fixtures::P(1)}, {::tpyapp::fixtures::P(2)}};
     int32_t m = ::tpyapp::part_elements::inner_ref(grid, 0, 1);
     std::cout << "inner_ref" << " " << m << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 0), 0).x << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 1), 0).x << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_1 = {"a", "b"};
-    ::tpyapp::part_elements::tok_view(__tmp_1, 1);
+    ::tpyapp::part_elements::tok_view(::tpy::as_mut_lvalue(std::vector<std::string>{"a", "b"}), 1);
     std::cout << "callee_loop" << " " << ::tpyapp::part_elements::callee_loop(ps, false) << "\n" << ::tpy::check_signals;
     std::vector<::tpyapp::fixtures::P> qs = {::tpyapp::fixtures::P(5)};
     std::cout << "kept_calls" << " " << ::tpyapp::part_elements::kept_store_then_grow(qs, false) << " " << ::tpyapp::part_elements::kept_grow_then_store(qs, false) << " " << ::tpy::__len__(qs) << "\n" << ::tpy::check_signals;

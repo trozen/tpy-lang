@@ -13,8 +13,7 @@ std::string describe(const Tag& t) {
 // def fail_nested() -> None:
 //     raise ValueError(describe(Tag(7)))  # the temp sits under `describe`, one level below the ctor
 void fail_nested() {
-    Tag __tmp_1 = Tag(::tpy::BigInt(7));
-    throw ::tpy::ValueError(::tpyapp::main::describe(__tmp_1));
+    throw ::tpy::ValueError(::tpyapp::main::describe(Tag(::tpy::BigInt(7))));
 }
 
 // def fail_direct() -> None:

@@ -47,13 +47,9 @@ void check_and_or(const std::vector<::tpy::BigInt>& items, const std::vector<::t
 //     check_str("hello", "")
 //     check_and_or([1], [])
 void main() {
-    std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
-    std::vector<::tpy::BigInt> __tmp_2 = std::vector<::tpy::BigInt>{};
-    ::tpyapp::main::check_list(__tmp_1, __tmp_2);
+    ::tpyapp::main::check_list({1, 2, 3}, std::vector<::tpy::BigInt>{});
     ::tpyapp::main::check_str("hello", "");
-    std::vector<::tpy::BigInt> __tmp_3 = {1};
-    std::vector<::tpy::BigInt> __tmp_4 = std::vector<::tpy::BigInt>{};
-    ::tpyapp::main::check_and_or(__tmp_3, __tmp_4);
+    ::tpyapp::main::check_and_or({1}, std::vector<::tpy::BigInt>{});
 }
 
 // main()

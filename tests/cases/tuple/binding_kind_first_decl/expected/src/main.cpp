@@ -268,21 +268,15 @@ void main() {
     ::tpyapp::main::self_rebind_borrowed();
     std::cout << "own_param_lift" << " " << ::tpyapp::main::own_param_lift(Box(3)) << " " << ::tpyapp::main::own_param_lift(std::nullopt) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::storage_alias();
-    Box __tmp_1 = Box(1);
-    Box __tmp_2 = Box(2);
-    ::tpyapp::main::rebound_call_source(__tmp_1, __tmp_2);
+    ::tpyapp::main::rebound_call_source(::tpy::as_mut_lvalue(Box(1)), ::tpy::as_mut_lvalue(Box(2)));
     ::tpyapp::main::elem_cast();
     ::tpyapp::main::elem_typed_dict();
     ::tpyapp::main::elem_enum_value();
     ::tpyapp::main::elem_call_macro();
     ::tpyapp::main::elem_asdict();
     K().method_self_rebind();
-    Box __tmp_3 = Box(1);
-    Box __tmp_4 = Box(2);
-    ::tpyapp::main::branch_first_self_rebind(true, __tmp_3, __tmp_4);
-    Box __tmp_5 = Box(1);
-    Box __tmp_6 = Box(2);
-    ::tpyapp::main::loop_self_rebind(__tmp_5, __tmp_6);
+    ::tpyapp::main::branch_first_self_rebind(true, ::tpy::as_mut_lvalue(Box(1)), ::tpy::as_mut_lvalue(Box(2)));
+    ::tpyapp::main::loop_self_rebind(::tpy::as_mut_lvalue(Box(1)), ::tpy::as_mut_lvalue(Box(2)));
 }
 
 // # A first declaration is built for the binding kind the planner picks: a tuple

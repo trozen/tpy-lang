@@ -216,8 +216,7 @@ std::vector<int32_t> give_or_list() {
 //     xs.append(3)
 //     print("or_return", r.n, q.n, xs, len(log))
 void or_return(std::vector<std::string>& log) {
-    C __tmp_1 = C(0);
-    C r = ::tpyapp::main::give_or_name(__tmp_1);
+    C r = ::tpyapp::main::give_or_name(C(0));
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
     C q = ::tpyapp::main::give_or_fresh(log);
     q.n = ::tpy::add_check<int32_t>(q.n, 1);
@@ -250,9 +249,7 @@ C give_chain(const C& a, const C& b) {
 //     r.n += 1
 //     print("or_chain", r.n)
 void or_chain() {
-    C __tmp_1 = C(0);
-    C __tmp_2 = C(0);
-    C r = ::tpyapp::main::give_chain(__tmp_1, __tmp_2);
+    C r = ::tpyapp::main::give_chain(C(0), C(0));
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
     std::cout << "or_chain" << " " << r.n << "\n" << ::tpy::check_signals;
 }

@@ -70,7 +70,8 @@ from .call_lends import (
     proven_lend_roots,
 )
 from .context import (GenericCallRoute, GenericCtorRoute, OpenCallArgs,
-                      PENDING_CONTAINER_TYPES, ProbeSlot, ReadonlyReceiverCheck)
+                      PENDING_CONTAINER_TYPES, ProbeSlot, ReadonlyReceiverCheck,
+                      SinkCopy)
 from ..parse.nodes import bound_callee, name_path
 from .literal_utils import (enriched_literal, is_char_literal_init,
                             ranks_literals)
@@ -2385,6 +2386,9 @@ class CallAnalyzer:
             is_readonly=True,
             is_builtin_function=True,
             special_handling=True,
+            # It formats its arguments (a user `__str__` may run) and
+            # writes them out; it keeps none of them.
+            keeps_no_argument=True,
             qualified_name="builtins.print",
         )
         return VOID
@@ -3812,6 +3816,33 @@ class CallAnalyzer:
         if isinstance(arg_type, OwnType):
             self.compat.check_own_consumption(arg)
         self._warn_unnecessary_copy(arg)
+
+    def check_alias_member_arg(self, arg: TpyExpr, arg_type: TpyType,
+                               ptype: TpyType, label: str) -> None:
+        """A recursive-alias parameter (`t: Tree`) given a reference-typed
+        member builds the alias from it, which holds a copy of the member:
+        an owning sink, asking the source rule a field store asks -- moved
+        at the name's last use, silent for a fresh value or an explicit
+        `copy()` (BUGS.md#record-at-recursive-alias-param-copied)."""
+        if not self.ctx.slot_step_commits():
+            return
+        slot = unwrap_readonly(unwrap_send_sync(unwrap_ref_type(ptype)))
+        if isinstance(slot, OwnType) or not slot.needs_wrapper():
+            return
+        inner = unwrap_readonly(unwrap_own(unwrap_send_sync(
+            unwrap_ref_type(arg_type))))
+        if (inner.is_value_type() or isinstance(inner, TypeParamRef)
+                or (self.compat._resolve_recursive_refs(inner)
+                    == self.compat._resolve_recursive_refs(slot))):
+            return
+        where = label if label.startswith("parameter ") else f"parameter {label}"
+        sink = SinkCopy(inner, inner, f"{self.compat.diag_type(slot)} {where}")
+        self.compat.register_sink(arg, OwnType(inner), None)
+        moved = (isinstance(arg, TpyName)
+                 and self.compat.claim_name_move(arg, OwnType(inner),
+                                                 sink=sink))
+        if self.compat.source_copies_into_storage(arg, moved):
+            self.compat.register_sink_copy(sink, arg)
 
     def mark_pending_slot_context(self, arg: TpyExpr, arg_type: TpyType,
                                   ptype: TpyType) -> None:
@@ -6518,6 +6549,8 @@ class CallAnalyzer:
             arg_type = arg_type.wrapped
         if own_checks:
             self.check_own_param(arg, arg_type, pname, check_ptype)
+            self.check_alias_member_arg(arg, arg_type, check_ptype,
+                                        self.param_label(declared, pname))
         self.compat.note_open_same_t_arg(arg, check_ptype)
         self.consume_at_iterating_slot(arg, check_ptype,
                                        call if call is not None else arg)

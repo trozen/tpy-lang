@@ -52,14 +52,10 @@ std::string describe(const Pet& p) {
 //     print(describe(Dog(3, 5)))
 //     print(describe(Dog(2, 5)))
 void main() {
-    Dog __tmp_1{Dog(::tpy::BigInt(4), ::tpy::BigInt(20))};
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
-    Dog __tmp_2{Dog(::tpy::BigInt(4), ::tpy::BigInt(5))};
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
-    Dog __tmp_3{Dog(::tpy::BigInt(3), ::tpy::BigInt(5))};
-    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n" << ::tpy::check_signals;
-    Dog __tmp_4{Dog(::tpy::BigInt(2), ::tpy::BigInt(5))};
-    std::cout << ::tpyapp::main::describe(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Dog{Dog(::tpy::BigInt(4), ::tpy::BigInt(20))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Dog{Dog(::tpy::BigInt(4), ::tpy::BigInt(5))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Dog{Dog(::tpy::BigInt(3), ::tpy::BigInt(5))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Dog{Dog(::tpy::BigInt(2), ::tpy::BigInt(5))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

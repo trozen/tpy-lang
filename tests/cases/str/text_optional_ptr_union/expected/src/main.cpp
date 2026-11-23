@@ -353,21 +353,15 @@ void main() {
     double f = 3.0;
     bool t = true;
     int8_t i = 7;
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2};
-    ::tpyapp::main::free(3, 2.5, true, "hi", &(a), &(__tmp_1));
+    ::tpyapp::main::free(3, 2.5, true, "hi", &(a), &::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}));
     ::tpyapp::main::free(std::nullopt, std::nullopt, std::nullopt, std::nullopt, nullptr, nullptr);
     ::tpyapp::main::ptrs(&a, &f, &t, &i);
     ::tpyapp::main::null_ptrs(static_cast<A*>(nullptr), static_cast<double*>(nullptr));
     ::tpyapp::main::write_through(&a);
     std::cout << std::format("write: {}", ::tpy::__str__(a)) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<double, std::string> __tmp_2 = 3.14159;
-    B __tmp_3 = B(2);
-    ::tpy::Union<std::monostate, int32_t, std::string> __tmp_4 = std::monostate{};
-    ::tpyapp::main::unions(__tmp_2, ::tpy::Union<const A*, const B*>{&__tmp_3}, __tmp_4);
-    ::tpy::Union<double, std::string> __tmp_5 = "abc";
-    ::tpyapp::main::unions(__tmp_5, ::tpy::Union<const A*, const B*>{&(a)}, 5);
-    ::tpy::Union<double, std::string> __tmp_6 = "abc";
-    ::tpyapp::main::spec_text(__tmp_6);
+    ::tpyapp::main::unions(::tpy::Union<double, std::string>(3.14159), ::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(2)))}, ::tpy::Union<std::monostate, int32_t, std::string>(std::monostate{}));
+    ::tpyapp::main::unions(::tpy::Union<double, std::string>("abc"), ::tpy::Union<const A*, const B*>{&(a)}, 5);
+    ::tpyapp::main::spec_text(::tpy::Union<double, std::string>("abc"));
     std::vector<int32_t> nums = {4, 5};
     ::tpyapp::main::spans(::tpy::as_mut_span(nums));
     ::tpyapp::main::readonly_ptr(&a);
@@ -445,10 +439,8 @@ void main() {
     ::tpyapp::main::small_ints(5, 200);
     ::tpyapp::main::small_ints(std::nullopt, std::nullopt);
     ::tpyapp::main::empty_spec(7, ::tpy::BigInt::from_str("1180591620717411303424"));
-    ::tpy::Union<A*, int32_t> __tmp_7 = &a;
-    ::tpyapp::main::payloads(::tpy::String("str"), __tmp_7);
-    ::tpy::Union<A*, int32_t> __tmp_8 = static_cast<A*>(nullptr);
-    ::tpyapp::main::payloads(std::nullopt, __tmp_8);
+    ::tpyapp::main::payloads(::tpy::String("str"), ::tpy::Union<A*, int32_t>(&a));
+    ::tpyapp::main::payloads(std::nullopt, ::tpy::Union<A*, int32_t>(static_cast<A*>(nullptr)));
     ::tpyapp::main::payloads(std::nullopt, 6);
     F fmt = F();
     ::tpyapp::main::held_format(&(fmt), &fmt, ::tpy::Union<const F*, const int32_t*>{&(fmt)});
@@ -459,8 +451,7 @@ void main() {
     ::tpyapp::main::ptr_forms(static_cast<std::string*>(nullptr), static_cast<std::string_view*>(nullptr), static_cast<::tpy::Union<A, B>*>(nullptr), static_cast<std::optional<int32_t>*>(nullptr), static_cast<std::optional<A>*>(nullptr), static_cast<int32_t**>(nullptr), &a, &lst);
     ::tpyapp::main::ptr_forms(static_cast<std::string*>(nullptr), static_cast<std::string_view*>(nullptr), static_cast<::tpy::Union<A, B>*>(nullptr), static_cast<std::optional<int32_t>*>(nullptr), static_cast<std::optional<A>*>(nullptr), static_cast<int32_t**>(nullptr), static_cast<A*>(nullptr), static_cast<std::vector<int32_t>*>(nullptr));
     ::tpyapp::main::ptr_tree(static_cast<Tree*>(nullptr));
-    G __tmp_9 = G();
-    ::tpyapp::main::inherited_format(&(__tmp_9));
+    ::tpyapp::main::inherited_format(&::tpy::as_mut_lvalue(G()));
     ::tpyapp::main::none_param(std::monostate{});
 }
 

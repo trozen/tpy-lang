@@ -169,23 +169,14 @@ void whole_arms(Tree& rs, bool c) {
 //     strongest_kind_reversed(t, False)
 //     whole_arms(t, True)
 void main() {
-    std::vector<Rec> __tmp_1 = {Rec(1)};
-    ::tpyapp::main::call_arm(__tmp_1, true);
+    ::tpyapp::main::call_arm(::tpy::as_mut_lvalue(std::vector<Rec>{Rec(1)}), true);
     std::vector<Rec> rs = {Rec(1), Rec(2), Rec(3)};
     ::tpyapp::main::both_element_arms(rs, true);
-    std::vector<Rec> __tmp_2 = {Rec(1)};
-    std::vector<Rec> __tmp_3 = {Rec(2)};
-    ::tpyapp::main::two_containers(__tmp_2, __tmp_3, false);
+    ::tpyapp::main::two_containers(::tpy::as_mut_lvalue(std::vector<Rec>{Rec(1)}), ::tpy::as_mut_lvalue(std::vector<Rec>{Rec(2)}), false);
     ::tpyapp::main::optional_arm(rs, true);
-    std::vector<Rec> __tmp_4 = {Rec(1)};
-    std::vector<Rec> __tmp_5 = {Rec(2)};
-    ::tpyapp::main::alias_arms(__tmp_4, __tmp_5, true);
-    std::vector<int32_t> __tmp_6 = {1, 2};
-    ::tpyapp::main::value_elements(__tmp_6, true);
-    std::vector<Rec> __tmp_7 = {Rec(1)};
-    std::vector<Rec> __tmp_8 = {Rec(2)};
-    std::vector<Rec> __tmp_9 = {Rec(3)};
-    ::tpyapp::main::nested_select(__tmp_7, __tmp_8, __tmp_9, false, false);
+    ::tpyapp::main::alias_arms(::tpy::as_mut_lvalue(std::vector<Rec>{Rec(1)}), {Rec(2)}, true);
+    ::tpyapp::main::value_elements(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), true);
+    ::tpyapp::main::nested_select(::tpy::as_mut_lvalue(std::vector<Rec>{Rec(1)}), ::tpy::as_mut_lvalue(std::vector<Rec>{Rec(2)}), ::tpy::as_mut_lvalue(std::vector<Rec>{Rec(3)}), false, false);
     Tree t = Tree(0);
     t.append(Tree(1));
     ::tpyapp::main::strongest_kind(t, true);

@@ -54,8 +54,7 @@ std::tuple<bool, double> _parse_http_date(std::string_view raw) {
                 continue;
             }
         }
-        ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_1 = ::tpystd::datetime::UTC;
-        return std::tuple<bool, double>{true, dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_1).timestamp()};
+        return std::tuple<bool, double>{true, dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(::tpystd::datetime::UTC)).timestamp()};
     }
     return std::tuple<bool, double>{false, 0.0};
 }
@@ -690,8 +689,7 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
         if ((pnum.has_value())) {
             hport = ((*pnum)).to_fixed_check<int32_t>();
         }
-        ::tpystd::ssl::SSLContext __tmp_1 = ::tpystd::tplib::requests::_ssl_context_for(verify);
-        return ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(::tpystd::http::client::HTTPSConnection((*host), hport, timeout, &(__tmp_1)));
+        return ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(::tpystd::http::client::HTTPSConnection((*host), hport, timeout, &::tpy::as_mut_lvalue(::tpystd::tplib::requests::_ssl_context_for(verify))));
     }
     int32_t port = DEFAULT_HTTP_PORT;
     if ((pnum.has_value())) {

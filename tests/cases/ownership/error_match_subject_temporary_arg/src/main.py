@@ -23,7 +23,7 @@ def first(c: Bag) -> Item:
 
 
 def main() -> None:
-    match first(Bag()):  # tpyc: warning(/temporary argument/) error(/stmt\.match/)
+    match first(Bag()):  # tpyc: error(/stmt\.match/)
         case Item() as it:
             it.n = 5
 

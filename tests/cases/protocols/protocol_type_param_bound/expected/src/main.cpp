@@ -48,11 +48,8 @@ int32_t first__str(std::string_view b) {
 void forwarding() {
     Bag b = Bag(3);
     Keeps<int32_t> k = Keeps<int32_t>(Box<int32_t>(1));
-    Box<int32_t> __tmp_1 = Box<int32_t>(2);
-    std::cout << "forwarding" << " " << ::tpyapp::main::forward<int32_t>(b, __tmp_1) << " " << k.b.v << " " << k.measure<int32_t>(b) << " " << SubBox<int32_t>(6).v << " " << ::tpyapp::main::via_parent(b) << " " << ::tpyapp::main::sibling<int32_t, Bag>(b) << "\n" << ::tpy::check_signals;
-    Box<int32_t> __tmp_2 = Box<int32_t>(2);
-    Box<int32_t> __tmp_3 = Box<int32_t>(1);
-    std::cout << "forwarding scopes" << " " << Outer<int32_t>().use<Bag>(b) << " " << ::tpyapp::main::chain<int32_t, int32_t>(1, __tmp_2) << " " << ::tpyapp::main::first__Box_T<int32_t>(__tmp_3) << " " << ::tpyapp::main::first__str("abc") << "\n" << ::tpy::check_signals;
+    std::cout << "forwarding" << " " << ::tpyapp::main::forward<int32_t>(b, Box<int32_t>(2)) << " " << k.b.v << " " << k.measure<int32_t>(b) << " " << SubBox<int32_t>(6).v << " " << ::tpyapp::main::via_parent(b) << " " << ::tpyapp::main::sibling<int32_t, Bag>(b) << "\n" << ::tpy::check_signals;
+    std::cout << "forwarding scopes" << " " << Outer<int32_t>().use<Bag>(b) << " " << ::tpyapp::main::chain<int32_t, int32_t>(1, Box<int32_t>(2)) << " " << ::tpyapp::main::first__Box_T<int32_t>(Box<int32_t>(1)) << " " << ::tpyapp::main::first__str("abc") << "\n" << ::tpy::check_signals;
 }
 
 // def f_bounded() -> None:
@@ -89,8 +86,7 @@ void dynamic_slots() {
     int32_t r = ::tpyapp::main::via_top(c);
     std::cout << "dynamic" << " " << r << " " << c.extra() << " " << c.n << "\n" << ::tpy::check_signals;
     Ticker t = Ticker();
-    ::tpy::RefAdapter<Peek<int32_t>, Ticker> __tmp_1{t};
-    std::cout << "dynamic redeclared" << " " << ::tpyapp::main::peek(__tmp_1) << " " << t.n << "\n" << ::tpy::check_signals;
+    std::cout << "dynamic redeclared" << " " << ::tpyapp::main::peek(::tpy::as_mut_lvalue(::tpy::RefAdapter<Peek<int32_t>, Ticker>{t})) << " " << t.n << "\n" << ::tpy::check_signals;
 }
 
 // def take_none(p: Taker[int32]) -> int32:
@@ -102,8 +98,7 @@ int32_t take_none(Taker<int32_t>& p) {
 // def optional_t() -> None:
 //     print("optional", take_none(TakeImpl()))
 void optional_t() {
-    ::tpy::Adapter<Taker<int32_t>, TakeImpl> __tmp_1{TakeImpl()};
-    std::cout << "optional" << " " << ::tpyapp::main::take_none(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "optional" << " " << ::tpyapp::main::take_none(::tpy::as_mut_lvalue(::tpy::Adapter<Taker<int32_t>, TakeImpl>{TakeImpl()})) << "\n" << ::tpy::check_signals;
 }
 
 // def slots() -> None:
@@ -138,8 +133,7 @@ int32_t nested() {
     auto inner = [](Box<int32_t>& b) -> int32_t {
         return b.v;
     };
-    Box<int32_t> __tmp_1 = Box<int32_t>(22);
-    return inner(__tmp_1);
+    return inner(::tpy::as_mut_lvalue(Box<int32_t>(22)));
 }
 
 // async def boxed_async(b: Box[int32]) -> int32:  # tpyc: ok
@@ -230,8 +224,7 @@ void main() {
     auto __tmp_3 = Bag(1);
     std::cout << "cycle" << " " << ::tpyapp::main::cycle(__tmp_3) << "\n" << ::tpy::check_signals;
     Shadow<int32_t> sh = Shadow<int32_t>(5);
-    Box<int32_t> __tmp_4 = Box<int32_t>(6);
-    std::cout << "shadow" << " " << sh.take(__tmp_4) << " " << ::tpy::print_bool(sh.same(Box<int32_t>(5), EqBox<int32_t>(5))) << "\n" << ::tpy::check_signals;
+    std::cout << "shadow" << " " << sh.take(::tpy::as_mut_lvalue(Box<int32_t>(6))) << " " << ::tpy::print_bool(sh.same(Box<int32_t>(5), EqBox<int32_t>(5))) << "\n" << ::tpy::check_signals;
 }
 
 // # Type-parameter bounds of protocols are honored, and a generic's type

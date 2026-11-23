@@ -103,7 +103,7 @@ void print_call(std::string_view s);
 ::tpy::Bytes bytes_literal();
 // def take_point(p: Point) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t take_point(const Point& p);
-// def rvalue_temp() -> int32:  # tpyc: mir(certified)
+// def rvalue_temp() -> int32:  # tpyc: mir(covered)
 int32_t rvalue_temp();
 // def lent_big(p: BigP) -> int:
 ::tpy::BigInt lent_big(const BigP& p);
@@ -125,7 +125,7 @@ bool lent_temp_select(bool c);
 std::string made(std::string_view t);
 // def view_len(v: ViewP) -> int32:
 int32_t view_len(const ViewP& v);
-// def lent_view_temp(t: str) -> int32:  # tpyc: mir(uncovered /named temporary needs stable scalar operands/)
+// def lent_view_temp(t: str) -> int32:  # tpyc: mir(covered)
 int32_t lent_view_temp(std::string_view t);
 // def make(k: int32) -> Own[Gauge]:
 Gauge make(int32_t k);

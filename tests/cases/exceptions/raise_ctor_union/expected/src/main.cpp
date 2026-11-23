@@ -16,8 +16,7 @@ namespace tpyapp::main {
 void main() {
     {
         try {
-            A __tmp_1 = A(::tpy::BigInt(7));
-            throw UErr(::tpy::Union<const A*, const B*>{&__tmp_1});
+            throw UErr(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(7))))});
         } catch (const UErr& e) {
             auto& __match_subject_1 = e.payload;
             switch (__match_subject_1.index()) {

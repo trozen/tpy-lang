@@ -23,9 +23,13 @@ from .. import qnames
 
 from ..parse import (
     ResultForm,
-    TpyCall, TpyCallLike, TpyCoerce, TpyExpr, TpyFieldAccess, TpyFString, TpyBinOp,
-    TpyFunction, TpyGeneratorExpression, TpyIfExpr, TpyLambda, TpyMethodCall,
-    TpyName, TpySubscript, is_property_getter_read,
+    TpyBoolLiteral, TpyBytesLiteral, TpyCall, TpyCallLike, TpyCoerce, TpyExpr,
+    TpyFieldAccess, TpyFloatLiteral, TpyFunction,
+    TpyDictComprehension, TpyGeneratorExpression, TpyIfExpr, TpyIntLiteral,
+    TpyLambda, TpyListComprehension, TpyMethodCall, TpyName, TpyNoneLiteral,
+    TpySetComprehension, TpyStrLiteral, TpySubscript, TpyTupleLiteral,
+    TpyVarargPack,
+    is_property_getter_read,
 )
 from ..parse.nodes import walk_expr_tree
 from ..type_def_registry import (get_type_def, is_borrowing_view_type,
@@ -36,12 +40,19 @@ from ..typesys import (
     TpyType, TupleType, TypeParamRef, make_dict,
     make_list, make_set, yield_uses_borrow_slot,
     is_callable_type, is_dyn_protocol, is_fn_type, is_protocol_type,
+    param_takes_ownership,
     type_param_names,
     OwnType, contains_type_param, unwrap_own, unwrap_readonly, unwrap_ref_type,
+    unwrap_send_sync,
 )
 from ..value_category import (
-    call_operands, frame_factory_callee, frame_temp_arg_source,
-    iterator_source_callee, origin_shared, owning_arg, OwningArg,
+    OriginKind, call_operands, held_type, frame_factory_callee, frame_receiver_temp,
+    frame_param_lends, fresh_receiver_root, materializing_temp_source,
+    is_rvalue_source,
+    frame_temp_arg_source, head_kept_argument, may_hold_pointer,
+    param_type_can_lend,
+    peel_coerce, instantiated_slot,
+    iterator_source_callee, origin, origin_shared, owning_arg, OwningArg,
 )
 from ..modules.type_resolution import owning_element_slot
 from .call_lends import (
@@ -560,57 +571,310 @@ def iteration_copied_leaves(ctx: SemanticContext, iterable: TpyExpr,
     return copied(elem_type, iteration_elem_provenance(ctx, iterable))
 
 
-def is_dangling_temporary_arg(expr: TpyExpr) -> bool:
-    """Check if an expression is a temporary whose storage won't survive.
-
-    Function calls and binary ops produce temporaries destroyed at
-    end-of-statement. Literals (string, int, array, etc.) are either
-    static or materialized by codegen into named locals. Names and field
-    accesses have addressable storage.
-    """
-    if isinstance(expr, TpyCoerce):
-        return is_dangling_temporary_arg(expr.expr)
+def is_dangling_temporary_arg(ctx: SemanticContext, expr: TpyExpr) -> bool:
+    """Whether argument `expr` is a temporary that dies with its statement:
+    a value its statement creates, by its value-category origin (`origin`)
+    -- a call's or an operator's result, a container literal or
+    comprehension (`[x] * n` too), an f-string, a member of one. A fresh
+    argument lives for the statement that evaluates it, whatever its
+    parameter. A scalar, str or bytes literal is static storage; names and
+    fields of existing storage have addresses."""
+    if isinstance(expr, TpyCoerce) and not expr.coercion.builds_fresh_value:
+        return is_dangling_temporary_arg(ctx, expr.expr)
     # A borrowing constructor lends its argument, so its temporariness
     # follows the arg: StrView("lit") / Ptr(name) wrap stable storage and do
     # not dangle, while StrView(make()) does.
     arg = borrowing_ctor_arg(expr)
     if arg is not None:
-        return is_dangling_temporary_arg(arg)
-    if isinstance(expr, TpyCallLike) and expr.result_form is ResultForm.BORROW:
-        # Sema proved every argument it lends is existing storage.
-        return False
-    if isinstance(expr, (TpyCall, TpyMethodCall, TpyBinOp, TpyFString)):
-        return True
+        return is_dangling_temporary_arg(ctx, arg)
     if isinstance(expr, TpyIfExpr):
-        return (is_dangling_temporary_arg(expr.then_expr)
-                or is_dangling_temporary_arg(expr.else_expr))
-    return False
+        return (is_dangling_temporary_arg(ctx, expr.then_expr)
+                or is_dangling_temporary_arg(ctx, expr.else_expr))
+    if isinstance(expr, _STATIC_LITERALS + (TpyVarargPack,)):
+        # A `*args` pack's array is a local its statement declares before it.
+        return False
+    if any(leaf.kind is not OriginKind.SHARED for leaf in origin(ctx, expr)):
+        return True
+    # A borrow of a fresh operand (`items(mkb(40))`) dies with it.
+    return any(loan.fresh and not isinstance(loan.key, StorageKey)
+               and loan.operand is not expr
+               and is_dangling_temporary_arg(ctx, loan.operand)
+               for loan in call_loans(expr, MayLend(ctx)))
+
+
+# Literals whose storage is static: no temporary to outlive.
+_STATIC_LITERALS = (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
+                    TpyNoneLiteral, TpyStrLiteral, TpyBytesLiteral)
+
+
+
+def keep_head_arguments(ctx: SemanticContext, head: TpyExpr) -> None:
+    """Record what a compound statement's head (a `for` iterable, a
+    comprehension clause source, a `with` item, a `match` subject) keeps
+    until the statement ends, at any depth and under a condition too: an
+    argument at a parameter that borrows it (`_parameter_borrows`), and a
+    fresh receiver of a non-consuming method or of a kept field read. The lowering stamps the verdict
+    on the parameter's slot; the conversion decides what is held. A
+    parameter taking ownership, an owning element slot handed over at, an
+    `adopts=` result and a static literal keep nothing. A borrow out of
+    what the head keeps (`make(2).get()`) lives as long as it does
+    (`head_kept_borrows`). A binding that outlives the statement is not
+    covered (BUGS.md#record-keeps-fresh-argument-past-statement); the head's
+    own object it borrows is (`enclose_head_roots`)."""
+    def record(arg: TpyExpr) -> None:
+        if isinstance(peel_coerce(arg), _STATIC_LITERALS):
+            # Static storage: nothing to keep.
+            return
+        ctx.head_kept_args.add(arg)
+        # The value read under a conversion is the argument as well (a
+        # `str` field read handed to a `StrView` parameter).
+        ctx.head_kept_args.add(peel_coerce(arg))
+        # A tuple literal's elements are parts of the one argument (a lend
+        # source names the element it points into).
+        if isinstance(peel_coerce(arg), TpyTupleLiteral):
+            ctx.head_kept_args.update(peel_coerce(arg).elements)
+
+    def fresh_root(obj: TpyExpr) -> TpyExpr | None:
+        # The fresh object a member read off `obj` lives in, under any
+        # chain of field reads, subscripts and Deref hops -- the root the
+        # lowering seats (`fresh_seat_root`).
+        root = fresh_receiver_root(obj, ctx)
+        return (root if root is not None and _parameter_borrows(
+            ctx.get_expr_type(root), root, ctx) else None)
+
+    def keep(e: TpyExpr) -> None:
+        root = (fresh_root(e.obj)
+                if isinstance(e, (TpyFieldAccess, TpySubscript))
+                and e in ctx.head_kept_args
+                and not materializing_temp_source(e, ctx) else None)
+        if root is not None:
+            # A kept field or lent element read of a fresh object borrows
+            # that object: the object is kept, as a method's fresh receiver
+            # is, and the read is a borrow of it, no object of its own.
+            record(root)
+            ctx.head_kept_args.discard(e)
+            ctx.head_kept_borrows.add(e)
+        ops = call_operands(e)
+        if ops is None:
+            return
+        # A fresh receiver only: a borrow out of a fresh value is no object
+        # of its own -- its root is, kept as the receiver it is.
+        root = (fresh_root(ops.obj)
+                if isinstance(e, TpyMethodCall) and ops.obj is not None
+                and not ops.fi.root.is_consuming else None)
+        if root is not None:
+            record(root)
+        # A generator or coroutine frame holds what its parameter does at
+        # the instantiated type (`frame_param_lends`: a `str` is copied in).
+        frame = frame_factory_callee(ops.fi) or ops.fi.is_async
+        for idx, arg in ops.positioned():
+            if (0 <= idx < len(ops.fi.params) and not ops.takes_ownership(idx)
+                    and idx not in ops.fi.root.adopted_params
+                    and not (owning_element_slot(ops.fi.params[idx].type,
+                                                 ctx.registry)
+                             and owning_arg(ctx, arg) is OwningArg.HANDED_OVER)
+                    and _parameter_borrows(ops.fi.params[idx].type, arg,
+                                           ctx, frame=frame)):
+                record(arg)
+
+    def visit(e: TpyExpr) -> None:
+        if e is not head and isinstance(e, _OWN_SCOPES):
+            return
+        keep(e)
+        for child in e.children():
+            visit(child)
+
+    def borrows(e: TpyExpr) -> None:
+        if e is not head and isinstance(e, _OWN_SCOPES):
+            return
+        for child in e.children():
+            borrows(child)
+        if _borrows_kept_roots(ctx, e):
+            ctx.head_kept_borrows.add(e)
+
+    visit(head)
+    borrows(head)
+
+
+def enclose_head_roots(ctx: SemanticContext, value: TpyExpr,
+                       target_t: TpyType | None) -> None:
+    """Record the fresh values `value` -- what a name the statement binds
+    and reads after it holds, at the name's type `target_t` as substituted
+    for this statement -- borrows from (`borrow_roots`) as storage the
+    enclosing scope holds. A value that cannot carry a borrow (a copy of a
+    `str`, a number) keeps nothing; a reference type aliases."""
+    # A `str` / `bytes` value handed back, its form open, binds as the
+    # owned value, as its concrete twin does.
+    bare = held_type(target_t) if target_t is not None else None
+    if bare is not None and bare.is_value_type() and not may_hold_pointer(bare):
+        return
+    # An enclosed root keeps what it borrows itself (`Mgr(Src(6).box)`
+    # holding a pointer into `Src(6)`): enclosed as well.
+    todo = list(borrow_roots(ctx, value) or ())
+    while todo:
+        root = todo.pop()
+        if root in ctx.head_enclosed_roots:
+            continue
+        if is_dangling_temporary_arg(ctx, root):
+            ctx.head_enclosed_roots.add(root)
+            todo.extend(borrow_roots(ctx, root) or ())
+    _refuse_unseen_stored_address(ctx, value)
+
+
+def _refuse_unseen_stored_address(ctx: SemanticContext,
+                                  value: TpyExpr) -> None:
+    """Refuse a constructor under `value` -- what a name the statement
+    binds and reads after it holds -- that keeps the address of a
+    temporary of the statement (`addr_escapes_params`) no enclosed root
+    covers: the borrow facts (`call_loans`) do not record such a store
+    (BUGS.md#ctor-ptr-store-not-a-loan), so nothing keeps the temporary
+    for the name, which would read it after it dies."""
+    ctors: list[TpyCall] = []
+
+    def visit(e: TpyExpr) -> bool:
+        fi = getattr(e, "resolved_function_info", None)
+        if isinstance(e, TpyCall) and fi is not None and fi.initializes_type:
+            ctors.append(e)
+        return True
+
+    walk_expr_tree(value, visit)
+    for e in ctors:
+        fi = e.resolved_function_info
+        for idx in sorted(fi.root.addr_escapes_params):
+            if not 0 <= idx < len(e.args):
+                continue
+            root = _field_read_root(ctx, e.args[idx])
+            if (is_dangling_temporary_arg(ctx, root)
+                    and root not in ctx.head_enclosed_roots):
+                raise ctx.error(
+                    f"'{fi.name}' keeps the address of a temporary this "
+                    f"statement destroys, and the name the `with` binds is "
+                    f"read after the statement. Bind the temporary to a "
+                    f"local first", e.args[idx])
+
+
+def borrow_roots(ctx: SemanticContext,
+                 e: TpyExpr) -> 'tuple[TpyExpr, ...] | None':
+    """The values `e`'s value borrows from (`call_loans`' fresh loans),
+    through a borrow of a borrow (`make(2).get()`, at any depth of the
+    chain), down to an operand its head keeps or one that borrows nothing
+    fresh itself. None when `e` borrows nothing fresh."""
+    loans = [loan for loan in call_loans(e, MayLend(ctx))
+             if loan.fresh and not isinstance(loan.key, StorageKey)
+             and loan.operand is not e]
+    if not loans:
+        return None
+    roots: list[TpyExpr] = []
+    for loan in loans:
+        op = _field_chain_root(ctx, loan.operand)
+        deeper = (None if head_kept_argument(ctx, op)
+                  else borrow_roots(ctx, op))
+        roots.extend(deeper if deeper is not None else (op,))
+    return tuple(roots)
+
+
+def _field_chain_root(ctx: SemanticContext, e: TpyExpr) -> TpyExpr:
+    """The object a field or lent element read of a fresh value
+    (`mkh().b.c`, `mk()[0].cm`) is part of, through a chain of any depth
+    and its conversions (`fresh_receiver_root`): the read is a borrow of
+    that object, no object of its own -- the root `keep_head_arguments`
+    records. Any other value is its own root."""
+    bare = peel_coerce(e)
+    if (isinstance(bare, (TpyFieldAccess, TpySubscript))
+            and not materializing_temp_source(bare, ctx)):
+        root = fresh_receiver_root(bare.obj, ctx)
+        if root is not None:
+            return root
+    return e
+
+
+def _field_read_root(ctx: SemanticContext, e: TpyExpr) -> TpyExpr:
+    """The object a field read of a fresh value (`mkh().b.c`) is part of,
+    through field reads only: the reach of the stored-address refusal
+    (`_refuse_unseen_stored_address`), which an element read does not
+    widen. Any other value is its own root."""
+    root = e
+    while True:
+        bare = peel_coerce(root)
+        if not (isinstance(bare, TpyFieldAccess)
+                and is_rvalue_source(ctx, bare.obj)):
+            return root
+        root = bare.obj
+
+
+_OWN_SCOPES = (TpyLambda, TpyListComprehension, TpySetComprehension,
+               TpyDictComprehension, TpyGeneratorExpression)
+
+
+def _parameter_borrows(ptype: TpyType | None, arg: TpyExpr,
+                       ctx: SemanticContext, *, frame: bool = False) -> bool:
+    """Whether a parameter of type `ptype` borrows argument `arg` rather
+    than taking a value of its own, at the type the call instantiates it:
+    a structural protocol at its concrete twin (`sum(xs)` over `int32`
+    takes values), an open `T` at the argument's type -- then the one
+    predicate of what a callee's result can borrow (`param_type_can_lend`),
+    or at a generator or coroutine (`frame`) of what its frame holds by
+    reference (`frame_param_lends`: a `str` is copied in)."""
+    t = instantiated_slot(ptype, arg, ctx, frame=frame)
+    if t is None:
+        return False
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(bare, TypeParamRef):
+        return False
+    if frame:
+        return frame_param_lends(bare)
+    return param_type_can_lend(bare, callables=False)
 
 
 def temp_arg_kept_alive(fi: FunctionInfo, idx: int, arg: TpyExpr,
                         slot: TpyType | None, ctx: SemanticContext) -> bool:
     """Whether a temporary argument outlives the statement although the
     callee's result borrows it, so the dangle warnings below must stay
-    silent: the compiler hoists a frame factory's argument into a named
-    local, a container handed over at an owning element slot moves into
-    the callee's frame, and a body-less lazy combinator (`zip`,
+    silent: the compiler hoists a frame factory's argument (and a
+    generator method's constructor receiver) into a named local, a
+    container handed over at an owning element slot moves into the
+    callee's frame, and a body-less lazy combinator (`zip`,
     `enumerate`, ...) OWNS a temporary -- its rvalue flavor moves the
     argument in.
 
     The hoist asks the lowering row's own shape predicate rather than a
     second copy of it: a warning that disagreed with the hoist would either
     fire on code the compiler already made safe, or go quiet on a shape it
-    never hoisted."""
+    never hoisted.
+
+    A compound statement's head keeps its fresh arguments until the
+    statement ends (`keep_head_arguments`)."""
+    if head_kept_argument(ctx, arg, borrows=True):
+        return True
+    if idx == -1:
+        # A generator method's constructor receiver is seated on a named
+        # local the loop outlives.
+        return fi.is_generator and frame_receiver_temp(arg, ctx)
     if idx < 0 or idx >= len(fi.params):
         return False
     if not frame_factory_callee(fi):
         return iterator_source_callee(fi)
+    # A frame owns what its parameter takes by ownership (`Own[T]`).
+    root_params = fi.root.params
+    if (idx < len(root_params) and root_params[idx].type is not None
+            and param_takes_ownership(root_params[idx].type)):
+        return True
     # A container handed over at an owning element slot moves into the
     # frame, which then owns it by value, whatever spells the argument.
     if (owning_element_slot(fi.params[idx].type, ctx.registry)
             and owning_arg(ctx, arg) is OwningArg.HANDED_OVER):
         return True
     return frame_temp_arg_source(arg, slot, ctx) is not None
+
+
+def _borrows_kept_roots(ctx: SemanticContext, arg: TpyExpr) -> bool:
+    """Whether `arg` is a borrow out of fresh values a compound head keeps
+    (`make(2).get()` with `make(2)` kept as the receiver it is): every root
+    it borrows from (`borrow_roots`) is kept, so it lives as long as they
+    do."""
+    roots = borrow_roots(ctx, arg)
+    return roots is not None and all(head_kept_argument(ctx, r)
+                                     for r in roots)
 
 
 def temp_arg_spelling(fi: FunctionInfo, idx: int) -> str:
@@ -933,6 +1197,7 @@ def register_iteration_loans(
     `excluded_roots` names storage the iterating code cannot reach by
     name: a comprehension whose target shadows its source's root.
     """
+    keep_head_arguments(ctx, iterable)
     bt = ctx.func.borrow_tracker
     storage = iterated_storage(ctx, iterable)
     excluded = set(excluded_roots)
@@ -969,31 +1234,10 @@ def register_iteration_loans(
                            MarkRequest(protocol_only=not is_dyn_protocol(inner)))
         return IterationLoan(unplaceable=storage.unplaceable,
                              loans=storage.loans)
+    # An iterable's temporary operand needs no warning: the loop's head
+    # keeps it until the loop ends (`keep_head_arguments`), a borrow out of
+    # one with it (`temp_arg_kept_alive`).
     fi_iter = storage.callee
-    for op in storage.operands:
-        if op.sources or not is_dangling_temporary_arg(op.arg):
-            continue
-        # Call results returning non-value types are materialized into
-        # named variables by codegen (for by-reference passing), so they
-        # survive the for-loop. A borrowing-VIEW slot of a frame-capturing
-        # callee is materialized too, by the view-backing hoist. Only warn
-        # for what neither pins.
-        is_materialized = temp_arg_kept_alive(
-            fi_iter, op.idx, op.arg, op.slot, ctx)
-        if isinstance(op.arg, (TpyCall, TpyMethodCall)):
-            arg_fi = op.arg.resolved_function_info
-            if arg_fi is not None and not arg_fi.return_type.is_value_type():
-                is_materialized = True
-        if not is_materialized:
-            if op.idx == -1:
-                detail = "temporary receiver object"
-            else:
-                detail = f"temporary {temp_arg_spelling(fi_iter, op.idx)}"
-            ctx.warning(
-                f"Iterator borrows from {detail}; "
-                f"the temporary is destroyed before iteration begins",
-                iterable,
-            )
     if not storage.loans:
         return IterationLoan(unplaceable=storage.unplaceable)
     srcs_by_idx = {idx: op.sources

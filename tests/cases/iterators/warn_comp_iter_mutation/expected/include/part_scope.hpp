@@ -15,7 +15,7 @@ using ::tpyapp::fixtures::mk_box;
 
 inline constexpr std::string_view __name__ = "part_scope";
 
-// def temp_receiver(big: bool) -> int32:  # tpyc: mir(uncovered /temporary needs full-expression boundary/)
+// def temp_receiver(big: bool) -> int32:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
 int32_t temp_receiver(bool big);
 // def self_named_source() -> int32:  # tpyc: mir(uncovered /order-sensitive eager operands/)
 int32_t self_named_source();

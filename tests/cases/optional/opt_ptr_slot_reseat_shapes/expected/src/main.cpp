@@ -134,21 +134,17 @@ int32_t call_ternary(Cell& a, Cell& b, bool flag) {
 //     print("dunder gen", list(dunder_gen(Cell(5), Cell(4))))
 //     print("call ternary", call_ternary(Cell(6), Cell(7), False))
 void main() {
-    Box __tmp_1 = Box(Inner(3));
-    std::cout << ::tpyapp::main::double_rvalue_reseat() << " " << ::tpyapp::main::lvalue_reseat(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::double_rvalue_reseat() << " " << ::tpyapp::main::lvalue_reseat(::tpy::as_mut_lvalue(Box(Inner(3)))) << "\n" << ::tpy::check_signals;
     Cell c = Cell(1);
     std::cout << "self reseat" << " " << c.keep() << " " << c.value << "\n" << ::tpy::check_signals;
     Cell b = Cell(2);
     std::cout << "param reseat" << " " << ::tpyapp::main::param_reseat(nullptr, b) << " " << b.value << "\n" << ::tpy::check_signals;
-    Cell __tmp_2 = Cell(3);
-    std::cout << "borrow call" << " " << ::tpyapp::main::borrow_call(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "borrow call" << " " << ::tpyapp::main::borrow_call(::tpy::as_mut_lvalue(Cell(3))) << "\n" << ::tpy::check_signals;
     std::cout << "dunder" << " " << ::tpyapp::main::dunder() << "\n" << ::tpy::check_signals;
-    Cell __tmp_3 = Cell(5);
-    Cell __tmp_4 = Cell(4);
-    std::cout << "dunder gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::dunder_gen(__tmp_3, __tmp_4))) << "\n" << ::tpy::check_signals;
-    Cell __tmp_5 = Cell(6);
-    Cell __tmp_6 = Cell(7);
-    std::cout << "call ternary" << " " << ::tpyapp::main::call_ternary(__tmp_5, __tmp_6, false) << "\n" << ::tpy::check_signals;
+    Cell __tmp_1 = Cell(5);
+    Cell __tmp_2 = Cell(4);
+    std::cout << "dunder gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::dunder_gen(__tmp_1, __tmp_2))) << "\n" << ::tpy::check_signals;
+    std::cout << "call ternary" << " " << ::tpyapp::main::call_ternary(::tpy::as_mut_lvalue(Cell(6)), ::tpy::as_mut_lvalue(Cell(7)), false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

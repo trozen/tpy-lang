@@ -1,0 +1,198 @@
+core 1
+core 2
+head for 100
+head for 101
+head for 102
+head for 0
+head for literal 7
+head for literal 8
+head for receiver 50
+head for receiver 51
+head for receiver 52
+head comp [200, 201, 202, 0]
+head with 4
+head match 3
+head gen [500, 501, 502, 0, 3, 4, 4, 4]
+frames make 30
+frames cond [30, 31] [9]
+frames make 40
+frames recv [40, 41]
+frames make 50
+frames make 55
+frames tuple [50, 51] [55, 56]
+frames make 60
+frames nosusp [121]
+frames make 1
+frames enter 1
+frames make 2
+frames enter 2
+frames exit 2
+frames exit 1
+frames with [3]
+frames make 70
+frames match [70, 71]
+frames value [3, 4]
+view str for v
+view str for i
+view str for e
+view str for w
+view str for -
+view str for 8
+view span 3
+view span 4
+cond head 1
+cond head 2
+walrus head 5
+walrus head 6
+walrus after 5
+member init [8, 10] 9
+view str for v
+view str for i
+view str for e
+view str for w
+view str for -
+view str for 8
+view span 3
+view span 4
+cond head 9
+walrus head 5
+walrus head 6
+walrus after 5
+member init [8, 10] 9
+gen [1, 1, 1, 1, 1, 1, 20, 21, 40]
+comp order 63
+async 121 5
+recv free 7
+recv free 8
+recv binop 1
+recv binop 10
+recv kwargs 5
+recv kwargs 8
+recv property 9
+recv property 10
+chain for 1
+chain for 2
+chain with 9
+chain match ab
+prop for 3
+prop comps [2, 3] 2 2
+prop with 1
+method with 2
+prop match abc
+prop live 7
+prop guard live 13
+with in 2
+with after 2
+with ref in 8
+with ref after 8
+order 52
+convs union 1
+convs union 2
+convs covariant 20
+convs covariant 21
+convs optional 3
+convs optional 4
+convs adapter 4
+convs adapter 5
+convs gen [5, 6, 60, 61, 7, 8, 9, 10, 2, 3, 2, 3] [2, 3]
+convs views ['v0', 'i0', 'v0', 'i0', 'v0', 'i0']
+roots borrowed ['key-long-enough-to-heap-10', 'key-long-enough-to-heap-11', 'key-long-enough-to-heap-20', 'key-long-enough-to-heap-21']
+roots consuming 3
+roots consuming 4
+roots open 4
+roots open 5
+roots generic 160
+bound str a-long-strin 4
+bound borrowed 5 enter after via-r
+roots comp [2, 4]
+roots gen ['504', '514', 'enter/exit', 'gen-via-r']
+async make 30
+async make 40
+async make 1
+async enter 1
+async make 2
+async enter 2
+async exit 2
+async exit 1
+async make 40
+async make 1
+async enter 1
+async make 2
+async enter 2
+async exit 2
+async exit 1
+async body 145 93
+enclosed value label-long-e 36 20
+enclosed view view-cm-text 222 20
+enclosed match owned 4 44! 20
+enclosed match borrowed 40
+enclosed owned gen ['a', '0020', 'a', '1120']
+enclosed rebound gen [5, 0, 9]
+enclosed ref 112
+enclosed ref again 102
+enclosed ref loop 106
+enclosed ref loop 107
+enclosed nocopy 8
+enclosed ref 112
+enclosed ref again 112
+enclosed ref loop 106
+enclosed ref loop 107
+enclosed nocopy 8
+enclosed chain cm-long-enou ! 20
+enclosed deep !?
+enclosed rebound in 5
+enclosed rebound 9
+enclosed gen ['cm-', '!20']
+placement nested def 43
+placement nested def outer 43
+placement nested 222 22! 30
+placement nested 111 11! 30
+placement nested gen ['a', '22222!30']
+placement nested gen ['a', '11111!30']
+placement in 64
+placement after 64
+placement del 64 True
+placement owned 11 22
+compound churn 20
+compound for 2 True
+compound churn 20
+compound for head 5 True
+compound churn 20
+compound while 7 True
+compound churn 20
+compound if 8 True
+compound finally 9
+compound churn 20
+compound try 9 True
+compound churn 20
+compound with 10 100 True
+compound churn 20
+compound match 11 True
+compound churn 20
+compound for 2 True
+compound churn 20
+compound for head 5 True
+compound churn 20
+compound while 7 True
+compound churn 20
+compound if 7 True
+compound finally 8
+compound churn 20
+compound try 8 True
+compound churn 20
+compound with 9 100 True
+compound churn 20
+compound match 10 True
+compound rebuilt [1, 2, 2, 3]
+compound rebuilt [1, 2, 2, 3, 4]
+compound rebuilt [1, 2, 2, 3, 4, 5]
+compound churn 20
+compound gen rebuilt [4, 5, 6, 6]
+compound churn 20
+compound co rebuilt 6
+compound churn 20
+compound in place 5 0 7
+compound churn 20
+compound in place 0 0 0
+module in 5
+module after 5 True 30

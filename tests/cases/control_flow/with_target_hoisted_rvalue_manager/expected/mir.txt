@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::rvalue_manager@31:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::rvalue_manager@31:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::lvalue_manager@41:0: uncovered (custom record special member), summary: opaque (custom record special member)
 main::main@52:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Reg.__enter__@21:4: uncovered (custom record special member), summary: opaque (custom record special member)

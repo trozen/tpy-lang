@@ -55,6 +55,7 @@ from ..parse import (
     TpyStrLiteral,
     TpySubscript, TpyUnaryOp, TpyVarargPack, is_property_getter_read,
 )
+from .. import qnames
 from ..type_def_registry import (
     is_borrowing_view_type, is_bytearray_type, is_bytes_type, is_enum_type,
     is_str_type, is_str_view_type, is_string_type, is_varargs, get_type_def,
@@ -82,11 +83,13 @@ from ..value_category import (
     DeclaredOf, frame_param_lends, getitem_call_of, param_type_can_lend,
     is_generic_protocol, param_written, protocol_twin_slot,
     lent_operand_binds_open_param,
-    lent_operands, property_access_returns_cpp_ref,
-    holds_no_pointer, is_rvalue_source, may_hold_pointer, peel_coerce,
-    origin, OriginKind,
-    reference_may_hold_pointer,
+    lent_operands, method_owner_type, property_access_returns_cpp_ref,
+    holds_no_pointer, is_lvalue_iterable, is_rvalue_source, may_hold_pointer,
+    peel_coerce,
+    origin, OriginKind, OwningArg, carries_borrow, element_borrow_form,
+    reference_may_hold_pointer, result_carries_borrow,
 )
+from .source_records import read_record
 from .storage_walk import (
     qualifier_kind,
     Ask, CallPolicy, LeafKind, StorageKey, Use, call_lends_receiver_at,
@@ -930,6 +933,18 @@ class Retention(Flag):
     # A body-less binding may keep a copy of it, and so of every pointer it
     # holds; the receiver is never kept this way.
     COPIES = auto()
+    # Beside MEASURED: what the body was measured to keep it through is its
+    # result only (a recorded return-borrow source whose address escapes
+    # nowhere else).
+    MEASURED_RESULT = auto()
+    # Beside MEASURED: a constructor stores it in the object it builds and
+    # nowhere else the body is measured to (its `self` fields only).
+    CONSTRUCTED = auto()
+    # An `Iterable` / `Iterator` parameter whose iterator the result may
+    # still advance after the call (`enumerate(xs)`, `itertools.cycle([..])`)
+    # and so point into the argument: what the body or binding is measured
+    # to keep names the parameter alone.
+    ITERATED = auto()
 
 
 def retention_channel(fi: 'FunctionInfo | None', index: int,
@@ -942,12 +957,66 @@ def retention_channel(fi: 'FunctionInfo | None', index: int,
     classified once (`callee_fact`); the channels are computed from it."""
     if fi is None or index < -1:
         return Retention.MEASURED
+    keeps = _measured_retention(fi, index, call, analyzer, arg, recv)
+    if keeps is not None and keeps & (Retention.RESULT
+                                      | Retention.DECLARED_RESULT):
+        # A binding's result channel already keeps it.
+        return keeps
+    if arg is None and isinstance(call, (TpyCall, TpyMethodCall)) and (
+            0 <= index < len(call.args)):
+        arg = call.args[index]
+    if _iterated_lazily(fi, index, call, analyzer, arg):
+        return (keeps or Retention(0)) | Retention.ITERATED
+    return keeps
+
+
+def _iterated_lazily(fi: 'FunctionInfo', index: int, call: TpyExpr | None,
+                     analyzer: 'ValueCategoryAnalyzer | None',
+                     arg: TpyExpr | None) -> bool:
+    """Parameter `index` is an `Iterable` / `Iterator` (or an Optional of
+    one) whose result may iterate it after the call returns (`ITERATED`):
+    an object known by its protocol (an iterator, a generator or
+    coroutine) or one a binding's constructor builds (`_runs_binding`: a
+    TPy `__init__`'s field stores are measured) -- unless the result takes
+    the argument over (`_handed_over`). A result of any other type was built
+    by the call, which iterated the argument then (`acc += xs`). Without
+    an analyzer no result type is known: nothing is added."""
+    if analyzer is None or not 0 <= index < len(fi.params):
+        return False
+    t = analyzer.get_expr_type(call) if isinstance(call, TpyExpr) else None
+    if not ((fi.initializes_type and _runs_binding(fi))
+            or _frame_callee(fi) or (
+            t is not None and is_protocol_type(
+                unwrap_readonly(unwrap_send_sync(t))))):
+        return False
+    ptype = fi.params[index].type
+    if ptype is None:
+        return False
+    bare = unwrap_readonly(unwrap_send_sync(ptype))
+    if isinstance(bare, OptionalType):
+        bare = unwrap_readonly(bare.inner)
+    if not (isinstance(bare, NominalType) and bare.is_protocol
+            and bare.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR)):
+        return False
+    return (not _handed_over(fi, index, arg, analyzer)
+            and result_may_borrow(call, fi, analyzer))
+
+
+def _measured_retention(fi: 'FunctionInfo', index: int,
+                        call: TpyExpr | None,
+                        analyzer: 'ValueCategoryAnalyzer | None',
+                        arg: TpyExpr | None,
+                        recv: TpyExpr | None) -> Retention | None:
+    """The channels `retention_channel` reads off the callee's measured
+    facts and binding keywords."""
     kind = callee_fact(fi)
     # A generator or coroutine frame keeps its receiver, which no fact
     # names (BUGS.md#generator-method-receiver-borrow-unrepresented).
     if kind is CalleeFact.CALLABLE or (index == -1 and _frame_callee(fi)):
         return Retention.MEASURED
     root = fi.root
+    if root.keeps_no_argument:
+        return None
     # The one place this verdict departs from the classification: whether
     # a binding's code runs (`_runs_binding`), not whether it records a
     # fact. A binding's conventions stamped at registration classify it
@@ -958,11 +1027,17 @@ def retention_channel(fi: 'FunctionInfo | None', index: int,
     if not _runs_binding(fi):
         # A body sema measures; none measured yet (PENDING) or none
         # recorded (STUB) fails closed.
-        if (kind not in _RECORDS_A_FACT
-                or index in recorded_return_borrow_sources(fi)
-                or index in root.addr_escapes_params
-                or index in root.readonly_addr_escapes_params):
+        escapes = (index in root.addr_escapes_params
+                   or index in root.readonly_addr_escapes_params)
+        if kind not in _RECORDS_A_FACT:
             return Retention.MEASURED
+        if escapes:
+            return (Retention.MEASURED | Retention.CONSTRUCTED
+                    if fi.initializes_type
+                    and index not in root.foreign_addr_escapes_params
+                    else Retention.MEASURED)
+        if index in recorded_return_borrow_sources(fi):
+            return Retention.MEASURED | Retention.MEASURED_RESULT
         return None
     if arg is None and isinstance(call, (TpyCall, TpyMethodCall)) and (
             0 <= index < len(call.args)):
@@ -979,6 +1054,100 @@ def retention_channel(fi: 'FunctionInfo | None', index: int,
             or root.is_transient or not _component_may_point(slot)):
         keeps |= Retention.COPIES
     return keeps or None
+
+
+def result_may_borrow(e: object, fi: FunctionInfo | None,
+                       analyzer: ValueCategoryAnalyzer) -> bool:
+    """Whether `e`'s value may point into an operand's storage: a value
+    that may hold a pointer, a reference callee `fi` returns, or -- with no
+    callee, a field or element read -- a reference-type object, which is
+    the operand's own storage."""
+    t = analyzer.get_expr_type(e) if isinstance(e, TpyExpr) else None
+    if t is not None and is_protocol_type(
+            unwrap_readonly(unwrap_send_sync(t))):
+        # An object known by its protocol (an iterator over its source, a
+        # generator or coroutine) may hold what it was given.
+        return True
+    if fi is not None:
+        return result_carries_borrow(fi, t)
+    return carries_borrow(t, borrow_form=t is None or element_borrow_form(
+        t, copies=False))
+
+
+def _handed_over(fi: FunctionInfo, index: int, operand: object,
+                 analyzer: ValueCategoryAnalyzer) -> bool:
+    """A fresh argument the result takes over whole -- a container its
+    owning element slot is handed (`handed_over_record`), one a binding
+    adopts (`adopts=`): the result owns it, nothing points into it."""
+    if handed_over_record(operand, analyzer):
+        return True
+    # A record whose `__iter__` lends a separate iterator into it is pinned
+    # where its iterator is: adopting it moves nothing that iterator reads.
+    return (isinstance(operand, TpyExpr)
+            and index in fi.root.adopted_params
+            and is_rvalue_source(analyzer, peel_coerce(operand))
+            and separate_iterator_record_temp(operand, analyzer) is None)
+
+
+def handed_over_record(operand: object,
+                       analyzer: ValueCategoryAnalyzer) -> bool:
+    """`operand` is handed over to an owning element slot (its source
+    record's `handover`)."""
+    # Sema asks with its own context, the lowering with an analyzer over it.
+    ctx = getattr(analyzer, "ctx", analyzer)
+    rec = read_record(ctx, operand) if isinstance(
+        operand, TpyExpr) else None
+    return rec is not None and rec.handover is OwningArg.HANDED_OVER
+
+
+def _self_iterator_record(ri, analyzer) -> bool:
+    """Whether a compiled record is its own iterator: every `__iter__` it
+    declares or inherits returns a REFERENCE to exactly this record. An
+    ancestor's type does not count -- `return self` inherited from a base and
+    `return self.inner` delegating to a base-typed member have the same
+    signature -- and neither does a fresh instance of its own class
+    (`-> Own[Cur]`). The runtime asks the same question of the C++ type
+    (`is_self_iterator_v`, dunder.hpp)."""
+    overloads = analyzer.registry.get_method_overloads_with_parents(
+        ri, "__iter__")
+    if not overloads:
+        return False
+    for fi in overloads:
+        rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            fi.return_type)))
+        if isinstance(rt, OwnType):
+            return False
+        if analyzer.registry.get_record_for_type(rt) is not ri:
+            return False
+    return True
+
+
+def separate_iterator_record_temp(a: TpyExpr, analyzer) -> 'TpyType | None':
+    """A TEMPORARY of a compiled record whose `__iter__` returns a separate
+    iterator object: the record type, else None. Its `__iter__` is user code
+    that runs at the combinator call, and the iterator may point into the
+    record, so a combinator that OWNS one is pinned -- the pair cannot move.
+    A self-iterator record, a runtime or @native type and an lvalue are never
+    this kind."""
+    at = analyzer.get_expr_type(a)
+    if at is None:
+        return None
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+    if isinstance(at, OwnType):
+        at = unwrap_readonly(at.wrapped)
+    if not isinstance(at, NominalType) or at.is_protocol:
+        return None
+    ri = analyzer.registry.get_record_for_type(at)
+    if ri is None or ri.is_native:
+        return None
+    if not analyzer.registry.get_method_overloads_with_parents(ri, "__iter__"):
+        return None
+    if _self_iterator_record(ri, analyzer):
+        return None
+    if is_lvalue_iterable(a, analyzer.registry.get_record):
+        return None
+    return at
+
 
 
 def _adopts_fresh(fi: FunctionInfo, index: int, arg: TpyExpr | None,
@@ -1426,8 +1595,7 @@ def _builtin_own_result(ctx: 'SemanticContext', call: TpyExpr) -> bool:
     if isinstance(call, TpyMethodCall):
         # The receiver the method resolved on: a `Ptr`, `Box` or `Rc`
         # receiver reaches its pointee's method through `__deref__`.
-        recv = unwrap_qualifiers(call.deref_receiver_type
-                                 or ctx.get_expr_type(call.obj))
+        recv = method_owner_type(call, ctx.get_expr_type(call.obj))
         # Through a protocol or a type parameter the call may reach a user
         # filler, whose `Own[T]` result is fresh like a concrete method's.
         if isinstance(recv, TypeParamRef) or is_protocol_type(recv):

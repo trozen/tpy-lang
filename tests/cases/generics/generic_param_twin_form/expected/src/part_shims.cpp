@@ -39,8 +39,7 @@ void main() {
     std::cout << "shim call" << " " << ::tpy::print_bool(b.__call__(k)) << " " << k.s << "\n" << ::tpy::check_signals;
     std::cout << "shim add" << " " << ((b) + (k)) << " " << k.s << "\n" << ::tpy::check_signals;
     ::tpyapp::fixtures::C c = ::tpyapp::fixtures::C(1);
-    ::tpy::Adapter<Sink<::tpyapp::fixtures::C>, CSink> __tmp_1{CSink()};
-    std::cout << "dynamic class" << " " << ::tpyapp::part_shims::use(__tmp_1, c) << " " << c.n << "\n" << ::tpy::check_signals;
+    std::cout << "dynamic class" << " " << ::tpyapp::part_shims::use(::tpy::as_mut_lvalue(::tpy::Adapter<Sink<::tpyapp::fixtures::C>, CSink>{CSink()}), c) << " " << c.n << "\n" << ::tpy::check_signals;
     c.n = 5;
     std::cout << "dynamic class after" << " " << c.n << "\n" << ::tpy::check_signals;
     std::vector<::tpyapp::fixtures::V> xs = {::tpyapp::fixtures::V("x0")};

@@ -27,8 +27,7 @@ void main() {
     C __slot_1 = C();
     C* c = &__slot_1;
     std::cout << C::LIMIT << "\n" << ::tpy::check_signals;
-    C __tmp_1 = C();
-    ::tpyapp::main::use(&(__tmp_1));
+    ::tpyapp::main::use(&::tpy::as_mut_lvalue(C()));
 }
 
 // main()

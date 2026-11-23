@@ -1,0 +1,111 @@
+reads cycle ['abcdefghijklmnopqrstuvwxyz0123456789-10', 'abcdefghijklmnopqrstuvwxyz0123456789-20', 'abcdefghijklmnopqrstuvwxyz0123456789-10']
+reads generic co 30
+reads generic gen [3, 4]
+reads genexpr head [0, 2, 4, 6]
+reads genexpr awaited 12
+more coerced abcdefghijklmnopqrstuvwxyz0123456789-2
+more span 60
+more membership 2
+more consumed 38
+more literal select 39
+more vararg 21
+more await field field_abcdefghijklmnopqrstuvwxyz
+more await field select field_abcdefghijklmnopqrstuvwxyz
+more await element select element_abcdefghijklmnopqrstuvwxyz
+more await element or element_abcdefghijklmnopqrstuvwxyz
+more await param or second_abcdefghijklmnopqrstuvwxyz
+more await global select global_text_long_enough_for_the_heap_0123
+more await local or local_abcdefghijklmnopqrstuvwxyz_1
+more await local and other_abcdefghijklmnopqrstuvwxyz_1
+more await param select second_abcdefghijklmnopqrstuvwxyz
+more await field field_abcdefghijklmnopqrstuvwxyz
+more await field select fresh_0
+more await element select fresh_0
+more await element or f_0
+more await param or second_abcdefghijklmnopqrstuvwxyz
+more await global select fresh_0
+more await local or local_abcdefghijklmnopqrstuvwxyz_0
+more await local and other_abcdefghijklmnopqrstuvwxyz_0
+more await param select second_abcdefghijklmnopqrstuvwxyz
+more method field 32
+more method element or 3
+more method param or 33
+more method global select 7
+more method field 32
+more method element or 34
+more method param or 33
+more method global select 41
+fresh with 4 exit after-4
+fresh gen with ['exit/4']
+fresh prop 1
+fresh prop 2
+fresh tuple field [42, 43]
+fresh tuple element [45, 46]
+fresh own field 11 [5, 6]
+frames lambda 4
+frames list head 30
+frames comps 9 [0, 3, 6]
+frames genexpr co 12
+frames adapted [108, 109]
+holders qualified 120
+holders bound other [2, 102] [-1]
+holders task local 10
+holders literal gen [1, 1, 1, 1, 1, 1, 1, 1, 97, 98, 1, 1, 1]
+holders literal co 195402
+holders genexpr gen [10, 11, 12]
+holders genexpr co 87
+holders mk 1
+holders mk 2
+holders pack 3 5
+kinds chained 1
+kinds walrus [4, 104, 105]
+kinds call [5, 105]
+kinds setter 8
+kinds class [8, 9]
+kinds aug 10
+kinds unpack 40
+restored nul 3 3 4
+restored mk 2
+restored pack tern 5555 3292
+restored mk 3
+restored pack short True False
+restored mk 1
+restored pack gen [5, 8, 5, 6] [3, 1, 1, 9]
+restored mk 2
+restored pack co 555 529
+restored fwd gen [6]
+restored fwd co 10
+generic open plain 20 10 7
+generic open plain after [1, 2, 9, 9]
+generic open gen [1, 2] [7, 14] [5, 11]
+generic open gen after [1, 2, 9, 9, 9, 9]
+generic open co 4 16 15
+generic open co after [1, 2, 9, 9, 9, 9, 9, 9]
+generic open mono co 10
+generic own gen [1, 1] [1, 1]
+generic task pick 43
+generic first head [10, 10]
+generic first head co 20
+generic first method head [10, 10]
+generic first awaited 10
+generic first stmt 10
+generic first lent 95
+owning stored task abcdefghijklmnop_5_qrstuvwxyz_5
+owning returned await abcdefghijklmnop_6_r
+owning awaited select abcdefghijklmnop_8_a 17 lit
+owning awaited select local local_9
+owning awaited select ret cdefghijklmnop_9
+owning awaited select param hi efghijklmnop_2 hi hi hi
+owning awaited select param defghijklmnop_-1  fallback lit fghij_-1
+owning awaited select param hi efghijklmnop_1 hi hi q
+owning store record tag 3
+owning relay 12 21
+owning flat gen ['q3m3 6']
+owning stmt gen [437]
+owning stmt co 506
+owning gen method 3
+owning gen generic 3
+owning co method 6294
+owning eager ctor 11
+owning keeper task 6
+owning keeper gen [4, 5, 6]

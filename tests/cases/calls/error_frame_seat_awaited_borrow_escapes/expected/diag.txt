@@ -1,0 +1,1 @@
+main.py:22: error: Cannot return local or temporary as reference. Reference type 'Box' is returned by reference. Use Own[Box] to return by value.

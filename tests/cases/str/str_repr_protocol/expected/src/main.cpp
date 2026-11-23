@@ -122,16 +122,13 @@ void free_fn(std::optional<int32_t> x, const A* o, A* p, const ::tpy::Union<int3
     std::cout << "free repr" << " " << std::string(::tpy::repr_of(x)) << " " << std::string(::tpy::repr_of(o)) << " " << std::string(::tpy::repr_of(p)) << " " << std::string(::tpy::repr_of(u)) << " " << std::string(::tpy::repr_of(t)) << " " << std::string(::tpy::repr_of(j)) << "\n" << ::tpy::check_signals;
     std::cout << "free fstr" << " " << std::format("{} {} {} {} {} {} {} {} {}", ::tpy::__str__(x), ::tpy::__str__(o), ::tpy::__str__(p), ::tpy::__str__(u), ::tpy::tuple_to_str(t), ::tpy::list_to_str(xs), ::tpy::__str__(j), ::tpy::repr_of(o), ::tpy::repr_of(u)) << "\n" << ::tpy::check_signals;
     std::cout << "free proto" << " " << ::tpyapp::main::text(auto(x)) << " " << ::tpyapp::main::text(o) << " " << ::tpyapp::main::text(auto(p)) << " " << ::tpyapp::main::text(u) << " " << ::tpyapp::main::text(t) << " " << ::tpyapp::main::rtext(o) << "\n" << ::tpy::check_signals;
-    A __tmp_1 = A(2);
-    std::cout << "free generic" << " " << ::tpyapp::main::gtext<int32_t>(3) << " " << ::tpyapp::main::gtext<Color>(Color::RED) << " " << ::tpyapp::main::gtext<A>(__tmp_1) << "\n" << ::tpy::check_signals;
-    A __tmp_2 = A(5);
-    std::cout << "free fresh" << " " << ::tpyapp::main::text(std::tuple<int32_t, std::string>{1, "a"}) << " " << ::tpyapp::main::text(__tmp_2) << " " << std::string(::tpy::__str__(std::tuple<int32_t, std::string>{1, "a"})) << "\n" << ::tpy::check_signals;
+    std::cout << "free generic" << " " << ::tpyapp::main::gtext<int32_t>(3) << " " << ::tpyapp::main::gtext<Color>(Color::RED) << " " << ::tpyapp::main::gtext<A>(::tpy::as_mut_lvalue(A(2))) << "\n" << ::tpy::check_signals;
+    std::cout << "free fresh" << " " << ::tpyapp::main::text(std::tuple<int32_t, std::string>{1, "a"}) << " " << ::tpyapp::main::text(A(5)) << " " << std::string(::tpy::__str__(std::tuple<int32_t, std::string>{1, "a"})) << "\n" << ::tpy::check_signals;
     std::cout << "free field" << " " << std::string(::tpy::__str__(h.o)) << " " << std::string(::tpy::__str__(h.x)) << " " << std::string(::tpy::repr_of(h.pair)) << " " << ::tpyapp::main::text(::tpy::optional_to_ptr(h.o)) << " " << ::tpyapp::main::text(auto(h.x)) << "\n" << ::tpy::check_signals;
     std::cout << "free call" << " " << std::string(::tpy::__str__(h.get_a())) << " " << std::string(::tpy::repr_of(h.get_a())) << " " << ::tpyapp::main::text(h.get_a()) << "\n" << ::tpy::check_signals;
     std::cout << "free scalars" << " " << std::string(sv) << " " << std::string(s) << " " << std::string(::tpy::char_to_str(c)) << " " << std::string(::tpy::repr_of(c)) << " " << ::tpyapp::main::text(auto(3)) << " " << ::tpyapp::main::text(auto(sv)) << "\n" << ::tpy::check_signals;
     std::cout << "free enum" << " " << std::string(::tpy::__str__(Color::RED)) << " " << std::string(::tpy::repr_of(Color::RED)) << " " << std::string(::tpy::__str__(Num::ONE)) << " " << ::tpyapp::main::text(auto(Num::ONE)) << " " << std::format("{}", ::tpy::__str__(Color::RED)) << " " << ::tpyapp::main::rtext(auto(Color::RED)) << "\n" << ::tpy::check_signals;
-    S __tmp_3 = S();
-    std::cout << "free record" << " " << std::string(::tpy::__str__(A(1))) << " " << std::string(::tpy::__str__(S())) << " " << ::tpy::print_bool(::tpy::str_startswith(std::string(::tpy::repr_of(S())), "<__main__.S object at 0x")) << " " << ::tpyapp::main::text(__tmp_3) << " " << ::tpy::print_bool(::tpy::str_startswith(std::string(::tpy::__str__(Plain())), "<__main__.Plain object at 0x")) << " " << ::tpy::print_bool(::tpy::str_startswith(std::format("{}", ::tpy::__str__(Plain())), "<__main__.Plain object at 0x")) << " " << ::tpy::print_bool(::tpy::str_startswith(std::format("{}", ::tpy::repr_of(Plain())), "<__main__.Plain object at 0x")) << " " << ::tpy::print_bool(::tpy::str_startswith(std::format("{}", ::tpy::__str__(Plain())), "<__main__.Plain object at 0x")) << "\n" << ::tpy::check_signals;
+    std::cout << "free record" << " " << std::string(::tpy::__str__(A(1))) << " " << std::string(::tpy::__str__(S())) << " " << ::tpy::print_bool(::tpy::str_startswith(std::string(::tpy::repr_of(S())), "<__main__.S object at 0x")) << " " << ::tpyapp::main::text(S()) << " " << ::tpy::print_bool(::tpy::str_startswith(std::string(::tpy::__str__(Plain())), "<__main__.Plain object at 0x")) << " " << ::tpy::print_bool(::tpy::str_startswith(std::format("{}", ::tpy::__str__(Plain())), "<__main__.Plain object at 0x")) << " " << ::tpy::print_bool(::tpy::str_startswith(std::format("{}", ::tpy::repr_of(Plain())), "<__main__.Plain object at 0x")) << " " << ::tpy::print_bool(::tpy::str_startswith(std::format("{}", ::tpy::__str__(Plain())), "<__main__.Plain object at 0x")) << "\n" << ::tpy::check_signals;
     std::cout << "free none" << " " << std::string(::tpy::__str__(std::monostate{})) << " " << std::string(::tpy::repr_of(std::monostate{})) << " " << std::string(::tpy::repr_of(true)) << " " << ::tpyapp::main::text(auto(std::monostate{})) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> ys = {4, 5};
     std::span<int32_t> sp = std::span<int32_t>(ys);
@@ -573,8 +570,7 @@ void frames() {
 //     pa = take_ptr(a)
 //     print("generic tuple ptr", gtext((1, "a")), gtext(pa))  # tpyc: ok
 void scalars_generic() {
-    Plain __tmp_1 = Plain();
-    std::cout << "float bool" << " " << ::tpyapp::main::text(auto(1.5)) << " " << ::tpyapp::main::text(auto(true)) << " " << ::tpy::print_bool(::tpy::str_startswith(::tpyapp::main::rtext(__tmp_1), "<__main__.Plain object at 0x")) << "\n" << ::tpy::check_signals;
+    std::cout << "float bool" << " " << ::tpyapp::main::text(auto(1.5)) << " " << ::tpyapp::main::text(auto(true)) << " " << ::tpy::print_bool(::tpy::str_startswith(::tpyapp::main::rtext(Plain()), "<__main__.Plain object at 0x")) << "\n" << ::tpy::check_signals;
     A a = A(3);
     A* pa = &a;
     std::cout << "generic tuple ptr" << " " << ::tpyapp::main::gtext<std::tuple<int32_t, std::string>>(std::tuple<int32_t, std::string>{1, "a"}) << " " << ::tpyapp::main::gtext<A*>(pa) << "\n" << ::tpy::check_signals;
@@ -600,19 +596,11 @@ void scalars_generic() {
 void main() {
     A a = A(1);
     Holder h = Holder();
-    A __tmp_1 = A(1);
-    std::vector<int32_t> __tmp_2 = {1, 2};
-    J __tmp_3 = std::vector<J>{"a", std::vector<J>{"b"}};
-    ::tpyapp::main::free_fn(2, &(__tmp_1), &a, 3, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(4), 5}), __tmp_2, h, __tmp_3, "sv", ::tpy::String("st"), 'c');
-    ::tpy::Union<int32_t, std::string> __tmp_4 = "u";
-    std::vector<int32_t> __tmp_5 = std::vector<int32_t>{};
-    J __tmp_6 = "j";
-    ::tpyapp::main::free_fn(std::nullopt, nullptr, &a, __tmp_4, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(4), 5}), __tmp_5, h, __tmp_6, "", ::tpy::String(""), 'd');
+    ::tpyapp::main::free_fn(2, &::tpy::as_mut_lvalue(A(1)), &a, 3, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(4), 5}), {1, 2}, h, J(std::vector<J>{"a", std::vector<J>{"b"}}), "sv", ::tpy::String("st"), 'c');
+    ::tpyapp::main::free_fn(std::nullopt, nullptr, &a, ::tpy::Union<int32_t, std::string>("u"), [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(4), 5}), std::vector<int32_t>{}, h, J("j"), "", ::tpy::String(""), 'd');
     std::cout << "holder" << " " << std::string(::tpy::repr_of(h)) << "\n" << ::tpy::check_signals;
-    A __tmp_7 = A(1);
-    ::tpyapp::main::positions(&(__tmp_7), 2, 3);
-    ::tpy::Union<int32_t, std::string> __tmp_8 = "s";
-    ::tpyapp::main::positions(nullptr, std::nullopt, __tmp_8);
+    ::tpyapp::main::positions(&::tpy::as_mut_lvalue(A(1)), 2, 3);
+    ::tpyapp::main::positions(nullptr, std::nullopt, ::tpy::Union<int32_t, std::string>("s"));
     ::tpyapp::main::mutation();
     ::tpyapp::main::pointer_form();
     ::tpyapp::main::overload_pick();

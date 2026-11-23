@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(p.sum_tail(Box(10), Box(20), Box(30)))
 void main() {
     Pile p = Pile();
-    const Box __tmp_1 = Box(10);
-    const Box __tmp_2 = Box(20);
-    const Box __tmp_3 = Box(30);
+    Box __tmp_1 = Box(10);
+    Box __tmp_2 = Box(20);
+    Box __tmp_3 = Box(30);
     std::array<const Box*, 3> __tmp_4{&__tmp_1, &__tmp_2, &__tmp_3};
     std::cout << p.sum_tail(::tpy::varargs<const Box>(__tmp_4)) << "\n" << ::tpy::check_signals;
 }

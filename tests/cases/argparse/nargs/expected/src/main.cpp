@@ -36,13 +36,11 @@ namespace tpyapp::main {
 //         print("none")
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = {"a.txt", "b.txt"};
-    __tpy_builder_argparse_args_1 a1 = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 a1 = ::tpyapp::main::__tpy_builder_argparse_parse_1({"a.txt", "b.txt"});
     std::cout << ::tpy::__getitem__(a1.files, 0) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__getitem__(a1.files, 1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(a1.files) << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_2 = {"--coord", "10", "20", "--tag", "x", "y", "--tag", "z"};
-    __tpy_builder_argparse_args_2 a2 = ::tpyapp::main::__tpy_builder_argparse_parse_2(__tmp_2);
+    __tpy_builder_argparse_args_2 a2 = ::tpyapp::main::__tpy_builder_argparse_parse_2({"--coord", "10", "20", "--tag", "x", "y", "--tag", "z"});
     if (!((a2.coord.has_value()))) ::tpy::raise_assertion_error();
     if (!((a2.tag.has_value()))) ::tpy::raise_assertion_error();
     std::cout << ::tpy::__getitem__((*a2.coord), 0) << "\n" << ::tpy::check_signals;
@@ -50,11 +48,9 @@ int32_t main() {
     std::cout << ::tpy::__getitem__((*a2.tag), 0) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__getitem__((*a2.tag), 1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__getitem__((*a2.tag), 2) << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_3 = {"--mode"};
-    __tpy_builder_argparse_args_3 a3 = ::tpyapp::main::__tpy_builder_argparse_parse_3(__tmp_3);
+    __tpy_builder_argparse_args_3 a3 = ::tpyapp::main::__tpy_builder_argparse_parse_3({"--mode"});
     std::cout << a3.mode << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_4 = std::vector<std::string>{};
-    __tpy_builder_argparse_args_4 a4 = ::tpyapp::main::__tpy_builder_argparse_parse_4(__tmp_4);
+    __tpy_builder_argparse_args_4 a4 = ::tpyapp::main::__tpy_builder_argparse_parse_4(std::vector<std::string>{});
     if ((!a4.limit.has_value())) {
         std::cout << "none" << "\n" << ::tpy::check_signals;
     }

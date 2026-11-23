@@ -14,10 +14,8 @@ void greet(Pet& pet) {
 //     greet(Dog())
 //     greet(Cat())
 void main() {
-    Dog __tmp_1{Dog()};
-    ::tpyapp::main::greet(__tmp_1);
-    Cat __tmp_2{Cat()};
-    ::tpyapp::main::greet(__tmp_2);
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(Dog{Dog()}));
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(Cat{Cat()}));
 }
 
 // main()

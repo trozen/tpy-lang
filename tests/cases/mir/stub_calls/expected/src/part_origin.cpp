@@ -182,13 +182,11 @@ void main() {
     ::tpyapp::part_origin::repr_bound("q");
     Box r = Box(::tpy::BigInt(99));
     std::cout << "min_alias" << " " << ::tpyapp::part_origin::min_alias(r, ::tpy::BigInt(100)) << " " << r.n << "\n" << ::tpy::check_signals;
-    Box __tmp_1 = Box(::tpy::BigInt(99));
-    std::cout << "round_alias" << " " << ::tpyapp::part_origin::round_alias(__tmp_1) << "\n" << ::tpy::check_signals;
-    Box __tmp_2 = Box(::tpy::BigInt(-3));
-    std::cout << "abs_fresh" << " " << ::tpyapp::part_origin::abs_fresh(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "round_alias" << " " << ::tpyapp::part_origin::round_alias(::tpy::as_mut_lvalue(Box(::tpy::BigInt(99)))) << "\n" << ::tpy::check_signals;
+    std::cout << "abs_fresh" << " " << ::tpyapp::part_origin::abs_fresh(::tpy::as_mut_lvalue(Box(::tpy::BigInt(-3)))) << "\n" << ::tpy::check_signals;
     {
-        Box __tmp_3 = Box(::tpy::BigInt(-4));
-        auto __src_0 = ::tpyapp::part_origin::abs_generator(__tmp_3);
+        Box __tmp_1 = Box(::tpy::BigInt(-4));
+        auto __src_0 = ::tpyapp::part_origin::abs_generator(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -197,8 +195,7 @@ void main() {
             std::cout << "abs_generator" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    Box __tmp_4 = Box(::tpy::BigInt(-5));
-    std::cout << "abs_closure" << " " << ::tpyapp::part_origin::abs_closure(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << "abs_closure" << " " << ::tpyapp::part_origin::abs_closure(::tpy::as_mut_lvalue(Box(::tpy::BigInt(-5)))) << "\n" << ::tpy::check_signals;
     ::tpystd::os::mkdir("origin_target");
     ::tpy::stdlib::os::symlink("origin_target", "origin_link");
     std::cout << "os_readlink" << " " << ::tpyapp::part_origin::os_readlink("origin_link") << "\n" << ::tpy::check_signals;

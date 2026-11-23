@@ -448,8 +448,7 @@ int32_t count_list(const std::vector<A>& xs) {
 //     # (BUGS.md#list-literal-owned-elem-initializer-copy)
 //     return count_list([a])  # tpyc: warning(/copies A into owned storage/)
 int32_t lift_arg(const A& a) {
-    std::vector<A> __tmp_1 = {a};
-    return ::tpyapp::main::count_list(__tmp_1);
+    return ::tpyapp::main::count_list({a});
 }
 
 // def lift_any(xs: list[int32]) -> Any:
@@ -695,18 +694,15 @@ void main() {
     ::tpy::__getitem__(ys, 0).items.push_back(9);
     std::cout << "lam_pointer_local" << " " << ::tpy::__len__(r4.items) << " " << ::tpy::__len__(::tpy::__getitem__(ys, 0).items) << "\n" << ::tpy::check_signals;
     std::vector<A> zs = std::vector<A>{};
-    A __tmp_1 = A(16);
-    A __tmp_2 = A(17);
-    ::tpyapp::main::keep_rebound<A>(zs, __tmp_1, __tmp_2);
+    ::tpyapp::main::keep_rebound<A>(zs, ::tpy::as_mut_lvalue(A(16)), ::tpy::as_mut_lvalue(A(17)));
     std::cout << "keep_rebound" << " " << ::tpy::__len__(zs) << " " << ::tpy::__getitem__(::tpy::__getitem__(zs, 0).items, 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(zs, 1).items, 0) << "\n" << ::tpy::check_signals;
     std::vector<A> nx = std::vector<A>{};
     std::array<A, 1> srcs = {A(14)};
-    auto __tmp_3 = ::tpy::__iter__(srcs);
-    ::tpyapp::main::keep_next<A>(__tmp_3, nx);
+    auto __tmp_1 = ::tpy::__iter__(srcs);
+    ::tpyapp::main::keep_next<A>(__tmp_1, nx);
     ::tpy::__getitem__(srcs, 0).items.push_back(9);
     std::cout << "keep_next" << " " << ::tpy::__len__(::tpy::__getitem__(nx, 0).items) << " " << ::tpy::__len__(::tpy::__getitem__(srcs, 0).items) << "\n" << ::tpy::check_signals;
-    A __tmp_4 = A(18);
-    ::tpyapp::main::mixed_literal(__tmp_4);
+    ::tpyapp::main::mixed_literal(::tpy::as_mut_lvalue(A(18)));
     A s1 = ::tpystd::asyncio::run<A>(::tpy::make_adapter<::tpystd::coro::Cancellable<A>>(::tpyapp::main::own_param_suspend(A(20))));
     std::cout << "own_param_suspend" << " " << ::tpy::__len__(s1.items) << "\n" << ::tpy::check_signals;
     A s2 = ::tpystd::asyncio::run<A>(::tpy::make_adapter<::tpystd::coro::Cancellable<A>>(::tpyapp::main::hoisted_suspend(21)));

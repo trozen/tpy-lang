@@ -34,14 +34,12 @@ The plain `Cell` parameter is intentional. Its inferred readonly access still
 uses the named argument path. An explicitly `readonly[Cell]` parameter binds
 the constructor inline with full-expression lifetime, a separate
 representation MIR does not relabel as block storage.
-Safe bindings can still emit the separately tracked warning
-`BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling`.
 
 ## Forms that stay closed
 
 A ternary of borrow calls whose arms materialize arguments, and a
 temporary-bearing `PTR_ADDR` declaration or reseat, reject as not yet
-supported (`calls/error_borrowed_call_ternary_argument`). Admitting them needs
+supported (the ternary-argument shape now compiles with the dangle warning, `calls/error_fresh_arg_borrow_kept`). Admitting them needs
 a proof that no holder outlives the backing. Holder scope alone is
 insufficient. Here the optional backing dies at the end of the `if` block
 while `outer` still refers to it:

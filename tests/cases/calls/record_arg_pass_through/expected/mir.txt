@@ -4,7 +4,7 @@ main::mutate_rec@33:0: covered (storage: no_proof_required), summary: known
 main::pass_both@37:0: covered (storage: no_proof_required), summary: known
 main::through_pointer@42:0: certified, summary: known
 main::through_narrowing@50:0: covered (storage: no_proof_required), summary: known
-main::main@57:0: uncovered (unsupported union argument temporary), summary: opaque (unsupported union argument temporary)
+main::main@57:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
 main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::B.__init__@16:4: covered (storage: no_proof_required), summary: known
 main::Holder.__init__@24:4: covered (storage: no_proof_required), summary: known

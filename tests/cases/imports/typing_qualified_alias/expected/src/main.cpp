@@ -22,8 +22,7 @@ int32_t safe_inc(std::optional<int32_t> x) {
 void main() {
     std::cout << ::tpyapp::main::safe_inc(9) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::safe_inc(std::nullopt) << "\n" << ::tpy::check_signals;
-    Person __tmp_1 = Person("Alice");
-    ::tpyapp::main::hello(__tmp_1);
+    ::tpyapp::main::hello(::tpy::as_mut_lvalue(Person("Alice")));
 }
 
 // main()

@@ -27,8 +27,7 @@ void f(std::vector<std::vector<std::vector<int32_t>>>& outer, int32_t j) {
 // def main() -> None:
 //     f([[[1, 2]], [[3]]], 1)
 void main() {
-    std::vector<std::vector<std::vector<int32_t>>> __tmp_1 = {{{1, 2}}, {{3}}};
-    ::tpyapp::main::f(__tmp_1, 1);
+    ::tpyapp::main::f(::tpy::as_mut_lvalue(std::vector<std::vector<std::vector<int32_t>>>{{{1, 2}}, {{3}}}), 1);
 }
 
 // main()

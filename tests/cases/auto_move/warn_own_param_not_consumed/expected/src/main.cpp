@@ -162,8 +162,7 @@ void main() {
     std::cout << ::tpyapp::main::partial_consume(Box(6), true) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::both_branches(Box(7), false) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::early_return(Box(8), false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {1};
-    std::cout << ::tpyapp::main::loop_consume(Box(9), __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::loop_consume(Box(9), {1}) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::match_partial_arm(Box(10), 1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::match_all_arms(Box(11), 2) << "\n" << ::tpy::check_signals;
 }

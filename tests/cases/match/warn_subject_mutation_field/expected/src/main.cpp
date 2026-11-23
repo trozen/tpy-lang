@@ -33,8 +33,7 @@ void poke(Holder& h) {
 // def main() -> None:
 //     poke(Holder())
 void main() {
-    Holder __tmp_1 = Holder();
-    ::tpyapp::main::poke(__tmp_1);
+    ::tpyapp::main::poke(::tpy::as_mut_lvalue(Holder()));
 }
 
 // main()

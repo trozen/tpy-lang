@@ -74,10 +74,8 @@ namespace tpyapp::main {
 void main() {
     Cat c = Cat(::tpy::BigInt(9));
     std::cout << ::tpyapp::main::nested(c, true) << " " << ::tpyapp::main::nested(c, false) << " " << c.lives << "\n" << ::tpy::check_signals;
-    Cat __tmp_1 = Cat(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::top_level(__tmp_1) << "\n" << ::tpy::check_signals;
-    Cat __tmp_2 = Cat(::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::walrus(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::top_level(Cat(::tpy::BigInt(9))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::walrus(Cat(::tpy::BigInt(4))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

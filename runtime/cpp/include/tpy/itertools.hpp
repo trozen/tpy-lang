@@ -58,6 +58,9 @@ class elided_slot {
     bool has_ = false;
 public:
     elided_slot() {}
+    // Built at its declaration from `make()`, as `fill` builds it later.
+    template<typename F>
+    elided_slot(std::in_place_t, F&& make) { fill(std::forward<F>(make)); }
     ~elided_slot() { if (has_) value_.~T(); }
 
     elided_slot(elided_slot&& o) noexcept(std::is_nothrow_move_constructible_v<T>)
@@ -77,6 +80,7 @@ public:
         has_ = true;
     }
     T* operator->() { return std::addressof(value_); }
+    T& operator*() { return value_; }
 };
 
 // The iterator a non-self source's __iter__() handed back, held in the form it

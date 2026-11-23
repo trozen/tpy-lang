@@ -512,11 +512,7 @@ void dyn_local(Sq& sq) {
 void callable_state() {
     std::function<int32_t(std::vector<int32_t>&)> f = Counter();
     std::function<int32_t(std::vector<int32_t>&)> g = [f](std::vector<int32_t>& xs) -> int32_t { return f(xs); };
-    std::vector<int32_t> __tmp_1 = {1};
-    std::vector<int32_t> __tmp_2 = {1};
-    std::vector<int32_t> __tmp_3 = {1};
-    std::vector<int32_t> __tmp_4 = {1};
-    std::cout << "callable_state:" << " " << f(__tmp_1) << " " << g(__tmp_2) << " " << f(__tmp_3) << " " << g(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << "callable_state:" << " " << f(::tpy::as_mut_lvalue(std::vector<int32_t>{1})) << " " << g(::tpy::as_mut_lvalue(std::vector<int32_t>{1})) << " " << f(::tpy::as_mut_lvalue(std::vector<int32_t>{1})) << " " << g(::tpy::as_mut_lvalue(std::vector<int32_t>{1})) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -600,14 +596,11 @@ void main() {
     std::function<int32_t()> inner = (::tpyapp::main::curried())(zs);
     zs.push_back(2);
     std::cout << "curried:" << " " << inner() << "\n" << ::tpy::check_signals;
-    std::vector<P> __tmp_1 = {P(1), P(2)};
-    ::tpyapp::main::block(__tmp_1);
-    std::vector<P> __tmp_2 = {P(1), P(2)};
-    ::tpyapp::main::block_def(__tmp_2);
+    ::tpyapp::main::block(::tpy::as_mut_lvalue(std::vector<P>{P(1), P(2)}));
+    ::tpyapp::main::block_def(::tpy::as_mut_lvalue(std::vector<P>{P(1), P(2)}));
     std::function<int32_t()> tget = ::tpyapp::main::tuple_def();
     std::cout << "tuple_def:" << " " << tget() << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<P, P>> __tmp_3 = {std::tuple<P, P>{P(1), P(2)}};
-    ::tpyapp::main::tuple_elem(__tmp_3);
+    ::tpyapp::main::tuple_elem(::tpy::as_mut_lvalue(std::vector<std::tuple<P, P>>{std::tuple<P, P>{P(1), P(2)}}));
     std::vector<int32_t> gx = {1};
     {
         auto __src_0 = ::tpyapp::main::gen(gx);
@@ -627,8 +620,8 @@ void main() {
     std::cout << "generic:" << " " << kf() << "\n" << ::tpy::check_signals;
     std::cout << "cost:" << " " << (::tpyapp::main::cost(::tpy::BigInt(3)))() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::mixed();
-    std::vector<int32_t> __tmp_4 = {1};
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co_body(__tmp_4))) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1};
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co_body(__tmp_1))) << "\n" << ::tpy::check_signals;
     {
         std::cout << "er:" << " " << ({ auto __er_3 = ::tpyapp::main::er_body(1); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n" << ::tpy::check_signals;
         goto __after_try_2;
@@ -639,14 +632,11 @@ void main() {
     }
     Bag bag = Bag();
     std::cout << "auto_readonly:" << " " << (bag.reader())() << "\n" << ::tpy::check_signals;
-    std::vector<P> __tmp_5 = {P(1), P(2), P(3)};
-    ::tpyapp::main::reseat(__tmp_5);
+    ::tpyapp::main::reseat(::tpy::as_mut_lvalue(std::vector<P>{P(1), P(2), P(3)}));
     ::tpyapp::main::rebind_after();
-    std::vector<std::tuple<int32_t, int32_t>> __tmp_6 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    ::tpyapp::main::while_unpack(__tmp_6);
+    ::tpyapp::main::while_unpack({std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}});
     ::tpyapp::main::rebound_param(P(1), true);
-    Sq __tmp_7 = Sq(2);
-    ::tpyapp::main::dyn_local(__tmp_7);
+    ::tpyapp::main::dyn_local(::tpy::as_mut_lvalue(Sq(2)));
     ::tpyapp::main::callable_state();
 }
 

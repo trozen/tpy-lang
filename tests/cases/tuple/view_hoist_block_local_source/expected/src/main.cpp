@@ -623,9 +623,12 @@ void capture_of_call() {
     std::string v;
     for (int32_t i = 0; i < 2; ++i) {
         v = "lit";
-        auto __match_subject_1 = M((::tpy::str_concat((::tpy::str_concat("capture-of-call-", ::tpy::fixed_to_str<int32_t>(i))), "-long-enough-to-defeat-sso")));
         {
-            v = __match_subject_1.name;
+            ::tpy::String __tmp_1 = (::tpy::str_concat((::tpy::str_concat("capture-of-call-", ::tpy::fixed_to_str<int32_t>(i))), "-long-enough-to-defeat-sso"));
+            auto __match_subject_1 = M(__tmp_1);
+            {
+                v = __match_subject_1.name;
+            }
         }
     }
     std::cout << "capture_of_call" << " " << v << "\n" << ::tpy::check_signals;
@@ -1131,8 +1134,7 @@ void main() {
     std::cout << "ctor" << " " << bx.first << "\n" << ::tpy::check_signals;
     bx.hoist();
     ::tpyapp::main::closure_body();
-    H __tmp_1 = H("param-holder-long-enough-to-defeat-sso");
-    ::tpyapp::main::param_source(::tpyapp::main::mk(::tpy::BigInt(6)), __tmp_1);
+    ::tpyapp::main::param_source(::tpyapp::main::mk(::tpy::BigInt(6)), H("param-holder-long-enough-to-defeat-sso"));
     ::tpyapp::main::read_order();
     ::tpyapp::main::alias_arm(true);
     ::tpyapp::main::elem_alias_arm(true);
@@ -1140,8 +1142,7 @@ void main() {
     ::tpyapp::main::with_target_arm(true);
     ::tpyapp::main::capture_rebind();
     ::tpyapp::main::lending_operands(true);
-    std::vector<std::string> __tmp_2 = {"later-loop-element-long-enough-to-defeat-sso"};
-    ::tpyapp::main::reused_loop_var(__tmp_2);
+    ::tpyapp::main::reused_loop_var({"later-loop-element-long-enough-to-defeat-sso"});
     ::tpyapp::main::static_sources(true);
     ::tpyapp::main::moved_alias(true);
     ::tpyapp::main::kept_alias(true);

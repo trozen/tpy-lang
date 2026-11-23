@@ -102,11 +102,26 @@ def ranges(choice: bool, owner: Cell) -> int32:
 def observe(owner: Cell) -> readonly[Cell]:
     return owner
 
+@nocopy
+class Bag:
+    xs: list[int32]
+    def __init__(self, value: int32):
+        self.xs = [value]
+
+def items(bag: readonly[Bag]) -> readonly[list[int32]]:
+    return bag.xs
+
 def mixed(flag: bool, owner: readonly[Cell], value: int32) -> bool:
     saved = owner if flag else Cell(value)
-    named = observe(Cell(value))
+    named = 0
+    for v in items(Bag(value)):
+        named = v
     scalar = Cell(value).value
-    return saved.value == named.value and scalar == value
+    return saved.value == named and scalar == value
+
+def observed(value: int32) -> int32:
+    named = observe(Cell(value))
+    return named.value
 
 class Runner:
     value: int32
@@ -328,9 +343,11 @@ def test_while_condition_emplacement_remains_uncovered(artifacts: Artifacts, wit
     field = replace(source.body[-1].value, receiver=source.body[0].init)
     condition = th.THIRBinOp(BOOL, field, "==", th.THIRLiteral(INT32, 2), None)
     if with_argument:
-        call = _thir(artifacts, "mixed").body[1].init
-        call = replace(call, args=tuple(replace(arg, init=replace(arg.init, args=(th.THIRLiteral(INT32, 2),)))
-                                       for arg in call.args))
+        # The argument temporary a loop head keeps, held at a borrowed call.
+        ctor = replace(_thir(artifacts, "mixed").body[3].init.receiver, args=(th.THIRLiteral(INT32, 2),))
+        held = th.THIRArgTemp(result_type=ctor.result_type, init=ctor, cpp_type=ctor.type_cpp,
+                              form=th.Form.BORROW, movable=True)
+        call = replace(_thir(artifacts, "observed").body[0].init, args=(held,))
         other = th.THIRBinOp(BOOL, replace(field, receiver=call), "==", th.THIRLiteral(INT32, 2), None)
         condition = th.THIRBinOp(BOOL, condition, "&&", other, None)
     source = _with_body(source, (th.THIRWhile(condition, ()),

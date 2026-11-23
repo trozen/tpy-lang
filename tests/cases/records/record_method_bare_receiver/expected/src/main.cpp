@@ -59,8 +59,7 @@ void main() {
     Counter c = Counter(10);
     std::cout << ::tpyapp::main::narrowed_receiver(::tpy::Union<Counter*, Label*>{&(c)}) << "\n" << ::tpy::check_signals;
     std::cout << c.get() << "\n" << ::tpy::check_signals;
-    Label __tmp_1 = Label("abc");
-    std::cout << ::tpyapp::main::narrowed_receiver(::tpy::Union<Counter*, Label*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::narrowed_receiver(::tpy::Union<Counter*, Label*>{&(::tpy::as_mut_lvalue(Label("abc")))}) << "\n" << ::tpy::check_signals;
     FancyCounter f = FancyCounter(20);
     std::cout << ::tpyapp::main::inherited(f, 2) << "\n" << ::tpy::check_signals;
     std::cout << f.get() << "\n" << ::tpy::check_signals;

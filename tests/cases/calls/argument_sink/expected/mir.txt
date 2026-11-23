@@ -77,7 +77,7 @@ main::total_list@1029:0: uncovered (stub protocol argument is not a builtin leaf
 main::str_or_int@1033:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::workarounds@1037:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::positions@1046:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::once@1082:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::once@1082:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::tree_v@1130:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::method_slot_args@1146:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
 main::aug_key@1180:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)

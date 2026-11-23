@@ -209,8 +209,7 @@ __coro_a_guarded a_guarded(::tpy::Union<const Cat*, const Dog*> a) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(Cat(5));
-        __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
+        __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&(__head_arg_0.emplace(Cat(5)))});
         __state = S_RESUME_0;
         continue;
     }
@@ -220,8 +219,7 @@ __coro_a_guarded a_guarded(::tpy::Union<const Cat*, const Dog*> a) {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
-        __coro_arg_1.emplace(Dog(1));
-        __sub_1.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_1))});
+        __sub_1.emplace(::tpy::Union<const Cat*, const Dog*>{&(__head_arg_1.emplace(Dog(1)))});
         __state = S_RESUME_1;
         continue;
     }
@@ -262,7 +260,7 @@ __coro_amain amain() {
 void main() {
     {
         Cat __tmp_1 = Cat(5);
-        auto __src_0 = ::tpyapp::main::guarded(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
+        auto __src_0 = ::tpyapp::main::guarded(::tpy::Union<const Cat*, const Dog*>{&(__tmp_1)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -273,7 +271,7 @@ void main() {
     }
     {
         Dog __tmp_2 = Dog(9);
-        auto __src_2 = ::tpyapp::main::guarded(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
+        auto __src_2 = ::tpyapp::main::guarded(::tpy::Union<const Cat*, const Dog*>{&(__tmp_2)});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -284,7 +282,7 @@ void main() {
     }
     {
         Cat __tmp_3 = Cat(9);
-        auto __src_4 = ::tpyapp::main::guarded_cond(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}, true);
+        auto __src_4 = ::tpyapp::main::guarded_cond(::tpy::Union<const Cat*, const Dog*>{&(__tmp_3)}, true);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -295,7 +293,7 @@ void main() {
     }
     {
         Dog __tmp_4 = Dog(2);
-        auto __src_6 = ::tpyapp::main::guarded_cond(::tpy::Union<const Cat*, const Dog*>{&__tmp_4}, true);
+        auto __src_6 = ::tpyapp::main::guarded_cond(::tpy::Union<const Cat*, const Dog*>{&(__tmp_4)}, true);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -306,7 +304,7 @@ void main() {
     }
     {
         Cat __tmp_5 = Cat(3);
-        Holder __tmp_6 = Holder(::tpy::Union<const Cat*, const Dog*>{&__tmp_5});
+        Holder __tmp_6 = Holder(::tpy::Union<const Cat*, const Dog*>{&(__tmp_5)});
         auto __src_8 = ::tpyapp::main::nested(__tmp_6);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
@@ -318,7 +316,7 @@ void main() {
     }
     {
         Cat __tmp_7 = Cat(7);
-        Holder __tmp_8 = Holder(::tpy::Union<const Cat*, const Dog*>{&__tmp_7});
+        Holder __tmp_8 = Holder(::tpy::Union<const Cat*, const Dog*>{&(__tmp_7)});
         auto __src_10 = ::tpyapp::main::nested_shadow(__tmp_8);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {

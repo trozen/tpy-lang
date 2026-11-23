@@ -303,8 +303,7 @@ void annotations() {
     h.i.v = (h.i.v) + (::tpy::BigInt(1));
     std::cout << "field:" << " " << h.i.v << "\n" << ::tpy::check_signals;
     std::cout << "base:" << " " << Sub(::tpy::BigInt(7)).v << " " << SubP(::tpy::BigInt(8)).v << "\n" << ::tpy::check_signals;
-    ::tpyapp::mx::Outer::Inner __tmp_1 = ::tpyapp::mx::Outer::Inner(::tpy::BigInt(9));
-    std::cout << "mx:" << " " << ::tpyapp::main::mx_value(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "mx:" << " " << ::tpyapp::main::mx_value(::tpyapp::mx::Outer::Inner(::tpy::BigInt(9))) << "\n" << ::tpy::check_signals;
     auto inner = [](::tpyapp::m::Outer::Inner& x) -> ::tpy::BigInt {
         x.v = (x.v) + (::tpy::BigInt(1));
         return x.v;
@@ -729,9 +728,7 @@ void positions() {
 // def protocols() -> None:
 //     print("protocol:", total(Probe(4)), both(Probe(5)))
 void protocols() {
-    Probe __tmp_1 = Probe(::tpy::BigInt(4));
-    Probe __tmp_2 = Probe(::tpy::BigInt(5));
-    std::cout << "protocol:" << " " << ::tpyapp::main::total<Probe>(__tmp_1) << " " << ::tpyapp::main::both<Probe>(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "protocol:" << " " << ::tpyapp::main::total<Probe>(::tpy::as_mut_lvalue(Probe(::tpy::BigInt(4)))) << " " << ::tpyapp::main::both<Probe>(::tpy::as_mut_lvalue(Probe(::tpy::BigInt(5)))) << "\n" << ::tpy::check_signals;
 }
 
 // # Two same-named protocols in two modules are two protocols: a pa.C reaches
@@ -757,11 +754,9 @@ void protocols() {
 //     print("protocol parent:", use_q(d), use_pc(d), d.v)
 void same_name_protocols() {
     ::tpyapp::pa::C c = ::tpyapp::pa::C(::tpy::BigInt(3));
-    ::tpy::RefAdapter<::tpyapp::pc::P, ::tpyapp::pa::C> __tmp_1{c};
-    std::cout << "protocol identity:" << " " << ::tpyapp::main::use_pc(__tmp_1) << " " << c.v << "\n" << ::tpy::check_signals;
+    std::cout << "protocol identity:" << " " << ::tpyapp::main::use_pc(::tpy::as_mut_lvalue(::tpy::RefAdapter<::tpyapp::pc::P, ::tpyapp::pa::C>{c})) << " " << c.v << "\n" << ::tpy::check_signals;
     D d = D();
-    ::tpy::RefAdapter<::tpyapp::pc::P, D> __tmp_2{d};
-    std::cout << "protocol parent:" << " " << ::tpyapp::main::use_q(d) << " " << ::tpyapp::main::use_pc(__tmp_2) << " " << d.v << "\n" << ::tpy::check_signals;
+    std::cout << "protocol parent:" << " " << ::tpyapp::main::use_q(d) << " " << ::tpyapp::main::use_pc(::tpy::as_mut_lvalue(::tpy::RefAdapter<::tpyapp::pc::P, D>{d})) << " " << d.v << "\n" << ::tpy::check_signals;
 }
 
 // # except / raise through every head
@@ -1037,11 +1032,9 @@ void main() {
     ::tpyapp::m::Outer::Inner l2 = ::tpyapp::m::Outer::Inner(::tpy::BigInt(1001));
     ::tpyapp::main::local_pattern(::tpy::Union<const Outer::Inner*, const ::tpyapp::m::Outer::Inner*>{&(l2)});
     ::tpyapp::m::Outer::Inner f1 = ::tpyapp::m::make_inner(::tpy::BigInt(1));
-    Holds2 __tmp_1 = Holds2(::tpy::Union<const ::tpyapp::m::Outer::Inner*, const ::tpyapp::mx::Outer::Inner*>{&(f1)});
-    ::tpyapp::main::field_pattern(__tmp_1);
+    ::tpyapp::main::field_pattern(Holds2(::tpy::Union<const ::tpyapp::m::Outer::Inner*, const ::tpyapp::mx::Outer::Inner*>{&(f1)}));
     ::tpyapp::mx::Outer::Inner f2 = ::tpyapp::mx::make_inner(::tpy::BigInt(1));
-    Holds2 __tmp_2 = Holds2(::tpy::Union<const ::tpyapp::m::Outer::Inner*, const ::tpyapp::mx::Outer::Inner*>{&(f2)});
-    ::tpyapp::main::field_pattern(__tmp_2);
+    ::tpyapp::main::field_pattern(Holds2(::tpy::Union<const ::tpyapp::m::Outer::Inner*, const ::tpyapp::mx::Outer::Inner*>{&(f2)}));
     ::tpyapp::m::Box<::tpyapp::m::A> ga = ::tpyapp::m::Box<::tpyapp::m::A>(::tpyapp::m::A(::tpy::BigInt(1)));
     ::tpyapp::main::generic_pattern(::tpy::Union<const ::tpyapp::m::Box<::tpyapp::m::A>*, const ::tpyapp::m::Box<::tpyapp::m::B>*>{&(ga)});
     ::tpyapp::m::Box<::tpyapp::m::B> gb = ::tpyapp::m::Box<::tpyapp::m::B>(::tpyapp::m::B(::tpy::BigInt(2)));
@@ -1058,18 +1051,13 @@ void main() {
     std::cout << "shadow:" << " " << ::tpyapp::main::shadow(::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::positions();
     ::tpyapp::main::exceptions();
-    Holds3 __tmp_3 = Holds3(false);
-    ::tpyapp::main::same_name_generic(__tmp_3);
-    Holds3 __tmp_4 = Holds3(true);
-    ::tpyapp::main::same_name_generic(__tmp_4);
+    ::tpyapp::main::same_name_generic(::tpy::as_mut_lvalue(Holds3(false)));
+    ::tpyapp::main::same_name_generic(::tpy::as_mut_lvalue(Holds3(true)));
     ::tpyapp::m::Outer::Inner s1 = ::tpyapp::m::make_inner(::tpy::BigInt(3));
-    Holds2 __tmp_5 = Holds2(::tpy::Union<const ::tpyapp::m::Outer::Inner*, const ::tpyapp::mx::Outer::Inner*>{&(s1)});
-    ::tpyapp::main::same_name_isinstance(__tmp_5);
+    ::tpyapp::main::same_name_isinstance(Holds2(::tpy::Union<const ::tpyapp::m::Outer::Inner*, const ::tpyapp::mx::Outer::Inner*>{&(s1)}));
     ::tpyapp::mx::Outer::Inner s2 = ::tpyapp::mx::make_inner(::tpy::BigInt(3));
-    Holds2 __tmp_6 = Holds2(::tpy::Union<const ::tpyapp::m::Outer::Inner*, const ::tpyapp::mx::Outer::Inner*>{&(s2)});
-    ::tpyapp::main::same_name_isinstance(__tmp_6);
-    Holds4 __tmp_7 = Holds4(::tpy::BigInt(5));
-    ::tpyapp::main::bare_generic_isinstance(__tmp_7);
+    ::tpyapp::main::same_name_isinstance(Holds2(::tpy::Union<const ::tpyapp::m::Outer::Inner*, const ::tpyapp::mx::Outer::Inner*>{&(s2)}));
+    ::tpyapp::main::bare_generic_isinstance(::tpy::as_mut_lvalue(Holds4(::tpy::BigInt(5))));
     std::cout << "callable builtin:" << " " << ::tpyapp::main::mk([](std::string_view __tpy_fa0) -> ::tpy::ValueError { return ::tpy::ValueError(__tpy_fa0); }, "boom") << "\n" << ::tpy::check_signals;
     std::cout << "make:" << " " << Tree().make() << "\n" << ::tpy::check_signals;
     std::cout << "same-name base:" << " " << ::tpyapp::mb::Outer::Inner(::tpy::BigInt(1)).v << "\n" << ::tpy::check_signals;

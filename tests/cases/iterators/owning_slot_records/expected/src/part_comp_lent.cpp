@@ -238,16 +238,11 @@ void keys_only() {
 //     in_loop()
 //     keys_only()
 void main() {
-    Bag __tmp_1 = Bag();
-    ::tpyapp::part_comp_lent::rebound_arg(__tmp_1);
-    Bag __tmp_2 = Bag();
-    ::tpyapp::part_comp_lent::rebound_sink(__tmp_2);
-    Bag __tmp_3 = Bag();
-    ::tpyapp::part_comp_lent::rebound_receiver(__tmp_3);
-    Bag __tmp_4 = Bag();
-    ::tpyapp::part_comp_lent::rebound_dict(__tmp_4);
-    Bag __tmp_5 = Bag();
-    ::tpyapp::part_comp_lent::rebound_for(__tmp_5);
+    ::tpyapp::part_comp_lent::rebound_arg(::tpy::as_mut_lvalue(Bag()));
+    ::tpyapp::part_comp_lent::rebound_sink(::tpy::as_mut_lvalue(Bag()));
+    ::tpyapp::part_comp_lent::rebound_receiver(::tpy::as_mut_lvalue(Bag()));
+    ::tpyapp::part_comp_lent::rebound_dict(::tpy::as_mut_lvalue(Bag()));
+    ::tpyapp::part_comp_lent::rebound_for(::tpy::as_mut_lvalue(Bag()));
     ::tpyapp::part_comp_lent::in_loop();
     ::tpyapp::part_comp_lent::keys_only();
 }

@@ -1,0 +1,14 @@
+main.py:59: warning: Result borrows from temporary argument 'xs'; the temporary is destroyed at end-of-statement
+main.py:60: warning: Result borrows from temporary argument 'xs'; the temporary is destroyed at end-of-statement
+main.py:61: warning: Result borrows from temporary argument 'xs'; the temporary is destroyed at end-of-statement
+main.py:62: warning: Result borrows from temporary argument 'xs'; the temporary is destroyed at end-of-statement
+main.py:66: warning: Result borrows from temporary argument 'b'; the temporary is destroyed at end-of-statement
+main.py:70: warning: Result borrows from temporary argument 'second'; the temporary is destroyed at end-of-statement
+main.py:75: warning: Result borrows from temporary argument 'b'; the temporary is destroyed at end-of-statement
+main.py:96: warning: Result borrows from temporary argument 'b'; the temporary is destroyed at end-of-statement
+main.py:96: warning: Result borrows from temporary argument 'b'; the temporary is destroyed at end-of-statement
+main.py:101: warning: Result borrows from temporary argument 'xs'; the temporary is destroyed at end-of-statement
+main.py:108: warning: Result borrows from temporary argument 'b'; the temporary is destroyed at end-of-statement
+main.py:123: warning: Result borrows from temporary argument 'xs'; the temporary is destroyed at end-of-statement
+main.py:128: warning: Result borrows from temporary argument 'xs'; the temporary is destroyed at end-of-statement
+main.py:145: error: Cannot bind StrView 'v' to a temporary view source; the backing storage is destroyed at end-of-statement -- annotate 'v' as an owned str/bytes to keep a copy

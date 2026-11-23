@@ -636,8 +636,7 @@ void main() {
     ::tpyapp::main::alias_seed_through_alias();
     ::tpyapp::main::alias_seed_through_first();
     ::tpyapp::main::loop_pos();
-    std::vector<int64_t> __tmp_1 = {20, 21};
-    ::tpyapp::main::extend_pos(__tmp_1);
+    ::tpyapp::main::extend_pos(::tpy::as_mut_lvalue(std::vector<int64_t>{20, 21}));
     ::tpyapp::main::rebind_pos();
     ::tpyapp::main::ctor_pos();
     ::tpyapp::main::setitem_pos();

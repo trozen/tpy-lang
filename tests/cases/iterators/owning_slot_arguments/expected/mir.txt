@@ -85,9 +85,9 @@ part_frames::gen_strs@51:0: uncovered (unsupported parameter type)
 part_frames::asum_values@56:0: uncovered (async body)
 part_frames::alen_strs@64:0: uncovered (async body)
 part_frames::mk@72:0: covered (storage: no_proof_required), summary: known
-part_frames::gen_caller@76:0: uncovered (argument held across a suspension)
-part_frames::gen_loop_caller@86:0: uncovered (argument held across a suspension)
-part_frames::gen_select_caller@94:0: uncovered (argument held across a suspension)
+part_frames::gen_caller@76:0: uncovered (loop source release across a suspension)
+part_frames::gen_loop_caller@86:0: uncovered (unsupported hoisted value)
+part_frames::gen_select_caller@94:0: uncovered (loop source release across a suspension)
 part_frames::amain@102:0: uncovered (async body)
 part_frames::main@115:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 part_frames::R.__init__@10:4: covered (storage: no_proof_required), summary: known
@@ -126,7 +126,7 @@ part_nocopy::gen_slice_in@90:0: uncovered (unsupported parameter type)
 part_nocopy::keep@98:0: covered (storage: no_proof_required), summary: known
 part_nocopy::nkey@102:0: covered (storage: no_proof_required), summary: known
 part_nocopy::mk@106:0: covered (storage: no_proof_required), summary: known
-part_nocopy::gen_caller@110:0: uncovered (argument held across a suspension)
+part_nocopy::gen_caller@110:0: uncovered (loop source release across a suspension)
 part_nocopy::amain@118:0: uncovered (async body)
 part_nocopy::main@125:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 part_nocopy::Bin.add@38:4: uncovered (unsupported parameter type)

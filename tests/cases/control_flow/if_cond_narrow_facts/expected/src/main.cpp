@@ -76,16 +76,11 @@ int32_t ref_union(::tpy::Union<Leaf*, Node*> u, bool flag) {
 //     print(ref_union(n, False))
 //     print(n.v)
 void main() {
-    ::tpy::Union<A, B> __tmp_1 = B(3);
-    std::cout << ::tpyapp::main::then_side(__tmp_1, false) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<A, B> __tmp_2 = A(3);
-    std::cout << ::tpyapp::main::then_side(__tmp_2, false) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<A, B> __tmp_3 = A(4);
-    std::cout << ::tpyapp::main::else_side(__tmp_3, false) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<A, B> __tmp_4 = A(4);
-    std::cout << ::tpyapp::main::else_side(__tmp_4, true) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<A, B> __tmp_5 = A(1);
-    std::cout << ::tpyapp::main::unread_subject(__tmp_5, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::then_side(::tpy::Union<A, B>(B(3)), false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::then_side(::tpy::Union<A, B>(A(3)), false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::else_side(::tpy::Union<A, B>(A(4)), false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::else_side(::tpy::Union<A, B>(A(4)), true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::unread_subject(::tpy::Union<A, B>(A(1)), false) << "\n" << ::tpy::check_signals;
     Node n = Node(1);
     std::cout << ::tpyapp::main::ref_union(::tpy::Union<Leaf*, Node*>{&(n)}, false) << "\n" << ::tpy::check_signals;
     std::cout << n.v << "\n" << ::tpy::check_signals;

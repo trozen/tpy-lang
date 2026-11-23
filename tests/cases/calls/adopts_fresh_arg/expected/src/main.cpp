@@ -302,10 +302,8 @@ void main() {
     int32_t n1 = ::tpy::next_or(ni, 0);
     std::cout << "noisy_iter" << " " << n1 << " " << ::tpy::next_or(ni, 0) << "\n" << ::tpy::check_signals;
     auto it = ::tpy::__iter__(::tpyapp::main::mk());
-    P __tmp_3 = P(0);
-    int32_t i1 = ::tpy::next_or(it, __tmp_3).v;
-    P __tmp_4 = P(0);
-    std::cout << "iter" << " " << i1 << " " << ::tpy::next_or(it, __tmp_4).v << "\n" << ::tpy::check_signals;
+    int32_t i1 = ::tpy::next_or(it, ::tpy::as_mut_lvalue(P(0))).v;
+    std::cout << "iter" << " " << i1 << " " << ::tpy::next_or(it, ::tpy::as_mut_lvalue(P(0))).v << "\n" << ::tpy::check_signals;
     auto ci = ::tpy::__iter__(Cur(2));
     std::cout << "self_made" << "\n" << ::tpy::check_signals;
     int32_t c1 = ::tpy::next_or(ci, 0);
@@ -341,8 +339,7 @@ void main() {
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     Box box = Box();
-    P __tmp_5 = ::tpyapp::main::mkp(11);
-    int32_t n = ::tpyapp::main::save(box, __tmp_5);
+    int32_t n = ::tpyapp::main::save(box, ::tpyapp::main::mkp(11));
     std::array<P, 2> filler = {P(90), P(91)};
     if ((box.p != nullptr)) {
         std::cout << "escape" << " " << n << " " << box.p->v << " " << ::tpy::__getitem__(filler, 0).v << "\n" << ::tpy::check_signals;

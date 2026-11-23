@@ -8,10 +8,8 @@ namespace tpyapp::main {
 //     print(Holder(A("rel")).label)
 //     print(Holder(B("smoke")).label)
 void main() {
-    A __tmp_1 = A("rel");
-    std::cout << Holder(::tpy::Union<const A*, const B*>{&__tmp_1}).label() << "\n" << ::tpy::check_signals;
-    B __tmp_2 = B("smoke");
-    std::cout << Holder(::tpy::Union<const A*, const B*>{&__tmp_2}).label() << "\n" << ::tpy::check_signals;
+    std::cout << Holder(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(A("rel")))}).label() << "\n" << ::tpy::check_signals;
+    std::cout << Holder(::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B("smoke")))}).label() << "\n" << ::tpy::check_signals;
 }
 
 // main()

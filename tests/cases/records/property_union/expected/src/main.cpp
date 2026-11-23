@@ -27,12 +27,8 @@ void describe(const Canvas& c) {
 //     describe(Canvas(Circle(5)))
 //     describe(Canvas(Square(10)))
 void main() {
-    Circle __tmp_1 = Circle(5);
-    Canvas __tmp_2 = Canvas(::tpy::Union<const Circle*, const Square*>{&__tmp_1});
-    ::tpyapp::main::describe(__tmp_2);
-    Square __tmp_3 = Square(10);
-    Canvas __tmp_4 = Canvas(::tpy::Union<const Circle*, const Square*>{&__tmp_3});
-    ::tpyapp::main::describe(__tmp_4);
+    ::tpyapp::main::describe(Canvas(::tpy::Union<const Circle*, const Square*>{&(::tpy::as_mut_lvalue(Circle(5)))}));
+    ::tpyapp::main::describe(Canvas(::tpy::Union<const Circle*, const Square*>{&(::tpy::as_mut_lvalue(Square(10)))}));
 }
 
 // main()

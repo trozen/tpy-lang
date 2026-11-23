@@ -461,10 +461,8 @@ void main() {
     std::cout << "field_view_then_write:" << " " << ::tpyapp::main::field_view_then_write(r, "later") << " " << ::tpyapp::main::read_copy(r) << "\n" << ::tpy::check_signals;
     std::cout << "sibling:" << " " << ::tpyapp::main::sibling(r) << "\n" << ::tpy::check_signals;
     std::cout << "local_record:" << " " << ::tpyapp::main::local_record("lr") << "\n" << ::tpy::check_signals;
-    Rec __tmp_1 = Rec("ft", 2);
-    std::cout << "forwarded_then_reuse:" << " " << ::tpyapp::main::forwarded_then_reuse(__tmp_1, "ftr") << "\n" << ::tpy::check_signals;
-    Rec __tmp_2 = Rec("mv", 3);
-    std::cout << "method_view:" << " " << ::tpyapp::main::method_view(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "forwarded_then_reuse:" << " " << ::tpyapp::main::forwarded_then_reuse(::tpy::as_mut_lvalue(Rec("ft", 2)), "ftr") << "\n" << ::tpy::check_signals;
+    std::cout << "method_view:" << " " << ::tpyapp::main::method_view(Rec("mv", 3)) << "\n" << ::tpy::check_signals;
     std::cout << "ctor_from_view:" << " " << ::tpyapp::main::ctor_from_view("abc") << " " << "ctor_from_string:" << " " << ::tpyapp::main::ctor_from_string(::tpy::String("xyz")) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::method_write(r, "mw");
     std::cout << "method_write:" << " " << ::tpyapp::main::read_copy(r) << "\n" << ::tpy::check_signals;

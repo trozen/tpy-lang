@@ -30,10 +30,8 @@ bool multi_downcast_tuple(const Animal& a) {
 //     print(value_downcast(Animal("Mystery")))
 //     print(multi_downcast_tuple(Animal("Generic")))
 void main() {
-    Animal __tmp_1 = Animal("Mystery");
-    std::cout << ::tpy::print_bool(::tpyapp::main::value_downcast(__tmp_1)) << "\n" << ::tpy::check_signals;
-    Animal __tmp_2 = Animal("Generic");
-    std::cout << ::tpy::print_bool(::tpyapp::main::multi_downcast_tuple(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::value_downcast(Animal("Mystery"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::multi_downcast_tuple(Animal("Generic"))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

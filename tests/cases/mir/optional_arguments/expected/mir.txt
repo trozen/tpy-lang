@@ -4,10 +4,10 @@ main::peek@58:0: covered (storage: no_proof_required), summary: known
 main::bump@65:0: covered (storage: no_proof_required), summary: known
 main::put@71:0: covered (storage: no_proof_required), summary: known
 main::call_free@76:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
-main::call_free_temp@85:0: certified, summary: known
+main::call_free_temp@85:0: covered (storage: no_proof_required), summary: known
 main::call_method@90:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::call_ctor@99:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
-main::call_ctor_temp@112:0: certified, summary: known
+main::call_ctor_temp@112:0: covered (storage: no_proof_required), summary: known
 main::call_bump@118:0: covered (storage: no_proof_required), summary: known
 main::items_or@125:0: covered (storage: no_proof_required), summary: known
 main::call_none@132:0: covered (storage: no_proof_required), summary: known
@@ -48,7 +48,7 @@ main::lend_text@396:0: covered (storage: no_proof_required), conflicts: alias_ob
 main::retext_view@402:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::retext_view_call@408:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 main::pick@413:0: uncovered (unsupported metadata: optional_read), summary: opaque (unsupported metadata: optional_read)
-main::main@419:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@419:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
 main::Q.get@12:4: covered (storage: no_proof_required), summary: known
 main::H.peek@35:4: covered (storage: no_proof_required), summary: known
 main::H.store@41:4: covered (storage: no_proof_required), summary: known

@@ -68,8 +68,7 @@ void main() {
     Container<int32_t> c = Container<int32_t>();
     c.set(99);
     std::cout << c.get() << "\n" << ::tpy::check_signals;
-    Box<int32_t> __tmp_1 = Box<int32_t>(7);
-    ::tpyapp::main::take_box(__tmp_1);
+    ::tpyapp::main::take_box(::tpy::as_mut_lvalue(Box<int32_t>(7)));
     Mapper<int32_t> m = Mapper<int32_t>(5);
     int64_t r5 = m.transform<int32_t, int64_t>(1, 100);
     std::cout << r5 << "\n" << ::tpy::check_signals;

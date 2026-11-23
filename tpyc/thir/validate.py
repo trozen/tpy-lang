@@ -70,7 +70,8 @@ from .scalar_leaves import (
     holds_elements, leaf_constant, leaf_global, modeled_ancestors, native_container_subject, native_container_type,
     optional_record_field, owned_leaf, storage_leaf,
 )
-from .nodes import (FLUSHING_REBIND_KINDS, Form, OpenTSink, THIRArgTemp, THIRAssign,
+from .nodes import (FLUSHING_REBIND_KINDS, Form, OpenTSink, SeatLifetime,
+    THIRArgTemp, THIRAssign, THIRInlineTemp, THIRVarargPack,
     THIRCall, THIRChainedCompareStmtExpr, THIRCoerce, THIRConstructor,
     THIRMove, THIRCtorCall, THIRDelItem, THIRErrorReturnBind,
     THIRErrorReturnDiscard, THIRErrorReturnUnwrap, THIRExprStmt,
@@ -80,7 +81,8 @@ from .nodes import (FLUSHING_REBIND_KINDS, Form, OpenTSink, THIRArgTemp, THIRAss
     THIRParam, THIRWhile, THIRModuleVar, THIRWalrus,
     THIRGlobalBinding, THIRPrint, THIRRaise, THIRReturn, THIRSetItem,
     THIRSliceAssign, THIRFinallyDeferredReturn, DeferredPartKind,
-    THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleUnpack,
+    THIRStrSlice, THIRSubscript, THIRTempRead, BOUND_SOURCE_READ,
+    THIRTupleUnpack,
     THIRCoroHandleMove, THIRMatch, THIRMatchBinding,
     THIRWith, THIRWithItem, WithTargetArm, THIRFrameSlotWrite, TupleElemBind,
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableLeaves,
@@ -1077,6 +1079,51 @@ def _check_stmt(owner: str, stmt: THIRNode, return_type) -> None:
                   f"BORROW return value for value-typed return {return_type}")
 
 
+def _check_held_init(owner: str, temp: THIRArgTemp) -> None:
+    """What an argument temp holds -- hoisted before its statement, or in a
+    frame holder -- is decided by the keep plan: it is a frame holder
+    exactly where the plan keeps it on the frame (`SeatLifetime`), a
+    temporary inside it is one the plan left to its full expression, and
+    the held value is neither the address of such a temporary nor a borrow
+    out of a fresh object built inside it (a field or method of a
+    construction or of a call's fresh result), which would dangle once
+    that expression ends."""
+    if temp.lifetime is SeatLifetime.FRAME and temp.frame_holder is None:
+        _fail(owner, temp, "a temporary the keep plan keeps on the frame "
+                           "declared before its statement instead")
+    if (temp.frame_holder is not None and temp.lifetime is not None
+            and temp.lifetime is not SeatLifetime.FRAME):
+        _fail(owner, temp, "a frame holder for a temporary the keep plan "
+                           "does not keep on the frame")
+    stack = [temp.init]
+    while stack:
+        n = stack.pop()
+        if isinstance(n, THIRArgTemp):
+            # A seat of its own, checked where it is walked.
+            continue
+        if (isinstance(n, THIRInlineTemp)
+                and n.lifetime is not SeatLifetime.FULL_EXPRESSION):
+            _fail(owner, n, "a temporary inside a held argument the keep "
+                            "plan did not leave to its full expression")
+        stack.extend(_iter_children(n))
+    held = temp.init
+    while isinstance(held, THIRCoerce) and held.form is held.expr.form:
+        held = held.expr
+    if isinstance(held, THIRInlineTemp) and held.addr_of:
+        _fail(owner, held, "a held argument is the address of a temporary "
+                           "of its full expression")
+    if (temp.form is Form.BORROW
+            and isinstance(held, (THIRFieldAccess, THIRMethodCall))
+            and held.form is Form.BORROW):
+        root = held.receiver
+        while isinstance(root, THIRFieldAccess):
+            root = root.receiver
+        if isinstance(root, THIRCtorCall) or (
+                isinstance(root, THIRCall) and root.form is Form.STORAGE):
+            _fail(owner, held, "a held argument borrows a fresh object "
+                               "built inside it")
+
+
 def _walk_arg_list(owner: str, args: 'Sequence[THIRExpr]',
                    return_type=None, *,
                    argtemp_ok: bool = False,
@@ -1091,23 +1138,16 @@ def _walk_arg_list(owner: str, args: 'Sequence[THIRExpr]',
     propagates through call-arg nesting."""
     for a in args:
         if isinstance(a, THIRArgTemp):
-            if not argtemp_ok:
+            # A frame holder is filled in place: it needs no flush point.
+            if not argtemp_ok and a.frame_holder is None:
                 _fail(owner, a, "THIRArgTemp under a non-flushable "
                                 "statement position")
             if eager_only and a.movable is None:
                 _fail(owner, a, "unaudited THIRArgTemp under "
                                 "a conditional operand")
+            _check_held_init(owner, a)
             _walk(owner, a.init, return_type, argtemp_ok=argtemp_ok,
                   eager_only=eager_only)
-        elif isinstance(a, THIRUnionArgLift) and a.temp_cpp is not None:
-            # The temp-bearing lift hoists a decl like THIRArgTemp does, so
-            # it needs the same flush right.
-            if not argtemp_ok:
-                _fail(owner, a, "temp-bearing THIRUnionArgLift under a "
-                                "non-flushable statement position")
-            if a.value is not None:
-                _walk(owner, a.value, return_type, argtemp_ok=argtemp_ok,
-                      eager_only=eager_only)
         elif isinstance(a, THIRBorrowTupleLiteral):
             # A borrow tuple AT an argument position is built in place there,
             # so an element hoisted for a frame-capturing callee (`&(__tmp_N)`)
@@ -1121,15 +1161,16 @@ def _walk_arg_list(owner: str, args: 'Sequence[THIRExpr]',
 
 
 # The wrappers this walk treats as pass-through for flushability -- the ONE
-# place that says "transparent": a coerce and a form conversion are pure
-# inline wraps around their source (`::tpy::as_mut_span({0})`,
-# `::tpy::to_const_ptr_variant({0})`) and an error-return unwrap only
-# composes the `({ ... })` render around its call. Neither moves where an
-# inner temp's decl lands, so a temp reached through one keeps the flush
-# right (and the conditional-operand rule) of the position the wrapper sits
-# in. Both reach their child through the generic tail, which reads this
-# tuple.
-_TRANSPARENT_WRAPPERS = (THIRCoerce, THIRErrorReturnUnwrap, THIRFormConvert)
+# place that says "transparent": a coerce, a form conversion and a
+# pointer-variant lift are pure inline wraps around their source
+# (`::tpy::as_mut_span({0})`, `::tpy::to_const_ptr_variant({0})`,
+# `V{&({0})}`) and an error-return unwrap only composes the `({ ... })`
+# render around its call. None moves where an inner temp's decl lands, so a
+# temp reached through one keeps the flush right (and the
+# conditional-operand rule) of the position the wrapper sits in. All reach
+# their child through the generic tail, which reads this tuple.
+_TRANSPARENT_WRAPPERS = (THIRCoerce, THIRErrorReturnUnwrap, THIRFormConvert,
+                         THIRUnionArgLift)
 
 
 def _walk_held(owner: str, held: 'Sequence[THIRArgTemp]',
@@ -1141,6 +1182,28 @@ def _walk_held(owner: str, held: 'Sequence[THIRArgTemp]',
         if not isinstance(temp, THIRArgTemp) or temp.read_id is None:
             _fail(owner, temp, "a held value that is no named argument temp")
     _walk_arg_list(owner, held, return_type, argtemp_ok=True)
+
+
+def _walk_receiver(owner: str, recv: THIRNode, return_type=None, *,
+                   argtemp_ok: bool, eager_only: bool) -> None:
+    """A method call's receiver, or a field, element or slice read's
+    object. A call-shaped receiver's arg temps flush at the same statement
+    (allow_temps rides into receivers at lowering). The receiver itself may
+    BE a temp -- the generator-factory ctor-rvalue lift (`Counter __tmp_N = Counter(..);` + `__tmp_N.each()`),
+    a fresh receiver its statement keeps -- flushed at that statement."""
+    if isinstance(recv, THIRArgTemp):
+        if not argtemp_ok and recv.frame_holder is None:
+            _fail(owner, recv, "receiver THIRArgTemp under a non-flushable "
+                               "statement position")
+        if eager_only and recv.movable is None:
+            _fail(owner, recv, "unaudited THIRArgTemp receiver under "
+                               "a conditional operand")
+        _check_held_init(owner, recv)
+        _walk(owner, recv.init, return_type, argtemp_ok=argtemp_ok,
+              eager_only=eager_only)
+    else:
+        _walk(owner, recv, return_type, argtemp_ok=argtemp_ok,
+              eager_only=eager_only)
 
 
 def _walk(owner: str, node: THIRNode, return_type=None, *,
@@ -1169,45 +1232,42 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # Reached through a transparent wrapper the temp keeps the arg-list
         # rules, since the wrapper only re-renders it in place; anywhere else
         # a temp outside a call-arg position has no flush point at all.
-        if not (via_transparent and argtemp_ok):
+        if not (via_transparent and argtemp_ok) and node.frame_holder is None:
             _fail(owner, node, "THIRArgTemp outside a call arg position")
         if eager_only and node.movable is None:
             _fail(owner, node, "unaudited THIRArgTemp under "
                                "a conditional operand")
+        _check_held_init(owner, node)
         _walk(owner, node.init, return_type, argtemp_ok=argtemp_ok,
               eager_only=eager_only)
         return
-    if isinstance(node, THIRUnionArgLift) and node.temp_cpp is not None:
-        # The temp-bearing lift hoists a decl like THIRArgTemp does, so it
-        # is legal only where a temp has a flush point (checked in the
-        # call-arm loop below, which returns before re-reaching this node).
-        _fail(owner, node, "temp-bearing THIRUnionArgLift outside a call "
-                           "arg position")
+    if isinstance(node, THIRVarargPack):
+        # A `*args` pack is built at its call's position: an element it
+        # points at is an argument temp flushed as the call's own are.
+        _check_node(owner, node)
+        if node.star_source is not None:
+            _walk(owner, node.star_source, return_type, argtemp_ok=argtemp_ok,
+                  eager_only=eager_only)
+        _walk_arg_list(owner, node.args, return_type, argtemp_ok=argtemp_ok,
+                       eager_only=eager_only)
+        return
     if isinstance(node, (THIRCall, THIRMethodCall, THIRCtorCall)):
         # A ctor call carries a temp only for its mutated-ref-slot record
         # rvalue (the ctor_mutated arm); const-slot rvalues inline temp-free.
         if isinstance(node, THIRMethodCall):
-            # A call-shaped receiver's arg temps flush at the same statement
-            # (allow_temps rides into receivers at lowering). The receiver
-            # itself may BE a temp: the generator-factory ctor-rvalue lift
-            # (`Counter __tmp_N = Counter(..);` + `__tmp_N.each()`), flushed
-            # at the consuming for-head / iterator-object decl.
-            if isinstance(node.receiver, THIRArgTemp):
-                if not argtemp_ok:
-                    _fail(owner, node.receiver,
-                          "receiver THIRArgTemp under a non-flushable "
-                          "statement position")
-                if eager_only and node.receiver.movable is None:
-                    _fail(owner, node.receiver,
-                          "unaudited THIRArgTemp receiver under "
-                          "a conditional operand")
-                _walk(owner, node.receiver.init, return_type,
-                      argtemp_ok=argtemp_ok, eager_only=eager_only)
-            else:
-                _walk(owner, node.receiver, return_type,
-                      argtemp_ok=argtemp_ok, eager_only=eager_only)
+            _walk_receiver(owner, node.receiver, return_type,
+                           argtemp_ok=argtemp_ok, eager_only=eager_only)
         _walk_arg_list(owner, node.args, return_type, argtemp_ok=argtemp_ok,
                        eager_only=eager_only)
+        return
+    if (isinstance(node, (THIRFieldAccess, THIRSubscript, THIRStrSlice))
+            and isinstance(node.receiver, THIRArgTemp)):
+        _walk_receiver(owner, node.receiver, return_type,
+                       argtemp_ok=argtemp_ok, eager_only=eager_only)
+        for child in _iter_children(node):
+            if child is not node.receiver:
+                _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
+                      eager_only=eager_only)
         return
     if isinstance(node, (THIRErrorReturnBind, THIRErrorReturnDiscard)):
         # Statement-level unwrap blocks: the call renders and its temps
@@ -1249,17 +1309,11 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # before its one capture line (inside the rvalue brace scope for the
         # protocol loop), and each range bound right before its own
         # `__start_N` / `__stop_N` / `__step_N` capture, so every loop source
-        # is a flushable value position. A comprehension's
-        # first loop evaluates its source in the enclosing statement, so
-        # there the source keeps the right the comprehension itself was
-        # given (passed down by the block arm).
+        # is a flushable value position -- a comprehension's first loop's
+        # too: its temps flush in the comprehension's block.
         sources = _loop_sources(node)
         for child in sources:
-            if node.source_in_enclosing:
-                _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
-                      eager_only=eager_only)
-            else:
-                _walk(owner, child, return_type, argtemp_ok=True)
+            _walk(owner, child, return_type, argtemp_ok=True)
         for child in _iter_children(node):
             if not any(child is c for c in sources):
                 _walk(owner, child, return_type)
@@ -1360,6 +1414,21 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         if node.raise_expr is not None:
             _walk(owner, node.raise_expr, return_type, argtemp_ok=True)
         return
+    if isinstance(node, THIRWith):
+        # A manager's temps flush before its `__ctx_N` line (a fresh
+        # argument of the head lives for the whole statement).
+        managers = [item.ctx_expr for item in node.items]
+        for child in _iter_children(node):
+            _walk(owner, child, return_type,
+                  argtemp_ok=any(child is m for m in managers))
+        return
+    if isinstance(node, THIRMatch) and node.subject is not None:
+        # The subject's temps flush before its bind line.
+        _walk(owner, node.subject, return_type, argtemp_ok=True)
+        for child in _iter_children(node):
+            if child is not node.subject:
+                _walk(owner, child, return_type)
+        return
     if isinstance(node, THIRComprehensionBlock):
         # Every statement of the body flushes its own temps inside the
         # block, so each grants its positions as it would anywhere -- except
@@ -1446,7 +1515,11 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         _walk(owner, child, return_type,
               argtemp_ok=argtemp_ok and isinstance(node, THIRExpr),
               eager_only=eager_only and isinstance(node, THIRExpr),
-              via_transparent=isinstance(node, _TRANSPARENT_WRAPPERS))
+              via_transparent=(isinstance(node, _TRANSPARENT_WRAPPERS)
+                               # A tuple's borrow form re-renders the
+                               # tuple it binds in place.
+                               or isinstance(node, THIRTupleLiteral)
+                               and child is node.bound))
 
 
 def _walk_resumable_return(owner: str, ret: THIRResumableReturn) -> None:
@@ -1563,8 +1636,7 @@ def _own_flush_children(node: THIRNode) -> 'tuple[THIRNode, ...]':
     """The children of `node` that flush their own temps: every statement of
     a comprehension's body, an Array range comprehension's element (flushed
     inside its per-index lambda) and an Array source comprehension's
-    head. A comprehension's first loop source does not:
-    `_check_no_statement_temp` reaches it separately."""
+    head -- a comprehension's first loop source included."""
     if isinstance(node, THIRComprehensionBlock):
         return node.body
     if (isinstance(node, THIRArrayComprehension) and node.arm == "range"
@@ -1608,16 +1680,10 @@ def _check_no_statement_temp(owner: str, node: THIRNode) -> None:
     """A member-init or base-init cell runs before the ctor body, so no
     statement exists to host a hoisted declaration: lowering demotes an
     init whose source needs one. A comprehension's body flushes its own
-    temps and is skipped, all but its first loop's source, which evaluates
-    in the cell; a lambda body is not a flush region, so it is walked."""
+    temps, its first loop's source included, and is skipped; a lambda body
+    is not a flush region, so it is walked."""
     if hoists_declaration(node):
         _fail(owner, node, "statement temp in a member-init / base-init cell")
-    if isinstance(node, THIRComprehensionBlock):
-        for stmt in node.body:
-            if (isinstance(stmt, (THIRForEach, THIRForIterProto, THIRForRange))
-                    and stmt.source_in_enclosing):
-                for src in _loop_sources(stmt):
-                    _check_no_statement_temp(owner, src)
     skip = _own_flush_children(node)
     for child in _iter_children(node):
         if not any(child is c for c in skip):

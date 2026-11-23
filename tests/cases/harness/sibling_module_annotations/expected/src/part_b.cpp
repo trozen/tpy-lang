@@ -60,8 +60,7 @@ int32_t joined(std::string_view a, std::string_view b) {
 //     print("part_b rec:", r.name)
 //     print("part_b summary:", global_view(), joined("ab", "cd"))
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "part_b:" << " " << ::tpyapp::part_b::make(7).v << " " << ::tpyapp::part_b::total(__tmp_1) << " " << ::tpyapp::part_b::width("abc") << "\n" << ::tpy::check_signals;
+    std::cout << "part_b:" << " " << ::tpyapp::part_b::make(7).v << " " << ::tpyapp::part_b::total({1, 2, 3}) << " " << ::tpyapp::part_b::width("abc") << "\n" << ::tpy::check_signals;
     Rec r = Rec("old");
     r.rename("new");
     std::cout << "part_b rec:" << " " << r.name << "\n" << ::tpy::check_signals;

@@ -15,13 +15,11 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        Chrome __tmp_1 = Chrome();
         __state = S_RESUME_0;
-        return t.run(__tmp_1);
+        return t.run(::tpy::as_mut_lvalue(Chrome()));
     }
     case S_RESUME_0: {  // after: yield t.run(Chrome())  # tpyc: ok
-        __coro_arg_0.emplace(Chrome());
-        __for_src_0.emplace(t.gen_m((*__coro_arg_0)));
+        __for_src_0.emplace(t.gen_m(__head_arg_0.emplace(Chrome())));
         __state = S_JOIN_0;
         continue;
     }

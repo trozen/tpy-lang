@@ -42,8 +42,7 @@ int32_t free_fn(std::vector<int32_t>& xs, bool big) {
 //     part_bound.main()
 //     part_unlowered.main()
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "free_fn:" << " " << ::tpyapp::main::free_fn(__tmp_1, false) << "\n" << ::tpy::check_signals;
+    std::cout << "free_fn:" << " " << ::tpyapp::main::free_fn(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3}), false) << "\n" << ::tpy::check_signals;
     ::tpyapp::part_positions::main();
     ::tpyapp::part_enclosing::main();
     ::tpyapp::part_scope::main();

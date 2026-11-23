@@ -95,6 +95,13 @@ class LeafPermission(Enum):
         """The sink copies the leaf implicitly (the copy its warning says)."""
         return self in (LeafPermission.WARNED, LeafPermission.HEDGED)
 
+    @property
+    def holds_own(self) -> bool:
+        """The slot holds the leaf as its own -- moved in or copied by any
+        permission -- not a borrow passed on (PASS) nor a copy no check
+        declares (UNDECLARED)."""
+        return self not in (LeafPermission.PASS, LeafPermission.UNDECLARED)
+
 
 @dataclass(frozen=True)
 class Leaf:
@@ -202,6 +209,16 @@ class SourceRecord:
         return frozenset(p for p, leaf in self.leaves.items()
                          if leaf.permission is LeafPermission.MOVE
                          and not leaf.borrowed)
+
+    @property
+    def copies_every_leaf(self) -> bool:
+        """Every leaf arrives as the slot's own (`LeafPermission.holds_own`);
+        an element record with no leaf of its own, as the whole it is part
+        of (`copies_whole`). A COPY whole may pass some leaves on, which
+        are no copy."""
+        if not self.leaves:
+            return self.copies_whole
+        return all(leaf.permission.holds_own for leaf in self.leaves.values())
 
     @property
     def copies_whole(self) -> bool:

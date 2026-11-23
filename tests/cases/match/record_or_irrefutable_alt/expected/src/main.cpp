@@ -152,20 +152,13 @@ __gen_counts_ordered counts_ordered(const Cat& c, bool k) {
 //     for v in counts_ordered(Cat(1), False):
 //         print("gen_unguarded:", v)
 void main() {
-    Cat __tmp_1 = Cat(3);
-    Cat __tmp_2 = Cat(5);
-    std::cout << "plain:" << " " << ::tpyapp::main::plain(__tmp_1) << " " << ::tpyapp::main::plain(__tmp_2) << "\n" << ::tpy::check_signals;
-    Cat __tmp_3 = Cat(3);
-    Cat __tmp_4 = Cat(5);
-    Cat __tmp_5 = Cat(7);
-    std::cout << "nonfinal:" << " " << ::tpyapp::main::nonfinal(__tmp_3) << " " << ::tpyapp::main::nonfinal(__tmp_4) << " " << ::tpyapp::main::nonfinal(__tmp_5) << "\n" << ::tpy::check_signals;
-    Cat __tmp_6 = Cat(3);
-    Cat __tmp_7 = Cat(5);
-    std::cout << "opt_inner:" << " " << ::tpyapp::main::opt_inner(nullptr) << " " << ::tpyapp::main::opt_inner(&(__tmp_6)) << " " << ::tpyapp::main::opt_inner(&(__tmp_7)) << "\n" << ::tpy::check_signals;
+    std::cout << "plain:" << " " << ::tpyapp::main::plain(Cat(3)) << " " << ::tpyapp::main::plain(Cat(5)) << "\n" << ::tpy::check_signals;
+    std::cout << "nonfinal:" << " " << ::tpyapp::main::nonfinal(Cat(3)) << " " << ::tpyapp::main::nonfinal(Cat(5)) << " " << ::tpyapp::main::nonfinal(Cat(7)) << "\n" << ::tpy::check_signals;
+    std::cout << "opt_inner:" << " " << ::tpyapp::main::opt_inner(nullptr) << " " << ::tpyapp::main::opt_inner(&::tpy::as_mut_lvalue(Cat(3))) << " " << ::tpyapp::main::opt_inner(&::tpy::as_mut_lvalue(Cat(5))) << "\n" << ::tpy::check_signals;
     std::cout << "method:" << " " << Shelter(Cat(3)).status() << " " << Shelter(Cat(5)).status() << "\n" << ::tpy::check_signals;
     {
-        Cat __tmp_8 = Cat(1);
-        auto __src_0 = ::tpyapp::main::counts(__tmp_8);
+        Cat __tmp_1 = Cat(1);
+        auto __src_0 = ::tpyapp::main::counts(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -175,8 +168,8 @@ void main() {
         }
     }
     {
-        Cat __tmp_9 = Cat(5);
-        auto __src_2 = ::tpyapp::main::counts(__tmp_9);
+        Cat __tmp_2 = Cat(5);
+        auto __src_2 = ::tpyapp::main::counts(__tmp_2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -186,8 +179,8 @@ void main() {
         }
     }
     {
-        Cat __tmp_10 = Cat(1);
-        auto __src_4 = ::tpyapp::main::counts_ordered(__tmp_10, true);
+        Cat __tmp_3 = Cat(1);
+        auto __src_4 = ::tpyapp::main::counts_ordered(__tmp_3, true);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -197,8 +190,8 @@ void main() {
         }
     }
     {
-        Cat __tmp_11 = Cat(1);
-        auto __src_6 = ::tpyapp::main::counts_ordered(__tmp_11, false);
+        Cat __tmp_4 = Cat(1);
+        auto __src_6 = ::tpyapp::main::counts_ordered(__tmp_4, false);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();

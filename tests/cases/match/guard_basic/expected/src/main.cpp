@@ -570,8 +570,7 @@ void main() {
     std::cout << "chain_if_else:" << " " << r << "\n" << ::tpy::check_signals;
     r = ::tpyapp::main::chain_try_finally(::tpy::BigInt(1), true);
     std::cout << "chain_try_finally:" << " " << r << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
-    ::tpyapp::main::chain_break(__tmp_1, true);
+    ::tpyapp::main::chain_break({1, 2, 3}, true);
     r = ::tpyapp::main::union_nested_match(d1.as_const(), Color::BLUE);
     std::cout << "union_nested_match:" << " " << r << "\n" << ::tpy::check_signals;
     r = ::tpyapp::main::union_nested_match(d2.as_const(), Color::RED);
@@ -587,8 +586,7 @@ void main() {
     }
     r = ::tpyapp::main::union_assert_false(d2.as_const());
     std::cout << "union_assert_false:" << " " << r << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::Union<Cat, Dog>> __tmp_2 = {Dog("Buddy"), Cat("Whiskers"), Cat("Luna"), Dog("Rex")};
-    ::tpyapp::main::union_break(__tmp_2);
+    ::tpyapp::main::union_break({Dog("Buddy"), Cat("Whiskers"), Cat("Luna"), Dog("Rex")});
     k = ::tpyapp::main::switch_while_true(d1.as_const());
     std::cout << "switch_while_true:" << " " << k << "\n" << ::tpy::check_signals;
     k = ::tpyapp::main::switch_while_true(c1.as_const());
@@ -597,11 +595,7 @@ void main() {
     std::cout << "switch_try_finally:" << " " << r << "\n" << ::tpy::check_signals;
     r = ::tpyapp::main::switch_try_finally(c1.as_const());
     std::cout << "switch_try_finally:" << " " << r << "\n" << ::tpy::check_signals;
-    OptN __tmp_3 = OptN(3);
-    OptN __tmp_4 = OptN(std::nullopt);
-    PlainN __tmp_5 = PlainN(5);
-    PlainN __tmp_6 = PlainN(-1);
-    std::cout << "same_capture:" << " " << ::tpyapp::main::same_capture(::tpy::Union<const OptN*, const PlainN*>{&__tmp_3}, true) << " " << ::tpyapp::main::same_capture(::tpy::Union<const OptN*, const PlainN*>{&__tmp_4}, false) << " " << ::tpyapp::main::same_capture(::tpy::Union<const OptN*, const PlainN*>{&__tmp_5}, false) << " " << ::tpyapp::main::same_capture(::tpy::Union<const OptN*, const PlainN*>{&__tmp_6}, false) << "\n" << ::tpy::check_signals;
+    std::cout << "same_capture:" << " " << ::tpyapp::main::same_capture(::tpy::Union<const OptN*, const PlainN*>{&(::tpy::as_mut_lvalue(OptN(3)))}, true) << " " << ::tpyapp::main::same_capture(::tpy::Union<const OptN*, const PlainN*>{&(::tpy::as_mut_lvalue(OptN(std::nullopt)))}, false) << " " << ::tpyapp::main::same_capture(::tpy::Union<const OptN*, const PlainN*>{&(::tpy::as_mut_lvalue(PlainN(5)))}, false) << " " << ::tpyapp::main::same_capture(::tpy::Union<const OptN*, const PlainN*>{&(::tpy::as_mut_lvalue(PlainN(-1)))}, false) << "\n" << ::tpy::check_signals;
 }
 
 // # match/case with guard clauses (if conditions); the terminator sections pin

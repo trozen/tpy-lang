@@ -1,0 +1,1 @@
+main.py:37: error: 'Mgr' keeps the address of a temporary this statement destroys, and the name the `with` binds is read after the statement. Bind the temporary to a local first

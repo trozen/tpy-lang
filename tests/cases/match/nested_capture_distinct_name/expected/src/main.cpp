@@ -32,9 +32,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(keeps_alias(Holder(Inner(1), 3), Holder(Inner(2), 7)))
 void main() {
-    Holder __tmp_1 = Holder(Inner(::tpy::BigInt(1)), ::tpy::BigInt(3));
-    Holder __tmp_2 = Holder(Inner(::tpy::BigInt(2)), ::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::keeps_alias(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::keeps_alias(::tpy::as_mut_lvalue(Holder(Inner(::tpy::BigInt(1)), ::tpy::BigInt(3))), Holder(Inner(::tpy::BigInt(2)), ::tpy::BigInt(7))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

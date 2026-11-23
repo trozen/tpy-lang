@@ -389,8 +389,7 @@ void main() {
         }
         std::move(__result);
     }))) << "\n" << ::tpy::check_signals;
-    RBag __tmp_1 = RBag();
-    std::cout << "param" << " " << ::tpy::ListPrinter(::tpyapp::main::param_comp(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << "param" << " " << ::tpy::ListPrinter(::tpyapp::main::param_comp(::tpy::as_mut_lvalue(RBag()))) << "\n" << ::tpy::check_signals;
     RBag rb = RBag();
     std::cout << "mutate" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -444,8 +443,8 @@ void main() {
         }
     }
     {
-        auto __tmp_2 = std::array<std::string, 2>{"x", "yy"};
-        auto __src_30 = ::tpyapp::main::gen_protocol(__tmp_2);
+        auto __tmp_1 = std::array<std::string, 2>{"x", "yy"};
+        auto __src_30 = ::tpyapp::main::gen_protocol(__tmp_1);
         auto&& __itr_30 = ::tpy::__iter__(__src_30);
         for (;;) {
             auto __r_31 = __itr_30.__next__();
@@ -494,13 +493,13 @@ void main() {
         }
         std::move(__result);
     })) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(bx)) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = std::array<std::string, 2>{"b", "a"};
-    auto __tmp_4 = Bag();
+    auto __tmp_2 = std::array<std::string, 2>{"b", "a"};
+    auto __tmp_3 = Bag();
+    auto __tmp_4 = ::tpyapp::main::words();
+    std::cout << "protocol" << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_2)) << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_3)) << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_4)) << "\n" << ::tpy::check_signals;
     auto __tmp_5 = ::tpyapp::main::words();
-    std::cout << "protocol" << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_3)) << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_4)) << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_5)) << "\n" << ::tpy::check_signals;
-    auto __tmp_6 = ::tpyapp::main::words();
-    auto __tmp_7 = ::tpy::__iter__(std::array<std::string, 2>{"m", "n"});
-    std::cout << "iterator_param" << " " << ::tpy::ListPrinter(::tpyapp::main::drain(__tmp_6)) << " " << ::tpy::ListPrinter(::tpyapp::main::drain(__tmp_7)) << "\n" << ::tpy::check_signals;
+    auto __tmp_6 = ::tpy::__iter__(std::array<std::string, 2>{"m", "n"});
+    std::cout << "iterator_param" << " " << ::tpy::ListPrinter(::tpyapp::main::drain(__tmp_5)) << " " << ::tpy::ListPrinter(::tpyapp::main::drain(__tmp_6)) << "\n" << ::tpy::check_signals;
     Src s4 = Src();
     std::cout << "member_stmt" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;

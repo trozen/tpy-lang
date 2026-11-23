@@ -34,11 +34,9 @@ Tagged<Animal, std::string> make_tagged() {
 //     print(t3.tag(), t3.get().name())
 void main() {
     Tagged<Dog, std::string> td = Tagged<Dog, std::string>(Dog("Buddy"), "good");
-    Tagged<Animal, std::string> __tmp_1 = std::move(td);
-    ::tpyapp::main::show(__tmp_1);
+    ::tpyapp::main::show(::tpy::as_mut_lvalue(Tagged<Animal, std::string>(std::move(td))));
     Tagged<Cat, std::string> tc = Tagged<Cat, std::string>(Cat("Whiskers"), "lazy");
-    Tagged<Animal, std::string> __tmp_2 = std::move(tc);
-    ::tpyapp::main::show(__tmp_2);
+    ::tpyapp::main::show(::tpy::as_mut_lvalue(Tagged<Animal, std::string>(std::move(tc))));
     Tagged<Dog, std::string> td2 = Tagged<Dog, std::string>(Dog("Max"), "brave");
     Tagged<Animal, std::string> animal_tagged = std::move(td2);
     std::cout << animal_tagged.tag() << " " << animal_tagged.get().name() << "\n" << ::tpy::check_signals;

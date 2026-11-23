@@ -35,12 +35,9 @@ std::string describe(const Pet& p) {
 //     print(describe(Dog(3)))
 //     print(describe(Cat()))
 void main() {
-    Dog __tmp_1{Dog(::tpy::BigInt(4))};
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
-    Dog __tmp_2{Dog(::tpy::BigInt(3))};
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
-    Cat __tmp_3{Cat()};
-    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Dog{Dog(::tpy::BigInt(4))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Dog{Dog(::tpy::BigInt(3))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Cat{Cat()}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

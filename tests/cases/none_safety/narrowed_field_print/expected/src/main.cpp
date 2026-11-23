@@ -64,14 +64,10 @@ void show_truthy(const Config& cfg) {
 //     show_truthy(Config(42, "hello", None, None))
 //     show_truthy(Config(None, None, None, None))
 void main() {
-    Config __tmp_1 = Config(8080, "test", true, 3.14);
-    ::tpyapp::main::show_guarded(__tmp_1);
-    Config __tmp_2 = Config(std::nullopt, std::nullopt, std::nullopt, std::nullopt);
-    ::tpyapp::main::show_guarded(__tmp_2);
-    Config __tmp_3 = Config(42, "hello", std::nullopt, std::nullopt);
-    ::tpyapp::main::show_truthy(__tmp_3);
-    Config __tmp_4 = Config(std::nullopt, std::nullopt, std::nullopt, std::nullopt);
-    ::tpyapp::main::show_truthy(__tmp_4);
+    ::tpyapp::main::show_guarded(Config(8080, "test", true, 3.14));
+    ::tpyapp::main::show_guarded(Config(std::nullopt, std::nullopt, std::nullopt, std::nullopt));
+    ::tpyapp::main::show_truthy(Config(42, "hello", std::nullopt, std::nullopt));
+    ::tpyapp::main::show_truthy(Config(std::nullopt, std::nullopt, std::nullopt, std::nullopt));
 }
 
 // main()

@@ -149,19 +149,12 @@ std::vector<bool> comp_flags(const std::vector<Tag>& tags, const std::vector<Tag
 //     print("distinct-nan", holds(pts, Pt(float64("nan"))))
 void main() {
     std::vector<Tag> tags = {Tag(1), Tag(2)};
-    Tag __tmp_1 = Tag(1);
-    Tag __tmp_2 = Tag(9);
-    std::cout << "reflexive" << " " << ::tpy::print_bool(::tpyapp::main::reflexive(tags, __tmp_1)) << " " << ::tpy::print_bool(::tpyapp::main::reflexive(tags, __tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << "reflexive" << " " << ::tpy::print_bool(::tpyapp::main::reflexive(tags, Tag(1))) << " " << ::tpy::print_bool(::tpyapp::main::reflexive(tags, Tag(9))) << "\n" << ::tpy::check_signals;
     std::cout << "equal-not-identical" << " " << ::tpy::print_bool(::tpyapp::main::equal_not_identical(tags)) << "\n" << ::tpy::check_signals;
     std::cout << "method" << " " << ::tpy::print_bool(Bag().has(Tag(2))) << " " << ::tpy::print_bool(Bag().has(Tag(9))) << "\n" << ::tpy::check_signals;
-    Bag __tmp_3 = Bag();
-    Tag __tmp_4 = Tag(1);
-    std::cout << "fstring" << " " << ::tpyapp::main::in_fstring(__tmp_3, __tmp_4) << "\n" << ::tpy::check_signals;
-    std::vector<Tag> __tmp_5 = {Tag(2), Tag(7)};
-    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp_flags(tags, __tmp_5)) << "\n" << ::tpy::check_signals;
-    Tag __tmp_6 = Tag(1);
-    Tag __tmp_7 = Tag(9);
-    std::cout << "closure" << " " << ::tpy::print_bool(::tpyapp::main::via_closure(tags, __tmp_6)) << " " << ::tpy::print_bool(::tpyapp::main::via_closure(tags, __tmp_7)) << "\n" << ::tpy::check_signals;
+    std::cout << "fstring" << " " << ::tpyapp::main::in_fstring(Bag(), Tag(1)) << "\n" << ::tpy::check_signals;
+    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp_flags(tags, {Tag(2), Tag(7)})) << "\n" << ::tpy::check_signals;
+    std::cout << "closure" << " " << ::tpy::print_bool(::tpyapp::main::via_closure(tags, Tag(1))) << " " << ::tpy::print_bool(::tpyapp::main::via_closure(tags, Tag(9))) << "\n" << ::tpy::check_signals;
     std::vector<Pt> pts = {Pt(std::numeric_limits<double>::quiet_NaN()), Pt(1.0)};
     int32_t i = 0;
     auto& __obj_0 = pts;
@@ -198,8 +191,7 @@ void main() {
     }
     std::vector<int32_t> ns = {1, 2, 3};
     std::cout << "generic-int" << " " << ::tpy::print_bool(::tpyapp::main::has<int32_t>(ns, 2)) << " " << ::tpy::print_bool(::tpyapp::main::has<int32_t>(ns, 9)) << "\n" << ::tpy::check_signals;
-    Pt __tmp_8 = Pt(std::numeric_limits<double>::quiet_NaN());
-    std::cout << "distinct-nan" << " " << ::tpy::print_bool(::tpyapp::main::holds(pts, __tmp_8)) << "\n" << ::tpy::check_signals;
+    std::cout << "distinct-nan" << " " << ::tpy::print_bool(::tpyapp::main::holds(pts, Pt(std::numeric_limits<double>::quiet_NaN()))) << "\n" << ::tpy::check_signals;
 }
 
 // # `x in xs` with a user-RECORD needle. Containment is CPython's

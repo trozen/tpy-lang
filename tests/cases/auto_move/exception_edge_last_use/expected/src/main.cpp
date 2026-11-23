@@ -456,13 +456,12 @@ P handler_return_finally() {
 //     except ValueError:
 //         print("with_target_handler", t.n[0])
 void with_target_handler() {
-    std::optional<Res> __slot_2;
     Res __slot_1 = Res(0);
     Res* t = &__slot_1;
+    std::optional<Res> __with_root_0;
     {
         try {
-            __slot_2.emplace(Res(6));
-            auto& __ctx_5 = (*__slot_2);
+            auto& __ctx_5 = __with_root_0.emplace(6);
             t = &(__ctx_5.__enter__());
             try {
                 ::tpyapp::main::boom(true);

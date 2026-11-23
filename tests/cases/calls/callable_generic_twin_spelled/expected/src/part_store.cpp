@@ -88,8 +88,7 @@ void main() {
     t.n = ::tpy::add_check<int32_t>(t.n, 1);
     std::cout << "store-method" << " " << q.n << " " << t.n << "\n" << ::tpy::check_signals;
     std::vector<P> xs = {P(0)};
-    std::vector<P> __tmp_2 = {P(7)};
-    P u = ::tpyapp::part_store::touch<::tpy::own_arg<P>>(mk0, xs, __tmp_2);
+    P u = ::tpyapp::part_store::touch<::tpy::own_arg<P>>(mk0, xs, ::tpy::as_mut_lvalue(std::vector<P>{P(7)}));
     std::cout << "store-touch" << " " << ::tpy::__getitem__(xs, 0).n << " " << u.n << "\n" << ::tpy::check_signals;
     std::vector<P> out = std::vector<P>{};
     P b = P(3);
@@ -102,8 +101,8 @@ void main() {
     std::cout << "store-gom" << " " << v.n << " " << ::tpy::__getitem__(g, "k").n << "\n" << ::tpy::check_signals;
     N n = N(3);
     {
-        auto&& __tmp_3 = ::tpyapp::part_store::peek<N>(n);
-        __tmp_3.n = ::tpy::add_check<int32_t>(__tmp_3.n, 1);
+        auto&& __tmp_2 = ::tpyapp::part_store::peek<N>(n);
+        __tmp_2.n = ::tpy::add_check<int32_t>(__tmp_2.n, 1);
     }
     std::cout << "store-nocopy" << " " << n.n << "\n" << ::tpy::check_signals;
 }

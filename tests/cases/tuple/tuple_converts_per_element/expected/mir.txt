@@ -65,7 +65,7 @@ main::mk_ab@514:0: uncovered (unsupported return type), summary: opaque (unsuppo
 main::lend_union@518:0: uncovered (reference yield)
 main::make_s@523:0: uncovered (unsupported form conversion), summary: opaque (unsupported form conversion)
 main::count_to@527:0: covered (storage: no_facts: storage facts have not been published)
-main::frame_select@531:0: uncovered (container source needs a place)
+main::frame_select@531:0: uncovered (argument held across a suspension)
 main::pair_s@538:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::first_s@542:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::generic_dyn@546:0: uncovered (unsupported return type), summary: opaque (unsupported return type)

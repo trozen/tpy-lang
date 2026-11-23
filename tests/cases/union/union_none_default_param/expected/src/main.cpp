@@ -36,15 +36,11 @@ std::string pointer_arm(::tpy::Union<std::monostate, Cat*, Dog*> pet) {
 //     d = Dog(1)
 //     print(pointer_arm(d), d.barks)
 void main() {
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_1 = Fixed(60);
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_2 = Zone(2);
-    std::cout << Holder().kind << " " << Holder(__tmp_1).kind << " " << Holder(__tmp_2).kind << "\n" << ::tpy::check_signals;
+    std::cout << Holder().kind << " " << Holder(::tpy::Union<std::monostate, Fixed, Zone>(Fixed(60))).kind << " " << Holder(::tpy::Union<std::monostate, Fixed, Zone>(Zone(2))).kind << "\n" << ::tpy::check_signals;
     Holder h = Holder();
     std::cout << h.describe() << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_3 = Fixed(60);
-    std::cout << h.describe(__tmp_3) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_4 = Zone(7);
-    std::cout << h.describe(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << h.describe(::tpy::Union<std::monostate, Fixed, Zone>(Fixed(60))) << "\n" << ::tpy::check_signals;
+    std::cout << h.describe(::tpy::Union<std::monostate, Fixed, Zone>(Zone(7))) << "\n" << ::tpy::check_signals;
     std::cout << h.opt() << "\n" << ::tpy::check_signals;
     std::cout << h.opt(Fixed(5)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::pointer_arm() << "\n" << ::tpy::check_signals;

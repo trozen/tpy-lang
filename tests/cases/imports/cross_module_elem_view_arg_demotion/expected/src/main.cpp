@@ -157,8 +157,7 @@ void main() {
     }
     std::vector<std::string> i = {"a1", "x"};
     ::tpyapp::main::sec_alias_bind(i);
-    ::tpyapp::viewmod::Outer __tmp_1 = ::tpyapp::viewmod::Outer("f1");
-    ::tpyapp::main::sec_field(__tmp_1);
+    ::tpyapp::main::sec_field(::tpyapp::viewmod::Outer("f1"));
 }
 
 // from viewmod import Outer, bump, touch, peek, peek_rec

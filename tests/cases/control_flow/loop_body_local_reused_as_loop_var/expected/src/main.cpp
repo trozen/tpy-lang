@@ -793,10 +793,8 @@ void sections(std::vector<int32_t>& xs) {
 //     sections([])
 //     sections([7])
 void main() {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    ::tpyapp::main::sections(__tmp_1);
-    std::vector<int32_t> __tmp_2 = {7};
-    ::tpyapp::main::sections(__tmp_2);
+    ::tpyapp::main::sections(::tpy::as_mut_lvalue(std::vector<int32_t>{}));
+    ::tpyapp::main::sections(::tpy::as_mut_lvalue(std::vector<int32_t>{7}));
 }
 
 // # A name first bound in a loop body and then reused as a later `for` loop

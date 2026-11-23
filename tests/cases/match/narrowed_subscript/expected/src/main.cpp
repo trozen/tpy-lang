@@ -611,8 +611,7 @@ void main() {
     ::tpy::Union<::tpy::ByteArray*, int32_t*> buffer = ::tpy::to_ptr_variant(__slot_1);
     ::tpy::BigInt index = ::tpy::BigInt::from_str("1");
     ::tpyapp::main::string_reads(text, index);
-    ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("abc", 3);
-    ::tpyapp::main::bytes_reads(::tpy::Union<const Indexed*, const ::tpy::Bytes*>{&__tmp_1}, index);
+    ::tpyapp::main::bytes_reads(::tpy::Union<const Indexed*, const ::tpy::Bytes*>{&(::tpy::as_mut_lvalue(::tpy::bytes_literal_owned("abc", 3)))}, index);
     ::tpyapp::main::bytearray_reads(buffer.as_const(), index);
     ::tpyapp::main::capture_reads(text, true);
     ::tpyapp::main::capture_reads(text, false);
@@ -651,8 +650,7 @@ void main() {
     ::tpy::Union<int32_t*, std::vector<int32_t>*> items = ::tpy::to_ptr_variant(__slot_2);
     Indexed indexed = Indexed();
     ::tpyapp::main::list_read(items.as_const());
-    ::tpy::ordered_map<int32_t, int32_t> __tmp_2 = ::tpy::ordered_map<int32_t, int32_t>({{0, 30}});
-    ::tpyapp::main::dict_read(::tpy::Union<const ::tpy::ordered_map<int32_t, int32_t>*, const int32_t*>{&__tmp_2});
+    ::tpyapp::main::dict_read(::tpy::Union<const ::tpy::ordered_map<int32_t, int32_t>*, const int32_t*>{&(::tpy::as_mut_lvalue(::tpy::ordered_map<int32_t, int32_t>({{0, 30}})))});
     ::tpyapp::main::record_read(::tpy::Union<const Indexed*, const int32_t*>{&(indexed)});
 }
 

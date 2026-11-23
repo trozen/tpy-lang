@@ -154,8 +154,7 @@ int32_t getp(const P& p) {
 // def maybe_cb(f: Callable[[P], int32] | None) -> int32:
 //     return 0 if f is None else f(P(7))
 int32_t maybe_cb(std::optional<std::function<int32_t(P&)>> f) {
-    std::optional<P> __tmp_1;
-    return (((!f.has_value())) ? (0) : (__tmp_1.emplace(P(7)), f.value()((*__tmp_1))));
+    return (((!f.has_value())) ? (0) : (f.value()(::tpy::as_mut_lvalue(P(7)))));
 }
 
 // def maybe64(x: int64 | None) -> int64:
@@ -463,10 +462,8 @@ void main() {
     std::cout << "readonly" << " " << ::tpyapp::main::callp(count, p) << "\n" << ::tpy::check_signals;
     std::cout << "optional" << " " << ::tpyapp::main::call32(maybe, 4) << "\n" << ::tpy::check_signals;
     std::cout << "optional-str" << " " << ::tpyapp::main::call_str(maybe_s, "abc") << "\n" << ::tpy::check_signals;
-    Child __tmp_1 = Child(10);
-    std::cout << "subclass" << " " << ::tpyapp::main::call_child(getv, __tmp_1) << "\n" << ::tpy::check_signals;
-    Dog __tmp_2 = Dog(12);
-    std::cout << "dynamic" << " " << ::tpyapp::main::call_dog(ask, __tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "subclass" << " " << ::tpyapp::main::call_child(getv, ::tpy::as_mut_lvalue(Child(10))) << "\n" << ::tpy::check_signals;
+    std::cout << "dynamic" << " " << ::tpyapp::main::call_dog(ask, Dog(12)) << "\n" << ::tpy::check_signals;
     Puppy pup = Puppy(3);
     std::cout << "dynamic-member" << " " << ::tpyapp::main::call_puppy(pet_speak, pup) << "\n" << ::tpy::check_signals;
     pup.v = 4;
@@ -487,8 +484,7 @@ void main() {
     std::cout << "ret-union" << " " << ::tpy::__str__(ru) << "\n" << ::tpy::check_signals;
     std::cout << "ret-widen-optional" << " " << ::tpy::print_optional_val(::tpyapp::main::call_wopt(same, 6)) << "\n" << ::tpy::check_signals;
     std::cout << "optional-widen" << " " << ::tpyapp::main::call32(maybe64, 5) << "\n" << ::tpy::check_signals;
-    ::tpy::ByteArray __tmp_3 = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-    std::cout << "bytearray" << " " << ::tpyapp::main::call_bytes(blen, __tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "bytearray" << " " << ::tpyapp::main::call_bytes(blen, ::tpy::as_mut_lvalue(::tpy::ByteArray(::tpy::bytes_literal("abc", 3)))) << "\n" << ::tpy::check_signals;
     std::cout << "own-str-map" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(join, std::array<std::string, 2>{"a", "b"}, std::array<std::string, 2>{"cc", "dd"}))) << "\n" << ::tpy::check_signals;
     std::cout << "object-readonly-inferred" << " " << ::tpyapp::main::ro_scale(Scale(3)) << "\n" << ::tpy::check_signals;
     std::cout << "tuple-bigint" << " " << ::tpyapp::main::call_tw(twb, std::tuple<int32_t, int32_t>{1, 2}) << "\n" << ::tpy::check_signals;
@@ -502,10 +498,8 @@ void main() {
     ::tpyapp::main::call_ptr(ptr_of, p);
     std::cout << "ptr-return" << " " << p.v << "\n" << ::tpy::check_signals;
     std::function<P(Hp&)> cp = new_p;
-    Hp __tmp_4 = Hp();
-    std::cout << "callable-exact" << " " << ::tpyapp::main::via__Callable_Hp_Own_P__Hp(cp, __tmp_4) << "\n" << ::tpy::check_signals;
-    Hp __tmp_5 = Hp();
-    std::cout << "callable-exact-named" << " " << ::tpyapp::main::via__Callable_Hp_Own_P__Hp(new_p, __tmp_5) << "\n" << ::tpy::check_signals;
+    std::cout << "callable-exact" << " " << ::tpyapp::main::via__Callable_Hp_Own_P__Hp(cp, ::tpy::as_mut_lvalue(Hp())) << "\n" << ::tpy::check_signals;
+    std::cout << "callable-exact-named" << " " << ::tpyapp::main::via__Callable_Hp_Own_P__Hp(new_p, ::tpy::as_mut_lvalue(Hp())) << "\n" << ::tpy::check_signals;
     std::cout << "async-fn-own" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::run_fn([](int32_t __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::double_(__a0)); }))) << "\n" << ::tpy::check_signals;
 }
 

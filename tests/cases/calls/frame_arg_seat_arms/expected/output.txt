@@ -1,0 +1,57 @@
+arms scalar 11
+arms generic 11
+arms generic direct 8
+arms by value 11
+tuples whole 85
+tuples elem 42
+tuples opt elem 42
+tuples field 42
+tuples bound 85
+tuples gen [87, 45, 46]
+tuples co 214
+receivers field 11
+receivers nested 7
+receivers method 13
+receivers gen [17]
+receivers co 20
+generic mono field 5
+generic field 6
+generic gen [6]
+generic co 6
+generic values ['item-10', 'item-11', 'item-12', 'item-0', 'item-1', 'item-2']
+heads comp plain 3
+heads comp gen [0, 2, 4, 7, 8]
+heads comp co 16
+heads method [25, 26]
+heads field [10, 11]
+heads box [30, 31]
+heads match 15
+heads elif 21
+await drain 213
+await field 5
+mixed independent 330
+mixed fresh copy 66
+await btup local 31
+await btup fresh 41
+await elem fresh 11
+await elem opt 20
+await elem local 31 31
+task elem local 32 32
+plain elem local 33 33
+await generic str item-1
+await factory 16
+run factory 6
+chain mono 142
+chain generic 143
+heads ['head mid-name', 'own 9', 'lit 0', 'lit 1', 'lit 2']
+await sv mid-name
+await own loop 6
+with field ['enter', 'body', 'exit', 'after']
+with ptr inside 7
+with ptr after 18 18
+order awaited 3
+order head gen [0, 2, 4]
+order head co 12
+order bound generic [0, 10, 20]
+order bound generic plain 5
+arms module 9

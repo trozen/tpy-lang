@@ -8,9 +8,9 @@ namespace tpyapp::main {
 //     print(count_all(Box(1), Box(2), Box(3)))
 //     print(count_all(1, 2))
 void main() {
-    const Box __tmp_1 = Box(::tpy::BigInt(1));
-    const Box __tmp_2 = Box(::tpy::BigInt(2));
-    const Box __tmp_3 = Box(::tpy::BigInt(3));
+    Box __tmp_1 = Box(::tpy::BigInt(1));
+    Box __tmp_2 = Box(::tpy::BigInt(2));
+    Box __tmp_3 = Box(::tpy::BigInt(3));
     std::array<const Box*, 3> __tmp_4{&__tmp_1, &__tmp_2, &__tmp_3};
     std::cout << ::tpyapp::main::count_all<Box>(::tpy::varargs<const Box>(__tmp_4)) << "\n" << ::tpy::check_signals;
     std::array<const int32_t, 2> __tmp_5{1, 2};

@@ -7,8 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(Runner[int32]().pick[IntBox](IntBox(42)))   # tpyc: ok
 void main() {
-    IntBox __tmp_1 = IntBox(42);
-    std::cout << Runner<int32_t>().pick<IntBox>(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << Runner<int32_t>().pick<IntBox>(::tpy::as_mut_lvalue(IntBox(42))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

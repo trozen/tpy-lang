@@ -1076,6 +1076,9 @@ class TpyLambda(TpyExpr):
     # not one a comprehension or lambda around the lambda makes.
     body_captures: tuple[str, ...] = ()
     captures_by_value: bool = False  # True for Callable context (captures escape)
+    # Set by sema: the by-value captures the closure holds a value of its
+    # own of (`capture_copies.CaptureCopy` DEFINITE or COST).
+    owned_captures: frozenset[str] = frozenset()
     readonly_params: bool = False  # True when params should be const (key functions)
     # Set by sema: capture-list FrameType for Send/Sync conversion checks
     frame_type: 'TpyType | None' = None
@@ -3121,12 +3124,6 @@ def is_stable_address_lvalue(expr: TpyExpr) -> bool:
     (addressable in C++ but yield container-element temporaries
     across suspensions) and `TpyCoerce` (sema-only wrapper, doesn't
     reach codegen) are both excluded.
-
-    Used by:
-      * `sema/expressions.py::analyze_await` to reject
-        `await rvalue.method()` (M4 async-method receiver capture).
-      * `codegen_cpp/gen_async.py::_make_await_payload` to choose
-        BORROWED vs ERASED await mode.
     """
     e = expr
     while isinstance(e, TpyFieldAccess):

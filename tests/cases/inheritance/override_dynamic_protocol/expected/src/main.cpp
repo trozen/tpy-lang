@@ -13,8 +13,7 @@ void greet(Speaker& s) {
 // def main() -> None:
 //     greet(Dog())
 void main() {
-    Dog __tmp_1{Dog()};
-    ::tpyapp::main::greet(__tmp_1);
+    ::tpyapp::main::greet(::tpy::as_mut_lvalue(Dog{Dog()}));
 }
 
 // main()

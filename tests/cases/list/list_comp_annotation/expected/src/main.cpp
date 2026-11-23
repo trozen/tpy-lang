@@ -115,7 +115,7 @@ void main() {
         std::move(__result);
     });
     std::cout << ::tpy::ListPrinter(big_pos) << "\n" << ::tpy::check_signals;
-    std::vector<int64_t> __tmp_1 = ({
+    ::tpyapp::main::accept_wide(({
         std::vector<int64_t> __result;
         auto& __obj_4 = items;
         __result.reserve(static_cast<std::size_t>(__obj_4.size()));
@@ -126,8 +126,7 @@ void main() {
             __result.push_back(static_cast<int64_t>(x));
         }
         std::move(__result);
-    });
-    ::tpyapp::main::accept_wide(__tmp_1);
+    }));
     std::vector<int32_t> same = ({
         std::vector<int32_t> __result;
         auto& __obj_5 = items;

@@ -155,6 +155,8 @@ from .context import (_FRAME_SLOT_CLASSES, FrameLocalClass, _LowerScope,
                       _ONLY_SELF_TYPED, _Prescan,
                       narrow_alias_taken, SinkPos)
 from .expressions import (
+    awaited_call_arg,
+    awaited_receiver,
     lent_holder,
     _IsinSubject,
     _narrow_subject_const,
@@ -213,6 +215,9 @@ from .predicates import (
     unit_opt_instantiation,
 )
 from .statements import (
+    stmt_bound,
+    await_bound,
+    Hand,
     result_value,
     _append_assert_narrow,
     stamp_bindings,
@@ -227,7 +232,7 @@ from .statements import (
     _lower_stmt,
     _lower_stmts,
     _make_narrow_alias,
-    self_typed_frame_source,
+    self_typed_source,
     _nested_def_entry_reject,
     _nested_def_lowering_scope,
     _persistent_alias_name,
@@ -1165,8 +1170,36 @@ def _lower_for_iter_setup(stmt: 'THIRForIterSetup', func, lc,
             lowered_it = replace(lowered_it, deref=True)
         else:
             raise ThirUnsupported("res.for_narrowed_optional")
-    leaves[stmt.iterable] = self_typed_frame_source(lowered_it, lc)
+    leaves[stmt.iterable] = self_typed_source(lowered_it, lc)
     return unwraps
+
+
+def _terminator_bound(t: object, lc: '_LowerCtx') -> 'tuple[Hand, ...]':
+    """What a block's terminator hands the expressions it lowers
+    (`lc.planning`): a branch's condition, a match subject and a returned
+    or yielded value as their statement does (`stmt_bound`), an awaited
+    operand as its suspension does (`await_bound`)."""
+    if isinstance(t, THIRSuspend) and isinstance(t.payload,
+                                                 THIRAwaitSuspension):
+        return await_bound(t.payload, lc)
+    host = (t.host if isinstance(t, THIRBranch)
+            else t.slot.source if isinstance(t, THIRMatchDispatch)
+            else t.return_stmt if isinstance(t, THIRFrameReturn)
+            else getattr(t.payload, "yield_stmt", None)
+            if isinstance(t, THIRSuspend) else None)
+    return stmt_bound(host, lc) if host is not None else ()
+
+
+def suspension_crossing(slot: object, is_generator: bool = False) -> bool:
+    """Whether a suspension of the frame falls while what block slot `slot`
+    lowers is needed, so the keep plan seats what it keeps on the frame
+    (`plan_keeps`): a decomposed loop's source and a `with` manager, whose
+    state crosses the suspensions of the statement's body, a suspending
+    match's subject, and a coroutine's awaited operand."""
+    if isinstance(slot, (THIRWithEnter, THIRAsyncWithSetup, THIRForIterSetup,
+                         THIRMatchDispatch)):
+        return True
+    return isinstance(slot, THIRSuspend) and not is_generator
 
 
 def _with_enter_reject(stmt: 'THIRWithEnter | THIRAsyncWithSetup', analyzer,
@@ -2069,7 +2102,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         entry = lc.stmt_entry
         lc.stmt_entry = StmtEntry(stmt, leaf=_lower_nested_leaf)
         try:
-            leaf = _lower_leaf_inner(stmt)
+            with lc.planning(stmt_bound(stmt, lc)):
+                leaf = _lower_leaf_inner(stmt)
             stamp_bindings(leaf, _bb_cursor_key(stmt), lc)
             return leaf
         except ThirUnsupported as ex:
@@ -2332,16 +2366,18 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                                             lc.narrow.narrowed)
                 if reason is not None:
                     raise ThirUnsupported(reason)
-                leaves[stmt.manager] = (
-                    _strip_slot_leaf_deref(
-                        _lower_expr(stmt.item.context_expr, lc, declared,
-                                    # The owned `__with_ctx_N` emplace is a
-                                    # manager sink, like the sync with
-                                    # lane's (the marker lane's record_ret
-                                    # admission).
-                                    use=_ExprUse(
-                                        pos=SinkPos.WITH_MANAGER)),
-                        lc))
+                with lc.planning(stmt_bound(stmt.host, lc),
+                                 crosses=suspension_crossing(stmt)):
+                    leaves[stmt.manager] = (
+                        _strip_slot_leaf_deref(
+                            _lower_expr(stmt.item.context_expr, lc, declared,
+                                        # The owned `__with_ctx_N` emplace is
+                                        # a manager sink, like the sync with
+                                        # lane's (the marker lane's
+                                        # record_ret admission).
+                                        use=_ExprUse(
+                                            pos=SinkPos.WITH_MANAGER)),
+                            lc))
                 _note_pointer_source(stmt.manager, stmt.item.context_expr)
                 _witness("res.with_ctx")
                 continue
@@ -2364,20 +2400,27 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # The async skeleton owns the indirect deref
                     # ((*(g)).__aiter__(), gen_async's is_indirect wrap)
                     # -- the leaf renders bare.
-                    leaves[stmt.iterable] = (
-                        _strip_slot_leaf_deref(
-                            _lower_expr(stmt.source, lc, declared,
-                                        # The `__for_src` capture consumes
-                                        # the render whole -- the sync
-                                        # for-head's ITERABLE use.
-                                        use=_ExprUse(
-                                            result=_ExprResultUse.ITERABLE,
-                                            pos=SinkPos.ITER_SOURCE)),
-                            lc))
+                    with lc.planning(stmt_bound(stmt.host, lc),
+                                     crosses=suspension_crossing(stmt)):
+                        leaves[stmt.iterable] = (
+                            _strip_slot_leaf_deref(
+                                _lower_expr(stmt.source, lc, declared,
+                                            # The `__for_src` capture
+                                            # consumes the render whole --
+                                            # the sync for-head's ITERABLE
+                                            # use.
+                                            use=_ExprUse(
+                                                result=_ExprResultUse.ITERABLE,
+                                                pos=SinkPos.ITER_SOURCE)),
+                                lc))
                     _note_pointer_source(stmt.iterable, stmt.source)
-                elif _lower_for_iter_setup(
-                        stmt, func, lc, declared, analyzer, leaves):
-                    unwrapped_sources.add(stmt.iterable)
+                else:
+                    with lc.planning(stmt_bound(stmt.host, lc),
+                                     crosses=suspension_crossing(stmt)):
+                        unwraps = _lower_for_iter_setup(
+                            stmt, func, lc, declared, analyzer, leaves)
+                    if unwraps:
+                        unwrapped_sources.add(stmt.iterable)
                 _witness("res.for_iter_setup")
                 continue
             if isinstance(stmt, THIRFinallyExit):
@@ -2399,6 +2442,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         if not isinstance(t, (THIRFall, THIRFallOff)) \
                 and _bb_cursor_key(t) is not None:
             _bindings.enter(lc, _bb_cursor_key(t))
+        with lc.planning(_terminator_bound(t, lc),
+                         crosses=suspension_crossing(t, is_generator)):
+            _lower_terminator(t)
+
+    def _lower_terminator(t) -> None:
         if isinstance(t, THIRForAdvance) and t.step is not None:
             # A borrow-form tuple loop var (the frame gave its advance a
             # step slot) binds the step lent element by element; the
@@ -2447,7 +2495,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 lc.narrow.narrowed.keys(), lc.names_with("storage_tuple"),
                 lc.prescan, lc)
             m_node = _match._lower_match(
-                t.match_stmt, m_route, lc, declared, lc.names_with("pointer", prior=True),
+                t.match_stmt, m_route, lc, declared,
+                lc.names_with("pointer", prior=True),
                 getattr(t.match_stmt, "loc", None), arm_body_hooks=True)
             leaves[t.slot] = m_node
             # Hook-mode captures bind frame fields BEFORE the arm's BB walk,
@@ -2575,21 +2624,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         and operand.user_module_call is None
                         and operand.builtin_module_call is None):
                     leaves[payload.receiver] = consuming_receiver(
-                        operand, fi, _lower_expr(operand.obj, lc, declared),
+                        operand, fi, awaited_receiver(operand, lc, declared),
                         lc, declared)
                     _witness("res.suspend_expr")
-                lowered_args = []
-                for i, a in enumerate(operand.args):
-                    # An awaited callee is a coro factory -- always
-                    # frame-capturing for its ref args. The emplace is a
-                    # statement position: arg temps (the Own-slot copy+move
-                    # `auto __tmp_N = ...;`) flush before the suspend line.
-                    lowered_args.append(_lower_call_arg(
-                        a, fi.params[i].type, lc, declared,
-                        frame_capturing=True, temp_args=True,
-                        readonly_target=param_const(fi, i),
-                        callee_fi=fi, arg_index=i,
-                        retention=Retention.MEASURED))
+                lowered_args = [awaited_call_arg(operand, i, lc, declared)
+                                for i in range(len(operand.args))]
                 leaves[payload.args] = tuple(lowered_args)
                 if lowered_args:
                     _witness("res.await_args")
@@ -2726,7 +2765,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         unwrapped_sources=unwrapped_sources,
         owned_erased_operands=owned_erased_operands,
         resume_extractions=_resume_extractions(
-            cfg, lc, slot_types, declared, frozenset(narrow_aliases)))
+            cfg, lc, slot_types, declared, frozenset(narrow_aliases)),
+        head_holders=tuple(lc.head_holders),
+        embedding_edges=cfg.embedding_edges + tuple(
+            h.embeds for h in lc.head_holders if h.embeds is not None))
     _bindings.report_unentered(lc, cfg.decomposed)
     validate_resumable_leaves(func.name, res_leaves, lowered=True)
     return res_leaves

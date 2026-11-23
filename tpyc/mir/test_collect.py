@@ -418,8 +418,10 @@ def observe(cell: Cell) -> readonly[Cell]:
     return cell
 
 def borrowed(value: int32) -> int32:
-    # The materialized constructor argument backs the borrowed result.
-    saved = observe(Cell(value))
+    # The local backs the borrowed result (a fresh argument would live only
+    # for its statement).
+    cell = Cell(value)
+    saved = observe(cell)
     return saved.value
 
 def plain(value: int32) -> int32:

@@ -31,7 +31,7 @@ A generator or coroutine body is two THIR publications. The FRAME
 (`tpyc/thir/lower/frame.py`, CFG in `frame_cfg.py`) where the body is first
 needed -- the generator forward-declaration gate, the struct-order sort for
 coroutines, the source-genexpr pass -- before any of its leaves is lowered:
-parameter capture kinds, the await-lift / argument-seat pre-pass, the frame
+parameter capture kinds, the await-lift pre-pass, the frame
 locals' placement, the loop / with / pointer-slot / try-finally holders, the
 coarse CFG (blocks split only at suspensions and their joins, each with its
 region stack), the case entries, the abandonment cleanup and the frames it
@@ -668,9 +668,9 @@ lending source a helper still returns the element, which a holder copies).
 Readers read the stamp: `is_rvalue_source` for the C++ value
 category,
 `value_category.call_result_holdable` for a holder that outlives the
-statement, `call_result_live_in_statement` for an argument bound in place
-at a const slot and `call_result_is_reference` at a mutable one (a copy
-takes a statement temporary there).
+statement and `call_result_is_reference` for an argument a mutable
+parameter binds in place (a value the callee hands back binds there
+through `::tpy::as_mut_lvalue`).
 
 Parsing is mostly syntactic: the parser emits `TypeRefNode` (see
 `parse/nodes.py`) for every annotation site and a dedicated resolve

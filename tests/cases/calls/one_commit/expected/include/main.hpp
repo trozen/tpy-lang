@@ -558,8 +558,7 @@ inline Dropper::Dropper() {
 // def drop(self, k: int32 = 0, *, xs: list[Sink]) -> None:
 //     xs.append(Sink(k, xs=[]))
 inline void Dropper::drop(int32_t k, std::vector<Sink>& xs) const {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    xs.push_back(Sink(k, __tmp_1));
+    xs.push_back(Sink(k, ::tpy::as_mut_lvalue(std::vector<int32_t>{})));
 }
 
 // def __init__(self, n: int32) -> None:

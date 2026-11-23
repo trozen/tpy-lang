@@ -164,43 +164,21 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::vector<int32_t> __tmp_2 = {3, 4};
-    ::tpyapp::main::test_or(__tmp_1, __tmp_2);
-    std::vector<int32_t> __tmp_3 = {1, 2};
-    std::vector<int32_t> __tmp_4 = {3, 4};
-    ::tpyapp::main::test_and(__tmp_3, __tmp_4);
-    std::vector<int32_t> __tmp_5 = {1, 2};
-    std::vector<int32_t> __tmp_6 = {3, 4};
-    ::tpyapp::main::test_ternary(__tmp_5, __tmp_6, true);
+    ::tpyapp::main::test_or(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), ::tpy::as_mut_lvalue(std::vector<int32_t>{3, 4}));
+    ::tpyapp::main::test_and(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), ::tpy::as_mut_lvalue(std::vector<int32_t>{3, 4}));
+    ::tpyapp::main::test_ternary({1, 2}, {3, 4}, true);
     ::tpyapp::main::test_literal_or();
     ::tpyapp::main::test_literal_ternary(true);
-    std::vector<int32_t> __tmp_7 = {1};
-    std::vector<int32_t> __tmp_8 = {2};
-    std::vector<int32_t> __tmp_9 = {3};
-    ::tpyapp::main::test_or_chain(__tmp_7, __tmp_8, __tmp_9);
+    ::tpyapp::main::test_or_chain(::tpy::as_mut_lvalue(std::vector<int32_t>{1}), ::tpy::as_mut_lvalue(std::vector<int32_t>{2}), ::tpy::as_mut_lvalue(std::vector<int32_t>{3}));
     ::tpyapp::main::test_local_vars_or();
     ::tpyapp::main::test_int_literal_elements_or();
     ::tpyapp::main::test_int_literal_elements_ternary(true);
-    std::vector<int32_t> __tmp_10 = {1};
-    std::vector<int32_t> __tmp_11 = {2};
-    ::tpyapp::main::test_or_alias_first(__tmp_10, __tmp_11);
-    std::vector<int32_t> __tmp_12 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_13 = {2};
-    ::tpyapp::main::test_or_alias_second(__tmp_12, __tmp_13);
-    std::vector<int32_t> __tmp_14 = {1};
-    std::vector<int32_t> __tmp_15 = {2};
-    ::tpyapp::main::test_and_alias(__tmp_14, __tmp_15);
-    std::vector<int32_t> __tmp_16 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_17 = {2};
-    std::vector<int32_t> __tmp_18 = {3};
-    ::tpyapp::main::test_or_chain_alias(__tmp_16, __tmp_17, __tmp_18);
-    std::vector<int32_t> __tmp_19 = {1};
-    std::vector<int32_t> __tmp_20 = {2};
-    ::tpyapp::main::test_ternary_alias(__tmp_19, __tmp_20, true);
-    std::vector<int32_t> __tmp_21 = {1};
-    std::vector<int32_t> __tmp_22 = {2};
-    ::tpyapp::main::test_ternary_alias(__tmp_21, __tmp_22, false);
+    ::tpyapp::main::test_or_alias_first(::tpy::as_mut_lvalue(std::vector<int32_t>{1}), ::tpy::as_mut_lvalue(std::vector<int32_t>{2}));
+    ::tpyapp::main::test_or_alias_second(::tpy::as_mut_lvalue(std::vector<int32_t>{}), ::tpy::as_mut_lvalue(std::vector<int32_t>{2}));
+    ::tpyapp::main::test_and_alias(::tpy::as_mut_lvalue(std::vector<int32_t>{1}), ::tpy::as_mut_lvalue(std::vector<int32_t>{2}));
+    ::tpyapp::main::test_or_chain_alias(::tpy::as_mut_lvalue(std::vector<int32_t>{}), ::tpy::as_mut_lvalue(std::vector<int32_t>{2}), ::tpy::as_mut_lvalue(std::vector<int32_t>{3}));
+    ::tpyapp::main::test_ternary_alias(::tpy::as_mut_lvalue(std::vector<int32_t>{1}), ::tpy::as_mut_lvalue(std::vector<int32_t>{2}), true);
+    ::tpyapp::main::test_ternary_alias(::tpy::as_mut_lvalue(std::vector<int32_t>{1}), ::tpy::as_mut_lvalue(std::vector<int32_t>{2}), false);
 }
 
 } // namespace tpyapp::main

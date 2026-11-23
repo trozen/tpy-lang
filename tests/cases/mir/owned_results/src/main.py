@@ -148,8 +148,8 @@ def read(p: Point) -> int32:  # tpyc: mir(covered) mir_summary(known)
     return p.y
 
 
-# free function: the result lent as a borrowed argument temporary
-def lend_temp(n: int32) -> int32:  # tpyc: mir(certified) mir_summary(known)
+# free function: the result lent as a temporary of the call's own expression
+def lend_temp(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
     return read(make(n))
 
 

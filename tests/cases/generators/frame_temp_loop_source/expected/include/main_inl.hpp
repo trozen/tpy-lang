@@ -520,9 +520,8 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_combinator::__
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         t = 0;
-        __coro_arg_0.emplace(::tpyapp::main::make_values());
         {
-            __for_src_0.emplace(::tpy::builtin_enumerate((*__coro_arg_0)));
+            __for_src_0.emplace(::tpy::builtin_enumerate(::tpyapp::main::make_values()));
             auto& __src_0 = (*__for_src_0);
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
             for (;;) {

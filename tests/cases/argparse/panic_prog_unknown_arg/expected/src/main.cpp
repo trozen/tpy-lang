@@ -14,8 +14,7 @@ namespace tpyapp::main {
 //     print(args.count)
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = {"--unknown"};
-    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1({"--unknown"});
     std::cout << args.count << "\n" << ::tpy::check_signals;
     return 0;
 }

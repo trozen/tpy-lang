@@ -1076,17 +1076,11 @@ int64_t inc64(int64_t n) {
 //     print("char forward", forward("q"), fwd("q"))  # tpyc: ok
 //     print("literal callback", cb(inc), cb(inc, "b"), cb(inc64, "b"))  # tpyc: ok
 void main() {
-    Square __tmp_1 = Square(2.0);
-    Circle __tmp_2 = Circle(1.0);
-    std::cout << "free" << " " << ::tpy::print_float(::tpyapp::main::area__Square(__tmp_1)) << " " << ::tpy::print_float(::tpyapp::main::area__Circle(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << "free" << " " << ::tpy::print_float(::tpyapp::main::area__Square(Square(2.0))) << " " << ::tpy::print_float(::tpyapp::main::area__Circle(Circle(1.0))) << "\n" << ::tpy::check_signals;
     Shop shop = Shop();
     std::cout << "method" << " " << shop.sell__Square(Square(1.0)) << " " << shop.sell__Circle(Circle(1.0)) << " " << shop.sold << "\n" << ::tpy::check_signals;
-    Square __tmp_3 = Square(1.0);
-    Circle __tmp_4 = Circle(1.0);
-    std::cout << "static" << " " << Shop::kind__Square(__tmp_3) << " " << Shop::kind__Circle(__tmp_4) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_5 = {4, 5};
-    std::vector<std::string> __tmp_6 = {"y", "z"};
-    std::cout << "generic" << " " << ::tpyapp::main::first__list_T<int32_t>(__tmp_5) << " " << ::tpyapp::main::first__list_T__int32<std::string>(__tmp_6, 1) << "\n" << ::tpy::check_signals;
+    std::cout << "static" << " " << Shop::kind__Square(Square(1.0)) << " " << Shop::kind__Circle(Circle(1.0)) << "\n" << ::tpy::check_signals;
+    std::cout << "generic" << " " << ::tpyapp::main::first__list_T<int32_t>(::tpy::as_mut_lvalue(std::vector<int32_t>{4, 5})) << " " << ::tpyapp::main::first__list_T__int32<std::string>(::tpy::as_mut_lvalue(std::vector<std::string>{"y", "z"}), 1) << "\n" << ::tpy::check_signals;
     std::cout << "generic class" << " " << Box<std::string>("v").get__int32(1) << " " << Box<int32_t>(3).get__str("a") << "\n" << ::tpy::check_signals;
     std::cout << "generator" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -1132,8 +1126,7 @@ void main() {
     std::string ff = ::tpyapp::main::flag__lit_False(false);
     std::cout << "bool" << " " << ft << " " << ff << "\n" << ::tpy::check_signals;
     ::tpyapp::main::plain_flag(true);
-    Counter __tmp_7 = Counter(4);
-    std::cout << "short self" << " " << Counter(3).total__noargs() << " " << Counter(3).total__Counter_None(&(__tmp_7)) << "\n" << ::tpy::check_signals;
+    std::cout << "short self" << " " << Counter(3).total__noargs() << " " << Counter(3).total__Counter_None(&::tpy::as_mut_lvalue(Counter(4))) << "\n" << ::tpy::check_signals;
     std::cout << "default shadow" << " " << ::tpyapp::main::shade__int32(1) << " " << ::tpyapp::main::shade__int32__int32(1, 2) << " " << ::tpyapp::main::plain_shade__int32(1) << " " << ::tpyapp::main::plain_shade__int32__int32(1, 2) << "\n" << ::tpy::check_signals;
     std::cout << "literal width" << " " << ::tpy::print_bool((::tpyapp::main::power__lit_2(::tpy::BigInt(2)) == ::tpy::BigInt::from_str("1180591620717411303424"))) << " " << ::tpy::print_bool((::tpyapp::main::power__int(::tpy::BigInt(3)) == ::tpy::BigInt::from_str("2503155504993241601315571986085849"))) << "\n" << ::tpy::check_signals;
     Dog d = Dog();
@@ -1162,8 +1155,7 @@ void main() {
         std::cout << "error_return raised" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
-    ::tpy::Union<int32_t, std::string> __tmp_8 = "a";
-    std::cout << "sub-union" << " " << ::tpyapp::main::sub__int32_str(1) << " " << ::tpyapp::main::sub__int32_str(__tmp_8) << " " << ::tpyapp::main::sub__float(1.5) << "\n" << ::tpy::check_signals;
+    std::cout << "sub-union" << " " << ::tpyapp::main::sub__int32_str(1) << " " << ::tpyapp::main::sub__int32_str(::tpy::Union<int32_t, std::string>("a")) << " " << ::tpyapp::main::sub__float(1.5) << "\n" << ::tpy::check_signals;
     Cat c = Cat(3);
     Owner o = Owner(Cat(3));
     std::cout << "match" << " " << ::tpyapp::main::describe__Cat__int32(c, 1) << " " << ::tpyapp::main::describe__Cat__int32(c, 0) << " " << ::tpyapp::main::describe__Owner__int32(o, 0) << " " << o.pet.lives << "\n" << ::tpy::check_signals;
@@ -1182,11 +1174,8 @@ void main() {
         auto& __mixed = *std::get<Bell*>(mixed);
         std::cout << "protocol union" << " " << ::tpyapp::main::ring__Pinger(__mixed) << " " << __mixed.n << "\n" << ::tpy::check_signals;
     }
-    Cat __tmp_9 = Cat(5);
-    Cat __tmp_10 = Cat(5);
-    std::cout << "effects" << " " << ::tpyapp::main::effect__int32__Cat(1, __tmp_9) << " " << ::tpyapp::main::effect__str__Cat("a", __tmp_10) << "\n" << ::tpy::check_signals;
-    Cat __tmp_11 = Cat(1);
-    std::cout << "capture local" << " " << ::tpyapp::main::pre__Cat(__tmp_11) << " " << ::tpyapp::main::pre__Owner(o) << "\n" << ::tpy::check_signals;
+    std::cout << "effects" << " " << ::tpyapp::main::effect__int32__Cat(1, ::tpy::as_mut_lvalue(Cat(5))) << " " << ::tpyapp::main::effect__str__Cat("a", ::tpy::as_mut_lvalue(Cat(5))) << "\n" << ::tpy::check_signals;
+    std::cout << "capture local" << " " << ::tpyapp::main::pre__Cat(Cat(1)) << " " << ::tpyapp::main::pre__Owner(o) << "\n" << ::tpy::check_signals;
     int32_t wi = ::tpyapp::main::walrus__int32__int32(1, 7);
     int32_t ws = ::tpyapp::main::walrus__str__int32("a", 7);
     std::cout << "walrus" << " " << wi << " " << ws << "\n" << ::tpy::check_signals;

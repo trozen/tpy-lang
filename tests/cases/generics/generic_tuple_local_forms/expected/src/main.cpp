@@ -316,8 +316,7 @@ void main() {
     ::tpyapp::main::s_store<int32_t>(9, nop);
     std::vector<std::tuple<A, int32_t>> xs = {std::tuple<A, int32_t>{A(1), 1}, std::tuple<A, int32_t>{A(2), 2}};
     ::tpyapp::main::s_loop<A>(xs, bump);
-    std::vector<std::tuple<int32_t, int32_t>> __tmp_1 = {std::tuple<int32_t, int32_t>{5, 1}};
-    ::tpyapp::main::s_loop<int32_t>(__tmp_1, nop);
+    ::tpyapp::main::s_loop<int32_t>(::tpy::as_mut_lvalue(std::vector<std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{5, 1}}), nop);
     std::cout << "loop src" << " " << std::get<0>(::tpy::__getitem__(xs, 0)).v << " " << std::get<0>(::tpy::__getitem__(xs, 1)).v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::s_sel<A>(std::tuple<A*, int32_t>{&(a), 1}, std::tuple<A*, int32_t>{&(b), 2}, true, bump);
     ::tpyapp::main::s_sel<A>(std::tuple<A*, int32_t>{&(a), 1}, std::tuple<A*, int32_t>{&(b), 2}, false, bump);
@@ -326,8 +325,7 @@ void main() {
     ::tpyapp::main::s_try<A>(std::tuple<A*, int32_t>{&(a), 1}, std::tuple<A*, int32_t>{&(b), 2}, 0, bump);
     ::tpyapp::main::s_try<A>(std::tuple<A*, int32_t>{&(a), 1}, std::tuple<A*, int32_t>{&(b), 2}, 1, bump);
     ::tpyapp::main::s_try<int32_t>(std::tuple<int32_t, int32_t>{5, 1}, std::tuple<int32_t, int32_t>{6, 2}, 1, nop);
-    std::vector<std::tuple<int32_t, int32_t>> __tmp_2 = {std::tuple<int32_t, int32_t>{8, 8}};
-    std::cout << "residue" << " " << ::tpyapp::main::s_residue<int32_t>(std::tuple<int32_t, int32_t>{5, 4}, 6, 7, __tmp_2, true) << "\n" << ::tpy::check_signals;
+    std::cout << "residue" << " " << ::tpyapp::main::s_residue<int32_t>(std::tuple<int32_t, int32_t>{5, 4}, 6, 7, {std::tuple<int32_t, int32_t>{8, 8}}, true) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::s_move_last<std::string>(std::tuple<std::string, int32_t>{"in", 1}, "last", show);
     ::tpyapp::main::s_move_loop<std::string>(std::tuple<std::string, int32_t>{"in", 1}, "loop", show);
     ::tpyapp::main::s_move_continue<std::string>(std::tuple<std::string, int32_t>{"in", 1}, "continue", show);

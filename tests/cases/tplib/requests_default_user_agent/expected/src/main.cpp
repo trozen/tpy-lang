@@ -65,8 +65,7 @@ void main() {
     ::tpystd::http::client::HTTPConnection conn2 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn2.sock = std::move(a2);
     s2._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn2));
-    ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "my-app/9"}});
-    s2.get("http://api.test/x", nullptr, &(__tmp_1));
+    s2.get("http://api.test/x", nullptr, &::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"User-Agent", "my-app/9"}})));
     ::tpy::Bytes sent = b2.recv(65536);
     std::cout << ::tpy::print_bool(::tpy::bytes_contains_sub(sent, ::tpy::bytes_literal_owned("User-Agent: my-app/9", 20))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpy::bytes_contains_sub(sent, ::tpy::bytes_literal_owned("tpy-requests", 12))) << "\n" << ::tpy::check_signals;
@@ -79,8 +78,7 @@ void main() {
     ::tpystd::http::client::HTTPConnection conn3 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn3.sock = std::move(a3);
     s3._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn3));
-    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"user-agent", "low/1"}});
-    s3.get("http://api.test/x", nullptr, &(__tmp_2));
+    s3.get("http://api.test/x", nullptr, &::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"user-agent", "low/1"}})));
     ::tpy::Bytes sent3 = b3.recv(65536);
     std::cout << ::tpy::print_bool(::tpy::bytes_contains_sub(sent3, ::tpy::bytes_literal_owned("user-agent: low/1", 17))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpy::bytes_contains_sub(sent3, ::tpy::bytes_literal_owned("tpy-requests", 12))) << "\n" << ::tpy::check_signals;

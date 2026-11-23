@@ -43,12 +43,9 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> pet) {
 //     print(describe(Dog("Rex")))
 //     print(describe(Cat("Whiskers")))
 void main() {
-    Dog __tmp_1 = Dog("Buddy");
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    Dog __tmp_2 = Dog("Rex");
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
-    Cat __tmp_3 = Cat("Whiskers");
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("Buddy")))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("Rex")))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("Whiskers")))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

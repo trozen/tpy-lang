@@ -136,14 +136,9 @@ __gen_frame_literal frame_literal(Box& b) {
 //         print("frame-literal", n, fb.n)
 void main() {
     ::tpyapp::main::mixed_in_place(true);
-    Box __tmp_1 = Box(4);
-    Box __tmp_2 = Box(5);
-    ::tpyapp::main::borrowed_names(__tmp_1, __tmp_2);
-    Box __tmp_3 = Box(6);
-    Box __tmp_4 = Box(7);
-    ::tpyapp::main::borrowing_call(__tmp_3, __tmp_4);
-    Box __tmp_5 = Box(9);
-    ::tpyapp::main::unpack_borrowed(__tmp_5);
+    ::tpyapp::main::borrowed_names(::tpy::as_mut_lvalue(Box(4)), ::tpy::as_mut_lvalue(Box(5)));
+    ::tpyapp::main::borrowing_call(::tpy::as_mut_lvalue(Box(6)), ::tpy::as_mut_lvalue(Box(7)));
+    ::tpyapp::main::unpack_borrowed(::tpy::as_mut_lvalue(Box(9)));
     Box fb = Box(8);
     {
         auto __src_0 = ::tpyapp::main::frame_literal(fb);

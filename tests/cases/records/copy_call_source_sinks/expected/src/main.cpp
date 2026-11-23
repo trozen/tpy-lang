@@ -120,12 +120,8 @@ void main() {
     h.p.v = 3;
     h.items.push_back(4);
     std::cout << s.q.v << " " << ::tpy::__len__(s.box) << " " << h.p.v << " " << ::tpy::__len__(h.items) << "\n" << ::tpy::check_signals;
-    Holder __tmp_1 = Holder();
-    Holder __tmp_2 = Holder();
-    Holder __tmp_3 = Holder();
-    std::cout << ::tpyapp::main::setitem(__tmp_1) << " " << ::tpyapp::main::container_element(__tmp_2) << " " << ::tpyapp::main::qualified_decl(__tmp_3) << "\n" << ::tpy::check_signals;
-    Payload __tmp_4 = Payload(2);
-    std::cout << ::tpyapp::main::variant_copy(true) << " " << ::tpyapp::main::optional_copy(&(__tmp_4)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::setitem(::tpy::as_mut_lvalue(Holder())) << " " << ::tpyapp::main::container_element(::tpy::as_mut_lvalue(Holder())) << " " << ::tpyapp::main::qualified_decl(::tpy::as_mut_lvalue(Holder())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::variant_copy(true) << " " << ::tpyapp::main::optional_copy(&::tpy::as_mut_lvalue(Payload(2))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

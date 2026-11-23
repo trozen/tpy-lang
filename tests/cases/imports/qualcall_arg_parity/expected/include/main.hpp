@@ -31,8 +31,8 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen_codes;
 struct __coro_async_code;
 
-// def tick(tag: str, n: int) -> int:
-::tpy::BigInt tick(std::string_view tag, const ::tpy::BigInt& n);
+// def quiet(n: int) -> int:
+::tpy::BigInt quiet(const ::tpy::BigInt& n);
 // def mk() -> Own[list[int]]:
 std::vector<::tpy::BigInt> mk();
 // def wrap_b(b: bytes) -> Own[Rc[bytes]]:
@@ -187,8 +187,7 @@ inline ::tpy::BigInt Holder::take_list(std::vector<::tpy::BigInt>& xs) {
 //     # super: a union rvalue at the parent's read-only slot.
 //     return super().code(Dog(4)) + 100  # tpyc: ok
 inline ::tpy::BigInt Sub::code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*> pet) const {
-    ::tpyapp::pets::Dog __tmp_1 = ::tpyapp::pets::Dog(::tpy::BigInt(4));
-    return ((this->Base::code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&__tmp_1})) + (::tpy::BigInt(100)));
+    return ((this->Base::code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&(::tpy::as_mut_lvalue(::tpyapp::pets::Dog(::tpy::BigInt(4))))})) + (::tpy::BigInt(100)));
 }
 
 // def __init__(self, v: T) -> None:

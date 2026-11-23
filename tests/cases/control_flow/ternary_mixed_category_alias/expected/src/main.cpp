@@ -442,8 +442,7 @@ void run_param_arms(bool c) {
     std::vector<C> rs = {C(10)};
     std::vector<int32_t> xs = {1};
     std::cout << "params" << " " << ::tpy::print_bool(c) << " " << a.n << " " << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {2};
-    ::tpyapp::main::param_arms(a, rs, xs, __tmp_1, c);
+    ::tpyapp::main::param_arms(a, rs, xs, ::tpy::as_mut_lvalue(std::vector<int32_t>{2}), c);
     std::cout << "params" << " " << ::tpy::print_bool(c) << " " << a.n << " " << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
@@ -699,10 +698,8 @@ void main() {
         ::tpyapp::main::own_return(c);
         ::tpyapp::main::ctor_init(c);
         ::tpyapp::main::fresh_container_arms(c);
-        std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-        ::tpyapp::main::nested_select_arm(c, __tmp_1);
-        std::vector<int32_t> __tmp_2 = {8};
-        ::tpyapp::main::nested_select_arm(c, __tmp_2);
+        ::tpyapp::main::nested_select_arm(c, ::tpy::as_mut_lvalue(std::vector<int32_t>{}));
+        ::tpyapp::main::nested_select_arm(c, ::tpy::as_mut_lvalue(std::vector<int32_t>{8}));
         ::tpyapp::main::copy_ternary(c);
         ::tpyapp::main::own_list_arg(c);
     }
@@ -754,10 +751,8 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         int32_t bk = *__beg_3;
-        C __tmp_3 = C(0);
-        ::tpyapp::main::branch_positions(__tmp_3, bk);
-        C __tmp_4 = C(6);
-        ::tpyapp::main::branch_positions(__tmp_4, bk);
+        ::tpyapp::main::branch_positions(::tpy::as_mut_lvalue(C(0)), bk);
+        ::tpyapp::main::branch_positions(::tpy::as_mut_lvalue(C(6)), bk);
     }
     C za = C(0);
     std::cout << "async_zero" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_receiver(za, false))) << " " << za.n << "\n" << ::tpy::check_signals;

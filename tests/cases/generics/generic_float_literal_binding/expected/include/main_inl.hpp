@@ -13,8 +13,7 @@ inline std::expected<double, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::vector<double> __tmp_1 = {1.5, 2.5};
-        v = ::tpyapp::main::first_of<double>(__tmp_1);
+        v = ::tpyapp::main::first_of<double>(::tpy::as_mut_lvalue(std::vector<double>{1.5, 2.5}));
         __state = S_RESUME_0;
         return std::move(v);
     }

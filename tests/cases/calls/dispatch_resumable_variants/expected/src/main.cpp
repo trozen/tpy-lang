@@ -146,24 +146,23 @@ void twins_read(const Twins& t) {
 
 // async def atwins_read(t: readonly[Twins]) -> int32:
 //     # a readonly receiver: the @readonly coroutine twin's frame, through a
-//     # bound handle (an inline await there is
-//     # BUGS.md#await-readonly-receiver-coro-unowned)
+//     # bound handle that holds that frame itself, not a type-erased
+//     # adapter over it
 //     h = t.step(2)  # tpyc: ok
 //     return await h                                                          # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_atwins_read::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        h = ::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(t.step(2));
-        __sub_0 = h.get();
+        h.emplace(t.step(2));
         __state = S_RESUME_0;
         continue;
     }
     case S_RESUME_0: {  // after: return await h
-        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        auto __r0 = ::tpy::poll_with_cancel(h, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
-        __sub_0 = nullptr;
+        h.reset();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
     }

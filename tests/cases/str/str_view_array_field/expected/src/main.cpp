@@ -164,8 +164,7 @@ void __tpy_init() {
     ::tpyapp::main::test_record_method_mutates();
     ::tpyapp::main::test_readonly_method_preserves_view();
     ::tpyapp::main::test_field_aug_assign_mutates();
-    std::array<std::string, 2> __tmp_1 = {"first", "second"};
-    ::tpyapp::main::test_array_passed_to_func(__tmp_1);
+    ::tpyapp::main::test_array_passed_to_func(::tpy::as_mut_lvalue(std::array<std::string, 2>{"first", "second"}));
     ::tpyapp::main::test_multiple_views_one_source();
 }
 

@@ -61,10 +61,8 @@ void main() {
     }
     ::tpystd::os::mkdir(d);
     ::tpystd::os::_types::stat_result s = ::tpystd::os::stat(d);
-    ::tpystd::os::_types::stat_result __tmp_1 = ::tpystd::os::stat(d);
-    std::cout << "same:" << " " << ::tpy::print_bool(::tpystd::os::path::samestat(s, __tmp_1)) << "\n" << ::tpy::check_signals;
-    ::tpystd::os::_types::stat_result __tmp_2 = ::tpystd::os::stat(tmp);
-    std::cout << "diff:" << " " << ::tpy::print_bool(::tpystd::os::path::samestat(__tmp_2, s)) << "\n" << ::tpy::check_signals;
+    std::cout << "same:" << " " << ::tpy::print_bool(::tpystd::os::path::samestat(s, ::tpystd::os::stat(d))) << "\n" << ::tpy::check_signals;
+    std::cout << "diff:" << " " << ::tpy::print_bool(::tpystd::os::path::samestat(::tpystd::os::stat(tmp), s)) << "\n" << ::tpy::check_signals;
     std::cout << "strict-eq:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_realpath(d, true) == ::tpy::stdlib::os::path_realpath(d, false))) << "\n" << ::tpy::check_signals;
     ::tpy::String missing = (::tpy::str_concat(d, "/nope"));
     std::cout << "loose-ok:" << " " << ::tpy::print_bool((::tpy::__len__(::tpy::stdlib::os::path_realpath(missing, false)) > 0)) << "\n" << ::tpy::check_signals;

@@ -12,8 +12,7 @@ namespace tpyapp::main {
 void main() {
     {
         try {
-            Bag __tmp_1 = Bag({1, 2});
-            throw BErr(__tmp_1);
+            throw BErr(::tpy::as_mut_lvalue(Bag({1, 2})));
         } catch (const BErr& e) {
             std::cout << e.total << "\n" << ::tpy::check_signals;
         }

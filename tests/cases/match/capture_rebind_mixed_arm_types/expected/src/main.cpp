@@ -35,10 +35,8 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
 //     print(describe(Cat(9)))
 //     print(describe(Dog("Rex")))
 void main() {
-    Cat __tmp_1 = Cat(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    Dog __tmp_2 = Dog("Rex");
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat(::tpy::BigInt(9))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("Rex")))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

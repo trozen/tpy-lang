@@ -25,8 +25,7 @@ int32_t comp_in_ternary(Counter& c, bool cond, const std::vector<int32_t>& xs) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
-            Probe __tmp_1 = Probe(c, i);
-            __result.push_back(::tpyapp::main::take(&(__tmp_1)));
+            __result.push_back(::tpyapp::main::take(&::tpy::as_mut_lvalue(Probe(c, i))));
         }
         std::move(__result);
     })) : (std::vector<int32_t>{0}));
@@ -45,8 +44,7 @@ bool comp_in_and(Counter& c, bool cond, const std::vector<int32_t>& xs) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
-            Probe __tmp_1 = Probe(c, i);
-            __result.push_back(::tpyapp::main::take(&(__tmp_1)));
+            __result.push_back(::tpyapp::main::take(&::tpy::as_mut_lvalue(Probe(c, i))));
         }
         std::move(__result);
     })) > 0));
@@ -65,20 +63,16 @@ bool comp_in_and(Counter& c, bool cond, const std::vector<int32_t>& xs) {
 void main() {
     Counter __slot_1 = Counter();
     Counter* c = &__slot_1;
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << "ternary_skipped" << " " << ::tpyapp::main::comp_in_ternary((*c), false, __tmp_1) << " " << c->n << "\n" << ::tpy::check_signals;
+    std::cout << "ternary_skipped" << " " << ::tpyapp::main::comp_in_ternary((*c), false, {1, 2}) << " " << c->n << "\n" << ::tpy::check_signals;
     std::optional<Counter> __slot_2;
     c = &*(__slot_2 = Counter());
-    std::vector<int32_t> __tmp_2 = {1, 2};
-    std::cout << "ternary_taken" << " " << ::tpyapp::main::comp_in_ternary((*c), true, __tmp_2) << " " << c->n << "\n" << ::tpy::check_signals;
+    std::cout << "ternary_taken" << " " << ::tpyapp::main::comp_in_ternary((*c), true, {1, 2}) << " " << c->n << "\n" << ::tpy::check_signals;
     std::optional<Counter> __slot_3;
     c = &*(__slot_3 = Counter());
-    std::vector<int32_t> __tmp_3 = {1, 2};
-    std::cout << "and_skipped" << " " << ::tpy::print_bool(::tpyapp::main::comp_in_and((*c), false, __tmp_3)) << " " << c->n << "\n" << ::tpy::check_signals;
+    std::cout << "and_skipped" << " " << ::tpy::print_bool(::tpyapp::main::comp_in_and((*c), false, {1, 2})) << " " << c->n << "\n" << ::tpy::check_signals;
     std::optional<Counter> __slot_4;
     c = &*(__slot_4 = Counter());
-    std::vector<int32_t> __tmp_4 = {1, 2};
-    std::cout << "and_taken" << " " << ::tpy::print_bool(::tpyapp::main::comp_in_and((*c), true, __tmp_4)) << " " << c->n << "\n" << ::tpy::check_signals;
+    std::cout << "and_taken" << " " << ::tpy::print_bool(::tpyapp::main::comp_in_and((*c), true, {1, 2})) << " " << c->n << "\n" << ::tpy::check_signals;
 }
 
 // main()

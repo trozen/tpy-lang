@@ -60,18 +60,14 @@ std::string show_value(const Value& v) {
 //     print(show_value(n))
 //     print(show_value(7))
 void main() {
-    Expr __tmp_1 = Lit(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::describe_expr(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe_expr(Expr(Lit(::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
     BinOp e = BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(2))), ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))));
-    Expr __tmp_2 = std::move(e);
-    std::cout << ::tpyapp::main::describe_expr(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe_expr(Expr(std::move(e))) << "\n" << ::tpy::check_signals;
     Tree t = std::vector<Tree>{1, std::vector<Tree>{2, 3}};
     std::cout << ::tpy::__str__(t) << "\n" << ::tpy::check_signals;
     Neg n = Neg(::tpystd::tplib::box::Box<Value>(42));
-    Value __tmp_3 = std::move(n);
-    std::cout << ::tpyapp::main::show_value(__tmp_3) << "\n" << ::tpy::check_signals;
-    Value __tmp_4 = 7;
-    std::cout << ::tpyapp::main::show_value(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show_value(Value(std::move(n))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show_value(Value(7)) << "\n" << ::tpy::check_signals;
 }
 
 // # Mutual + self-referencing recursive unions in the same module,

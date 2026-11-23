@@ -447,32 +447,32 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_protocol<T_xs>::__next__(
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__len__(({
-    std::vector<std::string> __result;
-    auto& __src_0 = xs;
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const std::string& s = ::tpy::unwrap_ref(*__r_1);
-        __result.push_back(s);
-    }
-    std::move(__result);
-}));
+            std::vector<std::string> __result;
+            auto& __src_0 = xs;
+            auto&& __itr_0 = ::tpy::__iter__(__src_0);
+            for (;;) {
+                auto __r_1 = __itr_0.__next__();
+                if (!__r_1.has_value()) break;
+                const std::string& s = ::tpy::unwrap_ref(*__r_1);
+                __result.push_back(s);
+            }
+            std::move(__result);
+        }));
     }
     case S_RESUME_0: {  // after: yield len([s for s in xs])  # tpyc: ok
         __state = S_RESUME_1;
         return ::tpy::builtin_sum<int32_t>(({
-    std::vector<int32_t> __result;
-    auto& __src_2 = xs;
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        const std::string& s = ::tpy::unwrap_ref(*__r_3);
-        __result.push_back(::tpy::__len__(s));
-    }
-    std::move(__result);
-}));
+            std::vector<int32_t> __result;
+            auto& __src_2 = xs;
+            auto&& __itr_2 = ::tpy::__iter__(__src_2);
+            for (;;) {
+                auto __r_3 = __itr_2.__next__();
+                if (!__r_3.has_value()) break;
+                const std::string& s = ::tpy::unwrap_ref(*__r_3);
+                __result.push_back(::tpy::__len__(s));
+            }
+            std::move(__result);
+        }));
     }
     case S_RESUME_1: {  // after: yield sum([len(s) for s in xs])  # a comprehension, not a genexpr: BUGS.md#genexpr-over-user-iterable
         __state = S_DONE;

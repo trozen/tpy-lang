@@ -13,12 +13,25 @@ namespace tpyapp::main {
 //     # the Deref chain: built into the wrapper as at the direct call.
 //     a = A(1)
 //     print(r.Echo(a), r.Echo(A(2)))  # tpyc: ok
+//     # A member still live after the call is copied into the alias, through
+//     # the Deref chain and at the direct call alike; copy() says so, and the
+//     # last use moves in.
+//     c = A(3)
+//     print(r.Echo(c))  # tpyc: warning(/copies A into Tree parameter 't' of Widget.Echo/)
+//     print(w.Echo(c))  # tpyc: warning(/copies A into Tree parameter 't' of Widget.Echo/)
+//     print(w.Echo(copy(c)), c.n)  # tpyc: ok
+//     print(w.Echo(c))  # tpyc: ok
 void main() {
     ::x::Widget w = ::x::Widget(42);
     WRef r = WRef(w);
     std::cout << r.__deref__().getId() << "\n" << ::tpy::check_signals;
     A a = A(1);
-    std::cout << r.__deref__().echo(a) << " " << r.__deref__().echo(A(2)) << "\n" << ::tpy::check_signals;
+    std::cout << r.__deref__().echo(Tree(std::move(a))) << " " << r.__deref__().echo(Tree(A(2))) << "\n" << ::tpy::check_signals;
+    A c = A(3);
+    std::cout << r.__deref__().echo(Tree(c)) << "\n" << ::tpy::check_signals;
+    std::cout << w.echo(Tree(c)) << "\n" << ::tpy::check_signals;
+    std::cout << w.echo(Tree(A(c))) << " " << c.n << "\n" << ::tpy::check_signals;
+    std::cout << w.echo(Tree(std::move(c))) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

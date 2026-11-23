@@ -36,7 +36,7 @@ from .value import MIRValidationError
 from .prepare import validate_function
 
 
-SOURCE = '''from tpy import int32, nocopy
+SOURCE = '''from tpy import int32, nocopy, readonly
 
 @nocopy
 class Cell:
@@ -66,6 +66,21 @@ class Other:
 def assign(cell: Cell, value: int32) -> int32:
     cell.value = value
     return cell.value
+
+@nocopy
+class Bin:
+    xs: list[int32]
+    def __init__(self, n: int32):
+        self.xs = [n]
+
+def walk(b: readonly[Bin], n: int32) -> readonly[list[int32]]:
+    return b.xs
+
+def temporary_order(cell: Cell) -> int32:
+    s = 0
+    for x in walk(Bin(2), assign(cell, 1)):
+        s += x
+    return s
 
 def setter(cell: Cell, value: int32):
     cell.value = value
@@ -121,9 +136,6 @@ def literal_comparison(cell: Cell) -> bool:
 def constructor_argument(cell: Cell) -> int32:
     local = Cell(assign(cell, 1))
     return local.value
-
-def temporary_order(flag: bool, cell: Cell) -> int32:
-    return assign(cell, 1) if flag else read(Cell(2))
 
 def standalone(cell: Cell):
     setter(cell, 4)
@@ -309,7 +321,10 @@ def test_writer_comparison_with_literal_has_no_competing_effect(artifacts: Artif
 
 
 @pytest.mark.parametrize(("name", "reason"), [
-    ("eager", "order-sensitive eager operands"), ("temporary_order", "named argument crosses unproven evaluation order"),
+    # A loop head keeps its argument temporary, built before the head's
+    # other operands: one writing beside it is refused by the eager rule.
+    ("eager", "order-sensitive eager operands"),
+    ("temporary_order", "order-sensitive eager operands"),
 ])
 def test_known_writes_do_not_prove_eager_or_named_temp_order(artifacts: Artifacts, name: str, reason: str) -> None:
     result = artifacts[1].summaries[th.THIRFunctionIdentity("main", name)]

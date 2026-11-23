@@ -14,19 +14,19 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__len__(({
-    std::vector<int32_t> __result;
-    auto& __obj_0 = xs;
-    __result.reserve(static_cast<std::size_t>(__obj_0.size()));
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t v = *__beg_0;
-        if ((big && ::tpyapp::fixtures::grow(xs))) {
-            __result.push_back(v);
-        }
-    }
-    std::move(__result);
-}));
+            std::vector<int32_t> __result;
+            auto& __obj_0 = xs;
+            __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                int32_t v = *__beg_0;
+                if ((big && ::tpyapp::fixtures::grow(xs))) {
+                    __result.push_back(v);
+                }
+            }
+            std::move(__result);
+        }));
     }
     case S_RESUME_0: {  // after: yield len([v for v in xs if big and grow(xs)])  # tpyc: warning(/Passing borrowed container 'xs' to non-readonly parameter/) warning(/may move the elements of 'xs'. but the iteration over 'xs' still walks them/)
         __state = S_DONE;

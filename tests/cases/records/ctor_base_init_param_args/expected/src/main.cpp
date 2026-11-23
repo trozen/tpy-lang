@@ -10,8 +10,7 @@ namespace tpyapp::main {
 //     b = WithOwn(Payload(3))
 //     print(b.p.v, b.opt is None)
 void main() {
-    Payload __tmp_1 = Payload(2);
-    WithOptional a = WithOptional(Payload(1), &(__tmp_1));
+    WithOptional a = WithOptional(Payload(1), &::tpy::as_mut_lvalue(Payload(2)));
     std::cout << a.p.v << " " << ::tpy::print_bool((!a.opt.has_value())) << "\n" << ::tpy::check_signals;
     WithOwn b = WithOwn(Payload(3));
     std::cout << b.p.v << " " << ::tpy::print_bool((!b.opt.has_value())) << "\n" << ::tpy::check_signals;

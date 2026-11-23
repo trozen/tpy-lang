@@ -21,9 +21,8 @@ namespace tpyapp::main {
 void main() {
     int32_t idx;
     {
-        std::vector<int32_t> __tmp_1 = {10, 20, 30};
         {
-            auto __try_tmp_2 = ::tpyapp::errors::find(__tmp_1, 20);
+            auto __try_tmp_2 = ::tpyapp::errors::find({10, 20, 30}, 20);
             if (!__try_tmp_2.has_value()) goto __except_1;
             idx = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -37,9 +36,8 @@ void main() {
     }
     int32_t idx2;
     {
-        std::vector<int32_t> __tmp_2 = {10, 20, 30};
         {
-            auto __try_tmp_4 = ::tpyapp::errors::find(__tmp_2, 99);
+            auto __try_tmp_4 = ::tpyapp::errors::find({10, 20, 30}, 99);
             if (!__try_tmp_4.has_value()) goto __except_3;
             idx2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }

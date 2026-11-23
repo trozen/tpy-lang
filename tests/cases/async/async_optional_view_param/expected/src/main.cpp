@@ -84,8 +84,7 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = ::tpy::bytes_literal_owned("abc", 3);
-        __sub_0.emplace(__coro_arg_0);
+        __sub_0.emplace(::tpy::bytes_literal_owned("abc", 3));
         __state = S_RESUME_0;
         continue;
     }
@@ -105,8 +104,7 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
         std::cout << __await_lift_1 << "\n" << ::tpy::check_signals;
-        __coro_arg_1 = "hello";
-        __sub_2.emplace(__coro_arg_1);
+        __sub_2.emplace("hello");
         __state = S_RESUME_2;
         continue;
     }

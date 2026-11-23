@@ -980,7 +980,7 @@ void abandon_gen_branch() {
 // def run_gen_finally() -> None:
 //     drive("gen_finally", gen_finally([0]))
 void run_gen_finally() {
-    std::vector<int32_t> __tmp_1 = {0};
+    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{0};
     auto __tmp_2 = ::tpyapp::main::gen_finally(__tmp_1);
     ::tpyapp::main::drive("gen_finally", __tmp_2);
 }
@@ -988,7 +988,7 @@ void run_gen_finally() {
 // def abandon_gen_finally() -> None:
 //     abandon("gen_finally", gen_finally([0]))
 void abandon_gen_finally() {
-    std::vector<int32_t> __tmp_1 = {0};
+    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{0};
     auto __tmp_2 = ::tpyapp::main::gen_finally(__tmp_1);
     ::tpyapp::main::abandon("gen_finally", __tmp_2);
 }
@@ -1070,7 +1070,7 @@ void run_gen_user_read() {
 // def run_gen_del() -> None:
 //     drive("gen_del", gen_del([0]))
 void run_gen_del() {
-    std::vector<int32_t> __tmp_1 = {0};
+    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{0};
     auto __tmp_2 = ::tpyapp::main::gen_del(__tmp_1);
     ::tpyapp::main::drive("gen_del", __tmp_2);
 }
@@ -1078,7 +1078,7 @@ void run_gen_del() {
 // def abandon_gen_del() -> None:
 //     abandon("gen_del", gen_del([0]))
 void abandon_gen_del() {
-    std::vector<int32_t> __tmp_1 = {0};
+    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{0};
     auto __tmp_2 = ::tpyapp::main::gen_del(__tmp_1);
     ::tpyapp::main::abandon("gen_del", __tmp_2);
 }
@@ -1170,16 +1170,12 @@ void run_method_plain(const Rows& r) {
 //     asyncio.run(async_gen_refill(rows))
 void main() {
     std::vector<std::vector<int32_t>> rows = {{1, 2}, {3, 4}};
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    ::tpyapp::main::plain_branch(true, __tmp_1);
-    std::vector<int32_t> __tmp_2 = {1, 2};
-    ::tpyapp::main::plain_branch(false, __tmp_2);
-    std::vector<int32_t> __tmp_3 = {1, 2};
-    ::tpyapp::main::plain_branch_param(true, __tmp_3);
+    ::tpyapp::main::plain_branch(true, {1, 2});
+    ::tpyapp::main::plain_branch(false, {1, 2});
+    ::tpyapp::main::plain_branch_param(true, {1, 2});
     ::tpyapp::main::plain_with();
     ::tpyapp::main::plain_with_exit();
-    Tally __tmp_4 = Tally();
-    ::tpyapp::main::plain_with_param(__tmp_4);
+    ::tpyapp::main::plain_with_param(::tpy::as_mut_lvalue(Tally()));
     std::vector<int32_t> fxs = {0};
     ::tpyapp::main::plain_finally(fxs);
     std::cout << "plain_finally after" << " " << ::tpy::__getitem__(fxs, 0) << "\n" << ::tpy::check_signals;
@@ -1189,14 +1185,11 @@ void main() {
     ::tpyapp::main::plain_refill(rows);
     std::cout << "plain_refill after" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::plain_refill_del(rows);
-    std::vector<int32_t> __tmp_5 = {5, 6};
-    ::tpyapp::main::plain_param_after_loop(__tmp_5);
+    ::tpyapp::main::plain_param_after_loop({5, 6});
     ::tpyapp::main::plain_loop_var();
     std::cout << "plain_loop_var after" << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_6 = {1, 2, 3};
-    ::tpyapp::main::plain_alias(__tmp_6);
-    std::vector<int32_t> __tmp_7 = {0};
-    ::tpyapp::main::plain_del(__tmp_7);
+    ::tpyapp::main::plain_alias({1, 2, 3});
+    ::tpyapp::main::plain_del(::tpy::as_mut_lvalue(std::vector<int32_t>{0}));
     ::tpyapp::main::plain_abandon(rows);
     std::cout << "plain_abandon after" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::plain_refill_holder(rows);
@@ -1206,8 +1199,8 @@ void main() {
     ::tpyapp::main::run_gen_finally();
     ::tpyapp::main::abandon_gen_finally();
     ::tpyapp::main::run_gen_rows(rows);
-    auto __tmp_8 = ::tpyapp::main::gen_span_arg();
-    ::tpyapp::main::drive("gen_span_arg", __tmp_8);
+    auto __tmp_1 = ::tpyapp::main::gen_span_arg();
+    ::tpyapp::main::drive("gen_span_arg", __tmp_1);
     ::tpyapp::main::abandon_gen_rows(rows);
     ::tpyapp::main::run_gen_refill_del(rows);
     ::tpyapp::main::abandon_gen_refill_del(rows);

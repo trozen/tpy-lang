@@ -46,9 +46,7 @@ std::tuple<::tpy::Bytes, bool, bool> run_redirect(::tpy::BytesView status_line) 
     ::tpystd::http::client::HTTPConnection h1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     h1.sock = std::move(c);
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
-    ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("{\"x\":1}", 7);
-    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "text/plain"}});
-    ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1}, nullptr, nullptr, &(__tmp_2));
+    ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&(::tpy::as_mut_lvalue(::tpy::bytes_literal_owned("{\"x\":1}", 7)))}, nullptr, nullptr, &::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"Content-Type", "text/plain"}})));
     std::cout << r.status_code << " " << r.url << "\n" << ::tpy::check_signals;
     b.recv(65536);
     ::tpy::Bytes second = d.recv(65536);

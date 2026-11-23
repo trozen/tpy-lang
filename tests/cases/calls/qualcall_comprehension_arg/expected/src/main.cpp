@@ -16,49 +16,44 @@ namespace tpyapp::main {
 //     # ... and the same shape on a generic record's static method
 //     print("generic_static", GHolder[int32].take_list([i for i in range(3)]))
 void main() {
-    std::vector<int32_t> __tmp_1 = ({
+    std::cout << "static_list" << " " << Holder::take_list(::tpy::as_mut_lvalue(({
         std::vector<int32_t> __result;
         if (3 > 0) __result.reserve(static_cast<size_t>(3));
         for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(i);
         }
         std::move(__result);
-    });
-    std::cout << "static_list" << " " << Holder::take_list(__tmp_1) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, int32_t> __tmp_2 = ({
+    }))) << "\n" << ::tpy::check_signals;
+    std::cout << "static_dict" << " " << Holder::take_dict(::tpy::as_mut_lvalue(({
         ::tpy::ordered_map<std::string, int32_t> __result;
         for (int32_t i = 0; i < 2; ++i) {
             __result.insert_or_assign(::tpy::fixed_to_str<int32_t>(i), i);
         }
         std::move(__result);
-    });
-    std::cout << "static_dict" << " " << Holder::take_dict(__tmp_2) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_set<int32_t> __tmp_3 = ({
+    }))) << "\n" << ::tpy::check_signals;
+    std::cout << "static_set" << " " << Holder::take_set(::tpy::as_mut_lvalue(({
         ::tpy::ordered_set<int32_t> __result;
         for (int32_t i = 0; i < 2; ++i) {
             __result.insert(i);
         }
         std::move(__result);
-    });
-    std::cout << "static_set" << " " << Holder::take_set(__tmp_3) << "\n" << ::tpy::check_signals;
-    std::vector<Rec> __tmp_4 = ({
+    }))) << "\n" << ::tpy::check_signals;
+    std::cout << "static_recs" << " " << Holder::take_recs(::tpy::as_mut_lvalue(({
         std::vector<Rec> __result;
         if (2 > 0) __result.reserve(static_cast<size_t>(2));
         for (int32_t i = 0; i < 2; ++i) {
             __result.push_back(Rec(i));
         }
         std::move(__result);
-    });
-    std::cout << "static_recs" << " " << Holder::take_recs(__tmp_4) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_5 = ({
+    }))) << "\n" << ::tpy::check_signals;
+    std::cout << "generic_static" << " " << GHolder<int32_t>::take_list(::tpy::as_mut_lvalue(({
         std::vector<int32_t> __result;
         if (3 > 0) __result.reserve(static_cast<size_t>(3));
         for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(i);
         }
         std::move(__result);
-    });
-    std::cout << "generic_static" << " " << GHolder<int32_t>::take_list(__tmp_5) << "\n" << ::tpy::check_signals;
+    }))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -92,33 +92,23 @@ __gen_gen gen(Mat& m, Ray& ray) {
 //     print("comp", [trace(Chrome(1.0), x) for x in rays], rays[1].d)
 void main() {
     Ray r = Ray(3.0);
-    Mat __tmp_1 = Mat(2.0);
-    std::cout << "free" << " " << ::tpy::print_float(::tpyapp::main::trace(__tmp_1, r)) << " " << ::tpy::print_float(r.d) << "\n" << ::tpy::check_signals;
-    Chrome __tmp_2 = Chrome(1.0);
-    std::cout << "override" << " " << ::tpy::print_float(::tpyapp::main::trace(__tmp_2, r)) << " " << ::tpy::print_float(r.d) << "\n" << ::tpy::check_signals;
+    std::cout << "free" << " " << ::tpy::print_float(::tpyapp::main::trace(::tpy::as_mut_lvalue(Mat(2.0)), r)) << " " << ::tpy::print_float(r.d) << "\n" << ::tpy::check_signals;
+    std::cout << "override" << " " << ::tpy::print_float(::tpyapp::main::trace(::tpy::as_mut_lvalue(Chrome(1.0)), r)) << " " << ::tpy::print_float(r.d) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::box::Box<Mat> b = ::tpystd::tplib::box::Box<Chrome>(Chrome(1.0));
     std::cout << "box" << " " << ::tpy::print_float(::tpyapp::main::trace_box(b, r)) << " " << ::tpy::print_float(r.d) << "\n" << ::tpy::check_signals;
     Chrome c = Chrome(1.0);
     std::cout << "ptr" << " " << ::tpy::print_float(::tpyapp::main::trace_ptr(&c, r)) << " " << ::tpy::print_float(r.d) << "\n" << ::tpy::check_signals;
     std::vector<Ray> rs = {Ray(1.0)};
-    Mat __tmp_3 = Mat(1.0);
-    Chrome __tmp_4 = Chrome(1.0);
-    std::cout << "list" << " " << ::tpyapp::main::count_of(__tmp_3, rs) << " " << ::tpyapp::main::count_of(__tmp_4, rs) << " " << ::tpy::__len__(rs) << "\n" << ::tpy::check_signals;
-    Mat __tmp_5 = Mat(1.0);
-    Mat __tmp_6 = Mat(1.0);
-    std::cout << "optional" << " " << ::tpy::print_float(::tpyapp::main::maybe_of(__tmp_5, &(r))) << " " << ::tpy::print_float(::tpyapp::main::maybe_of(__tmp_6, nullptr)) << "\n" << ::tpy::check_signals;
-    Mat __tmp_7 = Mat(1.0);
-    std::cout << "parent_protocol" << " " << ::tpy::print_float(::tpyapp::main::tilt_of(__tmp_7, r)) << "\n" << ::tpy::check_signals;
-    Mat __tmp_8 = Mat(1.0);
-    std::cout << "readonly_slot" << " " << ::tpy::print_float(::tpyapp::main::peek_of(__tmp_8, r)) << "\n" << ::tpy::check_signals;
-    Plain __tmp_9 = Plain();
-    std::cout << "plain" << " " << ::tpy::print_float(::tpyapp::main::plain_of(__tmp_9, r)) << "\n" << ::tpy::check_signals;
+    std::cout << "list" << " " << ::tpyapp::main::count_of(::tpy::as_mut_lvalue(Mat(1.0)), rs) << " " << ::tpyapp::main::count_of(::tpy::as_mut_lvalue(Chrome(1.0)), rs) << " " << ::tpy::__len__(rs) << "\n" << ::tpy::check_signals;
+    std::cout << "optional" << " " << ::tpy::print_float(::tpyapp::main::maybe_of(::tpy::as_mut_lvalue(Mat(1.0)), &(r))) << " " << ::tpy::print_float(::tpyapp::main::maybe_of(::tpy::as_mut_lvalue(Mat(1.0)), nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << "parent_protocol" << " " << ::tpy::print_float(::tpyapp::main::tilt_of(::tpy::as_mut_lvalue(Mat(1.0)), r)) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly_slot" << " " << ::tpy::print_float(::tpyapp::main::peek_of(::tpy::as_mut_lvalue(Mat(1.0)), r)) << "\n" << ::tpy::check_signals;
+    std::cout << "plain" << " " << ::tpy::print_float(::tpyapp::main::plain_of(Plain(), r)) << "\n" << ::tpy::check_signals;
     Tracer t = Tracer();
-    Chrome __tmp_10 = Chrome(1.0);
-    std::cout << "method" << " " << ::tpy::print_float(t.run(__tmp_10)) << " " << ::tpy::print_float(t.ray.d) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << ::tpy::print_float(t.run(::tpy::as_mut_lvalue(Chrome(1.0)))) << " " << ::tpy::print_float(t.ray.d) << "\n" << ::tpy::check_signals;
     {
-        Chrome __tmp_11 = Chrome(1.0);
-        auto __src_0 = ::tpyapp::main::gen(__tmp_11, r);
+        Chrome __tmp_1 = Chrome(1.0);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_1, r);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -129,8 +119,7 @@ void main() {
     }
     std::array<Ray, 2> rays = {Ray(5.0), Ray(6.0)};
     auto inner = [&rays]() -> double {
-        Chrome __tmp_12 = Chrome(1.0);
-        return ::tpyapp::main::trace(__tmp_12, ::tpy::__getitem__(rays, 0));
+        return ::tpyapp::main::trace(::tpy::as_mut_lvalue(Chrome(1.0)), ::tpy::__getitem__(rays, 0));
     };
     std::cout << "closure" << " " << ::tpy::print_float(inner()) << " " << ::tpy::print_float(::tpy::__getitem__(rays, 0).d) << "\n" << ::tpy::check_signals;
     std::cout << "comp" << " " << ::tpy::ListPrinter(({
@@ -141,8 +130,7 @@ void main() {
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             auto&& x = *__beg_2;
-            Chrome __tmp_13 = Chrome(1.0);
-            __result.push_back(::tpyapp::main::trace(__tmp_13, x));
+            __result.push_back(::tpyapp::main::trace(::tpy::as_mut_lvalue(Chrome(1.0)), x));
         }
         std::move(__result);
     })) << " " << ::tpy::print_float(::tpy::__getitem__(rays, 1).d) << "\n" << ::tpy::check_signals;

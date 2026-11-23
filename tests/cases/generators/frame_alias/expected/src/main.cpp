@@ -937,10 +937,8 @@ void main() {
     std::cout << "generic_owner" << " " << Bag<int32_t>(1, 2).count() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::loop_closes_each();
     ::tpyapp::main::with_first_bound();
-    std::vector<int32_t> __tmp_1 = {40, 41};
-    ::tpyapp::main::branch_first_bound(__tmp_1, true);
-    std::vector<int32_t> __tmp_2 = {50, 51};
-    ::tpyapp::main::branch_alias(__tmp_2, true);
+    ::tpyapp::main::branch_first_bound({40, 41}, true);
+    ::tpyapp::main::branch_alias({50, 51}, true);
     std::cout << "outer_lift" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::outer_lift())) << "\n" << ::tpy::check_signals;
     std::vector<std::string> order = ::tpy::construct<std::vector<std::string>>(::tpyapp::main::frame_order(true));
     std::cout << "frame_order" << " " << ::tpy::ListPrinter(order) << "\n" << ::tpy::check_signals;
@@ -949,21 +947,21 @@ void main() {
     ::tpyapp::main::last_use_unpack();
     ::tpyapp::main::last_use_try();
     std::cout << "last_use_method" << " " << Holder().last_use() << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = {60, 61};
-    std::cout << "loop_over_param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::loop_over_param(__tmp_3))) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> __tmp_1 = {60, 61};
+    std::cout << "loop_over_param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::loop_over_param(__tmp_1))) << "\n" << ::tpy::check_signals;
     std::cout << "await_then_new_name" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::await_then_new_name())) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_4 = {80, 81};
-    std::vector<int32_t> __tmp_5 = {90};
-    std::cout << "ternary_bound" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::ternary_bound(__tmp_4, __tmp_5, true))) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_6 = {85, 86};
-    std::cout << "walrus_bound" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::walrus_bound(__tmp_6))) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_7 = {1, 2};
-    std::vector<int32_t> __tmp_8 = {3};
-    std::cout << "ternary_bound_async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::ternary_bound_async(__tmp_7, __tmp_8, false))) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_9 = {{5, 6}, {7}};
-    std::cout << "loop_var_over_list" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::loop_var_over_list(__tmp_9))) << "\n" << ::tpy::check_signals;
-    ::tpy::Adapter<Getter, Val> __tmp_10{Val(5)};
-    std::cout << "relay_getter" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::relay_getter(__tmp_10))) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> __tmp_2 = {80, 81};
+    std::vector<int32_t> __tmp_3 = {90};
+    std::cout << "ternary_bound" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::ternary_bound(__tmp_2, __tmp_3, true))) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> __tmp_4 = {85, 86};
+    std::cout << "walrus_bound" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::walrus_bound(__tmp_4))) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> __tmp_5 = {1, 2};
+    std::vector<int32_t> __tmp_6 = {3};
+    std::cout << "ternary_bound_async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::ternary_bound_async(__tmp_5, __tmp_6, false))) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<int32_t>> __tmp_7 = {{5, 6}, {7}};
+    std::cout << "loop_var_over_list" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::loop_var_over_list(__tmp_7))) << "\n" << ::tpy::check_signals;
+    ::tpy::Adapter<Getter, Val> __tmp_8{Val(5)};
+    std::cout << "relay_getter" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::relay_getter(__tmp_8))) << "\n" << ::tpy::check_signals;
 }
 
 

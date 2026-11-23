@@ -17,9 +17,8 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .testutil import lower_function
 from .nodes import (
-    MIRStorageInit,
     MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRConstruct, MIRCopy, MIRFunction, MIRMove,
-    MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot,
+    MIRNotCovered, MIRPlace, MIRRead, MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRContainerElements, MIRDeref
@@ -35,7 +34,7 @@ from .prepare import validate_function
 
 
 SOURCE = '''\
-from tpy import int32, Own, copy
+from tpy import int32, Own, copy, readonly
 from tpy.extern import native
 
 
@@ -174,8 +173,20 @@ def keep_hooked(n: int32) -> int32:
     return h.n
 
 
-def lazy_lend(flag: bool, n: int32) -> int32:
-    return read(make(n)) if flag else 0
+def when(c: bool, xs: readonly[list[int32]]) -> readonly[list[int32]]:
+    return xs
+
+
+def head_of(xs: readonly[list[int32]]) -> int32:
+    return xs[0]
+
+
+def lazy_lend(flag: bool, n: int32, xs: list[int32]) -> int32:
+    # a loop head keeps an argument evaluated under a condition too: its
+    # backing is declared before the head, built only when the operand runs
+    for v in when(flag and head_of(through(make(n), xs)) > 0, xs):
+        return v
+    return 0
 
 
 def use_temp(n: int32) -> int32:
@@ -199,8 +210,14 @@ class Named:
         self.n = n
 
 
-def lend_stamp(c: Counter) -> int32:
-    return read(stamp(c))
+def through(p: readonly[Point], xs: readonly[list[int32]]) -> readonly[list[int32]]:
+    return xs
+
+
+def lend_stamp(c: Counter, xs: list[int32]) -> int32:
+    for v in through(stamp(c), xs):
+        return v
+    return 0
 
 
 def reseat_ctor(s: str, t: str) -> int32:

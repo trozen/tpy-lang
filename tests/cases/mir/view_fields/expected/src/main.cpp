@@ -338,12 +338,11 @@ int32_t paired(Tok& t) {
     return std::get<0>(pair)->n;
 }
 
-// # free function: a record argument built on one branch is a deferred temporary; its backing stores name's loan
-// def deferred(name: str, flag: bool) -> int32:  # tpyc: mir(certified)
+// # free function: a record argument built on one branch is a temporary of that arm's own expression
+// def deferred(name: str, flag: bool) -> int32:  # tpyc: mir(covered)
 //     return size(Tok(name, 1)) if flag else 0
 int32_t deferred(std::string_view name, bool flag) {
-    std::optional<Tok> __tmp_1;
-    return ((flag) ? (__tmp_1.emplace(Tok(name, 1)), ::tpyapp::main::size((*__tmp_1))) : (0));
+    return ((flag) ? (::tpyapp::main::size(Tok(name, 1))) : (0));
 }
 
 // # free function: a select's conditional record storage stores a's loan where it is engaged
@@ -483,11 +482,9 @@ void main() {
     std::cout << "late_read" << " " << ::tpyapp::main::late_read(t, b, false) << "\n" << ::tpy::check_signals;
     std::cout << "alias_late" << " " << ::tpyapp::main::alias_late(t, b, false) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::loop_alias(t, b, 2, false);
-    Tok __tmp_1 = Tok("q", 2);
-    std::cout << "pick_late" << " " << ::tpyapp::main::pick_late(t, __tmp_1, b, false) << "\n" << ::tpy::check_signals;
+    std::cout << "pick_late" << " " << ::tpyapp::main::pick_late(t, ::tpy::as_mut_lvalue(Tok("q", 2)), b, false) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::detached_view(8, false);
-    Tok __tmp_2 = Tok("zzz", 1);
-    std::cout << "first" << " " << ::tpyapp::main::first(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "first" << " " << ::tpyapp::main::first(Tok("zzz", 1)) << "\n" << ::tpy::check_signals;
     std::cout << "size" << " " << ::tpyapp::main::size(t) << "\n" << ::tpy::check_signals;
     std::cout << "literal_member" << " " << ::tpyapp::main::literal_member() << "\n" << ::tpy::check_signals;
     std::string_view s = "rt";

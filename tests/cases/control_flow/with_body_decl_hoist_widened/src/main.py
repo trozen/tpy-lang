@@ -2,9 +2,9 @@
 # at the with. Two widenings: the with may itself sit in a branch or loop body,
 # and a non-value name that is later rvalue-reassigned rides the pointer predecl
 # with its own function-top slot. Where a body draws both that reseat slot and a
-# kept manager's (kept_manager_and_reseat), each draws its own function-top slot
-# and the two are numbered in source order -- the manager first, the reseat
-# second.
+# kept manager's (kept_manager_and_reseat), the reseat slot is declared at the
+# function top and the manager's root in front of the outer `with`, where the
+# target is declared.
 from tpy import int32, Own
 
 
@@ -81,7 +81,7 @@ def kept_manager_and_reseat() -> int32:
         with Node(10) as inner:
             print(inner.n)
         # An rvalue reseat of the hoisted pointer name, alongside the kept
-        # manager of the inner with: two function-top slots.
+        # manager of the inner with: a function-top slot and a root slot.
         inner = inner.next()
         print(outer.n)
     return inner.n

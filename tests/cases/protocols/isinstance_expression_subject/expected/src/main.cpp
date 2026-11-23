@@ -186,9 +186,7 @@ void free_function() {
     if (Hound* __h_ptr = ({ (void)((h = &(::tpy::assert_lent(::tpy::deref_check(hound))), *h)); dynamic_cast<Hound*>(h); }); (__h_ptr != nullptr)) {
         std::cout << "free: inherit" << " " << (*__h_ptr).howl() << "\n" << ::tpy::check_signals;
     }
-    Square __tmp_1 = Square();
-    Shape __tmp_2 = Shape();
-    std::cout << "free: tparam" << " " << ::tpy::print_bool(::tpyapp::main::is_square<Square>(__tmp_1)) << " " << ::tpy::print_bool(::tpyapp::main::is_square<Shape>(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << "free: tparam" << " " << ::tpy::print_bool(::tpyapp::main::is_square<Square>(::tpy::as_mut_lvalue(Square()))) << " " << ::tpy::print_bool(::tpyapp::main::is_square<Shape>(::tpy::as_mut_lvalue(Shape()))) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Union<A, B>> xs = {A(::tpy::BigInt(1)), B(::tpy::BigInt(2))};
     std::cout << "free: ptr variant" << " " << ::tpy::print_bool(std::holds_alternative<A*>(::tpyapp::main::chosen(xs, ::tpy::BigInt(0)))) << " " << ::tpy::print_bool(std::holds_alternative<A*>(::tpyapp::main::chosen(xs, ::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
     Pet* pn = &::tpy::assert_lent(::tpy::deref_check(rc));
@@ -223,8 +221,7 @@ void free_function() {
     }
     std::cout << "free: while" << " " << i << "\n" << ::tpy::check_signals;
     if (!(std::holds_alternative<A>(::tpyapp::main::pick("free:", ::tpy::BigInt(0))))) ::tpy::raise_assertion_error();
-    std::vector<::tpy::Union<A, B>> __tmp_3 = {B(::tpy::BigInt(1))};
-    std::cout << "free: const" << " " << ::tpy::print_bool(::tpyapp::main::first_of(__tmp_3)) << "\n" << ::tpy::check_signals;
+    std::cout << "free: const" << " " << ::tpy::print_bool(::tpyapp::main::first_of({B(::tpy::BigInt(1))})) << "\n" << ::tpy::check_signals;
     Holder hd = Holder();
     std::cout << "free: field" << " " << ::tpy::print_bool(std::holds_alternative<A>(hd.u)) << " " << ::tpy::print_bool(std::holds_alternative<B>(hd.u)) << "\n" << ::tpy::check_signals;
     ::tpy::Union<A*, B*> k = ::tpyapp::main::chosen(xs, ::tpy::BigInt(0));
@@ -598,7 +595,7 @@ void main() {
     ::tpyapp::main::call_in_subject();
     A __tmp_1 = A(::tpy::BigInt(3));
     B __tmp_2 = B(::tpy::BigInt(4));
-    std::cout << "gen: union" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::union_gen(::tpy::Union<const A*, const B*>{&__tmp_1}, ::tpy::Union<const A*, const B*>{&__tmp_2}))) << "\n" << ::tpy::check_signals;
+    std::cout << "gen: union" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::union_gen(::tpy::Union<const A*, const B*>{&(__tmp_1)}, ::tpy::Union<const A*, const B*>{&(__tmp_2)}))) << "\n" << ::tpy::check_signals;
     Square __tmp_3 = Square();
     Shape __tmp_4 = Shape();
     std::cout << "gen: tparam" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<bool>>(::tpyapp::main::tparam_gen<Square>(__tmp_3))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<bool>>(::tpyapp::main::tparam_gen<Shape>(__tmp_4))) << "\n" << ::tpy::check_signals;

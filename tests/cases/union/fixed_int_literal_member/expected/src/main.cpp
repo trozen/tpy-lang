@@ -274,8 +274,7 @@ void main() {
     ::tpyapp::main::wide_unsigned();
     ::tpyapp::main::wide_fits();
     int32_t x = 7;
-    ::tpy::Union<::tpy::BigInt, int32_t> __tmp_1 = x;
-    ::tpyapp::main::exact_param(__tmp_1);
+    ::tpyapp::main::exact_param(::tpy::Union<::tpy::BigInt, int32_t>(x));
     ::tpyapp::main::widen_param(static_cast<::tpy::Union<::tpy::BigInt, int64_t>>(x));
     ::tpyapp::main::check_return();
     ::tpyapp::main::field_slot();

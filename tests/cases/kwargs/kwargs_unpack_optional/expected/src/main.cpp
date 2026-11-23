@@ -26,12 +26,9 @@ void start_safe(const Config& kwargs) {
 //     # Zero kwargs
 //     start_safe()
 void main() {
-    Config __tmp_1 = Config("localhost", 8080);
-    ::tpyapp::main::start(__tmp_1);
-    Config __tmp_2 = Config("example.com", std::nullopt);
-    ::tpyapp::main::start_safe(__tmp_2);
-    Config __tmp_3 = Config(std::nullopt, std::nullopt);
-    ::tpyapp::main::start_safe(__tmp_3);
+    ::tpyapp::main::start(Config("localhost", 8080));
+    ::tpyapp::main::start_safe(Config("example.com", std::nullopt));
+    ::tpyapp::main::start_safe(Config(std::nullopt, std::nullopt));
 }
 
 // main()

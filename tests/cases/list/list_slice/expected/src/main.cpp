@@ -153,8 +153,7 @@ void __tpy_init() {
     span_src = &__global_slot_1;
     ::tpyapp::main::test_span(::tpy::as_mut_span((*span_src)));
     std::cout << "---" << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {10, 20, 30};
-    ::tpyapp::main::test_readonly_list(__tmp_1);
+    ::tpyapp::main::test_readonly_list({10, 20, 30});
     std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_readonly_span_param(::tpy::as_span(std::array<int32_t, 4>{10, 20, 30, 40}));
     std::cout << "---" << "\n" << ::tpy::check_signals;

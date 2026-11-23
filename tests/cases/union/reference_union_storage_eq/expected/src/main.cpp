@@ -353,9 +353,7 @@ void main() {
     std::vector<::tpy::Union<std::monostate, Cat, Dog>> nn2 = {std::monostate{}};
     std::vector<::tpy::Union<std::monostate, Cat, Dog>> nd = {Dog(1)};
     std::cout << "nullable" << " " << ::tpy::print_bool(::tpyapp::main::nullable_eq(nn1, nn2)) << " " << ::tpy::print_bool(::tpyapp::main::nullable_eq(nn1, nd)) << "\n" << ::tpy::check_signals;
-    Dog __tmp_1 = Dog(7);
-    Crate __tmp_2 = Crate(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
-    std::cout << "field" << " " << ::tpyapp::main::crate_pet_n(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "field" << " " << ::tpyapp::main::crate_pet_n(Crate(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog(7)))})) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump_first(d1);
     std::cout << "mutate through element" << " " << ::tpyapp::main::first_n(d1) << " " << ::tpy::print_bool(::tpyapp::main::pet_list_eq(d1, d2)) << "\n" << ::tpy::check_signals;
 }

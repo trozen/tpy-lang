@@ -176,8 +176,7 @@ Pitfall disposition:
   `reject-valid-python-only-as-documented-divergence`, `no-warning-on-valid-code`:
   no source diagnostic/acceptance changes; uncovered is an analysis status.
 
-Known adjacent issues remain separate: `BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling`,
-`BUGS.md#getter-source-const-not-tracked`,
+Known adjacent issues remain separate: `BUGS.md#getter-source-const-not-tracked`,
 `BUGS.md#nested-def-return-validated-against-enclosing` and
 `BUGS.md#finally-mutate-then-rebind-return`. The initial batch avoids those
 boundaries.

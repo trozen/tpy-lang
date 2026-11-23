@@ -105,11 +105,9 @@ void main() {
     ys.push_back(9.0);
     std::cout << "method-mutate:" << " " << k.n << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> zs = {1, 2};
-    R __tmp_1 = ::tpyapp::main::mkr();
-    std::cout << "free-late:" << " " << ::tpyapp::main::late__R(__tmp_1) << " " << ::tpyapp::main::late__list_int32(zs) << " " << ::tpy::ListPrinter(zs) << "\n" << ::tpy::check_signals;
+    std::cout << "free-late:" << " " << ::tpyapp::main::late__R(::tpyapp::main::mkr()) << " " << ::tpyapp::main::late__list_int32(zs) << " " << ::tpy::ListPrinter(zs) << "\n" << ::tpy::check_signals;
     Bag bag = Bag();
-    std::vector<double> __tmp_2 = ::tpyapp::main::mk();
-    std::cout << "free-early:" << " " << ::tpyapp::main::early__Bag(bag) << " " << ::tpyapp::main::early__list_float(__tmp_2) << " " << ::tpy::ListPrinter(bag.items) << "\n" << ::tpy::check_signals;
+    std::cout << "free-early:" << " " << ::tpyapp::main::early__Bag(bag) << " " << ::tpyapp::main::early__list_float(::tpyapp::main::mk()) << " " << ::tpy::ListPrinter(bag.items) << "\n" << ::tpy::check_signals;
     std::vector<R> rs = {R(1)};
     {
         auto __src_0 = ::tpyapp::main::first_of<R>(rs);

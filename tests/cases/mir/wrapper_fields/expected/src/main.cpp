@@ -619,14 +619,13 @@ int32_t built_forms() {
     return 0;
 }
 
-// # kept refusal: a constructed argument needs THIR's temporary plan, which this body lacks
-// def local_temporary() -> None:  # tpyc: mir(uncovered /temporary plan/)
+// # a constructed argument is a temporary of the constructor call's own expression
+// def local_temporary() -> None:  # tpyc: mir(covered)
 //     h = H(P(1), 2)
 //     if h.p is not None:
 //         print("local_temporary", h.p.x)
 void local_temporary() {
-    P __tmp_1 = P(1);
-    H h = H(&(__tmp_1), 2);
+    H h = H(&::tpy::as_mut_lvalue(P(1)), 2);
     if ((h.p.has_value())) {
         std::cout << "local_temporary" << " " << (*h.p).x << "\n" << ::tpy::check_signals;
     }
@@ -696,53 +695,29 @@ void local_temporary() {
 //     if m.k is None:
 //         print("num", 0)
 void main() {
-    P __tmp_1 = P(1);
-    H a = H(&(__tmp_1), 10);
-    P __tmp_2 = P(2);
-    H b = H(&(__tmp_2), 20);
+    H a = H(&::tpy::as_mut_lvalue(P(1)), 10);
+    H b = H(&::tpy::as_mut_lvalue(P(2)), 20);
     std::cout << "via_self" << " " << a.via_self(false) << "\n" << ::tpy::check_signals;
     std::cout << "read" << " " << ::tpyapp::main::read(a) << "\n" << ::tpy::check_signals;
     std::cout << "alias" << " " << ::tpyapp::main::alias(a, b, false) << "\n" << ::tpy::check_signals;
     std::cout << "alias_read_first" << " " << ::tpyapp::main::alias_read_first(a, b) << "\n" << ::tpy::check_signals;
     std::cout << "alias_other_field" << " " << ::tpyapp::main::alias_other_field(a, b) << "\n" << ::tpy::check_signals;
     std::cout << "callee" << " " << ::tpyapp::main::callee(a, false) << "\n" << ::tpy::check_signals;
-    P __tmp_3 = P(3);
-    H __tmp_4 = H(&(__tmp_3), 30);
-    std::cout << "fresh" << " " << ::tpyapp::main::fresh(__tmp_4, false) << "\n" << ::tpy::check_signals;
-    P __tmp_5 = P(4);
-    H __tmp_6 = H(&(__tmp_5), 40);
-    P __tmp_7 = P(5);
-    H __tmp_8 = H(&(__tmp_7), 50);
-    std::cout << "fresh_alias" << " " << ::tpyapp::main::fresh_alias(__tmp_6, __tmp_8) << "\n" << ::tpy::check_signals;
-    P __tmp_9 = P(6);
-    H __tmp_10 = H(&(__tmp_9), 60);
-    P __tmp_11 = P(7);
-    H __tmp_12 = H(&(__tmp_11), 70);
-    std::cout << "fresh_call" << " " << ::tpyapp::main::fresh_call(__tmp_10, __tmp_12) << "\n" << ::tpy::check_signals;
+    std::cout << "fresh" << " " << ::tpyapp::main::fresh(::tpy::as_mut_lvalue(H(&::tpy::as_mut_lvalue(P(3)), 30)), false) << "\n" << ::tpy::check_signals;
+    std::cout << "fresh_alias" << " " << ::tpyapp::main::fresh_alias(H(&::tpy::as_mut_lvalue(P(4)), 40), ::tpy::as_mut_lvalue(H(&::tpy::as_mut_lvalue(P(5)), 50))) << "\n" << ::tpy::check_signals;
+    std::cout << "fresh_call" << " " << ::tpyapp::main::fresh_call(H(&::tpy::as_mut_lvalue(P(6)), 60), ::tpy::as_mut_lvalue(H(&::tpy::as_mut_lvalue(P(7)), 70))) << "\n" << ::tpy::check_signals;
     std::cout << "keep_other_field" << " " << ::tpyapp::main::keep_other_field(a, b) << "\n" << ::tpy::check_signals;
-    P __tmp_13 = P(12);
-    H __tmp_14 = H(&(__tmp_13), 1);
-    P __tmp_15 = P(13);
-    H __tmp_16 = H(&(__tmp_15), 2);
-    std::cout << "fresh_condition" << " " << ::tpyapp::main::fresh_condition(__tmp_14, __tmp_16) << "\n" << ::tpy::check_signals;
+    std::cout << "fresh_condition" << " " << ::tpyapp::main::fresh_condition(H(&::tpy::as_mut_lvalue(P(12)), 1), ::tpy::as_mut_lvalue(H(&::tpy::as_mut_lvalue(P(13)), 2))) << "\n" << ::tpy::check_signals;
     std::cout << "own_field_write" << " " << ::tpyapp::main::own_field_write(a) << "\n" << ::tpy::check_signals;
-    P __tmp_17 = P(20);
-    H __tmp_18 = H(&(__tmp_17), 1);
-    std::cout << "keep_root_condition" << " " << ::tpyapp::main::keep_root_condition(__tmp_18, 19) << "\n" << ::tpy::check_signals;
+    std::cout << "keep_root_condition" << " " << ::tpyapp::main::keep_root_condition(::tpy::as_mut_lvalue(H(&::tpy::as_mut_lvalue(P(20)), 1)), 19) << "\n" << ::tpy::check_signals;
     std::cout << "keep_initialization" << " " << ::tpyapp::main::keep_initialization(a) << "\n" << ::tpy::check_signals;
     std::cout << "keep_backing" << " " << ::tpyapp::main::keep_backing(a, true) << "\n" << ::tpy::check_signals;
     std::cout << "holders" << " " << ::tpyapp::main::holders() << "\n" << ::tpy::check_signals;
-    P __tmp_19 = P(16);
-    HL hl = HL(&(__tmp_19), P(17), "hl");
-    HL __tmp_20 = HL(nullptr, P(18), "other");
-    std::cout << "keep_record_field" << " " << ::tpyapp::main::keep_record_field(hl, __tmp_20) << "\n" << ::tpy::check_signals;
+    HL hl = HL(&::tpy::as_mut_lvalue(P(16)), P(17), "hl");
+    std::cout << "keep_record_field" << " " << ::tpyapp::main::keep_record_field(hl, ::tpy::as_mut_lvalue(HL(nullptr, P(18), "other"))) << "\n" << ::tpy::check_signals;
     std::cout << "keep_leaf_field" << " " << ::tpyapp::main::keep_leaf_field(hl, hl) << "\n" << ::tpy::check_signals;
-    P __tmp_21 = P(19);
-    H __tmp_22 = H(&(__tmp_21), 1);
-    std::cout << "keep_root" << " " << ::tpyapp::main::keep_root(__tmp_22, 20) << "\n" << ::tpy::check_signals;
-    P __tmp_23 = P(21);
-    H __tmp_24 = H(&(__tmp_23), 1);
-    std::cout << "loop_write" << " " << ::tpyapp::main::loop_write(__tmp_24) << "\n" << ::tpy::check_signals;
+    std::cout << "keep_root" << " " << ::tpyapp::main::keep_root(::tpy::as_mut_lvalue(H(&::tpy::as_mut_lvalue(P(19)), 1)), 20) << "\n" << ::tpy::check_signals;
+    std::cout << "loop_write" << " " << ::tpyapp::main::loop_write(::tpy::as_mut_lvalue(H(&::tpy::as_mut_lvalue(P(21)), 1))) << "\n" << ::tpy::check_signals;
     std::cout << "refill" << " " << ::tpyapp::main::refill(b) << "\n" << ::tpy::check_signals;
     H c = H(nullptr, 60);
     ::tpyapp::main::copy_field(c, b);
@@ -757,23 +732,16 @@ void main() {
     std::cout << "payload_borrow" << " " << ::tpyapp::main::payload_borrow(c) << "\n" << ::tpy::check_signals;
     std::cout << "payload_return" << " " << ::tpyapp::main::payload_return(c, seven).x << "\n" << ::tpy::check_signals;
     std::cout << "payload_return_call" << " " << ::tpyapp::main::payload_return_call(c, seven).x << "\n" << ::tpy::check_signals;
-    SH __tmp_25 = SH("sixteen");
-    S __tmp_26 = S("none");
-    std::cout << "payload_sub_return" << " " << ::tpyapp::main::payload_sub_return(__tmp_25, __tmp_26) << "\n" << ::tpy::check_signals;
-    SH __tmp_27 = SH("seventeen");
-    std::cout << "keep_payload" << " " << ::tpyapp::main::keep_payload(__tmp_27, false) << "\n" << ::tpy::check_signals;
+    std::cout << "payload_sub_return" << " " << ::tpyapp::main::payload_sub_return(SH("sixteen"), S("none")) << "\n" << ::tpy::check_signals;
+    std::cout << "keep_payload" << " " << ::tpyapp::main::keep_payload(::tpy::as_mut_lvalue(SH("seventeen")), false) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::payload_write(c);
     std::cout << "payload_write" << " " << ::tpyapp::main::read(c) << "\n" << ::tpy::check_signals;
     H d = H(nullptr, 1);
     std::cout << "written_then_read" << " " << ::tpyapp::main::written_then_read(d) << "\n" << ::tpy::check_signals;
-    P __tmp_28 = P(14);
-    H __tmp_29 = H(&(__tmp_28), 1);
-    std::cout << "copied_then_read" << " " << ::tpyapp::main::copied_then_read(d, __tmp_29) << "\n" << ::tpy::check_signals;
+    std::cout << "copied_then_read" << " " << ::tpyapp::main::copied_then_read(d, H(&::tpy::as_mut_lvalue(P(14)), 1)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::store_found(d);
     std::cout << "store_found" << " " << ::tpyapp::main::read(d) << "\n" << ::tpy::check_signals;
-    P __tmp_30 = P(15);
-    Ro __tmp_31 = Ro(&(__tmp_30));
-    std::cout << "ro_read" << " " << ::tpyapp::main::ro_read(__tmp_31) << "\n" << ::tpy::check_signals;
+    std::cout << "ro_read" << " " << ::tpyapp::main::ro_read(Ro(&::tpy::as_mut_lvalue(P(15)))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::local();
     std::cout << "local_forms" << " " << ::tpyapp::main::local_forms(a) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::local_temporary();

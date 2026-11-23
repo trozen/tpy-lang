@@ -117,8 +117,7 @@ void main() {
     std::cout << "order self first" << " " << f.join__R(::tpyapp::part_records::R(4)) << " " << f.join__MergerFirst(MergerFirst(1)) << "\n" << ::tpy::check_signals;
     std::cout << "order own self subclass" << " " << SubMerger(3).merge__int32(2) << " " << SubMerger(3).merge__Own_MergerFirst(MergerFirst(1)) << "\n" << ::tpy::check_signals;
     std::cout << "order alias self fresh" << " " << Aliased().count() << " " << Aliased().total() << "\n" << ::tpy::check_signals;
-    Maker __tmp_1 = Maker(1);
-    std::cout << "order classmethod self" << " " << Maker::pick__Maker(__tmp_1) << " " << Maker::pick__int32(3) << "\n" << ::tpy::check_signals;
+    std::cout << "order classmethod self" << " " << Maker::pick__Maker(Maker(1)) << " " << Maker::pick__int32(3) << "\n" << ::tpy::check_signals;
 }
 
 

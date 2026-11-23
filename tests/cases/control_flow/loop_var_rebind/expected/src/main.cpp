@@ -166,8 +166,7 @@ void main() {
     ::tpyapp::main::fresh_stays_scoped();
     ::tpyapp::main::body_local_then_head();
     ::tpyapp::main::body_local_unprovable(3, ::tpy::BigInt(6));
-    std::vector<int32_t> __tmp_1 = {7, 8, 9};
-    ::tpyapp::main::body_local_over_list(__tmp_1);
+    ::tpyapp::main::body_local_over_list({7, 8, 9});
     Acc().run(3);
     {
         auto __src_0 = ::tpyapp::main::gen(3);

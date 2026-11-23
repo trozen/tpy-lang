@@ -171,8 +171,7 @@ void main() {
     MutBag<std::string> bag = MutBag<std::string>(3);
     std::cout << "qualified send call" << " " << bag.__call__("hello") << "\n" << ::tpy::check_signals;
     MutBag<::tpyapp::fixtures::C> cbag = MutBag<::tpyapp::fixtures::C>(3);
-    ::tpyapp::fixtures::C __tmp_2 = ::tpyapp::fixtures::C(1);
-    std::cout << "qualified send call class" << " " << cbag.__call__(__tmp_2) << " " << cbag.n << "\n" << ::tpy::check_signals;
+    std::cout << "qualified send call class" << " " << cbag.__call__(::tpy::as_mut_lvalue(::tpyapp::fixtures::C(1))) << " " << cbag.n << "\n" << ::tpy::check_signals;
     ::tpyapp::fixtures::C ct = ::tpyapp::fixtures::C(1);
     ::tpyapp::part_qualified::bump_sync<::tpyapp::fixtures::C>(ct, bump_c);
     std::cout << "qualified sync class" << " " << ct.n << "\n" << ::tpy::check_signals;

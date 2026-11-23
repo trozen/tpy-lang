@@ -1099,7 +1099,7 @@ class CodeGenerator:
             # published once, so building it here only moves work the emit
             # loop below would do anyway.
             frame = self.gen_async.resumable_frame(f, rn)
-            for name, owner in frame.embedding_edges:
+            for name, owner in self.gen_async.embedding_edges(f, rn, frame):
                 j = index.get((name, owner))
                 # A self-edge (a coro that inline-awaits itself, a generator
                 # that delegates to itself) is kept on purpose: it's a 1-cycle

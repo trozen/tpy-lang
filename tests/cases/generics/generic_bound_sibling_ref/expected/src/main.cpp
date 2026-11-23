@@ -8,10 +8,8 @@ namespace tpyapp::main {
 //     print(pick[int32, IntBox](IntBox(42)))       # tpyc: ok
 //     print(pick[StrView, StrBox](StrBox("hi")))   # tpyc: ok
 void main() {
-    IntBox __tmp_1 = IntBox(42);
-    std::cout << ::tpyapp::main::pick<int32_t, IntBox>(__tmp_1) << "\n" << ::tpy::check_signals;
-    StrBox __tmp_2 = StrBox("hi");
-    std::cout << ::tpyapp::main::pick<std::string_view, StrBox>(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick<int32_t, IntBox>(::tpy::as_mut_lvalue(IntBox(42))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick<std::string_view, StrBox>(::tpy::as_mut_lvalue(StrBox("hi"))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

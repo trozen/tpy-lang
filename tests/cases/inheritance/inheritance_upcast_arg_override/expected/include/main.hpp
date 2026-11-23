@@ -466,8 +466,7 @@ template<typename T, typename __F0>
       { __fn(__a0, static_cast<decltype(__a1)&&>(__a1)) } -> std::convertible_to<std::string>;
   }
 std::string ap2(__F0&& g, ::tpy::param_val_or_ref_t<T> x) {
-    Child __tmp_1 = Child();
-    return g(__tmp_1, ::tpy::param_pass_last<T>(x));
+    return g(::tpy::as_mut_lvalue(Child()), ::tpy::param_pass_last<T>(x));
 }
 // def fwd[T](g: Fn[[T], str], x: T) -> str:
 //     # Generic body: T is still open at ap's slot, so nothing warns here.
@@ -486,8 +485,7 @@ template<typename T, typename __F0>
       { __fn(__a0, static_cast<decltype(__a1)&&>(__a1)) } -> std::convertible_to<std::string>;
   }
 std::string apply_l(__F0&& g, std::vector<::tpy::storage_t<T>>& x) {
-    Child __tmp_1 = Child();
-    return g(__tmp_1, x);
+    return g(::tpy::as_mut_lvalue(Child()), x);
 }
 // def forward_l[T](x: list[T]) -> str:
 //     def fl(b: Base, y: list[T]) -> str:

@@ -213,13 +213,11 @@ struct __coro_amain {
     bool __cancel_pending;
     ::tpy::frame_slot<std::array<N, 2>> d;
     int32_t __await_lift_0;
-    ::tpy::frame_slot<std::vector<N>> __coro_arg_0;
     int32_t __await_lift_1;
-    ::tpy::frame_slot<std::array<N, 4>> __coro_arg_1;
     int32_t __await_lift_2;
     std::optional<__coro_atake<::tpy::await_arg_capture_t<decltype((std::move((*d))))>>> __sub_0;
-    std::optional<__coro_atake<::tpy::await_arg_capture_t<decltype((std::move((*__coro_arg_0))))>>> __sub_1;
-    std::optional<__coro_atake<::tpy::await_arg_capture_t<decltype((std::move((*__coro_arg_1))))>>> __sub_2;
+    std::optional<__coro_atake<::tpy::await_arg_capture_t<decltype((::tpyapp::part_nocopy::mk()))>>> __sub_1;
+    std::optional<__coro_atake<::tpy::await_arg_capture_t<decltype((std::declval<std::vector<N>>()))>>> __sub_2;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -380,10 +378,8 @@ struct __gen_gen_caller : public ::tpy::next_iter_mixin<__gen_gen_caller, int32_
     ::tpy::frame_state __state;
     int32_t y;
     int32_t z;
-    ::tpy::frame_slot<std::array<N, 3>> __coro_arg_0;
-    ::tpy::frame_slot<std::array<N, 1>> __coro_arg_1;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::part_nocopy::gen(std::move((*__coro_arg_0)))))>;
-    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::part_nocopy::gen(std::move((*__coro_arg_1)))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::part_nocopy::gen(std::declval<std::vector<N>>())))>;
+    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::part_nocopy::gen(std::array<N, 1>{N(7)})))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
     ::tpy::frame_loop_slot<__for_src_1_t> __for_src_1;

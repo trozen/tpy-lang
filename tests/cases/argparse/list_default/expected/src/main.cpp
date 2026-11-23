@@ -12,8 +12,7 @@ namespace tpyapp::main {
 //     print(args.tag)
 //     print(args.count)
 void absent_case() {
-    std::vector<std::string> __tmp_1 = std::vector<std::string>{};
-    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(std::vector<std::string>{});
     std::cout << ::tpy::ListPrinter(args.tag) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(args.count) << "\n" << ::tpy::check_signals;
 }
@@ -26,8 +25,7 @@ void absent_case() {
 //     print(args.tag)
 //     print(args.count)
 void present_case() {
-    std::vector<std::string> __tmp_1 = {"--tag", "gamma", "--count", "10", "20"};
-    __tpy_builder_argparse_args_2 args = ::tpyapp::main::__tpy_builder_argparse_parse_2(__tmp_1);
+    __tpy_builder_argparse_args_2 args = ::tpyapp::main::__tpy_builder_argparse_parse_2({"--tag", "gamma", "--count", "10", "20"});
     std::cout << ::tpy::ListPrinter(args.tag) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(args.count) << "\n" << ::tpy::check_signals;
 }

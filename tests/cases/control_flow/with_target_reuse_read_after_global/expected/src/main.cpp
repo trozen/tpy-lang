@@ -17,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    static std::optional<Reg> __global_slot_1;
     auto __ctx_1 = Reg(11);
     Reg* view = &(__ctx_1.__enter__());
     try {
@@ -31,8 +30,8 @@ void __tpy_init() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    __global_slot_1.emplace(Reg(22));
-    auto& __ctx_2 = (*__global_slot_1);
+    static std::optional<Reg> __with_root_0;
+    auto& __ctx_2 = __with_root_0.emplace(22);
     view = &(__ctx_2.__enter__());
     try {
         goto __with_exit_2;

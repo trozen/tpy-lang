@@ -346,10 +346,11 @@ def lc_src_temps() -> None:
     both = 0
     out_in = [c.n for x in [1, 2] for c in pick([C(x)]) if (both := c.n + x) > 0]  # tpyc: ok
     print("lc src walrus inner", out_in, both)
-    # clause 0's source is evaluated in the enclosing scope: the temporary
-    # list `pick` lends from outlives the comprehension, so a pointer stored
-    # in an element is still valid after the statement
-    hs = [CPtr(c) for c in pick([C(100), C(200)]) for k in range(1)]  # tpyc: ok
+    # a pointer stored in an element is read after the statement: the source
+    # it points into outlives it only as a local (a fresh argument of the
+    # clause lives for the comprehension's statement, no longer)
+    src = [C(100), C(200)]
+    hs = [CPtr(c) for c in pick(src) for k in range(1)]  # tpyc: ok
     junk2 = [C(7), C(8), C(9)]
     h1 = hs[1]
     q = h1.p

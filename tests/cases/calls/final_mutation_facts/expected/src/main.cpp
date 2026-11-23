@@ -70,8 +70,7 @@ __gen_ctor_gen ctor_gen() {
 //     return make()
 ::tpy::BigInt ctor_closure() {
     auto make = []() -> ::tpy::BigInt {
-        Inner __tmp_1 = Inner(::tpy::BigInt(4));
-        HolderLate h = HolderLate(__tmp_1);
+        HolderLate h = HolderLate(::tpy::as_mut_lvalue(Inner(::tpy::BigInt(4))));
         return h.n;
     };
     return make();
@@ -97,15 +96,13 @@ __gen_ctor_gen ctor_gen() {
 //     print("ctor_direct_order", Maker().make())
 //     print("ctor_global", G.n)
 void ctor_sections() {
-    Inner __tmp_1 = Inner(::tpy::BigInt(2));
-    HolderLate b = HolderLate(__tmp_1);
+    HolderLate b = HolderLate(::tpy::as_mut_lvalue(Inner(::tpy::BigInt(2))));
     std::cout << "ctor_after" << " " << b.n << "\n" << ::tpy::check_signals;
     Inner i = Inner(::tpy::BigInt(10));
     HolderLate h = HolderLate(i);
     i.v = (i.v) + (::tpy::BigInt(100));
     std::cout << "ctor_after" << " " << h.n << " " << i.v << "\n" << ::tpy::check_signals;
-    Inner __tmp_2 = Inner(::tpy::BigInt(2));
-    HolderEarly e = HolderEarly(__tmp_2);
+    HolderEarly e = HolderEarly(::tpy::as_mut_lvalue(Inner(::tpy::BigInt(2))));
     std::cout << "ctor_before" << " " << e.n << "\n" << ::tpy::check_signals;
     Inner j = Inner(::tpy::BigInt(20));
     HolderEarly f = HolderEarly(j);
@@ -278,8 +275,7 @@ void later_sections() {
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             int32_t k = *__beg_2;
-            Inner __tmp_1 = Inner(k);
-            __result.push_back(HolderLate(__tmp_1).n);
+            __result.push_back(HolderLate(::tpy::as_mut_lvalue(Inner(k))).n);
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
@@ -293,14 +289,14 @@ void later_sections() {
     std::cout << "auto_readonly_clone_write" << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
     std::vector<P> xs = {P(::tpy::BigInt(1)), P(::tpy::BigInt(2))};
     P& r = ::tpyapp::main::first_late<P>(xs);
-    std::vector<P> __tmp_2 = xs;
-    std::vector<P> kept = ::tpyapp::main::keep(std::move(__tmp_2));
+    std::vector<P> __tmp_1 = xs;
+    std::vector<P> kept = ::tpyapp::main::keep(std::move(__tmp_1));
     r.n = ::tpy::BigInt(5);
     std::cout << "forward_generic_borrow" << " " << r.n << " " << ::tpy::__getitem__(xs, 0).n << " " << ::tpy::__len__(kept) << "\n" << ::tpy::check_signals;
     Bag<::tpy::BigInt> b = Bag<::tpy::BigInt>();
     std::string_view t = b.tag();
-    Bag<::tpy::BigInt> __tmp_3 = b;
-    Keeper k = Keeper(std::move(__tmp_3));
+    Bag<::tpy::BigInt> __tmp_2 = b;
+    Keeper k = Keeper(std::move(__tmp_2));
     std::cout << "pending_generic_receiver" << " " << t << " " << k.bag.name << "\n" << ::tpy::check_signals;
 }
 
@@ -320,8 +316,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    Inner __tmp_1 = Inner(::tpy::BigInt(7));
-    static HolderDirect __global_slot_1 = HolderDirect(__tmp_1);
+    static HolderDirect __global_slot_1 = HolderDirect(::tpy::as_mut_lvalue(Inner(::tpy::BigInt(7))));
     G = &__global_slot_1;
     ::tpyapp::main::ctor_sections();
     ::tpyapp::main::borrow_sections();

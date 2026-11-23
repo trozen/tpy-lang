@@ -69,20 +69,23 @@ void main() {
     ::tpystd::os::mkdir(base);
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/sub")));
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/empty")));
-    auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat(base, "/f.txt")), "w");
-    auto& fh = __ctx_1.__enter__();
-    try {
-        fh.write("hi");
-        goto __with_exit_1;
-    } catch (::tpy::BaseException& __exc_1) {
-        __ctx_1.__exit__({}, &__exc_1, {});
-        throw;
-    } catch (...) {
+    {
+        ::tpy::String __tmp_1 = (::tpy::str_concat(base, "/f.txt"));
+        auto __ctx_1 = ::tpy::builtin_open_mode(__tmp_1, "w");
+        auto& fh = __ctx_1.__enter__();
+        try {
+            fh.write("hi");
+            goto __with_exit_1;
+        } catch (::tpy::BaseException& __exc_1) {
+            __ctx_1.__exit__({}, &__exc_1, {});
+            throw;
+        } catch (...) {
+            __ctx_1.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        throw;
     }
-    __with_exit_1:
-    __ctx_1.__exit__({}, nullptr, {});
     ::tpy::stdlib::os::symlink("f.txt", (::tpy::str_concat(base, "/lnk")));
     std::vector<std::string> rows = std::vector<std::string>{};
     int64_t size = 0;
@@ -106,12 +109,15 @@ void main() {
     }
     std::cout << "f.txt size:" << " " << size << "\n" << ::tpy::check_signals;
     int32_t n = 0;
-    auto __obj_2 = ::tpystd::os::scandir((::tpy::str_concat(base, "/empty")));
-    auto __beg_2 = __obj_2.begin();
-    auto __end_2 = __obj_2.end();
-    for (; __beg_2 != __end_2; ++__beg_2) {
-        const auto& _ = *__beg_2;
-        n = ::tpy::add_check<int32_t>(n, 1);
+    {
+        ::tpy::String __tmp_2 = (::tpy::str_concat(base, "/empty"));
+        auto __obj_2 = ::tpystd::os::scandir(__tmp_2);
+        auto __beg_2 = __obj_2.begin();
+        auto __end_2 = __obj_2.end();
+        for (; __beg_2 != __end_2; ++__beg_2) {
+            const auto& _ = *__beg_2;
+            n = ::tpy::add_check<int32_t>(n, 1);
+        }
     }
     std::cout << "empty entries:" << " " << n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::teardown(base);

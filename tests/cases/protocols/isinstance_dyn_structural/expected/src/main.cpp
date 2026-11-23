@@ -21,13 +21,10 @@ std::string describe(Pet& p) {
 //     whiskers = Cat("whiskers")
 //     print(describe(whiskers))        # structural lvalue -> RefAdapter
 void main() {
-    Dog __tmp_1{Dog()};
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
-    ::tpy::Adapter<Pet, Cat> __tmp_2{Cat("felix")};
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::as_mut_lvalue(Dog{Dog()})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::as_mut_lvalue(::tpy::Adapter<Pet, Cat>{Cat("felix")})) << "\n" << ::tpy::check_signals;
     Cat whiskers = Cat("whiskers");
-    ::tpy::RefAdapter<Pet, Cat> __tmp_3{whiskers};
-    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::as_mut_lvalue(::tpy::RefAdapter<Pet, Cat>{whiskers})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

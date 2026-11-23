@@ -88,9 +88,8 @@ void main() {
     std::vector<int32_t> items = {10, 20, 30};
     int32_t v;
     {
-        std::vector<int32_t> __tmp_1 = {10, 20};
         {
-            auto __try_tmp_5 = ::tpyapp::main::lookup_sum(items, __tmp_1);
+            auto __try_tmp_5 = ::tpyapp::main::lookup_sum(items, {10, 20});
             if (!__try_tmp_5.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
@@ -104,9 +103,8 @@ void main() {
     }
     int32_t v2;
     {
-        std::vector<int32_t> __tmp_2 = {10, 99};
         {
-            auto __try_tmp_7 = ::tpyapp::main::lookup_sum(items, __tmp_2);
+            auto __try_tmp_7 = ::tpyapp::main::lookup_sum(items, {10, 99});
             if (!__try_tmp_7.has_value()) goto __except_6;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }

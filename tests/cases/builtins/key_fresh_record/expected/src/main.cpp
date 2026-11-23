@@ -69,12 +69,9 @@ void free(std::vector<Rec>& rs) {
     Rec& a = ::tpy::__getitem__(rs, 0);
     Rec& b = ::tpy::__getitem__(rs, 1);
     Rec& c = ::tpy::__getitem__(rs, 2);
-    std::vector<Rec> __tmp_1 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Key { return Key(r); });
-    std::cout << "free sorted_lam" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_1)) << "\n" << ::tpy::check_signals;
-    std::vector<Rec> __tmp_2 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); });
-    std::cout << "free sorted_cls" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_2)) << "\n" << ::tpy::check_signals;
-    std::vector<Rec> __tmp_3 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Key { return ::tpyapp::main::make_key(r); });
-    std::cout << "free sorted_own" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_3)) << "\n" << ::tpy::check_signals;
+    std::cout << "free sorted_lam" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Key { return Key(r); }))) << "\n" << ::tpy::check_signals;
+    std::cout << "free sorted_cls" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }))) << "\n" << ::tpy::check_signals;
+    std::cout << "free sorted_own" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Key { return ::tpyapp::main::make_key(r); }))) << "\n" << ::tpy::check_signals;
     std::cout << "free min_lam" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& r) -> Key { return Key(r); })).n << "\n" << ::tpy::check_signals;
     std::cout << "free min_cls" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); })).n << "\n" << ::tpy::check_signals;
     std::cout << "free max_lam" << " " << ::tpy::assert_lent(::tpy::max_key(a, b, [](const Rec& r) -> Key { return Key(r); })).n << "\n" << ::tpy::check_signals;
@@ -83,11 +80,10 @@ void free(std::vector<Rec>& rs) {
     std::cout << "free min3_cls" << " " << ::tpy::assert_lent(::tpy::min3_key(a, b, c, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); })).n << "\n" << ::tpy::check_signals;
     std::cout << "free max3_own" << " " << ::tpy::assert_lent(::tpy::max3_key(a, b, c, [](const Rec& r) -> Key { return ::tpyapp::main::make_key(r); })).n << "\n" << ::tpy::check_signals;
     std::cout << "free max3_cls" << " " << ::tpy::assert_lent(::tpy::max3_key(a, b, c, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); })).n << "\n" << ::tpy::check_signals;
-    std::vector<Rec> __tmp_4 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> const Rec& { return r; });
-    std::cout << "free sorted_id" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_4)) << "\n" << ::tpy::check_signals;
+    std::cout << "free sorted_id" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> const Rec& { return r; }))) << "\n" << ::tpy::check_signals;
     {
-        auto&& __tmp_5 = ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& r) -> const Rec& { return r; }));
-        __tmp_5.n = ::tpy::add_check<int32_t>(__tmp_5.n, 10);
+        auto&& __tmp_1 = ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& r) -> const Rec& { return r; }));
+        __tmp_1.n = ::tpy::add_check<int32_t>(__tmp_1.n, 10);
     }
     std::cout << "free min_id" << " " << a.n << " " << b.n << "\n" << ::tpy::check_signals;
     std::cout << "free min_method" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& r) -> int32_t { return r.score(); })).n << "\n" << ::tpy::check_signals;
@@ -173,25 +169,25 @@ void comp(const std::vector<std::vector<Rec>>& rss) {
 //     print("module lam", ns(g_lam))
 //     print("module cls", ns(g_cls))
 void main() {
-    std::vector<Rec> __tmp_1 = {Rec(1), Rec(3), Rec(2)};
-    ::tpyapp::main::free(__tmp_1);
+    ::tpyapp::main::free(::tpy::as_mut_lvalue(std::vector<Rec>{Rec(1), Rec(3), Rec(2)}));
     Holder().show();
-    std::vector<Rec> __tmp_2 = {Rec(1), Rec(3), Rec(2)};
     std::cout << "gen" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_0 = ::tpyapp::main::gen(__tmp_2);
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            int32_t n = *__beg_0;
-            __result.push_back(n);
+        {
+            std::vector<Rec> __tmp_1 = {Rec(1), Rec(3), Rec(2)};
+            auto __obj_0 = ::tpyapp::main::gen(__tmp_1);
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                int32_t n = *__beg_0;
+                __result.push_back(n);
+            }
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    std::vector<Rec> __tmp_3 = {Rec(1), Rec(3), Rec(2)};
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co(__tmp_3))) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<Rec>> __tmp_4 = {{Rec(1), Rec(3)}, {Rec(5), Rec(4)}};
-    ::tpyapp::main::comp(__tmp_4);
+    std::vector<Rec> __tmp_2 = std::vector<Rec>{Rec(1), Rec(3), Rec(2)};
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co(__tmp_2))) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::comp({{Rec(1), Rec(3)}, {Rec(5), Rec(4)}});
     std::cout << "module lam" << " " << ::tpy::ListPrinter(::tpyapp::main::ns((*g_lam))) << "\n" << ::tpy::check_signals;
     std::cout << "module cls" << " " << ::tpy::ListPrinter(::tpyapp::main::ns((*g_cls))) << "\n" << ::tpy::check_signals;
 }

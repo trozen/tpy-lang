@@ -21,10 +21,8 @@ namespace tpyapp::main {
 //     print(show(Cat(1)))
 //     print(show(Dog(2)))
 void main() {
-    Cat __tmp_1 = Cat(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::show(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    Dog __tmp_2 = Dog(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::show(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat(::tpy::BigInt(1))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog(::tpy::BigInt(2))))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

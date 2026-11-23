@@ -36,10 +36,8 @@ void main() {
     std::cout << ::tpystd::urllib::parse::unquote_plus("a+b%2Bc") << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::urllib::parse::unquote("100%") << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::urllib::parse::unquote("%zz") << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"limit", "10"}, {"name", "a b"}, {"path", "x/y"}});
-    std::cout << ::tpystd::urllib::parse::urlencode(__tmp_1) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>();
-    std::cout << ::tpystd::urllib::parse::urlencode(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urlencode(::tpy::ordered_map<std::string, std::string>({{"limit", "10"}, {"name", "a b"}, {"path", "x/y"}})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urlencode(::tpy::ordered_map<std::string, std::string>()) << "\n" << ::tpy::check_signals;
     auto __obj_0 = ::tpystd::urllib::parse::parse_qsl("a=1&b=hello+world&c=&noeq&d=z%2Fw");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

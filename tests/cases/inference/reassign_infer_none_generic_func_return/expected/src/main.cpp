@@ -14,8 +14,7 @@ void __tpy_init() {
     initialized = true;
 
     x = std::nullopt;
-    std::vector<int32_t> __tmp_1 = {41, 42};
-    x = ::tpyapp::main::first<int32_t>(__tmp_1);
+    x = ::tpyapp::main::first<int32_t>(::tpy::as_mut_lvalue(std::vector<int32_t>{41, 42}));
     std::cout << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
 }
 

@@ -5,23 +5,97 @@ namespace tpyapp::main {
 
 
 
+
+
+// def make_nr(x: int32) -> Own[NR]:
+//     return NR(x)
+::mylog::NR make_nr(int32_t x) {
+    return ::mylog::NR(x);
+}
+
 // def go(x: int32) -> int32:
 //     return use_nr(NR(x))  # tpyc: ok
 int32_t go(int32_t x) {
-    ::mylog::NR __tmp_1 = ::mylog::NR(x);
-    return ::mylog::use_nr(__tmp_1);
+    return ::mylog::use_nr(::tpy::as_mut_lvalue(::mylog::NR(x)));
+}
+
+// def bumped(x: int32) -> int32:
+//     # a fresh argument at a native parameter whose C++ is a mutable `NR&`
+//     return bump_nr(NR(x))  # tpyc: ok
+int32_t bumped(int32_t x) {
+    return ::mylog::bump_nr(::tpy::as_mut_lvalue(::mylog::NR(x)));
+}
+
+// def made(x: int32) -> int32:
+//     # a fresh call result at a native `NR&` parameter
+//     return bump_nr(make_nr(x))  # tpyc: ok
+int32_t made(int32_t x) {
+    return ::mylog::bump_nr(::tpy::as_mut_lvalue(::tpyapp::main::make_nr(x)));
+}
+
+// def peeked(x: int32) -> int32:
+//     # a readonly parameter binds the construction in place
+//     return peek_nr(NR(x))  # tpyc: ok
+int32_t peeked(int32_t x) {
+    return ::mylog::peek_nr(::mylog::NR(x));
+}
+
+// def absorbed(x: int32) -> int32:
+//     # a native method stub binds the construction in place
+//     n = NR(x)
+//     return n.absorb(NR(x + 1))  # tpyc: ok
+int32_t absorbed(int32_t x) {
+    ::mylog::NR n = ::mylog::NR(x);
+    return n.absorb(::mylog::NR((::tpy::add_check<int32_t>(x, 1))));
+}
+
+// def pushed() -> int32:
+//     # a zero-argument construction at a native `std::vector&` parameter
+//     return push_list(list(), 7)  # tpyc: ok
+int32_t pushed() {
+    return ::mylog::push_list(::tpy::as_mut_lvalue(std::vector<int32_t>()), 7);
+}
+
+// def added() -> int32:
+//     # an operator result at a by-value native parameter: moved in, no copy
+//     a = Point(2)
+//     b = Point(3)
+//     return point_v(a + b)  # tpyc: ok
+int32_t added() {
+    Point a = Point(2);
+    Point b = Point(3);
+    return ::mylog::point_v(((a) + (b)));
 }
 
 // def main() -> None:
 //     print(go(2))
+//     print("bumped", bumped(4))
+//     print("made", made(4))
+//     print("peeked", peeked(3))
+//     print("absorbed", absorbed(3))
+//     print("pushed", pushed())
+//     print("added", added())
+//     part_qualified.main()
 void main() {
     std::cout << ::tpyapp::main::go(2) << "\n" << ::tpy::check_signals;
+    std::cout << "bumped" << " " << ::tpyapp::main::bumped(4) << "\n" << ::tpy::check_signals;
+    std::cout << "made" << " " << ::tpyapp::main::made(4) << "\n" << ::tpy::check_signals;
+    std::cout << "peeked" << " " << ::tpyapp::main::peeked(3) << "\n" << ::tpy::check_signals;
+    std::cout << "absorbed" << " " << ::tpyapp::main::absorbed(3) << "\n" << ::tpy::check_signals;
+    std::cout << "pushed" << " " << ::tpyapp::main::pushed() << "\n" << ::tpy::check_signals;
+    std::cout << "added" << " " << ::tpyapp::main::added() << "\n" << ::tpy::check_signals;
+    ::tpyapp::part_qualified::main();
 }
 
 // # A @native record constructor rvalue at a native callee's reference
 // # parameter: the argument converts at its parameter like any record, the
-// # construction held for the call (`NR __tmp_N = NR(x); use_nr(__tmp_N)`).
+// # construction lent for the call (`use_nr(::tpy::as_mut_lvalue(NR(x)))`).
+// # A fresh call or construction at a free call's parameter not declared
+// # const is lent so; a readonly one and a method stub's bind it in place.
 // from tpy.extern import native
+//
+// from nr_api import NR, bump_nr, push_list
+// import part_qualified
 //
 // main()
 void __tpy_init() {

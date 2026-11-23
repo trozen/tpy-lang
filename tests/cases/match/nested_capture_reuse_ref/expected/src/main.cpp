@@ -97,12 +97,8 @@ namespace tpyapp::main {
 //     print("as_pattern_mutable:", as_pattern_mutable(h, g), h.inner.n,
 //           g.inner.n)
 void main() {
-    Holder __tmp_1 = Holder(Inner(::tpy::BigInt(1)));
-    Holder __tmp_2 = Holder(Inner(::tpy::BigInt(2)));
-    std::cout << "outer_untouched:" << " " << ::tpyapp::main::outer_untouched(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
-    Holder __tmp_3 = Holder(Inner(::tpy::BigInt(1)));
-    Holder __tmp_4 = Holder(Inner(::tpy::BigInt(2)));
-    std::cout << "reseats_mutable:" << " " << ::tpyapp::main::reseats_mutable(__tmp_3, __tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << "outer_untouched:" << " " << ::tpyapp::main::outer_untouched(Holder(Inner(::tpy::BigInt(1))), Holder(Inner(::tpy::BigInt(2)))) << "\n" << ::tpy::check_signals;
+    std::cout << "reseats_mutable:" << " " << ::tpyapp::main::reseats_mutable(::tpy::as_mut_lvalue(Holder(Inner(::tpy::BigInt(1)))), ::tpy::as_mut_lvalue(Holder(Inner(::tpy::BigInt(2))))) << "\n" << ::tpy::check_signals;
     Holder h = Holder(Inner(::tpy::BigInt(1)));
     Holder g = Holder(Inner(::tpy::BigInt(2)));
     std::cout << "as_pattern_mutable:" << " " << ::tpyapp::main::as_pattern_mutable(h, g) << " " << h.inner.n << " " << g.inner.n << "\n" << ::tpy::check_signals;

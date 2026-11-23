@@ -30,12 +30,9 @@ void take(::tpy::Union<const Apple*, const Banana*> f) {
 //     take(Apple())
 //     take(Banana())
 void main() {
-    std::vector<int32_t> __tmp_1 = {11, 12, 13};
-    std::cout << ::tpyapp::main::first(__tmp_1) << "\n" << ::tpy::check_signals;
-    Apple __tmp_2 = Apple();
-    ::tpyapp::main::take(::tpy::Union<const Apple*, const Banana*>{&__tmp_2});
-    Banana __tmp_3 = Banana();
-    ::tpyapp::main::take(::tpy::Union<const Apple*, const Banana*>{&__tmp_3});
+    std::cout << ::tpyapp::main::first({11, 12, 13}) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::take(::tpy::Union<const Apple*, const Banana*>{&(::tpy::as_mut_lvalue(Apple()))});
+    ::tpyapp::main::take(::tpy::Union<const Apple*, const Banana*>{&(::tpy::as_mut_lvalue(Banana()))});
 }
 
 // main()

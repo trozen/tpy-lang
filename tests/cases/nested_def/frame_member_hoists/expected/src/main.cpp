@@ -199,7 +199,6 @@ void main() {
 }
 
 int32_t __gen_Holder_gen::inner() {
-    std::optional<RCM> __slot_1;
     auto __ctx_1 = RCM(1);
     Rec* rr = &(__ctx_1.__enter__());
     try {
@@ -214,8 +213,7 @@ int32_t __gen_Holder_gen::inner() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    __slot_1.emplace(RCM(2));
-    auto& __ctx_2 = (*__slot_1);
+    auto __ctx_2 = RCM(2);
     rr = &(__ctx_2.__enter__());
     try {
         rr->x = ::tpy::add_check<int32_t>(rr->x, 1);

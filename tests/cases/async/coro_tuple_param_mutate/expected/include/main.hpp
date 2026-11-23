@@ -69,7 +69,6 @@ struct __coro_driver {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> b;
-    std::tuple<int32_t, Box*> __coro_arg_0;
     std::optional<__coro_bump> __sub_0;
 
     enum : int32_t {

@@ -82,8 +82,7 @@ void generic_class() {
 //     print("generic_function:", r)
 void generic_function() {
     int8_t n8 = 1;
-    G<int32_t> __tmp_1 = G<int32_t>();
-    bool r = ::tpyapp::main::via<int32_t>(__tmp_1, n8);
+    bool r = ::tpyapp::main::via<int32_t>(G<int32_t>(), n8);
     std::cout << "generic_function:" << " " << ::tpy::print_bool(r) << "\n" << ::tpy::check_signals;
 }
 
@@ -243,8 +242,7 @@ void identity_check(const Pt& p) {
 //     identity_check(Pt(1))
 void identity() {
     ::tpyapp::main::identity_check((*ANCHOR));
-    Pt __tmp_1 = Pt(1);
-    ::tpyapp::main::identity_check(__tmp_1);
+    ::tpyapp::main::identity_check(Pt(1));
 }
 
 // def pending_list() -> None:
@@ -273,8 +271,7 @@ void temp_comprehension() {
         std::vector<int32_t> __result;
         if (3 > 0) __result.reserve(static_cast<size_t>(3));
         for (int32_t i = 0; i < 3; ++i) {
-            std::vector<int32_t> __tmp_1 = std::vector<int32_t>{::tpyapp::main::mark("comp", i)};
-            if (f.__contains__(&(__tmp_1))) {
+            if (f.__contains__(&::tpy::as_mut_lvalue(std::vector<int32_t>{::tpyapp::main::mark("comp", i)}))) {
                 __result.push_back(i);
             }
         }
@@ -300,10 +297,8 @@ void temp_logic() {
     bool no = false;
     bool a = no;
     bool b = yes;
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{::tpyapp::main::mark("logic", 1)};
-    bool c = f.__contains__(&(__tmp_1));
-    std::vector<int32_t> __tmp_2 = std::vector<int32_t>{::tpyapp::main::mark("logic", 2)};
-    bool d = f.__contains__(&(__tmp_2));
+    bool c = f.__contains__(&::tpy::as_mut_lvalue(std::vector<int32_t>{::tpyapp::main::mark("logic", 1)}));
+    bool d = f.__contains__(&::tpy::as_mut_lvalue(std::vector<int32_t>{::tpyapp::main::mark("logic", 2)}));
     std::cout << "logic:" << " " << ::tpy::print_bool(a) << " " << ::tpy::print_bool(b) << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << "\n" << ::tpy::check_signals;
 }
 
@@ -317,9 +312,7 @@ void temp_logic() {
 void temp_while() {
     Firsts f = Firsts("while");
     int32_t i = 0;
-    while (true) {
-        std::vector<int32_t> __tmp_1 = std::vector<int32_t>{::tpyapp::main::mark("while", i)};
-        if (!(f.__contains__(&(__tmp_1)))) break;
+    while (f.__contains__(&::tpy::as_mut_lvalue(std::vector<int32_t>{::tpyapp::main::mark("while", i)}))) {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     std::cout << "while:" << " " << i << "\n" << ::tpy::check_signals;
@@ -353,8 +346,7 @@ __gen_temp_gen temp_gen() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::vector<int32_t> __tmp_1 = std::vector<int32_t>{::tpyapp::main::mark("async", i)};
-        r = (*f).__contains__(&(__tmp_1));
+        r = (*f).__contains__(&::tpy::as_mut_lvalue(std::vector<int32_t>{::tpyapp::main::mark("async", i)}));
         std::cout << "async:" << " " << ::tpy::print_bool(r) << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
@@ -395,8 +387,7 @@ void tuple_needle() {
 // def generic_needle() -> None:
 //     print("generic_needle:", via_t(OneT[int32](), 1))
 void generic_needle() {
-    OneT<int32_t> __tmp_1 = OneT<int32_t>();
-    std::cout << "generic_needle:" << " " << ::tpy::print_bool(::tpyapp::main::via_t<int32_t>(__tmp_1, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << "generic_needle:" << " " << ::tpy::print_bool(::tpyapp::main::via_t<int32_t>(OneT<int32_t>(), 1)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -192,8 +192,7 @@ __coro_abump abump(::tpyapp::fixtures::P* p) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = ::tpyapp::fixtures::V((::tpy::str_repeat("a", 20)));
-        __sub_0.emplace(__coro_arg_0);
+        __sub_0.emplace(::tpyapp::fixtures::V(__head_arg_0.emplace((::tpy::str_repeat("a", 20)))));
         __state = S_RESUME_0;
         continue;
     }
@@ -202,8 +201,7 @@ __coro_abump abump(::tpyapp::fixtures::P* p) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        __coro_arg_1 = (::tpy::str_repeat("t", 20));
-        __sub_1.emplace(__coro_arg_1);
+        __sub_1.emplace((::tpy::str_repeat("t", 20)));
         __state = S_RESUME_1;
         continue;
     }
@@ -222,9 +220,7 @@ __coro_abump abump(::tpyapp::fixtures::P* p) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        __coro_arg_2 = (::tpy::str_repeat("u", 20));
-        ::tpy::Union<int32_t, std::string> __tmp_1 = __coro_arg_2;
-        __sub_3.emplace(__tmp_1);
+        __sub_3.emplace(::tpy::Union<int32_t, std::string>((::tpy::str_repeat("u", 20))));
         __state = S_RESUME_3;
         continue;
     }
@@ -281,8 +277,7 @@ void main() {
     H h = H(::tpyapp::fixtures::V((::tpy::str_repeat("c", 20))));
     std::cout << "ctor:" << " " << h.v << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));
-    ::tpyapp::fixtures::V __tmp_1 = ::tpyapp::fixtures::V((::tpy::str_repeat("g", 20)));
-    std::cout << "generator:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpyapp::main::gnames(__tmp_1))) << "\n" << ::tpy::check_signals;
+    std::cout << "generator:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpyapp::main::gnames(::tpyapp::fixtures::V((::tpy::str_repeat("g", 20)))))) << "\n" << ::tpy::check_signals;
     std::cout << "lambda:" << " " << ::tpyapp::main::via_lambda(::tpyapp::fixtures::V((::tpy::str_repeat("l", 20)))) << "\n" << ::tpy::check_signals;
     ::tpy::Union<::tpyapp::fixtures::Sq, ::tpyapp::fixtures::V> __slot_1 = ::tpyapp::main::pick(::tpyapp::fixtures::V((::tpy::str_repeat("u", 20))));
     ::tpy::Union<::tpyapp::fixtures::Sq*, ::tpyapp::fixtures::V*> u = ::tpy::to_ptr_variant(__slot_1);

@@ -314,30 +314,17 @@ void main() {
             std::cout << "frame" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    Dog __tmp_2 = Dog("rd");
-    Cat __tmp_3 = Cat("rc");
-    ::tpyapp::main::reseat(__tmp_2, __tmp_3);
-    Dog __tmp_4 = Dog("ud");
-    ::tpyapp::main::union_(__tmp_4);
-    Dog __tmp_5 = Dog("uod");
-    ::tpyapp::main::union_opt(__tmp_5);
-    Dog __tmp_6 = Dog("ad");
-    ::tpyapp::main::arg(__tmp_6);
-    Dog __tmp_7 = Dog("aud");
-    Dog __tmp_8 = Dog("aue");
-    ::tpyapp::main::arg_union(__tmp_7, __tmp_8);
-    Dog __tmp_9 = Dog("rt");
-    ::tpyapp::main::ret(__tmp_9);
-    Dog __tmp_10 = Dog("rud");
-    Dog __tmp_11 = Dog("rue");
-    ::tpyapp::main::ret_union(__tmp_10, __tmp_11);
-    Dog __tmp_12 = Dog("ac");
-    std::cout << "async" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro(__tmp_12))) << "\n" << ::tpy::check_signals;
-    Dog __tmp_13 = Dog("fd");
-    ::tpyapp::main::field(__tmp_13);
-    Pet __tmp_14 = Pet("sx");
-    Pet __tmp_15 = Pet("sy");
-    ::tpyapp::main::same_type(__tmp_14, __tmp_15);
+    ::tpyapp::main::reseat(::tpy::as_mut_lvalue(Dog("rd")), ::tpy::as_mut_lvalue(Cat("rc")));
+    ::tpyapp::main::union_(::tpy::as_mut_lvalue(Dog("ud")));
+    ::tpyapp::main::union_opt(::tpy::as_mut_lvalue(Dog("uod")));
+    ::tpyapp::main::arg(::tpy::as_mut_lvalue(Dog("ad")));
+    ::tpyapp::main::arg_union(::tpy::as_mut_lvalue(Dog("aud")), ::tpy::as_mut_lvalue(Dog("aue")));
+    ::tpyapp::main::ret(::tpy::as_mut_lvalue(Dog("rt")));
+    ::tpyapp::main::ret_union(::tpy::as_mut_lvalue(Dog("rud")), ::tpy::as_mut_lvalue(Dog("rue")));
+    Dog __tmp_2 = Dog("ac");
+    std::cout << "async" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro(__tmp_2))) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::field(Dog("fd"));
+    ::tpyapp::main::same_type(::tpy::as_mut_lvalue(Pet("sx")), ::tpy::as_mut_lvalue(Pet("sy")));
 }
 
 // # A record lvalue upcast into every pointer slot (nullable/union locals, frame

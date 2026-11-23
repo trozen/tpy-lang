@@ -350,8 +350,7 @@ void main() {
     ::tpyapp::main::while_cond("a");
     Holder().method("a");
     ::tpyapp::main::ctor_arg("a");
-    std::vector<std::string> __tmp_1 = {"a", "z"};
-    ::tpyapp::main::comprehension(__tmp_1);
+    ::tpyapp::main::comprehension(::tpy::as_mut_lvalue(std::vector<std::string>{"a", "z"}));
     {
         auto __src_0 = ::tpyapp::main::gen_body("a");
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

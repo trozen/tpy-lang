@@ -583,11 +583,9 @@ void main() {
     ::tpyapp::main::va_write(::tpy::varargs<A>(__tmp_6));
     std::cout << "varargs_write" << " " << a1.n << " " << a2.n << "\n" << ::tpy::check_signals;
     GV<int32_t> gv = GV<int32_t>(4);
-    ::tpy::ordered_map<int32_t, int32_t> __tmp_7 = ::tpy::ordered_map<int32_t, int32_t>({{1, 2}, {3, 4}});
-    std::cout << "value_result" << " " << ::tpyapp::main::value_sum(gv) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::value_await(gv))) << " " << ::tpyapp::main::value_total(__tmp_7) << " " << ::tpyapp::main::value_methods(gv) << "\n" << ::tpy::check_signals;
+    std::cout << "value_result" << " " << ::tpyapp::main::value_sum(gv) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::value_await(gv))) << " " << ::tpyapp::main::value_total(::tpy::ordered_map<int32_t, int32_t>({{1, 2}, {3, 4}})) << " " << ::tpyapp::main::value_methods(gv) << "\n" << ::tpy::check_signals;
     IntSrc src = IntSrc(4);
-    ::tpy::RefAdapter<DGetter<int32_t>, IntSrc> __tmp_8{src};
-    std::cout << "value_protocol" << " " << ::tpyapp::main::value_proto(src) << " " << ::tpyapp::main::value_dyn(__tmp_8) << "\n" << ::tpy::check_signals;
+    std::cout << "value_protocol" << " " << ::tpyapp::main::value_proto(src) << " " << ::tpyapp::main::value_dyn(::tpy::as_mut_lvalue(::tpy::RefAdapter<DGetter<int32_t>, IntSrc>{src})) << "\n" << ::tpy::check_signals;
     Sh sh = Sh();
     auto called = sh.__call__(5);
     sh.a.n = 9;
@@ -618,8 +616,8 @@ void main() {
     Stored st = Stored(6);
     st.get().bump();
     std::cout << "stub_get" << " " << st.get().n << "\n" << ::tpy::check_signals;
-    RBox<A> __tmp_9 = RBox<A>(A(5));
-    std::cout << "async_payload" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::peek_n(__tmp_9))) << "\n" << ::tpy::check_signals;
+    RBox<A> __tmp_7 = RBox<A>(A(5));
+    std::cout << "async_payload" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::peek_n(__tmp_7))) << "\n" << ::tpy::check_signals;
 }
 
 

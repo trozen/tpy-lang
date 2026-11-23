@@ -14,8 +14,7 @@ void take_mut(Node* p) {
 //     s = Sink(Node(1))
 //     print(s.captured)
 void main() {
-    Node __tmp_1 = Node(::tpy::BigInt(1));
-    Sink s = Sink(__tmp_1);
+    Sink s = Sink(::tpy::as_mut_lvalue(Node(::tpy::BigInt(1))));
     std::cout << s.captured << "\n" << ::tpy::check_signals;
 }
 

@@ -17,8 +17,7 @@ int32_t probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*> v) {
 // def main() -> None:
 //     print(probe(Alpha(1)))
 void main() {
-    Alpha __tmp_1 = Alpha(1);
-    std::cout << ::tpyapp::main::probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*>{&(::tpy::as_mut_lvalue(Alpha(1)))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

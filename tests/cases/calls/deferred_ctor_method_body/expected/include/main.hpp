@@ -375,8 +375,7 @@ inline int32_t Plain::ar() const {
 inline void Plain::comp(std::vector<int32_t>& xs) const {
     std::array<int32_t, 2> rs = ::tpy::array_from_index<int32_t, 2>([&](std::size_t __i_0) -> int32_t {
         int32_t _ = int32_t(__i_0);
-        Wipe<int32_t> __tmp_1 = Wipe<int32_t>(xs);
-        return ::tpyapp::main::tw__Wipe_int32(__tmp_1);
+        return ::tpyapp::main::tw__Wipe_int32(Wipe<int32_t>(xs));
     });
     std::cout << "comp" << " " << ::tpy::ListPrinter(rs) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
@@ -386,8 +385,7 @@ inline void Plain::comp(std::vector<int32_t>& xs) const {
 //     r = tw(Wipe(xs))  # tpyc: ok
 //     print("disp", r, xs)
 inline void Plain::disp(std::vector<int32_t>& xs) const {
-    Wipe<int32_t> __tmp_1 = Wipe<int32_t>(xs);
-    int32_t r = ::tpyapp::main::tw__Wipe_int32(__tmp_1);
+    int32_t r = ::tpyapp::main::tw__Wipe_int32(Wipe<int32_t>(xs));
     std::cout << "disp" << " " << r << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
@@ -556,8 +554,7 @@ inline int32_t Wipe<T>::local_cls(std::vector<int32_t>& xs) {
 //     return tw(cls(xs))  # tpyc: ok
 template<typename T>
 inline int32_t Wipe<T>::ranked_cls(std::vector<int32_t>& xs) {
-    Wipe<int32_t> __tmp_1 = Wipe<int32_t>(xs);
-    return ::tpyapp::main::tw__Wipe_int32(__tmp_1);
+    return ::tpyapp::main::tw__Wipe_int32(Wipe<int32_t>(xs));
 }
 
 // def __init__(self, xs: list[Sink]) -> None:

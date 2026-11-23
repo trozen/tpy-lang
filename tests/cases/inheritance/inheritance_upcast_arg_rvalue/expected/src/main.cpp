@@ -14,8 +14,7 @@ void greet(const Animal& a) {
 //     # Rvalue child argument -- temp must preserve the Dog type, not slice.
 //     greet(Dog("Max", "Beagle"))
 void main() {
-    Dog __tmp_1 = Dog("Max", "Beagle");
-    ::tpyapp::main::greet(__tmp_1);
+    ::tpyapp::main::greet(Dog("Max", "Beagle"));
 }
 
 // main()

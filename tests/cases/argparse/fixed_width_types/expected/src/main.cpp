@@ -17,8 +17,7 @@ namespace tpyapp::main {
 //     print(args.depth)
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = {"--width", "42", "--depth", "9999999999"};
-    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1({"--width", "42", "--depth", "9999999999"});
     if (!((args.width.has_value()))) ::tpy::raise_assertion_error();
     if (!((args.depth.has_value()))) ::tpy::raise_assertion_error();
     std::cout << ::tpy::print_optional_val(args.width) << "\n" << ::tpy::check_signals;

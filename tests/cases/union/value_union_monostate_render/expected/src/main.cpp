@@ -19,8 +19,7 @@ bool widened() {
     ::tpy::Union<double, int32_t> x = 1;
     x = 2.5;
     ::tpy::Union<double, int32_t> y = x;
-    ::tpy::Union<double, int32_t> __tmp_1 = 2.5;
-    return ::tpyapp::main::same(y, __tmp_1);
+    return ::tpyapp::main::same(y, ::tpy::Union<double, int32_t>(2.5));
 }
 
 // def started_none() -> bool:

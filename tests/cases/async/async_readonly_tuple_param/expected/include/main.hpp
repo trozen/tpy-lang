@@ -86,9 +86,7 @@ struct __coro_main_coro {
     ::tpy::frame_slot<Tag> b;
     int32_t total;
     int32_t v;
-    std::tuple<Tag*, Tag*> __coro_arg_0;
     int32_t __await_lift_0;
-    std::tuple<Tag*, Tag*> __coro_arg_1;
     int32_t __await_lift_1;
     std::optional<__coro_asum> __sub_0;
     std::optional<__coro_asum> __sub_1;

@@ -169,8 +169,7 @@ void main() {
     ::tpyapp::main::comprehension();
     ::tpyapp::main::union_literal();
     ::tpyapp::main::union_value(1.5f);
-    ::tpy::Union<double, float> __tmp_1 = 2.5f;
-    ::tpyapp::main::union_param(__tmp_1);
+    ::tpyapp::main::union_param(::tpy::Union<double, float>(2.5f));
 }
 
 // main()

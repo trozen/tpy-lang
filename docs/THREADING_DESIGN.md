@@ -442,7 +442,7 @@ arg coercion always emitted) happens exactly at typed boundaries:
 params/returns (a concrete binding holds one frame type: mixed and
 recursive rebinds rejected, create_task named as the recursion escape). A guaranteed representation rule, not
 an optimization. Method-coroutine bindings carry receiver borrow rules:
-stable-lvalue receiver at bind, borrow registered until consumption,
+borrow registered until consumption,
 warnings on receiver-escaping consumption (create_task / return).
 `_require_async_def_call_arg` (which had gone half-dead after the v1.2
 library cutover) was replaced by a compile-time *coroutine-only* value check

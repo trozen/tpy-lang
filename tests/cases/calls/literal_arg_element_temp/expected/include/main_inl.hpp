@@ -12,9 +12,8 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() 
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        V3 __tmp_1 = V3(5.0);
         __state = S_RESUME_0;
-        return ::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::opt(&(__tmp_1))});
+        return ::tpyapp::main::own_ints(std::vector<::tpy::BigInt>{::tpyapp::main::opt(&::tpy::as_mut_lvalue(V3(5.0)))});
     }
     case S_RESUME_0: {  // after: yield own_ints([opt(V3(5.0))])  # tpyc: ok
         __state = S_DONE;

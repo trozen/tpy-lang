@@ -1325,8 +1325,7 @@ inline datetime ZoneInfo::fromutc(datetime dt) const {
         throw ::tpy::ValueError("fromutc: dt.tzinfo is not self");
     }
     auto& __tz = std::get<ZoneInfo>(tz);
-    ::tpy::Union<std::monostate, ZoneInfo, timezone> __tmp_1 = (*this);
-    return datetime::_from_epoch_us(dt._epoch_us(), false, __tmp_1);
+    return datetime::_from_epoch_us(dt._epoch_us(), false, ::tpy::Union<std::monostate, ZoneInfo, timezone>((*this)));
 }
 
 // # CPython ZoneInfo has no __eq__/__hash__ (identity semantics); the

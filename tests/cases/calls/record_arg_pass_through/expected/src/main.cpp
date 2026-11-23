@@ -77,8 +77,7 @@ void main() {
     A a = A(5);
     std::cout << ::tpyapp::main::through_narrowing(::tpy::Union<A*, B*>{&(a)}) << "\n" << ::tpy::check_signals;
     std::cout << a.x << "\n" << ::tpy::check_signals;
-    B __tmp_1 = B(7);
-    std::cout << ::tpyapp::main::through_narrowing(::tpy::Union<A*, B*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::through_narrowing(::tpy::Union<A*, B*>{&(::tpy::as_mut_lvalue(B(7)))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

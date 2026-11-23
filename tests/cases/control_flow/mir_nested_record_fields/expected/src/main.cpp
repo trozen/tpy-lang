@@ -113,8 +113,7 @@ void main() {
     std::cout << "constructor" << " " << observer.value << " " << a.inner.value << "\n" << ::tpy::check_signals;
     std::cout << "tuple-shapes" << " " << ::tpyapp::main::tuples(a) << "\n" << ::tpy::check_signals;
     std::cout << "optional" << " " << ::tpyapp::main::optional(&(a)) << " " << ::tpyapp::main::optional(nullptr) << "\n" << ::tpy::check_signals;
-    Cell __tmp_1 = Cell(0);
-    std::cout << "union" << " " << ::tpyapp::main::union_(::tpy::Union<const Cell*, const Outer*>{&(a)}) << " " << ::tpyapp::main::union_(::tpy::Union<const Cell*, const Outer*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
+    std::cout << "union" << " " << ::tpyapp::main::union_(::tpy::Union<const Cell*, const Outer*>{&(a)}) << " " << ::tpyapp::main::union_(::tpy::Union<const Cell*, const Outer*>{&(::tpy::as_mut_lvalue(Cell(0)))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

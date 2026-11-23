@@ -350,8 +350,7 @@ void main() {
     std::cout << ::tpyapp::main::optional_inner_as_capture(std::nullopt) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::str_switch_as_capture("c") << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::str_switch_as_capture("zz") << "\n" << ::tpy::check_signals;
-    Dog __tmp_1{Dog()};
-    std::cout << ::tpyapp::main::poly_as_capture(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::poly_as_capture(::tpy::as_mut_lvalue(Dog{Dog()})) << "\n" << ::tpy::check_signals;
     Cat cat = Cat();
     std::cout << ::tpyapp::main::poly_as_capture(cat) << "\n" << ::tpy::check_signals;
     std::cout << cat.hits << "\n" << ::tpy::check_signals;

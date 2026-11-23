@@ -111,7 +111,7 @@ void main() {
     }
     {
         Push __tmp_1 = Push(std::vector<::tpy::BigInt>{7, 8});
-        auto __src_2 = ::tpyapp::main::first_value(::tpy::Union<const Emit*, const Push*>{&__tmp_1});
+        auto __src_2 = ::tpyapp::main::first_value(::tpy::Union<const Emit*, const Push*>{&(__tmp_1)});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -120,10 +120,8 @@ void main() {
             std::cout << "first" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    Push __tmp_2 = Push(std::vector<::tpy::BigInt>{1, 2, 3, 4});
-    std::cout << "plain" << " " << ::tpyapp::main::plain(::tpy::Union<const Emit*, const Push*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
-    Emit __tmp_3 = Emit("z");
-    std::cout << "plain" << " " << ::tpyapp::main::plain(::tpy::Union<const Emit*, const Push*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
+    std::cout << "plain" << " " << ::tpyapp::main::plain(::tpy::Union<const Emit*, const Push*>{&(::tpy::as_mut_lvalue(Push(std::vector<::tpy::BigInt>{1, 2, 3, 4})))}) << "\n" << ::tpy::check_signals;
+    std::cout << "plain" << " " << ::tpyapp::main::plain(::tpy::Union<const Emit*, const Push*>{&(::tpy::as_mut_lvalue(Emit("z")))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

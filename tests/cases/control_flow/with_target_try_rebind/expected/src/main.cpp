@@ -18,7 +18,6 @@ namespace tpyapp::main {
 //         result = -1
 //     return result
 int32_t probe(bool flag) {
-    std::optional<Reg> __slot_1;
     auto __ctx_1 = Reg(11);
     Reg* view = &(__ctx_1.__enter__());
     try {
@@ -32,9 +31,9 @@ int32_t probe(bool flag) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
+    std::optional<Reg> __with_root_0;
     if (flag) {
-        __slot_1.emplace(Reg(22));
-        auto& __ctx_2 = (*__slot_1);
+        auto& __ctx_2 = __with_root_0.emplace(22);
         view = &(__ctx_2.__enter__());
         try {
             goto __with_exit_2;

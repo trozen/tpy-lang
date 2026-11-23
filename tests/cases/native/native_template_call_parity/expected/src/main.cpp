@@ -121,18 +121,15 @@ void bump(::nb::Bag& c) {
 //     bytes_ret(Blobs())
 //     template_args(Pairs(), c)
 void main() {
-    ::nb::Table __tmp_1 = ::nb::Table();
-    ::tpyapp::main::str_key(__tmp_1, "b");
+    ::tpyapp::main::str_key(::tpy::as_mut_lvalue(::nb::Table()), "b");
     ::nb::Bag c = ::nb::Bag();
     ::tpyapp::main::opt_bind(c);
     ::tpyapp::main::opt_bind_named(c);
     ::tpyapp::main::opt_bind_named_none(c);
     ::tpyapp::main::bump(c);
     std::cout << "opt_ret" << " " << c.n_at(1) << " " << ::tpy::print_bool((::tpyapp::main::opt_ret(c, 4) == nullptr)) << " " << ::tpy::print_bool((::tpyapp::main::opt_ret_named(c, 0) != nullptr)) << "\n" << ::tpy::check_signals;
-    ::nb::Blobs __tmp_2 = ::nb::Blobs();
-    ::tpyapp::main::bytes_ret(__tmp_2);
-    ::nb::Pairs __tmp_3 = ::nb::Pairs();
-    ::tpyapp::main::template_args(__tmp_3, c);
+    ::tpyapp::main::bytes_ret(::tpy::as_mut_lvalue(::nb::Blobs()));
+    ::tpyapp::main::template_args(::tpy::as_mut_lvalue(::nb::Pairs()), c);
 }
 
 // from tpy.extern import native, native_field, cpp_template

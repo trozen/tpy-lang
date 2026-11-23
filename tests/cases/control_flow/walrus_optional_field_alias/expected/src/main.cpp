@@ -17,8 +17,7 @@ namespace tpyapp::main {
 //     else:
 //         print("none ok")
 void main() {
-    Box __tmp_1 = Box(::tpy::BigInt(1));
-    Holder h = Holder(&(__tmp_1));
+    Holder h = Holder(&::tpy::as_mut_lvalue(Box(::tpy::BigInt(1))));
     Box* t = nullptr;
     if (((t = ::tpy::optional_to_ptr(h.opt)) != nullptr)) {
         t->val = ::tpy::BigInt(99);

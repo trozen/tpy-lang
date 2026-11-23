@@ -1,0 +1,76 @@
+fixtures::__tpy_init: uncovered (module initialization)
+fixtures::mk@22:0: covered (storage: no_proof_required), summary: known
+fixtures::mkp@26:0: covered (storage: no_proof_required), summary: known
+fixtures::total@30:0: covered (storage: no_proof_required), summary: known
+fixtures::grow@37:0: covered (storage: no_proof_required), summary: known
+fixtures::bump@42:0: covered (storage: no_proof_required), summary: known
+fixtures::peek@47:0: covered (storage: no_proof_required), summary: known
+fixtures::Bag.sum_of@10:4: covered (storage: no_proof_required), summary: known
+fixtures::Bag.grow_into@13:4: covered (storage: no_proof_required), summary: known
+fixtures::Bag.__init__@6:4: covered (storage: no_proof_required), summary: known
+fixtures::P.__init__@18:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::free_fn@11:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::method@21:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::main@31:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_ctor::__tpy_init: uncovered (module initialization)
+part_ctor::mkbox@60:0: covered (storage: no_proof_required), summary: known
+part_ctor::label@64:0: uncovered (unsupported parameter type)
+part_ctor::main@95:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_ctor::Box.tag@56:4: covered (storage: no_proof_required), summary: known
+part_ctor::Pin.__init__@10:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+part_ctor::H.__init__@18:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_ctor::W.__init__@26:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_ctor::NoDefault.__init__@32:4: covered (storage: no_proof_required), summary: known
+part_ctor::After.__init__@40:4: covered (storage: no_proof_required), summary: known
+part_ctor::Box.__init__@53:4: covered (storage: no_proof_required), summary: known
+part_ctor::Base.__init__@72:4: covered (storage: no_proof_required), summary: known
+part_ctor::D.__init__@78:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_ctor::Body.__init__@89:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+part_inverse::__tpy_init: uncovered (module initialization)
+part_inverse::walk@9:0: incomplete (suspension: loan of caller storage held across a suspension)
+part_inverse::keep@14:0: covered (storage: no_proof_required), summary: known
+part_inverse::count@19:0: uncovered (container name type mismatch)
+part_inverse::own_copy@23:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+part_inverse::main@32:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_opened::__tpy_init: uncovered (module initialization)
+part_opened::anyslot@45:0: uncovered (generic body)
+part_opened::mk_cell@49:0: covered (storage: no_proof_required), summary: known
+part_opened::take_union@53:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_opened::check@79:0: covered (storage: no_proof_required), summary: known
+part_opened::ret@113:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_opened::classify@118:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_opened::main@127:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_opened::KMut.ping@36:4: covered (storage: no_proof_required), summary: known
+part_opened::Mat.hit@94:4: covered (storage: no_proof_required)
+part_opened::Chrome.hit@100:4: covered (storage: no_proof_required)
+part_opened::Tracer.run@109:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+part_opened::Base.__init__@13:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+part_opened::Child.__init__@19:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_opened::KMut.__init__@32:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+part_opened::Cell.__init__@41:4: covered (storage: no_proof_required), summary: known
+part_opened::Collar.__init__@60:4: covered (storage: no_proof_required), summary: known
+part_opened::Pup.__init__@67:4: covered (storage: no_proof_required), summary: known
+part_opened::Cat.__init__@75:4: covered (storage: no_proof_required), summary: known
+part_opened::Mat.__init__@91:4: covered (storage: no_proof_required), summary: known
+part_opened::Tracer.__init__@106:4: covered (storage: no_proof_required), summary: known
+part_positions::__tpy_init: uncovered (module initialization)
+part_positions::gen@8:0: covered (storage: no_facts: storage facts have not been published)
+part_positions::coro@14:0: uncovered (async body)
+part_positions::checked@33:0: uncovered (error-return body)
+part_positions::apply@40:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_positions::positions@44:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_positions::main@73:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_positions::Ctx.__enter__@21:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+part_positions::Ctx.__exit__@24:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_union::__tpy_init: uncovered (module initialization)
+part_union::run@24:0: uncovered (unsupported parameter type)
+part_union::kind@29:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_union::main@33:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_union::M.pick@16:4: uncovered (no body to lower)
+part_union::M.pick@20:4: uncovered (no body to lower)
+part_union::M.__init__@12:4: covered (storage: no_proof_required), summary: known
+pets::__tpy_init: uncovered (module initialization)
+pets::code@11:0: covered (storage: no_proof_required), summary: known
+pets::Cat.__init__@2:4: covered (storage: no_proof_required), summary: known
+pets::Dog.__init__@7:4: covered (storage: no_proof_required), summary: known

@@ -106,7 +106,7 @@ def str_local(h: H) -> int32:  # tpyc: mir(covered)
 
 
 # list remedy: copy() hands the iteration its own list: silent (MIR does not lower copy() of a list yet)
-def list_copy(xs: list[int32]) -> int32:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
+def list_copy(xs: list[int32]) -> int32:  # tpyc: mir(uncovered /unsupported metadata: cpp_template/)
     return walk(copy(xs), xs)  # tpyc: ok
 
 
@@ -247,8 +247,8 @@ def renamed(xs: list[int]) -> int:  # tpyc: mir(conflict /argument_alias/)
     return gtr(xs, 1, xs[0])  # tpyc: warning(/argument 'xs\[0\]' points into 'xs', which 'grow_then_read'/)
 
 
-# record remedy: copy() hands the callee its own record: silent (MIR does not lower this caller yet)
-def line_copy(ln: Line) -> bool:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
+# record remedy: copy() hands the callee its own record: silent
+def line_copy(ln: Line) -> bool:  # tpyc: mir(covered)
     return alias_external(ln, copy(ln))  # tpyc: ok
 
 

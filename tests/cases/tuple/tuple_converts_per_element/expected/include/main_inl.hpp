@@ -204,7 +204,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_frame_select::__next__
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         auto&& __tmp_1 = ::tpyapp::main::make_s(n);
-        __for_src_0.emplace(::tpyapp::main::count_to(::tpy::__len__(((!__tmp_1.empty()) ? __tmp_1 : std::string(std::string_view("xyz"))))));
+        __for_src_0.emplace(::tpyapp::main::count_to(::tpy::__len__(__head_arg_0.emplace(((!__tmp_1.empty()) ? __tmp_1 : std::string(std::string_view("xyz")))))));
         __state = S_JOIN_0;
         continue;
     }

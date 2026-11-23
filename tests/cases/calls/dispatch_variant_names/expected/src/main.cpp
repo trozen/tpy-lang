@@ -112,8 +112,7 @@ std::string tag__int(const ::tpy::BigInt& x) {
 void name_clash_section() {
     Dog d = Dog("Rex");
     std::cout << "clash:" << " " << ::tpyapp::main::describe__Dog__v0(d) << "\n" << ::tpy::check_signals;
-    Cat __tmp_1 = Cat("Tom");
-    std::cout << "clash:" << " " << ::tpyapp::main::describe__Cat(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "clash:" << " " << ::tpyapp::main::describe__Cat(Cat("Tom")) << "\n" << ::tpy::check_signals;
     std::cout << "clash:" << " " << ::tpyapp::main::describe__Dog(d) << "\n" << ::tpy::check_signals;
     d.nm = "Max";
     std::cout << "clash:" << " " << ::tpyapp::main::describe__Dog__v0(d) << " " << ::tpyapp::main::describe__Dog(d) << "\n" << ::tpy::check_signals;

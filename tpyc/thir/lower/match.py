@@ -68,6 +68,7 @@ from ...liveness import stmts_terminate
 from ..faces import witness as _witness
 from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
 from ..nodes import (
+    declares_temporaries,
     HoistDecl,
     Form,
     THIREvalThen,
@@ -1202,7 +1203,12 @@ def _subject_admission(stmt: TpyMatch, kind: 'str | None',
                        narrowed: AbstractSet[str],
                        storage_tuple_locals: AbstractSet[str]) -> _Subject:
     """The one admission of a `match` subject, decided once per match for
-    its tier (`kind`: `_match_strategy`'s, or "poly" for polymorphic
+    its tier. No verdict needs a slot of the enclosing scope for a capture
+    read after the statement (a with target's enclosed root): a capture of
+    an OWNED or SNAPSHOT subject is a copy or a move out of it, and a
+    BORROW subject's storage is no fresh value of the statement's.
+
+    Its tier (`kind`: `_match_strategy`'s, or "poly" for polymorphic
     dispatch, which carries the guarded-ness the tier needs).
 
     A NAME binds `auto&` when it renders direct; a pointer local, a
@@ -1563,6 +1569,20 @@ def _guarded_hook_alias_agree(stmt: TpyMatch, analyzer) -> bool:
 
 
 def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
+                 declared: dict[str, TpyType], pointers: AbstractSet[str], loc, *,
+                 loop_depth: int = 0,
+                 arm_body_hooks: bool = False) -> THIRMatch:
+    """The `match` statement on its route (`_lower_match_route`), opening a
+    scope for the temporaries its subject keeps (`head_scope`)."""
+    m = _lower_match_route(stmt, route, lc, declared, pointers, loc,
+                           loop_depth=loop_depth,
+                           arm_body_hooks=arm_body_hooks)
+    if not declares_temporaries((m.subject,)):
+        return m
+    return replace(m, head_scope=True)
+
+
+def _lower_match_route(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
                  declared: dict[str, TpyType], pointers: AbstractSet[str], loc, *,
                  loop_depth: int = 0,
                  arm_body_hooks: bool = False) -> THIRMatch:

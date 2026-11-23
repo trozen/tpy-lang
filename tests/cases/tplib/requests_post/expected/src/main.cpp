@@ -49,11 +49,9 @@ void send(std::string_view method, std::string_view url, ::tpy::Union<std::monos
 void main() {
     ::tpystd::json::JsonValue payload = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"name", "x"}, {"count", 5}});
     ::tpyapp::main::send("POST", "http://api.test/v1/items", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, &(payload), std::nullopt);
-    ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("raw-bytes", 9);
-    ::tpyapp::main::send("PUT", "http://api.test/v1/items/1", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1}, nullptr, std::nullopt);
+    ::tpyapp::main::send("PUT", "http://api.test/v1/items/1", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&(::tpy::as_mut_lvalue(::tpy::bytes_literal_owned("raw-bytes", 9)))}, nullptr, std::nullopt);
     ::tpyapp::main::send("POST", "http://api.test/secure", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, std::tuple<std::string, std::string>{"user", "pw"});
-    ::tpy::Bytes __tmp_2 = ::tpy::Bytes{};
-    ::tpyapp::main::send("POST", "http://api.test/empty-data", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2}, &(payload), std::nullopt);
+    ::tpyapp::main::send("POST", "http://api.test/empty-data", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&(::tpy::as_mut_lvalue(::tpy::Bytes{}))}, &(payload), std::nullopt);
 }
 
 // # tplib.requests POST: a json= body (bound to a JsonValue local first, as the

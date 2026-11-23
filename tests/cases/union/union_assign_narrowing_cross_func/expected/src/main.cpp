@@ -24,8 +24,7 @@ void g(const C& a) {
 //     g(C(2.0))
 void main() {
     ::tpyapp::main::f();
-    C __tmp_1 = C(2.0);
-    ::tpyapp::main::g(__tmp_1);
+    ::tpyapp::main::g(C(2.0));
 }
 
 // main()

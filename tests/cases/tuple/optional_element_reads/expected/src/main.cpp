@@ -987,8 +987,7 @@ void main() {
     }
     ::tpyapp::main::arg_param(std::tuple<Box*, int32_t>{&(b), 1}, b);
     ::tpyapp::main::arg_field(h);
-    Box __tmp_1 = Box(2);
-    ::tpyapp::main::rebind(std::tuple<Box*, int32_t>{&(b), 1}, &(__tmp_1));
+    ::tpyapp::main::rebind(std::tuple<Box*, int32_t>{&(b), 1}, &::tpy::as_mut_lvalue(Box(2)));
     ::tpyapp::main::rebind_elem(std::tuple<Box*, Box*>{nullptr, &(b)});
     ::tpyapp::main::ternary(std::tuple<Box*, int32_t>{&(b), 1}, true, b);
     ::tpyapp::main::matched(std::tuple<Box*, int32_t>{&(b), 1}, b);
@@ -1022,8 +1021,7 @@ void main() {
     ::tpyapp::main::rebind_branch(std::tuple<Box*, int32_t>{&(b), 1}, true);
     std::cout << "rebind branch after" << " " << b.n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::pos_closure(std::tuple<Box*, int32_t>{&(b), 1});
-    std::vector<std::tuple<std::optional<Box>, int32_t>> __tmp_2 = {std::tuple<std::optional<Box>, int32_t>{Box(5), 1}};
-    ::tpyapp::main::pos_loop(__tmp_2);
+    ::tpyapp::main::pos_loop(::tpy::as_mut_lvalue(std::vector<std::tuple<std::optional<Box>, int32_t>>{std::tuple<std::optional<Box>, int32_t>{Box(5), 1}}));
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::pos_async(std::tuple<Box*, int32_t>{&(b), 1}))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::pos_try(std::tuple<Box*, int32_t>{&(b), 1});
     ::tpyapp::main::pos_lambda(std::tuple<Box*, int32_t>{&(b), 1});

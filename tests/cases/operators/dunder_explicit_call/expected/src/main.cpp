@@ -44,9 +44,7 @@ void main() {
     std::cout << ::tpy::print_bool((t) == (three)) << " " << ::tpy::print_bool((t) == (two)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((t) != (three)) << " " << ::tpy::print_bool(::tpyapp::main::probe(t, two)) << "\n" << ::tpy::check_signals;
     std::vector<V> vs = {V(1), V(2)};
-    V __tmp_1 = V(2);
-    V __tmp_2 = V(3);
-    std::cout << ::tpy::print_bool(::tpyapp::main::record_arg(__tmp_1, vs, true)) << " " << ::tpy::print_bool(::tpyapp::main::record_arg(__tmp_2, vs, false)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::record_arg(V(2), vs, true)) << " " << ::tpy::print_bool(::tpyapp::main::record_arg(V(3), vs, false)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

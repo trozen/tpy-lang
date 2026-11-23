@@ -1,0 +1,4 @@
+main.py:10: warning: copies A into Tree parameter 't'; use copy() to make this explicit
+main.py:13: warning: copies list[Tree] into Tree parameter 't'; use copy() to make this explicit
+main.py:19: warning: copies A into Tree parameter 't' of M.bump; use copy() to make this explicit
+main.py:25: warning: copies C[A] into GTree[A] parameter 't'; use copy() to make this explicit

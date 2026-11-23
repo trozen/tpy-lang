@@ -307,8 +307,7 @@ void main() {
     std::cout << "one_value randrange3:" << " " << ::tpystd::random::randrange__int32__int32__int32(2, 9, 10) << "\n" << ::tpy::check_signals;
     std::cout << "one_value randrange3 next:" << " " << ::tpystd::random::getrandbits(32) << "\n" << ::tpy::check_signals;
     ::tpystd::random::seed__int32(1);
-    std::vector<std::string> __tmp_1 = {"only"};
-    std::cout << "one_value choice:" << " " << ::tpystd::random::choice<std::string>(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "one_value choice:" << " " << ::tpystd::random::choice<std::string>({"only"}) << "\n" << ::tpy::check_signals;
     std::cout << "one_value choice next:" << " " << ::tpystd::random::getrandbits(32) << "\n" << ::tpy::check_signals;
     ::tpystd::random::Random r = ::tpystd::random::Random(3);
     for (int32_t _ = 0; _ < 4; ++_) {

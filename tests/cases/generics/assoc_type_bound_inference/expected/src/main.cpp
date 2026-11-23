@@ -9,11 +9,9 @@ namespace tpyapp::main {
 //     print(n + 1)
 //     print(unwrap(StrBox("hello")))  # tpyc: ok
 void main() {
-    IntBox __tmp_1 = IntBox(::tpy::BigInt(42));
-    ::tpy::BigInt n = ::tpyapp::main::unwrap<::tpy::BigInt, IntBox>(__tmp_1);
+    ::tpy::BigInt n = ::tpyapp::main::unwrap<::tpy::BigInt, IntBox>(::tpy::as_mut_lvalue(IntBox(::tpy::BigInt(42))));
     std::cout << ((n) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
-    StrBox __tmp_2 = StrBox("hello");
-    std::cout << ::tpyapp::main::unwrap<std::string, StrBox>(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::unwrap<std::string, StrBox>(::tpy::as_mut_lvalue(StrBox("hello"))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

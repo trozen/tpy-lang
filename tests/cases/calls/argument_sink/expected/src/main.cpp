@@ -344,41 +344,38 @@ void reference_args(bool c) {
     std::cout << "own_temp_member" << " " << ::tpyapp::main::eat_a(::tpyapp::main::mkh().a) << "\n" << ::tpy::check_signals;
     V3 a = V3(1.0);
     V3 b = V3(2.0);
-    V3 __tmp_2 = b.muls(3.0);
-    std::cout << "mutated_rvalue" << " " << ::tpy::print_float(a.absorb(__tmp_2)) << " " << ::tpy::print_float(b.x) << "\n" << ::tpy::check_signals;
+    std::cout << "mutated_rvalue" << " " << ::tpy::print_float(a.absorb(::tpy::as_mut_lvalue(b.muls(3.0)))) << " " << ::tpy::print_float(b.x) << "\n" << ::tpy::check_signals;
     Soak s = Soak();
-    std::vector<double> __tmp_3 = ({
+    std::cout << "mutated_comprehension" << " " << s.soak(::tpy::as_mut_lvalue(({
         std::vector<double> __result;
         if (3 > 0) __result.reserve(static_cast<size_t>(3));
         for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(((2.0) * (static_cast<double>(i))));
         }
         std::move(__result);
-    });
-    std::cout << "mutated_comprehension" << " " << s.soak(__tmp_3) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_4 = ::tpyapp::main::mk_list();
-    std::cout << "mutated_owning_call" << " " << s.fill(__tmp_4) << "\n" << ::tpy::check_signals;
+    }))) << "\n" << ::tpy::check_signals;
+    std::cout << "mutated_owning_call" << " " << s.fill(::tpy::as_mut_lvalue(::tpyapp::main::mk_list())) << "\n" << ::tpy::check_signals;
     HC hc = HC();
     ::tpyapp::main::ref(hc.c);
     std::cout << "field_subclass" << " " << hc.c.v << "\n" << ::tpy::check_signals;
     PH ph = PH();
-    Payload __tmp_5 = ph.borrow();
-    Payload d = ::tpyapp::main::keep(std::move(__tmp_5));
+    Payload __tmp_2 = ph.borrow();
+    Payload d = ::tpyapp::main::keep(std::move(__tmp_2));
     std::cout << "own_borrow_call" << " " << d.v << "\n" << ::tpy::check_signals;
     PH ph2 = PH();
-    Payload __tmp_6 = ph2.borrow();
-    PSink ps = PSink(std::move(__tmp_6));
+    Payload __tmp_3 = ph2.borrow();
+    PSink ps = PSink(std::move(__tmp_3));
     std::cout << "own_borrow_call_ctor" << " " << ps.p.v << "\n" << ::tpy::check_signals;
-    Payload __tmp_7 = ph2.borrow();
-    ps.replace(std::move(__tmp_7));
+    Payload __tmp_4 = ph2.borrow();
+    ps.replace(std::move(__tmp_4));
     std::cout << "own_borrow_call_method" << " " << ps.p.v << "\n" << ::tpy::check_signals;
     std::array<A, 2> things = {A(4), A(5)};
-    A __tmp_8 = ::tpy::__getitem__(things, 0);
-    KeepThing k = KeepThing(std::move(__tmp_8));
+    A __tmp_5 = ::tpy::__getitem__(things, 0);
+    KeepThing k = KeepThing(std::move(__tmp_5));
     k.t.v = ::tpy::add_check<int32_t>(k.t.v, 1);
     std::cout << "own_element" << " " << k.t.v << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_9 = (*::tpystd::sys::argv);
-    std::cout << "module_var_own" << " " << ::tpy::print_bool((::tpyapp::main::eat_strs(std::move(__tmp_9)) >= 1)) << "\n" << ::tpy::check_signals;
+    std::vector<std::string> __tmp_6 = (*::tpystd::sys::argv);
+    std::cout << "module_var_own" << " " << ::tpy::print_bool((::tpyapp::main::eat_strs(std::move(__tmp_6)) >= 1)) << "\n" << ::tpy::check_signals;
     std::cout << "borrow_container_ret" << " " << ::tpyapp::main::grow(ph.items_m()) << " " << ::tpy::ListPrinter(ph.items) << "\n" << ::tpy::check_signals;
     OptBox ob = OptBox();
     if ((ob.items.has_value())) {
@@ -390,15 +387,12 @@ void reference_args(bool c) {
     std::vector<std::vector<int32_t>> rows = std::vector<std::vector<int32_t>>{};
     rows.push_back(::tpyapp::main::mk_gh().items());
     std::cout << "property_temp_receiver_insert" << " " << ::tpy::__len__(rows) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, int32_t> __tmp_10 = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}});
-    std::cout << "generic_dict_literal" << " " << ::tpyapp::main::take_dict<int32_t>(1, __tmp_10) << "\n" << ::tpy::check_signals;
+    std::cout << "generic_dict_literal" << " " << ::tpyapp::main::take_dict<int32_t>(1, ::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, int32_t>({{"b", 2}}))) << "\n" << ::tpy::check_signals;
     double y = 0.5;
-    ::tpy::ordered_map<std::string, double> __tmp_11 = ((c) ? (::tpy::ordered_map<std::string, double>()) : (::tpy::ordered_map<std::string, double>()));
-    y = ::tpyapp::main::tot3__dict_str_float(__tmp_11);
+    y = ::tpyapp::main::tot3__dict_str_float(((c) ? (::tpy::ordered_map<std::string, double>()) : (::tpy::ordered_map<std::string, double>())));
     std::cout << "select_arg" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     std::cout << "own_bytearray" << " " << ::tpyapp::main::first_byte(::tpy::ByteArray(::tpy::bytes_literal("ab", 2))) << "\n" << ::tpy::check_signals;
-    A __tmp_12 = A(1);
-    std::cout << "narrowed_union_own" << " " << ::tpyapp::main::use_union(::tpy::Union<const A*, const UB*>{&__tmp_12}) << "\n" << ::tpy::check_signals;
+    std::cout << "narrowed_union_own" << " " << ::tpyapp::main::use_union(::tpy::Union<const A*, const UB*>{&(::tpy::as_mut_lvalue(A(1)))}) << "\n" << ::tpy::check_signals;
     std::cout << "readonly_ctor_literal" << " " << Numbers({1, 2, 3}).total << "\n" << ::tpy::check_signals;
 }
 
@@ -479,8 +473,7 @@ RK mk_rk(int32_t n) {
 //     print("receiver_order", r, c[0])
 void receiver_order() {
     std::vector<int32_t> c = {0};
-    A __tmp_1 = A(::tpyapp::main::tick(c));
-    int32_t r = ::tpyapp::main::mk_rk(::tpyapp::main::tick(c)).bump(__tmp_1);
+    int32_t r = ::tpyapp::main::mk_rk(::tpyapp::main::tick(c)).bump(::tpy::as_mut_lvalue(A(::tpyapp::main::tick(c))));
     std::cout << "receiver_order" << " " << r << " " << ::tpy::__getitem__(c, 0) << "\n" << ::tpy::check_signals;
 }
 
@@ -573,17 +566,13 @@ void pointer_args() {
     h.a.v = ::tpy::add_check<int32_t>(h.a.v, 100);
     std::cout << "opt_field_after" << " " << h.a.v << "\n" << ::tpy::check_signals;
     std::cout << "uni_field" << " " << ::tpyapp::main::uni_bump(::tpy::Union<A*, UB*>{&(h.a)}) << " " << h.a.v << "\n" << ::tpy::check_signals;
-    UB __tmp_1 = UB(1);
-    PtrSink ps = PtrSink(nullptr, ::tpy::Union<A*, UB*>{&__tmp_1});
+    PtrSink ps = PtrSink(nullptr, ::tpy::Union<A*, UB*>{&(::tpy::as_mut_lvalue(UB(1)))});
     std::cout << "opt_method" << " " << ps.opt(&(h.a)) << " " << ps.uni(::tpy::Union<A*, UB*>{&(h.a)}) << " " << h.a.v << "\n" << ::tpy::check_signals;
     std::cout << "ptr_ctor" << " " << PtrSink(&(h.a), ::tpy::Union<A*, UB*>{&(h.a)}).n << " " << h.a.v << "\n" << ::tpy::check_signals;
     std::cout << "value_union_native" << " " << std::string(::tpy::repr_of(::tpyapp::main::pick_vu(true))) << "\n" << ::tpy::check_signals;
     std::cout << "value_union_call" << " " << ::tpy::print_bool(::tpyapp::main::is_str_vu(::tpyapp::main::pick_vu(true))) << " " << ::tpy::print_bool(::tpyapp::main::is_str_vu(::tpyapp::main::pick_vu(false))) << "\n" << ::tpy::check_signals;
-    Dog __tmp_2 = ::tpyapp::main::mk_dog();
-    std::cout << "opt_subclass_call" << " " << PetProbe().probe(&(__tmp_2)) << "\n" << ::tpy::check_signals;
-    std::optional<Crate<int32_t>> __tmp_3 = ::tpyapp::main::wrap_crate<int32_t>(99);
-    std::optional<Crate<int32_t>> __tmp_4 = ::tpyapp::main::wrap_crate<int32_t>(std::nullopt);
-    std::cout << "opt_own_call" << " " << ::tpy::print_bool(::tpyapp::main::has_crate(::tpy::optional_to_ptr(__tmp_3))) << " " << ::tpy::print_bool(::tpyapp::main::has_crate(::tpy::optional_to_ptr(__tmp_4))) << "\n" << ::tpy::check_signals;
+    std::cout << "opt_subclass_call" << " " << PetProbe().probe(&::tpy::as_mut_lvalue(::tpyapp::main::mk_dog())) << "\n" << ::tpy::check_signals;
+    std::cout << "opt_own_call" << " " << ::tpy::print_bool(::tpyapp::main::has_crate(::tpy::optional_to_ptr(::tpy::as_mut_lvalue(std::optional<Crate<int32_t>>(::tpyapp::main::wrap_crate<int32_t>(99)))))) << " " << ::tpy::print_bool(::tpyapp::main::has_crate(::tpy::optional_to_ptr(::tpy::as_mut_lvalue(std::optional<Crate<int32_t>>(::tpyapp::main::wrap_crate<int32_t>(std::nullopt)))))) << "\n" << ::tpy::check_signals;
 }
 
 // def make_ints(n: int32) -> Own[list[int32]]:
@@ -832,8 +821,7 @@ __gen_gen_args gen_args(H& h, std::string_view s) {
         x = ::tpyapp::main::bump(h.a);
         t = ::tpyapp::main::mkstr(2);
         y = ::tpyapp::main::eats(std::move(t));
-        A __tmp_1 = A(2);
-        z = ::tpyapp::main::bump(__tmp_1);
+        z = ::tpyapp::main::bump(::tpy::as_mut_lvalue(A(2)));
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_1;
         continue;
@@ -935,10 +923,8 @@ int32_t str_or_int(const ::tpy::Union<int32_t, std::string>& u) {
 //     print("literal_at_value_union", str_or_int("x"))  # tpyc: ok
 void workarounds() {
     std::vector<int32_t> bs = {1, 2};
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << "array_local_annotated" << " " << ::tpyapp::main::total_list(bs) << " " << ::tpyapp::main::total_list(__tmp_1) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<int32_t, std::string> __tmp_2 = "x";
-    std::cout << "literal_at_value_union" << " " << ::tpyapp::main::str_or_int(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "array_local_annotated" << " " << ::tpyapp::main::total_list(bs) << " " << ::tpyapp::main::total_list({1, 2}) << "\n" << ::tpy::check_signals;
+    std::cout << "literal_at_value_union" << " " << ::tpyapp::main::str_or_int(::tpy::Union<int32_t, std::string>("x")) << "\n" << ::tpy::check_signals;
 }
 
 // def positions() -> None:
@@ -977,25 +963,17 @@ void workarounds() {
 //     print("static_own_optional", check(Container.wrap_optional(99)), check(Container.wrap_optional(0)))  # tpyc: ok
 void positions() {
     ::tpyapp::main::scalar_order();
-    ::tpy::Union<A, UB> __tmp_1 = ::tpyapp::main::make_ab(true);
-    ::tpy::Union<A, UB> __tmp_2 = ::tpyapp::main::make_ab(false);
-    std::cout << "own_union_result" << " " << ::tpyapp::main::use_ab(::tpy::to_ptr_variant(__tmp_1)) << " " << ::tpyapp::main::use_ab(::tpy::to_ptr_variant(__tmp_2)) << "\n" << ::tpy::check_signals;
-    std::vector<A> __tmp_3 = {A(1)};
-    std::vector<int32_t> __tmp_4 = {7};
-    std::vector<std::string> __tmp_5 = {"s"};
-    std::vector<::tpy::Bytes> __tmp_6 = {::tpy::bytes_literal_owned("b", 1)};
-    std::cout << "open_optional" << " " << ::tpy::print_bool(::tpyapp::main::wrap<A>(__tmp_3)) << " " << ::tpy::print_bool(::tpyapp::main::wrap<int32_t>(__tmp_4)) << " " << ::tpy::print_bool(::tpyapp::main::wrap<std::string>(__tmp_5)) << " " << ::tpy::print_bool(::tpyapp::main::wrap<::tpy::Bytes>(__tmp_6)) << " " << ::tpy::print_bool(::tpyapp::main::some<std::monostate>(std::nullopt)) << "\n" << ::tpy::check_signals;
+    std::cout << "own_union_result" << " " << ::tpyapp::main::use_ab(::tpy::to_ptr_variant(::tpy::as_mut_lvalue(::tpyapp::main::make_ab(true)))) << " " << ::tpyapp::main::use_ab(::tpy::to_ptr_variant(::tpy::as_mut_lvalue(::tpyapp::main::make_ab(false)))) << "\n" << ::tpy::check_signals;
+    std::cout << "open_optional" << " " << ::tpy::print_bool(::tpyapp::main::wrap<A>(::tpy::as_mut_lvalue(std::vector<A>{A(1)}))) << " " << ::tpy::print_bool(::tpyapp::main::wrap<int32_t>(::tpy::as_mut_lvalue(std::vector<int32_t>{7}))) << " " << ::tpy::print_bool(::tpyapp::main::wrap<std::string>(::tpy::as_mut_lvalue(std::vector<std::string>{"s"}))) << " " << ::tpy::print_bool(::tpyapp::main::wrap<::tpy::Bytes>(::tpy::as_mut_lvalue(std::vector<::tpy::Bytes>{::tpy::bytes_literal_owned("b", 1)}))) << " " << ::tpy::print_bool(::tpyapp::main::some<std::monostate>(std::nullopt)) << "\n" << ::tpy::check_signals;
     std::cout << "opt_view" << " " << ::tpy::print_bool(::tpyapp::main::opt_view("a")) << " " << ::tpy::print_bool(::tpyapp::main::opt_view(std::nullopt)) << " " << ::tpy::print_bool(::tpyapp::main::opt_view_b(::tpy::bytes_literal_owned("b", 1))) << " " << ::tpy::print_bool(::tpyapp::main::opt_view_b(std::nullopt)) << " " << ::tpy::print_bool(::tpyapp::main::opt_view_narrowed("n")) << " " << ::tpy::print_bool(::tpyapp::main::opt_view_narrowed(std::nullopt)) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<double, int32_t> __tmp_7 = 1.5;
-    std::cout << "inline_narrowed" << " " << ::tpyapp::main::inline_narrowed(3) << " " << ::tpyapp::main::inline_narrowed(__tmp_7) << "\n" << ::tpy::check_signals;
+    std::cout << "inline_narrowed" << " " << ::tpyapp::main::inline_narrowed(3) << " " << ::tpyapp::main::inline_narrowed(::tpy::Union<double, int32_t>(1.5)) << "\n" << ::tpy::check_signals;
     H h = ::tpyapp::main::mkh();
     std::vector<int32_t> gl = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_args(h, "x"));
     std::cout << "gen" << " " << ::tpy::ListPrinter(gl) << " " << h.a.v << "\n" << ::tpy::check_signals;
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_args(h))) << " " << h.a.v << "\n" << ::tpy::check_signals;
     Sq sq = Sq(2);
     std::cout << "protocol_slot" << " " << ::tpyapp::main::measure(sq) << " " << sq.k << "\n" << ::tpy::check_signals;
-    ::tpy::RefAdapter<DynShape, Sq> __tmp_8{sq};
-    std::cout << "dyn_slot" << " " << ::tpyapp::main::measure_dyn(__tmp_8) << " " << sq.k << "\n" << ::tpy::check_signals;
+    std::cout << "dyn_slot" << " " << ::tpyapp::main::measure_dyn(::tpy::as_mut_lvalue(::tpy::RefAdapter<DynShape, Sq>{sq})) << " " << sq.k << "\n" << ::tpy::check_signals;
     A a = A(1);
     std::function<int32_t(A&)> f = [](A& x) -> int32_t { return ::tpyapp::main::bump(x); };
     std::cout << "callable_local" << " " << f(a) << " " << ::tpyapp::main::apply_fn([](A& x) -> int32_t { return ::tpyapp::main::bump(x); }, a) << " " << a.v << "\n" << ::tpy::check_signals;
@@ -1003,9 +981,7 @@ void positions() {
     A b = A(5);
     g.set_a(std::move(b));
     std::cout << "setter_value" << " " << g.a().v << "\n" << ::tpy::check_signals;
-    std::optional<A> __tmp_9 = Container::wrap_optional(99);
-    std::optional<A> __tmp_10 = Container::wrap_optional(0);
-    std::cout << "static_own_optional" << " " << ::tpyapp::main::check(::tpy::optional_to_ptr(__tmp_9)) << " " << ::tpyapp::main::check(::tpy::optional_to_ptr(__tmp_10)) << "\n" << ::tpy::check_signals;
+    std::cout << "static_own_optional" << " " << ::tpyapp::main::check(::tpy::optional_to_ptr(::tpy::as_mut_lvalue(std::optional<A>(Container::wrap_optional(99))))) << " " << ::tpyapp::main::check(::tpy::optional_to_ptr(::tpy::as_mut_lvalue(std::optional<A>(Container::wrap_optional(0))))) << "\n" << ::tpy::check_signals;
 }
 
 // def once() -> None:
@@ -1043,30 +1019,23 @@ void positions() {
 //     print("nocopy_box_move", eat_box(bx))  # tpyc: ok
 void once() {
     bool flag = true;
-    A __tmp_1 = ::tpyapp::main::mk();
-    std::cout << "once_and" << " " << ::tpy::print_bool(::tpyapp::main::flag_f(__tmp_1)) << " " << ::tpy::__getitem__((*calls), 0) << "\n" << ::tpy::check_signals;
+    std::cout << "once_and" << " " << ::tpy::print_bool(::tpyapp::main::flag_f(::tpy::as_mut_lvalue(::tpyapp::main::mk()))) << " " << ::tpy::__getitem__((*calls), 0) << "\n" << ::tpy::check_signals;
     int32_t n = 0;
     int32_t lim = (::tpy::add_check<int32_t>(::tpy::__getitem__((*calls), 0), 3));
-    while (true) {
-        A __tmp_2 = ::tpyapp::main::mk();
-        if (!(::tpyapp::main::flag_below(__tmp_2, lim))) break;
+    while (::tpyapp::main::flag_below(::tpy::as_mut_lvalue(::tpyapp::main::mk()), lim)) {
         n = ::tpy::add_check<int32_t>(n, 1);
     }
     std::cout << "once_while" << " " << n << " " << ::tpy::__getitem__((*calls), 0) << "\n" << ::tpy::check_signals;
     if ((::tpy::__getitem__((*calls), 0) < 0)) {
         std::cout << "never" << "\n" << ::tpy::check_signals;
-    } else {
-        A __tmp_3 = ::tpyapp::main::mk();
-        if (::tpyapp::main::flag_f(__tmp_3)) {
-            std::cout << "once_elif" << " " << ::tpy::__getitem__((*calls), 0) << "\n" << ::tpy::check_signals;
-        }
+    } else if (::tpyapp::main::flag_f(::tpy::as_mut_lvalue(::tpyapp::main::mk()))) {
+        std::cout << "once_elif" << " " << ::tpy::__getitem__((*calls), 0) << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
         if (3 > 0) __result.reserve(static_cast<size_t>(3));
         for (int32_t i = 0; i < 3; ++i) {
-            A __tmp_4 = ::tpyapp::main::mk();
-            if (::tpyapp::main::flag_f(__tmp_4)) {
+            if (::tpyapp::main::flag_f(::tpy::as_mut_lvalue(::tpyapp::main::mk()))) {
                 __result.push_back(i);
             }
         }
@@ -1075,19 +1044,19 @@ void once() {
     std::cout << "once_comp_filter" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__((*calls), 0) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{1, 5}});
     {
-        auto __tmp_5 = ::tpyapp::main::key();
-        ::tpy::__setitem__(d, __tmp_5, ::tpy::add_check<int32_t>(::tpy::__getitem__(d, __tmp_5), 1));
+        auto __tmp_1 = ::tpyapp::main::key();
+        ::tpy::__setitem__(d, __tmp_1, ::tpy::add_check<int32_t>(::tpy::__getitem__(d, __tmp_1), 1));
     }
     std::cout << "once_aug_subscript" << " " << ::tpy::__getitem__(d, 1) << " " << ::tpy::__getitem__((*calls), 0) << "\n" << ::tpy::check_signals;
     Tally v = Tally();
     {
-        auto&& __tmp_6 = ::tpyapp::main::mk();
-        v.__setitem__(__tmp_6, ::tpy::add_check<int32_t>(v[__tmp_6], 1));
+        auto&& __tmp_2 = ::tpyapp::main::mk();
+        v.__setitem__(__tmp_2, ::tpy::add_check<int32_t>(v[__tmp_2], 1));
     }
     std::cout << "once_aug_record_key" << " " << v.n << " " << v.last << " " << ::tpy::__getitem__((*calls), 0) << "\n" << ::tpy::check_signals;
     GetH c = GetH();
-    A __tmp_7 = c.geth().a;
-    std::cout << "borrow_field_copy" << " " << ::tpyapp::main::eat_a(std::move(__tmp_7)) << "\n" << ::tpy::check_signals;
+    A __tmp_3 = c.geth().a;
+    std::cout << "borrow_field_copy" << " " << ::tpyapp::main::eat_a(std::move(__tmp_3)) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::box::Box<A> bx = ::tpystd::tplib::box::Box<A>(A(4));
     std::cout << "nocopy_box_move" << " " << ::tpyapp::main::eat_box(std::move(bx)) << "\n" << ::tpy::check_signals;
 }
@@ -1129,9 +1098,9 @@ void method_slot_args() {
     std::cout << "method_callable_object" << " " << s.apply(inc) << "\n" << ::tpy::check_signals;
     TreeSink ts = TreeSink();
     A a = A(7);
-    std::cout << "method_ru_member_name" << " " << ts.take(a) << "\n" << ::tpy::check_signals;
-    std::cout << "method_ru_member_rvalue" << " " << ts.take(A(8)) << "\n" << ::tpy::check_signals;
-    std::cout << "method_ru_literal" << " " << ts.take("hi") << "\n" << ::tpy::check_signals;
+    std::cout << "method_ru_member_name" << " " << ts.take(RTree(std::move(a))) << "\n" << ::tpy::check_signals;
+    std::cout << "method_ru_member_rvalue" << " " << ts.take(RTree(A(8))) << "\n" << ::tpy::check_signals;
+    std::cout << "method_ru_literal" << " " << ts.take(RTree("hi")) << "\n" << ::tpy::check_signals;
 }
 
 // def aug_key() -> None:
@@ -1277,8 +1246,7 @@ void main() {
     b.echo(src, 0);
     std::cout << "own_elem" << " " << ::tpy::__len__(b.held) << " " << ::tpy::__getitem__(b.held, 0).v << "\n" << ::tpy::check_signals;
     CBox<3>().run();
-    Sink __tmp_5 = Sink();
-    int32_t total = ::tpyapp::main::feed(__tmp_5, ::tpy::bytes_literal("ab", 2));
+    int32_t total = ::tpyapp::main::feed(::tpy::as_mut_lvalue(Sink()), ::tpy::bytes_literal("ab", 2));
     std::cout << "own_bytes_total" << " " << total << "\n" << ::tpy::check_signals;
     VH vh = VH();
     W w = W();

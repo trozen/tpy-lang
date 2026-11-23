@@ -153,26 +153,22 @@ void main() {
     ::tpyapp::main::sprint("stringable-print-null", auto(null));
     ::tpyapp::main::sprint("stringable-int", auto(pn));
     ::tpyapp::main::sprint("stringable-bool", auto(true));
-    auto __tmp_1 = std::array<int32_t, 2>{1, 2};
-    ::tpyapp::main::sprint("stringable-list", __tmp_1);
+    ::tpyapp::main::sprint("stringable-list", std::array<int32_t, 2>{1, 2});
     ::tpyapp::main::sprint("stringable-bytes", ::tpy::bytes_literal("ab", 2));
-    auto __tmp_2 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    ::tpyapp::main::sprint("stringable-bytearray", __tmp_2);
+    ::tpyapp::main::sprint("stringable-bytearray", ::tpy::ByteArray(::tpy::bytes_literal("ab", 2)));
     ::tpyapp::main::sprint("stringable-range", auto(::tpy::Range<int32_t>(3)));
     int8_t small = 65;
     ::tpyapp::main::sprint("stringable-int8", auto(small));
     ::tpyapp::main::sprint("stringable-str", std::string_view("hi"));
     ::tpyapp::main::sprint("stringable-float", auto(1.5));
     ::tpyapp::main::sprint("stringable-char", auto(c));
-    Named __tmp_3 = Named("n");
-    ::tpyapp::main::sprint("stringable-record", __tmp_3);
+    ::tpyapp::main::sprint("stringable-record", Named("n"));
     ::tpyapp::main::gen_print<::tpy::Bytes>("gen-print-bytes", ::tpy::bytes_literal("ab", 2));
-    ::tpy::ByteArray __tmp_4 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    ::tpyapp::main::gen_print<::tpy::ByteArray>("gen-print-bytearray", __tmp_4);
+    ::tpyapp::main::gen_print<::tpy::ByteArray>("gen-print-bytearray", ::tpy::as_mut_lvalue(::tpy::ByteArray(::tpy::bytes_literal("ab", 2))));
     ::tpyapp::main::gen_print<::tpy::Range<int32_t>>("gen-print-range", ::tpy::Range<int32_t>(3));
     ::tpyapp::main::gen_print<int8_t>("gen-print-int8", small);
-    auto __tmp_5 = "hello";
-    ::tpyapp::main::iprint_chars(__tmp_5);
+    auto __tmp_1 = "hello";
+    ::tpyapp::main::iprint_chars(__tmp_1);
     ::tpy::Any a = ::tpy::make_any(p);
     ::tpy::Any an = ::tpy::make_any(null);
     std::cout << "any" << " " << std::string(::tpy::repr_of(a)) << " " << ::tpy::ListPrinter(std::array<::tpy::Any, 1>{a}) << " " << std::string(::tpy::repr_of(an)) << " " << ::tpy::ListPrinter(std::array<::tpy::Any, 1>{an}) << "\n" << ::tpy::check_signals;
@@ -192,12 +188,9 @@ void main() {
     std::cout << "uptr-list" << " " << ::tpy::print_optional(lp) << " " << std::string(::tpy::repr_of(lp)) << "\n" << ::tpy::check_signals;
     char* cp = const_cast<char*>(up);
     std::cout << "uptr-cast" << " " << ::tpy::print_optional(cp) << " " << std::string(::tpy::repr_of(cp)) << " " << cp[1] << "\n" << ::tpy::check_signals;
-    Box __tmp_6 = Box(1);
-    ::tpyapp::main::ternaries(true, false, ::tpy::Union<const Box*, const Holder*>{&__tmp_6});
-    Holder __tmp_7 = Holder("h");
-    ::tpyapp::main::ternaries(false, true, ::tpy::Union<const Box*, const Holder*>{&__tmp_7});
-    Box __tmp_8 = Box(2);
-    ::tpyapp::main::ternaries(false, false, ::tpy::Union<const Box*, const Holder*>{&__tmp_8});
+    ::tpyapp::main::ternaries(true, false, ::tpy::Union<const Box*, const Holder*>{&(::tpy::as_mut_lvalue(Box(1)))});
+    ::tpyapp::main::ternaries(false, true, ::tpy::Union<const Box*, const Holder*>{&(::tpy::as_mut_lvalue(Holder("h")))});
+    ::tpyapp::main::ternaries(false, false, ::tpy::Union<const Box*, const Holder*>{&(::tpy::as_mut_lvalue(Box(2)))});
 }
 
 // from tpy.unsafe import unsafe_const_cast, unsafe_load, unsafe_ptr

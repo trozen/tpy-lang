@@ -649,9 +649,7 @@ void readonly_join(bool c, const C& ro, C& plain) {
 //     for c in [True, False]:
 //         readonly_join(c, C(1), C(2))
 void main() {
-    C __tmp_1 = C(1);
-    F __tmp_2 = F(0);
-    ::tpyapp::main::record_or(__tmp_1, __tmp_2);
+    ::tpyapp::main::record_or(::tpy::as_mut_lvalue(C(1)), ::tpy::as_mut_lvalue(F(0)));
     ::tpyapp::main::list_or();
     ::tpyapp::main::int64_literal_arm(true);
     ::tpyapp::main::empty_literal_arm(false);
@@ -703,22 +701,16 @@ void main() {
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         bool c = *__beg_4;
-        C __tmp_3 = C(1);
-        std::vector<int32_t> __tmp_4 = std::vector<int32_t>{};
-        ::tpyapp::main::mixed_truth_arms(0, c, __tmp_3, __tmp_4, "");
-        C __tmp_5 = C(1);
-        std::vector<int32_t> __tmp_6 = {1};
-        ::tpyapp::main::mixed_truth_arms(2, c, __tmp_5, __tmp_6, "s");
+        ::tpyapp::main::mixed_truth_arms(0, c, C(1), std::vector<int32_t>{}, "");
+        ::tpyapp::main::mixed_truth_arms(2, c, C(1), {1}, "s");
     }
-    C __tmp_7 = C(1);
-    ::tpyapp::main::not_or(__tmp_7);
+    ::tpyapp::main::not_or(::tpy::as_mut_lvalue(C(1)));
     auto __obj_5 = {true, false};
     auto __beg_5 = __obj_5.begin();
     auto __end_5 = __obj_5.end();
     for (; __beg_5 != __end_5; ++__beg_5) {
         bool c = *__beg_5;
-        C __tmp_8 = C(2);
-        ::tpyapp::main::readonly_join(c, C(1), __tmp_8);
+        ::tpyapp::main::readonly_join(c, C(1), ::tpy::as_mut_lvalue(C(2)));
     }
 }
 

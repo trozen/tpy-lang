@@ -1197,15 +1197,13 @@ void main() {
     std::optional<Box> __slot_8;
     r = &*(__slot_8 = ::tpyapp::main::elem_return((*h), true));
     std::cout << "elem_return" << " " << ::tpyapp::main::head((*h)) << " " << ::tpy::ListPrinter(r->xs) << "\n" << ::tpy::check_signals;
-    Box __tmp_1 = Box(3);
-    std::cout << "elem_arg" << " " << ::tpyapp::main::elem_arg(__tmp_1, w, false) << " " << ::tpy::ListPrinter(w.xs) << "\n" << ::tpy::check_signals;
+    std::cout << "elem_arg" << " " << ::tpyapp::main::elem_arg(::tpy::as_mut_lvalue(Box(3)), w, false) << " " << ::tpy::ListPrinter(w.xs) << "\n" << ::tpy::check_signals;
     std::optional<Pair> __slot_9;
     h = &*(__slot_9 = Pair());
     auto t = ::tpyapp::main::whole((*h), true);
     Box& t0 = std::get<0>(t);
     std::cout << "whole" << " " << ::tpyapp::main::head((*h)) << " " << ::tpy::ListPrinter(t0.xs) << "\n" << ::tpy::check_signals;
-    Box __tmp_2 = Box(3);
-    auto __tup_1 = ::tpyapp::main::whole_literal(__tmp_2, w, false);
+    auto __tup_1 = ::tpyapp::main::whole_literal(::tpy::as_mut_lvalue(Box(3)), w, false);
     auto&& l0 = std::move(std::get<0>(__tup_1));
     auto&& l1 = std::move(std::get<1>(__tup_1));
     std::cout << "whole_literal" << " " << ::tpy::ListPrinter(w.xs) << " " << ::tpy::ListPrinter(l0.xs) << "\n" << ::tpy::check_signals;
@@ -1302,8 +1300,7 @@ void main() {
     std::optional<Box> __slot_26;
     r = &*(__slot_26 = ::tpyapp::main::explicit_(w, false));
     std::cout << "explicit" << " " << ::tpy::ListPrinter(w.xs) << " " << ::tpy::ListPrinter(r->xs) << "\n" << ::tpy::check_signals;
-    Cell __tmp_3 = Cell(1);
-    Cell sn = ::tpyapp::main::second_name(__tmp_3);
+    Cell sn = ::tpyapp::main::second_name(Cell(1));
     std::cout << "second_name" << " " << sn.n << "\n" << ::tpy::check_signals;
     Holder hf = Holder(Box(0));
     std::optional<std::vector<Box>> __slot_27;

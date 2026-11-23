@@ -45,8 +45,7 @@ __coro_peek peek(const Outer& o) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(Outer(::tpy::BigInt(9)));
-        __sub_0.emplace((*__coro_arg_0));
+        __sub_0.emplace(__head_arg_0.emplace(Outer(::tpy::BigInt(9))));
         __state = S_RESUME_0;
         continue;
     }

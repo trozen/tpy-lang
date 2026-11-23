@@ -48,9 +48,7 @@ std::string mk() {
 //     owning_rvalue_arm("kept", True)
 void main() {
     ::tpyapp::main::compound_of_params("hi", "yo", true);
-    std::vector<std::string> __tmp_1 = {"aa"};
-    std::vector<std::string> __tmp_2 = {"bb"};
-    ::tpyapp::main::compound_of_unmutated_elems(__tmp_1, __tmp_2, false);
+    ::tpyapp::main::compound_of_unmutated_elems({"aa"}, {"bb"}, false);
     ::tpyapp::main::owning_rvalue_arm("kept", true);
 }
 

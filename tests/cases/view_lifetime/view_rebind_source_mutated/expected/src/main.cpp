@@ -159,30 +159,15 @@ void no_mutation(const std::vector<std::string>& xs, const std::vector<std::stri
 //     bytes_face([b"a" * 40], [b"h" * 40])
 //     no_mutation(["a" * 40], ["i" * 40])
 void main() {
-    std::vector<std::string> __tmp_1 = {(::tpy::str_repeat("a", 40))};
-    std::vector<std::string> __tmp_2 = {(::tpy::str_repeat("b", 40))};
-    ::tpyapp::main::straight_line(__tmp_1, __tmp_2);
-    std::vector<std::string> __tmp_3 = {(::tpy::str_repeat("c", 40))};
-    ::tpyapp::main::literal_then_element(__tmp_3);
-    std::vector<std::string> __tmp_4 = {(::tpy::str_repeat("a", 40))};
-    std::vector<std::string> __tmp_5 = {(::tpy::str_repeat("b", 40))};
-    std::vector<std::string> __tmp_6 = {(::tpy::str_repeat("k", 40))};
-    ::tpyapp::main::compound_source(false, __tmp_4, __tmp_5, __tmp_6);
-    std::vector<std::string> __tmp_7 = {(::tpy::str_repeat("a", 40))};
-    std::vector<std::string> __tmp_8 = {(::tpy::str_repeat("d", 40))};
-    ::tpyapp::main::if_arms(2, __tmp_7, __tmp_8);
-    std::vector<std::string> __tmp_9 = {(::tpy::str_repeat("a", 40))};
-    std::vector<std::string> __tmp_10 = {(::tpy::str_repeat("e", 40))};
-    ::tpyapp::main::match_arms(2, __tmp_9, __tmp_10);
-    std::vector<std::string> __tmp_11 = {(::tpy::str_repeat("f", 40))};
-    ::tpyapp::main::try_handler(1, __tmp_11);
+    ::tpyapp::main::straight_line({(::tpy::str_repeat("a", 40))}, ::tpy::as_mut_lvalue(std::vector<std::string>{(::tpy::str_repeat("b", 40))}));
+    ::tpyapp::main::literal_then_element(::tpy::as_mut_lvalue(std::vector<std::string>{(::tpy::str_repeat("c", 40))}));
+    ::tpyapp::main::compound_source(false, {(::tpy::str_repeat("a", 40))}, {(::tpy::str_repeat("b", 40))}, ::tpy::as_mut_lvalue(std::vector<std::string>{(::tpy::str_repeat("k", 40))}));
+    ::tpyapp::main::if_arms(2, {(::tpy::str_repeat("a", 40))}, ::tpy::as_mut_lvalue(std::vector<std::string>{(::tpy::str_repeat("d", 40))}));
+    ::tpyapp::main::match_arms(2, {(::tpy::str_repeat("a", 40))}, ::tpy::as_mut_lvalue(std::vector<std::string>{(::tpy::str_repeat("e", 40))}));
+    ::tpyapp::main::try_handler(1, ::tpy::as_mut_lvalue(std::vector<std::string>{(::tpy::str_repeat("f", 40))}));
     Holder().method();
-    std::vector<::tpy::Bytes> __tmp_12 = {(::tpy::bytes_repeat(::tpy::bytes_literal("a", 1), 40))};
-    std::vector<::tpy::Bytes> __tmp_13 = {(::tpy::bytes_repeat(::tpy::bytes_literal("h", 1), 40))};
-    ::tpyapp::main::bytes_face(__tmp_12, __tmp_13);
-    std::vector<std::string> __tmp_14 = {(::tpy::str_repeat("a", 40))};
-    std::vector<std::string> __tmp_15 = {(::tpy::str_repeat("i", 40))};
-    ::tpyapp::main::no_mutation(__tmp_14, __tmp_15);
+    ::tpyapp::main::bytes_face({(::tpy::bytes_repeat(::tpy::bytes_literal("a", 1), 40))}, ::tpy::as_mut_lvalue(std::vector<::tpy::Bytes>{(::tpy::bytes_repeat(::tpy::bytes_literal("h", 1), 40))}));
+    ::tpyapp::main::no_mutation({(::tpy::str_repeat("a", 40))}, {(::tpy::str_repeat("i", 40))});
 }
 
 // PAD = "Z" * 40

@@ -2546,6 +2546,9 @@ class FunctionTrackingState:
     # Params whose address is stored into a `Ptr[readonly[T]]` field: kept
     # past the call as the mutable ones are, but a `const T&` still takes it.
     current_readonly_addr_escape_param_names: set[str] = field(default_factory=set)
+    # The params of either set above stored into a field of an object other
+    # than `self`.
+    current_foreign_addr_escape_param_names: set[str] = field(default_factory=set)
     # Awaited sub-frame FunctionInfos for Send/Sync frame classification
     # (sema/frame_traits.py). A None entry is an await whose operand frame sema
     # cannot classify (Task / structural awaitable) -- forces non-Send.
@@ -3034,6 +3037,17 @@ class SemanticContext:
     # condition, a `not` operand, the argument of `bool(...)`), so each
     # operand is tested on its own instead of the node needing one value type.
     truth_test_selects: IdentitySet = field(default_factory=IdentitySet)
+    # The fresh arguments a compound statement's head keeps until the
+    # statement ends (`keep_head_arguments`): the one verdict the dangle
+    # warnings, the frame builder and the THIR lowering read.
+    head_kept_args: IdentitySet = field(default_factory=IdentitySet)
+    # The borrows out of kept arguments a head makes (`make(2).get()` with
+    # `make(2)` kept): they live as long as what they borrow from.
+    head_kept_borrows: IdentitySet = field(default_factory=IdentitySet)
+    # The fresh objects of a head (a `with` manager, a receiver at any depth
+    # of the chain it borrows from) a name the statement binds and reads
+    # after it borrows: storage that must outlive the statement's scope.
+    head_enclosed_roots: IdentitySet = field(default_factory=IdentitySet)
     # The truth-tested ternaries whose arms share no value type: each arm is
     # tested on its own and the ternary is a bool.
     truth_tested_arms: IdentitySet = field(default_factory=IdentitySet)
@@ -3346,6 +3360,11 @@ class SemanticContext:
     # locals; the scope and namespace ride in the record rather than on the
     # state, which the body-exit path nulls.
     deferred_yield_root_checks: list['ParkedFunctionState'] = field(default_factory=list)
+    # The `with` targets read after their statement (`enclose_head_roots`),
+    # each with its value and type, answered once every callee's borrow
+    # fact is final: a module-level `with` is analyzed before the bodies of
+    # the methods it calls.
+    deferred_head_enclosures: list[tuple['ParkedFunctionState', 'TpyExpr', 'TpyType | None']] = field(default_factory=list)
     # Scope escapes whose diagnostic waits for a callee's borrow fact
     # (`ScopeTracker.settle_deferred_escapes`).
     deferred_escapes: list['DeferredEscape'] = field(default_factory=list)

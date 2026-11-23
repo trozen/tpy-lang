@@ -1,0 +1,10 @@
+free last 101
+free fresh 102
+free copy 103 3
+free value 0
+free alias 2 3
+method last 101
+method fresh 102
+method copy 103 3
+generic last 101
+generic copy 102 2

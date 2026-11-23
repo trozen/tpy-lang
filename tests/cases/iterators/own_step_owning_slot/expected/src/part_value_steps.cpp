@@ -22,19 +22,17 @@ std::vector<::tpyapp::fixtures::Cell>* G{};
 //     # lends at a lending slot
 //     print("value-bound child", sum_value_steps(IntCounter()))  # tpyc: ok
 void main() {
-    TextR __tmp_1 = TextR();
-    TextQ __tmp_2 = TextQ();
-    std::cout << "value-type own" << " " << ::tpyapp::part_value_steps::text_of<TextR>(__tmp_1) << " " << ::tpyapp::part_value_steps::text_of<TextQ>(__tmp_2) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = IntCounter();
-    std::cout << "value step" << " " << ::tpyapp::fixtures::sum_lent(__tmp_3) << "\n" << ::tpy::check_signals;
-    auto __tmp_4 = Task();
-    std::cout << "own result" << " " << ::tpyapp::part_value_steps::run_it(__tmp_4) << "\n" << ::tpy::check_signals;
-    auto __tmp_5 = Holder();
-    std::cout << "own iterator object" << " " << ::tpyapp::fixtures::sum_lent(__tmp_5) << "\n" << ::tpy::check_signals;
-    auto __tmp_6 = Lender();
-    std::cout << "mixed" << " " << ::tpyapp::part_value_steps::consume(__tmp_6) << "\n" << ::tpy::check_signals;
-    auto __tmp_7 = IntCounter();
-    std::cout << "value-bound child" << " " << ::tpyapp::part_value_steps::sum_value_steps(__tmp_7) << "\n" << ::tpy::check_signals;
+    std::cout << "value-type own" << " " << ::tpyapp::part_value_steps::text_of<TextR>(::tpy::as_mut_lvalue(TextR())) << " " << ::tpyapp::part_value_steps::text_of<TextQ>(::tpy::as_mut_lvalue(TextQ())) << "\n" << ::tpy::check_signals;
+    auto __tmp_1 = IntCounter();
+    std::cout << "value step" << " " << ::tpyapp::fixtures::sum_lent(__tmp_1) << "\n" << ::tpy::check_signals;
+    auto __tmp_2 = Task();
+    std::cout << "own result" << " " << ::tpyapp::part_value_steps::run_it(__tmp_2) << "\n" << ::tpy::check_signals;
+    auto __tmp_3 = Holder();
+    std::cout << "own iterator object" << " " << ::tpyapp::fixtures::sum_lent(__tmp_3) << "\n" << ::tpy::check_signals;
+    auto __tmp_4 = Lender();
+    std::cout << "mixed" << " " << ::tpyapp::part_value_steps::consume(__tmp_4) << "\n" << ::tpy::check_signals;
+    auto __tmp_5 = IntCounter();
+    std::cout << "value-bound child" << " " << ::tpyapp::part_value_steps::sum_value_steps(__tmp_5) << "\n" << ::tpy::check_signals;
 }
 
 

@@ -52,10 +52,8 @@ void bytesio_read_size() {
 //     print("proto-text:", via_protocol(io.StringIO("abcdefgh")))     # abcd|efgh
 //     print("proto-bytes:", via_binary_protocol(io.BytesIO(b"xyz")))  # b'xy'
 void protocol_params() {
-    ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO("abcdefgh");
-    std::cout << "proto-text:" << " " << ::tpyapp::main::via_protocol(__tmp_1) << "\n" << ::tpy::check_signals;
-    ::tpystd::io::BytesIO __tmp_2 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("xyz", 3));
-    std::cout << "proto-bytes:" << " " << ::tpy::BytesPrinter(::tpyapp::main::via_binary_protocol(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << "proto-text:" << " " << ::tpyapp::main::via_protocol(::tpy::as_mut_lvalue(::tpystd::io::StringIO("abcdefgh"))) << "\n" << ::tpy::check_signals;
+    std::cout << "proto-bytes:" << " " << ::tpy::BytesPrinter(::tpyapp::main::via_binary_protocol(::tpy::as_mut_lvalue(::tpystd::io::BytesIO(::tpy::bytes_literal_owned("xyz", 3))))) << "\n" << ::tpy::check_signals;
 }
 
 // def file_read_size() -> None:

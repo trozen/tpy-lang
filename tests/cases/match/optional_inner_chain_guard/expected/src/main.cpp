@@ -171,8 +171,7 @@ void main() {
     std::cout << ::tpyapp::main::wildcard_guard("z", true) << " " << ::tpyapp::main::wildcard_guard("z", false) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::binding_guard("a", true) << " " << ::tpyapp::main::binding_guard("a", false) << "\n" << ::tpy::check_signals;
     {
-        std::string __tmp_1 = "a";
-        auto __src_0 = ::tpyapp::main::gen(__tmp_1, true);
+        auto __src_0 = ::tpyapp::main::gen("a", true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -182,8 +181,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_2 = "a";
-        auto __src_2 = ::tpyapp::main::gen(__tmp_2, false);
+        auto __src_2 = ::tpyapp::main::gen("a", false);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

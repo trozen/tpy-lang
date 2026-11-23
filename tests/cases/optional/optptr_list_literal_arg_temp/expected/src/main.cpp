@@ -8,10 +8,8 @@ namespace tpyapp::main {
 //     print(s.take([1, 2, 3]))  # list literal -> spelled-ctor argument temp
 //     print(s.take_nested([[4], [5, 6]]))
 void fill(Sink& s) {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2, 3};
-    std::cout << s.take(&(__tmp_1)) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_2 = std::vector<std::vector<int32_t>>{{4}, {5, 6}};
-    std::cout << s.take_nested(&(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << s.take(&::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3})) << "\n" << ::tpy::check_signals;
+    std::cout << s.take_nested(&::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{4}, {5, 6}})) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

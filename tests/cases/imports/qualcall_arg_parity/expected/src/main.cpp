@@ -8,11 +8,9 @@
 namespace tpyapp::main {
 
 
-// def tick(tag: str, n: int) -> int:
-//     print(tag, n)
+// def quiet(n: int) -> int:
 //     return n
-::tpy::BigInt tick(std::string_view tag, const ::tpy::BigInt& n) {
-    std::cout << tag << " " << n << "\n" << ::tpy::check_signals;
+::tpy::BigInt quiet(const ::tpy::BigInt& n) {
     return n;
 }
 
@@ -44,8 +42,7 @@ __gen_gen_codes gen_codes() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpyapp::pets::Dog __tmp_1 = ::tpyapp::pets::Dog(::tpy::BigInt(7));
-        n = ::tpyapp::pets::code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&__tmp_1});
+        n = ::tpyapp::pets::code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&(::tpy::as_mut_lvalue(::tpyapp::pets::Dog(::tpy::BigInt(7))))});
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = std::move(n);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -65,8 +62,7 @@ __coro_async_code async_code() {
 //     # conditional operand: the list-repeat temp at a qualified slot.
 //     return 0 if c else pets.ls([0] * 3)  # tpyc: ok
 ::tpy::BigInt cond(bool c) {
-    std::optional<std::vector<::tpy::BigInt>> __tmp_1;
-    return ((c) ? (::tpy::BigInt(0)) : (__tmp_1.emplace(::tpy::from_range<std::vector<::tpy::BigInt>>(::tpy::repeat_range<::tpy::BigInt>(3, {::tpy::BigInt(0)}))), ::tpyapp::pets::ls((*__tmp_1))));
+    return ((c) ? (::tpy::BigInt(0)) : (::tpyapp::pets::ls(::tpy::from_range<std::vector<::tpy::BigInt>>(::tpy::repeat_range<::tpy::BigInt>(3, {::tpy::BigInt(0)})))));
 }
 
 // def main() -> None:
@@ -99,13 +95,13 @@ __coro_async_code async_code() {
 //     print("dispatch", pets.ov("abc"), K.sov("abc"))  # tpyc: ok
 //     # @dispatch on a GENERIC record's method: the same `str` pick.
 //     print("generic_dispatch", GBox(1).ov("abc"))  # tpyc: ok
-//     # argument order with the literal FIRST: its hoisted element runs before
-//     # the later argument, as in CPython -- in both spellings (a literal in a
-//     # later position runs first too: BUGS.md#subexpression-right-to-left-eval).
-//     n = seq([tick("order_free", 1)], tick("order_free", 2))  # tpyc: ok
+//     # a literal argument with a call element beside a call argument, in both
+//     # spellings: both bind inline, so they run in the C++ compiler's order
+//     # (BUGS.md#subexpression-right-to-left-eval). `quiet` does not print, as
+//     # output.txt must not pin a toolchain-dependent order; the render is the pin.
+//     n = seq([quiet(1)], quiet(2))  # tpyc: ok
 //     print("order_free", n)
-//     n = pets.seq([tick("order_qualified", 1)],
-//                  tick("order_qualified", 2))  # tpyc: ok
+//     n = pets.seq([quiet(1)], quiet(2))  # tpyc: ok
 //     print("order_qualified", n)
 //     # generator factory: a str / bytes literal at a view slot is static
 //     # storage, so it passes bare (no owned temp) and the frame, drained a
@@ -125,43 +121,30 @@ __coro_async_code async_code() {
 //
 //     print("nested_readonly_literal", inner([1, 2, 3]))  # tpyc: ok
 void main() {
-    ::tpyapp::pets::Dog __tmp_1 = ::tpyapp::pets::Dog(::tpy::BigInt(4));
-    std::cout << "module_const" << " " << ::tpyapp::pets::code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    ::tpyapp::pets::Dog __tmp_2 = ::tpyapp::pets::Dog(::tpy::BigInt(4));
-    ::tpyapp::pets::bump(::tpy::Union<::tpyapp::pets::Cat*, ::tpyapp::pets::Dog*>{&__tmp_2});
+    std::cout << "module_const" << " " << ::tpyapp::pets::code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&(::tpy::as_mut_lvalue(::tpyapp::pets::Dog(::tpy::BigInt(4))))}) << "\n" << ::tpy::check_signals;
+    ::tpyapp::pets::bump(::tpy::Union<::tpyapp::pets::Cat*, ::tpyapp::pets::Dog*>{&(::tpy::as_mut_lvalue(::tpyapp::pets::Dog(::tpy::BigInt(4))))});
     ::tpy::Union<::tpyapp::pets::Cat, ::tpyapp::pets::Dog> __slot_1 = ::tpyapp::pets::Dog(::tpy::BigInt(1));
     ::tpy::Union<::tpyapp::pets::Cat*, ::tpyapp::pets::Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     ::tpyapp::pets::bump(pet);
     std::cout << "module_mut" << " " << ::tpyapp::pets::code(pet.as_const()) << "\n" << ::tpy::check_signals;
-    ::tpyapp::pets::Dog __tmp_3 = ::tpyapp::pets::Dog(::tpy::BigInt(2));
-    std::cout << "static" << " " << K::static_code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
-    ::tpyapp::pets::Dog __tmp_4 = ::tpyapp::pets::Dog(::tpy::BigInt(3));
-    std::cout << "classmethod" << " " << K::cls_code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&__tmp_4}) << "\n" << ::tpy::check_signals;
-    ::tpyapp::pets::Cat __tmp_5 = ::tpyapp::pets::Cat(::tpy::BigInt(1));
-    std::cout << "super" << " " << Sub().code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&__tmp_5}) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_6 = ::tpy::from_range<std::vector<::tpy::BigInt>>(::tpy::repeat_range<::tpy::BigInt>(3, {::tpy::BigInt(0)}));
-    std::cout << "list_repeat" << " " << ::tpyapp::pets::ls(__tmp_6) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_7 = {1, 2};
-    ::tpy::ordered_map<std::string, ::tpy::BigInt> __tmp_8 = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}});
-    std::cout << "literal_const" << " " << ::tpyapp::pets::ls(__tmp_7) << " " << ::tpyapp::pets::dct(__tmp_8) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_9 = {1, 2};
-    std::cout << "literal_mut" << " " << ::tpyapp::pets::ls_mut(__tmp_9) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_10 = {1, 2, 3};
-    std::cout << "readonly_literal" << " " << ::tpyapp::pets::total(__tmp_10) << "\n" << ::tpy::check_signals;
+    std::cout << "static" << " " << K::static_code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&(::tpy::as_mut_lvalue(::tpyapp::pets::Dog(::tpy::BigInt(2))))}) << "\n" << ::tpy::check_signals;
+    std::cout << "classmethod" << " " << K::cls_code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&(::tpy::as_mut_lvalue(::tpyapp::pets::Dog(::tpy::BigInt(3))))}) << "\n" << ::tpy::check_signals;
+    std::cout << "super" << " " << Sub().code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&(::tpy::as_mut_lvalue(::tpyapp::pets::Cat(::tpy::BigInt(1))))}) << "\n" << ::tpy::check_signals;
+    std::cout << "list_repeat" << " " << ::tpyapp::pets::ls(::tpy::from_range<std::vector<::tpy::BigInt>>(::tpy::repeat_range<::tpy::BigInt>(3, {::tpy::BigInt(0)}))) << "\n" << ::tpy::check_signals;
+    std::cout << "literal_const" << " " << ::tpyapp::pets::ls({1, 2}) << " " << ::tpyapp::pets::dct(::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}})) << "\n" << ::tpy::check_signals;
+    std::cout << "literal_mut" << " " << ::tpyapp::pets::ls_mut(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly_literal" << " " << ::tpyapp::pets::total({1, 2, 3}) << "\n" << ::tpy::check_signals;
     std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_codes())) << "\n" << ::tpy::check_signals;
     std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::async_code())) << "\n" << ::tpy::check_signals;
     std::cout << "cond" << " " << ::tpyapp::main::cond(true) << " " << ::tpyapp::main::cond(false) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_11 = ::tpyapp::main::mk();
-    std::cout << "call_rvalue" << " " << Holder::take_list(__tmp_11) << "\n" << ::tpy::check_signals;
+    std::cout << "call_rvalue" << " " << Holder::take_list(::tpy::as_mut_lvalue(::tpyapp::main::mk())) << "\n" << ::tpy::check_signals;
     std::cout << "tuple_literal" << " " << ::tpyapp::pets::request("http://x", std::tuple<std::string, std::string>{"user", "pw"}) << "\n" << ::tpy::check_signals;
     std::cout << "bytes_own" << " " << std::string(::tpy::__str__(::tpyapp::main::wrap_b(::tpy::bytes_literal("xy", 2)))) << "\n" << ::tpy::check_signals;
     std::cout << "dispatch" << " " << ::tpyapp::pets::ov__str("abc") << " " << K::sov__str("abc") << "\n" << ::tpy::check_signals;
     std::cout << "generic_dispatch" << " " << GBox<int32_t>(1).ov__str("abc") << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_12 = {::tpyapp::main::tick("order_free", ::tpy::BigInt(1))};
-    ::tpy::BigInt n = ::tpyapp::pets::seq(__tmp_12, ::tpyapp::main::tick("order_free", ::tpy::BigInt(2)));
+    ::tpy::BigInt n = ::tpyapp::pets::seq({::tpyapp::main::quiet(::tpy::BigInt(1))}, ::tpyapp::main::quiet(::tpy::BigInt(2)));
     std::cout << "order_free" << " " << n << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_13 = {::tpyapp::main::tick("order_qualified", ::tpy::BigInt(1))};
-    n = ::tpyapp::pets::seq(__tmp_13, ::tpyapp::main::tick("order_qualified", ::tpy::BigInt(2)));
+    n = ::tpyapp::pets::seq({::tpyapp::main::quiet(::tpy::BigInt(1))}, ::tpyapp::main::quiet(::tpy::BigInt(2)));
     std::cout << "order_qualified" << " " << n << "\n" << ::tpy::check_signals;
     auto tq = ::tpyapp::pets::gen_tags("ab");
     ::tpyapp::pets::__gen_gen_tags tf = ::tpyapp::pets::gen_tags("cd");
@@ -179,8 +162,7 @@ void main() {
         }
         return total;
     };
-    std::vector<int32_t> __tmp_14 = {1, 2, 3};
-    std::cout << "nested_readonly_literal" << " " << inner(__tmp_14) << "\n" << ::tpy::check_signals;
+    std::cout << "nested_readonly_literal" << " " << inner({1, 2, 3}) << "\n" << ::tpy::check_signals;
 }
 
 // # A receiver-less spelled call (module-qualified, static, classmethod, super)

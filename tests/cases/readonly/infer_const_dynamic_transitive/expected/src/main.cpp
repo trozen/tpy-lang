@@ -24,10 +24,8 @@ void grow(HasValue& v) {
 //     grow(c)
 //     print(c.value())
 void main() {
-    Parent __tmp_1{Parent(7)};
-    ::tpyapp::main::show(__tmp_1);
-    Child __tmp_2{Child(7)};
-    ::tpyapp::main::show(__tmp_2);
+    ::tpyapp::main::show(::tpy::as_mut_lvalue(Parent{Parent(7)}));
+    ::tpyapp::main::show(::tpy::as_mut_lvalue(Child{Child(7)}));
     Child c = Child(7);
     ::tpyapp::main::grow(c);
     std::cout << c.value() << "\n" << ::tpy::check_signals;

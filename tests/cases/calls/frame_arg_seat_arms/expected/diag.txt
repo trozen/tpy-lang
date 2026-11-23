@@ -1,0 +1,7 @@
+part_arms_heads.py:33: warning: copies Src into field; use copy() to make this explicit
+part_arms_mixed.py:30: warning: copies W into owned storage (tuple element 0); use copy() to make this explicit
+part_arms_mixed.py:29: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+part_arms_mixed.py:36: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+part_arms_receivers.py:24: warning: copies Src into field; use copy() to make this explicit
+part_keep_fields.py:91: warning: Own[Src] param 's' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_keep_fields.py:96: warning: Own[Src] param 's' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

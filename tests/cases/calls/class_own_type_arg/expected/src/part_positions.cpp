@@ -86,8 +86,7 @@ void main() {
     ::tpyapp::fixtures::P& h = d.get();
     h.x = 9;
     std::cout << "method" << " " << ::tpy::__getitem__(d.items, 0).x << "\n" << ::tpy::check_signals;
-    ::tpyapp::fixtures::P __tmp_1 = ::tpyapp::fixtures::P(1);
-    std::cout << "nested" << " " << ::tpyapp::part_positions::outer(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "nested" << " " << ::tpyapp::part_positions::outer(::tpyapp::fixtures::P(1)) << "\n" << ::tpy::check_signals;
     auto t = std::tuple<::tpyapp::fixtures::C<::tpyapp::fixtures::P>, int32_t>{::tpyapp::fixtures::C<::tpyapp::fixtures::P>(), 1};
     std::get<0>(t).items.push_back(::tpyapp::fixtures::P(1));
     ::tpyapp::fixtures::P& th = std::get<0>(t).get();
@@ -95,10 +94,8 @@ void main() {
     std::cout << "tuple" << " " << ::tpy::__getitem__(std::get<0>(t).items, 0).x << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
     ::tpyapp::fixtures::C<::tpyapp::fixtures::P> a = ::tpyapp::fixtures::C<::tpyapp::fixtures::P>();
     a.items.push_back(::tpyapp::fixtures::P(1));
-    Tree<::tpyapp::fixtures::P> __tmp_2 = std::move(a);
-    std::cout << "alias" << " " << ::tpyapp::part_positions::by_alias(__tmp_2) << "\n" << ::tpy::check_signals;
-    ::tpyapp::fixtures::P __tmp_3 = ::tpyapp::fixtures::P(1);
-    ::tpyapp::fixtures::C<::tpyapp::fixtures::P> m = ::tpyapp::part_positions::make_c<::tpyapp::fixtures::P>(__tmp_3);
+    std::cout << "alias" << " " << ::tpyapp::part_positions::by_alias(::tpy::as_mut_lvalue(Tree<::tpyapp::fixtures::P>(std::move(a)))) << "\n" << ::tpy::check_signals;
+    ::tpyapp::fixtures::C<::tpyapp::fixtures::P> m = ::tpyapp::part_positions::make_c<::tpyapp::fixtures::P>(::tpy::as_mut_lvalue(::tpyapp::fixtures::P(1)));
     ::tpyapp::fixtures::P& mh = m.get();
     mh.x = 9;
     std::cout << "inferred" << " " << ::tpy::__getitem__(m.items, 0).x << "\n" << ::tpy::check_signals;

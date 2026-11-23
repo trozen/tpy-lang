@@ -37,9 +37,8 @@ std::expected<int32_t, StopIteration> first_negative(const std::vector<int32_t>&
 void main() {
     int32_t v;
     {
-        std::vector<int32_t> __tmp_1 = {1, -2, 3};
         {
-            auto __try_tmp_2 = ::tpyapp::main::first_negative(__tmp_1);
+            auto __try_tmp_2 = ::tpyapp::main::first_negative({1, -2, 3});
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -53,9 +52,8 @@ void main() {
     }
     int32_t v2;
     {
-        std::vector<int32_t> __tmp_2 = {1, 2, 3};
         {
-            auto __try_tmp_4 = ::tpyapp::main::first_negative(__tmp_2);
+            auto __try_tmp_4 = ::tpyapp::main::first_negative({1, 2, 3});
             if (!__try_tmp_4.has_value()) goto __except_3;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }

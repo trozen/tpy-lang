@@ -24,10 +24,8 @@ std::string describe(const Outer& o) {
 //     print(describe(Outer(Inner(None))))
 //     print(describe(Outer(Inner("hi"))))
 void main() {
-    Outer __tmp_1 = Outer(Inner(std::nullopt));
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
-    Outer __tmp_2 = Outer(Inner("hi"));
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Outer(Inner(std::nullopt))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Outer(Inner("hi"))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -1020,14 +1020,12 @@ void main() {
     std::vector<Cell> __slot_1 = {Cell(1), Cell(2)};
     std::vector<Cell>* cells = &__slot_1;
     std::cout << "ro_enumerate" << " " << ::tpyapp::main::ro_enumerate((*cells)) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {3, 4};
-    std::cout << "ro_zip" << " " << ::tpyapp::main::ro_zip((*cells), __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "ro_zip" << " " << ::tpyapp::main::ro_zip((*cells), {3, 4}) << "\n" << ::tpy::check_signals;
     std::cout << "ro_filter" << " " << ::tpyapp::main::ro_filter((*cells)) << "\n" << ::tpy::check_signals;
     std::cout << "ro_reversed" << " " << ::tpyapp::main::ro_reversed((*cells)) << "\n" << ::tpy::check_signals;
     std::cout << "mut_enumerate" << " " << ::tpyapp::main::mut_enumerate((*cells)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("mut_enumerate", (*cells));
-    std::vector<int32_t> __tmp_2 = {10, 20};
-    ::tpyapp::main::mut_zip((*cells), __tmp_2);
+    ::tpyapp::main::mut_zip((*cells), {10, 20});
     ::tpyapp::main::show("mut_zip", (*cells));
     ::tpyapp::main::mut_filter((*cells));
     ::tpyapp::main::show("mut_filter", (*cells));
@@ -1039,11 +1037,9 @@ void main() {
     std::optional<std::vector<Cell>> __slot_2;
     cells = &*(__slot_2 = std::vector<Cell>{Cell(1), Cell(2)});
     ::tpyapp::main::nested_enumerate_filter((*cells));
-    std::vector<int32_t> __tmp_3 = {10, 20};
-    ::tpyapp::main::nested_zip_reversed((*cells), __tmp_3);
+    ::tpyapp::main::nested_zip_reversed((*cells), {10, 20});
     ::tpyapp::main::nested_map_filter((*cells));
-    std::vector<int32_t> __tmp_4 = {100, 200};
-    ::tpyapp::main::nested_zip_filter((*cells), __tmp_4);
+    ::tpyapp::main::nested_zip_filter((*cells), {100, 200});
     ::tpyapp::main::show("nested_param", (*cells));
     ::tpyapp::main::collect_copies();
     ::tpyapp::main::closure_mut();
@@ -1052,8 +1048,8 @@ void main() {
     std::cout << "gen_ro" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_ro((*cells)))) << "\n" << ::tpy::check_signals;
     std::cout << "gen_mut" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_mut((*cells)))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("gen_mut", (*cells));
-    std::vector<int32_t> __tmp_5 = {1, 2};
-    std::cout << "gen_zip_mut" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_zip_mut((*cells), __tmp_5))) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> __tmp_1 = {1, 2};
+    std::cout << "gen_zip_mut" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_zip_mut((*cells), __tmp_1))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("gen_zip_mut", (*cells));
     std::cout << "genexpr_ro" << " " << ::tpyapp::main::genexpr_ro((*cells)) << "\n" << ::tpy::check_signals;
     std::cout << "genexpr_mut" << " " << ::tpyapp::main::genexpr_mut((*cells)) << "\n" << ::tpy::check_signals;
@@ -1068,11 +1064,8 @@ void main() {
     cells = &*(__slot_4 = std::vector<Cell>{Cell(1), Cell(2)});
     std::cout << "async_mut" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_mut((*cells)))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("async_mut", (*cells));
-    std::vector<int32_t> __tmp_6 = {10, 20};
-    std::cout << "explicit_ro" << " " << ::tpyapp::main::explicit_ro(::tpy::as_span((*cells)), __tmp_6) << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_7 = {"a", "bb"};
-    std::vector<int32_t> __tmp_8 = {1, 2};
-    ::tpyapp::main::values(__tmp_7, __tmp_8);
+    std::cout << "explicit_ro" << " " << ::tpyapp::main::explicit_ro(::tpy::as_span((*cells)), {10, 20}) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::values({"a", "bb"}, {1, 2});
     std::optional<std::vector<Cell>> __slot_5;
     cells = &*(__slot_5 = std::vector<Cell>{Cell(1), Cell(2)});
     {

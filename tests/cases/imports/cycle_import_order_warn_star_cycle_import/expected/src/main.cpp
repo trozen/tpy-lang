@@ -10,8 +10,7 @@ namespace tpyapp::main {
 //     slb.main()
 void main() {
     ::tpyapp::vcb::main();
-    ::tpyapp::rxc::E __tmp_1 = ::tpyapp::rxc::E();
-    std::cout << "reexport:" << " " << ::tpyapp::rxb::use(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "reexport:" << " " << ::tpyapp::rxb::use(::tpyapp::rxc::E()) << "\n" << ::tpy::check_signals;
     ::tpyapp::slb::main();
 }
 

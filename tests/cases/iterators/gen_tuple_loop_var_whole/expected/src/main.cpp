@@ -149,8 +149,7 @@ __coro_sum_items sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d) {
         __sub_0.reset();
         std::cout << "async" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
         std::cout << "async src" << " " << std::get<1>(::tpy::__getitem__((*ays), 0)).v << "\n" << ::tpy::check_signals;
-        __coro_arg_0.emplace(::tpy::ordered_map<int32_t, int32_t>({{1, 2}}));
-        __sub_1.emplace((*__coro_arg_0));
+        __sub_1.emplace(__head_arg_0.emplace(::tpy::ordered_map<int32_t, int32_t>({{1, 2}})));
         __state = S_RESUME_1;
         continue;
     }

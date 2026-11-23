@@ -128,14 +128,11 @@ void free_function() {
     std::cout << "fn" << " " << ::tpyapp::main::tagged__str__T<int32_t>("k", 5) << " " << ::tpyapp::main::tagged__int32(4) << "\n" << ::tpy::check_signals;
     std::cout << "fn" << " " << ::tpyapp::main::choose__T<int32_t>(v) << " " << ::tpyapp::main::choose__T<int32_t>(v) << "\n" << ::tpy::check_signals;
     std::cout << "fn" << " " << ::tpyapp::main::pad__str__int32("a") << " " << ::tpyapp::main::pad__int32__int32(5, 7) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {4};
-    std::cout << "fn" << " " << ::tpyapp::main::apply_to__list_int32__Callable_int32_int32(__tmp_1, [](int32_t n) -> int32_t { return (::tpy::add_check<int32_t>(n, 1)); }) << " " << ::tpyapp::main::apply_to__str__Callable_int32_int32("ab", [](int32_t n) -> int32_t { return (::tpy::mul_check<int32_t>(n, 10)); }) << "\n" << ::tpy::check_signals;
+    std::cout << "fn" << " " << ::tpyapp::main::apply_to__list_int32__Callable_int32_int32({4}, [](int32_t n) -> int32_t { return (::tpy::add_check<int32_t>(n, 1)); }) << " " << ::tpyapp::main::apply_to__str__Callable_int32_int32("ab", [](int32_t n) -> int32_t { return (::tpy::mul_check<int32_t>(n, 10)); }) << "\n" << ::tpy::check_signals;
     std::cout << "fn" << " " << ::tpyapp::main::conv__Callable_int32_int32__int32([](int32_t n) -> int32_t { return (::tpy::add_check<int32_t>(n, 1)); }, 3) << " " << ::tpyapp::main::conv__Callable_str_str__str([](std::string_view s) -> std::string { return (::tpy::str_concat(s, "b")); }, "a") << "\n" << ::tpy::check_signals;
-    Opts __tmp_2 = Opts(2);
-    std::cout << "fn" << " " << ::tpyapp::main::region(1, __tmp_2) << "\n" << ::tpy::check_signals;
-    std::array<const int32_t, 2> __tmp_3{1, 2};
-    Rest __tmp_4 = Rest(3);
-    std::cout << "fn" << " " << ::tpyapp::main::rest(::tpy::varargs<const int32_t>(__tmp_3), __tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << "fn" << " " << ::tpyapp::main::region(1, Opts(2)) << "\n" << ::tpy::check_signals;
+    std::array<const int32_t, 2> __tmp_1{1, 2};
+    std::cout << "fn" << " " << ::tpyapp::main::rest(::tpy::varargs<const int32_t>(__tmp_1), Rest(3)) << "\n" << ::tpy::check_signals;
     std::cout << "fn" << " " << ::tpyapp::main::half__float(static_cast<double>(3)) << " " << ::tpyapp::main::half__float(static_cast<double>(3)) << "\n" << ::tpy::check_signals;
 }
 

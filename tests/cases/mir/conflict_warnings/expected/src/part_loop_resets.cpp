@@ -490,29 +490,18 @@ void main() {
     ::tpyapp::part_loop_resets::same_iter(2);
     ::tpyapp::part_loop_resets::reset_in_body(2);
     ::tpyapp::part_loop_resets::outer_buf(2);
-    Tok __tmp_1 = Tok("x", 0);
-    ::tpyapp::part_loop_resets::alias_reset(3, __tmp_1);
-    Tok __tmp_2 = Tok("x", 0);
-    ::tpyapp::part_loop_resets::alias_reset_break(3, __tmp_2);
-    Tok __tmp_3 = Tok("x", 0);
-    ::tpyapp::part_loop_resets::call_reset(3, __tmp_3);
-    Tok __tmp_4 = Tok("x", 0);
-    ::tpyapp::part_loop_resets::safe_source_copy(3, __tmp_4);
-    Tok __tmp_5 = Tok("x", 0);
-    ::tpyapp::part_loop_resets::nested_live_reset(3, __tmp_5);
+    ::tpyapp::part_loop_resets::alias_reset(3, ::tpy::as_mut_lvalue(Tok("x", 0)));
+    ::tpyapp::part_loop_resets::alias_reset_break(3, ::tpy::as_mut_lvalue(Tok("x", 0)));
+    ::tpyapp::part_loop_resets::call_reset(3, ::tpy::as_mut_lvalue(Tok("x", 0)));
+    ::tpyapp::part_loop_resets::safe_source_copy(3, ::tpy::as_mut_lvalue(Tok("x", 0)));
+    ::tpyapp::part_loop_resets::nested_live_reset(3, ::tpy::as_mut_lvalue(Tok("x", 0)));
     ::tpyapp::part_loop_resets::next_iter(1);
     ::tpyapp::part_loop_resets::with_continue(0);
     ::tpyapp::part_loop_resets::with_continue_reset(3);
-    ::tpyapp::part_loops::Buf __tmp_6 = ::tpyapp::part_loops::Buf((::tpy::str_repeat("o", 40)));
-    ::tpyapp::part_loops::Buf __tmp_7 = ::tpyapp::part_loops::Buf((::tpy::str_repeat("p", 40)));
-    ::tpyapp::part_loop_resets::overkill(__tmp_6, __tmp_7, 3, false);
-    ::tpyapp::part_loops::Buf __tmp_8 = ::tpyapp::part_loops::Buf((::tpy::str_repeat("o", 40)));
-    ::tpyapp::part_loop_resets::defkill(__tmp_8, 0);
-    ::tpyapp::part_loops::Buf __tmp_9 = ::tpyapp::part_loops::Buf((::tpy::str_repeat("o", 40)));
-    ::tpyapp::part_loops::Buf __tmp_10 = ::tpyapp::part_loops::Buf((::tpy::str_repeat("p", 40)));
-    ::tpyapp::part_loop_resets::own_weak_reset(__tmp_9, __tmp_10, 3, false, false);
-    ::tpyapp::part_loops::Buf __tmp_11 = ::tpyapp::part_loops::Buf((::tpy::str_repeat("o", 40)));
-    ::tpyapp::part_loop_resets::nested_reset(__tmp_11, 2);
+    ::tpyapp::part_loop_resets::overkill(::tpy::as_mut_lvalue(::tpyapp::part_loops::Buf((::tpy::str_repeat("o", 40)))), ::tpy::as_mut_lvalue(::tpyapp::part_loops::Buf((::tpy::str_repeat("p", 40)))), 3, false);
+    ::tpyapp::part_loop_resets::defkill(::tpy::as_mut_lvalue(::tpyapp::part_loops::Buf((::tpy::str_repeat("o", 40)))), 0);
+    ::tpyapp::part_loop_resets::own_weak_reset(::tpy::as_mut_lvalue(::tpyapp::part_loops::Buf((::tpy::str_repeat("o", 40)))), ::tpy::as_mut_lvalue(::tpyapp::part_loops::Buf((::tpy::str_repeat("p", 40)))), 3, false, false);
+    ::tpyapp::part_loop_resets::nested_reset(::tpy::as_mut_lvalue(::tpyapp::part_loops::Buf((::tpy::str_repeat("o", 40)))), 2);
     ::tpyapp::part_loop_resets::alternation(2);
 }
 

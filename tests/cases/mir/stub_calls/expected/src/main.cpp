@@ -272,10 +272,8 @@ void main() {
     std::cout << "overloads:" << " " << ::tpy::print_bool(::tpyapp::main::overloads(::tpy::BigInt(3), ::tpy::BigInt(5), 1, 2)) << "\n" << ::tpy::check_signals;
     std::cout << "twice:" << " " << std::format("{:.6f}", ::tpyapp::main::twice(100.0)) << "\n" << ::tpy::check_signals;
     std::cout << "both:" << " " << ::tpyapp::main::both("hi", ::tpy::BigInt(12), ::tpy::BigInt(40)) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, int32_t> __tmp_1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    std::cout << "dict_get_value:" << " " << ::tpyapp::main::dict_get_value(__tmp_1, "z") << "\n" << ::tpy::check_signals;
-    Rec __tmp_2 = Rec(4);
-    std::cout << "record_len:" << " " << ::tpyapp::main::record_len(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "dict_get_value:" << " " << ::tpyapp::main::dict_get_value(::tpy::ordered_map<std::string, int32_t>({{"a", 1}}), "z") << "\n" << ::tpy::check_signals;
+    std::cout << "record_len:" << " " << ::tpyapp::main::record_len(Rec(4)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::builtin_ctors(5, ::tpy::bytes_literal("ab", 2), "x");
     ::tpyapp::main::append_while_iterating();
     Box r = Box(::tpy::BigInt(1), ::tpy::bytes_literal("xy", 2));
@@ -287,8 +285,7 @@ void main() {
     ::tpyapp::main::str_key_aug(d, "k");
     std::cout << "str_key_aug:" << " " << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ys = {0, 0, 0};
-    ::tpy::ByteArray __tmp_3 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    ::tpyapp::main::held_len_key(ys, __tmp_3);
+    ::tpyapp::main::held_len_key(ys, ::tpy::as_mut_lvalue(::tpy::ByteArray(::tpy::bytes_literal("ab", 2))));
     std::cout << "held_len_key:" << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     ::tpyapp::part_os::main();
     ::tpyapp::part_origin::main();

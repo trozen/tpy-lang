@@ -7,9 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     math.sumprod([1.0, 2.0], [3.0, 4.0, 5.0])
 void main() {
-    auto __tmp_1 = std::array<double, 2>{1.0, 2.0};
-    auto __tmp_2 = std::array<double, 3>{3.0, 4.0, 5.0};
-    ::tpystd::math::sumprod(__tmp_1, __tmp_2);
+    ::tpystd::math::sumprod(std::array<double, 2>{1.0, 2.0}, std::array<double, 3>{3.0, 4.0, 5.0});
 }
 
 // # sumprod raises ValueError when p exhausts before q (the complement of

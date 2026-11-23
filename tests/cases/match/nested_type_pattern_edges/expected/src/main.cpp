@@ -274,21 +274,17 @@ std::string check_bool(const BoolHolder& h) {
 //     print(check_bool(BoolHolder(False)))
 //     print(check_bool(BoolHolder("yes")))
 void main() {
-    Cat __tmp_1 = Cat("Luna");
-    Wrapper __slot_1 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
+    Wrapper __slot_1 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("Luna")))});
     Wrapper* a = &__slot_1;
-    Dog __tmp_2 = Dog("Rex");
-    Wrapper __slot_2 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
+    Wrapper __slot_2 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("Rex")))});
     Wrapper* b = &__slot_2;
     Wrapper* c = nullptr;
     std::cout << ::tpyapp::main::opt_wrapper(a) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::opt_wrapper(b) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::opt_wrapper(c) << "\n" << ::tpy::check_signals;
-    Cat __tmp_3 = Cat("Luna");
-    ::tpy::Union<Tag, Wrapper> __slot_3 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
+    ::tpy::Union<Tag, Wrapper> __slot_3 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("Luna")))});
     ::tpy::Union<Tag*, Wrapper*> d = ::tpy::to_ptr_variant(__slot_3);
-    Dog __tmp_4 = Dog("Rex");
-    ::tpy::Union<Tag, Wrapper> __slot_4 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_4});
+    ::tpy::Union<Tag, Wrapper> __slot_4 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("Rex")))});
     ::tpy::Union<Tag*, Wrapper*> e = ::tpy::to_ptr_variant(__slot_4);
     ::tpy::Union<Tag, Wrapper> __slot_5 = Tag("hello");
     ::tpy::Union<Tag*, Wrapper*> f = ::tpy::to_ptr_variant(__slot_5);
@@ -307,36 +303,16 @@ void main() {
     ::tpy::Union<Box<int32_t>*, Box<std::string>*> j = ::tpy::to_ptr_variant(__slot_9);
     std::cout << ::tpyapp::main::positional_nested(i.as_const()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::positional_nested(j.as_const()) << "\n" << ::tpy::check_signals;
-    Cat __tmp_5 = Cat("Nala");
-    Wrapper __tmp_6 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_5});
-    std::cout << ::tpyapp::main::nested_pos_extract(__tmp_6) << "\n" << ::tpy::check_signals;
-    Dog __tmp_7 = Dog("Buddy");
-    Wrapper __tmp_8 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_7});
-    std::cout << ::tpyapp::main::nested_pos_extract(__tmp_8) << "\n" << ::tpy::check_signals;
-    Cat __tmp_9 = Cat("Luna");
-    Wrapper __tmp_10 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_9});
-    std::cout << ::tpyapp::main::guard_combo(__tmp_10) << "\n" << ::tpy::check_signals;
-    Cat __tmp_11 = Cat("Nala");
-    Wrapper __tmp_12 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_11});
-    std::cout << ::tpyapp::main::guard_combo(__tmp_12) << "\n" << ::tpy::check_signals;
-    Dog __tmp_13 = Dog("Rex");
-    Wrapper __tmp_14 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_13});
-    std::cout << ::tpyapp::main::guard_combo(__tmp_14) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<double, std::string> __tmp_15 = 3.14;
-    FloatHolder __tmp_16 = FloatHolder(__tmp_15);
-    std::cout << ::tpyapp::main::check_float(__tmp_16) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<double, std::string> __tmp_17 = "pi";
-    FloatHolder __tmp_18 = FloatHolder(__tmp_17);
-    std::cout << ::tpyapp::main::check_float(__tmp_18) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<bool, std::string> __tmp_19 = true;
-    BoolHolder __tmp_20 = BoolHolder(__tmp_19);
-    std::cout << ::tpyapp::main::check_bool(__tmp_20) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<bool, std::string> __tmp_21 = false;
-    BoolHolder __tmp_22 = BoolHolder(__tmp_21);
-    std::cout << ::tpyapp::main::check_bool(__tmp_22) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<bool, std::string> __tmp_23 = "yes";
-    BoolHolder __tmp_24 = BoolHolder(__tmp_23);
-    std::cout << ::tpyapp::main::check_bool(__tmp_24) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::nested_pos_extract(Wrapper(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("Nala")))})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::nested_pos_extract(Wrapper(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("Buddy")))})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::guard_combo(Wrapper(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("Luna")))})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::guard_combo(Wrapper(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("Nala")))})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::guard_combo(Wrapper(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("Rex")))})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_float(FloatHolder(::tpy::Union<double, std::string>(3.14))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_float(FloatHolder(::tpy::Union<double, std::string>("pi"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_bool(BoolHolder(::tpy::Union<bool, std::string>(true))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_bool(BoolHolder(::tpy::Union<bool, std::string>(false))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_bool(BoolHolder(::tpy::Union<bool, std::string>("yes"))) << "\n" << ::tpy::check_signals;
 }
 
 // from dataclasses import dataclass

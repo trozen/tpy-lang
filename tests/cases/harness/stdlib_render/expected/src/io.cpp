@@ -632,11 +632,11 @@ void BufferedReader::_fill(int32_t want, bool to_newline) {
                 }
             }
         } catch (...) {
-            this->_buf = ::tpy::bytes_join(::tpy::Bytes{}, parts);
+            this->_buf = ::tpy::bytes_join(::tpy::BytesView{}, parts);
             this->_pos = 0;
             throw;
         }
-        this->_buf = ::tpy::bytes_join(::tpy::Bytes{}, parts);
+        this->_buf = ::tpy::bytes_join(::tpy::BytesView{}, parts);
         this->_pos = 0;
     }
 }
@@ -713,7 +713,7 @@ void BufferedWriter::_flush_buffer() {
     if ((this->_pending == 0)) {
         return;
     }
-    ::tpy::Bytes data = ::tpy::bytes_join(::tpy::Bytes{}, this->_parts);
+    ::tpy::Bytes data = ::tpy::bytes_join(::tpy::BytesView{}, this->_parts);
     this->_parts = std::vector<::tpy::Bytes>{};
     this->_pending = 0;
     int32_t off = 0;

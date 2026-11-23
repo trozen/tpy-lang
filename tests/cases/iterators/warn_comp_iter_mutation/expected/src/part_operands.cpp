@@ -172,11 +172,11 @@ int32_t own_argument(std::vector<int32_t>& xs, bool big) {
     return ::tpy::__len__(ys);
 }
 
-// def borrowed_argument(xs: list[int32], big: bool) -> int32:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
+// def borrowed_argument(xs: list[int32], big: bool) -> int32:  # tpyc: mir(conflict /replacement/)
 //     # lent to a borrowed parameter of a user function
-//     return count([v for v in xs if big and grow(xs)])  # tpyc: warning(/Passing borrowed container 'xs' to non-readonly parameter/)
+//     return count([v for v in xs if big and grow(xs)])  # tpyc: warning(/Passing borrowed container 'xs' to non-readonly parameter/) warning(/may move the elements of 'xs'. but the iteration over 'xs' still walks them/)
 int32_t borrowed_argument(std::vector<int32_t>& xs, bool big) {
-    std::vector<int32_t> __tmp_1 = ({
+    return ::tpyapp::part_operands::count(({
         std::vector<int32_t> __result;
         auto& __obj_0 = xs;
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -189,8 +189,7 @@ int32_t borrowed_argument(std::vector<int32_t>& xs, bool big) {
             }
         }
         std::move(__result);
-    });
-    return ::tpyapp::part_operands::count(__tmp_1);
+    }));
 }
 
 // def ternary_arm(xs: list[int32], big: bool) -> int32:  # tpyc: mir(uncovered /unsupported record initializer/)
@@ -387,34 +386,20 @@ int32_t calls_append(std::vector<int32_t>& xs, bool big) {
 //     print("calls_comp:", calls_comp([1, 2], False))
 //     print("calls_append:", calls_append([1, 2], False))
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << "order_comp:" << " " << ::tpyapp::part_operands::order_comp(__tmp_1, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = {1, 2};
-    std::cout << "order_read:" << " " << ::tpyapp::part_operands::order_read(__tmp_2) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = {1, 2};
-    std::cout << "order_call:" << " " << ::tpyapp::part_operands::order_call(__tmp_3, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_4 = {1, 2};
-    std::cout << "via_pick:" << " " << ::tpyapp::part_operands::via_pick(__tmp_4, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_5 = {1, 2};
-    std::cout << "via_pick_for:" << " " << ::tpyapp::part_operands::via_pick_for(__tmp_5, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_6 = {1, 2};
-    std::vector<int32_t> __tmp_7 = {3};
-    std::cout << "nested_places:" << " " << ::tpyapp::part_operands::nested_places(__tmp_6, __tmp_7, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_8 = {1, 2};
-    std::cout << "own_argument:" << " " << ::tpyapp::part_operands::own_argument(__tmp_8, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_9 = {1, 2};
-    std::cout << "borrowed_argument:" << " " << ::tpyapp::part_operands::borrowed_argument(__tmp_9, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_10 = {1, 2};
-    std::cout << "ternary_arm:" << " " << ::tpyapp::part_operands::ternary_arm(__tmp_10, false) << "\n" << ::tpy::check_signals;
+    std::cout << "order_comp:" << " " << ::tpyapp::part_operands::order_comp(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "order_read:" << " " << ::tpyapp::part_operands::order_read({1, 2}) << "\n" << ::tpy::check_signals;
+    std::cout << "order_call:" << " " << ::tpyapp::part_operands::order_call(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "via_pick:" << " " << ::tpyapp::part_operands::via_pick(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "via_pick_for:" << " " << ::tpyapp::part_operands::via_pick_for(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "nested_places:" << " " << ::tpyapp::part_operands::nested_places(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), {3}, false) << "\n" << ::tpy::check_signals;
+    std::cout << "own_argument:" << " " << ::tpyapp::part_operands::own_argument(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "borrowed_argument:" << " " << ::tpyapp::part_operands::borrowed_argument(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "ternary_arm:" << " " << ::tpyapp::part_operands::ternary_arm(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false) << "\n" << ::tpy::check_signals;
     std::cout << "range_shadow:" << " " << ::tpyapp::part_operands::range_shadow() << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_11 = {1, 2};
-    std::cout << "record_element:" << " " << ::tpyapp::part_operands::record_element(__tmp_11, false) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_12 = {{1, 2}, {3}};
-    std::cout << "bound_sibling:" << " " << ::tpyapp::part_operands::bound_sibling(__tmp_12, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_13 = {1, 2};
-    std::cout << "calls_comp:" << " " << ::tpyapp::part_operands::calls_comp(__tmp_13, false) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_14 = {1, 2};
-    std::cout << "calls_append:" << " " << ::tpyapp::part_operands::calls_append(__tmp_14, false) << "\n" << ::tpy::check_signals;
+    std::cout << "record_element:" << " " << ::tpyapp::part_operands::record_element(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "bound_sibling:" << " " << ::tpyapp::part_operands::bound_sibling(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1, 2}, {3}}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "calls_comp:" << " " << ::tpyapp::part_operands::calls_comp(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false) << "\n" << ::tpy::check_signals;
+    std::cout << "calls_append:" << " " << ::tpyapp::part_operands::calls_append(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}), false) << "\n" << ::tpy::check_signals;
 }
 
 // from fixtures import Cell, grow, pick

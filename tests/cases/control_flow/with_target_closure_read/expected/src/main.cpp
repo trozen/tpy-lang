@@ -21,12 +21,11 @@ namespace tpyapp::main {
 //
 //     return inner()
 int32_t outer(bool flag) {
-    std::optional<Reg> __slot_1;
-    std::optional<Reg> __slot_2;
     Reg* v;
+    std::optional<Reg> __with_root_0;
+    std::optional<Reg> __with_root_1;
     if (flag) {
-        __slot_1.emplace(Reg(11));
-        auto& __ctx_1 = (*__slot_1);
+        auto& __ctx_1 = __with_root_1.emplace(11);
         v = &(__ctx_1.__enter__());
         try {
             goto __with_exit_1;
@@ -40,8 +39,7 @@ int32_t outer(bool flag) {
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
     } else {
-        __slot_2.emplace(Reg(22));
-        auto& __ctx_2 = (*__slot_2);
+        auto& __ctx_2 = __with_root_0.emplace(22);
         v = &(__ctx_2.__enter__());
         try {
             goto __with_exit_2;

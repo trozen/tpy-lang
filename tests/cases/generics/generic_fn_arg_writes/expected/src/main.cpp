@@ -104,11 +104,8 @@ void main() {
     run.invoke(::tpy::__getitem__(rs, 1));
     run.invoke_at(::tpy::__getitem__(rs, 2));
     std::cout << "method" << " " << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__getitem__(rs, 1).n << " " << ::tpy::__getitem__(rs, 2).n << "\n" << ::tpy::check_signals;
-    std::vector<R> __tmp_1 = ::tpyapp::main::mk();
-    std::cout << "reduce" << " " << ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<R>([](R& a, R& b) -> R { return R((::tpy::add_check<int32_t>(a.n, b.n))); }, __tmp_1).n << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_2 = {1, 2, 3};
-    std::vector<int32_t> __tmp_3 = {4, 5};
-    std::cout << "ints" << " " << ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<int32_t>(add, __tmp_2) << " " << ::tpyapp::main::red<int32_t>(add, __tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "reduce" << " " << ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<R>([](R& a, R& b) -> R { return R((::tpy::add_check<int32_t>(a.n, b.n))); }, ::tpy::as_mut_lvalue(::tpyapp::main::mk())).n << "\n" << ::tpy::check_signals;
+    std::cout << "ints" << " " << ::tpystd::functools::reduce__Fn_T_T_Own_T__list_T<int32_t>(add, ::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3})) << " " << ::tpyapp::main::red<int32_t>(add, ::tpy::as_mut_lvalue(std::vector<int32_t>{4, 5})) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> vs = {1, 2};
     auto& __obj_2 = vs;
     auto __beg_2 = __obj_2.begin();

@@ -77,8 +77,7 @@ inline Cell::Cell(int32_t value) : value(value) {}
 inline Runner::Runner(int32_t n) : result(0) {
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        Cell __tmp_1 = Cell(i);
-        this->result = ::tpyapp::main::read(__tmp_1);
+        this->result = ::tpyapp::main::read(Cell(i));
     }
 }
 
@@ -93,8 +92,7 @@ inline int32_t Runner::method(const std::vector<int32_t>& values) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t value = *__beg_0;
-        Cell __tmp_1 = Cell(value);
-        this->result = ::tpyapp::main::read(__tmp_1);
+        this->result = ::tpyapp::main::read(Cell(value));
     }
     return this->result;
 }

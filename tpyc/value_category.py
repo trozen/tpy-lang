@@ -20,7 +20,8 @@ from typing import Any, Callable, Iterator, NamedTuple, Protocol
 from .typesys import element_access, pointer_repr_optional, pointer_variant_union
 from .modules.type_resolution import owning_element_slot
 from .typesys import (
-    AnyType, FunctionInfo, NominalType, PtrType, ReadonlyType, TpyType, TupleType,
+    AnyType, FunctionInfo, NominalType, PtrType, ReadonlyType, RefType, TpyType,
+    TupleType,
     TypeParamRef, OwnType, UnionType, GenExprType,
     OptionalType, ResultPosition, ResultRepresentation, classify_result_representation,
     is_bodyless_binding, is_open_type_param_return, is_primitive_type, is_protocol_type,
@@ -46,9 +47,11 @@ from .parse import (
     TpySubscript, TpyCall, TpyName, TpyFieldAccess, TpyIfExpr, TpyAwait,
     TpyBytesLiteral, TpyFString, TpyNamedExpr, TpyTupleLiteral,
     SubscriptDunder, is_property_getter_read, const_tuple_index, past_cast,
+    TpySlice,
 )
 from .parse.nodes import as_name_read
-from .type_def_registry import (is_bool_type, is_borrowing_view_type,
+from .type_def_registry import (has_view_param_form, is_bool_type,
+                                is_borrowing_view_type,
                                 is_bytes_type, is_bytes_view_type,
                                 is_owned_in_coro_frame, is_str_type,
                                 is_str_view_type, is_varargs, type_def_of,
@@ -291,6 +294,103 @@ def may_hold_pointer(t: TpyType, seen: frozenset[TpyType] = frozenset()) -> bool
     return value_may_point(t, seen)
 
 
+def carries_borrow(t: 'TpyType | None', *, borrow_form: bool = False) -> bool:
+    """Whether a value -- a result, a binding -- may carry a borrow of
+    storage it does not own: held in borrow form (a reference to a
+    reference-type object, a tuple, Optional or union over one held by
+    pointer -- the decider that formed it says so: `borrow_form`), a
+    reference result (`RefType`), or an owned value that may hold a
+    pointer (`may_hold_pointer`). Unknown carries one."""
+    if borrow_form or t is None:
+        return True
+    if isinstance(unwrap_readonly(unwrap_send_sync(t)), RefType):
+        return True
+    return may_hold_pointer(held_type(t))
+
+
+def result_carries_borrow(fi: 'FunctionInfo',
+                          shape: 'TpyType | None') -> bool:
+    """Whether a call to `fi` hands back a borrow (`carries_borrow`) in the
+    form it returns its result (`classify_result_representation`): a C++
+    reference does; otherwise the value at the call's type `shape` (a
+    generic's instantiated) as `to_cpp_return` holds it -- an `Own`
+    result as the value handed over, a tuple holding a reference element
+    by pointer, an Optional or union over a reference type by pointer."""
+    rep = classify_result_representation(
+        fi.return_type, position=ResultPosition.SYNC_CALL, fi=fi)
+    if rep is ResultRepresentation.CPP_REFERENCE:
+        return True
+    declared = fi.return_type
+    t = shape if shape is not None else declared
+    if t is None:
+        return True
+    if declared is not None and isinstance(
+            unwrap_readonly(unwrap_send_sync(declared)), OwnType):
+        return carries_borrow(t)
+    if holds_reference_by_pointer(t):
+        return True
+    if pointer_repr_optional(t) is not None or (
+            pointer_variant_union(t) is not None):
+        return True
+    return carries_borrow(t)
+
+
+def binds_buffer_view(t: TpyType) -> bool:
+    """Whether a binding of `t` that takes no value of its own is a view of
+    another value's buffer: a type whose borrowed form is a view
+    (`has_view_param_form`), a `str` / `bytes`."""
+    return has_view_param_form(unwrap_qualifiers(t))
+
+
+def holds_reference_by_pointer(t: 'TpyType | None') -> bool:
+    """Whether a value of `t` is a tuple holding a reference-type member by
+    pointer -- its borrow form, `std::tuple<..., T*>`."""
+    bare = unwrap_qualifiers(t) if t is not None else None
+    return isinstance(bare, TupleType) and bare.has_pointer_repr_element()
+
+
+def pointer_leaf_tuple(e: object,
+                       analyzer: 'ValueCategoryAnalyzer') -> 'TpyExpr | None':
+    """The tuple `e` reads a reference-type element of, where that tuple
+    is a call's borrow-form result (`std::tuple<..., T*>`,
+    `holds_reference_by_pointer`): the element is a pointer copied out of
+    it, so the read borrows what the pointer points to, not the tuple.
+    None for any other node."""
+    if not isinstance(e, TpySubscript):
+        return None
+    recv = peel_coerce(e.obj)
+    fi = getattr(recv, "resolved_function_info", None)
+    t = analyzer.get_expr_type(e)
+    rt = analyzer.get_expr_type(recv)
+    if (fi is None or t is None or rt is None
+            or not isinstance(recv, (TpyCall, TpyMethodCall))
+            or unwrap_qualifiers(t).is_value_type()
+            or not holds_reference_by_pointer(rt)
+            or not result_carries_borrow(fi, rt)):
+        return None
+    return recv
+
+
+def element_borrow_form(t: 'TpyType | None', copies: bool) -> bool:
+    """Whether a binding of an element of type `t` refers to the element
+    rather than owning a copy (`copies`): a reference-type object, or a
+    tuple holding a reference-type member by pointer, a `str` / `bytes`
+    (a view of its buffer). The binding
+    planner's per-binding decision (`loop_binding_kind`) is made while a
+    body is lowered, after the frame's escaping names are computed from
+    the facts sema stamped, so this reads those facts the same way."""
+    if copies or t is None:
+        return not copies
+    if isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))),
+                  OwnType):
+        return False
+    if isinstance(peel_binding(t), PendingViewType):
+        return True
+    t = unwrap_qualifiers(t)
+    return (holds_reference_by_pointer(t) or not t.is_value_type()
+            or binds_buffer_view(t))
+
+
 class CallOperands(NamedTuple):
     """A call-shaped expression as the borrow facts index it: the callee,
     its receiver (source index -1), its positional arguments (None at a
@@ -489,6 +589,15 @@ class ValueCategoryAnalyzer(Protocol):
     def is_last_use(self, expr: TpyExpr | None) -> bool: ...
 
     def read_owns_storage(self, read: TpyName) -> bool: ...
+
+    @property
+    def head_kept_args(self) -> Any: ...
+
+    @property
+    def head_kept_borrows(self) -> Any: ...
+
+    @property
+    def head_enclosed_roots(self) -> Any: ...
 
 
 # Container/generator-shaped expressions whose gen_expr emits a value
@@ -743,31 +852,22 @@ def lends_a_fresh_result(expr: TpyExpr) -> bool:
         for idx, operand in ops.indexed())
 
 
-def call_result_live_in_statement(analyzer: ValueCategoryAnalyzer,
-                                  expr: TpyExpr) -> bool:
-    """Whether this call's C++ result is valid for the whole statement, so
-    a CONST argument slot binds it in place: an lvalue result, or a
-    borrow-declared call stamped a fresh value -- a reference into its
-    operands, or a copy the callee hands back (`ResultForm.COPY`),
-    each living until the statement ends. A mutable slot asks
-    `call_result_is_reference` instead. Not an ownership verdict: a holder
-    that outlives the statement asks `call_result_holdable`. (The return
-    SHAPE alone does not answer it: a container constructor's `-> list[T]`
-    is a reference shape and an rvalue.)"""
+def call_result_is_reference(analyzer: ValueCategoryAnalyzer,
+                             expr: TpyExpr) -> bool:
+    """Whether this call's C++ result is a reference, which a mutable
+    parameter binds in place: an lvalue result, or a borrow-declared call
+    stamped a fresh value it hands back by reference (a reference into its
+    operands). A value the callee hands back (`ResultForm.by_value`) binds
+    no mutable reference. Not an ownership verdict: a holder that outlives
+    the statement asks `call_result_holdable`. (The return SHAPE alone does
+    not answer it: a container constructor's `-> list[T]` is a reference
+    shape and an rvalue.)"""
+    if isinstance(expr, TpyCallLike) and expr.result_form.by_value:
+        return False
     if isinstance(expr, TpyCallLike) and expr.result_form.is_fresh:
         return True
     return (isinstance(expr, (TpyCall, TpyMethodCall))
             and not is_rvalue_source(analyzer, expr))
-
-
-def call_result_is_reference(analyzer: ValueCategoryAnalyzer,
-                             expr: TpyExpr) -> bool:
-    """`call_result_live_in_statement` where the slot may be a MUTABLE
-    reference: a value the callee hands back (`ResultForm.by_value`) cannot
-    bind one, and goes through a statement temporary instead."""
-    return (call_result_live_in_statement(analyzer, expr)
-            and not (isinstance(expr, TpyCallLike)
-                     and expr.result_form.by_value))
 
 
 def declared_call_const(analyzer: ValueCategoryAnalyzer,
@@ -1103,11 +1203,17 @@ def place_dies(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     result is a reference into the operands it lends at a reference
     instantiation, so it dies exactly when one of them does; a member read
     off one (`f(x).a`, an attribute of T's protocol bound) still answers
-    dying -- the lowering refuses every such read before a verdict asks."""
+    dying -- the lowering refuses every such read before a verdict asks.
+    A reference element of a call's borrow-form tuple (`pointer_leaf_tuple`)
+    is the object it points to, not the tuple's storage."""
     while True:
         lent = _open_param_result_lends(analyzer, expr)
         if lent is not None:
             return any(place_dies(analyzer, o) for o in lent)
+        if pointer_leaf_tuple(expr, analyzer) is not None:
+            # The element is the pointee, not part of the dying tuple; what
+            # the tuple's operands lend is kept by their own hands.
+            return False
         if is_rvalue_source(analyzer, expr):
             return True
         if not isinstance(expr, (TpySubscript, TpyFieldAccess)):
@@ -1329,6 +1435,16 @@ def for_source_is_rvalue(stmt: TpyForEach,
     return is_rvalue_source(analyzer, stmt.iterable)
 
 
+def for_hands_source_over(stmt: TpyForEach) -> bool:
+    """Sema hands a `for` head's source over to its consuming `__iter__`
+    (`consuming_iter_fi`: a name at its last use, a fresh record, an
+    explicit `own_iter(x)`): each element moves into the loop variable,
+    which keeps nothing of the source."""
+    src = peel_coerce(stmt.iterable)
+    return stmt.consuming_iter_fi is not None or (
+        isinstance(src, TpyCall) and src.consuming_iter_fi is not None)
+
+
 def peel_coerce(e: TpyExpr) -> TpyExpr:
     """The expression under any stack of TpyCoerce wrappers and of the
     `typing.cast` calls that hand back their argument as it is."""
@@ -1538,49 +1654,39 @@ def is_value_emit_rvalue(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool
         isinstance(expr, TpyFieldAccess) and is_rvalue_source(analyzer, expr))
 
 
-def is_temporary_expr(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
-    """Check if an expression produces a temporary (rvalue).
+def head_kept_argument(analyzer: ValueCategoryAnalyzer, arg: TpyExpr, *,
+                       borrows: bool = False) -> bool:
+    """Whether a compound statement's head keeps argument (or receiver)
+    `arg` until the statement ends -- with `borrows`, or `arg` borrows out
+    of what it keeps -- (sema's `keep_head_arguments` verdict)."""
+    return arg in analyzer.head_kept_args or (
+        borrows and arg in analyzer.head_kept_borrows)
 
-    Temporaries can't bind to non-const lvalue references, so they need
-    to be stored in a temp variable when passed to mutable ref params.
 
-    Lvalues (don't need temps): variable names, field access
-    Rvalues (need temps): literals, binary/unary ops, calls, coercions, subscripts on records
-    """
-    # Scalar literals: 1, 3.14, "x", True, None
-    if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral)):
-        return True
-    # Container literals, comprehensions, generator expressions.
-    if isinstance(expr, CONTAINER_LITERAL_NODES):
-        return True
-    # Explicit coercions: Ptr[T]->T is dereference (lvalue), others produce temporaries
-    if isinstance(expr, TpyCoerce):
-        # Pointer dereference is an lvalue, not a temporary
-        if isinstance(expr.actual_type, PtrType):
-            return False
-        return True
-    # Binary and unary ops always produce temporaries
-    if isinstance(expr, (TpyBinOp, TpyUnaryOp)):
-        return True
-    if isinstance(expr, TpyMethodCall):
-        return is_rvalue_source(analyzer, expr)
-    # Subscript on user records returns by value (rvalue)
-    # std::vector/array operator[] returns lvalue ref, but user __getitem__ returns by value
-    if isinstance(expr, TpySubscript):
-        raw_ct = analyzer.get_expr_type(expr.obj)
-        container_type = unwrap_readonly(raw_ct) if raw_ct is not None else None
-        if isinstance(container_type, NominalType) and container_type.is_user_record:
-            return True
-    if isinstance(expr, TpyCall):
-        return is_rvalue_source(analyzer, expr)
-    return False
+def head_enclosed_root(analyzer: ValueCategoryAnalyzer, e: TpyExpr) -> bool:
+    """Whether `e` is a head's fresh object a name the statement binds and
+    reads after it borrows (sema's `enclose_head_roots` verdict): storage
+    the enclosing scope holds."""
+    return e in analyzer.head_enclosed_roots
+
+
+def frame_receiver_temp(obj: TpyExpr, analyzer: ValueCategoryAnalyzer) -> bool:
+    """A generator method's receiver a frame keeps by reference, seated on a
+    named local by the call (`Counter __tmp_N = Counter(..); __tmp_N.each()`):
+    a constructor rvalue of a record."""
+    if not isinstance(obj, TpyCall):
+        return False
+    fi = obj.resolved_function_info
+    return (fi is not None and fi.is_constructor
+            and is_rvalue_source(analyzer, obj)
+            and isinstance(analyzer.get_expr_type(obj), NominalType))
 
 
 def materializing_temp_source(a: TpyExpr, analyzer) -> bool:
     """Whether this expression MATERIALIZES a fresh object whose lifetime the
-    enclosing statement bounds -- `is_temporary_expr` restricted to the shapes
-    that can occupy a generator/coroutine factory's borrowed slot (a non-value
-    ref / readonly-ref param, or the storage a borrowing-view param aliases).
+    enclosing statement bounds, restricted to the shapes that can occupy a
+    generator/coroutine factory's borrowed slot (a non-value ref /
+    readonly-ref param, or the storage a borrowing-view param aliases).
     The frame borrows past the statement, so every such temporary must
     materialize as a named scope-local.
 
@@ -1592,8 +1698,9 @@ def materializing_temp_source(a: TpyExpr, analyzer) -> bool:
     primitive ones the frame rule excludes anyway."""
     if isinstance(a, CONTAINER_LITERAL_NODES):
         return True
-    if isinstance(a, TpyBinOp) and a.op in ("&&", "||"):
-        # Python's and/or picks one of its operands, as a ternary does: over
+    if isinstance(a, TpyIfExpr) or (isinstance(a, TpyBinOp)
+                                    and a.op in ("&&", "||")):
+        # A ternary picks one of its operands, as Python's and/or does: over
         # two existing objects it is an lvalue the frame binds in place.
         return is_rvalue_source(analyzer, a)
     if isinstance(a, (TpyBinOp, TpyUnaryOp, TpyFString,
@@ -1601,15 +1708,55 @@ def materializing_temp_source(a: TpyExpr, analyzer) -> bool:
         return True
     if isinstance(a, TpyCoerce):
         # A Ptr deref coercion is an lvalue; every other coercion produces
-        # a temporary (is_temporary_expr's coerce arm, non-recursive).
+        # a temporary.
         return not isinstance(a.actual_type, PtrType)
     if isinstance(a, (TpyCall, TpyMethodCall)):
+        fi = a.resolved_function_info
+        if (fi is not None and fi.return_type is not None
+                and is_open_type_param_return(fi.return_type)):
+            # An open `T` result (`val_or_ref_t<T>`) is a reference at a
+            # reference instantiation: nothing materializes.
+            return False
         return is_rvalue_source(analyzer, a)
     if isinstance(a, TpySubscript):
+        # A user `__getitem__` materializes only when it returns by value; a
+        # reference result is the container's element, bound in place.
         ct = analyzer.get_expr_type(a.obj)
         ct = unwrap_readonly(ct) if ct is not None else None
-        return isinstance(ct, NominalType) and ct.is_user_record
+        return (isinstance(ct, NominalType) and ct.is_user_record
+                and is_rvalue_source(analyzer, a))
     return False
+
+
+def method_owner_type(call: TpyMethodCall,
+                      written: 'TpyType | None') -> 'TpyType | None':
+    """THE type method resolution ran method call `call` on: the type its
+    Deref chain reaches (`deref_receiver_type`: a `Ptr`, `Box` or `Rc`
+    receiver's pointee), else the written receiver's type `written`, an
+    unproven Optional's payload -- qualifiers stripped."""
+    t = call.deref_receiver_type or written
+    if t is None:
+        return None
+    t = unwrap_qualifiers(t)
+    return unwrap_qualifiers(t.inner) if isinstance(t, OptionalType) else t
+
+
+def fresh_receiver_root(obj: TpyExpr, analyzer) -> 'TpyExpr | None':
+    """The fresh object a member reached through receiver `obj` lives in:
+    `obj` itself, or the materializing temporary under its chain of field
+    reads and subscripts (a Deref hop adds no node). None where the chain
+    starts at storage that outlives the statement, or at a pointer, which
+    names its object."""
+    n = obj
+    while True:
+        t = analyzer.get_expr_type(n)
+        if t is not None and t.is_pointer():
+            return None
+        if materializing_temp_source(n, analyzer):
+            return n
+        if not isinstance(n, (TpyFieldAccess, TpySubscript)):
+            return None
+        n = n.obj
 
 
 def is_iterator_protocol(t: 'TpyType | None') -> bool:
@@ -1672,7 +1819,7 @@ def param_type_can_lend(ptype: TpyType, *, callables: bool = True) -> bool:
     captures and the undeclared callee default read it; the `borrows=`
     validation admits a by-reference owned leaf beside it."""
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-    return (not t.is_value_type() or is_str_type(t) or is_bytes_type(t)
+    return (not t.is_value_type() or binds_buffer_view(t)
             or is_borrowing_view_type(t) or is_varargs(t)
             or (isinstance(t, TupleType) and t.has_borrowing_element())
             or (callables and (isinstance(t, CallableType) or is_fn_type(t))))
@@ -1791,14 +1938,14 @@ def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,
         at = type_of(arg)
     if not isinstance(at, TpyType):
         return slot
-    at = _held_type(at)
+    at = held_type(at)
     name = peel_coerce(arg)
     whole = (declared_of(name.name) if declared_of is not None
              and isinstance(name, TpyName) else None)
     if isinstance(at, PendingContainerType) and isinstance(whole, TpyType):
         # A literal-seeded local's read is still typed by its literal; the
         # binding holds the container its declaration settled on.
-        at = _held_type(whole)
+        at = held_type(whole)
     in_place = _twin_in_place(proto, arg, at, analyzer)
     if not in_place and (
             is_generic_protocol(proto) or not _has_twin(at, frame) or (
@@ -1811,6 +1958,24 @@ def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,
             peel_binding(whole), (OptionalType, UnionType)):
         at = peel_binding(whole)
     return at
+
+
+def instantiated_slot(slot: TpyType | None, arg: TpyExpr | None,
+                      analyzer: 'ValueCategoryAnalyzer | None', *,
+                      frame: bool) -> TpyType | None:
+    """The type parameter `slot` holds at argument `arg`, as a callee
+    reads it (`frame`: a generator or coroutine factory's): a structural
+    protocol at its concrete twin (`protocol_twin_slot`), an open `T` at
+    the argument's own type where it has one, any other slot as it is."""
+    if slot is None:
+        return None
+    t = protocol_twin_slot(slot, arg, analyzer, None, frame=frame,
+                           writes=False)
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if (isinstance(bare, TypeParamRef) and arg is not None
+            and analyzer is not None):
+        return analyzer.get_expr_type(arg) or t
+    return t
 
 
 def _twin_in_place(proto: NominalType, arg: TpyExpr, t: TpyType,
@@ -1891,7 +2056,7 @@ def _reference_object(t: TpyType, *, records: bool) -> bool:
         or (records and t.is_user_record))
 
 
-def _held_type(t: TpyType) -> TpyType:
+def held_type(t: TpyType) -> TpyType:
     """The type a binding of `t` holds, a literal as its base type and a
     pending `str` / `bytes` view as the owned type its family names."""
     t = peel_binding(t)
@@ -1963,9 +2128,12 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
     outlive) and an `Own[T]` param (the frame takes ownership -- the temporary
     moves in, which is exactly what an unnamed rvalue is for). One SOURCE is
     excluded too: a `str` / `bytes` LITERAL at a view slot (`str`, `StrView`,
-    `bytes`, `BytesView`) is no temporary at all -- the view is over static
-    storage that outlives any frame, and hoisting it would only buy an owned
-    copy. Everything else hoists: the hoisted local is then passed through the
+    `bytes`, `BytesView`) is a view over static storage that outlives any
+    frame, and hoisting it would only buy an owned copy. At a protocol slot
+    the frame deduces its member from the literal itself: a `str` literal
+    binds its static array by reference, and a `bytes` literal is an owned
+    prvalue the frame takes by value -- neither references a temporary.
+    Everything else hoists: the hoisted local is then passed through the
     same per-param coercion the argument already went through, so an owning
     sink still moves, a borrowing sink still views, and a value sink still
     copies.
@@ -1994,11 +2162,36 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
         return None
     src = peel_coerce(a)
     if (isinstance(src, (TpyStrLiteral, TpyBytesLiteral))
-            and _view_slot(bare)):
+            and (_view_slot(bare) or is_protocol_type(bare))):
         return None
+    arms = _select_arms(src)
+    if arms is not None:
+        # A select is the arm it picks: a temporary only where some arm is
+        # one (a select of existing views or of literals binds in place).
+        return (src if any(frame_temp_arg_source(arm, ptype, analyzer)
+                           is not None for arm in arms) else None)
     if not materializing_temp_source(src, analyzer):
         return None
     return src
+
+
+def static_buffer(e: TpyExpr) -> bool:
+    """A `str` / `bytes` literal, or a select every arm of which is one:
+    its buffer is static storage."""
+    if isinstance(e, (TpyStrLiteral, TpyBytesLiteral)):
+        return True
+    arms = _select_arms(e)
+    return arms is not None and all(static_buffer(peel_coerce(a))
+                                    for a in arms)
+
+
+def _select_arms(e: TpyExpr) -> 'tuple[TpyExpr, ...] | None':
+    """The operands a ternary or an `and` / `or` may evaluate to."""
+    if isinstance(e, TpyIfExpr):
+        return (e.then_expr, e.else_expr)
+    if isinstance(e, TpyBinOp) and e.op in ("&&", "||"):
+        return (e.left, e.right)
+    return None
 
 
 def _frame_twin(a: TpyExpr, ptype: 'TpyType | None',
@@ -2548,3 +2741,65 @@ def origin_new(analyzer: ValueCategoryAnalyzer, expr: TpyExpr,
     holds, a tuple literal's members included."""
     return not any(_lends(leaf)
                    for leaf in origin(analyzer, expr, path, members=True))
+
+
+def is_constructor_call(expr: 'TpyExpr',
+                       get_record: 'Callable[[str], object | None]') -> bool:
+    """Whether this call CONSTRUCTS a value, i.e. yields a C++ prvalue.
+
+    Three spellings reach it, and the middle one is why this is shared rather
+    than re-derived: a builtin or generic type instantiation carries
+    `call_type`; a resolved user-record constructor carries `is_constructor`
+    on its fi, which holds however the callee is SPELLED (`cls(...)` inside a
+    @classmethod names no record at all); and a record lookup by name covers
+    the builtin constructors whose fi is a `@cpp_template` `__init__` rather
+    than a synthetic ctor.
+
+    Binding `auto&` to such a result does not compile, so every
+    iterable-lvalue decision must ask exactly this question.
+    """
+    if not isinstance(expr, TpyCall):
+        return False
+    if expr.call_type is not None:
+        return True
+    rfi = expr.resolved_function_info
+    if rfi is not None and rfi.is_constructor:
+        return True
+    return (isinstance(expr.func, TpyName)
+            and get_record(expr.func_name) is not None)
+
+
+def is_lvalue_iterable(
+    expr: TpyExpr,
+    get_record: Callable[[str], object | None],
+) -> bool:
+    """Check if an iterable expression is a C++ lvalue.
+
+    Lvalue expressions get ``auto&`` to preserve consumption semantics.
+    Rvalue expressions (constructors, value-returning calls, literals)
+    get ``auto`` to own the temporary safely.
+
+    get_record: look up a record by name (e.g. registry.get_record).
+    """
+    while isinstance(expr, TpyCoerce):
+        expr = expr.expr
+    if isinstance(expr, TpyName):
+        return True
+    if isinstance(expr, TpyFieldAccess):
+        return is_lvalue_iterable(expr.obj, get_record)
+    if isinstance(expr, TpySubscript):
+        # Slicing (a[1:]) returns an rvalue span/view, not a reference into obj.
+        # Only single-index subscripting (a[0]) returns T& and inherits lvalueness from obj.
+        if isinstance(expr.index, TpySlice):
+            return False
+        # A class `__getitem__` answers as its explicit call does.
+        getitem = expr.dunder(SubscriptDunder.GET)
+        if (getitem is not None
+                and element_access(expr, SubscriptDunder.GET) is None):
+            return call_returns_cpp_ref(None, getitem)
+        return is_lvalue_iterable(expr.obj, get_record)
+    if isinstance(expr, (TpyMethodCall, TpyCall)):
+        return (not is_constructor_call(expr, get_record)
+                and call_returns_cpp_ref(
+                    None, expr.resolved_function_info))
+    return False

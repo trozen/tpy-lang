@@ -305,8 +305,7 @@ void objects_fn() {
     A a = A(::tpy::BigInt(1));
     std::cout << "readonly alias" << " " << ::tpy::print_bool(::tpyapp::main::ro_same(a, a)) << "\n" << ::tpy::check_signals;
     Both b = Both();
-    Both __tmp_1 = Both();
-    std::cout << "two bases" << " " << ::tpy::print_bool(::tpyapp::main::as_right(b, b)) << " " << ::tpy::print_bool(::tpyapp::main::as_right(__tmp_1, b)) << "\n" << ::tpy::check_signals;
+    std::cout << "two bases" << " " << ::tpy::print_bool(::tpyapp::main::as_right(b, b)) << " " << ::tpy::print_bool(::tpyapp::main::as_right(Both(), b)) << "\n" << ::tpy::check_signals;
     Empty e1 = Empty();
     Empty e2 = Empty();
     std::cout << "empty records" << " " << ::tpy::print_bool(::tpy::same_object(&(e1), &(e2))) << "\n" << ::tpy::check_signals;
@@ -533,8 +532,7 @@ void optional_fn() {
 //     print("derived", as_base(d, d), as_base(Base(), d))
 void derived_fn() {
     Derived d = Derived();
-    Base __tmp_1 = Base();
-    std::cout << "derived" << " " << ::tpy::print_bool(::tpyapp::main::as_base(d, d)) << " " << ::tpy::print_bool(::tpyapp::main::as_base(__tmp_1, d)) << "\n" << ::tpy::check_signals;
+    std::cout << "derived" << " " << ::tpy::print_bool(::tpyapp::main::as_base(d, d)) << " " << ::tpy::print_bool(::tpyapp::main::as_base(Base(), d)) << "\n" << ::tpy::check_signals;
 }
 
 // def same_rc(x: Rc[A], y: Rc[A]) -> bool:
@@ -736,13 +734,8 @@ void main() {
     ::tpyapp::main::free_fn();
     ::tpyapp::main::method_fn();
     ::tpyapp::main::container_fn();
-    std::vector<::tpy::BigInt> __tmp_1 = {1, 2};
-    ::tpy::ordered_map<std::string, double> __tmp_2 = ::tpy::ordered_map<std::string, double>({{"k", 1.0}});
-    std::vector<int32_t> __tmp_3 = {3};
-    ::tpy::ordered_set<double> __tmp_4 = ::tpy::ordered_set<double>({1.0});
-    ::tpyapp::main::literal_fn(__tmp_1, __tmp_2, __tmp_3, __tmp_4);
-    std::array<std::array<int32_t, 2>, 2> __tmp_5 = {{{1, 2}, {3, 4}}};
-    ::tpyapp::main::nested_fn(__tmp_5);
+    ::tpyapp::main::literal_fn({1, 2}, ::tpy::ordered_map<std::string, double>({{"k", 1.0}}), {3}, ::tpy::ordered_set<double>({1.0}));
+    ::tpyapp::main::nested_fn({{{1, 2}, {3, 4}}});
     std::vector<::tpy::BigInt> ys = {1};
     ::tpyapp::main::none_pair_fn(nullptr, ys);
     ::tpyapp::main::none_pair_fn(&(ys), ys);

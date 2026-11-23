@@ -124,8 +124,7 @@ void main() {
             std::cout << __pet9.name << "\n" << ::tpy::check_signals;
         }
     }
-    Dog __tmp_1 = Dog("Spot");
-    ::tpyapp::main::copy_module_spelling(::tpy::Union<Cat*, Dog*>{&__tmp_1});
+    ::tpyapp::main::copy_module_spelling(::tpy::Union<Cat*, Dog*>{&(::tpy::as_mut_lvalue(Dog("Spot")))});
 }
 
 // main()

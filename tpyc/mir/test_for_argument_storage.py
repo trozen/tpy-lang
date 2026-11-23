@@ -1,4 +1,4 @@
-"""Named argument lifetimes compose with existing range and iterator CFGs."""
+"""Named argument backings of loop heads nested in range and iterator loops compose with their CFGs."""
 
 from dataclasses import replace
 
@@ -8,7 +8,6 @@ from ..compilation_context import activate_compiler
 from ..codegen_cpp.context import CodeGenContext
 from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from ..thir import nodes as th
-from ..thir.test_for_temp_plan import SOURCE
 from ..thir.testutil import _compile, _entry
 from .testutil import compiled_definitions, placed_storage, prepared, workspace_functions
 from .call_contract import MIRSummaryState
@@ -17,11 +16,9 @@ from .dump import _write_step
 from .definitions import MIRDefinitions
 from .testutil import lower_constructor, lower_function
 from .nodes import (
-    MIRWrap,
-    MIRStorageInit,
-    MIRAlias, MIRAssign, MIRBodyId, MIRBranch, MIRCall,
-    MIRCopy, MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorInit, MIRNotCovered,
-    MIRPlace, MIRRangeAdvance,
+    MIRAlias, MIRAssign, MIRBodyId, MIRCall,
+    MIRCopy, MIRFunction, MIRNotCovered,
+    MIRBranch, MIRIteratorAdvance, MIRIteratorInit, MIRPlace, MIRRangeAdvance,
     MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .region_flow import MIRRegionFlow
@@ -32,15 +29,145 @@ from .prepare import validate_function
 Artifacts = tuple[CodeGenContext, MIRCallWorkspace, MIRDefinitions]
 
 
-@pytest.fixture(scope="module")
-def compiled():
-    return _compile(SOURCE + '''
+SOURCE = '''from tpy import int32, nocopy, Array, readonly
+
+@nocopy
+class Cell:
+    value: int32
+    xs: list[int32]
+    def __init__(self, value: int32):
+        self.value = value
+        self.xs = [value]
+
+def items(cell: readonly[Cell]) -> readonly[list[int32]]:
+    return cell.xs
+
+def ranges(n: int32) -> int32:
+    result = 0
+    for i in range(n):
+        for v in items(Cell(i)):
+            result = v
+    else:
+        for v in items(Cell(result)):
+            result = v
+    return result
+
+def descending(n: int32) -> int32:
+    last = 42
+    for last in range(n, 0, -1):
+        for v in items(Cell(last)):
+            last = v
+    return last
+
+def broken(n: int32) -> int32:
+    last = 42
+    for i in range(n, 0, -1):
+        for v in items(Cell(i)):
+            last = v
+            break
+    else:
+        for v in items(Cell(last)):
+            last = v
+    return last
+
+def written(start: int32, stop: int32) -> int32:
+    last = 42
+    for i in range(start, stop):
+        for v in items(Cell(i)):
+            last = v
+        start = 99
+        stop = 99
+        i = 88
+    return last
+
+def native(values: list[int32]) -> int32:
+    result = 0
+    for value in values:
+        for v in items(Cell(value)):
+            result = v
+    else:
+        for v in items(Cell(result)):
+            result = v
+    return result
+
+def records(values: list[Cell], n: int32) -> int32:
+    result = 0
+    for cell in values:
+        for v in items(Cell(n)):
+            cell.value = v
+        result = cell.value
+    return result
+
+def readonly_records(values: readonly[list[Cell]], n: int32) -> int32:
+    result = 0
+    for cell in values:
+        value = cell.value
+        for v in items(Cell(value)):
+            result = v
+    return result
+
+def array(values: Array[int32, 2]) -> int32:
+    result = 0
+    for value in values:
+        for v in items(Cell(value)):
+            result = v
+    return result
+
+def keys(values: dict[int32, int32]) -> int32:
+    result = 0
+    for value in values:
+        for v in items(Cell(value)):
+            result = v
+    return result
+
+def members(values: set[int32]) -> int32:
+    result = 0
+    for value in values:
+        for v in items(Cell(value)):
+            result = v
+    return result
+
+def nested(values: list[int32], n: int32) -> int32:
+    result = 0
+    for value in values:
+        for i in range(n):
+            for v in items(Cell(value)):
+                result = v
+    return result
+
+def early(n: int32, take: bool) -> int32:
+    for i in range(n):
+        for v in items(Cell(i)):
+            if take:
+                return v
+    return 9
+
 def retained(seed: Cell, n: int32) -> int32:
     result = 0
     for i in range(n):
-        result = read(Cell(i))
+        for v in items(Cell(i)):
+            result = v
     return result
-''')
+
+class Runner:
+    result: int32
+    def __init__(self, n: int32):
+        self.result = 0
+        for i in range(n):
+            for v in items(Cell(i)):
+                self.result = v
+    def method(self, values: list[int32]) -> int32:
+        result = 0
+        for value in values:
+            for v in items(Cell(value)):
+                result = v
+        return result
+'''
+
+
+@pytest.fixture(scope="module")
+def compiled():
+    return _compile(SOURCE)
 
 
 @pytest.fixture(scope="module")
@@ -79,7 +206,7 @@ def storage(fn: MIRFunction) -> list[MIRSlot]:
     return placed_storage(fn)
 
 
-@pytest.mark.parametrize("name", ["ranges", "descending", "written", "native", "records",
+@pytest.mark.parametrize("name", ["ranges", "descending", "broken", "written", "native", "records",
                                   "readonly_records", "array", "keys", "members", "nested",
                                   "early", "method", "Runner"])
 def test_for_callers_reach_valid_mir_without_copies(artifacts: Artifacts, name: str) -> None:
@@ -112,72 +239,15 @@ def test_range_counter_survives_each_body_activation(artifacts: Artifacts, name:
     counter = fn.slots[advance.target.root.index]
     backing = storage(fn)[0]
     region = fn.regions[backing.residence.index]
-    assert region.parent == counter.residence
+    # The head scope sits in the range body, inside the counter's region.
+    assert fn.regions[region.parent.index].parent == counter.residence
     flow = MIRRegionFlow(fn)
     entries = [t for t in flow.edges.values() if region.id in t.entered]
     exits = [t for t in flow.edges.values() if region.id in t.exited and t.target is not None
-             and fn.blocks[t.target.index].region == counter.residence]
+             and fn.blocks[t.target.index].region == region.parent]
     assert entries and exits
     assert all(backing.id in t.reset and counter.id not in t.reset for t in entries)
     assert all(backing.id in t.ended and counter.id not in t.reset for t in exits)
-
-
-def test_native_iterator_survives_body_end_and_else_is_outside(artifacts: Artifacts) -> None:
-    fn = body(artifacts, "native")
-    iterator = next(s.target.root for b in fn.blocks for s in b.statements
-                    if isinstance(s, MIRAssign) and isinstance(s.value, MIRIteratorInit))
-    inside, otherwise = storage(fn)
-    outer = fn.slots[iterator.index].residence
-    assert fn.regions[inside.residence.index].parent == outer
-    assert fn.regions[otherwise.residence.index].parent == outer
-    assert inside.residence != otherwise.residence
-    advance = next(b for b in fn.blocks if any(isinstance(s, MIRAssign)
-                   and isinstance(s.value, MIRIteratorAdvance) for s in b.statements))
-    exits = [t for t in MIRRegionFlow(fn).edges.values() if t.target == advance.id]
-    assert exits and all(inside.id in t.ended and iterator not in t.reset for t in exits)
-
-
-def test_range_break_ends_counter_and_backing_but_zero_trip_skips_body(artifacts: Artifacts) -> None:
-    fn = body(artifacts, "descending")
-    inside, otherwise = storage(fn)
-    counter = next(s.target.root for b in fn.blocks for s in b.statements
-                   if isinstance(s, MIRAssign) and isinstance(s.value, MIRRangeAdvance))
-    counter_region = fn.slots[counter.index].residence
-    flow = MIRRegionFlow(fn)
-    breaks = [t for t in flow.edges.values() if t.target is not None
-              and inside.residence in t.exited and counter_region in t.exited]
-    assert len(breaks) == 1
-    assert inside.id in breaks[0].ended and counter in breaks[0].reset
-    assert otherwise.residence not in breaks[0].entered
-    assert isinstance(fn.blocks[breaks[0].target.index].terminator, MIRReturn)
-
-    head = next(b for b in fn.blocks if b.region == counter_region
-                and isinstance(b.terminator, MIRBranch))
-    empty = next(t for e, t in flow.edges.items() if e.source == head.id and e.arm == 1)
-    assert counter_region in empty.exited and counter in empty.reset
-    assert inside.residence not in empty.entered and inside.residence not in empty.exited
-    assert inside.id not in empty.reset and inside.id not in empty.ended
-    normal = fn.blocks[empty.target.index]
-    assert normal.region == otherwise.residence and otherwise.residence in empty.entered
-    assert isinstance(normal.terminator, MIRGoto)
-    assert normal.terminator.target == breaks[0].target
-
-
-@pytest.mark.parametrize("name", ["ranges", "native"])
-def test_lazy_backing_exists_before_selection_but_payload_does_not(artifacts: Artifacts, name: str) -> None:
-    fn = body(artifacts, name)
-    backing = storage(fn)[0]
-    assert backing.shape.owned_sum
-    declaration = next(b for b in fn.blocks if any(isinstance(s, MIRStorageInit)
-                       and s.target.root == backing.id for s in b.statements))
-    # The fill that moves the built record into the sum.
-    initialization = next(b for b in fn.blocks if any(isinstance(s, MIRAssign)
-                          and s.target.root == backing.id and isinstance(s.value, MIRWrap)
-                          for s in b.statements))
-    assert declaration.region == initialization.region == backing.residence
-    assert isinstance(declaration.terminator, MIRBranch)
-    assert initialization.id == declaration.terminator.then
-    assert initialization.id != declaration.terminator.otherwise
 
 
 def test_early_return_ends_temporary_and_counter_scopes(artifacts: Artifacts) -> None:
@@ -225,13 +295,15 @@ def test_missing_for_scope_evidence_does_not_gain_coverage(artifacts: Artifacts)
 
 
 @pytest.mark.parametrize("loop", [
-    "for i in range(0, n, 2):\n        result = read(Cell(i))",
-    "for i in range(n):\n        print(i)\n        result = read(Cell(i))",
+    "for i in range(0, n, 2):\n        for v in items(Cell(i)):\n            result = v",
+    "for i in range(n):\n        print(i)\n        for v in items(Cell(i)):\n            result = v",
 ], ids=["non-unit-step", "unknown-body-producer"])
 def test_source_for_boundaries_leave_the_whole_body_unplanned(loop: str) -> None:
     compiler, modules = _compile(SOURCE + '''
 def rejected(n: int32) -> int32:
-    result = read(Cell(n))
+    result = 0
+    for v in items(Cell(n)):
+        result = v
     ''' + loop + '''
     return result
 ''')
@@ -244,3 +316,56 @@ def rejected(n: int32) -> int32:
     result = next(b for identity, b in workspace_functions(workspace).items()
                   if identity.declaration.split("@")[0] == "rejected")
     assert isinstance(result, MIRNotCovered) and result.reason == "named argument needs complete temporary plan"
+
+
+def _ancestors(fn: MIRFunction, region: MIRRegionId) -> list[MIRRegionId]:
+    chain = []
+    while isinstance(region, MIRRegionId):
+        chain.append(region)
+        region = fn.regions[region.index].parent
+    return chain
+
+
+def test_body_and_else_head_backings_end_each_pass(artifacts: Artifacts) -> None:
+    # The body's and the else's loop heads keep their arguments in regions
+    # of their own under the outer loop's; a pass ends the body's, never
+    # the outer iterator.
+    fn = body(artifacts, "native")
+    iterator = next(s.target.root for b in fn.blocks for s in b.statements
+                    if isinstance(s, MIRAssign) and isinstance(s.value, MIRIteratorInit))
+    inside, otherwise = storage(fn)
+    outer = fn.slots[iterator.index].residence
+    assert outer in _ancestors(fn, inside.residence)
+    assert inside.residence != otherwise.residence
+    assert inside.residence not in _ancestors(fn, otherwise.residence)
+    advance = next(b for b in fn.blocks if any(
+        isinstance(s, MIRAssign) and isinstance(s.value, MIRIteratorAdvance)
+        and s.target.root == iterator for s in b.statements))
+    flow = MIRRegionFlow(fn)
+    leaves = [t for t in flow.edges.values() if inside.residence in t.exited]
+    assert leaves and all(inside.id in t.ended and iterator not in t.reset
+                          for t in leaves)
+    passes = [t for t in flow.edges.values() if t.target == advance.id]
+    assert passes and all(iterator not in t.reset for t in passes)
+
+
+def test_range_zero_trip_skips_the_body_head_backing(artifacts: Artifacts) -> None:
+    fn = body(artifacts, "broken")
+    inside, otherwise = storage(fn)
+    counter = next(s.target.root for b in fn.blocks for s in b.statements
+                   if isinstance(s, MIRAssign) and isinstance(s.value, MIRRangeAdvance))
+    counter_region = fn.slots[counter.index].residence
+    flow = MIRRegionFlow(fn)
+    # The inner loop's break leaves its head scope: the backing ends.
+    breaks = [t for t in flow.edges.values() if t.target is not None
+              and inside.residence in t.exited and counter_region not in t.exited]
+    assert breaks and all(inside.id in t.ended for t in breaks)
+    # No pass: the counter's scope ends, the body's backing is never
+    # entered, and control reaches the else, whose head keeps its own.
+    head = next(b for b in fn.blocks if b.region == counter_region
+                and isinstance(b.terminator, MIRBranch))
+    empty = next(t for e, t in flow.edges.items() if e.source == head.id and e.arm == 1)
+    assert counter_region in empty.exited and counter in empty.reset
+    assert inside.residence not in empty.entered and inside.residence not in empty.exited
+    assert inside.id not in empty.reset and inside.id not in empty.ended
+    assert fn.blocks[empty.target.index].region in _ancestors(fn, otherwise.residence)

@@ -870,9 +870,7 @@ void subjects(::tpystd::tplib::box::Box<Pet>& b) {
     ::tpyapp::main::poly_rebound();
     ::tpyapp::main::poly_global();
     ::tpyapp::main::subjects_d();
-    Kennel __tmp_1 = Kennel(1, ::tpystd::tplib::box::Box<Hound>(Hound()));
-    Kennel __tmp_2 = Kennel(1, ::tpystd::tplib::box::Box<Hound>(Hound()));
-    ::tpyapp::main::poly_guarded(&(__tmp_1), __tmp_2);
+    ::tpyapp::main::poly_guarded(&::tpy::as_mut_lvalue(Kennel(1, ::tpystd::tplib::box::Box<Hound>(Hound()))), ::tpy::as_mut_lvalue(Kennel(1, ::tpystd::tplib::box::Box<Hound>(Hound()))));
     Item it3 = Item(1);
     std::cout << "generator-nested-record" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -1036,14 +1034,11 @@ void elements() {
     ::tpyapp::main::keep(xs, std::move(__tmp_3));
     std::cout << "cast-own-arg" << " " << it.n << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"k", 0}});
-    ::tpy::Adapter<Named, Tag> __tmp_4{Tag()};
-    ::tpyapp::main::count(__tmp_4, d);
+    ::tpyapp::main::count(::tpy::as_mut_lvalue(::tpy::Adapter<Named, Tag>{Tag()}), d);
     std::cout << "dyn-str-key" << " " << ::tpy::__getitem__(d, "k") << "\n" << ::tpy::check_signals;
     std::cout << "slice-move" << " " << ::tpy::ListPrinter(::tpyapp::main::split("ab")) << "\n" << ::tpy::check_signals;
-    Slot __tmp_5 = Slot();
-    ::tpyapp::main::any_store(__tmp_5, it);
-    ::tpystd::tplib::box::Box<Pet> __tmp_6 = ::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog(1)));
-    ::tpyapp::main::subjects(__tmp_6);
+    ::tpyapp::main::any_store(::tpy::as_mut_lvalue(Slot()), it);
+    ::tpyapp::main::subjects(::tpy::as_mut_lvalue(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog(1)))));
 }
 
 // def main() -> None:

@@ -310,9 +310,8 @@ struct __coro_await_caller {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<A> r;
-    ::tpy::frame_slot<A> __coro_arg_0;
-    std::tuple<A*, A*> __coro_arg_1;
     ::tpy::BigInt t;
+    ::tpy::frame_slot<A> __head_arg_0;
     std::optional<__coro_co> __sub_0;
 
     enum : int32_t {
@@ -338,10 +337,10 @@ struct __coro_task_caller {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<A> r;
-    ::tpy::frame_slot<A> __coro_arg_0;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<::tpy::BigInt>> task;
     ::tpy::frame_slot<std::array<A, 50>> junk;
     ::tpy::BigInt t;
+    ::tpy::frame_slot<A> __head_arg_0;
     ::tpystd::asyncio::_executor::Task<::tpy::BigInt>* __sub_0 = nullptr;
 
     enum : int32_t {
@@ -393,7 +392,6 @@ struct __coro_async_callee {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     A& a;
-    std::tuple<A*, ::tpy::BigInt> __coro_arg_0;
     std::optional<__coro_abump> __sub_0;
 
     enum : int32_t {
@@ -490,8 +488,8 @@ struct __gen_outer : public ::tpy::next_iter_mixin<__gen_outer, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     ::tpy::frame_slot<A> r;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<A> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::pair(std::tuple<A*, A*>{&((*__coro_arg_0)), &((*r))})))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::pair(std::tuple<A*, A*>{&(std::declval<A&>()), &((*r))})))>;
+    ::tpy::frame_slot<A> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
@@ -633,15 +631,17 @@ inline B::B(const ::tpy::BigInt& w) : w(w) {}
 //     self.xs = [x for x in pair((A(21), r))]  # tpyc: ok
 inline H::H() {
     A r = A(::tpy::BigInt(5));
-    A __tmp_1 = A(::tpy::BigInt(21));
     this->xs = ({
         std::vector<::tpy::BigInt> __result;
-        auto __obj_0 = ::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_1), &(r)});
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const ::tpy::BigInt& x = *__beg_0;
-            __result.push_back(x);
+        {
+            A __tmp_1 = A(::tpy::BigInt(21));
+            auto __obj_0 = ::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_1), &(r)});
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                const ::tpy::BigInt& x = *__beg_0;
+                __result.push_back(x);
+            }
         }
         std::move(__result);
     });

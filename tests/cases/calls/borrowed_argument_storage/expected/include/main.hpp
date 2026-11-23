@@ -75,22 +75,24 @@ inline Cell::Cell(int32_t value) : value(value) {}
 
 // def inspect(self, value: int32) -> int32:
 //     # A method binds the alias the same way as a free function.
-//     saved = observe(Cell(value))
+//     c = Cell(value)
+//     saved = observe(c)
 //     return saved.value + self.value
 inline int32_t Cell::inspect(int32_t value) const {
-    Cell __tmp_1 = Cell(value);
-    const Cell& saved = ::tpyapp::main::observe(__tmp_1);
+    Cell c = Cell(value);
+    const Cell& saved = ::tpyapp::main::observe(c);
     return (::tpy::add_check<int32_t>(saved.value, this->value));
 }
 
 // def __init__(self, value: int32):
 //     self.value = 0
-//     # A constructor tail declares the argument before the reference binds.
-//     saved = observe(Cell(value))
+//     # A constructor tail binds it the same way.
+//     c = Cell(value)
+//     saved = observe(c)
 //     self.value = saved.value
 inline Caller::Caller(int32_t value) : value(0) {
-    Cell __tmp_1 = Cell(value);
-    const Cell& saved = ::tpyapp::main::observe(__tmp_1);
+    Cell c = Cell(value);
+    const Cell& saved = ::tpyapp::main::observe(c);
     this->value = saved.value;
 }
 void __tpy_init();

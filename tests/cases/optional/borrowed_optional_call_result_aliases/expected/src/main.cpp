@@ -613,32 +613,20 @@ __coro_amain amain(H& h) {
 //     asyncio.run(amain(H()))
 void main() {
     ::tpyapp::main::s_dict_get();
-    H __tmp_1 = H();
-    ::tpyapp::main::s_method(__tmp_1);
-    H __tmp_2 = H();
-    ::tpyapp::main::s_free(__tmp_2);
-    std::vector<R> __tmp_3 = {R()};
-    ::tpyapp::main::s_generic(__tmp_3);
-    R __tmp_4 = R();
-    S __tmp_5 = S(1);
-    ::tpyapp::main::s_union(__tmp_4, __tmp_5);
-    H __tmp_6 = H();
-    ::tpyapp::main::s_readonly(__tmp_6);
-    H __tmp_7 = H();
-    ::tpyapp::main::s_walrus(__tmp_7);
-    H __tmp_8 = H();
-    ::tpyapp::main::s_assert(__tmp_8);
-    H __tmp_9 = H();
-    ::tpyapp::main::s_closure(__tmp_9);
-    H __tmp_10 = H();
-    ::tpyapp::main::s_try(__tmp_10);
-    H __tmp_11 = H();
-    ::tpyapp::main::s_with(__tmp_11);
+    ::tpyapp::main::s_method(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::s_free(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::s_generic(::tpy::as_mut_lvalue(std::vector<R>{R()}));
+    ::tpyapp::main::s_union(::tpy::as_mut_lvalue(R()), ::tpy::as_mut_lvalue(S(1)));
+    ::tpyapp::main::s_readonly(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::s_walrus(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::s_assert(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::s_closure(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::s_try(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::s_with(::tpy::as_mut_lvalue(H()));
     int32_t n;
     {
-        H __tmp_12 = H();
         {
-            auto __try_tmp_2 = ::tpyapp::main::s_error_return(__tmp_12);
+            auto __try_tmp_2 = ::tpyapp::main::s_error_return(::tpy::as_mut_lvalue(H()));
             if (!__try_tmp_2.has_value()) goto __except_1;
             n = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -650,30 +638,19 @@ void main() {
         std::cout << "error_return none" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
-    H __tmp_13 = H();
-    ::tpyapp::main::s_tuple(__tmp_13);
-    std::vector<R> __tmp_14 = {R()};
-    ::tpyapp::main::s_ternary_alias(__tmp_14, true);
-    std::vector<R> __tmp_15 = {R()};
-    ::tpyapp::main::s_ternary_sink(__tmp_15, true);
-    H __tmp_16 = H();
-    C c = C(__tmp_16);
+    ::tpyapp::main::s_tuple(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::s_ternary_alias(::tpy::as_mut_lvalue(std::vector<R>{R()}), true);
+    ::tpyapp::main::s_ternary_sink(::tpy::as_mut_lvalue(std::vector<R>{R()}), true);
+    C c = C(::tpy::as_mut_lvalue(H()));
     std::cout << "ctor" << " " << ::tpy::__len__(c.r.xs) << "\n" << ::tpy::check_signals;
-    H __tmp_17 = H();
-    ::tpyapp::main::s_append(__tmp_17);
-    H __tmp_18 = H();
-    ::tpyapp::main::s_own_arg(__tmp_18);
+    ::tpyapp::main::s_append(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::s_own_arg(H());
     H h = H();
     R t = ::tpyapp::main::s_own_ret(h);
     std::cout << "own_ret" << " " << ::tpy::__len__(t.xs) << " " << ::tpyapp::main::olen(h) << "\n" << ::tpy::check_signals;
-    H __tmp_19 = H();
-    K __tmp_20 = K();
-    ::tpyapp::main::s_field(__tmp_19, __tmp_20);
-    H __tmp_21 = H();
-    ::tpyapp::main::s_comp(__tmp_21);
-    H __tmp_22 = H();
-    K __tmp_23 = K();
-    ::tpyapp::main::s_opt_field(__tmp_22, __tmp_23);
+    ::tpyapp::main::s_field(::tpy::as_mut_lvalue(H()), ::tpy::as_mut_lvalue(K()));
+    ::tpyapp::main::s_comp(::tpy::as_mut_lvalue(H()));
+    ::tpyapp::main::s_opt_field(::tpy::as_mut_lvalue(H()), ::tpy::as_mut_lvalue(K()));
     H h2 = H();
     std::optional<R> __slot_1 = ::tpyapp::main::s_opt_ret(h2);
     R* t2 = ::tpy::optional_to_ptr(__slot_1);
@@ -681,11 +658,10 @@ void main() {
     ::tpyapp::main::s_owned();
     H h3 = H();
     ::tpyapp::main::s_sources(h3, ::tpy::optional_to_ptr(h3.o));
-    H __tmp_24 = H();
-    ::tpyapp::main::s_match(__tmp_24);
+    ::tpyapp::main::s_match(::tpy::as_mut_lvalue(H()));
     {
-        H __tmp_25 = H();
-        auto __src_0 = ::tpyapp::main::s_gen(__tmp_25);
+        H __tmp_1 = H();
+        auto __src_0 = ::tpyapp::main::s_gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -694,8 +670,8 @@ void main() {
             std::cout << "gen" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    H __tmp_26 = H();
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain(__tmp_26)));
+    H __tmp_2 = H();
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain(__tmp_2)));
 }
 
 // import asyncio

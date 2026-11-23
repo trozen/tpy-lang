@@ -6,8 +6,10 @@ def identity[T: Sized](item: T) -> T:
     return item
 
 def main() -> None:
-    # list[int] satisfies Sized, so inference should work
-    items = identity([1, 2, 3])
+    # list[int] satisfies Sized, so inference should work; the result is the
+    # argument itself, so it is a local (a fresh one lives for its statement)
+    xs = [1, 2, 3]
+    items = identity(xs)
     print(len(items))  # Should print 3
 
     # str satisfies Sized too

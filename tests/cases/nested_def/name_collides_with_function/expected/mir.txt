@@ -19,7 +19,7 @@ main::scope_above_block_position@247:0: uncovered (unsupported statement), summa
 main::block_then_scope_position@262:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::two_block_defs_position@283:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::method_position@307:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::main@313:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::main@313:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Guard.__enter__@21:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Guard.__exit__@24:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Counter.tally@41:4: uncovered (unsupported statement), summary: opaque (unsupported statement)

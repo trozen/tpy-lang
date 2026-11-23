@@ -407,9 +407,7 @@ void main() {
     std::function<int32_t()> h = ::tpyapp::main::optional_param(&(p));
     p.n = 8;
     std::cout << "optional_param:" << " " << h() << "\n" << ::tpy::check_signals;
-    P __tmp_1 = P(1);
-    P __tmp_2 = P(2);
-    ::tpyapp::main::borrow_tuple(__tmp_1, __tmp_2);
+    ::tpyapp::main::borrow_tuple(::tpy::as_mut_lvalue(P(1)), ::tpy::as_mut_lvalue(P(2)));
     ::tpyapp::main::hoisted_loop();
     std::array<P, 1> ys = {P(1)};
     ::tpyapp::main::ptr_span(::tpy::as_mut_span(ys));

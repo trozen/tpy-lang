@@ -142,11 +142,10 @@ int32_t str_local(H& h) {
 }
 
 // # list remedy: copy() hands the iteration its own list: silent (MIR does not lower copy() of a list yet)
-// def list_copy(xs: list[int32]) -> int32:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
+// def list_copy(xs: list[int32]) -> int32:  # tpyc: mir(uncovered /unsupported metadata: cpp_template/)
 //     return walk(copy(xs), xs)  # tpyc: ok
 int32_t list_copy(std::vector<int32_t>& xs) {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>(xs);
-    return ::tpyapp::main::walk(__tmp_1, xs);
+    return ::tpyapp::main::walk(std::vector<int32_t>(xs), xs);
 }
 
 // def alias_external(left: Line, right: Line) -> bool:  # tpyc: mir(conflict /alias_obligation/)
@@ -248,12 +247,11 @@ __gen_gen_caller gen_caller(std::vector<::tpy::BigInt>& xs) {
     return ::tpyapp::helpers::grow_then_read(xs, ::tpy::BigInt(1), ::tpy::__getitem__(xs, 0));
 }
 
-// # record remedy: copy() hands the callee its own record: silent (MIR does not lower this caller yet)
-// def line_copy(ln: Line) -> bool:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
+// # record remedy: copy() hands the callee its own record: silent
+// def line_copy(ln: Line) -> bool:  # tpyc: mir(covered)
 //     return alias_external(ln, copy(ln))  # tpyc: ok
 bool line_copy(const Line& ln) {
-    Line __tmp_1 = Line(ln);
-    return ::tpyapp::main::alias_external(ln, __tmp_1);
+    return ::tpyapp::main::alias_external(ln, ::tpy::as_mut_lvalue(Line(ln)));
 }
 
 // def pick(c: bool, a: list[Cell], b: list[Cell]) -> int32:  # tpyc: mir(conflict /alias_obligation/)
@@ -355,30 +353,16 @@ int32_t element_field(std::vector<Named>& ps) {
 //     named = [Named("a"), Named("b")]
 //     print("touch", touch(named, "abc"), named[0].s, named[1].s)
 void main() {
-    std::vector<::tpy::BigInt> __tmp_1 = {1};
-    std::vector<::tpy::BigInt> __tmp_2 = {2};
-    std::cout << "other_int" << " " << ::tpyapp::main::other_int(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_3 = {3};
-    std::cout << "local_copy" << " " << ::tpyapp::main::local_copy(__tmp_3) << "\n" << ::tpy::check_signals;
-    H __tmp_4 = H("a");
-    std::cout << "scalar_field" << " " << ::tpyapp::main::scalar_field(__tmp_4) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_5 = {1, 2};
-    std::vector<int32_t> __tmp_6 = std::vector<int32_t>{};
-    std::cout << "walk" << " " << ::tpyapp::main::walk(__tmp_5, __tmp_6) << "\n" << ::tpy::check_signals;
-    H __tmp_7 = H("a");
-    H __tmp_8 = H("b");
-    std::cout << "other_field" << " " << ::tpyapp::main::other_field(__tmp_7, __tmp_8) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_9 = {7, 8};
-    std::cout << "copied_list" << " " << ::tpyapp::main::copied_list(__tmp_9) << "\n" << ::tpy::check_signals;
-    H __tmp_10 = H("abc");
-    std::cout << "str_local" << " " << ::tpyapp::main::str_local(__tmp_10) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_11 = {4, 5};
-    std::cout << "list_copy" << " " << ::tpyapp::main::list_copy(__tmp_11) << "\n" << ::tpy::check_signals;
-    H __tmp_12 = H("a");
-    std::cout << "forwarded_then_reuse" << " " << ::tpyapp::main::forwarded_then_reuse(__tmp_12, "bcd") << "\n" << ::tpy::check_signals;
-    Line __tmp_13 = Line(Point(1, "p"));
-    Line __tmp_14 = Line(Point(2, "q"));
-    std::cout << "alias_external" << " " << ::tpy::print_bool(::tpyapp::main::alias_external(__tmp_13, __tmp_14)) << "\n" << ::tpy::check_signals;
+    std::cout << "other_int" << " " << ::tpyapp::main::other_int(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{1}), {2}) << "\n" << ::tpy::check_signals;
+    std::cout << "local_copy" << " " << ::tpyapp::main::local_copy(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{3})) << "\n" << ::tpy::check_signals;
+    std::cout << "scalar_field" << " " << ::tpyapp::main::scalar_field(::tpy::as_mut_lvalue(H("a"))) << "\n" << ::tpy::check_signals;
+    std::cout << "walk" << " " << ::tpyapp::main::walk({1, 2}, ::tpy::as_mut_lvalue(std::vector<int32_t>{})) << "\n" << ::tpy::check_signals;
+    std::cout << "other_field" << " " << ::tpyapp::main::other_field(::tpy::as_mut_lvalue(H("a")), H("b")) << "\n" << ::tpy::check_signals;
+    std::cout << "copied_list" << " " << ::tpyapp::main::copied_list(::tpy::as_mut_lvalue(std::vector<int32_t>{7, 8})) << "\n" << ::tpy::check_signals;
+    std::cout << "str_local" << " " << ::tpyapp::main::str_local(::tpy::as_mut_lvalue(H("abc"))) << "\n" << ::tpy::check_signals;
+    std::cout << "list_copy" << " " << ::tpyapp::main::list_copy(::tpy::as_mut_lvalue(std::vector<int32_t>{4, 5})) << "\n" << ::tpy::check_signals;
+    std::cout << "forwarded_then_reuse" << " " << ::tpyapp::main::forwarded_then_reuse(::tpy::as_mut_lvalue(H("a")), "bcd") << "\n" << ::tpy::check_signals;
+    std::cout << "alias_external" << " " << ::tpy::print_bool(::tpyapp::main::alias_external(Line(Point(1, "p")), ::tpy::as_mut_lvalue(Line(Point(2, "q"))))) << "\n" << ::tpy::check_signals;
     Counter __unpack_0_0 = Counter();
     Counter __unpack_0_1 = Counter();
     Counter c = std::move(__unpack_0_0);
@@ -389,8 +373,7 @@ void main() {
     Holder o = Holder(R("x", "y"));
     ::tpyapp::main::member_param(o, "zz");
     std::cout << "member_param" << " " << o.inner.buf << "\n" << ::tpy::check_signals;
-    Line __tmp_15 = Line(Point(5, "r"));
-    std::cout << "line_copy" << " " << ::tpy::print_bool(::tpyapp::main::line_copy(__tmp_15)) << "\n" << ::tpy::check_signals;
+    std::cout << "line_copy" << " " << ::tpy::print_bool(::tpyapp::main::line_copy(Line(Point(5, "r")))) << "\n" << ::tpy::check_signals;
     std::vector<Cell> cells = {Cell(1)};
     std::vector<Cell> others = {Cell(2)};
     std::cout << "container_select pick b:" << " " << ::tpyapp::main::pick(false, cells, others) << "\n" << ::tpy::check_signals;

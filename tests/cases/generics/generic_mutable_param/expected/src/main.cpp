@@ -33,8 +33,7 @@ void main() {
     box_int.set(99);
     std::cout << box_int.get() << "\n" << ::tpy::check_signals;
     Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
-    std::vector<int32_t> __tmp_1 = {4, 5, 6};
-    box_list.set(__tmp_1);
+    box_list.set(::tpy::as_mut_lvalue(std::vector<int32_t>{4, 5, 6}));
     auto& __obj_0 = box_list.get();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

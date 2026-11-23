@@ -19,8 +19,8 @@ std::tuple<Animal, Animal*> make_mixed(int32_t n, Animal& b) {
 }
 
 // # A source that borrows from a temporary argument (`(s := pick(A(9), b))`)
-// # is refused, as the plain binding of it is where the target outlives the
-// # statement (calls/error_borrowed_call_ternary_argument pins that refusal).
+// # is a borrow of a temporary kept past its statement, warned as the plain
+// # binding of it is (calls/error_fresh_arg_borrow_kept).
 // def free_function() -> None:
 //     # free function, inheritance-polymorphic payload behind deref
 //     rc: Rc[Animal] = Rc.new(Hound())
@@ -619,15 +619,17 @@ Animal& ident(Animal& a) {
 }
 
 // def temp_source() -> None:
-//     # a first binding over a call that borrows its temporary argument: the
-//     # temporary lives as long as its statement, as for `p = ident(Animal())`
-//     if (p := ident(Animal())).n > 0:  # tpyc: warning(/Result borrows from temporary argument/)
+//     # a first binding over a call that borrows its argument: a fresh one
+//     # would live for its statement only (warned, as for `p = ident(Animal())`),
+//     # so the body's reads take a local
+//     an = Animal()
+//     if (p := ident(an)).n > 0:  # tpyc: ok
 //         p.n += 4
 //         print("temp source", p.n)
 void temp_source() {
+    Animal an = Animal();
     Animal* p = nullptr;
-    Animal __tmp_1 = Animal();
-    if (((p = &(::tpyapp::main::ident(__tmp_1)), *p).n > 0)) {
+    if (((p = &(::tpyapp::main::ident(an)), *p).n > 0)) {
         p->n = ::tpy::add_check<int32_t>(p->n, 4);
         std::cout << "temp source" << " " << p->n << "\n" << ::tpy::check_signals;
     }
@@ -909,15 +911,13 @@ void main() {
     Holder __tmp_2 = Holder();
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::co_try(__tmp_2)));
     ::tpyapp::main::try_scalar(3);
-    Holder __tmp_3 = Holder();
-    std::cout << "try/except" << " " << ::tpyapp::main::try_except_return(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "try/except" << " " << ::tpyapp::main::try_except_return(::tpy::as_mut_lvalue(Holder())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::try_owned();
     ::tpyapp::main::with_body();
     int32_t er;
     {
-        Holder __tmp_4 = Holder();
         {
-            auto __try_tmp_2 = ::tpyapp::main::er_body(__tmp_4);
+            auto __try_tmp_2 = ::tpyapp::main::er_body(::tpy::as_mut_lvalue(Holder()));
             if (!__try_tmp_2.has_value()) goto __except_1;
             er = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
@@ -950,16 +950,15 @@ void main() {
     Holder h2 = Holder();
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::co(h2)));
     ::tpyapp::main::closure();
-    Holder __tmp_5 = Holder();
-    int32_t r = ::tpyapp::main::try_finally(__tmp_5);
+    int32_t r = ::tpyapp::main::try_finally(::tpy::as_mut_lvalue(Holder()));
     std::cout << "try/finally result" << " " << r << "\n" << ::tpy::check_signals;
     ::tpyapp::main::match_arm(1);
     ::tpyapp::main::lazy(true);
     ::tpyapp::main::lazy(false);
     Holder h3 = Holder();
     {
-        auto&& __tmp_6 = ::tpyapp::main::returned(h3);
-        __tmp_6.n = ::tpy::add_check<int32_t>(__tmp_6.n, 50);
+        auto&& __tmp_3 = ::tpyapp::main::returned(h3);
+        __tmp_3.n = ::tpy::add_check<int32_t>(__tmp_3.n, 50);
     }
     std::cout << "returned" << " " << h3.a.n << "\n" << ::tpy::check_signals;
 }

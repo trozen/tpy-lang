@@ -62,7 +62,7 @@ part_dispatch::__tpy_init: uncovered (module initialization)
 part_dispatch::animal_name@65:0: covered (storage: no_proof_required), summary: known
 part_dispatch::pet_name@69:0: covered (storage: no_proof_required), summary: known
 part_dispatch::dict_size@73:0: covered (storage: no_proof_required), summary: known
-part_dispatch::dispatch@78:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+part_dispatch::dispatch@78:0: uncovered (record initializer type mismatch), summary: opaque (record initializer type mismatch)
 part_dispatch::dispatch_sites@97:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 part_dispatch::via_spa@119:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 part_dispatch::dyn_override@125:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

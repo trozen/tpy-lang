@@ -51,9 +51,7 @@ int32_t takes_wipe__str(std::string_view w) {
 //     w.put(5)
 //     print("deferred borrow kw gap:", e.n, len(xs))
 void deferred_borrow_kw_gap() {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-    std::vector<Sink> xs = {Sink(1, __tmp_1), Sink(2, __tmp_2)};
+    std::vector<Sink> xs = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(2, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
     Sink& e = ::tpy::__getitem__(xs, 0);
     WipeKw<int32_t> w = WipeKw<int32_t>(0, xs);
     w.put(5);
@@ -69,12 +67,10 @@ void deferred_borrow_kw_gap() {
 //     r = takes_wipe(Wipe(xs))  # tpyc: warning(/Passing borrowed container 'xs' to non-readonly parameter/)
 //     print("deferred borrow operand:", n, len(xs), r)
 void deferred_borrow_operand() {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    std::vector<Sink> xs = {Sink(1, __tmp_1)};
+    std::vector<Sink> xs = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
     Sink& e = ::tpy::__getitem__(xs, 0);
     int32_t n = e.n;
-    Wipe<int32_t> __tmp_2 = Wipe<int32_t>(xs);
-    int32_t r = ::tpyapp::main::takes_wipe__Wipe_int32(__tmp_2);
+    int32_t r = ::tpyapp::main::takes_wipe__Wipe_int32(Wipe<int32_t>(xs));
     std::cout << "deferred borrow operand:" << " " << n << " " << ::tpy::__len__(xs) << " " << r << "\n" << ::tpy::check_signals;
 }
 
@@ -89,8 +85,7 @@ void deferred_borrow_operand() {
 //         print("deferred borrow loop:", n, len(xs))
 void deferred_borrow_loop() {
     for (int32_t i = 0; i < 2; ++i) {
-        std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-        std::vector<Sink> xs = {Sink(i, __tmp_1)};
+        std::vector<Sink> xs = {Sink(i, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
         Sink& e = ::tpy::__getitem__(xs, 0);
         int32_t n = e.n;
         Wipe<int32_t> w = Wipe<int32_t>(xs);
@@ -110,8 +105,7 @@ void deferred_borrow_loop() {
 //     w.put(5)
 //     print("deferred borrow:", n, len(xs), w.items)
 void deferred_borrow() {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    std::vector<Sink> xs = {Sink(1, __tmp_1)};
+    std::vector<Sink> xs = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
     Sink& e = ::tpy::__getitem__(xs, 0);
     int32_t n = e.n;
     Wipe<int32_t> w = Wipe<int32_t>(xs);
@@ -132,8 +126,7 @@ void deferred_borrow() {
 //     print("pending borrow:", n, len(xs))
 void pending_borrow() {
     DBag<int32_t> b = DBag<int32_t>();
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    std::vector<Sink> xs = {Sink(1, __tmp_1)};
+    std::vector<Sink> xs = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
     Sink& e = ::tpy::__getitem__(xs, 0);
     int32_t n = e.n;
     b.wipe(xs);
@@ -210,8 +203,7 @@ void deferred_param(std::vector<Sink>& xs) {
 // def drop_kw(k: int32 = 0, *, xs: list[Sink]) -> None:
 //     xs.append(Sink(k, xs=[]))
 void drop_kw(int32_t k, std::vector<Sink>& xs) {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    xs.push_back(Sink(k, __tmp_1));
+    xs.push_back(Sink(k, ::tpy::as_mut_lvalue(std::vector<int32_t>{})));
 }
 
 // def kw_gap_call(xs: list[Sink], ys: list[Sink]) -> None:
@@ -273,13 +265,10 @@ int32_t takes_kwc__str(std::string_view c) {
 //     KwC[int32](n=b.n)
 //     print("routed keyword:", kw_bump(n=b.n), b.n)
 void routed_keyword(const Box& b) {
-    Num __tmp_1 = Num(b.n);
-    KwC<int32_t> c = KwC<int32_t>(__tmp_1);
+    KwC<int32_t> c = KwC<int32_t>(::tpy::as_mut_lvalue(Num(b.n)));
     c.put(1);
-    Num __tmp_2 = Num(b.n);
-    (void)(KwC<int32_t>(__tmp_2));
-    Num __tmp_3 = Num(b.n);
-    std::cout << "routed keyword:" << " " << ::tpyapp::main::kw_bump(__tmp_3) << " " << b.n << "\n" << ::tpy::check_signals;
+    (void)(KwC<int32_t>(::tpy::as_mut_lvalue(Num(b.n))));
+    std::cout << "routed keyword:" << " " << ::tpyapp::main::kw_bump(::tpy::as_mut_lvalue(Num(b.n))) << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def region_borrow() -> None:
@@ -292,16 +281,11 @@ void routed_keyword(const Box& b) {
 //     KwC[int32](n=touch(xs))  # tpyc: warning(/Passing borrowed container 'xs' to non-readonly parameter/)
 //     print("region borrow:", e.n, len(xs))
 void region_borrow() {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_3 = std::vector<int32_t>{};
-    std::vector<Sink> xs = {Sink(1, __tmp_1), Sink(2, __tmp_2), Sink(3, __tmp_3)};
+    std::vector<Sink> xs = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(2, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(3, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
     Sink& e = ::tpy::__getitem__(xs, 0);
-    Num __tmp_4 = Num(::tpyapp::main::touch(xs));
-    KwC<int32_t> c = KwC<int32_t>(__tmp_4);
+    KwC<int32_t> c = KwC<int32_t>(::tpy::as_mut_lvalue(Num(::tpyapp::main::touch(xs))));
     c.put(1);
-    Num __tmp_5 = Num(::tpyapp::main::touch(xs));
-    (void)(KwC<int32_t>(__tmp_5));
+    (void)(KwC<int32_t>(::tpy::as_mut_lvalue(Num(::tpyapp::main::touch(xs)))));
     std::cout << "region borrow:" << " " << e.n << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
@@ -324,16 +308,11 @@ __gen_region_gen region_gen() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-        std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-        std::vector<int32_t> __tmp_3 = std::vector<int32_t>{};
-        xs.emplace(std::vector<Sink>{Sink(1, __tmp_1), Sink(2, __tmp_2), Sink(3, __tmp_3)});
+        xs.emplace(std::vector<Sink>{Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(2, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(3, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))});
         e = &(::tpy::__getitem__((*xs), 0));
-        Num __tmp_4 = Num(::tpyapp::main::touch((*xs)));
-        c.emplace(KwC<int32_t>(__tmp_4));
+        c.emplace(KwC<int32_t>(::tpy::as_mut_lvalue(Num(::tpyapp::main::touch((*xs))))));
         (*c).put(1);
-        Num __tmp_5 = Num(::tpyapp::main::touch((*xs)));
-        (void)(KwC<int32_t>(__tmp_5));
+        (void)(KwC<int32_t>(::tpy::as_mut_lvalue(Num(::tpyapp::main::touch((*xs))))));
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(e->n, ::tpy::__len__((*xs))));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -361,16 +340,11 @@ __coro_region_async region_async() {
 //     return inner()
 int32_t region_closure() {
     auto inner = []() -> int32_t {
-        std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-        std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-        std::vector<int32_t> __tmp_3 = std::vector<int32_t>{};
-        std::vector<Sink> xs = {Sink(1, __tmp_1), Sink(2, __tmp_2), Sink(3, __tmp_3)};
+        std::vector<Sink> xs = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(2, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(3, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
         Sink& e = ::tpy::__getitem__(xs, 0);
-        Num __tmp_4 = Num(::tpyapp::main::touch(xs));
-        KwC<int32_t> c = KwC<int32_t>(__tmp_4);
+        KwC<int32_t> c = KwC<int32_t>(::tpy::as_mut_lvalue(Num(::tpyapp::main::touch(xs))));
         c.put(1);
-        Num __tmp_5 = Num(::tpyapp::main::touch(xs));
-        (void)(KwC<int32_t>(__tmp_5));
+        (void)(KwC<int32_t>(::tpy::as_mut_lvalue(Num(::tpyapp::main::touch(xs)))));
         return (::tpy::add_check<int32_t>(e.n, ::tpy::__len__(xs)));
     };
     return inner();
@@ -386,12 +360,9 @@ int32_t region_closure() {
 //         print("region loop:", e.n, len(xs))
 void region_loop() {
     for (int32_t i = 0; i < 2; ++i) {
-        std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-        std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-        std::vector<Sink> xs = {Sink(1, __tmp_1), Sink(2, __tmp_2)};
+        std::vector<Sink> xs = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(2, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
         Sink& e = ::tpy::__getitem__(xs, 0);
-        Num __tmp_3 = Num(::tpyapp::main::touch(xs));
-        KwC<int32_t> c = KwC<int32_t>(__tmp_3);
+        KwC<int32_t> c = KwC<int32_t>(::tpy::as_mut_lvalue(Num(::tpyapp::main::touch(xs))));
         c.put(1);
         std::cout << "region loop:" << " " << e.n << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     }
@@ -404,13 +375,9 @@ void region_loop() {
 //     r = takes_kwc(KwC(n=touch(xs)))  # tpyc: warning(/Passing borrowed container 'xs' to non-readonly parameter/)
 //     print("region operand:", e.n, len(xs), r)
 void region_operand() {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-    std::vector<Sink> xs = {Sink(1, __tmp_1), Sink(2, __tmp_2)};
+    std::vector<Sink> xs = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(2, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
     Sink& e = ::tpy::__getitem__(xs, 0);
-    Num __tmp_3 = Num(::tpyapp::main::touch(xs));
-    KwC<int32_t> __tmp_4 = KwC<int32_t>(__tmp_3);
-    int32_t r = ::tpyapp::main::takes_kwc__KwC_int32(__tmp_4);
+    int32_t r = ::tpyapp::main::takes_kwc__KwC_int32(KwC<int32_t>(::tpy::as_mut_lvalue(Num(::tpyapp::main::touch(xs)))));
     std::cout << "region operand:" << " " << e.n << " " << ::tpy::__len__(xs) << " " << r << "\n" << ::tpy::check_signals;
 }
 
@@ -424,14 +391,9 @@ void region_operand() {
 //     c.put(1)
 //     print("region late borrow:", e.n, len(xs))
 void region_late_borrow() {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_3 = std::vector<int32_t>{};
-    std::vector<Sink> xs = {Sink(1, __tmp_1), Sink(2, __tmp_2), Sink(3, __tmp_3)};
-    Num __tmp_4 = Num(::tpyapp::main::touch(xs));
-    KwC<int32_t> c = KwC<int32_t>(__tmp_4);
-    Num __tmp_5 = Num(::tpyapp::main::touch(xs));
-    (void)(KwC<int32_t>(__tmp_5));
+    std::vector<Sink> xs = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(2, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(3, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
+    KwC<int32_t> c = KwC<int32_t>(::tpy::as_mut_lvalue(Num(::tpyapp::main::touch(xs))));
+    (void)(KwC<int32_t>(::tpy::as_mut_lvalue(Num(::tpyapp::main::touch(xs)))));
     Sink& e = ::tpy::__getitem__(xs, 0);
     c.put(1);
     std::cout << "region late borrow:" << " " << e.n << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
@@ -454,14 +416,9 @@ Num touch_num(std::vector<Sink>& xs) {
 //     c.put(1)
 //     print("dstar late borrow:", e.n, len(xs))
 void dstar_late_borrow() {
-    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_3 = std::vector<int32_t>{};
-    std::vector<Sink> xs = {Sink(1, __tmp_1), Sink(2, __tmp_2), Sink(3, __tmp_3)};
-    Num __tmp_4 = ::tpyapp::main::touch_num(xs);
-    KwC<int32_t> c = KwC<int32_t>(__tmp_4);
-    Num __tmp_5 = ::tpyapp::main::touch_num(xs);
-    (void)(KwC<int32_t>(__tmp_5));
+    std::vector<Sink> xs = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(2, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(3, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
+    KwC<int32_t> c = KwC<int32_t>(::tpy::as_mut_lvalue(::tpyapp::main::touch_num(xs)));
+    (void)(KwC<int32_t>(::tpy::as_mut_lvalue(::tpyapp::main::touch_num(xs))));
     Sink& e = ::tpy::__getitem__(xs, 0);
     c.put(1);
     std::cout << "dstar late borrow:" << " " << e.n << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
@@ -548,8 +505,7 @@ void main() {
     std::vector<int32_t> xs = {7};
     Sink sink = Sink(1, xs);
     std::cout << "ctor kwonly list:" << " " << sink.n << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
-    Store __tmp_1 = Store();
-    ::tpyapp::main::put(__tmp_1, sink);
+    ::tpyapp::main::put(::tpy::as_mut_lvalue(Store()), sink);
     std::cout << "setitem operand:" << " " << sink.n << "\n" << ::tpy::check_signals;
     DBag<int32_t> d = DBag<int32_t>();
     d.put(1);
@@ -574,22 +530,16 @@ void main() {
         std::cout << "pending error_return propagated" << "\n" << ::tpy::check_signals;
         __after_try_5:;
     }
-    std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-    std::vector<Sink> ps = {Sink(1, __tmp_2)};
+    std::vector<Sink> ps = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
     ::tpyapp::main::deferred_param(ps);
     std::cout << "deferred param:" << " " << ::tpy::__len__(ps) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_3 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_4 = std::vector<int32_t>{};
-    std::vector<Sink> qs = {Sink(1, __tmp_3), Sink(2, __tmp_4)};
-    std::vector<int32_t> __tmp_5 = std::vector<int32_t>{};
-    std::vector<int32_t> __tmp_6 = std::vector<int32_t>{};
-    std::vector<Sink> rs = {Sink(1, __tmp_5), Sink(2, __tmp_6)};
+    std::vector<Sink> qs = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(2, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
+    std::vector<Sink> rs = {Sink(1, ::tpy::as_mut_lvalue(std::vector<int32_t>{})), Sink(2, ::tpy::as_mut_lvalue(std::vector<int32_t>{}))};
     ::tpyapp::main::kw_gap_param(qs, rs);
     std::cout << "kw gap param:" << " " << ::tpy::__len__(qs) << " " << ::tpy::__len__(rs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::kw_gap_call(qs, rs);
     std::cout << "kw gap call:" << " " << ::tpy::__len__(qs) << " " << ::tpy::__len__(rs) << "\n" << ::tpy::check_signals;
-    Box __tmp_7 = Box(3);
-    ::tpyapp::main::routed_keyword(__tmp_7);
+    ::tpyapp::main::routed_keyword(Box(3));
     ::tpyapp::main::region_borrow();
     ::tpyapp::main::region_operand();
     {

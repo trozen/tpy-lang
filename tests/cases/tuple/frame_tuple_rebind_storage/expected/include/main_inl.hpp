@@ -1741,8 +1741,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_retain::__next__()
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        Box __tmp_1 = Box(99);
-        k.emplace(Keeper(__tmp_1));
+        k.emplace(Keeper(::tpy::as_mut_lvalue(Box(99))));
         auto __tup_1 = std::tuple<Box, int32_t>{Box(1), 0};
         std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
         std::get<1>(t) = std::move(std::get<1>(__tup_1));
@@ -1790,8 +1789,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_setter_retain::__n
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        Box __tmp_1 = Box(99);
-        k.emplace(Keeper(__tmp_1));
+        k.emplace(Keeper(::tpy::as_mut_lvalue(Box(99))));
         s = &*(__ptr_slot_f0 = Setter(1, (*k)));
         s->set_value(3);
         __state = S_RESUME_0;

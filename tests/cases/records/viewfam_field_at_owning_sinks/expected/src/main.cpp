@@ -306,10 +306,8 @@ void main() {
             std::cout << "gen yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::vector<Inner> __tmp_2 = {Inner(::tpy::bytes_literal_owned("b1", 2), "s1", "v1", 1), Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2)};
-    ::tpyapp::main::sec_comp(__tmp_2);
-    Outer __tmp_3 = Outer(Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2));
-    ::tpyapp::main::sec_blocks(__tmp_3);
+    ::tpyapp::main::sec_comp(::tpy::as_mut_lvalue(std::vector<Inner>{Inner(::tpy::bytes_literal_owned("b1", 2), "s1", "v1", 1), Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2)}));
+    ::tpyapp::main::sec_blocks(Outer(Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2)));
 }
 
 // main()

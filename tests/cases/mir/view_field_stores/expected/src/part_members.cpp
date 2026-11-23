@@ -311,8 +311,7 @@ void main(bool flag) {
     ::tpyapp::part_members::kid_temp(1, false);
     std::cout << "fixed_base" << " " << ::tpyapp::part_members::fixed_base() << "\n" << ::tpy::check_signals;
     ::tpyapp::part_members::shell_temp(1, false);
-    Items __tmp_1 = Items({::tpyapp::fixtures::mk(1)}, "static");
-    ::tpyapp::part_members::element_view_replaced(__tmp_1, 2, false);
+    ::tpyapp::part_members::element_view_replaced(::tpy::as_mut_lvalue(Items({::tpyapp::fixtures::mk(1)}, "static")), 2, false);
 }
 
 // # MIR over whole members holding a view: replaced, reseated through a borrowed parameter, built

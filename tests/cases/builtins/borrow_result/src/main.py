@@ -310,14 +310,17 @@ def temp_written_fn() -> None:
     it = iter(ps)
     print("temp next", k.write(next(it, P(0))), ps[0].v)
     print("temp next default", k.write(next(it, P(0))))
-    # a method handing the result back: the temporary operand is hoisted
-    # into a local of the enclosing block, so the binding stays valid
-    r = k.ret(min(a, P(-5), key=key_of))  # tpyc: warning(/Result borrows from temporary argument 'p'/)
+    # a method handing the result back: a temporary operand would live for
+    # its statement only (warned, `calls/error_fresh_arg_borrow_kept`), so
+    # the operand the binding keeps is a local
+    m5 = P(-5)
+    r = k.ret(min(a, m5, key=key_of))
     junk = [P(77), P(77), P(77)]
     print("temp method ret", r.v, a.v, len(junk))
-    # a user borrow-returning call at the same method argument: its
-    # temporary container hoists into a block local the result points into
-    h2 = k.ret(head(mk_ps()))  # tpyc: warning(/Result borrows from temporary argument/)
+    # a user borrow-returning call at the same method argument: the
+    # container the result points into is a local too
+    ps2 = mk_ps()
+    h2 = k.ret(head(ps2))
     h2.v += 5
     junk2 = [P(78), P(78), P(78)]
     print("temp method head", h2.v, len(junk2))

@@ -251,8 +251,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_outer_for::__next_
         return "start";
     }
     case S_RESUME_0: {  // after: yield "start"
-        __coro_arg_0 = ::tpyapp::main::make_str(2);
-        __for_src_0.emplace(::tpyapp::main::head_tail(__coro_arg_0));
+        __for_src_0.emplace(::tpyapp::main::head_tail(__head_arg_0.emplace(::tpyapp::main::make_str(2))));
         __state = S_JOIN_0;
         continue;
     }
@@ -285,8 +284,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_span::__next__()
         return 0;
     }
     case S_RESUME_0: {  // after: yield 0
-        __coro_arg_0.emplace(std::array<int32_t, 2>{5, 6});
-        __for_src_0.emplace(::tpyapp::main::read_pair(::tpy::as_span((*__coro_arg_0))));
+        __for_src_0.emplace(::tpyapp::main::read_pair(::tpy::as_span(__head_arg_0.emplace(std::array<int32_t, 2>{5, 6}))));
         __state = S_JOIN_0;
         continue;
     }
@@ -320,7 +318,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp::__next__()
         return 0;
     }
     case S_RESUME_0: {  // after: yield 0
-        __coro_arg_0.emplace(({
+        __for_src_0.emplace(::tpyapp::main::ends(__head_arg_0.emplace(({
             std::vector<int32_t> __result;
             auto& __obj_0 = src;
             __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -331,8 +329,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp::__next__()
                 __result.push_back((::tpy::mul_check<int32_t>(x, 3)));
             }
             std::move(__result);
-        }));
-        __for_src_0.emplace(::tpyapp::main::ends((*__coro_arg_0)));
+        }))));
         __state = S_JOIN_0;
         continue;
     }
@@ -370,8 +367,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp_method::__n
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
-        __coro_arg_0.emplace(Summer(100));
-        __coro_arg_1.emplace(({
+        __for_src_0.emplace(__head_arg_0.emplace(Summer(100)).pair(__head_arg_1.emplace(({
             std::vector<int32_t> __result;
             auto& __obj_0 = src;
             __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -382,8 +378,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp_method::__n
                 __result.push_back((::tpy::mul_check<int32_t>(x, 2)));
             }
             std::move(__result);
-        }));
-        __for_src_0.emplace((*__coro_arg_0).pair((*__coro_arg_1)));
+        }))));
         __state = S_JOIN_0;
         continue;
     }
@@ -416,8 +411,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_outer_fstring::__n
         return "n";
     }
     case S_RESUME_0: {  // after: yield "n"
-        __coro_arg_0 = std::format("val-{}-tail-pad", n);
-        __for_src_0.emplace(::tpyapp::main::head_tail(__coro_arg_0));
+        __for_src_0.emplace(::tpyapp::main::head_tail(__head_arg_0.emplace(std::format("val-{}-tail-pad", n))));
         __state = S_JOIN_0;
         continue;
     }
@@ -460,8 +454,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_loop_for::__next
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         i = ((*__for_i_0))++;
-        __coro_arg_0.emplace(std::array<int32_t, 2>{i, (::tpy::add_check<int32_t>(i, 10))});
-        __for_src_1.emplace(::tpyapp::main::read_pair(::tpy::as_span((*__coro_arg_0))));
+        __for_src_1.emplace(::tpyapp::main::read_pair(::tpy::as_span(__head_arg_0.emplace(std::array<int32_t, 2>{i, (::tpy::add_check<int32_t>(i, 10))}))));
         __state = S_JOIN_1;
         continue;
     }
@@ -566,8 +559,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Outer_run::__next_
         return __self.prefix;
     }
     case S_RESUME_0: {  // after: yield self.prefix
-        __coro_arg_0 = ::tpyapp::main::make_str(2);
-        __for_src_0.emplace(::tpyapp::main::head_tail(__coro_arg_0));
+        __for_src_0.emplace(::tpyapp::main::head_tail(__head_arg_0.emplace(::tpyapp::main::make_str(2))));
         __state = S_JOIN_0;
         continue;
     }
@@ -601,8 +593,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Outer_run_recv::__next
         return ::tpy::__len__(__self.prefix);
     }
     case S_RESUME_0: {  // after: yield len(self.prefix)
-        __coro_arg_0.emplace(Summer(100));
-        __for_src_0.emplace((*__coro_arg_0).pair(xs));
+        __for_src_0.emplace(__head_arg_0.emplace(Summer(100)).pair(xs));
         __state = S_JOIN_0;
         continue;
     }

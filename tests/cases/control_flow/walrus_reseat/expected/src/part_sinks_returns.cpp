@@ -174,8 +174,7 @@ void main() {
     std::cout << "own_return" << " " << a.n << "\n" << ::tpy::check_signals;
     ::tpyapp::fixtures::N n = ::tpyapp::part_sinks_returns::own_return_nocopy();
     std::cout << "own_return_nocopy" << " " << n.n << "\n" << ::tpy::check_signals;
-    ::tpyapp::fixtures::H __tmp_1 = ::tpyapp::fixtures::H();
-    ::tpyapp::part_sinks_returns::borrowed_sink(__tmp_1);
+    ::tpyapp::part_sinks_returns::borrowed_sink(::tpy::as_mut_lvalue(::tpyapp::fixtures::H()));
     ::tpyapp::fixtures::A fa = ::tpyapp::part_sinks_returns::finally_return();
     std::cout << "finally_return" << " " << fa.n << "\n" << ::tpy::check_signals;
     ::tpyapp::fixtures::N fn = ::tpyapp::part_sinks_returns::finally_return_nocopy();

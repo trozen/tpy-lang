@@ -714,22 +714,18 @@ void record_span_hazard(std::vector<Cell>& xs) {
 void main() {
     Words w = Words("abc");
     std::cout << "keys_then_pop:" << " " << w.keys_then_pop() << " " << w.s << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, int32_t> __tmp_1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    std::cout << "keys_after_pop:" << " " << ::tpyapp::main::keys_after_pop(__tmp_1) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::BigInt> __tmp_2 = {1, 2, 3};
-    std::cout << "sum_ints:" << " " << ::tpyapp::main::sum_ints(__tmp_2) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_set<std::string> __tmp_3 = ::tpy::ordered_set<std::string>({"x"});
-    std::cout << "set_keys:" << " " << ::tpyapp::main::set_keys(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "keys_after_pop:" << " " << ::tpyapp::main::keys_after_pop(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}}))) << "\n" << ::tpy::check_signals;
+    std::cout << "sum_ints:" << " " << ::tpyapp::main::sum_ints({1, 2, 3}) << "\n" << ::tpy::check_signals;
+    std::cout << "set_keys:" << " " << ::tpyapp::main::set_keys(::tpy::ordered_set<std::string>({"x"})) << "\n" << ::tpy::check_signals;
     int32_t n = ::tpyapp::main::count_chars("ab");
     std::cout << "count_chars:" << " " << n << "\n" << ::tpy::check_signals;
     std::cout << "reseat_view:" << " " << ::tpyapp::main::reseat_view("abc", "z") << "\n" << ::tpy::check_signals;
     std::cout << "param_after:" << " " << ::tpyapp::main::param_after("ab") << "\n" << ::tpy::check_signals;
     std::cout << "sum_bytes:" << " " << ::tpyapp::main::sum_bytes(::tpy::bytes_literal("abc", 3)) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_4 = {1, 2, 3, 4};
-    std::cout << "sum_slice:" << " " << ::tpyapp::main::sum_slice(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << "sum_slice:" << " " << ::tpyapp::main::sum_slice({1, 2, 3, 4}) << "\n" << ::tpy::check_signals;
     {
-        ::tpy::ordered_map<std::string, int32_t> __tmp_5 = ::tpy::ordered_map<std::string, int32_t>({{"ab", 1}, {"c", 2}});
-        auto __src_0 = ::tpyapp::main::lengths(__tmp_5);
+        ::tpy::ordered_map<std::string, int32_t> __tmp_1 = ::tpy::ordered_map<std::string, int32_t>({{"ab", 1}, {"c", 2}});
+        auto __src_0 = ::tpyapp::main::lengths(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -743,8 +739,7 @@ void main() {
     std::cout << "string_clean:" << " " << ::tpyapp::main::string_clean(::tpy::String("ab")) << "\n" << ::tpy::check_signals;
     std::cout << "bytes_view_clean:" << " " << ::tpyapp::main::bytes_view_clean(::tpy::bytes_literal("abc", 3)) << "\n" << ::tpy::check_signals;
     std::cout << "copy_under_name:" << " " << ::tpyapp::main::copy_under_name("ab") << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_6 = {1, 2, 3};
-    std::cout << "slice_copied:" << " " << ::tpyapp::main::slice_copied(__tmp_6) << "\n" << ::tpy::check_signals;
+    std::cout << "slice_copied:" << " " << ::tpyapp::main::slice_copied(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3})) << "\n" << ::tpy::check_signals;
     std::vector<std::string> names = {"a", "b"};
     ::tpyapp::main::store_global(names);
     std::cout << "store_global:" << " " << ::tpy::__getitem__(names, 0) << "\n" << ::tpy::check_signals;
@@ -754,10 +749,8 @@ void main() {
     std::cout << "param_copied:" << " " << ::tpyapp::main::param_copied("ab") << "\n" << ::tpy::check_signals;
     std::cout << "bytes_copied:" << " " << ::tpy::BytesPrinter(::tpyapp::main::bytes_copied(::tpy::bytes_literal("ab", 2))) << "\n" << ::tpy::check_signals;
     std::cout << "view_copied:" << " " << ::tpy::BytesPrinter(::tpyapp::main::view_copied(::tpy::bytes_literal("ab", 2))) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_7 = {1, 2, 3};
-    std::cout << "span_list:" << " " << ::tpyapp::main::span_list(__tmp_7) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, int32_t> __tmp_8 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    std::cout << "values_list:" << " " << ::tpyapp::main::values_list(__tmp_8) << "\n" << ::tpy::check_signals;
+    std::cout << "span_list:" << " " << ::tpyapp::main::span_list(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3})) << "\n" << ::tpy::check_signals;
+    std::cout << "values_list:" << " " << ::tpyapp::main::values_list(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}}))) << "\n" << ::tpy::check_signals;
 }
 
 

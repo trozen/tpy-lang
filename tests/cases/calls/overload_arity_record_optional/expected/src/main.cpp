@@ -26,8 +26,7 @@ std::string fmt__int__Tag(const ::tpy::BigInt& value, const Tag& tag) {
 //     print(fmt(42, Tag("temp")))
 void main() {
     std::cout << ::tpyapp::main::fmt__int(::tpy::BigInt(42)) << "\n" << ::tpy::check_signals;
-    Tag __tmp_1 = Tag("temp");
-    std::cout << ::tpyapp::main::fmt__int__Tag(::tpy::BigInt(42), __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::fmt__int__Tag(::tpy::BigInt(42), Tag("temp")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

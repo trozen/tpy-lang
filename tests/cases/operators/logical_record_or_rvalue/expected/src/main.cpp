@@ -35,11 +35,9 @@ void or_truthy_skips_ctor(Box& a, std::vector<::tpy::BigInt>& log) {
 void main() {
     std::vector<::tpy::BigInt> seed = std::vector<::tpy::BigInt>{};
     std::vector<::tpy::BigInt> log1 = std::vector<::tpy::BigInt>{};
-    Box __tmp_1 = Box(::tpy::BigInt(3), seed);
-    ::tpyapp::main::or_truthy_skips_ctor(__tmp_1, log1);
+    ::tpyapp::main::or_truthy_skips_ctor(::tpy::as_mut_lvalue(Box(::tpy::BigInt(3), seed)), log1);
     std::vector<::tpy::BigInt> log2 = std::vector<::tpy::BigInt>{};
-    Box __tmp_2 = Box(::tpy::BigInt(3), seed);
-    std::cout << ::tpyapp::main::and_truthy_returns_ctor(__tmp_2, log2) << " " << ::tpy::__len__(log2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::and_truthy_returns_ctor(::tpy::as_mut_lvalue(Box(::tpy::BigInt(3), seed)), log2) << " " << ::tpy::__len__(log2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

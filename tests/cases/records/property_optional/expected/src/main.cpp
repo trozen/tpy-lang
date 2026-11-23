@@ -54,12 +54,9 @@ void truthy(const Holder& h, std::string_view label) {
 //     w.node = None
 //     print(w.node is None)
 void main() {
-    Holder __tmp_1 = Holder(3);
-    ::tpyapp::main::truthy(__tmp_1, "three");
-    Holder __tmp_2 = Holder(0);
-    ::tpyapp::main::truthy(__tmp_2, "zero");
-    Holder __tmp_3 = Holder(std::nullopt);
-    ::tpyapp::main::truthy(__tmp_3, "none");
+    ::tpyapp::main::truthy(Holder(3), "three");
+    ::tpyapp::main::truthy(Holder(0), "zero");
+    ::tpyapp::main::truthy(Holder(std::nullopt), "none");
     Wrapper w = Wrapper();
     std::cout << ::tpy::print_bool((!w.node().has_value())) << "\n" << ::tpy::check_signals;
     w.set_node(Node(42));

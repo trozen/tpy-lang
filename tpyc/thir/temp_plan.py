@@ -121,6 +121,10 @@ class _Planner:
             case th.THIRSlotEmplace():
                 self.expr(expr.value)
                 self.named.append(expr)
+            case th.THIRRootSlot():
+                # Declared in front of the compound statement it is placed
+                # at, not by this statement.
+                self.expr(expr.value)
             case th.THIRName() | th.THIRSelf() | th.THIRLiteral():
                 pass
             case th.THIRFieldAccess():
@@ -206,6 +210,22 @@ class _Planner:
         if self.queue.pending or self.named:
             raise _Unplanned()
 
+    def loop(self, stmt: 'th.THIRForEach | th.THIRForIterProto', scope: int,
+             scoped: bool) -> None:
+        """A loop's head, body and else. The temporaries the head keeps are
+        declared in the scope the statement opens around itself
+        (`head_scope`), so they live until it ends."""
+        self.expr(stmt.iterable)
+        if self.named or (self.queue.pending and not stmt.head_scope):
+            raise _Unplanned()
+        outer = scope
+        if scoped:
+            outer = self.scope(stmt, "head", scope)
+            self.flush(stmt, outer)
+        self.stmts(stmt.body, self.scope(stmt, "loop", outer))
+        if stmt.orelse:
+            self.stmts(stmt.orelse, self.scope(stmt, "else", outer))
+
     def stmts(self, body: tuple[th.THIRStmt, ...], scope: int) -> None:
         for stmt in body:
             match stmt:
@@ -242,13 +262,14 @@ class _Planner:
                 case th.THIRForEach():
                     _plain(stmt, {"var", "elem_type", "iterable", "body", "const_loop_var",
                                   "iterable_lvalue", "orelse", "hoist_loop_var", "hoist_decls",
-                                  "hoisted_bindings"})
+                                  "hoisted_bindings", "head_scope"})
                     if not stmt.iterable_lvalue:
                         raise _Unplanned()
-                    self.head((stmt.iterable,))
-                    self.stmts(stmt.body, self.scope(stmt, "loop", scope))
-                    if stmt.orelse:
-                        self.stmts(stmt.orelse, self.scope(stmt, "else", scope))
+                    self.loop(stmt, scope, stmt.head_scope)
+                case th.THIRForIterProto():
+                    _plain(stmt, {"var", "elem_type", "iterable", "body", "const_loop_var",
+                                  "iterable_lvalue", "orelse", "head_scope"})
+                    self.loop(stmt, scope, stmt.head_scope or not stmt.iterable_lvalue)
                 case th.THIRVarDecl():
                     if stmt.cpp_local_representation is LocalBinding.STORAGE_TUPLE_ALIAS:
                         raise _Unplanned()

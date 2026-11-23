@@ -84,8 +84,7 @@ std::function<int32_t()> make_param_shadow() {
     auto unrelated = [](std::vector<int32_t>& xs) -> int32_t {
         return ::tpy::__len__(xs);
     };
-    std::vector<int32_t> __tmp_1 = {0};
-    std::cout << "param_shadow:" << " " << unrelated(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "param_shadow:" << " " << unrelated(::tpy::as_mut_lvalue(std::vector<int32_t>{0})) << "\n" << ::tpy::check_signals;
     return total;
 }
 

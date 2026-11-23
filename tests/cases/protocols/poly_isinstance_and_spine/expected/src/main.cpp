@@ -13,10 +13,7 @@ bool check_and(const Pet& p, int32_t threshold) {
 // def main() -> None:
 //     print(check_and(Dog(), 2), check_and(Dog(), 9), check_and(Pet(), 0))
 void main() {
-    Dog __tmp_1 = Dog();
-    Dog __tmp_2 = Dog();
-    Pet __tmp_3 = Pet();
-    std::cout << ::tpy::print_bool(::tpyapp::main::check_and(__tmp_1, 2)) << " " << ::tpy::print_bool(::tpyapp::main::check_and(__tmp_2, 9)) << " " << ::tpy::print_bool(::tpyapp::main::check_and(__tmp_3, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::check_and(Dog(), 2)) << " " << ::tpy::print_bool(::tpyapp::main::check_and(Dog(), 9)) << " " << ::tpy::print_bool(::tpyapp::main::check_and(Pet(), 0)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -27,7 +27,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{-5, std::nullopt})) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{std::nullopt, 5})) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{3, 3})) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(::tpy::bytes_literal_owned("abcdef", 6), ::tpy::BasicSlice{1, 4})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(::tpy::bytes_literal("abcdef", 6), ::tpy::BasicSlice{1, 4})) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView chunk = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 5});
     std::cout << ::tpy::__len__(chunk) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(chunk) << "\n" << ::tpy::check_signals;

@@ -34,14 +34,10 @@ int32_t excluded(::tpy::Union<const A*, const B*, const C*> v) {
 //     print(excluded(C(9)))
 //     print(excluded(A(1)))
 void main() {
-    A __tmp_1 = A(1);
-    std::cout << ::tpyapp::main::classify(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    C __tmp_2 = C(3);
-    std::cout << ::tpyapp::main::classify(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
-    C __tmp_3 = C(9);
-    std::cout << ::tpyapp::main::excluded(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
-    A __tmp_4 = A(1);
-    std::cout << ::tpyapp::main::excluded(::tpy::Union<const A*, const B*, const C*>{&__tmp_4}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(A(1)))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(C(3)))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::excluded(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(C(9)))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::excluded(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(A(1)))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -36,18 +36,12 @@ Fixed mk(std::string_view tag, const ::tpy::BigInt& n) {
 //     print(len(xs), int(xs[0].v))
 void main() {
     Box b = Box();
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_1 = ::tpyapp::main::mk("method", ::tpy::BigInt(3));
-    std::cout << b.eat(Box(__tmp_1)) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_2 = ::tpyapp::main::mk("free", ::tpy::BigInt(4));
-    Box __tmp_3 = Box(__tmp_2);
-    std::cout << ::tpyapp::main::free_eat(__tmp_3) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_4 = ::tpyapp::main::mk("direct", ::tpy::BigInt(5));
-    std::cout << b.eat(Box(__tmp_4)) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_5 = Zone(9);
-    std::cout << b.eat(Box(__tmp_5)) << "\n" << ::tpy::check_signals;
+    std::cout << b.eat(Box(::tpy::Union<std::monostate, Fixed, Zone>(::tpyapp::main::mk("method", ::tpy::BigInt(3))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::free_eat(Box(::tpy::Union<std::monostate, Fixed, Zone>(::tpyapp::main::mk("free", ::tpy::BigInt(4))))) << "\n" << ::tpy::check_signals;
+    std::cout << b.eat(Box(::tpy::Union<std::monostate, Fixed, Zone>(::tpyapp::main::mk("direct", ::tpy::BigInt(5))))) << "\n" << ::tpy::check_signals;
+    std::cout << b.eat(Box(::tpy::Union<std::monostate, Fixed, Zone>(Zone(9)))) << "\n" << ::tpy::check_signals;
     std::vector<Box> xs = std::vector<Box>{};
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_6 = ::tpyapp::main::mk("append", ::tpy::BigInt(8));
-    xs.push_back(Box(__tmp_6));
+    xs.push_back(Box(::tpy::Union<std::monostate, Fixed, Zone>(::tpyapp::main::mk("append", ::tpy::BigInt(8)))));
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::BigInt(static_cast<int64_t>(::tpy::__getitem__(xs, 0).v)) << "\n" << ::tpy::check_signals;
 }
 

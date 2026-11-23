@@ -224,10 +224,8 @@ void main() {
     ::tpyapp::part_may_known::two_loop(shared, shared, 2);
     ::tpyapp::part_may_known::g_samef(false);
     ::tpyapp::part_may_known::g_samef_ctor(false);
-    std::vector<std::string> __tmp_1 = {"one", "two"};
-    ::tpyapp::part_may_known::value_element(__tmp_1);
-    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"a", "x"}, {"b", "y"}});
-    ::tpyapp::part_may_known::values_existing_key(__tmp_2);
+    ::tpyapp::part_may_known::value_element(::tpy::as_mut_lvalue(std::vector<std::string>{"one", "two"}));
+    ::tpyapp::part_may_known::values_existing_key(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"a", "x"}, {"b", "y"}})));
     ::tpyapp::part_may_known::alias_reset_read(true);
     ::tpyapp::part_may_known::alias_reset_read(false);
     ::tpyapp::part_may_known::alias_copy_read(true);

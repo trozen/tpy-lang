@@ -86,8 +86,8 @@ struct __coro_peek {
 struct __coro_amain {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::frame_slot<Outer> __coro_arg_0;
     ::tpy::BigInt __await_lift_0;
+    ::tpy::frame_slot<Outer> __head_arg_0;
     std::optional<__coro_peek> __sub_0;
 
     enum : int32_t {

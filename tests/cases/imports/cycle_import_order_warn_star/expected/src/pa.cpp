@@ -8,8 +8,7 @@ namespace tpyapp::pa {
 // def main() -> None:
 //     print("star:", pb.use(), pb.use2(F(7)))
 void main() {
-    F __tmp_1 = F(::tpy::BigInt(7));
-    std::cout << "star:" << " " << ::tpyapp::pb::use() << " " << ::tpyapp::pb::use2(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "star:" << " " << ::tpyapp::pb::use() << " " << ::tpyapp::pb::use2(F(::tpy::BigInt(7))) << "\n" << ::tpy::check_signals;
 }
 
 

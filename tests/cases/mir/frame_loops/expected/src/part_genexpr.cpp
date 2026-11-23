@@ -323,8 +323,7 @@ int32_t table(int32_t n) {
 void main() {
     std::cout << "genexpr_range:" << " " << ::tpyapp::part_genexpr::squares(4) << "\n" << ::tpy::check_signals;
     std::cout << "genexpr_bytes:" << " " << ::tpyapp::part_genexpr::byte_sum(::tpy::bytes_literal("abc", 3)) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "genexpr_param_list:" << " " << ::tpyapp::part_genexpr::total(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "genexpr_param_list:" << " " << ::tpyapp::part_genexpr::total({1, 2, 3}) << "\n" << ::tpy::check_signals;
     std::cout << "genexpr_filter:" << " " << ::tpyapp::part_genexpr::evens(6) << "\n" << ::tpy::check_signals;
     std::cout << "genexpr_two_clauses:" << " " << ::tpyapp::part_genexpr::table(3) << "\n" << ::tpy::check_signals;
 }

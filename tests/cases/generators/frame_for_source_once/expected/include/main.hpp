@@ -407,9 +407,9 @@ struct __coro_async_combinator_temp {
     int32_t total;
     int32_t i;
     int32_t v;
-    ::tpy::frame_slot<Deleg> __coro_arg_0;
     std::tuple<int32_t, int32_t> __for_tup_6;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate((*__coro_arg_0))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate(std::declval<Deleg&>())))>;
+    ::tpy::frame_slot<Deleg> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -981,8 +981,7 @@ struct __gen_enumerate_cells_src : public ::tpy::next_iter_mixin<__gen_enumerate
 // def reversed_temp_src() -> Iterator[str]:
 struct __gen_reversed_temp_src : public ::tpy::next_iter_mixin<__gen_reversed_temp_src, std::string> {
     ::tpy::frame_state __state;
-    ::tpy::frame_slot<std::vector<Cell>> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_reversed((*__coro_arg_0))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_reversed(::tpyapp::main::make_cells())))>;
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* c = nullptr;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
@@ -1259,6 +1258,7 @@ struct __gen_arg_temp_src : public ::tpy::next_iter_mixin<__gen_arg_temp_src, st
     ::tpy::frame_state __state;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::take(std::declval<Cell&>(), 2)))>;
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
+    ::tpy::frame_slot<Cell> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
@@ -1317,8 +1317,8 @@ struct __gen_combinator_temp_src : public ::tpy::next_iter_mixin<__gen_combinato
     std::tuple<int32_t, int32_t> __for_tup_4;
     int32_t i;
     int32_t v;
-    ::tpy::frame_slot<Deleg> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate((*__coro_arg_0))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate(std::declval<Deleg&>())))>;
+    ::tpy::frame_slot<Deleg> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 

@@ -119,17 +119,13 @@ void main() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
     ::tpyapp::main::compare_pairs(::tpy::bytes_literal("a", 1), ::tpy::bytes_literal("a", 1), ba);
     std::cout << "alias" << " " << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::Bytes> __tmp_1 = {::tpy::bytes_literal_owned("COLORMAP", 8), ::tpy::bytes_literal_owned("x", 1)};
-    ::tpy::ordered_set<::tpy::Bytes> __tmp_2 = ::tpy::ordered_set<::tpy::Bytes>({::tpy::bytes_literal_owned("COLORMAP", 8)});
-    ::tpy::ordered_map<::tpy::Bytes, int32_t> __tmp_3 = ::tpy::ordered_map<::tpy::Bytes, int32_t>({{::tpy::bytes_literal_owned("COLORMAP", 8), 1}});
-    ::tpyapp::main::membership(::tpy::bytes_literal("COLORMAP", 8), __tmp_1, __tmp_2, __tmp_3);
+    ::tpyapp::main::membership(::tpy::bytes_literal("COLORMAP", 8), {::tpy::bytes_literal_owned("COLORMAP", 8), ::tpy::bytes_literal_owned("x", 1)}, ::tpy::ordered_set<::tpy::Bytes>({::tpy::bytes_literal_owned("COLORMAP", 8)}), ::tpy::ordered_map<::tpy::Bytes, int32_t>({{::tpy::bytes_literal_owned("COLORMAP", 8), 1}}));
     ::tpyapp::main::view_local(::tpy::bytes_literal("abc", 3));
-    std::vector<::tpy::Bytes> __tmp_4 = {::tpy::bytes_literal_owned("c", 1), ::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)};
-    ::tpyapp::main::sort_bytes(__tmp_4);
+    ::tpyapp::main::sort_bytes(::tpy::as_mut_lvalue(std::vector<::tpy::Bytes>{::tpy::bytes_literal_owned("c", 1), ::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)}));
     ::tpyapp::main::hashes(::tpy::bytes_literal("hello", 5));
     {
-        std::vector<::tpy::Bytes> __tmp_5 = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("COLORMAP", 8), ::tpy::bytes_literal_owned("b", 1)};
-        auto __src_0 = ::tpyapp::main::matching(__tmp_5, ::tpy::bytes_literal("b", 1));
+        std::vector<::tpy::Bytes> __tmp_1 = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("COLORMAP", 8), ::tpy::bytes_literal_owned("b", 1)};
+        auto __src_0 = ::tpyapp::main::matching(__tmp_1, ::tpy::bytes_literal("b", 1));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -138,12 +134,8 @@ void main() {
             std::cout << "gen" << " " << ::tpy::BytesPrinter(m) << "\n" << ::tpy::check_signals;
         }
     }
-    std::vector<::tpy::Bytes> __tmp_6 = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("skip", 4), ::tpy::bytes_literal_owned("c", 1)};
-    ::tpyapp::main::filtered(__tmp_6);
-    std::vector<::tpy::Bytes> __tmp_7 = {::tpy::bytes_literal_owned("b", 1), ::tpy::bytes_literal_owned("c", 1)};
-    std::vector<::tpy::Bytes> __tmp_8 = {::tpy::bytes_literal_owned("b", 1)};
-    std::vector<std::string> __tmp_9 = {"x"};
-    std::cout << "generic" << " " << ::tpy::print_bool(::tpyapp::main::first_is<::tpy::Bytes>(__tmp_7, ::tpy::bytes_literal("b", 1))) << " " << ::tpy::print_bool(::tpyapp::main::first_is<::tpy::Bytes>(__tmp_8, ::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool(::tpyapp::main::first_is<std::string>(__tmp_9, "y")) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::filtered({::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("skip", 4), ::tpy::bytes_literal_owned("c", 1)});
+    std::cout << "generic" << " " << ::tpy::print_bool(::tpyapp::main::first_is<::tpy::Bytes>({::tpy::bytes_literal_owned("b", 1), ::tpy::bytes_literal_owned("c", 1)}, ::tpy::bytes_literal("b", 1))) << " " << ::tpy::print_bool(::tpyapp::main::first_is<::tpy::Bytes>({::tpy::bytes_literal_owned("b", 1)}, ::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool(::tpyapp::main::first_is<std::string>({"x"}, "y")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -87,22 +87,14 @@ std::string either(::tpy::Union<const Cat*, const Dog*> a) {
 //     print(either(Dog(2)))
 //     print(either(Cat("x")))
 void main() {
-    Dog __tmp_1 = Dog(::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    Dog __tmp_2 = Dog(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
-    Dog __tmp_3 = Dog(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
-    Cat __tmp_4 = Cat("rex");
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_4}) << "\n" << ::tpy::check_signals;
-    Cat __tmp_5 = Cat("x");
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_5}) << "\n" << ::tpy::check_signals;
-    Dog __tmp_6 = Dog(::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&__tmp_6}) << "\n" << ::tpy::check_signals;
-    Dog __tmp_7 = Dog(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&__tmp_7}) << "\n" << ::tpy::check_signals;
-    Cat __tmp_8 = Cat("x");
-    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&__tmp_8}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog(::tpy::BigInt(4))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog(::tpy::BigInt(3))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog(::tpy::BigInt(2))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("rex")))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("x")))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog(::tpy::BigInt(4))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog(::tpy::BigInt(2))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("x")))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -52,8 +52,7 @@ void main() {
     ::tpystd::http::client::HTTPConnection h1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     h1.sock = std::move(c);
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
-    ::tpy::Union<bool, std::string> __tmp_1 = true;
-    ::tpystd::tplib::requests::Response r = s.get("http://api.test/v1/data", nullptr, nullptr, std::nullopt, true, __tmp_1, nullptr, true);
+    ::tpystd::tplib::requests::Response r = s.get("http://api.test/v1/data", nullptr, nullptr, std::nullopt, true, ::tpy::Union<bool, std::string>(true), nullptr, true);
     std::cout << "final status:" << " " << r.status_code << "\n" << ::tpy::check_signals;
     std::cout << "final url:" << " " << r.url << "\n" << ::tpy::check_signals;
     std::cout << "history:" << " " << ::tpy::__len__(r.history) << " " << ::tpy::__getitem__(r.history, 0).status_code << "\n" << ::tpy::check_signals;

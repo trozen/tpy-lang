@@ -11,8 +11,7 @@ namespace tpyapp::main {
 //     print("late import:", srb.f(date(2026, 11, 17)))
 void main() {
     std::cout << "late __all__:" << " " << ::tpyapp::lpb::f() << "\n" << ::tpy::check_signals;
-    ::tpyapp::aua::F __tmp_1 = ::tpyapp::aua::F();
-    std::cout << "late update:" << " " << ::tpyapp::aub::f(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "late update:" << " " << ::tpyapp::aub::f(::tpyapp::aua::F()) << "\n" << ::tpy::check_signals;
     std::cout << "shadowed builtin:" << " " << ::tpyapp::bsb::f(::tpyapp::bsa::zip::X) << "\n" << ::tpy::check_signals;
     std::cout << "late import:" << " " << ::tpyapp::srb::f(::tpystd::datetime::date(::tpy::BigInt(2026), ::tpy::BigInt(11), ::tpy::BigInt(17))) << "\n" << ::tpy::check_signals;
 }

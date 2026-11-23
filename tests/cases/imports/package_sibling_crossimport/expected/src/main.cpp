@@ -35,8 +35,7 @@ void main() {
     std::cout << ::tpyapp::main::cap() << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::cap(10) << "\n" << ::tpy::check_signals;
     std::cout << box.get() << "\n" << ::tpy::check_signals;
-    ::tpy::RefAdapter<::tpyapp::pkg::b::Greeter, ::tpyapp::pkg::b::B> __tmp_1{b};
-    std::cout << ::tpyapp::main::takes_greeter(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::takes_greeter(::tpy::as_mut_lvalue(::tpy::RefAdapter<::tpyapp::pkg::b::Greeter, ::tpyapp::pkg::b::B>{b})) << "\n" << ::tpy::check_signals;
 }
 
 // from pkg import A, B, Container, Greeter, K, V, f

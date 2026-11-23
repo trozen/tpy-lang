@@ -250,8 +250,7 @@ template<typename T, typename __F0>
       { __fn() } -> ::tpy::returns_form<T>;
   }
 ::tpy::val_or_ref_t<T> relay(__F0&& f) {
-    ::tpy::val_or_ref_t<T> __tmp_1 = f();
-    return ::tpyapp::part_store::ident<::tpy::storage_t<T>>(__tmp_1);
+    return ::tpyapp::part_store::ident<::tpy::storage_t<T>>(::tpy::as_mut_lvalue(::tpy::val_or_ref_t<T>(f())));
 }
 // def inspect[T](x: readonly[T]) -> int32:
 //     return 1

@@ -26,25 +26,26 @@ int32_t payload(int32_t value) {
 }
 
 // def fixed():
-//     # Backing survives the call: BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling.
-//     saved = observe(Cell(payload(1)))  # tpyc: warning(/Result borrows from temporary argument/)
+//     c = Cell(payload(1))
+//     saved = observe(c)  # tpyc: ok
 //     print("fixed", saved.value)
 void fixed() {
-    Cell __tmp_1 = Cell(::tpyapp::main::payload(1));
-    const Cell& saved = ::tpyapp::main::observe(__tmp_1);
+    Cell c = Cell(::tpyapp::main::payload(1));
+    const Cell& saved = ::tpyapp::main::observe(c);
     std::cout << "fixed" << " " << saved.value << "\n" << ::tpy::check_signals;
 }
 
 // def external(flag: bool):
 //     owner = Cell(21)
-//     # The owner alias must not copy: BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling.
-//     saved = choose(flag, owner, Cell(22))  # tpyc: warning(/Result borrows from temporary argument/)
+//     # The owner alias must not copy.
+//     other = Cell(22)
+//     saved = choose(flag, owner, other)  # tpyc: ok
 //     owner.value = 23
 //     print("external", saved.value)
 void external(bool flag) {
     Cell owner = Cell(21);
-    Cell __tmp_1 = Cell(22);
-    const Cell& saved = ::tpyapp::main::choose(flag, owner, __tmp_1);
+    Cell other = Cell(22);
+    const Cell& saved = ::tpyapp::main::choose(flag, owner, other);
     owner.value = 23;
     std::cout << "external" << " " << saved.value << "\n" << ::tpy::check_signals;
 }
@@ -52,25 +53,29 @@ void external(bool flag) {
 // def loops():
 //     remaining = 2
 //     while remaining > 0:
-//         # Backing lives through this iteration: BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling.
-//         saved = observe(Cell(remaining))  # tpyc: warning(/Result borrows from temporary argument/)
+//         # The backing lives through this iteration.
+//         c = Cell(remaining)
+//         saved = observe(c)  # tpyc: ok
 //         print("while", saved.value)
 //         remaining -= 1
 //     for index in range(2):
-//         # A range iteration owns the backing: BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling.
-//         item = observe(Cell(index))  # tpyc: warning(/Result borrows from temporary argument/)
+//         c = Cell(index)
+//         item = observe(c)  # tpyc: ok
 //         print("for", item.value)
 void loops() {
     int32_t remaining = 2;
+    std::optional<Cell> __slot_1;
+    Cell* c;
     while ((remaining > 0)) {
-        Cell __tmp_1 = Cell(remaining);
-        const Cell& saved = ::tpyapp::main::observe(__tmp_1);
+        c = &*(__slot_1 = Cell(remaining));
+        const Cell& saved = ::tpyapp::main::observe((*c));
         std::cout << "while" << " " << saved.value << "\n" << ::tpy::check_signals;
         remaining = ::tpy::sub_check<int32_t>(remaining, 1);
     }
+    std::optional<Cell> __slot_2;
     for (int32_t index = 0; index < 2; ++index) {
-        Cell __tmp_2 = Cell(index);
-        const Cell& item = ::tpyapp::main::observe(__tmp_2);
+        c = &*(__slot_2 = Cell(index));
+        const Cell& item = ::tpyapp::main::observe((*c));
         std::cout << "for" << " " << item.value << "\n" << ::tpy::check_signals;
     }
 }

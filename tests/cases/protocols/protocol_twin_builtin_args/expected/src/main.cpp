@@ -128,7 +128,7 @@ void joins() {
     std::cout << "str.join" << " " << ::tpy::str_join("-", ::tpy::__getitem__(names, 0)) << " " << ::tpy::str_join(",", h.names) << " " << ::tpy::str_join("+", seeded) << "\n" << ::tpy::check_signals;
     std::cout << "String.join" << " " << ::tpy::str_join(sep, ::tpy::__getitem__(names, 0)) << "\n" << ::tpy::check_signals;
     std::cout << "StrView.join" << " " << ::tpy::str_join(sv, ::tpy::__getitem__(names, 0)) << "\n" << ::tpy::check_signals;
-    std::cout << "bytes.join" << " " << ::tpy::BytesPrinter(::tpy::bytes_join(::tpy::bytes_literal_owned("-", 1), ::tpy::__getitem__(bl, 0))) << " " << ::tpy::BytesPrinter(::tpy::bytes_join(::tpy::bytes_literal_owned("+", 1), h.bs)) << "\n" << ::tpy::check_signals;
+    std::cout << "bytes.join" << " " << ::tpy::BytesPrinter(::tpy::bytes_join(::tpy::bytes_literal("-", 1), ::tpy::__getitem__(bl, 0))) << " " << ::tpy::BytesPrinter(::tpy::bytes_join(::tpy::bytes_literal("+", 1), h.bs)) << "\n" << ::tpy::check_signals;
 }
 
 // # write-through: each lazy binding sees an in-place write to the element
@@ -759,7 +759,7 @@ void main() {
     ::tpyapp::main::other_objects(std::tuple<const ::tpy::ByteArray*, int32_t>{&(ba), 1});
     ::tpyapp::main::warn_loop();
     ::tpyapp::main::warn_stored();
-    std::vector<std::vector<int32_t>> __tmp_2 = {{1, 2}, {3}};
+    std::vector<std::vector<int32_t>> __tmp_2 = std::vector<std::vector<int32_t>>{{1, 2}, {3}};
     std::cout << "warn-gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::warn_gen(__tmp_2))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::warn_two_hop();
     ::tpyapp::main::sets_and_keys();

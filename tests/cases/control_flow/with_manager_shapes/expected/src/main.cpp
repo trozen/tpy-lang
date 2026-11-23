@@ -201,15 +201,11 @@ void main() {
     std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::ref_target();
     std::cout << "---" << "\n" << ::tpy::check_signals;
-    Holder __tmp_1 = Holder();
-    Holder __tmp_2 = Holder();
-    ::tpyapp::main::deref_manager(__tmp_1, __tmp_2);
+    ::tpyapp::main::deref_manager(::tpy::as_mut_lvalue(Holder()), ::tpy::as_mut_lvalue(Holder()));
     std::cout << "---" << "\n" << ::tpy::check_signals;
-    Gate __tmp_3 = Gate(::tpy::BigInt(7));
-    ::tpyapp::main::loop_exits(__tmp_3);
+    ::tpyapp::main::loop_exits(::tpy::as_mut_lvalue(Gate(::tpy::BigInt(7))));
     std::cout << "---" << "\n" << ::tpy::check_signals;
-    Gate __tmp_4 = Gate(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::ret_through(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ret_through(::tpy::as_mut_lvalue(Gate(::tpy::BigInt(9)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

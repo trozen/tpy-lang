@@ -25,8 +25,7 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, NamedTuple
 
 from ...codegen_cpp.forms import (LocalBinding, LoopBinding,
-                                  binds_handed_over_step,
-                                  is_plain_nonvalue, loop_binding_kind,
+                                  is_plain_nonvalue,
                                   is_ptr_variant_union,
                                   is_storage_tuple_alias_decl,
                                   reads_storage_form_optional)
@@ -100,6 +99,7 @@ from . import predicates as _p
 from ..frame import frame_ptr_slot_name
 from .frame_cfg import collect_frame_nested_defs
 from ...sema.call_lends import MayLend
+from .frame_seat import loop_binding_of, loop_bound_element
 from .context import (BindingTableError,
                       FrameLocalClass, ValueOptKind, _LowerCtx,
                       binding_source_sites, names_with, nested_def_prescan,
@@ -2489,18 +2489,9 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     yields_const = _st._iteration_yields_const(stmt.iterable, ctx, an)
     consuming = (_st._for_consuming_route(stmt, an, ctx.declared_view)
                  is not None)
-    elem = (stmt.enum_iterable if stmt.enum_iterable is not None
-            else _st._resolved_loop_elem_type(stmt, an))
-    if isinstance(elem, OwnType) and not stmt.step_handover:
-        # An `Own` element the iteration does not hand over (a lent
-        # container's) is the container's: the variable refers to it.
-        elem = elem.wrapped
-    if elem is not None:
-        kind = loop_binding_kind(elem, stmt.const_loop_var,
-                                 hoisted=stmt.hoist_loop_var,
-                                 consuming=consuming,
-                                 copies=stmt.copies_var,
-                                 handed_over=binds_handed_over_step(stmt))
+    elem = loop_bound_element(stmt, an)
+    kind = loop_binding_of(stmt, an, consuming=consuming)
+    if kind is not None:
         f["loop_binding"] = kind
         # A reference over a const iteration deduces const (`auto&&`); a
         # copy or the hoisted slot is the loop's own mutable value.
@@ -3000,15 +2991,9 @@ def _comp_clause_row(site, name, typ, inp: 'PlanInputs', visible):
             return _mk(site, name, typ, F.REFERENCE, None, const=const)
         return _mk(site, name, typ, F.VALUE, None)
     # The clause's loop binds its variable (an unpack clause, its holder)
-    # as the for statement's loop binds an element of the same type; an
-    # `Own` element the iteration does not hand over (a lent container's)
-    # is the container's, which the variable refers to.
-    et = route.et
-    if isinstance(et, OwnType) and not gen.step_handover:
-        et = et.wrapped
-    loop = (loop_binding_kind(et, bool(gen.const_loop_var),
-                              copies=gen.copies_var)
-            if et is not None else None)
+    # as the for statement's loop binds an element of the same type.
+    loop = (loop_binding_of(gen, an, elem=route.et)
+            if route.et is not None else None)
     # A container's element is its stored tuple; a generator's step is the
     # form it is yielded in.
     it_t = route.it_type
@@ -3665,8 +3650,7 @@ def _walrus_type(w, analyzer) -> TpyType | None:
 def _loop_var_type(stmt: TpyForEach, analyzer) -> TpyType | None:
     """The type the for statement's body declares its variable at: the
     element, borrowed whatever the source hands over (`_unwrap_own`)."""
-    from . import statements as _st
-    et = _st._resolved_loop_elem_type(stmt, analyzer)
+    et = _p.resolved_loop_elem_type(stmt, analyzer)
     return _unwrap_own(et) if et is not None else None
 
 

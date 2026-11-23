@@ -78,14 +78,12 @@ void empty_seeded(::tpy::ordered_map<std::string, R>& src) {
 //         print("gen_params", v)
 void main() {
     ::tpyapp::main::comp_method();
-    ::tpy::ordered_map<std::string, R> __tmp_1 = ::tpy::ordered_map<std::string, R>({{"a", R(2)}});
-    ::tpyapp::main::empty_seeded(__tmp_1);
-    R __tmp_2 = R(3);
-    ::tpyapp::main::literal_param(__tmp_2);
+    ::tpyapp::main::empty_seeded(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, R>({{"a", R(2)}})));
+    ::tpyapp::main::literal_param(R(3));
     {
-        R __tmp_3 = R(4);
-        R __tmp_4 = R(5);
-        auto __src_0 = ::tpyapp::main::gen_params(__tmp_3, __tmp_4);
+        R __tmp_1 = R(4);
+        R __tmp_2 = R(5);
+        auto __src_0 = ::tpyapp::main::gen_params(__tmp_1, __tmp_2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

@@ -20,8 +20,7 @@ void show(const ::tpy::Union<double, std::string>& u) {
 // def main() -> None:
 //     show(3.14159)
 void main() {
-    ::tpy::Union<double, std::string> __tmp_1 = 3.14159;
-    ::tpyapp::main::show(__tmp_1);
+    ::tpyapp::main::show(::tpy::Union<double, std::string>(3.14159));
 }
 
 // main()

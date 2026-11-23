@@ -60,14 +60,10 @@ void meth_aliased(const Src& s) {
 //     prop_aliased(Src())
 //     meth_aliased(Src())
 void main() {
-    Src __tmp_1 = Src();
-    ::tpyapp::main::prop_moved(__tmp_1);
-    Src __tmp_2 = Src();
-    ::tpyapp::main::meth_moved(__tmp_2);
-    Src __tmp_3 = Src();
-    ::tpyapp::main::prop_aliased(__tmp_3);
-    Src __tmp_4 = Src();
-    ::tpyapp::main::meth_aliased(__tmp_4);
+    ::tpyapp::main::prop_moved(Src());
+    ::tpyapp::main::meth_moved(Src());
+    ::tpyapp::main::prop_aliased(Src());
+    ::tpyapp::main::meth_aliased(Src());
 }
 
 // main()

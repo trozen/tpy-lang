@@ -95,15 +95,14 @@ void main() {
     std::cout << "readonly" << " " << ::tpy::__getitem__(rc, 0).v << " " << ::tpy::__getitem__(cells, 0).v << "\n" << ::tpy::check_signals;
     std::vector<::tpyapp::fixtures::Cell> hc = ::tpyapp::part_shapes::h<::tpyapp::fixtures::Cell>(cells);
     ::tpy::__getitem__(hc, 0).v = 51;
-    std::vector<int32_t> __tmp_2 = {7, 8};
-    std::cout << "generic" << " " << ::tpy::__getitem__(hc, 0).v << " " << ::tpy::__getitem__(cells, 0).v << " " << ::tpy::ListPrinter(::tpyapp::part_shapes::h<int32_t>(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << "generic" << " " << ::tpy::__getitem__(hc, 0).v << " " << ::tpy::__getitem__(cells, 0).v << " " << ::tpy::ListPrinter(::tpyapp::part_shapes::h<int32_t>({7, 8})) << "\n" << ::tpy::check_signals;
     std::vector<::tpyapp::fixtures::Cell> typed = ::tpy::construct<std::vector<::tpyapp::fixtures::Cell>>(::tpy::copy_iter(cells));
     ::tpy::__getitem__(typed, 0).v = 52;
     std::cout << "typed ctor" << " " << ::tpy::__getitem__(typed, 0).v << " " << ::tpy::__getitem__(cells, 0).v << "\n" << ::tpy::check_signals;
     auto ci = ::tpy::copy_iter(cells);
     std::cout << "iterator slot" << " " << ::tpyapp::part_shapes::sum_owned(ci) << " " << ::tpyapp::part_shapes::sum_owned(ci) << " " << ::tpy::__getitem__(cells, 0).v << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = ::tpy::__iter__(cells);
-    std::cout << "iterator param" << " " << ::tpyapp::part_shapes::fwd(__tmp_3) << " " << ::tpy::__getitem__(cells, 0).v << "\n" << ::tpy::check_signals;
+    auto __tmp_2 = ::tpy::__iter__(cells);
+    std::cout << "iterator param" << " " << ::tpyapp::part_shapes::fwd(__tmp_2) << " " << ::tpy::__getitem__(cells, 0).v << "\n" << ::tpy::check_signals;
     std::vector<std::string> words2 = {"ab", "c"};
     int32_t n = ::tpyapp::part_shapes::str_lens(words2);
     ::tpy::__setitem__(words2, 0, "zz");

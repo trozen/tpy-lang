@@ -11,16 +11,11 @@ namespace tpyapp::main {
 //     print(json.dumps({"a": [1, 2], "b": 3}))
 //     print(json.dumps(["x", True, 1.5]))
 void main() {
-    ::tpystd::json::JsonValue __tmp_1 = std::vector<::tpystd::json::JsonValue>{1, 2, 3};
-    std::cout << ::tpystd::json::dumps(__tmp_1, 0, false) << "\n" << ::tpy::check_signals;
-    ::tpystd::json::JsonValue __tmp_2 = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"a", 1}, {"b", 2}});
-    std::cout << ::tpystd::json::dumps(__tmp_2, 0, false) << "\n" << ::tpy::check_signals;
-    ::tpystd::json::JsonValue __tmp_3 = std::vector<::tpystd::json::JsonValue>{1, std::vector<::tpystd::json::JsonValue>{2, 3}, 4};
-    std::cout << ::tpystd::json::dumps(__tmp_3, 0, false) << "\n" << ::tpy::check_signals;
-    ::tpystd::json::JsonValue __tmp_4 = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"a", std::vector<::tpystd::json::JsonValue>{1, 2}}, {"b", 3}});
-    std::cout << ::tpystd::json::dumps(__tmp_4, 0, false) << "\n" << ::tpy::check_signals;
-    ::tpystd::json::JsonValue __tmp_5 = std::vector<::tpystd::json::JsonValue>{"x", true, 1.5};
-    std::cout << ::tpystd::json::dumps(__tmp_5, 0, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::json::dumps(::tpystd::json::JsonValue(std::vector<::tpystd::json::JsonValue>{1, 2, 3}), 0, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::json::dumps(::tpystd::json::JsonValue(::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"a", 1}, {"b", 2}})), 0, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::json::dumps(::tpystd::json::JsonValue(std::vector<::tpystd::json::JsonValue>{1, std::vector<::tpystd::json::JsonValue>{2, 3}, 4}), 0, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::json::dumps(::tpystd::json::JsonValue(::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"a", std::vector<::tpystd::json::JsonValue>{1, 2}}, {"b", 3}})), 0, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::json::dumps(::tpystd::json::JsonValue(std::vector<::tpystd::json::JsonValue>{"x", true, 1.5}), 0, false) << "\n" << ::tpy::check_signals;
 }
 
 // # json.dumps on raw list/dict literals WITHOUT importing the internal JsonValue

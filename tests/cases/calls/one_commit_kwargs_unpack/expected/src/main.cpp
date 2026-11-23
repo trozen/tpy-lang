@@ -31,12 +31,9 @@ void plain(Opt& d) {
 //     explicit(Opt(n=5))
 //     plain(Opt(n=7))
 void main() {
-    Opt __tmp_1 = Opt(1);
-    ::tpyapp::main::inferred(__tmp_1);
-    Opt __tmp_2 = Opt(5);
-    ::tpyapp::main::explicit_(__tmp_2);
-    Opt __tmp_3 = Opt(7);
-    ::tpyapp::main::plain(__tmp_3);
+    ::tpyapp::main::inferred(::tpy::as_mut_lvalue(Opt(1)));
+    ::tpyapp::main::explicit_(::tpy::as_mut_lvalue(Opt(5)));
+    ::tpyapp::main::plain(::tpy::as_mut_lvalue(Opt(7)));
 }
 
 // main()

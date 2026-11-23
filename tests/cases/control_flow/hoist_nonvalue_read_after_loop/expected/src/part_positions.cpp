@@ -346,8 +346,7 @@ void main() {
     }
     std::cout << "gen_slice_view" << " " << slice_total << "\n" << ::tpy::check_signals;
     ::tpyapp::part_positions::nested_def_section();
-    std::vector<::tpyapp::fixtures::Pic> __tmp_1 = {::tpyapp::fixtures::Pic(0), ::tpyapp::fixtures::Pic(1)};
-    ::tpyapp::part_positions::nested_def_in_loop(__tmp_1);
+    ::tpyapp::part_positions::nested_def_in_loop(::tpy::as_mut_lvalue(std::vector<::tpyapp::fixtures::Pic>{::tpyapp::fixtures::Pic(0), ::tpyapp::fixtures::Pic(1)}));
     ::tpyapp::part_positions::nested_def_after_loop();
     ::tpyapp::part_positions::with_section();
     ::tpyapp::part_positions::try_section();

@@ -28,21 +28,18 @@ namespace tpyapp::main {
 //         print("coord none")
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = std::vector<std::string>{};
-    __tpy_builder_argparse_args_1 a1 = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 a1 = ::tpyapp::main::__tpy_builder_argparse_parse_1(std::vector<std::string>{});
     if ((!a1.tag.has_value())) {
         std::cout << "tag none" << "\n" << ::tpy::check_signals;
     }
     if ((!a1.num.has_value())) {
         std::cout << "num none" << "\n" << ::tpy::check_signals;
     }
-    std::vector<std::string> __tmp_2 = {"--tag", "x", "--tag", "y"};
-    __tpy_builder_argparse_args_2 a2 = ::tpyapp::main::__tpy_builder_argparse_parse_2(__tmp_2);
+    __tpy_builder_argparse_args_2 a2 = ::tpyapp::main::__tpy_builder_argparse_parse_2({"--tag", "x", "--tag", "y"});
     if (!((a2.tag.has_value()))) ::tpy::raise_assertion_error();
     std::cout << ::tpy::__getitem__((*a2.tag), 0) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__getitem__((*a2.tag), 1) << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_3 = std::vector<std::string>{};
-    __tpy_builder_argparse_args_3 a3 = ::tpyapp::main::__tpy_builder_argparse_parse_3(__tmp_3);
+    __tpy_builder_argparse_args_3 a3 = ::tpyapp::main::__tpy_builder_argparse_parse_3(std::vector<std::string>{});
     if ((!a3.coord.has_value())) {
         std::cout << "coord none" << "\n" << ::tpy::check_signals;
     }

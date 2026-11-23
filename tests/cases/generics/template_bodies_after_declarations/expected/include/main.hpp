@@ -817,8 +817,7 @@ inline Plain::Plain() : base(100) {}
 inline int32_t Ov::f__int32(int32_t x) const {
     if (false) {
     }
-    Outer::In __tmp_1 = Outer::In(x);
-    return ::tpyapp::main::takes(__tmp_1);
+    return ::tpyapp::main::takes(Outer::In(x));
 }
 
 inline int32_t Ov::f(int32_t x) const {
@@ -829,8 +828,7 @@ inline int32_t Ov::f(int32_t x) const {
 // def f(self, x: str) -> int32: ...
 inline int32_t Ov::f__str(std::string_view x) const {
     if (true) {
-        Outer::In __tmp_1 = Outer::In(::tpy::__len__(x));
-        return ::tpyapp::main::takes(__tmp_1);
+        return ::tpyapp::main::takes(Outer::In(::tpy::__len__(x)));
     }
 }
 

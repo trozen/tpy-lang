@@ -80,8 +80,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_outer::__next__(
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         r.emplace(A(::tpy::BigInt(3)));
-        __coro_arg_0.emplace(A(::tpy::BigInt(4)));
-        __for_src_0.emplace(::tpyapp::main::pair(std::tuple<A*, A*>{&((*__coro_arg_0)), &((*r))}));
+        __for_src_0.emplace(::tpyapp::main::pair(std::tuple<A*, A*>{&(__head_arg_0.emplace(A(::tpy::BigInt(4)))), &((*r))}));
         __state = S_JOIN_0;
         continue;
     }

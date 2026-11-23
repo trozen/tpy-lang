@@ -17,10 +17,8 @@ bool check(const Gate& gate) {
 //     print(1 if check(Gate(True)) else 0)
 //     print(1 if check(Gate(False)) else 0)
 void main() {
-    Gate __tmp_1 = Gate(true);
-    std::cout << ((::tpyapp::main::check(__tmp_1)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
-    Gate __tmp_2 = Gate(false);
-    std::cout << ((::tpyapp::main::check(__tmp_2)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpyapp::main::check(Gate(true))) ? (1) : (0)) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpyapp::main::check(Gate(false))) ? (1) : (0)) << "\n" << ::tpy::check_signals;
 }
 
 // from fieldmod import field_typed_locals

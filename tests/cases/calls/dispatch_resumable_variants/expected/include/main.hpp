@@ -1228,8 +1228,7 @@ struct __coro_atwins_read {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     const Twins& t;
-    std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> h;
-    ::tpystd::coro::Cancellable<int32_t>* __sub_0 = nullptr;
+    std::optional<__coro_Twins_step> h;
 
     enum : int32_t {
         S_INITIAL = 0,

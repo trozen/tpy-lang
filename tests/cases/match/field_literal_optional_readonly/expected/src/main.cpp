@@ -41,8 +41,7 @@ void main() {
     R b = R();
     b.inner = "bye";
     std::cout << ::tpyapp::main::describe(b) << "\n" << ::tpy::check_signals;
-    R __tmp_1 = R();
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(R()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

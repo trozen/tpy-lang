@@ -34,8 +34,7 @@ void main() {
     std::cout << "generic" << " " << ::tpyapp::main::generic(h) << " " << ::tpyapp::main::generic(c) << "\n" << ::tpy::check_signals;
     Square sq = Square(3);
     std::cout << "dynamic" << " " << ::tpyapp::main::dynamic_area(sq) << "\n" << ::tpy::check_signals;
-    auto __tmp_1 = std::array<int32_t, 2>{1, 2};
-    std::cout << "stub" << " " << ::tpyapp::main::stub_sized(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "stub" << " " << ::tpyapp::main::stub_sized(std::array<int32_t, 2>{1, 2}) << "\n" << ::tpy::check_signals;
     Checker k = Checker();
     std::cout << "method" << " " << k.check(d) << " " << k.check(c) << "\n" << ::tpy::check_signals;
     std::span<int32_t> s = k.pick(d);

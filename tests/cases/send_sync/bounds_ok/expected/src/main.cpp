@@ -9,8 +9,7 @@ namespace tpyapp::main {
 //     ch = Channel(7)
 //     print(ch.item)
 void main() {
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << ::tpyapp::main::use<int32_t>(42) << " " << ::tpyapp::main::use<std::vector<int32_t>>(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use<int32_t>(42) << " " << ::tpyapp::main::use<std::vector<int32_t>>(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
     Channel<int32_t> ch = Channel<int32_t>(7);
     std::cout << ch.item << "\n" << ::tpy::check_signals;
 }

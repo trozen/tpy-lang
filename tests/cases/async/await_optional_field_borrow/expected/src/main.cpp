@@ -95,8 +95,7 @@ __coro_make make(bool present) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        Box __tmp_1 = Box(::tpy::BigInt(1));
-        h.emplace(H(&(__tmp_1)));
+        h.emplace(H(&::tpy::as_mut_lvalue(Box(::tpy::BigInt(1)))));
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
         continue;

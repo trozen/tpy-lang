@@ -244,12 +244,9 @@ void main() {
     std::cout << "read" << " " << ::tpyapp::main::read_sub(s) << "\n" << ::tpy::check_signals;
     Deep d = Deep("d");
     std::cout << "deep" << " " << ::tpyapp::main::use_deep(d) << "\n" << ::tpy::check_signals;
-    Dog __tmp_1 = Dog(4);
-    std::cout << "dog" << " " << ::tpyapp::main::use_dog(__tmp_1) << " " << ::tpyapp::main::make_dog() << "\n" << ::tpy::check_signals;
-    std::vector<Dog> __tmp_2 = {Dog(1), Dog(2)};
-    std::cout << "elements" << " " << ::tpyapp::main::elements(__tmp_2) << "\n" << ::tpy::check_signals;
-    AB __tmp_3 = AB(1, 2);
-    std::cout << "ab" << " " << ::tpyapp::main::use_ab(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "dog" << " " << ::tpyapp::main::use_dog(::tpy::as_mut_lvalue(Dog(4))) << " " << ::tpyapp::main::make_dog() << "\n" << ::tpy::check_signals;
+    std::cout << "elements" << " " << ::tpyapp::main::elements(::tpy::as_mut_lvalue(std::vector<Dog>{Dog(1), Dog(2)})) << "\n" << ::tpy::check_signals;
+    std::cout << "ab" << " " << ::tpyapp::main::use_ab(AB(1, 2)) << "\n" << ::tpy::check_signals;
     VSub v = VSub();
     ::tpyapp::main::call_virtual(v);
     std::cout << "virtual" << " " << v.size << "\n" << ::tpy::check_signals;

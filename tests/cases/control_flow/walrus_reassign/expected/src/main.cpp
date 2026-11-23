@@ -526,17 +526,12 @@ void main() {
         std::move(__result);
     });
     std::cout << m << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_1 = {1, 5};
-    std::vector<std::string> __tmp_2 = {"a", "bb"};
-    std::cout << "while_rebind" << " " << ::tpyapp::main::while_rebind_int(__tmp_1) << " " << ::tpyapp::main::while_rebind_str(__tmp_2) << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_3 = {"ab"};
-    std::string kept = ::tpyapp::main::iter_live(__tmp_3);
+    std::cout << "while_rebind" << " " << ::tpyapp::main::while_rebind_int({1, 5}) << " " << ::tpyapp::main::while_rebind_str({"a", "bb"}) << "\n" << ::tpy::check_signals;
+    std::string kept = ::tpyapp::main::iter_live({"ab"});
     std::cout << "iter_live kept" << " " << kept << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_4 = {"ab"};
-    kept = ::tpyapp::main::reversed_live(__tmp_4);
+    kept = ::tpyapp::main::reversed_live({"ab"});
     std::cout << "reversed_live kept" << " " << kept << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_5 = {"ab"};
-    kept = ::tpyapp::main::opt_iter_live(__tmp_5);
+    kept = ::tpyapp::main::opt_iter_live({"ab"});
     std::cout << "opt_iter_live kept" << " " << kept << "\n" << ::tpy::check_signals;
     kept = Picker().first_live({"cd"});
     std::cout << "method_iter_live kept" << " " << kept << "\n" << ::tpy::check_signals;
@@ -582,10 +577,8 @@ void main() {
     }
     std::cout << "async_opt" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_opt(6))) << "\n" << ::tpy::check_signals;
     std::vector<std::string> owned = std::vector<std::string>{};
-    std::vector<std::string> __tmp_6 = {"e"};
-    ::tpyapp::main::own_arg(__tmp_6, owned);
-    std::vector<std::string> __tmp_7 = {"f"};
-    ::tpyapp::main::own_append(__tmp_7, owned);
+    ::tpyapp::main::own_arg({"e"}, owned);
+    ::tpyapp::main::own_append({"f"}, owned);
     owned.push_back("g");
     std::cout << "own_sinks" << " " << ::tpy::__len__(owned) << " " << ::tpy::__getitem__(owned, 0) << " " << ::tpy::__getitem__(owned, 1) << " " << ::tpy::__getitem__(owned, 2) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> bigs = std::vector<::tpy::BigInt>{};
@@ -627,8 +620,7 @@ void main() {
         __after_try_8:;
     }
     std::cout << "opt_value_append" << " " << ::tpy::__len__(opts) << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_8 = {"h"};
-    ::tpyapp::main::take_any(::tpyapp::main::any_sinks(__tmp_8));
+    ::tpyapp::main::take_any(::tpyapp::main::any_sinks({"h"}));
     std::vector<V> vs = std::vector<V>{};
     ::tpyapp::main::unpack_value(std::tuple<V, int32_t>{V(::tpy::BigInt(9)), 2}, vs);
     std::cout << "unpack_value" << " " << ::tpy::__len__(vs) << " " << ::tpy::__getitem__(vs, 0).n << "\n" << ::tpy::check_signals;

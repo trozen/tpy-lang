@@ -8,8 +8,7 @@ namespace tpyapp::main {
 //     print(A(Node(8)).got)
 //     print(B(3).x)
 void main() {
-    Node __tmp_1 = Node(::tpy::BigInt(8));
-    std::cout << A(&(__tmp_1)).got << "\n" << ::tpy::check_signals;
+    std::cout << A(&::tpy::as_mut_lvalue(Node(::tpy::BigInt(8)))).got << "\n" << ::tpy::check_signals;
     std::cout << B(::tpy::BigInt(3)).x << "\n" << ::tpy::check_signals;
 }
 

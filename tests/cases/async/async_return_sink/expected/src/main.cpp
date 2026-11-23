@@ -254,8 +254,7 @@ __coro_big big() {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        Box __tmp_1 = Box(n);
-        int32_t __tpy_async_ret = ::tpyapp::main::poke(__tmp_1);
+        int32_t __tpy_async_ret = ::tpyapp::main::poke(::tpy::as_mut_lvalue(Box(n)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -875,8 +874,7 @@ void show_sync_finally() {
         {
             bool __fin_ran_16 = false;
             try {
-                Box __tmp_1 = ::tpyapp::main::mk(n);
-                int32_t __tpy_async_ret_0 = ::tpyapp::main::poke(__tmp_1);
+                int32_t __tpy_async_ret_0 = ::tpyapp::main::poke(::tpy::as_mut_lvalue(::tpyapp::main::mk(n)));
                 __fin_ran_16 = true;
                 std::cout << "temp_finally fin" << "\n" << ::tpy::check_signals;
                 __state = S_DONE;
@@ -1430,8 +1428,7 @@ __coro_by_match by_match(Holder& h, std::vector<Box>& xs, int32_t k) {
         __sub_20.reset();
         u->v = 62;
         std::cout << "unwrap bound" << " " << (*cb).x.v << "\n" << ::tpy::check_signals;
-        __coro_arg_0.emplace(Cell<int32_t>(8));
-        __sub_21.emplace((*__coro_arg_0));
+        __sub_21.emplace(__head_arg_0.emplace(Cell<int32_t>(8)));
         __state = S_RESUME_21;
         continue;
     }

@@ -19,8 +19,7 @@ void main(int32_t n) {
         int32_t __stop_0 = n;
         for (int32_t i = 0; i < __stop_0; ++i) {
             int32_t __tmp_1 = i;
-            ::tpystd::tplib::box::Box<int32_t> __tmp_2 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
-            if (::tpyapp::main::is_small(__tmp_2)) {
+            if (::tpyapp::main::is_small(::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1)))) {
                 __result.insert(i);
             }
         }

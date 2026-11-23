@@ -24,8 +24,7 @@ int32_t test(int32_t x) {
         return -1;
     } else {
         int32_t v;
-        std::vector<int32_t> __tmp_1 = {10, 20};
-        if (((v = ::tpyapp::main::take(__tmp_1)) == x)) {
+        if (((v = ::tpyapp::main::take(::tpy::as_mut_lvalue(std::vector<int32_t>{10, 20}))) == x)) {
             return v;
         } else {
             return ::tpy::neg_check<int32_t>(v);

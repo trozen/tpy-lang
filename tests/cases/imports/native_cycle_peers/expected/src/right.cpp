@@ -13,8 +13,7 @@ Right::Right(::hubns::Hub* hub) : hub(hub) {}
 // def run(self) -> int32:
 //     return self.hub.read_tag(Tag())
 int32_t Right::run() const {
-    ::hubns::Tag __tmp_1 = ::hubns::Tag();
-    return ::tpy::none_attr(this->hub, "read_tag").read_tag(__tmp_1);
+    return ::tpy::none_attr(this->hub, "read_tag").read_tag(::tpy::as_mut_lvalue(::hubns::Tag()));
 }
 // from tpy.extern import native
 // import hub

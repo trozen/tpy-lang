@@ -47,10 +47,8 @@ namespace tpyapp::main {
 //           n.utcoffset() is not None)
 void main() {
     ::tpystd::datetime::ZoneInfo waw = ::tpystd::datetime::ZoneInfo("Europe/Warsaw");
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
-    ::tpystd::datetime::datetime first = datetime::fromtimestamp(1698539400.0, __tmp_1);
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
-    ::tpystd::datetime::datetime second = datetime::fromtimestamp(1698543000.0, __tmp_2);
+    ::tpystd::datetime::datetime first = datetime::fromtimestamp(1698539400.0, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw));
+    ::tpystd::datetime::datetime second = datetime::fromtimestamp(1698543000.0, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw));
     std::cout << first << " " << first.fold() << "\n" << ::tpy::check_signals;
     std::cout << second << " " << second.fold() << "\n" << ::tpy::check_signals;
     std::cout << std::string(::tpy::repr_of(second)) << "\n" << ::tpy::check_signals;
@@ -59,31 +57,19 @@ void main() {
     ::tpystd::datetime::datetime nsecond = datetime::fromtimestamp(1698543000.0);
     std::cout << nfirst << " " << nfirst.fold() << " " << nsecond << " " << nsecond.fold() << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(nfirst.timestamp()) << " " << ::tpy::print_float(nsecond.timestamp()) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::UTC;
-    ::tpystd::datetime::datetime utc_dt = datetime::fromtimestamp(1698543000.0, __tmp_3);
+    ::tpystd::datetime::datetime utc_dt = datetime::fromtimestamp(1698543000.0, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(::tpystd::datetime::UTC));
     std::cout << utc_dt << " " << utc_dt.fold() << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::ZoneInfo ny = ::tpystd::datetime::ZoneInfo("America/New_York");
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ny;
-    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone(__tmp_4) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_5 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
-    ::tpystd::datetime::datetime fixed = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_5);
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ny;
-    std::cout << fixed.astimezone(__tmp_6) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_7 = waw;
-    ::tpystd::datetime::datetime aware = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_7);
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_8 = ny;
-    std::cout << aware.astimezone(__tmp_8) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = ny;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_10 = waw;
-    std::cout << ::tpy::print_bool(((aware.astimezone(__tmp_9).astimezone(__tmp_10)) == (aware))) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_11 = ::tpystd::datetime::UTC;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_12 = waw;
-    ::tpystd::datetime::datetime back = datetime::fromtimestamp(1698543000.0, __tmp_11).astimezone(__tmp_12);
+    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone(::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(ny)) << "\n" << ::tpy::check_signals;
+    ::tpystd::datetime::datetime fixed = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)))));
+    std::cout << fixed.astimezone(::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(ny)) << "\n" << ::tpy::check_signals;
+    ::tpystd::datetime::datetime aware = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw));
+    std::cout << aware.astimezone(::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(ny)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((aware.astimezone(::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(ny)).astimezone(::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw))) == (aware))) << "\n" << ::tpy::check_signals;
+    ::tpystd::datetime::datetime back = datetime::fromtimestamp(1698543000.0, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(::tpystd::datetime::UTC)).astimezone(::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw));
     std::cout << back << " " << back.fold() << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_13 = waw;
-    std::cout << datetime::combine(::tpystd::datetime::date(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15)), ::tpystd::datetime::time(::tpy::BigInt(12), ::tpy::BigInt(0)), __tmp_13) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_14 = waw;
-    ::tpystd::datetime::datetime n = datetime::now(__tmp_14);
+    std::cout << datetime::combine(::tpystd::datetime::date(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15)), ::tpystd::datetime::time(::tpy::BigInt(12), ::tpy::BigInt(0)), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw)) << "\n" << ::tpy::check_signals;
+    ::tpystd::datetime::datetime n = datetime::now(::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw));
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> ntz = n.tzinfo();
     std::cout << ::tpy::print_bool((((!std::holds_alternative<std::monostate>(ntz)) && std::holds_alternative<::tpystd::datetime::ZoneInfo>(ntz)) && ((std::get<::tpystd::datetime::ZoneInfo>(ntz)) == (waw)))) << " " << ::tpy::print_bool((n.utcoffset().has_value())) << "\n" << ::tpy::check_signals;
 }

@@ -406,29 +406,23 @@ struct __coro_amain {
     bool __cancel_pending;
     ::tpy::frame_slot<std::array<R, 2>> d;
     int32_t i;
-    ::tpy::frame_slot<std::vector<R>> __coro_arg_0;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> task;
     int32_t __await_lift_0;
-    ::tpy::frame_slot<std::array<int32_t, 3>> __coro_arg_1;
     int32_t __await_lift_1;
-    ::tpy::frame_slot<std::array<std::string, 2>> __coro_arg_2;
     int32_t __await_lift_2;
-    ::tpy::frame_slot<std::vector<R>> __coro_arg_3;
     int32_t __await_lift_3;
     int32_t __await_lift_4;
-    ::tpy::frame_slot<std::array<R, 1>> __coro_arg_4;
     int32_t __await_lift_5;
-    ::tpy::frame_slot<std::array<R, 4>> __coro_arg_5;
     int32_t __await_lift_6;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
-    std::optional<__coro_asum_values<::tpy::await_arg_capture_t<decltype((std::move((*__coro_arg_1))))>>> __sub_1;
-    std::optional<__coro_alen_strs<::tpy::await_arg_capture_t<decltype((std::move((*__coro_arg_2))))>>> __sub_2;
-    std::optional<__coro_atake<::tpy::await_arg_capture_t<decltype((std::move((*__coro_arg_3))))>>> __sub_3;
+    std::optional<__coro_asum_values<::tpy::await_arg_capture_t<decltype((std::array<int32_t, 3>{1, 2, 3}))>>> __sub_1;
+    std::optional<__coro_alen_strs<::tpy::await_arg_capture_t<decltype((std::array<std::string, 2>{"ab", "c"}))>>> __sub_2;
+    std::optional<__coro_atake<::tpy::await_arg_capture_t<decltype((::tpyapp::part_frames::mk()))>>> __sub_3;
     std::optional<__coro_atake<::tpy::await_arg_capture_t<decltype((std::move((*d))))>>> __sub_4;
-    std::optional<__coro_atake<::tpy::await_arg_capture_t<decltype((std::move((*__coro_arg_4))))>>> __sub_5;
-    std::optional<__coro_atake<::tpy::await_arg_capture_t<decltype((std::move((*__coro_arg_5))))>>> __sub_6;
+    std::optional<__coro_atake<::tpy::await_arg_capture_t<decltype((std::array<R, 1>{R(5)}))>>> __sub_5;
+    std::optional<__coro_atake<::tpy::await_arg_capture_t<decltype((std::declval<std::vector<R>>()))>>> __sub_6;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -785,10 +779,8 @@ struct __gen_gen_caller : public ::tpy::next_iter_mixin<__gen_gen_caller, int32_
     ::tpy::frame_state __state;
     int32_t y;
     int32_t z;
-    ::tpy::frame_slot<std::vector<R>> __coro_arg_0;
-    ::tpy::frame_slot<std::array<R, 3>> __coro_arg_1;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::part_frames::gen(std::move((*__coro_arg_0)))))>;
-    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::part_frames::gen(std::move((*__coro_arg_1)))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::part_frames::gen(::tpyapp::part_frames::mk())))>;
+    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::part_frames::gen(std::declval<std::vector<R>>())))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
     ::tpy::frame_loop_slot<__for_src_1_t> __for_src_1;
@@ -836,8 +828,7 @@ struct __gen_gen_loop_caller : public ::tpy::next_iter_mixin<__gen_gen_loop_call
     int32_t j;
     int32_t y;
     int32_t i;
-    ::tpy::frame_slot<std::vector<R>> __coro_arg_0;
-    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate(::tpyapp::part_frames::gen_n(i, std::move((*__coro_arg_0))))))>;
+    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate(::tpyapp::part_frames::gen_n(i, ::tpyapp::part_frames::mk()))))>;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     ::tpy::frame_loop_slot<__for_src_1_t> __for_src_1;
@@ -867,9 +858,8 @@ struct __gen_gen_select_caller : public ::tpy::next_iter_mixin<__gen_gen_select_
     bool c;
     int32_t y;
     int32_t z;
-    ::tpy::frame_slot<std::vector<R>> __coro_arg_0;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::part_frames::gen(((c) ? (::tpyapp::part_frames::mk()) : (std::vector<R>{R(9)})))))>;
-    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::part_frames::gen(std::move((*__coro_arg_0)))))>;
+    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::part_frames::gen(((::tpy::__len__(std::declval<std::remove_reference_t<decltype((::tpyapp::part_frames::mk()))>&>()) != 0) ? std::move(std::declval<std::remove_reference_t<decltype((::tpyapp::part_frames::mk()))>&>()) : std::vector<R>{R(8)}))))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
     ::tpy::frame_loop_slot<__for_src_1_t> __for_src_1;

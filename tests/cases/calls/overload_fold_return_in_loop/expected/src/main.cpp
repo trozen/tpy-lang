@@ -352,36 +352,23 @@ void bump(A& a) {
 //     print("redecl:", redecl(3), redecl("a"))
 //     print("nested_def:", nested_def(3), nested_def("a"))
 void main() {
-    A __tmp_1 = A(::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::in_loop__A__int(__tmp_1, ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
-    A __tmp_2 = A(::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::in_loop__A__int(__tmp_2, ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
-    B __tmp_3 = B(::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::in_loop__B__int(__tmp_3, ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
-    B __tmp_4 = B(::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::in_loop__B__int(__tmp_4, ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
-    A __tmp_5 = A(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::in_branch__A__bool(__tmp_5, false) << "\n" << ::tpy::check_signals;
-    A __tmp_6 = A(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::in_branch__A__bool(__tmp_6, true) << "\n" << ::tpy::check_signals;
-    B __tmp_7 = B(::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::in_branch__B__bool(__tmp_7, false) << "\n" << ::tpy::check_signals;
-    B __tmp_8 = B(::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::in_branch__B__bool(__tmp_8, true) << "\n" << ::tpy::check_signals;
-    A __tmp_9 = A(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::toplevel__A(__tmp_9) << "\n" << ::tpy::check_signals;
-    B __tmp_10 = B(::tpy::BigInt(6));
-    std::cout << ::tpyapp::main::toplevel__B(__tmp_10) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_loop__A__int(A(::tpy::BigInt(5)), ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_loop__A__int(A(::tpy::BigInt(5)), ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_loop__B__int(B(::tpy::BigInt(7)), ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_loop__B__int(B(::tpy::BigInt(7)), ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_branch__A__bool(A(::tpy::BigInt(9)), false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_branch__A__bool(A(::tpy::BigInt(9)), true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_branch__B__bool(B(::tpy::BigInt(4)), false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_branch__B__bool(B(::tpy::BigInt(4)), true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::toplevel__A(A(::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::toplevel__B(B(::tpy::BigInt(6))) << "\n" << ::tpy::check_signals;
     std::cout << "dyn_local:" << " " << ::tpyapp::main::dyn_local__int(::tpy::BigInt(3)) << " " << ::tpyapp::main::dyn_local__str("a") << "\n" << ::tpy::check_signals;
     std::cout << "both_arms:" << " " << ::tpyapp::main::both_arms__int(::tpy::BigInt(3)) << " " << ::tpyapp::main::both_arms__str("a") << "\n" << ::tpy::check_signals;
     A a = A(::tpy::BigInt(3));
-    B __tmp_11 = B(::tpy::BigInt(2));
-    std::cout << "match_fold:" << " " << ::tpyapp::main::match_fold__A(a) << " " << ::tpyapp::main::match_fold__B(__tmp_11) << " " << a.x << "\n" << ::tpy::check_signals;
+    std::cout << "match_fold:" << " " << ::tpyapp::main::match_fold__A(a) << " " << ::tpyapp::main::match_fold__B(B(::tpy::BigInt(2))) << " " << a.x << "\n" << ::tpy::check_signals;
     std::cout << "partly:" << " " << ::tpyapp::main::partly__int__int(::tpy::BigInt(1), ::tpy::BigInt(2)) << " " << ::tpyapp::main::partly__int__int(::tpy::BigInt(1), ::tpy::BigInt(0)) << " " << ::tpyapp::main::partly__str__int("a", ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
     std::cout << "walrus_elif:" << " " << ::tpyapp::main::walrus_elif__int__int(::tpy::BigInt(1), ::tpy::BigInt(2)) << " " << ::tpyapp::main::walrus_elif__int__int(::tpy::BigInt(1), ::tpy::BigInt(1)) << " " << ::tpyapp::main::walrus_elif__str__int("a", ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
-    A __tmp_12 = A(::tpy::BigInt(3));
-    B __tmp_13 = B(::tpy::BigInt(2));
-    std::cout << "match_decl:" << " " << ::tpyapp::main::match_decl__A(__tmp_12) << " " << ::tpyapp::main::match_decl__B(__tmp_13) << "\n" << ::tpy::check_signals;
+    std::cout << "match_decl:" << " " << ::tpyapp::main::match_decl__A(A(::tpy::BigInt(3))) << " " << ::tpyapp::main::match_decl__B(B(::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::raises__str("a");

@@ -55,12 +55,10 @@ Point owned_method_copy(const Factory& f) {
 void main() {
     Point p = ::tpyapp::main::make(1);
     Point q = ::tpyapp::main::owned(1);
-    Factory __tmp_1 = Factory(5);
-    Point r = ::tpyapp::main::owned_method(__tmp_1);
+    Point r = ::tpyapp::main::owned_method(Factory(5));
     p.x = 10;
     std::cout << p.x << " " << q.x << " " << r.x << "\n" << ::tpy::check_signals;
-    Factory __tmp_2 = Factory(5);
-    std::cout << ::tpyapp::main::make_copy(1).x << " " << ::tpyapp::main::owned_copy(1).x << " " << ::tpyapp::main::owned_method_copy(__tmp_2).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::make_copy(1).x << " " << ::tpyapp::main::owned_copy(1).x << " " << ::tpyapp::main::owned_method_copy(Factory(5)).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

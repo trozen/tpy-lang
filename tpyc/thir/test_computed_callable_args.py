@@ -1,8 +1,9 @@
-"""Callable spellings share the existing lambda-body argument admission."""
+"""Callable spellings share the lambda-body argument admission."""
 
 import pytest
 
-from .testutil import _strict_reject
+from .nodes import THIRInlineTemp
+from .testutil import _lower_fn
 
 
 @pytest.mark.parametrize("callee", [
@@ -27,6 +28,18 @@ def run():
     deferred: Callable[[], int32] = lambda: {callee}([1])
     print(deferred())
 '''
-    # Existing limitation: BUGS.md#lambda-body-reference-argument-temp.
-    error, _ = _strict_reject(source)
-    assert error.reason == "expr.lambda:lambda.body:expr.call:call.arg_shape.container"
+    # A lambda body has no statement to hold a temporary, and needs none: the
+    # fresh list binds the written parameter as a temporary of the body's
+    # own expression.
+    fn = _lower_fn(source, "run")
+    assert fn is not None
+    assert _has_inline_temp(fn)
+
+
+def _has_inline_temp(node: object) -> bool:
+    if isinstance(node, THIRInlineTemp):
+        return node.mutable
+    fields = getattr(node, "__dataclass_fields__", None)
+    children = ([getattr(node, f) for f in fields] if fields
+                else node if isinstance(node, (list, tuple)) else ())
+    return any(_has_inline_temp(c) for c in children)

@@ -32,8 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpy::ordered_map<::tpy::BigInt, std::string> __tmp_1 = ::tpy::ordered_map<::tpy::BigInt, std::string>({{::tpy::BigInt(0), "zero"}});
-    ::tpyapp::main::main(__tmp_1);
+    ::tpyapp::main::main(::tpy::ordered_map<::tpy::BigInt, std::string>({{::tpy::BigInt(0), "zero"}}));
 }
 
 } // namespace tpyapp::main

@@ -113,8 +113,7 @@ std::vector<Box> borrowed(std::vector<Box>& ws) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& b = *__beg_0;
-            Box __tmp_1 = Box(b).finish();
-            __result.insert(::tpyapp::main::first(__tmp_1));
+            __result.insert(::tpyapp::main::first(Box(b).finish()));
         }
         std::move(__result);
     });
@@ -450,15 +449,13 @@ void main() {
     Box& one = std::get<0>(__tup_1);
     Box& two = std::get<1>(__tup_1);
     std::cout << "double" << " " << ::tpy::__getitem__(one.xs, 0) << " " << ::tpy::__getitem__(two.xs, 0) << "\n" << ::tpy::check_signals;
-    std::vector<Box> __tmp_1 = {Box(1)};
-    ::tpyapp::main::shadow_local(__tmp_1);
+    ::tpyapp::main::shadow_local(::tpy::as_mut_lvalue(std::vector<Box>{Box(1)}));
     std::optional<std::vector<Box>> __slot_11;
     ws = &*(__slot_11 = std::vector<Box>{Box(1)});
     std::optional<std::vector<Box>> __slot_12;
     r = &*(__slot_12 = ::tpyapp::main::consumed_outer((*ws)));
     std::cout << "consumed_outer" << " " << ::tpy::ListPrinter(::tpyapp::main::heads((*r))) << " " << ::tpy::ListPrinter(::tpyapp::main::lens((*ws))) << "\n" << ::tpy::check_signals;
-    std::vector<Box> __tmp_2 = {Box(1)};
-    ::tpyapp::main::shadow_for(__tmp_2);
+    ::tpyapp::main::shadow_for(::tpy::as_mut_lvalue(std::vector<Box>{Box(1)}));
     std::optional<std::vector<Box>> __slot_13;
     r = &*(__slot_13 = ::tpyapp::main::owned_arg(std::array<Box, 2>{Box(1), Box(2)}));
     std::cout << "owned_arg" << " " << ::tpy::ListPrinter(::tpyapp::main::heads((*r))) << "\n" << ::tpy::check_signals;

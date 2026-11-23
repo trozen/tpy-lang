@@ -94,20 +94,13 @@ void main() {
         std::cout << std::get<0>(kv) << " " << "=" << " " << std::get<1>(kv) << "\n" << ::tpy::check_signals;
     }
     conn.close();
-    ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "application/json"}});
-    ::tpyapp::main::show_request("POST", "/v1", ::tpy::bytes_literal_owned("{\"x\":1}", 7), __tmp_1);
-    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>();
-    ::tpyapp::main::show_request("POST", "/x", std::nullopt, __tmp_2);
-    ::tpy::ordered_map<std::string, std::string> __tmp_3 = ::tpy::ordered_map<std::string, std::string>();
-    ::tpyapp::main::show_request("PUT", "/x", std::nullopt, __tmp_3);
-    ::tpy::ordered_map<std::string, std::string> __tmp_4 = ::tpy::ordered_map<std::string, std::string>();
-    ::tpyapp::main::show_request("PATCH", "/x", std::nullopt, __tmp_4);
-    ::tpy::ordered_map<std::string, std::string> __tmp_5 = ::tpy::ordered_map<std::string, std::string>();
-    ::tpyapp::main::show_request("GET", "/x", std::nullopt, __tmp_5);
-    ::tpy::ordered_map<std::string, std::string> __tmp_6 = ::tpy::ordered_map<std::string, std::string>({{"Host", "override:9000"}});
-    ::tpyapp::main::show_request("GET", "/x", std::nullopt, __tmp_6);
-    ::tpy::ordered_map<std::string, std::string> __tmp_7 = ::tpy::ordered_map<std::string, std::string>({{"Transfer-Encoding", "chunked"}});
-    ::tpyapp::main::show_request("POST", "/x", ::tpy::bytes_literal_owned("data", 4), __tmp_7);
+    ::tpyapp::main::show_request("POST", "/v1", ::tpy::bytes_literal_owned("{\"x\":1}", 7), ::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"Content-Type", "application/json"}})));
+    ::tpyapp::main::show_request("POST", "/x", std::nullopt, ::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>()));
+    ::tpyapp::main::show_request("PUT", "/x", std::nullopt, ::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>()));
+    ::tpyapp::main::show_request("PATCH", "/x", std::nullopt, ::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>()));
+    ::tpyapp::main::show_request("GET", "/x", std::nullopt, ::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>()));
+    ::tpyapp::main::show_request("GET", "/x", std::nullopt, ::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"Host", "override:9000"}})));
+    ::tpyapp::main::show_request("POST", "/x", ::tpy::bytes_literal_owned("data", 4), ::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"Transfer-Encoding", "chunked"}})));
 }
 
 // # http.client request/response over a socketpair (conn.sock injection -- no

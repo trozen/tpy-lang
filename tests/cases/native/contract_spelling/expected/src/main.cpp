@@ -22,8 +22,7 @@ std::vector<::Cell> fresh_cells() {
 //     print("borrow_none", a.v)
 void borrow_none() {
     ::Cell a = ::Cell(1);
-    ::Cell __tmp_1 = ::Cell(9);
-    ::Cell& c = ::tpy::assert_lent(::pick_first(a, __tmp_1));
+    ::Cell& c = ::tpy::assert_lent(::pick_first(a, ::tpy::as_mut_lvalue(::Cell(9))));
     c.v = 5;
     std::cout << "borrow_none" << " " << a.v << "\n" << ::tpy::check_signals;
 }
@@ -37,8 +36,7 @@ void borrow_none() {
 //     print("borrow_temp", a.v, c.v)
 void borrow_temp() {
     ::Cell a = ::Cell(1);
-    ::Cell __tmp_1 = ::Cell(9);
-    ::Cell c = ::pick_either(a, __tmp_1);
+    ::Cell c = ::pick_either(a, ::tpy::as_mut_lvalue(::Cell(9)));
     c.v = 5;
     std::cout << "borrow_temp" << " " << a.v << " " << c.v << "\n" << ::tpy::check_signals;
 }

@@ -136,8 +136,7 @@ void main() {
     ::tpyapp::main::s1b();
     ::tpyapp::main::s1c();
     ::tpyapp::main::s1d(std::tuple<A, int32_t>{A(5), 6});
-    A __tmp_1 = A(1);
-    ::tpyapp::main::s1e(__tmp_1);
+    ::tpyapp::main::s1e(::tpy::as_mut_lvalue(A(1)));
     ::tpyapp::main::s1f([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(1), 2}));
     std::vector<std::tuple<A, int32_t>> ps = ::tpy::make_vector<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 2});
     std::vector<std::tuple<A, int32_t>> out = std::vector<std::tuple<A, int32_t>>{};

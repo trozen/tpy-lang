@@ -462,9 +462,7 @@ int32_t look_ro(const Shape& s) {
 //     print("const_args", look(q), look_ro(r), m.s)  # tpyc: ok
 void const_args(const Sq& q, const Sq& r, Sq& m) {
     m.s = ::tpy::add_check<int32_t>(m.s, 1);
-    ::tpy::RefAdapter<Shape, const Sq> __tmp_1{q};
-    ::tpy::RefAdapter<Shape, const Sq> __tmp_2{r};
-    std::cout << "const_args" << " " << ::tpyapp::main::look(__tmp_1) << " " << ::tpyapp::main::look_ro(__tmp_2) << " " << m.s << "\n" << ::tpy::check_signals;
+    std::cout << "const_args" << " " << ::tpyapp::main::look(::tpy::RefAdapter<Shape, const Sq>{q}) << " " << ::tpyapp::main::look_ro(::tpy::RefAdapter<Shape, const Sq>{r}) << " " << m.s << "\n" << ::tpy::check_signals;
 }
 
 // def opt_look(s: Shape | None) -> int32:
@@ -687,32 +685,22 @@ void loop_refill(std::vector<Sq>& xs) {
 //     isinstance_const(n, n)
 //     loop_refill([Sq(2)])
 void main() {
-    Sq __tmp_1 = Sq(2);
-    ::tpyapp::main::free_function(__tmp_1);
+    ::tpyapp::main::free_function(::tpy::as_mut_lvalue(Sq(2)));
     Sq x = Sq(2);
     ::tpyapp::main::inferred_const(x, x);
     Sq y = Sq(3);
     ::tpyapp::main::readonly_param(y, y);
-    Sq __tmp_2 = Sq(3);
-    ::tpyapp::main::pointer_sources(&(__tmp_2));
-    Pinned __tmp_3 = Pinned(2);
-    ::tpyapp::main::nocopy_source(__tmp_3);
-    Dog __tmp_4 = Dog(2);
-    Dog __tmp_5 = Dog(4);
-    ::tpyapp::main::inheritance(__tmp_4, __tmp_5);
+    ::tpyapp::main::pointer_sources(&::tpy::as_mut_lvalue(Sq(3)));
+    ::tpyapp::main::nocopy_source(::tpy::as_mut_lvalue(Pinned(2)));
+    ::tpyapp::main::inheritance(::tpy::as_mut_lvalue(Dog(2)), Dog(4));
     ::tpyapp::main::value_type();
-    Sq __tmp_6 = Sq(2);
-    ::tpyapp::main::rvalues(__tmp_6);
-    ::tpy::Adapter<Shape, Sq> __tmp_7{Sq(4)};
-    ::tpyapp::main::protocol_source(__tmp_7);
-    Sq __tmp_8 = Sq(2);
-    User u = User(__tmp_8);
-    Sq __tmp_9 = Sq(3);
-    u.method(__tmp_9);
+    ::tpyapp::main::rvalues(Sq(2));
+    ::tpyapp::main::protocol_source(::tpy::as_mut_lvalue(::tpy::Adapter<Shape, Sq>{Sq(4)}));
+    User u = User(::tpy::as_mut_lvalue(Sq(2)));
+    u.method(::tpy::as_mut_lvalue(Sq(3)));
     {
-        Sq __tmp_10 = Sq(2);
         {
-            auto __try_tmp_2 = ::tpyapp::main::error_return_body(__tmp_10);
+            auto __try_tmp_2 = ::tpyapp::main::error_return_body(::tpy::as_mut_lvalue(Sq(2)));
             if (!__try_tmp_2.has_value()) goto __except_1;
         }
         goto __after_try_1;
@@ -721,36 +709,24 @@ void main() {
         std::cout << "error_return_body raised" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
-    Sq __tmp_11 = Sq(2);
-    ::tpyapp::main::closure(__tmp_11);
-    Sq __tmp_12 = Sq(2);
-    ::tpyapp::main::at_if(__tmp_12, 1);
-    Sq __tmp_13 = Sq(2);
-    ::tpyapp::main::at_if(__tmp_13, 0);
-    Sq __tmp_14 = Sq(2);
-    ::tpyapp::main::at_try(__tmp_14);
-    Sq __tmp_15 = Sq(2);
-    ::tpyapp::main::at_while(__tmp_15);
-    Sq __tmp_16 = Sq(2);
-    ::tpyapp::main::at_with(__tmp_16);
-    Sq __tmp_17 = Sq(2);
-    ::tpyapp::main::at_for(__tmp_17);
-    Sq __tmp_18 = Sq(2);
-    ::tpyapp::main::block_local(__tmp_18, true, 4);
-    Sq __tmp_19 = Sq(2);
-    ::tpyapp::main::block_escape(__tmp_19, true);
+    ::tpyapp::main::closure(::tpy::as_mut_lvalue(Sq(2)));
+    ::tpyapp::main::at_if(::tpy::as_mut_lvalue(Sq(2)), 1);
+    ::tpyapp::main::at_if(::tpy::as_mut_lvalue(Sq(2)), 0);
+    ::tpyapp::main::at_try(::tpy::as_mut_lvalue(Sq(2)));
+    ::tpyapp::main::at_while(::tpy::as_mut_lvalue(Sq(2)));
+    ::tpyapp::main::at_with(::tpy::as_mut_lvalue(Sq(2)));
+    ::tpyapp::main::at_for(::tpy::as_mut_lvalue(Sq(2)));
+    ::tpyapp::main::block_local(::tpy::as_mut_lvalue(Sq(2)), true, 4);
+    ::tpyapp::main::block_escape(::tpy::as_mut_lvalue(Sq(2)), true);
     Sq z = Sq(2);
     ::tpyapp::main::const_args(z, z, z);
-    Sq __tmp_20 = Sq(3);
-    ::tpyapp::main::optional_param(&(__tmp_20), z, z);
-    Dog __tmp_21 = Dog(2);
-    ::tpyapp::main::inherit_try_with(__tmp_21);
+    ::tpyapp::main::optional_param(&::tpy::as_mut_lvalue(Sq(3)), z, z);
+    ::tpyapp::main::inherit_try_with(::tpy::as_mut_lvalue(Dog(2)));
     Sq h = Sq(3);
     ::tpyapp::main::hoisted_readonly(h, h);
     Sq n = Sq(4);
     ::tpyapp::main::isinstance_const(n, n);
-    std::vector<Sq> __tmp_22 = {Sq(2)};
-    ::tpyapp::main::loop_refill(__tmp_22);
+    ::tpyapp::main::loop_refill(::tpy::as_mut_lvalue(std::vector<Sq>{Sq(2)}));
 }
 
 // main()

@@ -466,8 +466,7 @@ void view_through_call_section() {
 void main() {
     ::tpyapp::main::loop_carried_section();
     ::tpyapp::main::for_carried_section();
-    std::vector<Point> __tmp_1 = {Point(40)};
-    ::tpyapp::main::foreign_origin_section(__tmp_1);
+    ::tpyapp::main::foreign_origin_section(::tpy::as_mut_lvalue(std::vector<Point>{Point(40)}));
     ::tpyapp::main::hoisted_body_bind_section();
     ::tpyapp::main::two_alias_section();
     ::tpyapp::main::alias_kind_section();

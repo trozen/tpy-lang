@@ -75,7 +75,7 @@ from ...parse.nodes import (
     TpyImport,
     TpyVarDecl,
     TpyWhile,
-    TpyWith,
+    TpyWith, TpyWithItem,
     VarLinkage,
     is_docstring,
     is_super_del_call,
@@ -139,7 +139,10 @@ from ..frame import (THIRFrameHolder, frame_ptr_slot_field,
                      frame_ptr_slot_name)
 from ...sema.source_records import moves_place, read_record
 from ...sema.call_lends import Retention, expr_lends_storage
-from ..param_contract import arg_retention
+from ..param_contract import HandleUse, arg_retention
+from .frame_seat import (
+    BoundScope, Hand, bound_in, planned, statement_hands,
+)
 from ...sema.context import UnnamedHolder
 from ...sema.aug_hold import holds_by_value
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
@@ -182,6 +185,7 @@ from ...liveness import (
     try_terminates_ignoring_finally, tuple_literal_leaves,
 )
 from ...value_category import (
+    head_enclosed_root, held_type, for_hands_source_over, may_hold_pointer,
     binds_owned_value, call_hands_back_value, call_returns_cpp_ref, for_source_is_rvalue,
     CONTAINER_LITERAL_NODES, is_rvalue_source,
     property_access_returns_cpp_ref, origin_open, origin_shared,
@@ -197,7 +201,7 @@ from ..reject import (
     stmt_reject_reason,
 )
 from ..scalar_leaves import record_owner, storage_leaf
-from ..nodes import (HoistDecl, THIRCall, THIRStubCallee, THIRStoragePlacement, THIRHoistedBinding,
+from ..nodes import (HoistDecl, SeatLifetime, declares_temporaries, THIRCall, THIRStubCallee, THIRStoragePlacement, THIRHoistedBinding,
     builds_assigned_record,
     THIRCtorCall, THIRBorrowTupleLiteral, Form, OpenTSink, PrintForm,
     PtrSlotKind, THIRArgTemp, THIRAssert, THIRAssign, THIRBinOp, THIRBreak,
@@ -221,7 +225,8 @@ from ..nodes import (HoistDecl, THIRCall, THIRStubCallee, THIRStoragePlacement, 
     THIRTupleElemTarget, THIRTupleUnpack, TupleElemBind, TupleSourceBind,
     THIRUnaryNot, THIRVarDecl, THIRWhile, THIRWith, THIRWithItem, THIRTempRead,
     WithTargetArm)
-from .predicates import (_borrow_tuple_return_type, _strview_coerce_name, _own_genrec_return,
+from .predicates import (for_consuming_shape, resolved_loop_elem_type,
+                         _borrow_tuple_return_type, _strview_coerce_name, _own_genrec_return,
     place_hops,
     _own_storage_tuple_return, _own_wrapper_return, _record_storage_return,
     _value_tuple_return,
@@ -281,6 +286,7 @@ from .predicates import (_borrow_tuple_return_type, _strview_coerce_name, _own_g
     _value_tuple, _tuple_container_elem_read, _tuple_literal_has_ref_elements,
     _value_tuple_nested, _var_decl_type)
 from .context import (
+    CompoundEntry,
     FrameLocalClass,
     StmtEntry,
     lends_elements,
@@ -359,6 +365,11 @@ from .convert import (
 from .expressions import (
     _lower_into_dyn, forwarded, as_base_of_read,
     _dunder_arg, _spell_brace, stamped, slot_payload_lent, lent_holder, _hoisted,
+    receiver_kept,
+    held_temp,
+    self_typed_source,
+    RootPlace,
+    root_placement, RootPlacement,
     _select_result, _operand_use_of,
     _self_capture_cpp, _whole_optional_bare, _is_own_param, _lower_module_var,
     _module_var_access_pair, _slice_recv_ok, _slice_index_ok,
@@ -824,7 +835,8 @@ def build_loop_node(shape: str, var: str, et: TpyType,
         return THIRForIterProto(
             var=var, elem_type=et, iterable=iterable, body=body,
             const_loop_var=const_loop_var, iterable_lvalue=iterable_lvalue,
-            binding=binding, owning_source=owning, **position_facts)
+            binding=binding, owning_source=owning,
+            head_scope=declares_temporaries((iterable,)), **position_facts)
     assert shape == "each", shape
     # Every route over an owning parameter steps the iterator protocol.
     assert not owning, "a begin/end loop over an owning parameter"
@@ -832,7 +844,8 @@ def build_loop_node(shape: str, var: str, et: TpyType,
         var=var, elem_type=et, iterable=iterable, body=body,
         const_loop_var=const_loop_var, iterable_lvalue=iterable_lvalue,
         consuming=consuming, hoist_loop_var=hoist_loop_var,
-        binding=binding, **position_facts)
+        binding=binding, head_scope=declares_temporaries((iterable,)),
+        **position_facts)
 
 
 def _module_slot_global(name: str, lc: '_LowerCtx') -> bool:
@@ -890,7 +903,7 @@ def _loop_var_shadows_global_ok(stmt: TpyForEach, analyzer,
     families have to be excluded."""
     if stmt.var not in shadowable:
         return False
-    et = _resolved_loop_elem_type(stmt, analyzer)
+    et = resolved_loop_elem_type(stmt, analyzer)
     gt = declared.get(stmt.var)
     if et is None or gt is None:
         return False
@@ -1000,22 +1013,6 @@ def _for_range_route(stmt: TpyForEach, analyzer,
         step_expr_computed=(step_kind == "variable"
                             and not isinstance(it.args[2], TpyName)))
 
-def _resolved_loop_elem_type(stmt: TpyForEach, analyzer) -> 'TpyType | None':
-    # resolve_int_literals: a literal-seeded container's elem_type is still
-    # IntLiteral (IntLiteralType.to_cpp() would emit the VALUE), so the loop
-    # binding needs the resolved default-int spelling -- a list literal
-    # written as the iterable, or a module-level one; a function-local
-    # list's element is its cells' settled type. A str/bytes loop var
-    # (list[str] element / owned-str dict key / a bytes-yielding iterator)
-    # resolves its pending view type the same way, matching the lowering's
-    # `et`.
-    if stmt.elem_type is None:
-        return None
-    et = resolve_int_literals(unwrap_ref_type(stmt.elem_type),
-                              analyzer.ctx.default_int_for_literal)
-    view_et = _resolved_viewfam_value(et, analyzer)
-    return view_et if view_et is not None else et
-
 def _narrowed_value_opt_view_iter(it: TpyName,
                                   declared: dict[str, TpyType],
                                   analyzer) -> 'TpyType | None':
@@ -1078,7 +1075,7 @@ def _for_each_container_route(
                 and len(it.args) == 3
                 and _range_bound_literal_value(it.args[2]) == 0):
             return None
-        et = _resolved_loop_elem_type(stmt, analyzer)
+        et = resolved_loop_elem_type(stmt, analyzer)
         if not _for_each_elem_binding_ok(et):
             return None
         _witness("foreach.range_object")
@@ -1250,7 +1247,7 @@ def _for_each_container_route(
                                                     "tpy.Spannable")):
                     note_detail("foreach.field_family")
                     return None
-                et = _resolved_loop_elem_type(stmt, analyzer)
+                et = resolved_loop_elem_type(stmt, analyzer)
                 if not _for_each_elem_binding_ok(et):
                     note_detail("foreach.elem_family."
                                 + _type_family_tag(et, analyzer))
@@ -1284,7 +1281,7 @@ def _for_each_container_route(
     # rebinding guard is needed: sema forbids reassigning a non-value loop var
     # (`_check_nonvalue_rebinding`), so a reference loop var is only read or
     # field-mutated through the alias, matching Python's reference semantics.
-    et = _resolved_loop_elem_type(stmt, analyzer)
+    et = resolved_loop_elem_type(stmt, analyzer)
     # Compositional element gate: admit any element the shared
     # loop_var_binding renders (every resolved concrete type -- the helper
     # picks the form). Unresolved pending elements reject.
@@ -1339,22 +1336,14 @@ def _for_consuming_route(stmt: TpyForEach, analyzer,
     (`::tpy::step_range`: the iterator's own when it has one, else its
     `__next__`), and the loop var binds the element each step hands over.
     The other richer for-shapes are excluded."""
-    src = _peel_coerce(stmt.iterable)
-    if stmt.consuming_iter_fi is None and not (
-            isinstance(src, TpyCall) and src.consuming_iter_fi is not None):
+    if stmt.var in declared or not for_consuming_shape(stmt, analyzer):
         return None
-    if (stmt.is_async or stmt.enum_iterable is not None
-            or stmt.hoist_loop_var):
-        return None
-    if analyzer.if_branch_decls.get(stmt):
-        return None
-    if stmt.var in declared:
-        return None
-    et = _resolved_loop_elem_type(stmt, analyzer)
-    if not _for_each_elem_binding_ok(et):
-        return None
-    return _ForEachRoute(route="container", elem_type=et,
+    return _ForEachRoute(route="container",
+                         elem_type=resolved_loop_elem_type(stmt, analyzer),
                          iterable_lvalue=False, consuming=True)
+
+
+
 
 def _for_enum_route(stmt: TpyForEach, analyzer,
                     declared: dict[str, TpyType]) -> '_ForEachRoute | None':
@@ -1471,7 +1460,7 @@ def _for_iter_proto_route(
         if ternary_iterable_lends_storage(it, analyzer.registry.get_record,
                                           analyzer.get_expr_type):
             return None
-        et = _resolved_loop_elem_type(stmt, analyzer)
+        et = resolved_loop_elem_type(stmt, analyzer)
         if not _for_each_elem_binding_ok(et):
             note_detail("foreach.elem_family."
                         + _type_family_tag(et, analyzer))
@@ -1509,7 +1498,7 @@ def _for_iter_proto_route(
         # A GENEXPR iterable (`for b in (n for n in data):`): the frame is
         # an rvalue the loop owns (`auto __src_N = <frame creation>;`); the
         # genexpr's own lowering gates which sources route.
-        et = _resolved_loop_elem_type(stmt, analyzer)
+        et = resolved_loop_elem_type(stmt, analyzer)
         if not _for_each_elem_binding_ok(et):
             note_detail("foreach.elem_family."
                         + _type_family_tag(et, analyzer))
@@ -1540,7 +1529,7 @@ def _for_iter_proto_route(
             if not (isinstance(su, NominalType) and not su.is_protocol
                     and _user_iterator_iterable(su, analyzer)):
                 return None
-            et = _resolved_loop_elem_type(stmt, analyzer)
+            et = resolved_loop_elem_type(stmt, analyzer)
             if not _for_each_elem_binding_ok(et):
                 note_detail("foreach.elem_family."
                             + _type_family_tag(et, analyzer))
@@ -1568,7 +1557,7 @@ def _for_iter_proto_route(
                         if (is_list(at) or is_set(at)) else None)
             if fam_face is None:
                 return None
-            et = _resolved_loop_elem_type(stmt, analyzer)
+            et = resolved_loop_elem_type(stmt, analyzer)
             if not _for_each_elem_binding_ok(et):
                 note_detail("foreach.elem_family."
                             + _type_family_tag(et, analyzer))
@@ -1602,7 +1591,7 @@ def _for_iter_proto_route(
             # native-iterable verdict, @dynamic bindings (adapter dispatch),
             # and resumable bodies (protocol_param_ok is threaded False there
             # -- the frame emitters have no witnessed protocol-loop shape).
-            elem = _resolved_loop_elem_type(stmt, analyzer)
+            elem = resolved_loop_elem_type(stmt, analyzer)
             elem_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 elem))) if elem is not None else None)
             # An `Own[T] | None` element is excluded here directly rather
@@ -1632,7 +1621,7 @@ def _for_iter_proto_route(
                 # take the plain begin/end range-for (records.py synthesizes
                 # begin/end for Spannable conformers), not the universal
                 # `::tpy::__iter__` loop.
-                et = _resolved_loop_elem_type(stmt, analyzer)
+                et = resolved_loop_elem_type(stmt, analyzer)
                 if not _for_each_elem_binding_ok(et):
                     note_detail("foreach.elem_family."
                                 + _type_family_tag(et, analyzer))
@@ -1663,7 +1652,7 @@ def _for_iter_proto_route(
             return None
     else:
         return None
-    et = _resolved_loop_elem_type(stmt, analyzer)
+    et = resolved_loop_elem_type(stmt, analyzer)
     if not _for_each_elem_binding_ok(et):
         note_detail("foreach.elem_family." + _type_family_tag(et, analyzer))
         return None
@@ -1795,7 +1784,7 @@ def _select_for_each_route(
                 or stmt.consuming_iter_fi is not None):
             note_detail("foreach.narrowed_src")
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        net = _resolved_loop_elem_type(stmt, analyzer)
+        net = resolved_loop_elem_type(stmt, analyzer)
         if not _for_each_elem_binding_ok(net):
             note_detail("foreach.elem_family."
                         + _type_family_tag(net, analyzer))
@@ -1856,23 +1845,13 @@ def _frame_src_slot(stmt: TpyForEach, lc: '_LowerCtx') -> 'THIRFrameHolder | Non
                                                               lc.analyzer):
         return None
     verdicts = (lc.frame.for_src_fields if lc.frame is not None else IdentityMap())
-    if stmt not in verdicts:
+    if stmt not in verdicts or (verdicts.get(stmt) is None
+                                and for_hands_source_over(stmt)):
+        # The prescan holds no source a loop hands over, so such a loop
+        # that cannot take the consuming route has none placed.
         note_detail("foreach.frame_src_unplaced")
         raise ThirUnsupported("res.for_src_unplaced")
     return verdicts.get(stmt)
-
-
-def self_typed_frame_source(iterable: 'THIRExpr', lc: '_LowerCtx') -> 'THIRExpr':
-    """A container literal at a `for` head whose loop the frame spells off
-    the source expression (`decltype((...))`) names its type: a bare brace
-    is not an expression, and a `frame_slot` cannot deduce one either. (A
-    `str` literal there takes its own view render from the same slot,
-    `SinkForm.SELF_TYPED`.)"""
-    if (isinstance(iterable, THIRContainerLiteral)
-            and iterable.typed_brace_cpp is None):
-        return replace(iterable,
-                       typed_brace_cpp=lc.render_type(iterable.result_type))
-    return iterable
 
 
 def _discard_target_hoist(stmt: TpyTupleUnpack, name: str,
@@ -4889,6 +4868,13 @@ def _nested_def_state_scope(lc: _LowerCtx, func: TpyFunction, *,
     # the scope-escape hoists are the one fact it keeps, in
     # `function_hoisted_vars` like any other function's.
     lc.inline_narrowed = {}
+    # Where the enclosing body's statements place what they keep is no
+    # concern of the nested body's: its own statements start from none.
+    saved_place = (lc.compound_decls, lc.root_place, lc.bound_roots,
+                   lc.frame, lc.top_level_scope)
+    lc.compound_decls, lc.root_place = [], None
+    lc.bound_roots = BoundScope(())
+    lc.frame, lc.top_level_scope = None, False
     try:
         with lc.branch_scope():
             yield
@@ -4896,6 +4882,8 @@ def _nested_def_state_scope(lc: _LowerCtx, func: TpyFunction, *,
         (lc.func, lc.prescan, lc.self_receiver, lc.inline_narrowed,
          lc.in_nested_def, lc.signature, lc.staged_results) = saved
         lc.unhandled_hoists = saved_hoists
+        (lc.compound_decls, lc.root_place, lc.bound_roots,
+         lc.frame, lc.top_level_scope) = saved_place
 
 
 def _nested_def_entry_reject(func, lc: '_LowerCtx', reason_for) -> None:
@@ -5096,7 +5084,27 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
                                   loop_depth=loop_depth)
     try:
         try:
-            result = _lower_stmt_dispatch(stmt, scope)
+            # A loop body is lowered one `loop_depth` in; the entry
+            # carries it so `root_slot`'s placement can tell a slot
+            # declared outside an enclosing loop (built before the old
+            # value goes, `RootPlacement.engaged`).
+            compound = bool(stmt.sub_bodies())
+            if compound:
+                lc.compound_decls.append(
+                    CompoundEntry(stmt, declared, [], loop_depth))
+            try:
+                with lc.planning(stmt_bound(stmt, lc)):
+                    result = _lower_stmt_dispatch(stmt, scope)
+            finally:
+                added = lc.compound_decls.pop().decls if compound else []
+            if added:
+                # Storage a statement nested in this one keeps for a name
+                # this scope declares: declared in front of it.
+                if not hasattr(result, "hoist_decls"):
+                    note_detail("with.root_slot_position")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                result = replace(result, hoist_decls=(
+                    tuple(result.hoist_decls) + tuple(added)))
         except ThirUnsupported as ex:
             # Attribute the reject to the INNERMOST statement it unwound through,
             # so the strict diagnostic points at the offending line rather than at
@@ -5119,6 +5127,33 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
     finally:
         lc.cursor = cursor
         lc.stmt_entry = entry
+
+
+def stmt_bound(stmt: TpyStmt, lc: _LowerCtx) -> 'tuple[Hand, ...]':
+    """What statement `stmt` hands its expressions (`lc.bounded`):
+    `statement_hands`, given the names its resumable body carries out of
+    their binding (`escaping_names`)."""
+    in_frame = lc.frame is not None
+    return statement_hands(
+        stmt, lc.frame.escaping_names if in_frame else frozenset(),
+        in_frame, lc.analyzer)
+
+
+def await_bound(payload: 'THIRAwaitSuspension',
+                lc: _LowerCtx) -> 'tuple[Hand, ...]':
+    """What an `await` suspension hands its awaited expression
+    (`lc.bounded`): as its statement hands the expression (`stmt_bound`);
+    an await lifted out of an expression lives as the read of its lifted
+    name does there (`lifted_read`), across the suspension that separates
+    them."""
+    node = payload.await_node
+    if payload.lifted_read is not None:
+        read, host = payload.lifted_read
+        bound, _lives_on, _taker = bound_in(stmt_bound(host, lc), read,
+                                            lc.analyzer)
+        return (Hand(node, bound, True, None),)
+    host = payload.host_stmt or payload.return_stmt
+    return stmt_bound(host, lc) if host is not None else ()
 
 
 def _declared_record(name: 'str | None', key: object,
@@ -6292,7 +6327,7 @@ def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
     # argument there is.
     target_type = analyzer.get_expr_type(
         stmt.value if store_takes_elements(fi) else sub)
-    recv = _lower_slice_recv(sub.obj, lc, declared, loc)
+    recv = _lower_slice_recv(sub, lc, declared, loc)
     # A generator-FACTORY call RHS (`d[1:3] = gen_values()`) is consumed by
     # the helper as an iterable, not stored: it takes the iterable-position
     # admission (the same bare factory render a for-each source gets), which
@@ -8554,8 +8589,10 @@ def _held_temp(init: THIRExpr, cpp_type: str | None, lc: '_LowerCtx',
         loc=loc)
     # A reference temp reads what its init reads; a value temp is its own
     # storage. A read of it reads the same.
-    temp = _hoisted(replace(temp, source=(
-        init.source if cpp_type == "auto&&" else stamped(temp, lc).source)), lc)
+    temp = held_temp(replace(temp, source=(
+        init.source if cpp_type == "auto&&" else stamped(temp, lc).source)),
+        # A part the statement evaluates once, no argument's value.
+        lc, None)
     return temp, THIRTempRead(result_type=temp.result_type, form=temp.form,
                               read_id=temp.read_id, source=temp.source,
                               loc=loc)
@@ -8681,14 +8718,9 @@ def _received_value(received: TpyExpr, value: THIRExpr, lc: '_LowerCtx',
     stand_in = received
     while isinstance(stand_in, TpyCoerce):
         stand_in = stand_in.expr
-    saved = lc.prelowered
-    lc.prelowered = IdentityMap([*(saved.items() if saved is not None else ()),
-                                 (stand_in, value)])
-    try:
+    with lc.prelowering(stand_in, value):
         return _lower_expr(received, lc, declared,
                            use=_ExprUse(allow_temps=True))
-    finally:
-        lc.prelowered = saved
 
 
 def _store_item(stmt: TpyStmt, target: THIRExpr, value: THIRExpr,
@@ -12766,12 +12798,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         oinfo = (_or_chain_narrow_info(stmt.condition, declared, analyzer)
                  if info is None else None)
         if info is not None:
-            # U4 while-isinstance: the loop-entry extraction is the branch
-            # alias shape (fresh block, non-persistent); the subject retypes
-            # for the body walk and pops at the closing brace. A sema-FOLDED
-            # (exhaustiveness `true`) head renders `while (true)` and still
-            # extracts -- `folded` is folded-TRUE only, the false fold never
-            # reaches this info.
+            # U4 while-isinstance: the loop-entry extraction is the
+            # branch alias shape (fresh block, non-persistent); the
+            # subject retypes for the body walk and pops at the closing
+            # brace. A sema-FOLDED (exhaustiveness `true`) head renders
+            # `while (true)` and still extracts -- `folded` is
+            # folded-TRUE only, the false fold never reaches this info.
             var, u, _members, folded, _isin = info
             if (var in lc.narrow.narrowed
                     or not _narrow_facts_ok(
@@ -12780,7 +12812,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             if folded:
                 _witness("while.narrow_folded")
             m = _narrow_fact_member(u, stmt.then_type_facts, var)
-            condition = _lower_narrow_cond(info, stmt.condition, lc, declared)
+            condition = _lower_narrow_cond(info, stmt.condition, lc,
+                                           declared)
             body = _lower_narrowed_branch(stmt.body, m, var, u, lc,
                                           declared, loc,
                                           loop_depth=scope.loop_depth + 1)
@@ -12813,27 +12846,30 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 condition = _lower_truthy(stmt.condition, lc, declared,
                                           temps_ok=True)
             except ThirUnsupported as ex:
-                # The landmark names the loop head; the condition's own reason
-                # rides it, or the tag names this catcher instead of the
-                # construct that blocked.
+                # The landmark names the loop head; the condition's own
+                # reason rides it, or the tag names this catcher instead
+                # of the construct that blocked.
                 raise ex.with_context(f"stmt.while:{ex.reason}") from None
             if _cond_mixed_walrus_temps(condition):
                 # The mixed shape needs the legacy single-eval flush --
                 # reject rather than restructure it here.
-                raise ThirUnsupported("stmt.while:while.mixed_walrus_temps")
-            wfact = (_single_fact_narrow(stmt.then_type_facts, declared, lc)
-                     if _facts_have_concrete(stmt.then_type_facts) else None)
-            if _facts_have_concrete(stmt.then_type_facts) and wfact is None:
+                raise ThirUnsupported(
+                    "stmt.while:while.mixed_walrus_temps")
+            concrete = _facts_have_concrete(stmt.then_type_facts)
+            wfact = (_single_fact_narrow(stmt.then_type_facts, declared,
+                                         lc) if concrete else None)
+            if concrete and wfact is None:
                 # A while head extracts its facts at loop entry; no
                 # narrowing arm claimed this condition, and the facts are
                 # wider than the one-var extraction below renders.
                 raise ThirUnsupported(
                     "stmt.while:while.cond_facts_unmirrored")
             if wfact is not None:
-                # A compound condition sema still narrowed through (`while
-                # not isinstance(u, B) and flag`): the plain truthy render
-                # installs no narrowing, so the BODY carries the extraction
-                # alias the narrowing arms would have emitted at loop entry.
+                # A compound condition sema still narrowed through
+                # (`while not isinstance(u, B) and flag`): the plain
+                # truthy render installs no narrowing, so the BODY
+                # carries the extraction alias the narrowing arms would
+                # have emitted at loop entry.
                 wvar, wu, wmember = wfact
                 _witness("while.cond_facts_alias")
                 body = _lower_narrowed_branch(
@@ -13096,7 +13132,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                         else None)))
             proto_iterable = _deref_loop_source(proto_iterable, lc)
             if proto_src_field is not None:
-                proto_iterable = self_typed_frame_source(proto_iterable, lc)
+                proto_iterable = self_typed_source(proto_iterable, lc)
             return build_loop_node(
                 "iter_proto", stmt.var, et, body, lc, declared,
                 iterable=proto_iterable, source=it,
@@ -13180,7 +13216,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         src_field = (None if route.consuming
                      else _frame_src_slot(stmt, lc))
         if src_field is not None:
-            iterable = self_typed_frame_source(iterable, lc)
+            iterable = self_typed_source(iterable, lc)
         return build_loop_node(
             "each", stmt.var, et, body, lc, declared,
             iterable=iterable, source=None if route.consuming else it,
@@ -13320,12 +13356,12 @@ def _lower_expr_stmt(stmt: TpyExprStmt, scope: _LowerScope) -> THIRStmt:
                     # and a prvalue's lifetime extends to the end of the
                     # enclosing block, so the token stays valid through
                     # the chain.
-                    lowered_kw = _hoisted(THIRArgTemp(
+                    lowered_kw = held_temp(THIRArgTemp(
                         result_type=analyzer.get_expr_type(kv),
                         init=_lower_expr(kv, lc, declared,
                                          use=_ExprUse(allow_temps=True)),
                         cpp_type="const auto&",
-                        movable=False), lc)
+                        movable=False), lc, kv)
                 else:
                     lowered_kw = (_lower_expr(kv, lc, declared)
                                   if kind == "name" else None)
@@ -13858,7 +13894,11 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
     with_hoist = _Hoist(stmt)
     _admit_hoists(with_hoist, hoists, declared, lc)
     items: list[THIRWithItem] = []
+    # Per item, the type of a target the code after the statement reads.
+    item_types: list[TpyType | None] = []
+    places: list[RootPlacement] = []
     for item_idx, item in enumerate(_bindings.scoped(lc, stmt.items)):
+        places.append(root_placement(lc, item.target))
         ctx = item.context_expr
         arm_et = None
         if resumable and item.target is not None:
@@ -13967,7 +14007,9 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                     and call_returns_cpp_ref(lc.analyzer,
                                              ctx.resolved_function_info)
                     and not _expr_is_const_source(ctx, lc)
-                    and not is_rvalue_source(lc.analyzer, ctx.obj)
+                    and (not is_rvalue_source(lc.analyzer, ctx.obj)
+                         # A fresh receiver is seated for the statement.
+                         or receiver_kept(ctx, lc))
                     and record_like(lc.analyzer.get_expr_type(ctx),
                                    lc.analyzer)):
                 # ... and the plain METHOD spelling of the same convention
@@ -14006,27 +14048,9 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                     and is_rvalue_source(lc.analyzer, ctx)))
         if not manager_ok:
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        # An OWNED manager whose already-declared target is READ after the
-        # statement is kept alive past its block: the pointer slot aliases
-        # `__enter__()`'s result, so the manager hoists to a function-scope
-        # `std::optional<CM> __slot_N` and `__ctx_N` binds through it
-        # (`_with_manager_needs_hoist`'s facts; the ASSIGN_PTR arm IS the
-        # declared-and-not-optional case). The slot decl drains at the body
-        # top, which at module-init scope spells the `static
-        # __global_slot_N` lifetime the emit arm draws from the scope's own
-        # prefix.
         frame_ctx = (owned_ctx[item_idx]
                        if owned_ctx is not None
                        and item_idx < len(owned_ctx) else None)
-        mgr_hoist_cpp = None
-        if (frame_ctx is None
-                and not item.manager_borrowed and item.target is not None
-                and arm is WithTargetArm.ASSIGN_PTR
-                and item.manager_owns_enter_result
-                and item.target_read_after):
-            mgr_hoist_cpp = lc.render_type(
-                unwrap_ref_type(lc.analyzer.get_expr_type(ctx)))
-            _witness("with.manager_hoist")
         deref = (item.manager_borrowed and isinstance(ctx, TpyName)
                  and lc.binding(ctx.name).pointer)
         _witness("with.manager_borrowed" if item.manager_borrowed
@@ -14062,9 +14086,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         items.append(THIRWithItem(
             binding=(lc.declaring(item.target)
                      if item.target is not None else None),
-            ctx_expr=_strip_slot_leaf_deref(
-                _lower_expr(ctx, lc, declared,
-                            use=_ExprUse(pos=SinkPos.WITH_MANAGER)), lc),
+            ctx_expr=_with_manager_expr(item, places[-1], lc, declared),
             manager_borrowed=item.manager_borrowed,
             deref_manager=deref,
             target=item.target,
@@ -14073,16 +14095,24 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
             takes_exc_val=item.exit_takes_exc_val,
             target_cpp=(_with_ptr_target_cpp(item.target, et, lc)
                         if arm is WithTargetArm.PTR_DECL else None),
-            manager_hoist_cpp=mgr_hoist_cpp,
             frame_ctx=frame_ctx,
             target_field=(frame_ptr_slot_field(lc.frame, item)
                           if arm is WithTargetArm.FRAME_POINTER else None),
         ))
+        item_types.append(
+            et if item.target is not None and item.target_read_after
+            else None)
         if item.target is not None:
             declared[item.target] = et
     if len(stmt.items) > 1:
         _witness("with.multi")
     hoist_decls = _lower_hoist_predecls(with_hoist, hoists, declared, lc)
+    head_scope = declares_temporaries(tuple(i.ctx_expr for i in items))
+    for k, (it, read_after_t) in enumerate(zip(items, item_types)):
+        items[k] = _with_item_outside_scope(
+            stmt, stmt.items[k], it, places[k], read_after_t, head_scope,
+            hoist_decls, lc)
+
     n_returns_before = len(lc.nested_returns)
     # Sema declares every body name in front of the block except a
     # generator it keeps there, which nothing after the block reads. A
@@ -14104,8 +14134,82 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         body=body,
         body_terminates=stmts_terminate(stmt.body),
         hoist_decls=tuple(hoist_decls),
+        head_scope=head_scope,
         loc=loc,
     )
+
+def _with_manager_expr(item: TpyWithItem, place: 'RootPlacement',
+                       lc: _LowerCtx,
+                       declared: dict[str, TpyType]) -> THIRExpr:
+    """A `with` item's manager, lowered knowing the target it binds and
+    where a root the target borrows goes (`place`)."""
+    with lc.targeting(place):
+        return _strip_slot_leaf_deref(
+            _lower_expr(item.context_expr, lc, declared,
+                        use=_ExprUse(pos=SinkPos.WITH_MANAGER)), lc)
+
+
+def _with_item_outside_scope(stmt: TpyWith, item: TpyWithItem,
+                             it: THIRWithItem, place: 'RootPlacement',
+                             read_after_t: 'TpyType | None', head_scope: bool,
+                             hoist_decls: list[HoistDecl],
+                             lc: _LowerCtx) -> THIRWithItem:
+    """What of `with` item `it` lives outside the scope its block (or, with
+    `head_scope`, the scope its head's temporaries take) closes: the OWNED
+    manager a target read after borrows (sema's `head_enclosed_root`) is
+    held in the enclosed root's seat that `__ctx_N` binds through -- a
+    frame's `frame_ctx` where it has one, the `__ctx_N` local itself where
+    that is the target's scope and opens none of its own -- and under
+    `head_scope` the names the item binds are declared before the scope.
+    A receiver the manager borrows from is the receiver's seat's
+    (`held_temp`)."""
+    if it.frame_ctx is None and not it.manager_borrowed:
+        with lc.planning(stmt_bound(stmt, lc)):
+            enclosed = (planned(item.context_expr, lc).lifetime
+                        is SeatLifetime.ENCLOSING)
+            if enclosed and (place.kind is not RootPlace.WITH or head_scope):
+                # The manager is the root itself, seated where every
+                # enclosed root is, `__ctx_N` binding through it.
+                _witness("with.manager_hoist")
+                mgr_t = unwrap_ref_type(
+                    lc.analyzer.get_expr_type(item.context_expr))
+                with lc.targeting(place):
+                    seat = held_temp(
+                        THIRArgTemp(result_type=mgr_t,
+                                    cpp_type=lc.render_type(mgr_t),
+                                    init=it.ctx_expr, form=Form.BORROW,
+                                    movable=mgr_t.is_movable(),
+                                    loc=it.ctx_expr.loc),
+                        lc, item.context_expr)
+                it = replace(it, manager_borrowed=True, ctx_expr=seat)
+    if not head_scope:
+        return it
+    if it.target_arm is WithTargetArm.PTR_DECL:
+        hoist_decls.append(HoistDecl(it.target, f"{it.target_cpp}*",
+                                     " = nullptr"))
+        return replace(it, target_arm=WithTargetArm.ASSIGN_PTR)
+    if read_after_t is None:
+        return it
+    if it.target_arm is WithTargetArm.VALUE:
+        # Declared at what the target binds, as sema substituted it for
+        # this call: an owned buffer where `__enter__` returns one, never
+        # the view the reads resolve to.
+        bound_t = (lc.analyzer.get_expr_type(item.enter_call)
+                   if item.enter_call is not None else None) or read_after_t
+        # A str / bytes value the call hands back is owned.
+        bound_t = held_type(bound_t)
+        cpp = lc.render_type(bound_t)
+        hoist_decls.append(HoistDecl(
+            it.target, cpp, emit_prims.placeholder_init(bound_t, cpp)))
+        return replace(it, target_arm=WithTargetArm.ASSIGN)
+    if it.target_arm is WithTargetArm.REF:
+        # A reference cannot be declared before its scope: a pointer is,
+        # and the name is bound again through it after the scope.
+        return replace(it, target_arm=WithTargetArm.SCOPED_REF,
+                       target_cpp=_const_pointee(it.binding, lc.render_type(
+                           unwrap_readonly(unwrap_send_sync(read_after_t)))))
+    return it
+
 
 def _lower_print_star(a: TpyStarUnpack, lc: _LowerCtx,
                       declared: dict[str, TpyType],

@@ -49,8 +49,7 @@ void main() {
     std::cout << ::tpyapp::main::sum_two(xs, 0, 1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, int32_t> scores = ::tpy::ordered_map<int32_t, int32_t>({{1, 100}, {2, 200}});
     std::cout << ::tpyapp::main::dget(scores, 2) << "\n" << ::tpy::check_signals;
-    Box __tmp_1 = Box();
-    std::cout << ::tpyapp::main::read_through_call(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_through_call(::tpy::as_mut_lvalue(Box())) << "\n" << ::tpy::check_signals;
 }
 
 // main()

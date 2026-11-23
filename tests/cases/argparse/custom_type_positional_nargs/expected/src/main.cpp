@@ -10,8 +10,7 @@ namespace tpyapp::main {
 //     args = parser.parse_args(["src/main.py", "src/util.py", "tests/main.py"])
 //     print(args.paths)
 void main() {
-    std::vector<std::string> __tmp_1 = {"src/main.py", "src/util.py", "tests/main.py"};
-    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1({"src/main.py", "src/util.py", "tests/main.py"});
     std::cout << ::tpy::ListPrinter(args.paths) << "\n" << ::tpy::check_signals;
 }
 

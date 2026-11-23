@@ -45,15 +45,10 @@ Fixed mk(std::string_view tag, const ::tpy::BigInt& n) {
 //     # Zone arm through the same shape (no mk print): value flows correctly.
 //     print(take((Box(Zone(7)), 2)))
 void main() {
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_1 = ::tpyapp::main::mk("fixed", ::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::take([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Box, int32_t>{Box(__tmp_1), 5})) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_2 = ::tpyapp::main::mk("a", ::tpy::BigInt(4));
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_3 = ::tpyapp::main::mk("b", ::tpy::BigInt(6));
-    std::cout << ::tpyapp::main::take2([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, const Box*>{&(std::get<0>(__t)), &(std::get<1>(__t))}; }(std::tuple<Box, Box>{Box(__tmp_2), Box(__tmp_3)})) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_4 = ::tpyapp::main::mk("opt", ::tpy::BigInt(8));
-    std::cout << ::tpyapp::main::take_opt([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Box, int32_t>{Box(__tmp_4), 4})) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_5 = Zone(7);
-    std::cout << ::tpyapp::main::take([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Box, int32_t>{Box(__tmp_5), 2})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Box, int32_t>{Box(::tpy::Union<std::monostate, Fixed, Zone>(::tpyapp::main::mk("fixed", ::tpy::BigInt(3)))), 5})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take2([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, const Box*>{&(std::get<0>(__t)), &(std::get<1>(__t))}; }(std::tuple<Box, Box>{Box(::tpy::Union<std::monostate, Fixed, Zone>(::tpyapp::main::mk("a", ::tpy::BigInt(4)))), Box(::tpy::Union<std::monostate, Fixed, Zone>(::tpyapp::main::mk("b", ::tpy::BigInt(6))))})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_opt([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Box, int32_t>{Box(::tpy::Union<std::monostate, Fixed, Zone>(::tpyapp::main::mk("opt", ::tpy::BigInt(8)))), 4})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Box, int32_t>{Box(::tpy::Union<std::monostate, Fixed, Zone>(Zone(7))), 2})) << "\n" << ::tpy::check_signals;
 }
 
 // # A tuple LITERAL element that is a value-union-param call, where the tuple

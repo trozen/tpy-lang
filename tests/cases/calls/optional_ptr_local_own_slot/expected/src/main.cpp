@@ -304,8 +304,7 @@ __coro_async_body async_body(bool c) {
 //     asyncio.run(async_body(True))
 //     asyncio.run(async_body(False))
 void main() {
-    ::tpy::ordered_map<::tpy::Bytes, int32_t> __tmp_1 = ::tpy::ordered_map<::tpy::Bytes, int32_t>({{::tpy::bytes_literal_owned("a", 1), 1}});
-    ::tpyapp::main::append_try_reassigned(__tmp_1);
+    ::tpyapp::main::append_try_reassigned(::tpy::ordered_map<::tpy::Bytes, int32_t>({{::tpy::bytes_literal_owned("a", 1), 1}}));
     ::tpyapp::main::append_branch_reassigned(true);
     ::tpyapp::main::append_branch_reassigned(false);
     ::tpyapp::main::append_none_declared();

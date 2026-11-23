@@ -925,8 +925,7 @@ void main() {
     std::cout << "walrus gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::targets_walrus_gen(255))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::nested_bindings();
     std::cout << "nested gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::nested_bindings_gen())) << "\n" << ::tpy::check_signals;
-    ::tpystd::tpy::atomic::Atomic<int8_t> __tmp_1 = ::tpystd::tpy::atomic::Atomic<int8_t>(1);
-    ::tpyapp::main::setters(100, __tmp_1, 300);
+    ::tpyapp::main::setters(100, ::tpy::as_mut_lvalue(::tpystd::tpy::atomic::Atomic<int8_t>(1)), 300);
     ::tpyapp::main::lookup_keys(44);
     ::tpyapp::main::literal_retype();
     ::tpyapp::main::bytes_widths(static_cast<uint32_t>(4000000000), -1, 300, ::tpy::BigInt::from_str("1180591620717411303424"), 256);

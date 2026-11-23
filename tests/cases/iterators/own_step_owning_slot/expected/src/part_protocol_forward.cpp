@@ -35,8 +35,7 @@ namespace tpyapp::part_protocol_forward {
 //     # parent at the same type arguments
 //     print("field protocol forward", forward_counted(Values()))  # tpyc: ok
 void main() {
-    ::tpyapp::fixtures::Bag __tmp_1 = ::tpyapp::fixtures::Bag();
-    std::cout << "sub-protocol" << " " << ::tpyapp::part_protocol_forward::take_sub(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "sub-protocol" << " " << ::tpyapp::part_protocol_forward::take_sub(::tpy::as_mut_lvalue(::tpyapp::fixtures::Bag())) << "\n" << ::tpy::check_signals;
     std::vector<::tpyapp::fixtures::Cell> dead = {::tpyapp::fixtures::Cell(1), ::tpyapp::fixtures::Cell(2)};
     std::cout << "dead list sub-protocol" << " " << ::tpyapp::part_protocol_forward::sum_sub(std::move(dead)) << "\n" << ::tpy::check_signals;
     std::vector<::tpyapp::fixtures::Cell> dead2 = {::tpyapp::fixtures::Cell(3)};
@@ -52,10 +51,8 @@ void main() {
     std::cout << "generic protocol forward" << " " << ::tpyapp::part_protocol_forward::fwd_cells(held) << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(held, 1).v = ::tpy::add_check<int32_t>(::tpy::__getitem__(held, 1).v, 1);
     std::cout << "generic protocol forward after" << " " << ::tpy::__getitem__(held, 1).v << " " << ::tpy::__len__(held) << "\n" << ::tpy::check_signals;
-    ::tpyapp::fixtures::Counter __tmp_2 = ::tpyapp::fixtures::Counter();
-    std::cout << "redeclared next forward" << " " << ::tpyapp::part_protocol_forward::forward_owned(__tmp_2) << "\n" << ::tpy::check_signals;
-    Values __tmp_3 = Values();
-    std::cout << "field protocol forward" << " " << ::tpyapp::part_protocol_forward::forward_counted(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "redeclared next forward" << " " << ::tpyapp::part_protocol_forward::forward_owned(::tpy::as_mut_lvalue(::tpyapp::fixtures::Counter())) << "\n" << ::tpy::check_signals;
+    std::cout << "field protocol forward" << " " << ::tpyapp::part_protocol_forward::forward_counted(::tpy::as_mut_lvalue(Values())) << "\n" << ::tpy::check_signals;
 }
 
 

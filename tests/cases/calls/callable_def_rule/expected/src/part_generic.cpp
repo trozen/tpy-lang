@@ -30,14 +30,11 @@ void sec_generic() {
     ::tpyapp::fixtures::P p = ::tpyapp::fixtures::P(1);
     std::vector<::tpyapp::fixtures::P> out = std::vector<::tpyapp::fixtures::P>{};
     ::tpyapp::part_generic::fill<::tpyapp::fixtures::P, ::tpy::own_arg<::tpyapp::fixtures::P>>(::tpyapp::fixtures::mk, p, out);
-    ::tpyapp::fixtures::P __tmp_1 = ::tpyapp::fixtures::P(1);
-    ::tpyapp::part_generic::fill<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(::tpyapp::fixtures::ident, __tmp_1, out);
+    ::tpyapp::part_generic::fill<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(::tpyapp::fixtures::ident, ::tpy::as_mut_lvalue(::tpyapp::fixtures::P(1)), out);
     std::function<::tpyapp::fixtures::P&(::tpyapp::fixtures::P&)> g = ::tpyapp::fixtures::ident;
-    ::tpyapp::fixtures::P __tmp_2 = ::tpyapp::fixtures::P(1);
-    ::tpyapp::part_generic::fill<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(g, __tmp_2, out);
+    ::tpyapp::part_generic::fill<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(g, ::tpy::as_mut_lvalue(::tpyapp::fixtures::P(1)), out);
     ::tpyapp::part_generic::fill2<::tpyapp::fixtures::P, ::tpy::own_arg<::tpyapp::fixtures::P>>(out, ::tpyapp::fixtures::mk, p);
-    ::tpyapp::fixtures::P __tmp_3 = ::tpyapp::fixtures::P(1);
-    ::tpyapp::part_generic::fill2<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(out, g, __tmp_3);
+    ::tpyapp::part_generic::fill2<::tpyapp::fixtures::P, ::tpyapp::fixtures::P>(out, g, ::tpy::as_mut_lvalue(::tpyapp::fixtures::P(1)));
     ::tpy::__getitem__(out, 0).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(out, 0).n, 10);
     ::tpy::__getitem__(out, 1).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(out, 1).n, 10);
     ::tpy::__getitem__(out, 2).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(out, 2).n, 20);
@@ -129,8 +126,7 @@ void sec_identity() {
     std::array<std::function<std::optional<::tpyapp::fixtures::P>()>, 2> opts = {o, ::tpyapp::part_generic::pick0<::tpy::own_arg<std::optional<::tpyapp::fixtures::P>>>(o)};
     std::optional<::tpyapp::fixtures::P> __slot_1 = (::tpy::__getitem__(opts, 1))();
     ::tpyapp::fixtures::P* ov = ::tpy::optional_to_ptr(__slot_1);
-    ::tpyapp::fixtures::P __tmp_1 = ::tpyapp::fixtures::P(1);
-    std::cout << "identity:" << " " << (::tpy::__getitem__(fs, 0))() << " " << (::tpy::__getitem__(fs, 1))() << " " << (::tpy::__getitem__(ms, "g"))(__tmp_1).n << " " << std::get<0>((::tpy::__getitem__(ts, 1))()).n << " " << (((ov != nullptr)) ? (ov->n) : (0)) << "\n" << ::tpy::check_signals;
+    std::cout << "identity:" << " " << (::tpy::__getitem__(fs, 0))() << " " << (::tpy::__getitem__(fs, 1))() << " " << (::tpy::__getitem__(ms, "g"))(::tpy::as_mut_lvalue(::tpyapp::fixtures::P(1))).n << " " << std::get<0>((::tpy::__getitem__(ts, 1))()).n << " " << (((ov != nullptr)) ? (ov->n) : (0)) << "\n" << ::tpy::check_signals;
 }
 
 // def mk0() -> Own[P]:

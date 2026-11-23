@@ -83,9 +83,7 @@ std::string value_inner(std::optional<Point> o) {
 //     print("method:", Holder(Box(1)).describe(True),
 //           Holder(Box(1)).describe(False))
 void main() {
-    Box __tmp_1 = Box(1);
-    Box __tmp_2 = Box(1);
-    std::cout << "flagged:" << " " << ::tpyapp::main::flagged(nullptr, true) << " " << ::tpyapp::main::flagged(&(__tmp_1), true) << " " << ::tpyapp::main::flagged(&(__tmp_2), false) << "\n" << ::tpy::check_signals;
+    std::cout << "flagged:" << " " << ::tpyapp::main::flagged(nullptr, true) << " " << ::tpyapp::main::flagged(&::tpy::as_mut_lvalue(Box(1)), true) << " " << ::tpyapp::main::flagged(&::tpy::as_mut_lvalue(Box(1)), false) << "\n" << ::tpy::check_signals;
     Box shared = Box(1);
     ::tpyapp::main::bump(&(shared), true);
     ::tpyapp::main::bump(&(shared), false);

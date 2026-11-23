@@ -7,7 +7,7 @@ main::lens@48:0: covered (storage: no_proof_required), summary: known
 main::heads@52:0: covered (storage: no_proof_required), summary: known
 main::dict_heads@56:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::borrowed@61:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::set_comp@67:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
+main::set_comp@67:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
 main::dict_enum@73:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::nested_clauses@79:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::owned_outer@85:0: uncovered (unsupported parameter type)

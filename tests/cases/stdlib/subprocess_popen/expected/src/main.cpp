@@ -20,8 +20,7 @@ namespace tpyapp::main {
 //     print("cat:", p.stdout.read())
 //     print("cat:", p.wait())
 void cat_roundtrip() {
-    std::vector<std::string> __tmp_1 = {"cat"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, ::tpystd::subprocess::PIPE, ::tpystd::subprocess::PIPE);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"cat"}), ::tpystd::subprocess::PIPE, ::tpystd::subprocess::PIPE);
     if (!((p.stdin.has_value()))) ::tpy::raise_assertion_error();
     if (!((p.stdout.has_value()))) ::tpy::raise_assertion_error();
     std::cout << "cat:" << " " << (*p.stdin).write(::tpy::bytes_literal("hello\nworld\n", 12)) << "\n" << ::tpy::check_signals;
@@ -35,8 +34,7 @@ void cat_roundtrip() {
 //     p = Popen(["sh", "-c", "exit 3"])
 //     print("exit:", p.wait(), p.returncode)
 void exit_code() {
-    std::vector<std::string> __tmp_1 = {"sh", "-c", "exit 3"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"sh", "-c", "exit 3"}), std::nullopt, std::nullopt, std::nullopt);
     std::cout << "exit:" << " " << p.wait() << " " << ::tpy::print_optional_val(p.returncode) << "\n" << ::tpy::check_signals;
 }
 
@@ -50,13 +48,11 @@ void exit_code() {
 //     q.terminate()
 //     print("signal:", q.wait())
 void signal_death() {
-    std::vector<std::string> __tmp_1 = {"sleep", "30"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"sleep", "30"}), std::nullopt, std::nullopt, std::nullopt);
     std::cout << "signal:" << " " << ::tpy::print_optional_val(p.poll()) << "\n" << ::tpy::check_signals;
     p.kill();
     std::cout << "signal:" << " " << p.wait() << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_2 = {"sleep", "30"};
-    ::tpystd::subprocess::Popen q = ::tpystd::subprocess::Popen(__tmp_2, std::nullopt, std::nullopt, std::nullopt);
+    ::tpystd::subprocess::Popen q = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"sleep", "30"}), std::nullopt, std::nullopt, std::nullopt);
     q.terminate();
     std::cout << "signal:" << " " << q.wait() << "\n" << ::tpy::check_signals;
 }
@@ -77,8 +73,7 @@ void signal_death() {
 //     p.kill()
 //     print("cache:", p.returncode)
 void caching() {
-    std::vector<std::string> __tmp_1 = {"true"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"true"}), std::nullopt, std::nullopt, std::nullopt);
     std::optional<int64_t> rc = p.poll();
     int32_t tries = 0;
     while (((!rc.has_value()) && (tries < 2000))) {
@@ -137,8 +132,7 @@ void with_block() {
 void missing_program() {
     {
         try {
-            std::vector<std::string> __tmp_1 = {"tpy-no-such-program-xyz"};
-            (void)(::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt));
+            (void)(::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"tpy-no-such-program-xyz"}), std::nullopt, std::nullopt, std::nullopt));
             std::cout << "missing: spawned" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::FileNotFoundError& e) {
             std::cout << "missing:" << " " << e.error_number << " " << e.filename << "\n" << ::tpy::check_signals;
@@ -163,18 +157,15 @@ void missing_program() {
 //     assert r.stdout is not None
 //     print("devnull:", r.stdout.read(), r.wait())
 void merge_and_devnull() {
-    std::vector<std::string> __tmp_1 = {"sh", "-c", "echo out; echo err >&2"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, ::tpystd::subprocess::PIPE, ::tpystd::subprocess::STDOUT);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"sh", "-c", "echo out; echo err >&2"}), std::nullopt, ::tpystd::subprocess::PIPE, ::tpystd::subprocess::STDOUT);
     if (!((p.stdout.has_value()))) ::tpy::raise_assertion_error();
     std::cout << "merge:" << " " << ::tpy::BytesPrinter((*p.stdout).read()) << " " << ::tpy::print_bool((!p.stderr.has_value())) << "\n" << ::tpy::check_signals;
     std::cout << "merge:" << " " << p.wait() << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_2 = {"sh", "-c", "echo hidden; echo err2 >&2"};
-    ::tpystd::subprocess::Popen q = ::tpystd::subprocess::Popen(__tmp_2, std::nullopt, ::tpystd::subprocess::DEVNULL, ::tpystd::subprocess::PIPE);
+    ::tpystd::subprocess::Popen q = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"sh", "-c", "echo hidden; echo err2 >&2"}), std::nullopt, ::tpystd::subprocess::DEVNULL, ::tpystd::subprocess::PIPE);
     if (!((q.stderr.has_value()))) ::tpy::raise_assertion_error();
     std::cout << "devnull:" << " " << ::tpy::BytesPrinter((*q.stderr).read()) << " " << ::tpy::print_bool((!q.stdout.has_value())) << "\n" << ::tpy::check_signals;
     std::cout << "devnull:" << " " << q.wait() << "\n" << ::tpy::check_signals;
-    std::vector<std::string> __tmp_3 = {"cat"};
-    ::tpystd::subprocess::Popen r = ::tpystd::subprocess::Popen(__tmp_3, ::tpystd::subprocess::DEVNULL, ::tpystd::subprocess::PIPE);
+    ::tpystd::subprocess::Popen r = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"cat"}), ::tpystd::subprocess::DEVNULL, ::tpystd::subprocess::PIPE);
     if (!((r.stdout.has_value()))) ::tpy::raise_assertion_error();
     std::cout << "devnull:" << " " << ::tpy::BytesPrinter((*r.stdout).read()) << " " << r.wait() << "\n" << ::tpy::check_signals;
 }
@@ -198,8 +189,7 @@ void merge_and_devnull() {
 //         print("epipe: close", e.errno)
 //     print("epipe:", p.stdin.closed)
 void broken_pipe() {
-    std::vector<std::string> __tmp_1 = {"true"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, ::tpystd::subprocess::PIPE);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"true"}), ::tpystd::subprocess::PIPE);
     p.wait();
     if (!((p.stdin.has_value()))) ::tpy::raise_assertion_error();
     std::cout << "epipe:" << " " << (*p.stdin).write(::tpy::bytes_literal("x", 1)) << "\n" << ::tpy::check_signals;
@@ -235,10 +225,8 @@ void broken_pipe() {
 //     b.kill()
 //     print("leak:", b.wait())
 void no_leaked_pipe() {
-    std::vector<std::string> __tmp_1 = {"cat"};
-    ::tpystd::subprocess::Popen a = ::tpystd::subprocess::Popen(__tmp_1, ::tpystd::subprocess::PIPE, ::tpystd::subprocess::PIPE);
-    std::vector<std::string> __tmp_2 = {"sleep", "30"};
-    ::tpystd::subprocess::Popen b = ::tpystd::subprocess::Popen(__tmp_2, std::nullopt, std::nullopt, std::nullopt);
+    ::tpystd::subprocess::Popen a = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"cat"}), ::tpystd::subprocess::PIPE, ::tpystd::subprocess::PIPE);
+    ::tpystd::subprocess::Popen b = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"sleep", "30"}), std::nullopt, std::nullopt, std::nullopt);
     if (!((a.stdin.has_value()))) ::tpy::raise_assertion_error();
     if (!((a.stdout.has_value()))) ::tpy::raise_assertion_error();
     (*a.stdin).close();
@@ -285,8 +273,7 @@ void fd_swap() {
     int64_t saved1 = ::tpystd::os::dup(1);
     ::tpystd::os::dup2(out_w, 0);
     ::tpystd::os::dup2(feed_r, 1);
-    std::vector<std::string> __tmp_1 = {"cat"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, 1, 0);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"cat"}), 1, 0);
     ::tpystd::os::dup2(saved0, 0);
     ::tpystd::os::dup2(saved1, 1);
     ::tpystd::os::close(saved0);
@@ -330,8 +317,7 @@ void fd_swap() {
 void bad_arguments() {
     {
         try {
-            std::vector<std::string> __tmp_1 = {"true"};
-            (void)(::tpystd::subprocess::Popen(__tmp_1, ::tpystd::subprocess::STDOUT));
+            (void)(::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"true"}), ::tpystd::subprocess::STDOUT));
             std::cout << "badarg: spawned" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError& e) {
             std::cout << "badarg:" << " " << e.error_number << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
@@ -340,8 +326,7 @@ void bad_arguments() {
     ::tpy::String nul_arg = (::tpy::str_concat((::tpy::str_concat("a", ::tpy::char_to_str(::tpy::chr(0)))), "b"));
     {
         try {
-            std::vector<std::string> __tmp_2 = {"echo", nul_arg};
-            (void)(::tpystd::subprocess::Popen(__tmp_2, std::nullopt, std::nullopt, std::nullopt));
+            (void)(::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"echo", nul_arg}), std::nullopt, std::nullopt, std::nullopt));
             std::cout << "badarg: spawned" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
             std::cout << "badarg:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
@@ -349,8 +334,7 @@ void bad_arguments() {
     }
     {
         try {
-            std::vector<std::string> __tmp_3 = std::vector<std::string>{};
-            (void)(::tpystd::subprocess::Popen(__tmp_3, std::nullopt, std::nullopt, std::nullopt));
+            (void)(::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{}), std::nullopt, std::nullopt, std::nullopt));
             std::cout << "badarg: spawned" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::IndexError& e) {
             std::cout << "badarg: IndexError" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
@@ -405,8 +389,7 @@ void bad_arguments() {
 //     except OverflowError:
 //         print("osproc: waitpid OverflowError")
 void os_process() {
-    std::vector<std::string> __tmp_1 = {"sleep", "30"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"sleep", "30"}), std::nullopt, std::nullopt, std::nullopt);
     std::cout << "osproc:" << " " << ::tpy::TuplePrinter(::tpystd::os::waitpid(p.pid, ::tpy::stdlib::os::kc_wnohang)) << "\n" << ::tpy::check_signals;
     ::tpystd::os::kill(p.pid, static_cast<int64_t>(::tpy_const_sigkill));
     auto __tup_1 = ::tpystd::os::waitpid(p.pid, 0);
@@ -472,8 +455,7 @@ void os_process() {
 //     # poll() gets ECHILD and reports 0, as CPython.
 //     print("reaped:", p.poll(), p.returncode)
 void reaped_externally() {
-    std::vector<std::string> __tmp_1 = {"true"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"true"}), std::nullopt, std::nullopt, std::nullopt);
     auto __tup_1 = ::tpystd::os::waitpid(p.pid, 0);
     int64_t pid = std::get<0>(__tup_1);
     int64_t status = std::get<1>(__tup_1);
@@ -487,8 +469,7 @@ void reaped_externally() {
 //     # wait() on a child someone else reaped reports 0 too, without blocking.
 //     print("reapedwait:", res[0] == p.pid, p.wait(), p.returncode)
 void wait_after_external_reap() {
-    std::vector<std::string> __tmp_1 = {"true"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"true"}), std::nullopt, std::nullopt, std::nullopt);
     std::tuple<int64_t, int64_t> res = ::tpystd::os::waitpid(p.pid, 0);
     std::cout << "reapedwait:" << " " << ::tpy::print_bool((std::get<0>(res) == p.pid)) << " " << p.wait() << " " << ::tpy::print_optional_val(p.returncode) << "\n" << ::tpy::check_signals;
 }
@@ -507,8 +488,7 @@ void wait_after_external_reap() {
 //     p.kill()
 //     print("nonblock:", p.wait())
 void nonblocking_stdin() {
-    std::vector<std::string> __tmp_1 = {"sleep", "30"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, ::tpystd::subprocess::PIPE);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"sleep", "30"}), ::tpystd::subprocess::PIPE);
     if (!((p.stdin.has_value()))) ::tpy::raise_assertion_error();
     ::tpystd::os::set_blocking((*p.stdin).fileno(), false);
     {
@@ -539,8 +519,7 @@ void nonblocking_stdin() {
 //     # __exit__ waited for the child although the stdin flush raised.
 //     print("exitflush:", p.returncode)
 void exit_flush_fails() {
-    std::vector<std::string> __tmp_1 = {"sh", "-c", "exec 0<&-; echo ready"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, ::tpystd::subprocess::PIPE, ::tpystd::subprocess::PIPE);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(::tpy::as_mut_lvalue(std::vector<std::string>{"sh", "-c", "exec 0<&-; echo ready"}), ::tpystd::subprocess::PIPE, ::tpystd::subprocess::PIPE);
     {
         try {
             auto& __ctx_2 = p;

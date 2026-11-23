@@ -136,6 +136,10 @@ class _ArgReq(NamedTuple):
     stub_slot: bool = False
     # The body's pointer-tuple locals (their records' `ptr_tuple`).
     ptr_tuple_locals: 'frozenset[str] | set[str]' = frozenset()
+    # In a resumable body, this argument is handed directly to a coroutine
+    # or generator call (the keep plan's taker of it); `held_temp` seats it
+    # for as long as the plan says.
+    frame_taken: bool = False
 
 
 class _ArgRow(NamedTuple):
@@ -263,6 +267,7 @@ def arg_ok(sink: _ArgSink, a: 'TpyExpr', ptype: 'TpyType | None',
            bare_tuple_names: 'Callable[[], AbstractSet[str]] | None' = None,
            stub_slot: bool = False,
            ptr_tuple_locals: 'frozenset[str] | set[str]' = frozenset(),
+           frame_taken: bool = False,
            retains: 'Retention | None'
            ) -> bool:
     """Walk `sink`'s rows in order; `note_detail(sink.note)` on no match."""
@@ -281,7 +286,8 @@ def arg_ok(sink: _ArgSink, a: 'TpyExpr', ptype: 'TpyType | None',
                   own_param_names=own_param_names,
                   frame_local_names=frame_local_names,
                   bare_tuple_names=bare_tuple_names, stub_slot=stub_slot,
-                  ptr_tuple_locals=ptr_tuple_locals)
+                  ptr_tuple_locals=ptr_tuple_locals,
+                  frame_taken=frame_taken)
     return _walk(sink, req)
 
 

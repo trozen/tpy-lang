@@ -23,16 +23,11 @@ int64_t spanned(int64_t a, int64_t b, int64_t c, const Options& kwargs) {
 //     print(spanned(1, 8, host="y"))
 //     print(spanned(1, 8, 9, host="y"))
 void main() {
-    Options __tmp_1 = Options("x");
-    std::cout << ::tpyapp::main::scaled(1, 5, __tmp_1) << "\n" << ::tpy::check_signals;
-    Options __tmp_2 = Options("x");
-    std::cout << ::tpyapp::main::scaled(1, 7, __tmp_2) << "\n" << ::tpy::check_signals;
-    Options __tmp_3 = Options("y");
-    std::cout << ::tpyapp::main::spanned(1, 2, 3, __tmp_3) << "\n" << ::tpy::check_signals;
-    Options __tmp_4 = Options("y");
-    std::cout << ::tpyapp::main::spanned(1, 8, 3, __tmp_4) << "\n" << ::tpy::check_signals;
-    Options __tmp_5 = Options("y");
-    std::cout << ::tpyapp::main::spanned(1, 8, 9, __tmp_5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::scaled(1, 5, Options("x")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::scaled(1, 7, Options("x")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::spanned(1, 2, 3, Options("y")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::spanned(1, 8, 3, Options("y")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::spanned(1, 8, 9, Options("y")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

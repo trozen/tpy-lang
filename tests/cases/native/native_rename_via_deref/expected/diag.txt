@@ -1,0 +1,2 @@
+main.py:43: warning: copies A into Tree parameter 't' of Widget.Echo; use copy() to make this explicit
+main.py:44: warning: copies A into Tree parameter 't' of Widget.Echo; use copy() to make this explicit

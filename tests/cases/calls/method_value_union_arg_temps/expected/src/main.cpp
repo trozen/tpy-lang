@@ -10,18 +10,15 @@ namespace tpyapp::main {
 //     r = a.tag(f)
 //     return r
 int32_t use(const A& a, int32_t k, double f) {
-    ::tpy::Union<double, int32_t> __tmp_1 = k;
-    int32_t r = a.tag(__tmp_1);
-    ::tpy::Union<double, int32_t> __tmp_2 = f;
-    r = a.tag(__tmp_2);
+    int32_t r = a.tag(::tpy::Union<double, int32_t>(k));
+    r = a.tag(::tpy::Union<double, int32_t>(f));
     return r;
 }
 
 // def use_inherited(c: Child, k: int32) -> int32:
 //     return c.tag(k)
 int32_t use_inherited(const Child& c, int32_t k) {
-    ::tpy::Union<double, int32_t> __tmp_1 = k;
-    return c.tag(__tmp_1);
+    return c.tag(::tpy::Union<double, int32_t>(k));
 }
 
 // def use_lit(a: A) -> int32:
@@ -40,8 +37,7 @@ int32_t use_lit(const A& a) {
 void main() {
     A a = A(10);
     std::cout << ::tpyapp::main::use(a, 2, 0.5) << "\n" << ::tpy::check_signals;
-    Child __tmp_1 = Child(3);
-    std::cout << ::tpyapp::main::use_inherited(__tmp_1, 4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_inherited(Child(3), 4) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::use_lit(a) << "\n" << ::tpy::check_signals;
     std::cout << a.outer() << "\n" << ::tpy::check_signals;
 }

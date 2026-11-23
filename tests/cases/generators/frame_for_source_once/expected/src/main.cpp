@@ -576,8 +576,7 @@ __gen_own_param_iter_src own_param_iter_src(Holder h) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         total = 0;
-        __coro_arg_0.emplace(Deleg(3));
-        __for_src_0.emplace(::tpy::builtin_enumerate((*__coro_arg_0)));
+        __for_src_0.emplace(::tpy::builtin_enumerate(__head_arg_0.emplace(Deleg(3))));
         __state = S_JOIN_0;
         continue;
     }

@@ -1423,8 +1423,7 @@ void flow() {
         }
     }
     ::tpyapp::main::assert_suppress(nullptr);
-    Clears __tmp_1 = Clears();
-    ::tpyapp::main::exit_clears(__tmp_1);
+    ::tpyapp::main::exit_clears(::tpy::as_mut_lvalue(Clears()));
     Holds holds = Holds();
     ::tpyapp::main::ptr_header(&holds);
     ::tpyapp::main::ptr_plain(&(*Q));
@@ -1432,16 +1431,14 @@ void flow() {
     ::tpyapp::main::finally_return(false);
     ::tpyapp::main::finally_throw(true);
     ::tpyapp::main::finally_throw(false);
-    PtrHolder __tmp_2 = PtrHolder(&(*Q));
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_header_main(__tmp_2)));
-    ClearsGlobal __tmp_3 = ClearsGlobal();
-    ::tpyapp::main::enter_clears_proved_global(__tmp_3);
+    PtrHolder __tmp_1 = PtrHolder(&(*Q));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_header_main(__tmp_1)));
+    ::tpyapp::main::enter_clears_proved_global(::tpy::as_mut_lvalue(ClearsGlobal()));
     ::tpyapp::main::reset_global();
     ::tpyapp::main::enter_clears_global();
     H narrowed = H();
     narrowed.p = P(::tpy::BigInt(4));
-    Lends __tmp_4 = Lends();
-    ::tpyapp::main::later_target(narrowed, __tmp_4);
+    ::tpyapp::main::later_target(narrowed, ::tpy::as_mut_lvalue(Lends()));
 }
 
 // def times10(v: int) -> int:
@@ -1580,10 +1577,8 @@ int32_t read_x(const R* r) {
 //     # The same through a method call on the parameter.
 //     print("trial method:", apply(lambda d: d.get() + take_r(d), [R(4)]))  # tpyc: ok
 void overload_trial() {
-    std::vector<R> __tmp_1 = {R(3)};
-    std::cout << "trial:" << " " << ::tpyapp::main::apply__Callable_T_U__list_T<R, int32_t>([](R& d) -> int32_t { return (::tpy::add_check<int32_t>(d.x, ::tpyapp::main::take_r(d))); }, __tmp_1) << "\n" << ::tpy::check_signals;
-    std::vector<R> __tmp_2 = {R(4)};
-    std::cout << "trial method:" << " " << ::tpyapp::main::apply__Callable_T_U__list_T<R, int32_t>([](R& d) -> int32_t { return (::tpy::add_check<int32_t>(d.get(), ::tpyapp::main::take_r(d))); }, __tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "trial:" << " " << ::tpyapp::main::apply__Callable_T_U__list_T<R, int32_t>([](R& d) -> int32_t { return (::tpy::add_check<int32_t>(d.x, ::tpyapp::main::take_r(d))); }, ::tpy::as_mut_lvalue(std::vector<R>{R(3)})) << "\n" << ::tpy::check_signals;
+    std::cout << "trial method:" << " " << ::tpyapp::main::apply__Callable_T_U__list_T<R, int32_t>([](R& d) -> int32_t { return (::tpy::add_check<int32_t>(d.get(), ::tpyapp::main::take_r(d))); }, ::tpy::as_mut_lvalue(std::vector<R>{R(4)})) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

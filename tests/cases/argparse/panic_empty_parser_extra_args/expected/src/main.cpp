@@ -9,8 +9,7 @@ namespace tpyapp::main {
 //     p.parse_args(["unexpected"])
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = {"unexpected"};
-    ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    ::tpyapp::main::__tpy_builder_argparse_parse_1({"unexpected"});
     return 0;
 }
 

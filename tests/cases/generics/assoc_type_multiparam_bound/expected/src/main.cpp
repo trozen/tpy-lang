@@ -13,8 +13,7 @@ void main() {
     IntStr p = IntStr(::tpy::BigInt(7), "hi");
     std::cout << ((::tpyapp::main::take_first<::tpy::BigInt, std::string, IntStr>(p)) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::take_second<::tpy::BigInt, std::string, IntStr>(p) << "\n" << ::tpy::check_signals;
-    ListStr __tmp_1 = ListStr({3, 4}, "q");
-    std::cout << ((::tpyapp::main::head<::tpy::BigInt, std::string, ListStr>(__tmp_1)) + (::tpy::BigInt(100))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpyapp::main::head<::tpy::BigInt, std::string, ListStr>(::tpy::as_mut_lvalue(ListStr({3, 4}, "q")))) + (::tpy::BigInt(100))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

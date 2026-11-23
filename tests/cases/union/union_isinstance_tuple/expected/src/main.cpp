@@ -110,38 +110,22 @@ std::string match_guard(::tpy::Union<const A*, const B*, const C*> v) {
 //     print(match_guard(B(2)))
 //     print(match_guard(C(3)))
 void main() {
-    A __tmp_1 = A(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::basic(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
-    B __tmp_2 = B(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::basic(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
-    C __tmp_3 = C(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::basic(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
-    A __tmp_4 = A(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::negate(::tpy::Union<const A*, const B*, const C*>{&__tmp_4}) << "\n" << ::tpy::check_signals;
-    C __tmp_5 = C(::tpy::BigInt(30));
-    std::cout << ::tpyapp::main::negate(::tpy::Union<const A*, const B*, const C*>{&__tmp_5}) << "\n" << ::tpy::check_signals;
-    A __tmp_6 = A(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::and_rhs(::tpy::Union<const A*, const B*, const C*>{&__tmp_6}, true) << "\n" << ::tpy::check_signals;
-    B __tmp_7 = B(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::and_rhs(::tpy::Union<const A*, const B*, const C*>{&__tmp_7}, false) << "\n" << ::tpy::check_signals;
-    C __tmp_8 = C(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::and_rhs(::tpy::Union<const A*, const B*, const C*>{&__tmp_8}, true) << "\n" << ::tpy::check_signals;
-    A __tmp_9 = A(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::or_lhs(::tpy::Union<const A*, const B*, const C*>{&__tmp_9}, false) << "\n" << ::tpy::check_signals;
-    C __tmp_10 = C(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::or_lhs(::tpy::Union<const A*, const B*, const C*>{&__tmp_10}, true) << "\n" << ::tpy::check_signals;
-    C __tmp_11 = C(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::or_lhs(::tpy::Union<const A*, const B*, const C*>{&__tmp_11}, false) << "\n" << ::tpy::check_signals;
-    A __tmp_12 = A(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::single_member_tuple(::tpy::Union<const A*, const B*, const C*>{&__tmp_12}) << "\n" << ::tpy::check_signals;
-    B __tmp_13 = B(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::single_member_tuple(::tpy::Union<const A*, const B*, const C*>{&__tmp_13}) << "\n" << ::tpy::check_signals;
-    A __tmp_14 = A(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::match_guard(::tpy::Union<const A*, const B*, const C*>{&__tmp_14}) << "\n" << ::tpy::check_signals;
-    B __tmp_15 = B(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::match_guard(::tpy::Union<const A*, const B*, const C*>{&__tmp_15}) << "\n" << ::tpy::check_signals;
-    C __tmp_16 = C(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::match_guard(::tpy::Union<const A*, const B*, const C*>{&__tmp_16}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::basic(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(1))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::basic(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(2))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::basic(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(C(::tpy::BigInt(3))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::negate(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(1))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::negate(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(C(::tpy::BigInt(30))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::and_rhs(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(1))))}, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::and_rhs(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(2))))}, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::and_rhs(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(C(::tpy::BigInt(3))))}, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_lhs(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(1))))}, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_lhs(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(C(::tpy::BigInt(3))))}, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_lhs(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(C(::tpy::BigInt(3))))}, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::single_member_tuple(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(1))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::single_member_tuple(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(2))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::match_guard(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(A(::tpy::BigInt(1))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::match_guard(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(B(::tpy::BigInt(2))))}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::match_guard(::tpy::Union<const A*, const B*, const C*>{&(::tpy::as_mut_lvalue(C(::tpy::BigInt(3))))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

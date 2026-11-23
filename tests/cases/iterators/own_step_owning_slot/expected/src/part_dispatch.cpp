@@ -25,14 +25,13 @@ namespace tpyapp::part_dispatch {
 //     print("iter with defaulted keyword", take_tok(KwDefaultTokBag()))  # tpyc: ok
 void main() {
     std::cout << "dispatch owning" << " " << ::tpyapp::part_dispatch::pick__Iterable_Own_Cell(::tpyapp::fixtures::make(2)) << "\n" << ::tpy::check_signals;
-    ArgCursor __tmp_1 = ArgCursor();
-    std::cout << "next with argument" << " " << ::tpyapp::part_dispatch::next_at(__tmp_1) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = ArgTokBag();
-    std::cout << "iter with argument" << " " << ::tpyapp::fixtures::take_tok(__tmp_2) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = KwTokBag();
-    std::cout << "iter with keyword argument" << " " << ::tpyapp::fixtures::take_tok(__tmp_3) << "\n" << ::tpy::check_signals;
-    auto __tmp_4 = KwDefaultTokBag();
-    std::cout << "iter with defaulted keyword" << " " << ::tpyapp::fixtures::take_tok(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << "next with argument" << " " << ::tpyapp::part_dispatch::next_at(ArgCursor()) << "\n" << ::tpy::check_signals;
+    auto __tmp_1 = ArgTokBag();
+    std::cout << "iter with argument" << " " << ::tpyapp::fixtures::take_tok(__tmp_1) << "\n" << ::tpy::check_signals;
+    auto __tmp_2 = KwTokBag();
+    std::cout << "iter with keyword argument" << " " << ::tpyapp::fixtures::take_tok(__tmp_2) << "\n" << ::tpy::check_signals;
+    auto __tmp_3 = KwDefaultTokBag();
+    std::cout << "iter with defaulted keyword" << " " << ::tpyapp::fixtures::take_tok(__tmp_3) << "\n" << ::tpy::check_signals;
 }
 
 

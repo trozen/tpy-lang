@@ -794,17 +794,19 @@ void main() {
             std::cout << "order_mixed" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
-    Noisy __tmp_12 = Noisy(2);
     std::vector<int32_t> prods = ({
         std::vector<int32_t> __result;
-        auto __obj_40 = ::tpy::builtin_zip(__tmp_12, xs);
-        auto __beg_40 = __obj_40.begin();
-        auto __end_40 = __obj_40.end();
-        for (; __beg_40 != __end_40; ++__beg_40) {
-            auto&& __for_tup_23 = *__beg_40;
-            int32_t a = std::get<0>(__for_tup_23);
-            int32_t b = std::get<1>(__for_tup_23);
-            __result.push_back((::tpy::mul_check<int32_t>(a, b)));
+        {
+            Noisy __tmp_12 = Noisy(2);
+            auto __obj_40 = ::tpy::builtin_zip(__tmp_12, xs);
+            auto __beg_40 = __obj_40.begin();
+            auto __end_40 = __obj_40.end();
+            for (; __beg_40 != __end_40; ++__beg_40) {
+                auto&& __for_tup_23 = *__beg_40;
+                int32_t a = std::get<0>(__for_tup_23);
+                int32_t b = std::get<1>(__for_tup_23);
+                __result.push_back((::tpy::mul_check<int32_t>(a, b)));
+            }
         }
         std::move(__result);
     });

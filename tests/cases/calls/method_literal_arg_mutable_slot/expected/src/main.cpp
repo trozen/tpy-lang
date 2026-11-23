@@ -40,9 +40,10 @@ int32_t push_free(std::vector<int32_t>& xs) {
 //     print("temp_recv", K().fill([1, 2]))  # tpyc: ok
 //     # method whose slot stays mutable only because the return borrows it
 //     print("lend_back", len(k.pick([3, 4])))  # tpyc: ok
-//     # ... and the borrowed result BOUND: the declaration is a flush position
-//     # too, so the literal hoists to a named temporary the alias then outlives
-//     got = k.pick([3, 4])  # tpyc: ok
+//     # ... and the borrowed result BOUND: a fresh literal would live for its
+//     # statement only (warned), so the alias keeps a local
+//     lit = [3, 4]
+//     got = k.pick(lit)  # tpyc: ok
 //     got.append(5)
 //     print("lend_back_bound", got)
 //     # ... and bound from a callee that lends the receiver's own storage: the
@@ -70,41 +71,28 @@ int32_t push_free(std::vector<int32_t>& xs) {
 //     print("readonly_slot", k.ro([4, 5]))  # tpyc: ok
 void main() {
     K k = K();
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << "meth_list" << " " << k.fill(__tmp_1) << "\n" << ::tpy::check_signals;
-    std::vector<Rec> __tmp_2 = {Rec(1), Rec(2)};
-    std::cout << "meth_recs" << " " << k.fill_recs(__tmp_2) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, int32_t> __tmp_3 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    std::cout << "meth_dict" << " " << k.fill_dict(__tmp_3) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_set<int32_t> __tmp_4 = ::tpy::ordered_set<int32_t>({1, 2});
-    std::cout << "meth_set" << " " << k.fill_set(__tmp_4) << "\n" << ::tpy::check_signals;
-    std::vector<std::vector<int32_t>> __tmp_5 = {{1}, {2}};
-    std::cout << "meth_nested" << " " << k.fill_nested(__tmp_5) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_6 = {1, 2};
-    std::cout << "temp_recv" << " " << K().fill(__tmp_6) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_7 = {3, 4};
-    std::cout << "lend_back" << " " << ::tpy::__len__(k.pick(__tmp_7)) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_8 = {3, 4};
-    std::vector<int32_t>& got = k.pick(__tmp_8);
+    std::cout << "meth_list" << " " << k.fill(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "meth_recs" << " " << k.fill_recs(::tpy::as_mut_lvalue(std::vector<Rec>{Rec(1), Rec(2)})) << "\n" << ::tpy::check_signals;
+    std::cout << "meth_dict" << " " << k.fill_dict(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, int32_t>({{"a", 1}}))) << "\n" << ::tpy::check_signals;
+    std::cout << "meth_set" << " " << k.fill_set(::tpy::as_mut_lvalue(::tpy::ordered_set<int32_t>({1, 2}))) << "\n" << ::tpy::check_signals;
+    std::cout << "meth_nested" << " " << k.fill_nested(::tpy::as_mut_lvalue(std::vector<std::vector<int32_t>>{{1}, {2}})) << "\n" << ::tpy::check_signals;
+    std::cout << "temp_recv" << " " << K().fill(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "lend_back" << " " << ::tpy::__len__(k.pick(::tpy::as_mut_lvalue(std::vector<int32_t>{3, 4}))) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> lit = {3, 4};
+    std::vector<int32_t>& got = k.pick(lit);
     got.push_back(5);
     std::cout << "lend_back_bound" << " " << ::tpy::ListPrinter(got) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_9 = {6};
-    std::vector<int32_t>& kept = k.stash(__tmp_9);
+    std::vector<int32_t>& kept = k.stash(::tpy::as_mut_lvalue(std::vector<int32_t>{6}));
     kept.push_back(7);
     std::cout << "lend_back_stash" << " " << ::tpy::ListPrinter(k.items) << "\n" << ::tpy::check_signals;
     std::cout << "own_call_const_meth" << " " << k.total(::tpyapp::main::mk()) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_10 = ::tpyapp::main::mk();
-    std::cout << "own_call_generic" << " " << ::tpyapp::main::push_gen<int32_t>(1, __tmp_10) << "\n" << ::tpy::check_signals;
+    std::cout << "own_call_generic" << " " << ::tpyapp::main::push_gen<int32_t>(1, ::tpy::as_mut_lvalue(::tpyapp::main::mk())) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> src = {1, 2, 3};
-    std::vector<int32_t> __tmp_11 = std::vector<int32_t>(src);
-    int32_t n = ::tpyapp::main::push_free(__tmp_11);
+    int32_t n = ::tpyapp::main::push_free(::tpy::as_mut_lvalue(std::vector<int32_t>(src)));
     std::cout << "copy_free_bound" << " " << n << " " << ::tpy::ListPrinter(src) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_12 = {1, 2};
-    std::cout << "nested_arg" << " " << ::tpyapp::main::sink(k.fill(__tmp_12)) << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> __tmp_13 = {1, 2};
-    std::cout << "static_list" << " " << K::fill_static(__tmp_13) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, int32_t> __tmp_14 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    std::cout << "static_dict" << " " << K::fill_static_dict(__tmp_14) << "\n" << ::tpy::check_signals;
+    std::cout << "nested_arg" << " " << ::tpyapp::main::sink(k.fill(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2}))) << "\n" << ::tpy::check_signals;
+    std::cout << "static_list" << " " << K::fill_static(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "static_dict" << " " << K::fill_static_dict(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, int32_t>({{"a", 1}}))) << "\n" << ::tpy::check_signals;
     std::cout << "const_slot" << " " << k.total({1, 2, 3}) << "\n" << ::tpy::check_signals;
     std::cout << "readonly_slot" << " " << k.ro({4, 5}) << "\n" << ::tpy::check_signals;
 }

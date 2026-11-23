@@ -29,62 +29,75 @@ void build(std::string_view root) {
     ::tpystd::os::mkdir((::tpy::str_concat(root, "/sub1/deep")));
     ::tpystd::os::mkdir((::tpy::str_concat(root, "/sub2")));
     ::tpystd::os::mkdir((::tpy::str_concat(root, "/skip")));
-    auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/top.txt")), "w");
-    ::tpy::TextFile* f = &(__ctx_1.__enter__());
-    try {
-        f->write("t");
-        goto __with_exit_1;
-    } catch (::tpy::BaseException& __exc_1) {
-        __ctx_1.__exit__({}, &__exc_1, {});
-        throw;
-    } catch (...) {
+    ::tpy::TextFile* f = nullptr;
+    {
+        ::tpy::String __tmp_1 = (::tpy::str_concat(root, "/top.txt"));
+        auto __ctx_1 = ::tpy::builtin_open_mode(__tmp_1, "w");
+        f = &(__ctx_1.__enter__());
+        try {
+            f->write("t");
+            goto __with_exit_1;
+        } catch (::tpy::BaseException& __exc_1) {
+            __ctx_1.__exit__({}, &__exc_1, {});
+            throw;
+        } catch (...) {
+            __ctx_1.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        throw;
     }
-    __with_exit_1:
-    __ctx_1.__exit__({}, nullptr, {});
-    auto __ctx_2 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/sub1/a.txt")), "w");
-    f = &(__ctx_2.__enter__());
-    try {
-        f->write("a");
-        goto __with_exit_2;
-    } catch (::tpy::BaseException& __exc_2) {
-        __ctx_2.__exit__({}, &__exc_2, {});
-        throw;
-    } catch (...) {
+    {
+        ::tpy::String __tmp_2 = (::tpy::str_concat(root, "/sub1/a.txt"));
+        auto __ctx_2 = ::tpy::builtin_open_mode(__tmp_2, "w");
+        f = &(__ctx_2.__enter__());
+        try {
+            f->write("a");
+            goto __with_exit_2;
+        } catch (::tpy::BaseException& __exc_2) {
+            __ctx_2.__exit__({}, &__exc_2, {});
+            throw;
+        } catch (...) {
+            __ctx_2.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
-        throw;
     }
-    __with_exit_2:
-    __ctx_2.__exit__({}, nullptr, {});
-    auto __ctx_3 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/sub1/deep/b.txt")), "w");
-    f = &(__ctx_3.__enter__());
-    try {
-        f->write("b");
-        goto __with_exit_3;
-    } catch (::tpy::BaseException& __exc_3) {
-        __ctx_3.__exit__({}, &__exc_3, {});
-        throw;
-    } catch (...) {
+    {
+        ::tpy::String __tmp_3 = (::tpy::str_concat(root, "/sub1/deep/b.txt"));
+        auto __ctx_3 = ::tpy::builtin_open_mode(__tmp_3, "w");
+        f = &(__ctx_3.__enter__());
+        try {
+            f->write("b");
+            goto __with_exit_3;
+        } catch (::tpy::BaseException& __exc_3) {
+            __ctx_3.__exit__({}, &__exc_3, {});
+            throw;
+        } catch (...) {
+            __ctx_3.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_3:
         __ctx_3.__exit__({}, nullptr, {});
-        throw;
     }
-    __with_exit_3:
-    __ctx_3.__exit__({}, nullptr, {});
-    auto __ctx_4 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/skip/junk.txt")), "w");
-    f = &(__ctx_4.__enter__());
-    try {
-        f->write("j");
-        goto __with_exit_4;
-    } catch (::tpy::BaseException& __exc_4) {
-        __ctx_4.__exit__({}, &__exc_4, {});
-        throw;
-    } catch (...) {
+    {
+        ::tpy::String __tmp_4 = (::tpy::str_concat(root, "/skip/junk.txt"));
+        auto __ctx_4 = ::tpy::builtin_open_mode(__tmp_4, "w");
+        f = &(__ctx_4.__enter__());
+        try {
+            f->write("j");
+            goto __with_exit_4;
+        } catch (::tpy::BaseException& __exc_4) {
+            __ctx_4.__exit__({}, &__exc_4, {});
+            throw;
+        } catch (...) {
+            __ctx_4.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_4:
         __ctx_4.__exit__({}, nullptr, {});
-        throw;
     }
-    __with_exit_4:
-    __ctx_4.__exit__({}, nullptr, {});
     ::tpy::stdlib::os::symlink((::tpy::str_concat(root, "/sub1")), (::tpy::str_concat(root, "/lnk")));
     ::tpy::stdlib::os::symlink((::tpy::str_concat(root, "/does_not_exist")), (::tpy::str_concat(root, "/dangling")));
 }
@@ -321,8 +334,7 @@ void main() {
     std::cout << "follow dirs:" << " " << ::tpyapp::main::count_dirs(root, true) << "\n" << ::tpy::check_signals;
     int32_t n = 0;
     {
-        ::tpy::String __tmp_1 = (::tpy::str_concat(tmp, "/tpy_oswalk_missing"));
-        auto __src_0 = ::tpystd::os::walk(__tmp_1);
+        auto __src_0 = ::tpystd::os::walk((::tpy::str_concat(tmp, "/tpy_oswalk_missing")));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -338,8 +350,7 @@ void main() {
     std::cout << "prune-all yields:" << " " << ::tpyapp::main::prune_all(root) << "\n" << ::tpy::check_signals;
     int32_t nf = 0;
     {
-        ::tpy::String __tmp_2 = (::tpy::str_concat(root, "/top.txt"));
-        auto __src_2 = ::tpystd::os::walk(__tmp_2);
+        auto __src_2 = ::tpystd::os::walk((::tpy::str_concat(root, "/top.txt")));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

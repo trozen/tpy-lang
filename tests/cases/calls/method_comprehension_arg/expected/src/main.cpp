@@ -44,15 +44,14 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    std::vector<double> __tmp_1 = ({
+    std::cout << ::tpyapp::main::take(({
         std::vector<double> __result;
         if (3 > 0) __result.reserve(static_cast<size_t>(3));
         for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(((2.0) * (::tpy::__getitem__(a, i))));
         }
         std::move(__result);
-    });
-    std::cout << ::tpyapp::main::take(__tmp_1) << "\n" << ::tpy::check_signals;
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // main()

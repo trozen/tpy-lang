@@ -396,8 +396,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     ::tpy::frame_state __state;
     const Tracer& t;
     std::string s;
-    ::tpy::frame_slot<Chrome> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((t.gen_m((*__coro_arg_0))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((t.gen_m(std::declval<Chrome&>())))>;
+    ::tpy::frame_slot<Chrome> __head_arg_0;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
 
@@ -546,8 +546,7 @@ inline std::string Reader<U>::run(::tpy::param_val_or_ref_t<U> m) const {
 //     return r.run(Chrome())  # tpyc: ok
 template<SRunner T_r>
 std::string s_call(T_r&& r) {
-    Chrome __tmp_1 = Chrome();
-    return r.run(__tmp_1);
+    return r.run(::tpy::as_mut_lvalue(Chrome()));
 }
 
 void __tpy_init();

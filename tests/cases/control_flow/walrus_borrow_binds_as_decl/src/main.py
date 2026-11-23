@@ -92,8 +92,8 @@ def make_mixed(n: int32, b: Animal) -> tuple[Own[Animal], Animal]:
 
 
 # A source that borrows from a temporary argument (`(s := pick(A(9), b))`)
-# is refused, as the plain binding of it is where the target outlives the
-# statement (calls/error_borrowed_call_ternary_argument pins that refusal).
+# is a borrow of a temporary kept past its statement, warned as the plain
+# binding of it is (calls/error_fresh_arg_borrow_kept).
 def free_function() -> None:
     # free function, inheritance-polymorphic payload behind deref
     rc: Rc[Animal] = Rc.new(Hound())
@@ -314,9 +314,11 @@ def ident(a: Animal) -> Animal:
 
 
 def temp_source() -> None:
-    # a first binding over a call that borrows its temporary argument: the
-    # temporary lives as long as its statement, as for `p = ident(Animal())`
-    if (p := ident(Animal())).n > 0:  # tpyc: warning(/Result borrows from temporary argument/)
+    # a first binding over a call that borrows its argument: a fresh one
+    # would live for its statement only (warned, as for `p = ident(Animal())`),
+    # so the body's reads take a local
+    an = Animal()
+    if (p := ident(an)).n > 0:  # tpyc: ok
         p.n += 4
         print("temp source", p.n)
 

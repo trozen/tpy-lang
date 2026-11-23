@@ -31,12 +31,9 @@ std::string size_of(const Pet& p, bool flag) {
 //     print(size_of(Dog("d"), False))
 //     print(size_of(Dog("d"), True))
 void main() {
-    Cat __tmp_1{Cat()};
-    std::cout << ::tpyapp::main::size_of(__tmp_1, true) << "\n" << ::tpy::check_signals;
-    Dog __tmp_2{Dog("d")};
-    std::cout << ::tpyapp::main::size_of(__tmp_2, false) << "\n" << ::tpy::check_signals;
-    Dog __tmp_3{Dog("d")};
-    std::cout << ::tpyapp::main::size_of(__tmp_3, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::size_of(Cat{Cat()}, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::size_of(Dog{Dog("d")}, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::size_of(Dog{Dog("d")}, true) << "\n" << ::tpy::check_signals;
 }
 
 // main()

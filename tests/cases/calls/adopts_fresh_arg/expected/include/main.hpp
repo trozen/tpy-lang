@@ -142,8 +142,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 struct __gen_gen_adopt : public ::tpy::next_iter_mixin<__gen_gen_adopt, int32_t> {
     ::tpy::frame_state __state;
     int32_t n;
-    ::tpy::frame_slot<std::vector<P>> __coro_arg_0;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate((*__coro_arg_0))))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate(::tpyapp::main::mk())))>;
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* __for_tup_0 = nullptr;
     int32_t i;
     ::tpy::step_elem_member_t<1, ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>>* x = nullptr;

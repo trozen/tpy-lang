@@ -158,8 +158,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_lift::__next__()
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0.emplace(::tpyapp::main::make_list());
-        g.emplace(::tpyapp::main::iter_list((*__coro_arg_0)));
+        g.emplace(::tpyapp::main::iter_list(__head_arg_0.emplace(::tpyapp::main::make_list())));
         __state = S_RESUME_0;
         return ::tpyapp::main::first((*g));
     }

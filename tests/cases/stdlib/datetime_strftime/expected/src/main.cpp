@@ -53,14 +53,11 @@ void main() {
     std::cout << ::tpystd::datetime::time(::tpy::BigInt(12), ::tpy::BigInt(0)).strftime("%I %p") << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::time(::tpy::BigInt(13), ::tpy::BigInt(30)).strftime("%I %p") << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::timezone ist = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)), "IST");
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ist;
-    ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_1);
+    ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(ist));
     std::cout << dt.strftime("%Y-%m-%d %H:%M:%S.%f %z %Z") << "\n" << ::tpy::check_signals;
     std::cout << dt.strftime("%c") << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-30), ::tpy::BigInt(-3)));
-    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(0), __tmp_2).strftime("%z %Z") << "\n" << ::tpy::check_signals;
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)));
-    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3).strftime("%z %Z") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-30), ::tpy::BigInt(-3))))).strftime("%z %Z") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5))))).strftime("%z %Z") << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30)).strftime("|%z %Z|") << "\n" << ::tpy::check_signals;
 }
 

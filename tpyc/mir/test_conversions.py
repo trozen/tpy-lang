@@ -216,18 +216,21 @@ def ro_values(d: readonly[dict[str, int32]]) -> int32:
 
 
 class B:
+    xs: list[int]
+
     def __init__(self, x: int) -> None:
-        self.x = x
+        self.xs = [x]
 
 
-def lent_b(b: B) -> int:
-    return b.x
+def lent_b(b: readonly[B]) -> readonly[list[int]]:
+    return b.xs
 
 
 def lent_temp_operand(c: bool) -> int:
     y = 0
     if c:
-        y = lent_b(B(2))
+        for v in lent_b(B(2)):
+            y = v
     return y
 '''
 
@@ -525,6 +528,8 @@ def test_a_method_view_result_follows_its_receiver_place(unit, monkeypatch) -> N
 # --- a lent argument temporary's operands ------------------------------------------
 
 def test_a_lent_temporary_operand_ends_with_the_initialization(dumps) -> None:
+    # `for v in lent_b(B(2))`: the loop head keeps the argument; the int
+    # operand its constructor borrows ends with the initialization.
     lines = dumps["lent_temp_operand"]
     regions = {m[1]: (m[2], m[3]) for m in map(re.compile(r"region (r\d+) parent=(\w+) entry=(bb\d+)").match, lines)
                if m}
@@ -538,6 +543,6 @@ def test_a_lent_temporary_operand_ends_with_the_initialization(dumps) -> None:
     # It holds exactly the initialization: the operand, its holder, the construction; then it ends.
     block = lines[lines.index(entry + ":") + 1:]
     assert [re.sub(r"%\d+", "%", line) for line in block[:3]] == [
-        "% = 2 [initialize]", "% = borrow %", "% = call __main__.B::__init__(%) [reader, normal-return] [initialize]"]
+        "% = 2 [initialize]", "% = borrow %", "% = call __main__.B::__init__(%) [reader, may-raise] [initialize]"]
     assert block[2].startswith(storage[1] + " = call __main__.B::__init__") and block[3].startswith("goto ")
     assert f"{entry} edge 0: {operand[2]} {operand[1]}" in lines

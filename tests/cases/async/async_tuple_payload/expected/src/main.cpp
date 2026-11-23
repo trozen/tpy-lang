@@ -308,101 +308,101 @@ __gen_ro_gen ro_gen(Box& b) {
 // async def amain() -> None:
 //     b = Box(1)
 //     # bind: the element aliases b after a suspension
-//     t = await pair(b)  # tpyc: ok                                         # -> S_RESUME_0
-//     await asyncio.sleep(0)                                                # -> S_RESUME_1
+//     t = await pair(b)  # tpyc: ok                                           # -> S_RESUME_0
+//     await asyncio.sleep(0)                                                  # -> S_RESUME_1
 //     t[1].v = 7
 //     print("bind", t[0], b.v)
 //     # generic bind at a reference T
-//     u = await solo(b)  # tpyc: ok                                         # -> S_RESUME_2
-//     await asyncio.sleep(0)                                                # -> S_RESUME_3
+//     u = await solo(b)  # tpyc: ok                                           # -> S_RESUME_2
+//     await asyncio.sleep(0)                                                  # -> S_RESUME_3
 //     u[0].v = 8
 //     print("generic bind", u[1], b.v)
 //     # generic bind at a value T
-//     w = await solo(3)  # tpyc: ok                                         # -> S_RESUME_4
+//     w = await solo(3)  # tpyc: ok                                           # -> S_RESUME_4
 //     print("generic value", w[0], w[1])
 //     # Callable payload, called after a suspension
-//     f = await mk_fn(dbl)  # tpyc: ok                                      # -> S_RESUME_5
-//     await asyncio.sleep(0)                                                # -> S_RESUME_6
+//     f = await mk_fn(dbl)  # tpyc: ok                                        # -> S_RESUME_5
+//     await asyncio.sleep(0)                                                  # -> S_RESUME_6
 //     print("callable", f(4))
 //     # Callable payload through a task
 //     tk = asyncio.create_task(mk_fn(dbl))  # tpyc: ok
-//     print("task callable", (await tk)(7))                                 # -> S_RESUME_7
+//     print("task callable", (await tk)(7))                                   # -> S_RESUME_7
 //     # method payloads
 //     h = Holder()
-//     m = await h.get()  # tpyc: ok                                         # -> S_RESUME_8
-//     await asyncio.sleep(0)                                                # -> S_RESUME_9
+//     m = await h.get()  # tpyc: ok                                           # -> S_RESUME_8
+//     await asyncio.sleep(0)                                                  # -> S_RESUME_9
 //     m[1].v = 11
 //     print("method", m[0], h.b.v)
-//     mw = await h.wrap(b)  # tpyc: ok                                      # -> S_RESUME_10
+//     mw = await h.wrap(b)  # tpyc: ok                                        # -> S_RESUME_10
 //     mw[1].v = 12
 //     print("method generic", mw[0], b.v)
 //     # unpack: the lift holds the payload's pointers
-//     n, x = await pair(b)  # tpyc: ok                                      # -> S_RESUME_11
-//     await asyncio.sleep(0)                                                # -> S_RESUME_12
+//     n, x = await pair(b)  # tpyc: ok                                        # -> S_RESUME_11
+//     await asyncio.sleep(0)                                                  # -> S_RESUME_12
 //     x.v = 13
 //     print("unpack", n, b.v)
-//     gx, gn = await solo(b)  # tpyc: ok                                    # -> S_RESUME_13
+//     gx, gn = await solo(b)  # tpyc: ok                                      # -> S_RESUME_13
 //     gx.v = 14
 //     print("generic unpack", gn, b.v)
 //     # nested: an element of the awaited tuple written in place
-//     (await pair(b))[1].v = 15  # tpyc: ok                                 # -> S_RESUME_14
+//     (await pair(b))[1].v = 15  # tpyc: ok                                   # -> S_RESUME_14
 //     print("nested", b.v)
-//     (await solo(b))[0].v = 16  # tpyc: ok                                 # -> S_RESUME_15
+//     (await solo(b))[0].v = 16  # tpyc: ok                                   # -> S_RESUME_15
 //     print("generic nested", b.v)
 //     # append: the container stores its own copy, as the sync twin does
 //     xs: list[tuple[int32, Box]] = []
-//     xs.append(await pair(b))  # tpyc: warning(/copies Box/)               # -> S_RESUME_16
+//     xs.append(await pair(b))  # tpyc: warning(/copies Box/)                 # -> S_RESUME_16
 //     print("append", len(xs), b.v)
 //     # try/finally returns
-//     fi = await fin_inline(b)  # tpyc: ok                                  # -> S_RESUME_17
-//     await asyncio.sleep(0)                                                # -> S_RESUME_18
+//     fi = await fin_inline(b)  # tpyc: ok                                    # -> S_RESUME_17
+//     await asyncio.sleep(0)                                                  # -> S_RESUME_18
 //     fi[1].v = 17
 //     print("fin_inline", fi[0], b.v)
-//     fs = await fin_suspend(b)  # tpyc: ok                                 # -> S_RESUME_19
-//     await asyncio.sleep(0)                                                # -> S_RESUME_20
+//     fs = await fin_suspend(b)  # tpyc: ok                                   # -> S_RESUME_19
+//     await asyncio.sleep(0)                                                  # -> S_RESUME_20
 //     fs[0].v = 18
 //     print("fin_suspend", fs[1], b.v)
 //     # return await of the same form
-//     r = await fwd(b)  # tpyc: ok                                          # -> S_RESUME_21
-//     await asyncio.sleep(0)                                                # -> S_RESUME_22
+//     r = await fwd(b)  # tpyc: ok                                            # -> S_RESUME_21
+//     await asyncio.sleep(0)                                                  # -> S_RESUME_22
 //     r[1].v = 19
 //     print("fwd", r[0], b.v)
-//     rf = await fwd_fn(dbl)  # tpyc: ok                                    # -> S_RESUME_23
+//     rf = await fwd_fn(dbl)  # tpyc: ok                                      # -> S_RESUME_23
 //     print("fwd callable", rf(5))
 //     # readonly unpack: the target points at b, const
-//     rn, rx = await ro_pair(b)  # tpyc: ok                                 # -> S_RESUME_24
+//     rn, rx = await ro_pair(b)  # tpyc: ok                                   # -> S_RESUME_24
 //     b.v = 22
-//     await asyncio.sleep(0)                                                # -> S_RESUME_25
+//     await asyncio.sleep(0)                                                  # -> S_RESUME_25
 //     print("readonly unpack", rn, rx.v)
 //     # generic task forward at a value T
-//     tf = await task_fwd(3)  # tpyc: ok                                    # -> S_RESUME_26
+//     tf = await task_fwd(3)  # tpyc: ok                                      # -> S_RESUME_26
 //     print("task fwd", tf[0], tf[1])
 //     # generic wait_for forward at a value T
-//     wf = await wait_fwd(3)  # tpyc: ok                                    # -> S_RESUME_27
+//     wf = await wait_fwd(3)  # tpyc: ok                                      # -> S_RESUME_27
 //     print("wait fwd", wf[0], wf[1])
 //     # Literal-str element
-//     await lit()  # tpyc: ok                                               # -> S_RESUME_28
+//     await lit()  # tpyc: ok                                                 # -> S_RESUME_28
 //     print("lit", "ok")
 //     # generator readonly unpack
 //     for g in ro_gen(b):
 //         print("readonly gen", g)
 //     # generic storage tuple at a value T
-//     ot = await opt_solo(5)  # tpyc: ok                                    # -> S_RESUME_29
+//     ot = await opt_solo(5)  # tpyc: ok                                      # -> S_RESUME_29
 //     print("opt generic", ot[0], ot[1] is None)
-//     # a temporary argument sits in this frame, warned falsely as in sync
-//     # (BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling)
-//     tu = await solo(Box(99))  # tpyc: warning(/temporary/)                # -> S_RESUME_30
-//     await asyncio.sleep(0)                                                # -> S_RESUME_31
+//     # a temporary argument the awaited frame keeps sits in this frame, and
+//     # what the await hands back may borrow it: nothing dangles
+//     tu = await solo(Box(99))  # tpyc: ok                                    # -> S_RESUME_30
+//     await asyncio.sleep(0)                                                  # -> S_RESUME_31
 //     print("temp arg", tu[0].v, tu[1])
 //     # async for: the loop var holds the element's pointer
-//     async for it in Gen():  # tpyc: ok                                    # -> S_RESUME_32
-//         await asyncio.sleep(0)                                            # -> S_RESUME_33
+//     async for it in Gen():  # tpyc: ok                                      # -> S_RESUME_32
+//         await asyncio.sleep(0)                                              # -> S_RESUME_33
 //         it[1].v += 10
 //         print("async for", it[0], SHARED.v)
 //     # async with: the target holds the element's pointer
 //     c = Ctx()
-//     async with c as ct:  # tpyc: ok                                       # -> S_RESUME_34, S_RESUME_36
-//         await asyncio.sleep(0)                                            # -> S_RESUME_35
+//     async with c as ct:  # tpyc: ok                                         # -> S_RESUME_34, S_RESUME_36
+//         await asyncio.sleep(0)                                              # -> S_RESUME_35
 //         ct[1].v = 21
 //     print("async with", ct[0], c.b.v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
@@ -733,12 +733,11 @@ __gen_ro_gen ro_gen(Box& b) {
         ot = std::move(__r29).value();
         __sub_29.reset();
         std::cout << "opt generic" << " " << std::get<0>(ot) << " " << ::tpy::print_bool((!std::get<1>(ot).has_value())) << "\n" << ::tpy::check_signals;
-        __coro_arg_0.emplace(Box(99));
-        __sub_30.emplace((*__coro_arg_0));
+        __sub_30.emplace(__head_arg_0.emplace(Box(99)));
         __state = S_RESUME_30;
         continue;
     }
-    case S_RESUME_30: {  // after: tu = await solo(Box(99))  # tpyc: warning(/temporary/)
+    case S_RESUME_30: {  // after: tu = await solo(Box(99))  # tpyc: ok
         auto __r30 = ::tpy::poll_with_cancel(__sub_30, __cancel_pending, waker);
         if (__r30.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         tu = std::move(__r30).value();

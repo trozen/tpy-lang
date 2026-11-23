@@ -1080,6 +1080,15 @@ class _Lowering:
         ref = binding.value
         if isinstance(arg, th.THIRArgTemp):
             return self.valued(MIRValue(self.argument_temporary(arg, ref).holder, loc=arg.loc))
+        if isinstance(arg, th.THIRInlineTemp):
+            # A fresh object bound as an lvalue for its full expression: the
+            # aggregate built there, lent at the binding's access.
+            _plain(arg, {"value", "mutable"})
+            f = self.aggregate_operand(arg.value, ref.type)
+            self.writes[arg] = self.writes.get(arg.value, False)
+            g = self.fragment()
+            g.value = MIRValue(g.lend(f, ref), loc=arg.loc)
+            return g
         if self.named_aggregate(arg) is binding.cls:
             source = self.aggregate_source(arg, binding.cls)
             self.writes.setdefault(arg, False)
@@ -1227,14 +1236,15 @@ class _Lowering:
     def initializer(self, node: th.THIRArgTemp | th.THIRSlotEmplace, build: Callable[[], Fragment]) -> Fragment:
         """A placed temporary's initializer, built with temporaries of its
         own: its region need, a nested full expression where a statement
-        initializes it (`Fragment.initialize`). The enclosing full expression
-        owns them too, so its own need is unchanged."""
+        initializes it (`Fragment.initialize`). An enclosing full expression
+        owns them too, so its own need is unchanged; a compound head, which
+        is none, initializes the temporaries it keeps as full expressions of
+        their own."""
         outer = self.mir.active_temporaries
-        if outer is None:
-            return build()
         with self.mir.temporaries() as own:
             value = build()
-        outer.extend(own)
+        if outer is not None:
+            outer.extend(own)
         return self.whole(value, node.loc, bool(own))
 
     def anchored(self, node: object, plan: Fragment) -> Fragment:
@@ -1312,6 +1322,8 @@ class _Lowering:
                 return self.ordered_temporary_expression(expr.operand)
             case th.THIRArgTemp():
                 return expr in self.argument_temporaries
+            case th.THIRInlineTemp():
+                return self.ordered_temporary_expression(expr.value)
             case th.THIRSlotEmplace():
                 return expr in self.select_temporaries
             case th.THIRCall() | th.THIRMethodCall() | th.THIRCtorCall() if (
@@ -1611,7 +1623,7 @@ class _Lowering:
         _require(node, not frame.nested_defs, "nested def")
         # A consuming method's frame owns its receiver, as an owned-value capture owns its parameter.
         _require(node, not frame.owns_receiver, "unsupported owned_value capture")
-        _require(node, not frame.arg_lifts, "argument held across a suspension")
+        _require(node, not leaves.head_holders, "argument held across a suspension")
         _require(node, leaves.yield_hosts_temps, "reference yield")
         reached: set[int] = set()
         pending = [frame.entry_block]
@@ -2017,6 +2029,25 @@ class _Lowering:
         its own), and at the body's level after the rebind slots it anchors."""
         plans: list[Fragment] = []
         for stmt in stmts:
+            head = self.temp_scope(stmt, "head") if self.planned else None
+            if head is not None:
+                # A loop whose head keeps fresh arguments opens a scope of
+                # its own around them, its body and its else.
+                with self.temp_in(head):
+                    plan = self.stmt(stmt, loops)
+                    temporaries = self.statement_temporaries(stmt)
+                f = self.fragment()
+                entry = f.block()
+                f.end(MIRGoto(entry.id, stmt.loc))
+                f.current = entry
+                self.scoped_into(f, [x for x in (temporaries, plan) if x is not None])
+                if f.current is not None:
+                    # What follows the loop runs outside its head scope.
+                    after = f.block()
+                    f.end(MIRGoto(after.id, stmt.loc))
+                    f.current = after
+                plans.append(f)
+                continue
             if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)):
                 plan = self.declaration(stmt, loops)
             else:
@@ -2689,7 +2720,7 @@ class _Lowering:
     def bound_record(self, arg: th.THIRExpr) -> NominalType | None:
         """The record type of the storage a call argument names, before the
         argument itself is checked; None when it names none."""
-        if isinstance(arg, th.THIRArgTemp):
+        if isinstance(arg, (th.THIRArgTemp, th.THIRInlineTemp)):
             return unwrap_readonly(arg.result_type)
         if isinstance(arg, th.THIRFieldAccess):
             # An inline member, or a narrowed Optional field's payload, is
@@ -2978,6 +3009,11 @@ class _Lowering:
             case th.THIRArgTemp():
                 temporary = self.argument_temporary(arg, target, addr_of=True)
                 value: object = MIRWrap(1, MIRPlace(temporary.holder))
+            case th.THIRInlineTemp(addr_of=True):
+                # The address of a record built for the call, a temporary of
+                # its full expression.
+                _plain(arg, {"value", "mutable", "addr_of"})
+                value = MIRWrap(1, MIRPlace(f.lend(self.aggregate_operand(arg.value, target.type), target)))
             case th.THIROptionalPtrArg(value=None):
                 _plain(arg, set())
                 value = None
@@ -3032,8 +3068,7 @@ class _Lowering:
         hoisted constructor temporary has no placement THIR plans."""
         expr: th.THIRExpr | None = arg
         if isinstance(arg, th.THIRUnionArgLift):
-            _plain(arg, {"variant_cpp", "value", "deref", "const_wrap", "temp_cpp"})
-            _require(arg, arg.temp_cpp is None, "unsupported union argument temporary")
+            _plain(arg, {"variant_cpp", "value", "deref", "const_wrap"})
             expr = arg.value
         f = self.fragment()
         if shape.cls is MIRClass.UNION:
@@ -5173,9 +5208,11 @@ class _Lowering:
         f.write(cursor, MIRIteratorAdvance(cursor), loc)
 
     def native_loop(self, stmt: th.THIRForEach, loops: int) -> Fragment:
+        # A head that keeps temporaries opens the plan's head scope, which
+        # `declarations` enters around the loop.
         _plain(stmt, {"var", "elem_type", "iterable", "body", "const_loop_var", "iterable_lvalue",
                       "orelse", "hoist_loop_var", "hoist_decls", "hoisted_bindings", "presize",
-                      "source_in_enclosing"})
+                      "source_in_enclosing", "head_scope"})
         source = self.cursor_source(stmt, stmt.iterable, stmt.iterable_lvalue is True,
                                     type(stmt.const_loop_var) is bool and type(stmt.hoist_loop_var) is bool
                                     and isinstance(stmt.var, str) and bool(stmt.var))

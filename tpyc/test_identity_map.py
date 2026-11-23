@@ -292,7 +292,8 @@ class TestDataclassDefaults:
         # IdentitySet, not a dict or a set.
         leaves = THIRResumableLeaves(frame=None, leaves=IdentityMap())
         for f in dataclasses.fields(leaves):
-            if f.name in ("frame", "params", "signature", "yield_hosts_temps"):
+            if f.name in ("frame", "params", "signature", "yield_hosts_temps",
+                          "head_holders", "embedding_edges"):
                 continue  # Not a table.
             # Forward-referenced annotations keep their quotes in `f.type`.
             if f.type.strip("'\"") == "IdentityMap":

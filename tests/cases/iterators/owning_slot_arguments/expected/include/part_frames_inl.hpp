@@ -26,8 +26,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_caller::__nex
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         i = ((*__for_i_0))++;
-        __coro_arg_0.emplace(::tpyapp::part_frames::mk());
-        __for_src_1.emplace(::tpy::builtin_enumerate(::tpyapp::part_frames::gen_n(i, std::move((*__coro_arg_0)))));
+        __for_src_1.emplace(::tpy::builtin_enumerate(::tpyapp::part_frames::gen_n(i, ::tpyapp::part_frames::mk())));
         __state = S_JOIN_1;
         continue;
     }

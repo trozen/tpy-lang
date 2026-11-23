@@ -299,8 +299,7 @@ void __tpy_init() {
     ::tpyapp::main::test_declared_float_global();
     ::tpyapp::main::test_hint_float32_literal();
     ::tpyapp::main::test_hint_lambda();
-    std::vector<double> __tmp_1 = {1.5};
-    ::tpyapp::main::test_hint_generic_call(__tmp_1);
+    ::tpyapp::main::test_hint_generic_call(::tpy::as_mut_lvalue(std::vector<double>{1.5}));
     ::tpyapp::main::test_hint_nested_empty();
     ::tpyapp::main::test_float_seed(false);
     ::tpyapp::main::test_captured_none_seed();

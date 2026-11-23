@@ -243,8 +243,7 @@ void main() {
     Cat a = Cat(2);
     std::cout << "free_fn" << " " << ::tpyapp::main::free_fn(&(a)) << " " << a.lives << "\n" << ::tpy::check_signals;
     std::cout << "free_fn_none" << " " << ::tpyapp::main::free_fn(nullptr) << "\n" << ::tpy::check_signals;
-    Cat __tmp_1 = Cat(3);
-    std::cout << "unproven" << " " << ::tpyapp::main::unproven(&(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << "unproven" << " " << ::tpyapp::main::unproven(&::tpy::as_mut_lvalue(Cat(3))) << "\n" << ::tpy::check_signals;
     Cat b = Cat(4);
     std::cout << "after_none" << " " << ::tpyapp::main::after_none(&(b)) << " " << b.lives << "\n" << ::tpy::check_signals;
     std::cout << "after_none_none" << " " << ::tpyapp::main::after_none(nullptr) << "\n" << ::tpy::check_signals;
@@ -258,8 +257,7 @@ void main() {
     std::cout << "async_after" << " " << e.lives << "\n" << ::tpy::check_signals;
     Cat f = Cat(8);
     std::cout << "in_try" << " " << ::tpyapp::main::in_try(&(f)) << " " << f.lives << "\n" << ::tpy::check_signals;
-    Cat __tmp_2 = Cat(9);
-    Box box = Box(&(__tmp_2));
+    Box box = Box(&::tpy::as_mut_lvalue(Cat(9)));
     int32_t r = ::tpyapp::main::field_src(box);
     int32_t stored = 0;
     Cat* p = ::tpy::optional_to_ptr(box.pet);

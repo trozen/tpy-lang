@@ -43,8 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    Box __tmp_1 = Box(4);
-    std::cout << ::tpyapp::main::use(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use(::tpy::as_mut_lvalue(Box(4))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

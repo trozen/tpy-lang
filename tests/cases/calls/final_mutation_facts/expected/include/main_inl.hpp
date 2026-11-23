@@ -13,8 +13,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_ctor_gen::__next
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        Inner __tmp_1 = Inner(::tpy::BigInt(3));
-        h.emplace(HolderDirect(__tmp_1));
+        h.emplace(HolderDirect(::tpy::as_mut_lvalue(Inner(::tpy::BigInt(3)))));
         __state = S_RESUME_0;
         return (*h).n;
     }

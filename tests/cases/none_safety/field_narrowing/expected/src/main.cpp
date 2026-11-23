@@ -23,10 +23,8 @@ void show_port(const Config& cfg) {
 //     show_port(Config(8080))
 //     show_port(Config(None))
 void main() {
-    Config __tmp_1 = Config(8080);
-    ::tpyapp::main::show_port(__tmp_1);
-    Config __tmp_2 = Config(std::nullopt);
-    ::tpyapp::main::show_port(__tmp_2);
+    ::tpyapp::main::show_port(Config(8080));
+    ::tpyapp::main::show_port(Config(std::nullopt));
 }
 
 // main()

@@ -1,0 +1,13 @@
+fixtures::__tpy_init: uncovered (module initialization)
+fixtures::bump@22:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+fixtures::peek@34:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+fixtures::gbump@40:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+fixtures::M.bump@55:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+fixtures::A.__init__@7:4: covered (storage: no_proof_required), summary: known
+fixtures::C.__init__@14:4: uncovered (generic constructor)
+fixtures::M.__init__@52:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::free_function@10:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::method@25:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::generic_alias@34:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@44:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -34,10 +34,8 @@ std::string describe(const Pet& p) {
 //     print(describe(Dog(None)))
 //     print(describe(Dog("rex")))
 void main() {
-    Dog __tmp_1{Dog(std::nullopt)};
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
-    Dog __tmp_2{Dog("rex")};
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Dog{Dog(std::nullopt)}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Dog{Dog("rex")}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

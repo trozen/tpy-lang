@@ -27,10 +27,7 @@ int32_t step(Gauge& g) {
 //     print("owned:", read(g), step(g), read(g))
 void main() {
     Needle n = Needle();
-    ::tpy::RefAdapter<Gauge, Needle> __tmp_1{n};
-    ::tpy::RefAdapter<Gauge, Needle> __tmp_2{n};
-    ::tpy::RefAdapter<Gauge, Needle> __tmp_3{n};
-    std::cout << "ref:" << " " << ::tpyapp::main::read(__tmp_1) << " " << ::tpyapp::main::step(__tmp_2) << " " << ::tpyapp::main::read(__tmp_3) << " " << n.n << "\n" << ::tpy::check_signals;
+    std::cout << "ref:" << " " << ::tpyapp::main::read(::tpy::RefAdapter<Gauge, Needle>{n}) << " " << ::tpyapp::main::step(::tpy::as_mut_lvalue(::tpy::RefAdapter<Gauge, Needle>{n})) << " " << ::tpyapp::main::read(::tpy::RefAdapter<Gauge, Needle>{n}) << " " << n.n << "\n" << ::tpy::check_signals;
     ::tpy::Adapter<Gauge, Needle> __slot_1{Needle()};
     Gauge* g = &__slot_1;
     std::cout << "owned:" << " " << ::tpyapp::main::read((*g)) << " " << ::tpyapp::main::step((*g)) << " " << ::tpyapp::main::read((*g)) << "\n" << ::tpy::check_signals;

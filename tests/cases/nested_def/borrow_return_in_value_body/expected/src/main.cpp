@@ -104,8 +104,7 @@ P& lend(P& p) {
 void main() {
     std::cout << "free" << " " << ::tpyapp::main::sec_free() << " " << GP->n << " " << ::tpy::ListPrinter((*GL)) << "\n" << ::tpy::check_signals;
     std::cout << "method" << " " << C().direct() << " " << C().at_slot() << "\n" << ::tpy::check_signals;
-    P __tmp_1 = P(1);
-    D d = D(__tmp_1);
+    D d = D(::tpy::as_mut_lvalue(P(1)));
     std::cout << "ctor" << " " << d.n << "\n" << ::tpy::check_signals;
     std::function<P(P&)> f = ::tpyapp::main::make();
     P q = P(4);
@@ -113,8 +112,8 @@ void main() {
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
     std::cout << "callable" << " " << r.n << " " << q.n << "\n" << ::tpy::check_signals;
     {
-        P __tmp_2 = P(2);
-        auto __src_0 = ::tpyapp::main::gen(__tmp_2);
+        P __tmp_1 = P(2);
+        auto __src_0 = ::tpyapp::main::gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -125,8 +124,8 @@ void main() {
     }
     P p = P(5);
     {
-        auto&& __tmp_3 = ::tpyapp::main::lend(p);
-        __tmp_3.n = ::tpy::add_check<int32_t>(__tmp_3.n, 1);
+        auto&& __tmp_2 = ::tpyapp::main::lend(p);
+        __tmp_2.n = ::tpy::add_check<int32_t>(__tmp_2.n, 1);
     }
     std::cout << "lend" << " " << p.n << "\n" << ::tpy::check_signals;
 }

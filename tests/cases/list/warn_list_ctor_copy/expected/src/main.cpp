@@ -81,8 +81,7 @@ void __tpy_init() {
     ::tpyapp::main::test_list_ctor_copy_no_warn();
     ::tpyapp::main::test_list_ctor_last_use_no_warn();
     ::tpyapp::main::test_list_ctor_rvalue_no_warn();
-    std::vector<Node> __tmp_1 = {Node(1)};
-    ::tpyapp::main::test_list_ctor_generic_warns<Node>(__tmp_1);
+    ::tpyapp::main::test_list_ctor_generic_warns<Node>({Node(1)});
 }
 
 } // namespace tpyapp::main

@@ -109,9 +109,7 @@ void cookies_arg_crosses_host() {
     ::tpystd::http::client::HTTPConnection h1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     h1.sock = std::move(c);
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
-    ::tpy::Union<bool, std::string> __tmp_1 = true;
-    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"tok", "1"}});
-    s.get("http://api.test/start", nullptr, nullptr, std::nullopt, true, __tmp_1, &(__tmp_2));
+    s.get("http://api.test/start", nullptr, nullptr, std::nullopt, true, ::tpy::Union<bool, std::string>(true), &::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"tok", "1"}})));
     b.recv(65536);
     ::tpyapp::main::_cookie_line(d.recv(65536));
     b.close();

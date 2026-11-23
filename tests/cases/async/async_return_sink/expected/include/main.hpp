@@ -747,6 +747,7 @@ struct __coro_nested_open {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     Cell<T>& c;
+    ::tpy::frame_slot<::tpy::val_or_ref_t<T>> __head_arg_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -775,8 +776,7 @@ template <typename T>
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::val_or_ref_t<T> __tmp_1 = c.get();
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpyapp::main::same<::tpy::storage_t<T>>(__tmp_1));
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpyapp::main::same<::tpy::storage_t<T>>(__head_arg_0.emplace(c.get())));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -1128,7 +1128,6 @@ struct __coro_main {
     int32_t __await_lift_9;
     Box* __await_lift_10 = nullptr;
     Box* __await_lift_11 = nullptr;
-    ::tpy::frame_slot<Cell<int32_t>> __coro_arg_0;
     int32_t __await_lift_12;
     Box* __await_lift_13 = nullptr;
     Box* __await_lift_14 = nullptr;
@@ -1140,6 +1139,7 @@ struct __coro_main {
     ::tpy::frame_slot<Flag> __await_lift_20;
     Box* __await_lift_21 = nullptr;
     Box* __await_lift_22 = nullptr;
+    ::tpy::frame_slot<Cell<int32_t>> __head_arg_0;
     std::optional<__coro_field_of> __sub_0;
     std::optional<__coro_field_of> __sub_1;
     std::optional<__coro_element_of> __sub_2;
@@ -1351,8 +1351,7 @@ template<typename T>
 //     return same(c.get())  # tpyc: ok
 template<typename T>
 ::tpy::val_or_ref_t<T> sync_nested_open(Cell<T>& c) {
-    ::tpy::val_or_ref_t<T> __tmp_1 = c.get();
-    return ::tpyapp::main::same<::tpy::storage_t<T>>(__tmp_1);
+    return ::tpyapp::main::same<::tpy::storage_t<T>>(::tpy::as_mut_lvalue(::tpy::val_or_ref_t<T>(c.get())));
 }
 
 void __tpy_init();

@@ -410,10 +410,9 @@ __coro_flip_later flip_later(int32_t n) {
             }
             std::move(__result);
         })) << "\n" << ::tpy::check_signals;
-        ::tpystd::datetime::date __tmp_1 = ::tpystd::datetime::date(::tpy::BigInt(2024), ::tpy::BigInt(2), ::tpy::BigInt(27));
         std::cout << "generator date" << " " << ::tpy::ListPrinter(({
             std::vector<int32_t> __result;
-            auto __obj_3 = ::tpyapp::main::days(__tmp_1, 3);
+            auto __obj_3 = ::tpyapp::main::days(::tpystd::datetime::date(::tpy::BigInt(2024), ::tpy::BigInt(2), ::tpy::BigInt(27)), 3);
             auto __beg_3 = __obj_3.begin();
             auto __end_3 = __obj_3.end();
             for (; __beg_3 != __end_3; ++__beg_3) {
@@ -422,22 +421,23 @@ __coro_flip_later flip_later(int32_t n) {
             }
             std::move(__result);
         })) << "\n" << ::tpy::check_signals;
-        std::vector<Coord> __tmp_2 = {Coord(1, 2), Coord(3, 4)};
         std::cout << "generator loop var" << " " << ::tpy::ListPrinter(({
             std::vector<int32_t> __result;
-            auto __obj_4 = ::tpyapp::main::columns(__tmp_2);
-            auto __beg_4 = __obj_4.begin();
-            auto __end_4 = __obj_4.end();
-            for (; __beg_4 != __end_4; ++__beg_4) {
-                int32_t v = *__beg_4;
-                __result.push_back(v);
+            {
+                std::vector<Coord> __tmp_1 = {Coord(1, 2), Coord(3, 4)};
+                auto __obj_4 = ::tpyapp::main::columns(__tmp_1);
+                auto __beg_4 = __obj_4.begin();
+                auto __end_4 = __obj_4.end();
+                for (; __beg_4 != __end_4; ++__beg_4) {
+                    int32_t v = *__beg_4;
+                    __result.push_back(v);
+                }
             }
             std::move(__result);
         })) << "\n" << ::tpy::check_signals;
-        Coord __tmp_3 = Coord(1, 2);
         std::cout << "generator method result" << " " << ::tpy::ListPrinter(({
             std::vector<int32_t> __result;
-            auto __obj_5 = ::tpyapp::main::flips(__tmp_3);
+            auto __obj_5 = ::tpyapp::main::flips(Coord(1, 2));
             auto __beg_5 = __obj_5.begin();
             auto __end_5 = __obj_5.end();
             for (; __beg_5 != __end_5; ++__beg_5) {
@@ -719,18 +719,15 @@ void ternary(bool f) {
 void union_field_slots(int32_t n) {
     Tagged t{};
     if ((n > 0)) {
-        ::tpy::Union<int32_t, std::string> __tmp_1 = n;
-        t = Tagged(__tmp_1, 1);
+        t = Tagged(::tpy::Union<int32_t, std::string>(n), 1);
     } else {
-        ::tpy::Union<int32_t, std::string> __tmp_2 = ::tpy::neg_check<int32_t>(n);
-        t = Tagged(__tmp_2, 2);
+        t = Tagged(::tpy::Union<int32_t, std::string>(::tpy::neg_check<int32_t>(n)), 2);
     }
     std::cout << "union if" << " " << t.n << "\n" << ::tpy::check_signals;
     Tagged u{};
     {
         try {
-            ::tpy::Union<int32_t, std::string> __tmp_3 = n;
-            u = Tagged(__tmp_3, 3);
+            u = Tagged(::tpy::Union<int32_t, std::string>(n), 3);
         } catch (const ::tpy::ValueError&) {
             return;
         }
@@ -740,8 +737,7 @@ void union_field_slots(int32_t n) {
     auto __ctx_2 = Ctx();
     __ctx_2.__enter__();
     try {
-        ::tpy::Union<int32_t, std::string> __tmp_4 = n;
-        w = Tagged(__tmp_4, 4);
+        w = Tagged(::tpy::Union<int32_t, std::string>(n), 4);
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -765,8 +761,7 @@ void union_field_slots(int32_t n) {
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
     case 1: {
-        ::tpy::Union<int32_t, std::string> __tmp_5 = n;
-        m = Tagged(__tmp_5, 7);
+        m = Tagged(::tpy::Union<int32_t, std::string>(n), 7);
         break;
     }
     default: {
@@ -776,8 +771,7 @@ void union_field_slots(int32_t n) {
     }
     std::cout << "union match" << " " << m.n << "\n" << ::tpy::check_signals;
     Tagged k{};
-    ::tpy::Union<int32_t, std::string> __tmp_6 = n;
-    if (((k = Tagged(__tmp_6, 9)).n > 0)) {
+    if (((k = Tagged(::tpy::Union<int32_t, std::string>(n), 9)).n > 0)) {
         std::cout << "union walrus" << " " << k.n << "\n" << ::tpy::check_signals;
     }
 }
@@ -803,8 +797,7 @@ __gen_tagged_pairs tagged_pairs(int32_t n) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpy::Union<int32_t, std::string> __tmp_1 = n;
-        t = Tagged(__tmp_1, 6);
+        t = Tagged(::tpy::Union<int32_t, std::string>(n), 6);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -1768,8 +1761,7 @@ void main() {
     std::cout << "module" << " " << ORIGIN.n << " " << FAR.n << " " << near.n << " " << near_count << "\n" << ::tpy::check_signals;
     Calm r = ::tpyapp::main::calm_hoist(true);
     std::cout << "calm hoist return" << " " << r.n << "\n" << ::tpy::check_signals;
-    std::vector<Calm> __tmp_1 = {Calm(1), Calm(2)};
-    ::tpyapp::main::calm_subscript(__tmp_1, true);
+    ::tpyapp::main::calm_subscript(::tpy::as_mut_lvalue(std::vector<Calm>{Calm(1), Calm(2)}), true);
     ::tpyapp::main::calm_union(true);
     ::tpyapp::main::calm_union(false);
     ::tpyapp::main::calm_tuple(false);

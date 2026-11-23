@@ -7,9 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     math.dist([1.0, 2.0, 3.0], [4.0, 5.0])
 void main() {
-    auto __tmp_1 = std::array<double, 3>{1.0, 2.0, 3.0};
-    auto __tmp_2 = std::array<double, 2>{4.0, 5.0};
-    ::tpystd::math::dist(__tmp_1, __tmp_2);
+    ::tpystd::math::dist(std::array<double, 3>{1.0, 2.0, 3.0}, std::array<double, 2>{4.0, 5.0});
 }
 
 // # dist raises ValueError on length mismatch. The seed-phase / main-loop

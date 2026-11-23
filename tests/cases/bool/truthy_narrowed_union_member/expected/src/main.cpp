@@ -71,20 +71,10 @@ int32_t drain(::tpy::Union<Bag*, Plain*> x) {
 //     print("method", Reader("r").check(Flag(True)),
 //           Reader("r").check(Flag(False)))
 void main() {
-    Flag __tmp_1 = Flag(true);
-    Flag __tmp_2 = Flag(false);
-    Plain __tmp_3 = Plain("p");
-    std::cout << "bool" << " " << ::tpyapp::main::bool_member(::tpy::Union<const Flag*, const Plain*>{&__tmp_1}) << " " << ::tpyapp::main::bool_member(::tpy::Union<const Flag*, const Plain*>{&__tmp_2}) << " " << ::tpyapp::main::bool_member(::tpy::Union<const Flag*, const Plain*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
-    Bag __tmp_4 = Bag(2);
-    Bag __tmp_5 = Bag(0);
-    Plain __tmp_6 = Plain("p");
-    std::cout << "len" << " " << ::tpyapp::main::len_member(::tpy::Union<const Bag*, const Plain*>{&__tmp_4}) << " " << ::tpyapp::main::len_member(::tpy::Union<const Bag*, const Plain*>{&__tmp_5}) << " " << ::tpyapp::main::len_member(::tpy::Union<const Bag*, const Plain*>{&__tmp_6}) << "\n" << ::tpy::check_signals;
-    Bag __tmp_7 = Bag(3);
-    Plain __tmp_8 = Plain("p");
-    std::cout << "while" << " " << ::tpyapp::main::drain(::tpy::Union<Bag*, Plain*>{&__tmp_7}) << " " << ::tpyapp::main::drain(::tpy::Union<Bag*, Plain*>{&__tmp_8}) << "\n" << ::tpy::check_signals;
-    Flag __tmp_9 = Flag(true);
-    Flag __tmp_10 = Flag(false);
-    std::cout << "method" << " " << Reader("r").check(::tpy::Union<const Flag*, const Plain*>{&__tmp_9}) << " " << Reader("r").check(::tpy::Union<const Flag*, const Plain*>{&__tmp_10}) << "\n" << ::tpy::check_signals;
+    std::cout << "bool" << " " << ::tpyapp::main::bool_member(::tpy::Union<const Flag*, const Plain*>{&(::tpy::as_mut_lvalue(Flag(true)))}) << " " << ::tpyapp::main::bool_member(::tpy::Union<const Flag*, const Plain*>{&(::tpy::as_mut_lvalue(Flag(false)))}) << " " << ::tpyapp::main::bool_member(::tpy::Union<const Flag*, const Plain*>{&(::tpy::as_mut_lvalue(Plain("p")))}) << "\n" << ::tpy::check_signals;
+    std::cout << "len" << " " << ::tpyapp::main::len_member(::tpy::Union<const Bag*, const Plain*>{&(::tpy::as_mut_lvalue(Bag(2)))}) << " " << ::tpyapp::main::len_member(::tpy::Union<const Bag*, const Plain*>{&(::tpy::as_mut_lvalue(Bag(0)))}) << " " << ::tpyapp::main::len_member(::tpy::Union<const Bag*, const Plain*>{&(::tpy::as_mut_lvalue(Plain("p")))}) << "\n" << ::tpy::check_signals;
+    std::cout << "while" << " " << ::tpyapp::main::drain(::tpy::Union<Bag*, Plain*>{&(::tpy::as_mut_lvalue(Bag(3)))}) << " " << ::tpyapp::main::drain(::tpy::Union<Bag*, Plain*>{&(::tpy::as_mut_lvalue(Plain("p")))}) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Reader("r").check(::tpy::Union<const Flag*, const Plain*>{&(::tpy::as_mut_lvalue(Flag(true)))}) << " " << Reader("r").check(::tpy::Union<const Flag*, const Plain*>{&(::tpy::as_mut_lvalue(Flag(false)))}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -31,9 +31,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_args::__next__() {
         return ::tpyapp::main::eats(std::move(t));
     }
     case S_RESUME_1: {  // after: yield eats(t)  # tpyc: ok
-        A __tmp_2 = A(1);
         __state = S_RESUME_2;
-        return ::tpyapp::main::bump(__tmp_2);
+        return ::tpyapp::main::bump(::tpy::as_mut_lvalue(A(1)));
     }
     case S_RESUME_2: {  // after: yield bump(A(1))  # tpyc: ok
         __state = S_DONE;

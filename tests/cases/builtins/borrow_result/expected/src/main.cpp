@@ -313,15 +313,11 @@ void owned_elements_fn() {
 //     print("fresh all", u.v)
 void fresh_fn() {
     P a = P(::tpy::BigInt(1));
-    P __tmp_1 = P(::tpy::BigInt(0));
-    P t = ::tpy::min_key(a, __tmp_1, key_of);
+    P t = ::tpy::min_key(a, P(::tpy::BigInt(0)), key_of);
     t.v = ::tpy::BigInt(9);
     std::cout << "fresh mixed" << " " << t.v << " " << a.v << "\n" << ::tpy::check_signals;
-    P __tmp_2 = P(::tpy::BigInt(-9));
-    std::cout << "fresh read" << " " << ::tpy::min_key(a, __tmp_2, key_of).v << "\n" << ::tpy::check_signals;
-    P __tmp_3 = P(::tpy::BigInt(5));
-    P __tmp_4 = P(::tpy::BigInt(6));
-    P u = ::tpy::min_key(__tmp_3, __tmp_4, key_of);
+    std::cout << "fresh read" << " " << ::tpy::min_key(a, P(::tpy::BigInt(-9)), key_of).v << "\n" << ::tpy::check_signals;
+    P u = ::tpy::min_key(P(::tpy::BigInt(5)), P(::tpy::BigInt(6)), key_of);
     u.v = (u.v) + (::tpy::BigInt(1));
     std::cout << "fresh all" << " " << u.v << "\n" << ::tpy::check_signals;
 }
@@ -352,16 +348,18 @@ void unproven_fn() {
     P n = ::tpy::min_key(h.p(), b, key_of);
     std::cout << "unproven" << " " << m.v << " " << n.v << "\n" << ::tpy::check_signals;
     P a = P(::tpy::BigInt(1));
-    P __tmp_1 = P(::tpy::BigInt(0));
-    P __tmp_2 = ::tpy::min_key(a, __tmp_1, key_of);
     std::cout << "frame" << " " << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
-        auto __obj_0 = ::tpyapp::main::tick(__tmp_2);
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const ::tpy::BigInt& v = *__beg_0;
-            __result.push_back(v);
+        {
+            P __tmp_1 = P(::tpy::BigInt(0));
+            P __tmp_2 = ::tpy::min_key(a, __tmp_1, key_of);
+            auto __obj_0 = ::tpyapp::main::tick(__tmp_2);
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                const ::tpy::BigInt& v = *__beg_0;
+                __result.push_back(v);
+            }
         }
         std::move(__result);
     })) << " " << a.v << "\n" << ::tpy::check_signals;
@@ -431,37 +429,36 @@ P& head(std::vector<P>& xs) {
 //     it = iter(ps)
 //     print("temp next", k.write(next(it, P(0))), ps[0].v)
 //     print("temp next default", k.write(next(it, P(0))))
-//     # a method handing the result back: the temporary operand is hoisted
-//     # into a local of the enclosing block, so the binding stays valid
-//     r = k.ret(min(a, P(-5), key=key_of))  # tpyc: warning(/Result borrows from temporary argument 'p'/)
+//     # a method handing the result back: a temporary operand would live for
+//     # its statement only (warned, `calls/error_fresh_arg_borrow_kept`), so
+//     # the operand the binding keeps is a local
+//     m5 = P(-5)
+//     r = k.ret(min(a, m5, key=key_of))
 //     junk = [P(77), P(77), P(77)]
 //     print("temp method ret", r.v, a.v, len(junk))
-//     # a user borrow-returning call at the same method argument: its
-//     # temporary container hoists into a block local the result points into
-//     h2 = k.ret(head(mk_ps()))  # tpyc: warning(/Result borrows from temporary argument/)
+//     # a user borrow-returning call at the same method argument: the
+//     # container the result points into is a local too
+//     ps2 = mk_ps()
+//     h2 = k.ret(head(ps2))
 //     h2.v += 5
 //     junk2 = [P(78), P(78), P(78)]
 //     print("temp method head", h2.v, len(junk2))
 void temp_written_fn() {
     P a = P(::tpy::BigInt(1));
-    P __tmp_1 = P(::tpy::BigInt(5));
-    Holder h = Holder(::tpy::min_key(a, __tmp_1, key_of));
+    Holder h = Holder(::tpy::min_key(a, P(::tpy::BigInt(5)), key_of));
     std::cout << "temp ctor" << " " << h.seen << " " << a.v << "\n" << ::tpy::check_signals;
     Keeper k = Keeper(a);
-    P __tmp_2 = P(::tpy::BigInt(-5));
-    std::cout << "temp method" << " " << k.write(::tpy::max_key(a, __tmp_2, key_of)) << " " << a.v << "\n" << ::tpy::check_signals;
+    std::cout << "temp method" << " " << k.write(::tpy::max_key(a, P(::tpy::BigInt(-5)), key_of)) << " " << a.v << "\n" << ::tpy::check_signals;
     std::array<P, 1> ps = {P(::tpy::BigInt(3))};
     auto it = ::tpy::__iter__(ps);
-    P __tmp_3 = P(::tpy::BigInt(0));
-    std::cout << "temp next" << " " << k.write(::tpy::next_or(it, __tmp_3)) << " " << ::tpy::__getitem__(ps, 0).v << "\n" << ::tpy::check_signals;
-    P __tmp_4 = P(::tpy::BigInt(0));
-    std::cout << "temp next default" << " " << k.write(::tpy::next_or(it, __tmp_4)) << "\n" << ::tpy::check_signals;
-    P __tmp_5 = P(::tpy::BigInt(-5));
-    P& r = k.ret(::tpy::min_key(a, __tmp_5, key_of));
+    std::cout << "temp next" << " " << k.write(::tpy::next_or(it, ::tpy::as_mut_lvalue(P(::tpy::BigInt(0))))) << " " << ::tpy::__getitem__(ps, 0).v << "\n" << ::tpy::check_signals;
+    std::cout << "temp next default" << " " << k.write(::tpy::next_or(it, ::tpy::as_mut_lvalue(P(::tpy::BigInt(0))))) << "\n" << ::tpy::check_signals;
+    P m5 = P(::tpy::BigInt(-5));
+    P& r = k.ret(::tpy::assert_lent(::tpy::min_key(a, m5, key_of)));
     std::array<P, 3> junk = {P(::tpy::BigInt(77)), P(::tpy::BigInt(77)), P(::tpy::BigInt(77))};
     std::cout << "temp method ret" << " " << r.v << " " << a.v << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
-    std::vector<P> __tmp_6 = ::tpyapp::main::mk_ps();
-    P& h2 = k.ret(::tpyapp::main::head(__tmp_6));
+    std::vector<P> ps2 = ::tpyapp::main::mk_ps();
+    P& h2 = k.ret(::tpyapp::main::head(ps2));
     h2.v = (h2.v) + (::tpy::BigInt(5));
     std::array<P, 3> junk2 = {P(::tpy::BigInt(78)), P(::tpy::BigInt(78)), P(::tpy::BigInt(78))};
     std::cout << "temp method head" << " " << h2.v << " " << ::tpy::__len__(junk2) << "\n" << ::tpy::check_signals;
@@ -487,10 +484,8 @@ void ctor_arg_fn() {
     Holder h = Holder(::tpy::assert_lent(::tpy::min_key(a, b, key_of)));
     Outer o = Outer(Holder(::tpy::assert_lent(::tpy::max_key(a, b, key_of))));
     std::cout << "ctor arg" << " " << h.seen << " " << o.h.seen << " " << a.v << " " << b.v << "\n" << ::tpy::check_signals;
-    P __tmp_1 = P(::tpy::BigInt(0));
-    ::tpyapp::main::bump(::tpy::min_key(a, __tmp_1, key_of));
-    P __tmp_2 = P(::tpy::BigInt(9));
-    ::tpyapp::main::bump(::tpy::min_key(a, __tmp_2, key_of));
+    ::tpyapp::main::bump(::tpy::min_key(a, P(::tpy::BigInt(0)), key_of));
+    ::tpyapp::main::bump(::tpy::min_key(a, P(::tpy::BigInt(9)), key_of));
     std::cout << "mixed arg" << " " << a.v << "\n" << ::tpy::check_signals;
     P t = P(::tpy::min_key(a, P(::tpy::BigInt(0)), key_of));
     t.v = ::tpy::BigInt(5);

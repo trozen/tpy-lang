@@ -13,8 +13,7 @@ namespace tpyapp::main {
 void main() {
     SimpleCalc calc = SimpleCalc(32);
     ::tpyapp::main::use_calc(calc);
-    SimpleCalc __tmp_1 = SimpleCalc(0);
-    ::tpyapp::main::use_calc(__tmp_1);
+    ::tpyapp::main::use_calc(::tpy::as_mut_lvalue(SimpleCalc(0)));
 }
 
 // main()

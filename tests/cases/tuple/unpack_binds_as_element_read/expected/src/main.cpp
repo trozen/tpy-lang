@@ -364,8 +364,7 @@ void own_elem(std::tuple<P, int32_t>&& t) {
     P a = std::move(std::get<0>(t));
     int32_t k = std::get<1>(t);
     a.data.push_back(k);
-    P __tmp_1 = ::tpyapp::main::keep(std::move(a));
-    std::cout << "own" << " " << ::tpyapp::main::size(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "own" << " " << ::tpyapp::main::size(::tpyapp::main::keep(std::move(a))) << "\n" << ::tpy::check_signals;
 }
 
 // # readonly element: borrowed, read only
@@ -501,15 +500,13 @@ void grow_while_borrowed(H& h) {
     std::cout << ::tpy::__len__(a.data) << " " << k << "\n" << ::tpy::check_signals;
 }
 
-// # never called: the temporary argument is hoisted to the end of the block,
-// # so the shape is safe; the warning is the filed false positive
-// # BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling, as on its twin
+// # never called: the temporary argument lives for its statement only, so the
+// # warning is right, as on its twin
 // def temp_arg() -> None:
 //     a, k = pick(M())  # tpyc: warning(/Result borrows from temporary argument/)
 //     print(len(a.data), k)
 void temp_arg() {
-    M __tmp_1 = M();
-    auto __tup_1 = ::tpyapp::main::pick(__tmp_1);
+    auto __tup_1 = ::tpyapp::main::pick(::tpy::as_mut_lvalue(M()));
     P& a = (*std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
     std::cout << ::tpy::__len__(a.data) << " " << k << "\n" << ::tpy::check_signals;
@@ -604,8 +601,7 @@ void main() {
     ::tpyapp::main::value_targets();
     ::tpyapp::main::optional_elem([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<P*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<P, int32_t>{P(1), 7}));
     ::tpyapp::main::own_elem(std::tuple<P, int32_t>{P(4), 1});
-    std::vector<std::tuple<P, int32_t>> __tmp_1 = {std::tuple<P, int32_t>{P(1), 8}};
-    ::tpyapp::main::readonly_elem(__tmp_1);
+    ::tpyapp::main::readonly_elem({std::tuple<P, int32_t>{P(1), 8}});
     ::tpyapp::main::box_rc_elem();
     std::vector<Holder> hs = {Holder(1, 2)};
     ::tpyapp::main::span_slice_unpack(hs);
@@ -613,8 +609,8 @@ void main() {
     ::tpyapp::main::span_param_unpack(::tpy::list_slice(hs, ::tpy::BasicSlice{0, 1}));
     std::cout << "span_param" << " " << std::get<1>(::tpy::__getitem__(hs, 0).pair).n << "\n" << ::tpy::check_signals;
     Holder hv = Holder(1, 2);
-    std::array<Holder*, 1> __tmp_2{&hv};
-    ::tpyapp::main::varargs_unpack(::tpy::varargs<Holder>(__tmp_2));
+    std::array<Holder*, 1> __tmp_1{&hv};
+    ::tpyapp::main::varargs_unpack(::tpy::varargs<Holder>(__tmp_1));
     std::cout << "varargs" << " " << std::get<1>(hv.pair).n << "\n" << ::tpy::check_signals;
     std::vector<Holder> hw = {Holder(1, 2)};
     ::tpyapp::main::varargs_span_caller(hw);
@@ -623,10 +619,10 @@ void main() {
     std::cout << "varargs_span" << " " << std::get<1>(::tpy::__getitem__(hw, 0).pair).n << " " << std::get<0>(::tpy::__getitem__(hd, 0).pair).n << "\n" << ::tpy::check_signals;
     Gauge gauge = Gauge(0);
     Dial dial = Dial(&gauge);
+    std::array<const Dial*, 1> __tmp_2{&dial};
+    ::tpyapp::main::ptr_pack_direct(::tpy::varargs<const Dial*>(__tmp_2));
     std::array<const Dial*, 1> __tmp_3{&dial};
-    ::tpyapp::main::ptr_pack_direct(::tpy::varargs<const Dial*>(__tmp_3));
-    std::array<const Dial*, 1> __tmp_4{&dial};
-    ::tpyapp::main::ptr_pack_unpack(::tpy::varargs<const Dial*>(__tmp_4));
+    ::tpyapp::main::ptr_pack_unpack(::tpy::varargs<const Dial*>(__tmp_3));
     std::cout << "ptr_pack" << " " << gauge.n << "\n" << ::tpy::check_signals;
 }
 

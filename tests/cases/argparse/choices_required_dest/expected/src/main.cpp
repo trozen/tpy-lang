@@ -20,8 +20,7 @@ namespace tpyapp::main {
 //     print(args.severity)
 //     return 0
 int32_t main() {
-    std::vector<std::string> __tmp_1 = {"--mode", "fast", "--level", "2"};
-    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
+    __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1({"--mode", "fast", "--level", "2"});
     std::cout << args.mode << "\n" << ::tpy::check_signals;
     std::cout << args.severity << "\n" << ::tpy::check_signals;
     return 0;

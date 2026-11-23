@@ -59,8 +59,7 @@ void dump_items(const ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>& d) {
 void main() {
     std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>> pairs = {std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(3), ::tpy::BigInt(4)}};
     ::tpyapp::main::dump_pairs(pairs);
-    ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> __tmp_1 = ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>({{::tpy::BigInt(5), ::tpy::BigInt(6)}, {::tpy::BigInt(7), ::tpy::BigInt(8)}});
-    ::tpyapp::main::dump_items(__tmp_1);
+    ::tpyapp::main::dump_items(::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>({{::tpy::BigInt(5), ::tpy::BigInt(6)}, {::tpy::BigInt(7), ::tpy::BigInt(8)}}));
     std::cout << ::tpyapp::main::sum_first(pairs) << "\n" << ::tpy::check_signals;
 }
 
