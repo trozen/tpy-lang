@@ -81,7 +81,7 @@ inline Base<T, N>::Base(::tpy::param_val_or_cref_t<T> v) : value(::tpy::param_co
 //     self.extra = e
 template<typename T, std::size_t N>
 inline Child<T, N>::Child(::tpy::param_val_or_ref_t<T> v, int32_t e)
-    : Base<T, N>(v),
+    : Base<T, N>(::tpy::param_pass_last<T>(v)),
       extra(e) {}
 
 // def __init__(self, v: T, e: int32, n: str) -> None:
@@ -89,7 +89,7 @@ inline Child<T, N>::Child(::tpy::param_val_or_ref_t<T> v, int32_t e)
 //     self.name = n
 template<typename T, std::size_t N>
 inline GrandChild<T, N>::GrandChild(::tpy::param_val_or_ref_t<T> v, int32_t e, std::string_view n)
-    : Child<T, N>(v, e),
+    : Child<T, N>(::tpy::param_pass_last<T>(v), e),
       name(n) {}
 
 void __tpy_init();

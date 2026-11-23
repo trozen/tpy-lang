@@ -1,0 +1,2 @@
+main.py:31: warning: may copy B into owned storage if not a value type; use copy() to make this explicit
+main.py:37: error: Cannot infer 'Own' for type argument 'A' of 'Duo' from a later call on 'd'; spell the class type arguments: Duo[Own[P], B](...)

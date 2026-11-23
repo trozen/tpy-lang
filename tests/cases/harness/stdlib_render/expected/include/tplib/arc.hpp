@@ -52,7 +52,7 @@ struct _ArcCell : _ArcCellBase {
     // weak: Atomic[uint32]
     ::tpystd::tpy::atomic::Atomic<uint32_t> weak;
     // storage: UninitStorage[U]
-    ::tpy::UninitStorage<U> storage;
+    ::tpy::UninitStorage<::tpy::storage_t<U>> storage;
 
     // def __init__(self) -> None:
     _ArcCell();
@@ -297,7 +297,7 @@ template<typename U>
 inline _ArcCell<U>::_ArcCell()
     : strong(::tpystd::tpy::atomic::Atomic<uint32_t>(1)),
       weak(::tpystd::tpy::atomic::Atomic<uint32_t>(1)),
-      storage(::tpy::UninitStorage<U>()) {}
+      storage(::tpy::UninitStorage<::tpy::storage_t<U>>()) {}
 
 // def incr_strong(self) -> None:
 //     # Relaxed: the caller already holds a strong ref, so the cell can't be

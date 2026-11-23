@@ -1,0 +1,1 @@
+main.py:55: error: Cannot call generic method 'dup_from' on 'd' before the type arguments of 'Duo' are known; call a constraining method first or spell the class type arguments: Duo[A, B](...)

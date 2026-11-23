@@ -73,13 +73,13 @@ inline void Inner<T>::put(::tpy::param_val_or_ref_t<T> value) {
 // def __init__(self, v: T) -> None:
 //     self._in = Inner[T](v)
 template<typename T>
-inline Outer<T>::Outer(::tpy::param_val_or_ref_t<T> v) : _in(Inner<T>(v)) {}
+inline Outer<T>::Outer(::tpy::param_val_or_ref_t<T> v) : _in(Inner<T>(::tpy::param_pass_last<T>(v))) {}
 
 // def put(self, value: T) -> None:
 //     self._in.put(value)  # tpyc: ok -- both sides spell the same open T
 template<typename T>
 inline void Outer<T>::put(::tpy::param_val_or_ref_t<T> value) {
-    this->_in.put(value);
+    this->_in.put(::tpy::param_pass_last<T>(value));
 }
 
 void __tpy_init();

@@ -1,0 +1,15 @@
+main.py:16: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:24: warning: may copy A into field if not a value type; use copy() to make this explicit
+main.py:25: warning: may copy B into field if not a value type; use copy() to make this explicit
+main.py:32: warning: Own[T] param 'v' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:38: warning: Own[T] param 'v' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:49: warning: Own[A] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:49: warning: Own[B] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:55: warning: Own[T] param 'v' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:66: warning: Own[U] param 'v' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:105: error: Type mismatch in return value: expected Crate[Own[P]], got Crate[P] (in 'wrap' (line 34), instantiated here); spell the class argument (`Crate[T](...)`)
+main.py:109: error: Type mismatch in return value: expected Crate[Own[P]], got Crate[P] (in 'wrap_f' (line 45), instantiated here); spell the class argument (`Crate[T](...)`)
+main.py:110: error: Type mismatch in return value: expected Pair[int32, Own[P]], got Pair[int32, P] (in 'pair' (line 51), instantiated here); spell the class argument (`Pair[A, B](...)`)
+main.py:111: error: Type mismatch in reassignment to 'c': expected Crate[P], got Crate[Own[P]] (in 'reverse' (line 58), instantiated here); spell the class argument (`Crate[T](...)`)
+main.py:112: error: Type mismatch in argument 'c': expected Crate[Own[P]], got Crate[P] (in 'lend' (line 72), instantiated here); spell the class argument (`Crate[T](...)`)
+main.py:113: error: Type mismatch in reassignment to 't2': expected Tray[P], got Tray[Own[P]] (in 'pending_flow' (line 95), instantiated here); spell the class argument (`Tray[T](...)`)

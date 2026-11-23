@@ -29,8 +29,16 @@ gone), so a call through `Fn[[T], U]` lends at `U = P` and owns at
 Unit 2b-1 (2026-11-20) gave a generic class's `Callable[..., T]` field,
 method parameter and method result the function rule (a bare `T` result
 lends at a reference instantiation, a fresh-value factory is spelled
-`Callable[[], Own[T]]`); user class type arguments at `Own[X]` remain, as
-unit 2b-2 (`docs/LANGUAGE_FEATURES.md`, "Generic Functions").
+`Callable[[], Own[T]]`). Unit 2b-2 (2026-11-20) gave user class type
+arguments at `Own[X]` the function rule: `C[Own[P]]` is the class with
+`Own[P]` substituted for `T` (`Box<::tpy::own_arg<P>>`), so a class storing
+a factory `f: Callable[[], T]` at `Lazy[Own[P]]` holds an owning one
+(`std::function<P()>`) and `Holder(f)` with `f: Callable[[], Own[P]]` infers
+`Holder[Own[P]]`. A lambda returning its capture at an open-`T` result is
+checked per instantiation (refused where the result is a borrow)
+(`docs/LANGUAGE_FEATURES.md`, "Generic Functions"). A constructor's by-value
+`Callable` parameter still copies into its member
+(`BUGS.md#ctor-callable-param-member-init-copies`).
 
 **Re-plan (2026-11-05, user decision "A": only signatures decide).** This
 supersedes the unit-1 design's "`__call__(self, x) -> P: return x` fits" and

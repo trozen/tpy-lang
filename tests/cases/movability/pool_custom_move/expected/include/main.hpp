@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 template<typename T, std::size_t N>
 struct Pool {
     // _storage: UninitArrayStorage[T, N]
-    ::tpy::UninitArrayStorage<T, N> _storage;
+    ::tpy::UninitArrayStorage<::tpy::storage_t<T>, N> _storage;
     // _size: uint32
     uint32_t _size;
     bool __tpy_owned_ = true;
@@ -130,7 +130,7 @@ inline Tagged::~Tagged() {
 //     self._size = uint32(0)
 template<typename T, std::size_t N>
 inline Pool<T, N>::Pool()
-    : _storage(::tpy::UninitArrayStorage<T, N>()),
+    : _storage(::tpy::UninitArrayStorage<::tpy::storage_t<T>, N>()),
       _size(0) {}
 
 template<typename T, std::size_t N>

@@ -51,11 +51,29 @@ class ImplicitCall:
     method: str
 
 
-def record_implicit_call(site: TpyExpr | TpyStmt, callee: FunctionInfo | None,
+def record_member_instantiation(ctx: 'SemanticContext',
+                                callee: FunctionInfo | None,
+                                receiver_type: TpyType | None,
+                                site: TpyExpr | TpyStmt) -> None:
+    """A member call on a receiver answers the callee's copy obligations at
+    the receiver's class substitution: the edge a named call `b.m()`
+    records (`MethodAnalyzer.analyze_method_call`), for a call no node
+    spells (`b[i]`, `b.prop`, `len(b)`, `for x in b`, an operator)."""
+    if (callee is None or receiver_type is None or ctx.protocols is None
+            or not ctx.slot_step_commits()):
+        return
+    subst = ctx.protocols.type_ops.member_class_subst(callee, receiver_type)
+    if subst:
+        ctx.record_own_copy_instantiation(callee.root, subst, at=site)
+
+
+def record_implicit_call(ctx: 'SemanticContext', site: TpyExpr | TpyStmt,
+                         callee: FunctionInfo | None,
                          recv: TpyExpr, method: str) -> None:
     """Note that `site` calls `method` (`callee`) on `recv`. Every callee is
     kept, readonly ones included: a readonly method may still write a
     module global."""
+    record_member_instantiation(ctx, callee, ctx.get_expr_type(recv), site)
     compiler = get_current_compiler()
     if compiler is None:
         return
@@ -85,7 +103,7 @@ def record_truth_calls(ctx: 'SemanticContext',
         for method in ("__bool__", "__len__"):
             fis = ctx.registry.get_method_overloads_with_parents(record, method)
             for fi in fis:
-                record_implicit_call(leaf, fi, leaf, method)
+                record_implicit_call(ctx, leaf, fi, leaf, method)
             if fis:
                 break
 
@@ -110,7 +128,7 @@ def record_protocol_arg_calls(ctx: 'SemanticContext',
         for method in _protocol_methods(pt):
             for mfi in ctx.registry.get_method_overloads_with_parents(
                     record, method):
-                record_implicit_call(call, mfi, arg, method)
+                record_implicit_call(ctx, call, mfi, arg, method)
 
 
 def _protocol_methods(protocol: NominalType) -> list[str]:
@@ -456,7 +474,7 @@ def check_implicit_readonly_receiver(
     `record=False` for a call the frame rules count elsewhere (an awaited
     frame runs what the calls that built it may write)."""
     if record:
-        record_implicit_call(site, callee, recv, method)
+        record_implicit_call(ctx, site, callee, recv, method)
     if callee is not None and not implicit_call_mutates_receiver(
             ctx, recv, callee):
         return
@@ -493,7 +511,9 @@ def credit_implicit_receiver_call(
     `call_mutates_receiver`, `label` as for `check_receiver_call_loans`.
     """
     if record:
-        record_implicit_call(site, callee, recv, method)
+        record_implicit_call(ctx, site, callee, recv, method)
+    else:
+        record_member_instantiation(ctx, callee, obj_type, site)
     if callee is not None and not implicit_call_mutates_receiver(
             ctx, recv, callee, handle_climbs=handle_climbs):
         return

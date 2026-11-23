@@ -5,28 +5,61 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "fixtures.hpp"
-#include "part_declared.hpp"
-#include "part_positions.hpp"
+#include "part_base.hpp"
+#include "part_binder.hpp"
+#include "part_fields.hpp"
+#include "part_generic.hpp"
+#include "part_handover.hpp"
+#include "part_lib.hpp"
+#include "part_members.hpp"
+#include "part_pending.hpp"
+#include "part_scopes.hpp"
 
 namespace tpyapp::main {
 
-using ::tpyapp::fixtures::mk;
-
-using ::tpyapp::fixtures::C;
+using ::tpyapp::fixtures::Bag;
+using ::tpyapp::fixtures::Box;
+using ::tpyapp::fixtures::N;
 using ::tpyapp::fixtures::P;
 
+struct Sub;
+
+extern ::tpyapp::fixtures::Box<::tpy::own_arg<::tpyapp::fixtures::P>>* G;
 inline constexpr std::string_view __name__ = "__main__";
 
-// def by_param(c: C[Own[P]]) -> int32:  # tpyc: warning(/`Own\[P\]` in a type argument of class 'C' has no effect yet; write `C\[P\]`/)
-int32_t by_param(::tpyapp::fixtures::C<::tpyapp::fixtures::P>& c);
-// def by_return() -> Own[C[Own[P]]]:  # tpyc: warning(/has no effect yet/)
-::tpyapp::fixtures::C<::tpyapp::fixtures::P> by_return();
-// def pending(f: Callable[[int32], Own[P]]) -> None:
-void pending(const std::function<::tpyapp::fixtures::P(int32_t)>& f);
-// def class_method(f: Callable[[int32], Own[P]]) -> None:
-void class_method(const std::function<::tpyapp::fixtures::P(int32_t)>& f);
+// def count(b: Box[Own[P]]) -> int32:  # tpyc: warning(/copies P into owned storage in 'Box.get'/) warning(/'Box.push_v'/) warning(/'Box.__iter__'/)
+int32_t count(const ::tpyapp::fixtures::Box<::tpy::own_arg<::tpyapp::fixtures::P>>& b);
+// def core() -> None:
+void core();
+// def plain() -> None:
+void plain();
+// def nocopy_payload() -> None:
+void nocopy_payload();
+// def subclass() -> None:
+void subclass();
 // def main() -> None:
 void main();
 
+// class Sub(Box[Own[P]]):  # tpyc: warning(/copies P into owned storage in 'Box.get'/) warning(/'Box.push_v'/) warning(/'Box.__iter__'/)
+struct Sub : ::tpyapp::fixtures::Box<::tpy::own_arg<::tpyapp::fixtures::P>> {
+
+    using ::tpyapp::fixtures::Box<::tpy::own_arg<::tpyapp::fixtures::P>>::Box;
+
+    // def bump(self) -> None:
+    void bump();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Sub";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
+    ::tpy::print_object_default(os, Sub::__tpy_class_name__, obj);
+    return os;
+}
+
+
+// def bump(self) -> None:
+//     self.v.n += 1
+inline void Sub::bump() {
+    this->v.n = ::tpy::add_check<int32_t>(this->v.n, 1);
+}
 void __tpy_init();
 } // namespace tpyapp::main

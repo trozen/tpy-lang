@@ -16,9 +16,8 @@ namespace tpyapp::part_source_shapes {
 //     # a returned generic iterator whose own `__next__ -> Own[T]` hands
 //     # its @nocopy steps over
 //     print("returned generic owning", take_tok(PopBag()))  # tpyc: ok
-//     # a returned generic iterator at a plain `T` (`Holder[Cell]`; a class
-//     # takes no `Own[X]` type argument until unit 2b:
-//     # BUGS.md#class-own-type-arg-method-result-ill-formed): its `__next__ -> T` lends, so the source fits
+//     # a returned generic iterator at a plain `T` (`Holder[Cell]`): its
+//     # `__next__ -> T` lends, so the source fits
 //     # a lending slot
 //     print("returned generic substituted Own", first_lent(HolderBag()))  # tpyc: ok
 //     # at an owning slot the lent steps are copied

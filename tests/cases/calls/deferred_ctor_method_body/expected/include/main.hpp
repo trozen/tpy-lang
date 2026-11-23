@@ -604,7 +604,7 @@ inline int32_t Self2<T>::fresh() const {
 //     print("gen", len(b.items))
 template<typename U>
 inline void Plain::gen(::tpy::param_val_or_ref_t<U> u) const {
-    ::tpyapp::bags::Bag<::tpy::storage_t<U>> b = ::tpyapp::bags::Bag<::tpy::storage_t<U>>();
+    ::tpyapp::bags::Bag<U> b = ::tpyapp::bags::Bag<U>();
     b.put(::tpy::param_pass_last<U>(u));
     std::cout << "gen" << " " << ::tpy::__len__(b.items) << "\n" << ::tpy::check_signals;
 }

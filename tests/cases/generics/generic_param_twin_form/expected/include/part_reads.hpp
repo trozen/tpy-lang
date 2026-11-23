@@ -325,7 +325,7 @@ inline int32_t Bag<T>::operator[](::tpy::param_val_or_cref_t<T> k) const {
 //     self.av = v  # tpyc: warning(/may copy T into field/)
 template<typename T>
 inline Derived<T>::Derived(::tpy::param_val_or_ref_t<T> v)
-    : Base<T>(v),
+    : Base<T>(::tpy::param_pass<T>(v)),
       av(::tpy::param_consume<T>(v)) {}
 
 // # no `super().__init__` on purpose: the inherited field is set here

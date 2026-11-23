@@ -958,9 +958,7 @@ def f(xs: list[tuple[Own[A], int32]],
 def test_written_type_arguments_count_as_the_signature() -> None:
     # A type argument counts as the declared return does, written
     # (`gen[Own[A]]`, a free function or a generic record's method) or
-    # inferred. The inferred row takes the tuple shape. A class type
-    # parameter at `Own[A]` (`G.wrap[Own[A]]`) is refused until unit 2b
-    # (BUGS.md#class-own-type-arg-method-result-ill-formed).
+    # inferred. The inferred row takes the tuple shape.
     ctx, fns = _module("""\
 class It[U]:
     xs: list[U]

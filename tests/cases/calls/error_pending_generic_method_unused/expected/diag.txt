@@ -1,0 +1,3 @@
+main.py:11: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:24: warning: may copy A into owned storage if not a value type; use copy() to make this explicit
+main.py:30: error: Cannot call generic method 'from_h' on 'd' before the type arguments of 'Duo' are known; call a constraining method first or spell the class type arguments: Duo[A, B](...)

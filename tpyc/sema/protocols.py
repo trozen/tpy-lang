@@ -43,7 +43,9 @@ from ..type_def_registry import (
     protocol_cache, restate_signature,
     methods_at_reference,
 )
-from ..typesys import is_numeric_type, unwrap_own, without_own
+from ..typesys import is_dyn_protocol, is_numeric_type, own_arg_is_identity, unwrap_own, without_own
+from ..type_def_registry import type_def_of
+from .dyn_erasure import record_inherits_dynamic
 from .elem_paths import (
     ElemPath, leaves_at,
     step_hands_over_lent,
@@ -314,10 +316,29 @@ def _own_peeled_args(t: TpyType) -> TpyType:
     """A returned record iterator `t` at its type arguments with their
     `Own` peeled at every depth: only the iterator's own declaration hands
     a step over, so `SpanIter[Own[Cell]]` and
-    `Holder[tuple[Own[Cell], int32]]` still lend their `Cell`."""
+    `Holder[tuple[Own[Cell], int32]]` still lend their `Cell`. A class TPy
+    emits is instantiated at its `Own[X]` argument (`own_arg_is_identity`):
+    its declaration at that argument is the one that hands over."""
     if not isinstance(t, NominalType) or is_protocol_type(t):
         return t
+    if own_arg_is_identity(type_def_of(t)):
+        return t
     return without_own(t)
+
+
+def _own_arg_dynamic_adapter(actual: TpyType, protocol: NominalType,
+                             registry) -> bool:
+    """`actual` is a class TPy emits at a non-plain `Own[X]` type argument
+    conforming to the @dynamic `protocol` structurally -- through an
+    adapter, which forwards the members at the lent form, so it is refused
+    (BUGS.md#dynamic-adapter-own-type-arg-refused). A class declaring the
+    protocol as its base is the protocol's subclass and takes none."""
+    bare = unwrap_readonly(actual) if isinstance(actual, TpyType) else actual
+    return (is_dyn_protocol(protocol) and isinstance(bare, NominalType)
+            and own_arg_is_identity(type_def_of(bare))
+            and any(isinstance(a, OwnType) and not a.is_plain()
+                    for a in bare.type_args)
+            and not record_inherits_dynamic(bare, protocol, registry))
 
 
 def protocol_is_const(protocol_info: 'ProtocolInfo | None') -> bool:
@@ -647,6 +668,8 @@ class ProtocolChecker:
         Returns STRUCTURAL only when the method/field walk at the tail is the
         sole path that succeeded. Returns None when actual does not conform.
         """
+        if _own_arg_dynamic_adapter(actual, protocol, self.ctx.registry):
+            return None
         composite = protocol_info_of(protocol)
         if (composite is not None and composite.parent_protocols
                 and not composite.methods and not composite.fields
@@ -1061,16 +1084,20 @@ class ProtocolChecker:
                 return False
             if not record.has_init:
                 # Aggregate records have an implicit field-wise C++ ctor;
-                # default-constructible iff every field type and parent is.
+                # default-constructible iff every field type and parent is,
+                # as the receiver's arguments instantiate it.
+                subst = self.type_ops.build_type_substitution(actual)
                 for p in record.parents:
-                    if not self._is_default_constructible(p):
+                    if not self._is_default_constructible(
+                            self.type_ops.substitute_types(p, subst)):
                         return False
                 for fld in record.fields:
                     # An in-class initializer makes the field
                     # default-constructible regardless of its type's ctor.
                     if fld.default_expr is not None:
                         continue
-                    if not self._is_default_constructible(fld.type):
+                    if not self._is_default_constructible(
+                            self.type_ops.field_type_at(fld.type, subst)):
                         return False
                 return True
             required = sum(1 for _, _, default in record.init_params if default is None)
@@ -1375,7 +1402,10 @@ class ProtocolChecker:
                     if sig.name == name
                     and all(p.has_default for p in sig.param_infos())]
         # The `Ref` a borrow return carries is its C++ form, not the step.
-        return [unwrap_ref_type(resolved.return_type if written
+        # A class TPy emits steps as its instantiation substitutes them
+        # (`Box[Own[P]]` over `-> Iterator[T]` hands over, as its twin).
+        at_args = written or own_arg_is_identity(type_def_of(t))
+        return [unwrap_ref_type(resolved.return_type if at_args
                                 else method.return_type)
                 for method, resolved in self._substituted_overloads(t, name)
                 if runs_as_step_member(resolved)]
@@ -1622,9 +1652,8 @@ class ProtocolChecker:
                 type_subst = self.type_ops.build_type_substitution(actual)
                 for fld in record.fields:
                     if fld.name == field_name:
-                        field_type = fld.type
-                        if type_subst:
-                            field_type = self.type_ops.substitute_type_params(field_type, type_subst)
+                        field_type = self.type_ops.field_type_at(fld.type,
+                                                                 type_subst)
                         return field_type == expected_type
         return False
 
@@ -1816,7 +1845,7 @@ class ProtocolChecker:
             # Preserve every other FieldInfo fact (native_name, loc,
             # ...) -- only the type is substituted.
             return dataclasses.replace(
-                fld, type=self.type_ops.substitute_type_params(fld.type, type_subst))
+                fld, type=self.type_ops.field_type_at(fld.type, type_subst))
         return fld
 
     def declaring_record_field(
@@ -2170,6 +2199,13 @@ class ProtocolChecker:
             return []
 
         issues: list[str] = []
+        if _own_arg_dynamic_adapter(actual, protocol, self.ctx.registry):
+            issues.append(
+                f"'{actual}' takes an `Own[...]` type argument, and a class "
+                f"at one does not conform to a @dynamic protocol "
+                f"structurally yet; use the class at the bare type argument, "
+                f"or declare '{protocol.name}' as its base")
+            return issues
         for req in self._method_requirements(actual, protocol, protocol_info,
                                              bind_self) or ():
             if not self.type_has_method_with_signature(actual, req,

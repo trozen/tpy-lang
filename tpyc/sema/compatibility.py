@@ -15,7 +15,7 @@ from typing import (TYPE_CHECKING, Callable, Iterable, Iterator, NamedTuple,
 
 from ..type_def_registry import has_view_param_form, type_def_of
 from ..frame_capture import frame_owns_param_copy
-from ..typesys import (param_holds_callee_copy, lands_in_indirection, peel_slot, pointer_repr_optional, readonly_access, resolve_int_literals,
+from ..typesys import (UnownedParam, indirection_referent_readonly, own_arg_is_identity, param_holds_callee_copy, lands_in_indirection, peel_slot, pointer_repr_optional, readonly_access, resolve_int_literals,
                       BIGINT, is_primitive_type,
                       substitute_type_params_structural, ask_owning_slot,
                       concrete_owning_slot_fits)
@@ -45,7 +45,7 @@ from ..typesys import (
 from .. import qnames
 from ..identity_map import IdentityMap
 from ..value_category import (
-    peeled_read,
+    peeled_read, deref_step,
     async_result_aliases, call_operands, owned_payload_spelling,
     CONTAINER_LITERAL_NODES, getitem_call_of, is_iterator_protocol,
     is_rvalue_source, owning_arg, OwningArg, iteration_object,
@@ -1432,7 +1432,27 @@ class TypeCompatibility:
                        else "...")
                 hint += f" -- use copy({src}) to store a mutable copy"
             raise SemanticError(result.message + hint, result.loc)
+        self._note_storage_arg_flow(actual, expected, context, loc)
         return result
+
+    def _note_storage_arg_flow(self, actual: TpyType, expected: TpyType,
+                               context: str,
+                               loc: SourceLocation | None) -> None:
+        """A value whose class is formed at the storage form of this body's
+        open `T` (`C[Unowned(T)]`) admitted into a slot at `C[T]`: one class
+        at `T = P`, two at `T = Own[X]`, which the instantiation answers
+        (`own_copy.OwnStorageArgFlow`)."""
+        if self.ctx.trial_depth or not self.ctx.slot_step_commits():
+            return
+        open_params = self.ctx.body_open_type_params()
+        if not open_params:
+            return
+        for param, cls in _storage_arg_flow(actual, expected,
+                                            open_params).items():
+            owner, _ = self.ctx.open_param_owner({param.name})
+            self.ctx.add_own_copy_obligation(own_copy.OwnStorageArgFlow(
+                param, actual, expected, context, getattr(loc, "line", None),
+                owner, cls))
 
     def _pending_num_ends(self, actual: TpyType, expected: TpyType,
                           source_expr: TpyExpr | None,
@@ -2053,7 +2073,10 @@ class TypeCompatibility:
         # An owning element slot whose `Own` step an ancestor fixes
         # (`class Rows(Iterable[Own[R]], Protocol)`) names no `Own` itself.
         # Strip Own for conformance/equality check; warn when elements are implicitly copied.
+        # A class TPy emits holds no `Own` element mark: its `Own[X]`
+        # argument is what it is (`Later[Own[P]]`).
         if (isinstance(expected, NominalType)
+                and not own_arg_is_identity(type_def_of(expected))
                 and ((expected.inner_types()
                       and any(isinstance(a, OwnType) for a in expected.inner_types()))
                      or (is_protocol_type(expected)
@@ -3993,20 +4016,22 @@ class TypeCompatibility:
         fact says the local owns there and the read kept its mark."""
         func = self.ctx.func.current_function
         if not (r.node in self.ctx.all_last_uses
-                and open_owning_local(self.ctx, func, r.name)):
-            self.ctx.own_copy_obligations.append(r.obligation)
+                and (open_owning_local(self.ctx, func, r.name)
+                     or self._is_owned_var(r.name))):
+            self.ctx.add_own_copy_obligation(r.obligation)
 
     def own_same_t_slot(self, slot: 'TpyType | None') -> bool:
         """Whether `slot` -- a `-> T` result, a callee parameter -- is this
         body's own open `T` (`readonly[T]` included, which owns at
         `T = Own[X]` too), so a read of a `T` handed to it owns only where
-        the instantiation's `T` is `Own[X]`: the `OPEN_SAME_T` slot class."""
+        the instantiation's `T` is `Own[X]`: the `OPEN_SAME_T` slot class.
+        A method's class `T` is its body's own (`body_open_type_params`)."""
         fn = self.ctx.func.current_function
         t = unwrap_readonly(unwrap_ref_type(slot)) if isinstance(
             slot, TpyType) else None
         return (isinstance(fn, TpyFunction) and type(t) is TypeParamRef
                 and t.kind is TypeParamKind.TYPE
-                and t.name in (fn.type_params or ()))
+                and t.name in self.ctx.body_open_type_params())
 
     def note_own_instantiation_copy(self, slot: 'TpyType | None',
                                     value: TpyExpr,
@@ -4022,10 +4047,13 @@ class TypeCompatibility:
             return
         expected = unwrap_readonly(unwrap_ref_type(slot))
         src = peel_coerce(value)
-        at = unwrap_readonly(unwrap_ref_type(self.ctx.get_expr_type(src)))
+        pointee = self._handle_deref_read(value)
+        at = unwrap_readonly(unwrap_ref_type(
+            pointee if pointee is not None else self.ctx.get_expr_type(src)))
         if not isinstance(at, TypeParamRef) or at != expected:
             return
-        if isinstance(src, TpyCallLike) and type(at) is TypeParamRef:
+        if (pointee is None and isinstance(src, TpyCallLike)
+                and type(at) is TypeParamRef):
             # A call handing back `T` itself owns its value at `Own[X]`; one
             # handing back its storage form (`Unowned(T)`, a nested call
             # inferred as the twin) lends there too.
@@ -4036,14 +4064,34 @@ class TypeCompatibility:
             kind=own_copy.KIND_OWN_INSTANTIATION,
             hint="use copy() to make this explicit",
             diag=Diagnostic(DiagnosticLevel.WARNING, "", loc))
-        if self.open_t_param_last_use(src):
+        if pointee is None and self._owned_last_use(src):
+            # A name owning its value at every instantiation (an `Own[T]`
+            # parameter, an owning local): its last use hands it on, as the
+            # twin's `std::move(x)`. A local's ownership is the settled
+            # body's: a later binding to existing storage takes it back.
+            if self._open_result_local_read(src):
+                self.ctx.func.owning_reads.append(
+                    OpenResultCopy(src.name, src, obligation))
+            return
+        if pointee is None and self.open_t_param_last_use(src):
             if self._open_result_local_read(src):
                 # Whether the local hands its value on is the settled
                 # whole-body fact's (`_settle_open_result_copy`).
                 self.ctx.func.owning_reads.append(
                     OpenResultCopy(src.name, src, obligation))
             return
-        self.ctx.own_copy_obligations.append(obligation)
+        self.ctx.add_own_copy_obligation(obligation)
+
+    def _handle_deref_read(self, value: TpyExpr) -> 'TpyType | None':
+        """The pointee type a deref coercion through a handle reads
+        (`return self._p` on `_p: Ptr[T]` at `-> T`): the place the handle
+        points at, a stored place as a field read is; None when the value
+        is no such deref (a `__deref__` call hands back its own result)."""
+        step = deref_step(value)
+        if step is None or indirection_referent_readonly(
+                self.ctx.get_expr_type(step.expr)) is None:
+            return None
+        return step.expected_type
 
     def note_open_same_t_arg(self, arg: TpyExpr, ptype: TpyType) -> None:
         """The slot class of a committed argument, decided here once: at a
@@ -4056,14 +4104,16 @@ class TypeCompatibility:
                 or not self.own_same_t_slot(ptype)):
             return
         src = peel_coerce(arg)
-        at = self.ctx.get_expr_type(src)
+        # A handle's deref reads the place it points at, a `T` there.
+        pointee = self._handle_deref_read(arg)
+        at = pointee if pointee is not None else self.ctx.get_expr_type(src)
         if not (isinstance(at, TpyType) and unwrap_readonly(unwrap_ref_type(
                 at)) == unwrap_readonly(unwrap_ref_type(ptype))
                 and type(unwrap_readonly(unwrap_ref_type(at)))
                 is TypeParamRef):
             return
         self.ctx.open_same_t_args.add(src)
-        if self.open_t_param_last_use(src):
+        if self.open_t_param_last_use(src) or self._owned_last_use(src):
             self.move_before_alias_reads(src, borrowers_only=True)
             self.demoted_by_hidden_borrow(src)
         self.note_own_instantiation_copy(ptype, arg)
@@ -8612,3 +8662,39 @@ class TypeCompatibility:
                     and not et.needs_wrapper()):
                 return et
         return None
+
+
+def _spelled_class(cls: NominalType) -> str:
+    """`cls` as a construction spells it, its type parameters by name."""
+    args = ", ".join(t.name if isinstance(t, TypeParamRef) else str(t)
+                     for t in cls.type_args)
+    return f"{cls.name}[{args}]"
+
+
+def _storage_arg_flow(actual: TpyType, expected: TpyType,
+                      open_params: 'AbstractSet[str]'
+                      ) -> 'dict[TypeParamRef, str]':
+    """Each open parameter (with its class's name) at which a class argument
+    of `actual` and of `expected` are `T` itself on one side and its storage
+    form `Unowned(T)` on the other, walking both types in parallel through
+    an `Own[...]` on either side: one class at `T = P`, two at `Own[X]`."""
+    found: dict[TypeParamRef, str] = {}
+
+    def walk(a: TpyType, e: TpyType) -> None:
+        a = unwrap_own(unwrap_readonly(unwrap_ref_type(a)))
+        e = unwrap_own(unwrap_readonly(unwrap_ref_type(e)))
+        if (isinstance(a, NominalType) and isinstance(e, NominalType)
+                and own_arg_is_identity(type_def_of(e))):
+            for x, y in zip(a.type_args, e.type_args):
+                for s, o, plain in ((x, y, e), (y, x, a)):
+                    if (isinstance(s, UnownedParam) and type(o) is TypeParamRef
+                            and s.name == o.name and o.name in open_params):
+                        found.setdefault(o, _spelled_class(plain))
+        ai, ei = a.inner_types(), e.inner_types()
+        if type(a) is not type(e) or len(ai) != len(ei):
+            return
+        for x, y in zip(ai, ei):
+            if isinstance(x, TpyType) and isinstance(y, TpyType):
+                walk(x, y)
+    walk(actual, expected)
+    return found

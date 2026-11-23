@@ -8,21 +8,27 @@
 namespace tpyapp::fixtures {
 
 struct P;
-template<typename T> struct C;
+struct N;
+template<typename T> struct Box;
+template<typename T> struct Bag;
+template<typename T> struct Holder;
 
 inline constexpr std::string_view __name__ = "fixtures";
 
-// def mk(k: int32) -> Own[P]:
-P mk(int32_t k);
+template <typename T>
+struct __gen_Box___iter__;
+
+// def mk() -> Own[P]:
+P mk();
 
 // class P:
 struct P {
-    // x: int32
-    int32_t x;
+    // n: int32
+    int32_t n;
 
-    // def __init__(self, x: int32) -> None:
+    // def __init__(self, n: int32) -> None:
     P() = default;
-    explicit P(int32_t x);
+    explicit P(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "fixtures.P";
 };
 
@@ -31,77 +37,233 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
-// class C[T]:
+// @nocopy
+// class N:
+struct N {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    N() = default;
+    explicit N(int32_t n);
+    // non-copyable (@nocopy)
+    N(const N&) = delete;
+    N& operator=(const N&) = delete;
+    N(N&&) = default;
+    N& operator=(N&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "fixtures.N";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const N& obj) {
+    ::tpy::print_object_default(os, N::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Box[T]:
 template<typename T>
-struct C {
+struct Box {
+    // v: T
+    ::tpy::storage_t<T> v;
     // items: list[T]
     std::vector<::tpy::storage_t<T>> items;
 
-    // def __init__(self) -> None:
-    C();
-
-    // def put(self, x: T) -> None:
-    void put(::tpy::param_val_or_ref_t<T> x);
-
-    // def fill(self, f: Callable[[int32], Own[T]], k: int32) -> None:
-    void fill(const std::function<::tpy::storage_t<T>(int32_t)>& f, int32_t k);
+    // def __init__(self, v: T) -> None:
+    Box() = default;
+    explicit Box(::tpy::param_val_or_cref_t<T> v);
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get();
 
-    // @classmethod
-    // def build(cls, f: Callable[[int32], Own[T]], k: int32) -> Own[C[T]]:
-    static C<T> build(const std::function<::tpy::storage_t<T>(int32_t)>& f, int32_t k);
-    static constexpr std::string_view __tpy_class_name__ = "fixtures.C";
+    // def push(self, x: T) -> None:
+    void push(::tpy::param_val_or_ref_t<T> x);
+
+    // def push_v(self) -> None:
+    void push_v();
+
+    __gen_Box___iter__<T> __iter__();
+    static constexpr std::string_view __tpy_class_name__ = "fixtures.Box";
 };
 
 template<typename T>
-inline std::ostream& operator<<(std::ostream& os, const C<T>& obj) {
-    ::tpy::print_object_default(os, C<T>::__tpy_class_name__, obj);
+inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
+    ::tpy::print_object_default(os, Box<T>::__tpy_class_name__, obj);
     return os;
 }
 
+// class Bag[T]:
+template<typename T>
+struct Bag {
+    // v: T
+    ::tpy::storage_t<T> v;
+    // items: list[T]
+    std::vector<::tpy::storage_t<T>> items;
 
-// def __init__(self, x: int32) -> None:
-//     self.x = x
-inline P::P(int32_t x) : x(x) {}
+    // def __init__(self, v: T) -> None:
+    Bag() = default;
+    explicit Bag(::tpy::param_val_or_cref_t<T> v);
 
-// def __init__(self) -> None:
+    // def push(self, x: T) -> None:
+    void push(::tpy::param_val_or_ref_t<T> x);
+    static constexpr std::string_view __tpy_class_name__ = "fixtures.Bag";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
+    ::tpy::print_object_default(os, Bag<T>::__tpy_class_name__, obj);
+    return os;
+}
+
+// class Holder[T]:
+template<typename T>
+struct Holder {
+    // f: Callable[[], T]
+    std::function<::tpy::val_or_ref_t<T>()> f;
+
+    // def __init__(self, f: Callable[[], T]) -> None:
+    Holder() = default;
+    explicit Holder(std::function<::tpy::val_or_ref_t<T>()> f);
+
+    // def get(self) -> T:
+    ::tpy::val_or_ref_t<T> get() const;
+    static constexpr std::string_view __tpy_class_name__ = "fixtures.Holder";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
+    ::tpy::print_object_default(os, Holder<T>::__tpy_class_name__, obj);
+    return os;
+}
+
+// def __iter__(self) -> Iterator[T]:
+template <typename T>
+struct __gen_Box___iter__ : public ::tpy::next_iter_mixin<__gen_Box___iter__<T>, ::tpy::yield_slot_t<T>> {
+    ::tpy::frame_state __state;
+    Box<T>& __self;
+    using __for_src_0_t = decltype((__self.items));
+    ::tpy::begin_elem_t<__for_src_0_t>* it = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Box___iter__(Box<T>& __self)
+        : __state(S_INITIAL),
+          __self(__self) {}
+
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
+    __gen_Box___iter__& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Box___iter__<T>&) {
+        return os << "<generator Box.__iter__>";
+    }
+};
+
+// def __iter__(self) -> Iterator[T]:
+//     for it in self.items:
+//         # at `Own[P]` each step is an owned copy
+//         yield it                                  # -> S_RESUME_0
+template <typename T>
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Box___iter__<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        auto& __for_obj_0 = __self.items;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield it
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        it = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*it);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+template <typename T>
+inline __gen_Box___iter__<T> Box<T>::__iter__() {
+    return __gen_Box___iter__<T>(*this);
+}
+
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline P::P(int32_t n) : n(n) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline N::N(int32_t n) : n(n) {}
+
+// def __init__(self, v: T) -> None:
+//     self.v = v  # tpyc: warning(/may copy T into field/)
 //     self.items = []
 template<typename T>
-inline C<T>::C() : items(std::vector<::tpy::storage_t<T>>{}) {}
+inline Box<T>::Box(::tpy::param_val_or_cref_t<T> v)
+    : v(::tpy::param_consume<T>(v)),
+      items(std::vector<::tpy::storage_t<T>>{}) {}
 
-// def put(self, x: T) -> None:
+// def get(self) -> T:
+//     # at `Own[P]` an owned copy of the stored value
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::get() {
+    return this->v;
+}
+
+// def push(self, x: T) -> None:
 //     self.items.append(x)  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
-inline void C<T>::put(::tpy::param_val_or_ref_t<T> x) {
+inline void Box<T>::push(::tpy::param_val_or_ref_t<T> x) {
     this->items.push_back(::tpy::param_consume<T>(x));
 }
 
-// def fill(self, f: Callable[[int32], Own[T]], k: int32) -> None:
-//     self.items.append(f(k))
+// def push_v(self) -> None:
+//     # the class's `T` handed on to its own `T` parameter
+//     self.push(self.v)
 template<typename T>
-inline void C<T>::fill(const std::function<::tpy::storage_t<T>(int32_t)>& f, int32_t k) {
-    this->items.push_back(f(k));
+inline void Box<T>::push_v() {
+    this->push(::tpy::param_pass<T>(this->v));
 }
+
+// def __init__(self, v: T) -> None:
+//     self.v = v  # tpyc: warning(/may copy T into field/)
+//     self.items = []
+template<typename T>
+inline Bag<T>::Bag(::tpy::param_val_or_cref_t<T> v)
+    : v(::tpy::param_consume<T>(v)),
+      items(std::vector<::tpy::storage_t<T>>{}) {}
+
+// def push(self, x: T) -> None:
+//     self.items.append(x)  # tpyc: warning(/may copy T into owned storage/)
+template<typename T>
+inline void Bag<T>::push(::tpy::param_val_or_ref_t<T> x) {
+    this->items.push_back(::tpy::param_consume<T>(x));
+}
+
+// def __init__(self, f: Callable[[], T]) -> None:
+//     self.f = f
+template<typename T>
+inline Holder<T>::Holder(std::function<::tpy::val_or_ref_t<T>()> f) : f(f) {}
 
 // def get(self) -> T:
-//     return self.items[0]
+//     return self.f()
 template<typename T>
-inline ::tpy::val_or_ref_t<T> C<T>::get() {
-    return ::tpy::__getitem__(this->items, 0);
-}
-
-// @classmethod
-// def build(cls, f: Callable[[int32], Own[T]], k: int32) -> Own[C[T]]:
-//     c = C[T]()
-//     c.items.append(f(k))
-//     return c
-template<typename T>
-inline C<T> C<T>::build(const std::function<::tpy::storage_t<T>(int32_t)>& f, int32_t k) {
-    C<T> c = C<T>();
-    c.items.push_back(f(k));
-    return c;
+inline ::tpy::val_or_ref_t<T> Holder<T>::get() const {
+    return (*this).f();
 }
 
 void __tpy_init();

@@ -24,7 +24,7 @@ int32_t gbump(GTree<A>& t);
 
 template<typename T>
 struct GTree {
-    using variant_type = ::tpy::Union<C<T>, std::vector<GTree<::tpy::storage_t<T>>>>;
+    using variant_type = ::tpy::Union<C<T>, std::vector<GTree<T>>>;
     variant_type value;
 
     GTree() requires std::default_initializable<variant_type> = default;

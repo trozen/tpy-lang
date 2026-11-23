@@ -9,7 +9,7 @@ from dataclasses import replace as dc_replace
 from contextlib import AbstractContextManager, nullcontext
 from typing import Callable, Iterator, Optional, Sequence
 
-from ..typesys import make_iterator, resolve_int_literals, without_class_own_args
+from ..typesys import make_iterator, resolve_int_literals
 from ..typesys import (
     make_readonly,
     TpyType, TypeRegistry, NominalType, AliasRef, UnionType, FinalType, STR, VoidType, VOID,
@@ -95,7 +95,7 @@ def _assert_no_pending_locals(locals_dict: dict, func_name: str) -> None:
             )
 
 
-from ..diagnostics import Scope, Diagnostic, SemanticError
+from ..diagnostics import Scope, Diagnostic, DiagnosticLevel, SemanticError
 from .. import qnames
 from .iter_loans import enclose_head_roots
 from .context import (
@@ -371,7 +371,8 @@ class SemanticAnalyzer:
         # Guards the workspace-wide owning-slot discharge against a second
         # run (the Compiler drives it; `finalize_borrow_checks` covers
         # ad-hoc single-analyzer use).
-        self._own_copy_discharged = False
+        self._own_copy_discharged: set[bool] = set()
+        self._own_copy_seen: set = set()
         self._own_copy_verdicts: 'own_copy.OwnCopyVerdicts | None' = None
 
         # Layer 1: No dependencies on other analyzers
@@ -1132,8 +1133,14 @@ class SemanticAnalyzer:
     def discharge_own_copy_verdicts(
         self, seen: 'set | None' = None,
         verdicts: 'own_copy.OwnCopyVerdicts | None' = None,
+        records: 'bool | None' = None,
     ) -> None:
         """Answer every owning-slot copy obligation this module instantiates.
+
+        `records` True discharges only the class formations, False only the
+        calls, None both: a call of a class's member forms the class only
+        where no formation did (`own_copy._owner_class_edge`), so the
+        Compiler discharges every module's formations first.
 
         `Compiler._finalize_workspace` drives this for every module before
         any module's `finalize_borrow_checks`: an obligation recorded in a
@@ -1144,16 +1151,25 @@ class SemanticAnalyzer:
         is walked once. An analyzer used without a Compiler falls back to its
         own set and table.
         """
-        if self._own_copy_discharged:
+        phases = {True, False} if records is None else {records}
+        phases -= self._own_copy_discharged
+        if not phases:
             return
-        self._own_copy_discharged = True
+        self._own_copy_discharged |= phases
         if seen is None:
-            seen = set()
+            seen = self._own_copy_seen
         if verdicts is None:
-            verdicts = own_copy.OwnCopyVerdicts()
+            verdicts = (self._own_copy_verdicts
+                        if self._own_copy_verdicts is not None
+                        else own_copy.OwnCopyVerdicts())
         self._own_copy_verdicts = verdicts
-        for edge in self.ctx.own_copy_roots:
-            own_copy.discharge_edge(self.ctx, self.type_ops, edge, seen, verdicts)
+        for phase in (True, False):
+            if phase not in phases:
+                continue
+            for edge in self.ctx.own_copy_roots:
+                if edge.is_record is phase:
+                    own_copy.discharge_edge(self.ctx, self.type_ops, edge,
+                                            seen, verdicts)
 
     def finalize_borrow_checks(self) -> None:
         """Emit / suppress deferred borrow warnings using fully-propagated
@@ -1892,6 +1908,21 @@ class SemanticAnalyzer:
             with self.ctx.reenter(parked):
                 self.compat.drain_yield_root_checks()
 
+    def _note_signature_formations(
+            self, func: TpyFunction,
+            params: list[tuple[str, TpyType]]) -> None:
+        """The classes the signature names at the body's open type
+        parameters are formed by the body's instantiation (`-> Own[Array[
+        Box[T], 1]]`): registration checked the types before any body
+        records, so their forwards are noted again under this body."""
+        types = [t for _, t in params]
+        if isinstance(func.return_type, TpyType):
+            types.append(func.return_type)
+        for t in types:
+            if contains_type_param(t):
+                self.type_ops.note_class_formations(t, func.loc,
+                                                    open_only=True)
+
     def _analyze_function(self, func: TpyFunction, *,
                           genexpr_source_loans: tuple[tuple[StorageKey, LoanInfo], ...] = (),
                           genexpr_enclosing: 'EnclosingScopeFacts | None' = None,
@@ -1967,6 +1998,8 @@ class SemanticAnalyzer:
         self.ctx.in_consuming_method = func.is_consuming
 
         self._validate_named_defaults(func)
+        if not func.is_genexpr:
+            self._note_signature_formations(func, resolved_params)
 
         if genexpr_enclosing is not None:
             enter_enclosing_scope(self.ctx, genexpr_enclosing)
@@ -2121,6 +2154,15 @@ class SemanticAnalyzer:
             self.ctx.own_copy_inner_spans.append(
                 ((own_copy_from[0], own_copy_to[0]),
                  (own_copy_from[1], own_copy_to[1])))
+        frame_fi = body_function_info(self.ctx.registry, func)
+        open_params = self.ctx.body_open_type_params()
+        if (frame_fi is not None and open_params
+                and self.ctx.slot_step_commits()):
+            # The frame's obligations are its own body's; the enclosing
+            # body instantiates it at its own open parameters.
+            self.ctx.record_own_copy_instantiation(
+                frame_fi, {n: TypeParamRef(n) for n in sorted(open_params)},
+                inline=True)
         self._module.functions.append(func)
 
     def _hand_up_pending_types(self) -> None:
@@ -2327,6 +2369,25 @@ class SemanticAnalyzer:
                         # the hand-written twin's `[x]` at a value type,
                         # its `[&x]` at a reference type.
                         node.storage_captures.add(cap_name)
+                        # A last-use capture hands the value on where
+                        # `T = Own[X]` (`move_captures`).
+                        if (not self._move_or_copy(node, cap_name,
+                                                   names_used_after,
+                                                   copy_reasons)
+                                and self.ctx.slot_step_commits()):
+                            # Read again after the closure: at `T = Own[X]`
+                            # the closure holds a copy, which the
+                            # instantiation reports as the twin warns.
+                            t = open_type_param(cap_type)
+                            self.ctx.add_own_copy_obligation(
+                                own_copy.OwnCopyObligation(
+                                    display_type=t, target_type=t,
+                                    dest=f"escaping closure '{name}'",
+                                    kind=own_copy.KIND_OWN_INSTANTIATION,
+                                    hint="use copy() to make this explicit",
+                                    diag=Diagnostic(
+                                        DiagnosticLevel.WARNING, "",
+                                        self.ctx._resolve_loc(node))))
                     elif not is_own_param and (
                             generic_opt_trait_type(cap_type) is not None
                             or cap_type.param_passing()
@@ -2969,9 +3030,12 @@ class SemanticAnalyzer:
             return info, f"{self.ctx.module_name}.{name}", name
         return None
 
-    def _finalize_alias_refs(self, typ: TpyType) -> TpyType:
+    def _finalize_alias_refs(self, typ: TpyType,
+                             loc: 'SourceLocation | None' = None) -> TpyType:
         """Rewrite a generic-recursive `AliasRef` placeholder into the
         semantic `RecursiveAliasInstanceType`, recursing through inner types.
+        An instance minted in a type written at `loc` forms the classes it
+        names there, which the check of the written type could not see.
 
         Non-generic recursive aliases keep their bare `AliasRef` self-ref
         (their use sites stay UnionType + union_wrapper_index)."""
@@ -2989,10 +3053,13 @@ class SemanticAnalyzer:
                 # and an imported same-short-named one never collide on
                 # rendering. `typ.name` is carried only as the local display
                 # short (`_short()` / `__str__` / same-module bare fallback).
-                # Formed as every alias instance is (`without_class_own_args`).
-                return without_class_own_args(
-                    RecursiveAliasInstanceType(qname, new_args, typ.name, info))
-        return typ.map_inner_types(self._finalize_alias_refs)
+                minted = RecursiveAliasInstanceType(qname, new_args, typ.name,
+                                                    info)
+                if loc is not None:
+                    self.type_ops.note_class_formations(minted, loc)
+                return minted
+        return typ.map_inner_types(
+            lambda t: self._finalize_alias_refs(t, loc))
 
     def _finalize_generic_recursive_aliases(self, module: TpyModule) -> None:
         """Convert the parser's generic-recursive `AliasRef` placeholders into
@@ -3035,14 +3102,20 @@ class SemanticAnalyzer:
             entry = module.type_aliases.get(n)
             if entry is not None:
                 module.type_aliases[n] = (
-                    (self._finalize_alias_refs(entry[0]),) + tuple(entry[1:])
+                    (self._finalize_alias_refs(entry[0], entry[1]),)
+                    + tuple(entry[1:])
                 )
+        # Any other alias body naming one is a written type: it forms what
+        # the instance names (its uses are expanded where they are written).
+        for n, entry in module.type_aliases.items():
+            if n not in generic_rec:
+                self._finalize_alias_refs(entry[0], entry[1])
         # Use sites in annotations.
         for func in module.functions:
             self._finalize_func_aliases(func)
         for record in module.all_records():
             for f in record.fields:
-                f.type = self._finalize_alias_refs(f.type)
+                f.type = self._finalize_alias_refs(f.type, f.loc or record.loc)
             for method in record.methods:
                 self._finalize_func_aliases(method)
             # RecordInfo carries registration-time snapshots of the ctor and
@@ -3088,9 +3161,10 @@ class SemanticAnalyzer:
 
     def _finalize_func_aliases(self, func: TpyFunction) -> None:
         if func.return_type is not None:
-            func.return_type = self._finalize_alias_refs(func.return_type)
+            func.return_type = self._finalize_alias_refs(func.return_type,
+                                                         func.loc)
         for i, (name, typ) in enumerate(func.params):
-            new = self._finalize_alias_refs(typ)
+            new = self._finalize_alias_refs(typ, func.loc)
             if new is not typ:
                 func.params[i] = (name, new)
         if func.vararg_type is not None:
@@ -3273,6 +3347,7 @@ class SemanticAnalyzer:
             self.ctx.in_consuming_method = method.is_consuming
 
             self._validate_named_defaults(method)
+            self._note_signature_formations(method, resolved_params)
 
             # Shared core: bind params, prescan, analyze body
             scan = self.stmts._prescan_and_analyze_body(method, resolved_params, scope, local_ns)

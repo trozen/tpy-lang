@@ -14,9 +14,9 @@ main::nth@43:0: uncovered (reference yield)
 main::gen_l@47:0: uncovered (reference yield)
 main::gen_gt@52:0: uncovered (generic body)
 main::free_function@128:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::gen_body@223:0: uncovered (call needs finalized known summary)
-main::async_body@231:0: uncovered (async body)
-main::main@239:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::gen_body@222:0: uncovered (call needs finalized known summary)
+main::async_body@230:0: uncovered (async body)
+main::main@238:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::View.__iter__@23:4: uncovered (reference yield)
 main::GV.__iter__@33:4: uncovered (generic body)
 main::Cursor.__iter__@63:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
@@ -28,7 +28,7 @@ main::SpanView.__iter__@102:4: uncovered (view of container storage), summary: o
 main::Key.__eq__@112:4: covered (storage: no_proof_required)
 main::Key.__hash__@115:4: covered (storage: no_proof_required), summary: known
 main::KeyView.__iter__@123:4: uncovered (reference yield)
-main::Driver.run@216:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Driver.run@215:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Cursor.__init__@60:4: covered (storage: no_proof_required), summary: known
 main::It.__init__@76:4: covered (storage: no_proof_required), summary: known
 main::Key.__init__@109:4: covered (storage: no_proof_required), summary: known

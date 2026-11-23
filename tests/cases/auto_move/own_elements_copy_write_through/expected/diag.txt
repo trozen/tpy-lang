@@ -1,13 +1,13 @@
 main.py:109: warning: copies list[U] into field; use copy() to make this explicit
-main.py:167: warning: copies Item into owned storage; use copy() to make this explicit
-main.py:190: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:195: warning: Own[Item] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:165: warning: copies Item into owned storage; use copy() to make this explicit
+main.py:188: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:193: warning: Own[Item] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:200: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:202: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:204: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:206: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:207: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:208: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:209: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:210: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
-main.py:228: warning: copies H elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:226: warning: copies H elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:134: warning: copies Item into owned storage; use copy() to make this explicit
 main.py:139: warning: copies Item into owned storage; use copy() to make this explicit
 main.py:144: warning: copies Item into owned storage; use copy() to make this explicit

@@ -67,7 +67,7 @@ inline Owned<T>::Owned(::tpy::own_param_t<T> v) : v(std::move(v)) {}
 //     return o
 template<typename T>
 Owned<T> grab(const std::vector<::tpy::storage_t<T>>& src) {
-    Owned<T> o = Owned<T>(::tpy::storage_t<T>(::tpy::__getitem__(src, 0)));
+    Owned<::tpy::storage_t<T>> o = Owned<::tpy::storage_t<T>>(::tpy::storage_t<T>(::tpy::__getitem__(src, 0)));
     return o;
 }
 

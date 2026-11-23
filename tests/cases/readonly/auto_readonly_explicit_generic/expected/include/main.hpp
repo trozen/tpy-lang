@@ -30,7 +30,7 @@ struct Vec {
 
     // @auto_readonly
     // def data(self) -> Span[auto_readonly[T]]:
-    std::span<T> data();
+    std::span<::tpy::storage_t<T>> data();
 
     // @auto_readonly
     // def data(self) -> Span[auto_readonly[T]]:
@@ -61,7 +61,7 @@ inline void Vec<T>::push(::tpy::param_val_or_ref_t<T> v) {
 // def data(self) -> Span[auto_readonly[T]]:
 //     return self._data
 template<typename T>
-inline std::span<T> Vec<T>::data() {
+inline std::span<::tpy::storage_t<T>> Vec<T>::data() {
     return ::tpy::as_mut_span(this->_data);
 }
 

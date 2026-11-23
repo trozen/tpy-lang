@@ -1,8 +1,8 @@
-# Class type arguments next to the dropped `Own[X]` (calls/class_own_type_arg):
+# Class type arguments beside `C[Own[X]]` (calls/class_own_type_arg):
 # `Box[P]` and a builtin `list[Own[P]]` stay as written, and a pending
 # construction completed through a callable
 # returning `Own[P]` binds `T = P`, so its element is lent as at `C[P]`.
-# BUGS.md#class-own-type-arg-method-result-ill-formed. (A plain
+# (A plain
 # `C[Own[int32]]` passes sema but is not lowered:
 # BUGS.md#class-plain-own-type-arg-rejects.)
 from typing import Callable

@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
 
 from ..typesys import (
-    is_value_type_bound, LiteralValue, contains_type_kind_param,
+    body_open_type_params, is_value_type_bound, LiteralValue, contains_type_kind_param,
     nests_pending_view,
     global_tuple_binding_type, disambiguated_pair,
     TpyType, TypeRegistry, ContainerLiteralInfo, ListLiteralInfo, ViewTypeFamily, ViewVarInfo, TypeParamKind, IntLiteralType,
@@ -99,6 +99,7 @@ from .storage_walk import (
 )
 from ..storage_trace import StepKind, trace
 from .read_binding import ReadKind, resolve_read
+from .type_ops import _ASSERT_BINDER_CARRIERS, assert_no_binder_carrier
 
 # Tuple of all pending container types -- use in isinstance checks so adding
 # a new container type requires updating only this one constant.
@@ -3856,7 +3857,7 @@ class SemanticContext:
         diag = Diagnostic(entry.level, entry.text(note), entry.loc)
         if entry.hedge is not None:
             display, target, dest, kind, hint = entry.hedge
-            self.own_copy_obligations.append(own_copy.OwnCopyObligation(
+            self.add_own_copy_obligation(own_copy.OwnCopyObligation(
                 display_type=display, target_type=target, dest=dest,
                 kind=kind, hint=hint, diag=diag,
                 hands_on=self.hands_on_at_own(entry.source)))
@@ -3999,8 +4000,10 @@ class SemanticContext:
 
     def record_own_copy_instantiation(
         self, callee: object, subst: 'dict[str, TpyType | int]',
-        is_record: bool = False, at: 'TpyExpr | None' = None,
+        is_record: bool = False,
+        at: 'TpyExpr | SourceLocation | None' = None,
         sources: tuple = (),
+        inline: bool = False,
     ) -> None:
         """Note that `callee` (a FunctionInfo, or a RecordInfo when
         `is_record`) was instantiated under `subst`.
@@ -4009,7 +4012,10 @@ class SemanticContext:
         generic body's to forward: it is re-composed when that body is
         itself instantiated. A concrete one is a root the discharge starts
         from. `sources` names what inferred a non-plain `Own[X]` binding
-        (`own_copy.binding_sources`).
+        (`own_copy.binding_sources`); `inline` marks the frame of the body's
+        own generator expression (`OwnCopyEdge.inline`). `at` is
+        the instantiating call, or the location of a class formation: the
+        edge reports there (`own_copy.site_key`).
         """
         if not subst:
             return
@@ -4020,20 +4026,25 @@ class SemanticContext:
         if not pairs:
             return
         self.assert_slot_effect("a copy-verdict instantiation root")
-        inferred = at is not None and not getattr(at, "type_args", None)
+        inferred = (at is not None and not is_record
+                    and not isinstance(at, SourceLocation)
+                    and not getattr(at, "type_args", None))
+        loc = (at if isinstance(at, SourceLocation)
+               else self._resolve_loc(at) if at is not None else None)
         edge = own_copy.OwnCopyEdge(
-            callee, pairs, is_record,
-            self._resolve_loc(at) if at is not None else None,
-            inferred=inferred, sources=sources if inferred else ())
+            callee, pairs, is_record, loc,
+            inferred=inferred, sources=sources if inferred else (),
+            site=own_copy.site_key(self.module_name, loc), inline=inline)
         if any(own_copy.type_has_type_param(value) for _, value in pairs):
-            self.own_copy_forwards.append(edge)
+            self.own_copy_forwards.append(replace(edge, of_class=self.class_owns(
+                {n for _, v in pairs for n in inner_type_param_names(v)})))
             return
         try:
             # Dedup per callee IDENTITY -- the outer map owns the callee, so
             # a substituted RecordInfo that dies cannot have its address
             # recycled into a false hit (see tpyc/identity_map.py).
             seen = self._own_copy_seen_roots.setdefault(callee, set())
-            key = (pairs, is_record, own_copy.loc_key(edge.loc))
+            key = (pairs, is_record, edge.site)
             if key in seen:
                 return
             seen.add(key)
@@ -4051,14 +4062,17 @@ class SemanticContext:
         if typ is None or not isinstance(func, TpyFunction):
             return
         root = self.func.body_root
-        if not isinstance(root, TpyFunction) or not root.type_params:
+        if not isinstance(root, TpyFunction):
+            return
+        declared = self.body_open_type_params()
+        if not declared:
             return
         # A generator expression's function forwards its own.
         collector = func if func.is_genexpr else root
         noted = self.composite_leaves_noted.setdefault(collector, set())
-        if noted.issuperset(root.type_params):
+        if noted.issuperset(declared):
             return
-        leaves = own_copy.composite_leaves(typ, root.type_params)
+        leaves = own_copy.composite_leaves(typ, declared)
         if not leaves:
             return
         display = None
@@ -4069,8 +4083,39 @@ class SemanticContext:
             if display is None:
                 display = resolve_int_literals(own_copy.shown_type(typ),
                                                self.default_int_for_literal)
-            self.own_copy_obligations.append(
-                own_copy.OwnCompositeLeaf(param, display, root.name))
+            owner, of_class = self.open_param_owner({param.name})
+            self.add_own_copy_obligation(
+                own_copy.OwnCompositeLeaf(param, display, owner,
+                                          of_class=of_class))
+
+    def class_owns(self, names: 'set[str]') -> bool:
+        """Whether a per-instantiation verdict over `names` is decided by
+        the enclosing class's type parameters alone -- the class's
+        instantiation answers it, a call of the member does not again. A
+        method re-declaring its class's parameter names the class's."""
+        if not names or self.record_ctx.record is None:
+            return False
+        open_params = self.body_open_type_params()
+        return names <= (set(self.record_ctx.type_params or ())
+                         & open_params)
+
+    def add_own_copy_obligation(self, obligation) -> None:
+        """Record a per-instantiation obligation of the body under
+        analysis, with whether its class answers it (`class_owns`)."""
+        self.own_copy_obligations.append(replace(
+            obligation, of_class=self.class_owns(
+                own_copy.obligation_params(obligation))))
+
+    def open_param_owner(self, names: 'set[str]') -> tuple[str, bool]:
+        """The generic a per-instantiation verdict over this body's open
+        type parameters `names` names, and whether it is the class: the
+        enclosing class where one of them is the class's (a method
+        re-declaring its class's parameter names the class's), else the
+        body's root function."""
+        rec = self.record_ctx.record
+        if rec is not None and names & set(self.record_ctx.type_params or ()):
+            return rec.name, True
+        return getattr(self.func.body_root, "name", "?"), False
 
     def own_copy_mark(self) -> tuple[int, int, int]:
         """Where the body about to be analyzed starts contributing."""
@@ -4376,6 +4421,8 @@ class SemanticContext:
 
     def set_expr_type(self, expr: TpyExpr, typ: TpyType) -> None:
         """Cache the type of an expression."""
+        if _ASSERT_BINDER_CARRIERS:
+            assert_no_binder_carrier(typ, "an expression's type")
         self.expr_types[expr] = typ
         self.note_composite_leaves(typ)
         # A COMPOSITE carrying a Pending* leaf (a non-array comprehension's
@@ -5595,6 +5642,21 @@ class SemanticContext:
             scope = scope.parent
         outer = scope.outer_function if scope is not None else None
         return outer if isinstance(outer, TpyFunction) else None
+
+    def body_open_type_params(self) -> frozenset[str]:
+        """The type parameters open in the body under analysis that an
+        instantiation may bind to `Own[X]`: its root function's (a nested
+        def, a lambda, a genexpr see their enclosing body's), and, in a
+        method, its class's where the class is one TPy emits. A method
+        re-declaring its class's parameter names the class's."""
+        root = self.func.body_root
+        if not isinstance(root, TpyFunction):
+            root = self.func.current_function
+        rec = self.record_ctx.record
+        info = self.registry.get_record(rec.name) if rec is not None else None
+        return body_open_type_params(
+            (root.type_params or ()) if isinstance(root, TpyFunction) else (),
+            info.qualified_name() if info is not None else None)
 
     def in_generic_scope(self) -> bool:
         """Whether the body under analysis may name a type parameter: its

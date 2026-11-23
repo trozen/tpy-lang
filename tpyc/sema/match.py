@@ -8,7 +8,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Iterator
 
-from ..typesys import (substitute_type_params_structural, 
+from ..typesys import (
     make_readonly,
     TpyType,
     NominalType, AliasRef, RecursiveAliasInstanceType, ReadonlyType,
@@ -1501,7 +1501,8 @@ class MatchAnalyzer:
                     f"'{cls_name}' has no field '{field_name}'", pattern
                 )
             # Resolve field type with type param substitution
-            field_type = substitute_type_params_structural(field_info.type, type_subst) if type_subst else field_info.type
+            field_type = self.expr.type_ops.field_type_at(field_info.type,
+                                                          type_subst)
             # Sub-pattern bindings
             if isinstance(sub_pattern, TpyCapturePattern):
                 bindings[sub_pattern.name] = field_type
@@ -2280,7 +2281,7 @@ class MatchAnalyzer:
             field_type = next((f.type for f in all_fields if f.name == field_name), None)
             if field_type is None:
                 return False
-            resolved = substitute_type_params_structural(field_type, subst) if subst else field_type
+            resolved = self.expr.type_ops.field_type_at(field_type, subst)
 
             if not self._type_pattern_compatible(inner, resolved):
                 return False

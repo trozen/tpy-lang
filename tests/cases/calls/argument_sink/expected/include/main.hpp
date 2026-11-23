@@ -1889,14 +1889,14 @@ inline void Inner<T>::put(::tpy::param_val_or_ref_t<T> value) {
 // def __init__(self, v: T) -> None:
 //     self._in = Inner[T](v)
 template<typename T>
-inline Outer<T>::Outer(::tpy::param_val_or_ref_t<T> v) : _in(Inner<T>(v)) {}
+inline Outer<T>::Outer(::tpy::param_val_or_ref_t<T> v) : _in(Inner<T>(::tpy::param_pass_last<T>(v))) {}
 
 // def put_own(self, value: Own[T]) -> None:  # tpyc: warning(/param 'value' is never consumed/)
 //     # own_tparam_fwd: an `Own[T]` parameter at a bare `T` method slot
 //     self._in.put(value)  # tpyc: ok
 template<typename T>
 inline void Outer<T>::put_own(::tpy::own_param_t<T> value) {
-    this->_in.put(value);
+    this->_in.put(::tpy::param_pass_last<T>(value));
 }
 
 // def __init__(self) -> None:
@@ -1972,7 +1972,7 @@ bool poke_gen(::tpy::opt_param_t<U> o, const std::function<void(::tpy::param_val
 template<typename T>
 std::optional<Crate<T>> wrap_crate(std::optional<::tpy::storage_t<T>> v) {
     if ((v.has_value())) {
-        return Crate<T>(std::move((*v)));
+        return Crate<::tpy::storage_t<T>>(std::move((*v)));
     }
     return std::nullopt;
 }

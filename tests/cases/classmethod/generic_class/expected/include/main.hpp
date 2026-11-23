@@ -47,7 +47,7 @@ inline Box<T>::Box(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(
 //     return cls(v)
 template<typename T>
 inline Box<T> Box<T>::of(::tpy::param_val_or_ref_t<T> v) {
-    return Box<T>(v);
+    return Box<T>(::tpy::param_pass_last<T>(v));
 }
 
 void __tpy_init();

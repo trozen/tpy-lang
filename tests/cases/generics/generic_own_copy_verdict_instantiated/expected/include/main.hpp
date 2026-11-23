@@ -568,7 +568,7 @@ inline int32_t Shadowed<T>::keep(::tpy::param_val_or_cref_t<T> v) const
 // def __init__(self, v: T) -> None:
 //     super().__init__(v)  # tpyc: ok
 template<typename T>
-inline GenMid<T>::GenMid(::tpy::param_val_or_ref_t<T> v) : GenBase<T>(v) {}
+inline GenMid<T>::GenMid(::tpy::param_val_or_ref_t<T> v) : GenBase<T>(::tpy::param_pass_last<T>(v)) {}
 
 // # free function, container-element slot. `diag.txt` is the subject of every
 // # section: nothing for the value instantiation, `copies X into <sink>` for the

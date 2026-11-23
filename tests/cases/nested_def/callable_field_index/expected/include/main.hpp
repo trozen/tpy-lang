@@ -246,7 +246,7 @@ inline Generic<T>::Generic(std::function<::tpy::val_or_ref_t<T>(::tpy::param_val
 //     return self.callbacks[0](x)  # tpyc: ok
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Generic<T>::invoke(::tpy::param_val_or_ref_t<T> x) const {
-    return (::tpy::__getitem__(this->callbacks, 0))(x);
+    return (::tpy::__getitem__(this->callbacks, 0))(::tpy::param_pass_last<T>(x));
 }
 
 void __tpy_init();

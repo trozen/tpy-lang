@@ -322,8 +322,8 @@ template<typename T>
 template<typename T>
 void outer(::tpy::param_val_or_ref_t<T> x) {
     auto inner = [&x]() {
-        ::tpy::val_or_ref_t<T> y = ::tpyapp::main::identity<T>(x);
-        Pair<T, int32_t> p = Pair<T, int32_t>(x, 3);
+        ::tpy::val_or_ref_t<T> y = ::tpyapp::main::identity<T>(::tpy::param_pass<T>(x));
+        Pair<T, int32_t> p = Pair<T, int32_t>(::tpy::param_pass<T>(x), 3);
         std::cout << "explicit" << " " << ::tpy::ValuePrinter(y) << " " << p.b << "\n" << ::tpy::check_signals;
     };
     inner();

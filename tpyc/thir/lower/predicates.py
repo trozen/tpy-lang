@@ -3020,6 +3020,10 @@ def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
         if isinstance(u, PendingViewType):
             rv = _resolve_pending_view(u, analyzer)
             return rv is not None and _f1_record_type_arg_ok(rv, analyzer)
+        # `Box[Own[P]]`: both spellings give the owned tag over the inner
+        # arg's (`type_arg_cpp`), so it is in the slice when that one is.
+        if isinstance(u, OwnType) and not u.is_plain():
+            return _f1_record_type_arg_ok(u.wrapped, analyzer)
     return (_eligible_scalar(a) or _eligible_char(a)
             or record_like(a, analyzer)
             or _f1_dyn_protocol_type_arg(a, analyzer))
@@ -6980,8 +6984,7 @@ def _record_field_decl_type(rt: TpyType, field: str,
     # base-first); the C++ member access renders identically either way.
     for f in reversed(analyzer.registry.get_all_fields(record)):
         if f.name == field:
-            return (substitute_type_params_simple(f.type, subst)
-                    if subst else f.type)
+            return analyzer.type_ops.field_type_at(f.type, subst)
     return None
 
 def _unbound_self_field_decl_type(e: TpyExpr, analyzer) -> 'TpyType | None':

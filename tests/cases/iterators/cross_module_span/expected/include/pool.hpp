@@ -23,7 +23,7 @@ Pool<T> make_pool(std::vector<::tpy::storage_t<T>>&& items);
 template<typename T>
 struct Pool {
     // _items: ArrayList[T, 8]
-    ::tpystd::tplib::array_list::ArrayList<::tpy::storage_t<T>, 8> _items;
+    ::tpystd::tplib::array_list::ArrayList<T, 8> _items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
     Pool() = default;
@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pool<T>& obj) {
 // def __init__(self, items: Own[list[T]]) -> None:
 //     self._items = ArrayList[T, 8](items)
 template<typename T>
-inline Pool<T>::Pool(std::vector<::tpy::storage_t<T>>&& items) : _items(::tpystd::tplib::array_list::ArrayList<::tpy::storage_t<T>, 8>(&(items))) {}
+inline Pool<T>::Pool(std::vector<::tpy::storage_t<T>>&& items) : _items(::tpystd::tplib::array_list::ArrayList<T, 8>(&(items))) {}
 
 // def __span__(self) -> Span[readonly[T]]:
 //     return span(self._items)

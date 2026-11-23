@@ -67,7 +67,7 @@ __gen_in_with in_with(::tpy::varargs<const std::vector<int32_t>> xs);
 __gen_readonly_param readonly_param(const std::vector<Point>& ps);
 // def bump_generic[T: Counter](*xs: T) -> Iterator[int32]:  # tpyc: ok
 template <typename T>
-__gen_bump_generic<T> bump_generic(::tpy::varargs<T> xs);
+__gen_bump_generic<T> bump_generic(::tpy::varargs<::tpy::storage_t<T>> xs);
 // def points(ps: readonly[list[Point]]) -> Iterator[readonly[Point]]:  # tpyc: ok
 __gen_points points(const std::vector<Point>& ps);
 // def readonly_next(it: Iterator[readonly[Point]]) -> Iterator[int32]:  # tpyc: ok
@@ -554,7 +554,7 @@ struct __gen_readonly_param : public ::tpy::next_iter_mixin<__gen_readonly_param
 template <typename T>
 struct __gen_bump_generic : public ::tpy::next_iter_mixin<__gen_bump_generic<T>, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::varargs<T> xs;
+    ::tpy::varargs<::tpy::storage_t<T>> xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -568,7 +568,7 @@ struct __gen_bump_generic : public ::tpy::next_iter_mixin<__gen_bump_generic<T>,
         S_DONE = 4,
     };
 
-    __gen_bump_generic(::tpy::varargs<T> xs_)
+    __gen_bump_generic(::tpy::varargs<::tpy::storage_t<T>> xs_)
         : __state(S_INITIAL),
           xs(std::move(xs_)) {}
 
@@ -619,7 +619,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump_generic<T>::__next__() {
 
 // def bump_generic[T: Counter](*xs: T) -> Iterator[int32]:  # tpyc: ok
 template <typename T>
-__gen_bump_generic<T> bump_generic(::tpy::varargs<T> xs) {
+__gen_bump_generic<T> bump_generic(::tpy::varargs<::tpy::storage_t<T>> xs) {
     return __gen_bump_generic<T>(xs);
 }
 

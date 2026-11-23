@@ -158,10 +158,8 @@ def explicit_type_arg(items: list[Own[Item]]) -> None:
         nkeep.append(y)  # tpyc: ok
     nkeep[1].value = 22
     print("named method type arg", items[0].value, nkeep[1].value)
-    # the plain static-method instantiation: a class type parameter takes
-    # no `Own[X]` until unit 2b
-    # (BUGS.md#class-own-type-arg-method-result-ill-formed); the record
-    # iterator's `__next__ -> U` lends, so the append copies it
+    # the plain static-method instantiation: the record iterator's
+    # `__next__ -> U` lends, so the append copies it
     st = G.wrap[Item](items)
     for w in st:
         nkeep.append(w)  # tpyc: warning(/copies Item into owned storage/)

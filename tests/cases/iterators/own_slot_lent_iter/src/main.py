@@ -203,10 +203,7 @@ def free_function() -> None:
     bag.push([7])
     bump("free generic step", bag)  # tpyc: warning(/copies list\[int32\] elements/)
     # a generic step lends the field's elements, so they copy (handing them
-    # over needs a popping `Iterator[Own[T]]` step:
-    # BUGS.md#substituted-own-step-policy); written at a plain `T`, as a
-    # class takes no `Own[X]` type argument until unit 2b
-    # (BUGS.md#class-own-type-arg-method-result-ill-formed)
+    # over needs a popping `Iterator[Own[T]]` step); written at a plain `T`
     ob = Bag[list[int32]]()
     e: list[int32] = [8]
     ob.push(e)

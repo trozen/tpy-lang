@@ -27,7 +27,7 @@ from ..compilation_context import get_current_compiler
 from ..type_def_registry import (
     is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_float64_type, is_float32_type,
-    is_enum_type, protocol_info_of,
+    is_enum_type, protocol_info_of, type_def_of,
 )
 
 if TYPE_CHECKING:
@@ -407,10 +407,8 @@ class TypeResolver:
                 source_module, original_name = qual
                 qualified = qualified_cpp_name(source_module, original_name)
                 if typ.type_args:
-                    args = ", ".join(
-                        self.type_to_cpp(t) if isinstance(t, TpyType) else str(t)
-                        for t in typ.type_args
-                    )
+                    args = template_args_cpp(typ.name, type_def_of(typ),
+                                             typ.type_args, self.type_to_cpp)
                     return f"{qualified}<{args}>"
                 return qualified
         # Enum type-position spelling. Routes through enum_cpp_name so
@@ -452,7 +450,6 @@ class TypeResolver:
         # cpp_formatter (e.g. SpanIter's) -- fall through to
         # typ.to_cpp() so the formatter wins.
         if type(typ) is NominalType and typ.type_args:
-            from tpyc.type_def_registry import type_def_of
             td = type_def_of(typ)
             if td is None or td.cpp_formatter is None:
                 base = typ.to_cpp_base_name()

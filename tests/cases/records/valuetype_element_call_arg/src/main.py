@@ -101,9 +101,8 @@ def mutate_plain_bag(b: Bag[A]) -> None:
 
 
 def mutate_bag(b: Bag[A]) -> None:
-    # a user generic __getitem__ -> T: the stored element, as at a list;
-    # at a plain `T`, as a class takes no `Own[X]` type argument until unit
-    # 2b (BUGS.md#class-own-type-arg-method-result-ill-formed).
+    # a user generic __getitem__ -> T: the stored element, as at a list,
+    # at a plain `T` (at `Own[A]` it is an owned copy).
     poke(b[0])  # tpyc: ok
     poke(b.__getitem__(0))  # tpyc: ok
     print("bag element mutate", b[0].x)

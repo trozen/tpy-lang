@@ -1489,17 +1489,25 @@ def const_place(expr: TpyExpr, type_of: "ExprTypeOf",
         expr, stepped = expr.obj, True
 
 
-def deref_step_const(expr: TpyExpr, type_of: "ExprTypeOf",
-                      const_referent: Callable[[TpyExpr], bool]) -> bool | None:
-    """A deref coercion over a handle (`x: A = m._a` on `_a: Ptr[A]`) is a
-    step through that handle, so it ends `const_place`'s walk with the
-    handle's referent access; None when the coercion stack has no such
-    step."""
+def deref_step(expr: TpyExpr) -> 'TpyCoerce | None':
+    """The deref coercion in `expr`'s coercion stack (`x: A = m._a` on
+    `_a: Ptr[A]`), whose operand is the handle; None for none."""
     while isinstance(expr, TpyCoerce):
         if expr.coercion.name == "deref_to_target":
-            return handle_referent_const(expr.expr, type_of, const_referent)
+            return expr
         expr = expr.expr
     return None
+
+
+def deref_step_const(expr: TpyExpr, type_of: "ExprTypeOf",
+                      const_referent: Callable[[TpyExpr], bool]) -> bool | None:
+    """A deref coercion over a handle is a step through that handle
+    (`deref_step`), so it ends `const_place`'s walk with the handle's
+    referent access; None when the coercion stack has no such step."""
+    step = deref_step(expr)
+    if step is None:
+        return None
+    return handle_referent_const(step.expr, type_of, const_referent)
 
 
 def handle_referent_const(handle: TpyExpr, type_of: "ExprTypeOf",

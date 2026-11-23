@@ -44,7 +44,7 @@ void main();
 template<::tpystd::tpy::Equatable T, std::size_t N>
 struct Labels {
     // items: ArrayList[T, N]
-    ::tpystd::tplib::array_list::ArrayList<::tpy::storage_t<T>, N> items;
+    ::tpystd::tplib::array_list::ArrayList<T, N> items;
 
     // def __init__(self) -> None:
     Labels();
@@ -132,7 +132,7 @@ inline bool StrLabels::has(std::string_view value) const {
 // def __init__(self) -> None:
 //     self.items = ArrayList[T, N]()
 template<::tpystd::tpy::Equatable T, std::size_t N>
-inline Labels<T, N>::Labels() : items(::tpystd::tplib::array_list::ArrayList<::tpy::storage_t<T>, N>()) {}
+inline Labels<T, N>::Labels() : items(::tpystd::tplib::array_list::ArrayList<T, N>()) {}
 
 // def add(self, value: T) -> None:
 //     self.items.append(value)  # tpyc: warning(/may copy T into owned storage/)
@@ -146,7 +146,7 @@ inline void Labels<T, N>::add(::tpy::param_val_or_ref_t<T> value) {
 //     self.items.remove(value)
 template<::tpystd::tpy::Equatable T, std::size_t N>
 inline void Labels<T, N>::drop(::tpy::param_val_or_ref_t<T> value) {
-    this->items.remove(value);
+    this->items.remove(::tpy::param_pass_last<T>(value));
 }
 
 // def has(self, value: T) -> bool:

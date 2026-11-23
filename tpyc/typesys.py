@@ -1287,6 +1287,33 @@ def is_native_template(td: Optional["TypeDef"]) -> bool:
     return td is not None and td.record is not None and td.record.is_native
 
 
+def holds_arg_storage_form(td: Optional["TypeDef"]) -> bool:
+    """Whether this template's C++ instantiates an open `T` argument as its
+    storage form `::tpy::storage_t<T>` (`template_args_cpp`): a
+    hand-written native template, or one owning its elements."""
+    return is_native_template(td) or (td is not None and td.owns_elements)
+
+
+def native_storage_arg(td: Optional["TypeDef"]) -> bool:
+    """Whether sema reads an open `T` argument of this template as its
+    storage form (`Unowned(T)`, `P` at `Own[P]`), as its C++ holds it
+    (`holds_arg_storage_form`) -- so `load() -> T` over an open `T` reads
+    `Unowned(T)`, the hand-written twin's lent `P`
+    (`build_type_substitution`). A template owning its elements keeps `T`:
+    its elements' ownership is the `owns_elements` rule's."""
+    return holds_arg_storage_form(td) and not td.owns_elements
+
+
+def own_arg_is_identity(td: Optional["TypeDef"]) -> bool:
+    """Whether an `Own[X]` type argument of this template is part of the
+    instantiation's identity (`C[Own[P]]` is not `C[P]`): a generic class
+    TPy emits itself. A native template's `Own` argument marks element
+    ownership instead, and its open `T` argument is the storage form."""
+    return (td is not None and td.record is not None
+            and not td.record.is_native
+            and td.record.builtin_type_key is None)
+
+
 def spells_readonly_arg_const(td: Optional["TypeDef"]) -> bool:
     """Whether this template spells a `readonly[T]` argument `const T`: only a
     declared borrowing view does. A borrow handle over readonly elements is a
@@ -1319,16 +1346,29 @@ def template_args_cpp(owner: str, td: Optional["TypeDef"], args: Sequence[object
                       render: Callable[['TpyType'], str]) -> str:
     """The C++ template argument list of `owner[args]`; `td` is the
     template's TypeDef (its parameter names and readonly spelling)."""
-    const_readonly = spells_readonly_arg_const(td)
     names = td.param_names if td is not None else ()
-    elements = td is not None and td.owns_elements
     return ", ".join(
         int_type_arg_cpp(arg, owner, names[i] if i < len(names) else f"#{i + 1}")
         if isinstance(arg, int) and not isinstance(arg, bool)
-        else render(arg)
-        if elements and isinstance(arg, TypeParamRef)
-        else template_arg_cpp(arg, const_readonly, render)
+        else template_type_arg_cpp(
+            arg, identity=own_arg_is_identity(td),
+            storage=holds_arg_storage_form(td),
+            const_readonly=spells_readonly_arg_const(td), render=render)
         for i, arg in enumerate(args))
+
+
+def template_type_arg_cpp(arg: object, *, identity: bool, storage: bool,
+                          const_readonly: bool,
+                          render: Callable[['TpyType'], str]) -> str:
+    """One type argument of a template whose TypeDef facts are given: an
+    `Own[X]` the identity of a class TPy emits (`type_arg_cpp`), an open
+    `T` the storage form where the template holds that
+    (`holds_arg_storage_form`), else `template_arg_cpp`."""
+    if identity and isinstance(arg, TpyType):
+        return type_arg_cpp(arg, render)
+    if storage and isinstance(arg, TypeParamRef):
+        return render(arg)
+    return template_arg_cpp(arg, const_readonly, render)
 
 
 def template_arg_cpp(arg: object, const_readonly: bool,
@@ -1467,7 +1507,7 @@ class NominalType(TpyType):
         from tpyc.type_def_registry import type_def_of
         td = type_def_of(self)
         if td is not None and td.record is not None:
-            return self.is_user_record and not td.record.is_native
+            return own_arg_is_identity(td)
         # Declared in a module whose records are being registered: its
         # TypeDef comes with its registration.
         compiler = get_current_compiler()
@@ -1764,7 +1804,7 @@ def same_base_type(a: 'TpyType', b: 'TpyType') -> bool:
 
 
 def substitute_type_params_structural(
-    typ: TpyType, subst: dict[str, TpyType], *, spelled: bool = False,
+    typ: TpyType, subst: dict[str, TpyType],
 ) -> TpyType:
     """Replace TypeParamRef nodes in `typ` with values from `subst`.
 
@@ -1774,13 +1814,9 @@ def substitute_type_params_structural(
     type_ops.py that handles representation choices (e.g. Optional
     pointer repr); this one is for typesys-internal callers that only
     need structural replacement. The result is settled
-    (`settled_substitution`), as every substitution's is, and its class
-    types formed (`without_class_own_args`) -- unless `spelled`: the
-    parser's expansion of a written alias stays as written, for sema's
-    check of the spelling to see (and warn of) what it drops.
+    (`settled_substitution`), as every substitution's is.
     """
-    settled = settled_substitution(typ, _substitute_structural(typ, subst))
-    return settled if spelled else without_class_own_args(settled)
+    return settled_substitution(typ, _substitute_structural(typ, subst))
 
 
 def _substitute_structural(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
@@ -2425,105 +2461,6 @@ def unwrap_own(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
-def without_class_own_args(
-        t: 'TpyType',
-        dropped: 'list[tuple[TpyType, TpyType, OwnType]] | None' = None,
-) -> 'TpyType':
-    """`t` with every non-plain `Own[X]` inside a type argument of a class
-    TPy emits itself (`NominalType.is_emitted_generic_class`), at any depth,
-    replaced by `X`. Until the Callable contract unit 2b gives `C[Own[X]]`
-    a meaning, it is `C[X]` -- what the C++ instantiates
-    (BUGS.md#class-own-type-arg-method-result-ill-formed). The one rule
-    every formation of a class type applies (a written spelling, a
-    substitution, an inference); a plain `Own[int32]` is `int32` already
-    and stays, a callable's `Own` is its contract and stays, and a builtin
-    container's, a `@native` class's or a protocol's arguments are not
-    touched. A generic alias drops it from the arguments that reach such a
-    class in its body (`alias_class_arg_params`). `dropped`, when given,
-    receives `(before, after, own)` per class or alias spelling changed."""
-    def peel(a: 'TpyType', owns: 'list[OwnType]') -> 'TpyType':
-        if isinstance(a, CallableType):
-            return a
-        if isinstance(a, OwnType) and not a.is_plain():
-            owns.append(a)
-            return peel(a.wrapped, owns)
-        return a.map_inner_types(lambda i: peel(i, owns))
-
-    def changed(before: 'TpyType', after: 'TpyType',
-                owns: 'list[OwnType]') -> 'TpyType':
-        if owns and dropped is not None:
-            dropped.append((before, after, owns[0]))
-        return after
-
-    def walk(x: 'TpyType') -> 'TpyType':
-        x = x.map_inner_types(walk)
-        if isinstance(x, NominalType) and x.is_emitted_generic_class():
-            owns: list[OwnType] = []
-            return changed(x, x.map_inner_types(lambda a: peel(a, owns)), owns)
-        if isinstance(x, RecursiveAliasInstanceType) and x.alias_info:
-            reaching = alias_class_arg_params(x.alias_info, x.qname)
-            if reaching:
-                owns = []
-                args = tuple(
-                    peel(a, owns) if p in reaching else a
-                    for p, a in zip(x.alias_info.type_params, x.type_args))
-                if owns:
-                    return changed(x, dc_replace(x, type_args=args), owns)
-        return x
-    return walk(t)
-
-
-def alias_class_arg_params(info: 'TypeAliasInfo',
-                           qname: str = "") -> 'frozenset[str]':
-    """The type parameters of a generic alias its declared body hands to a
-    class TPy emits itself as (part of) a type argument -- directly or
-    through the aliases it names. A fact of the declaration, computed once
-    (`TypeAliasInfo.class_arg_params`)."""
-    if info.class_arg_params is not None:
-        return info.class_arg_params
-    if id(info) in _ALIAS_PARAMS_ASKED:
-        return frozenset()  # a self-reference adds nothing
-    _ALIAS_PARAMS_ASKED.add(id(info))
-    try:
-        return _alias_class_arg_params(info)
-    finally:
-        _ALIAS_PARAMS_ASKED.discard(id(info))
-
-
-# The alias declarations `alias_class_arg_params` is reading, so a body
-# naming its own alias stops there.
-_ALIAS_PARAMS_ASKED: set[int] = set()
-
-
-def _alias_class_arg_params(info: 'TypeAliasInfo') -> 'frozenset[str]':
-    params = set(info.type_params)
-    found: set[str] = set()
-
-    def walk(t: 'TpyType', inside: bool) -> None:
-        if isinstance(t, TypeParamRef):
-            if inside and t.name in params:
-                found.add(t.name)
-            return
-        if isinstance(t, CallableType):
-            return
-        if isinstance(t, RecursiveAliasInstanceType) and t.alias_info:
-            inner = (frozenset(t.alias_info.type_params) if inside
-                     else alias_class_arg_params(t.alias_info, t.qname))
-            for p, a in zip(t.alias_info.type_params, t.type_args):
-                if p in inner and isinstance(a, TpyType):
-                    walk(a, True)
-            return
-        here = inside or (isinstance(t, NominalType)
-                          and t.is_emitted_generic_class())
-        for a in t.inner_types():
-            walk(a, here)
-    walk(info.body, False)
-    # Kept once found: an empty answer may be asked before the classes
-    # the body names are registered, so it is asked again.
-    info.class_arg_params = frozenset(found) if found else None
-    return frozenset(found)
-
-
 def unwrap_value_own(typ: 'TpyType') -> 'TpyType':
     """`typ` without an `Own[...]` around a value type, on which it
     transfers nothing; around a reference type (or a type parameter not
@@ -2570,6 +2507,10 @@ def type_contains_own(typ: 'TpyType', _under_optional: bool = False,
         return any(type_contains_own(e, allow_optional_own=allow_optional_own)
                    for e in typ.element_types)
     if isinstance(typ, NominalType):
+        # A class TPy emits is instantiated at what its arguments say:
+        # `Box[Own[P]]` is not `Box[P]`.
+        if typ.is_emitted_generic_class():
+            return False
         return any(type_contains_own(a, allow_optional_own=allow_optional_own)
                    for a in typ.type_args)
     return False
@@ -2604,7 +2545,11 @@ def strip_own_type_args(typ: 'NominalType') -> 'NominalType':
     """Strip a top-level Own[...] from each of a nominal type's args
     (`Iterable[Own[X]]` -> `Iterable[X]`). An Own-wrapped type arg signals
     copy/ownership semantics for the copy-semantics conformance check, not a
-    distinct element type, so both sides are stripped before structural match."""
+    distinct element type, so both sides are stripped before structural match.
+    A class TPy emits keeps them: its `Own[X]` argument is part of what it is
+    (`own_arg_is_identity`), so `Box[P]` never fits a `Box[Own[P]]`."""
+    if own_arg_is_identity(type_def_of(typ)):
+        return typ
     return typ.with_inner_types(
         tuple(unwrap_own(a) for a in typ.inner_types()))
 
@@ -3514,7 +3459,8 @@ def _type_arg_own_peeled(ret_type: TpyType | None,
     # Only a CLASS's type parameter: a function's own (a generic method's
     # `U` included) substitutes literally, `-> T` at `T = Own[P]` handing
     # the value over.
-    if not class_type_param(fi.root, unwrap_readonly(root_rt.wrapped).name):
+    if (not class_type_param(fi.root, unwrap_readonly(root_rt.wrapped).name)
+            or class_own_arg_is_identity(fi.root)):
         return ret_type
     rt = unwrap_readonly(ret_type)
     return rt.wrapped if isinstance(rt, OwnType) else ret_type
@@ -3534,6 +3480,31 @@ def class_type_param(fi: FunctionInfo, name: str) -> bool:
         # A record the registry cannot name: keep the class reading.
         return True
     return name in (rec.type_params or ())
+
+
+def class_own_arg_is_identity(fi: FunctionInfo) -> bool:
+    """Whether the class declaring method `fi` takes an `Own[X]` type
+    argument as part of its identity (`own_arg_is_identity`): its type
+    parameters are open in the method's body as the method's own are."""
+    if not fi.is_method or fi.owning_type_qname is None:
+        return False
+    return own_arg_is_identity(get_type_def(fi.owning_type_qname))
+
+
+def body_open_type_params(own: 'Iterable[str]',
+                          class_qname: 'str | None') -> frozenset[str]:
+    """The type parameters open in a body that an instantiation may bind
+    to `Own[X]`: the function's `own`, and those of the class declaring it
+    (`class_qname`) where the class takes an `Own[X]` argument as its
+    identity (`own_arg_is_identity`). A method re-declaring its class's
+    parameter names the class's."""
+    found = frozenset(own)
+    if class_qname is None:
+        return found
+    td = get_type_def(class_qname)
+    if own_arg_is_identity(td):
+        found |= frozenset(td.record.type_params or ())
+    return found
 
 
 def _sync_result_is_reference(ret_type: TpyType | None,
@@ -3831,7 +3802,9 @@ def canonical_readonly(t: 'TpyType') -> 'TpyType':
     signature, a substituted one -- carries none."""
     if isinstance(t, ReadonlyType):
         inner = canonical_readonly(t.wrapped)
-        if not readonly_protects(inner):
+        # An owned value is its own: `readonly[T]` at `T = Own[X]` is the
+        # caller's `Own[X]`, as the hand-written twin's `-> Own[X]`.
+        if not readonly_protects(inner) or isinstance(inner, OwnType):
             return inner
         return t if inner is t.wrapped else ReadonlyType(inner)
     if isinstance(t, TupleType):
@@ -5132,17 +5105,42 @@ def inner_type_param_names(typ: TpyType | None) -> set[str]:
     `T | None` or `tuple[T, int32]` payload is just as unknowable as a bare
     `T`, and answering it confidently is a false positive at a value `T`.
     """
-    names: set[str] = set()
+    return set(inner_type_param_refs(typ))
+
+
+def inner_type_param_refs(typ: TpyType | None) -> dict[str, TypeParamRef]:
+    """`inner_type_param_names`, each with the reference that names it."""
+    refs: dict[str, TypeParamRef] = {}
     if typ is None:
-        return names
+        return refs
     stack = [typ]
     while stack:
         current = stack.pop()
         if isinstance(current, TypeParamRef):
-            names.add(current.name)
+            refs.setdefault(current.name, current)
             continue
         stack.extend(current.inner_types())
-    return names
+    return refs
+
+
+def named_class_types(typ: TpyType) -> Iterator['NominalType']:
+    """Every class type at type arguments `typ` names, at any depth -- a
+    pointee, a callable's parameters and result, a recursive alias's
+    substituted body (walked once per alias instance) included."""
+    aliases: set = set()
+    stack = [typ]
+    while stack:
+        current = stack.pop()
+        if isinstance(current, NominalType) and current.type_args:
+            yield current
+        if isinstance(current, RecursiveAliasInstanceType):
+            if current in aliases:
+                continue
+            aliases.add(current)
+            body = current.substituted_body()
+            if body is not current:
+                stack.append(body)
+        stack.extend(reversed(current.inner_types()))
 
 
 def is_value_type_bound(bound: 'TpyType | None') -> bool:
@@ -5673,8 +5671,11 @@ class RecursiveAliasInstanceType(TpyType):
         # because the key is the qname, not the short name.
         base = _recursive_alias_cpp_names_view().get(self.qname) or self._short()
         if self.type_args:
+            # The alias is a template TPy emits: an `Own[X]` argument is
+            # part of what it instantiates, as a class's (`type_arg_cpp`).
             rendered = ", ".join(
-                a.to_cpp() if isinstance(a, TpyType) else str(a)
+                type_arg_cpp(a, lambda t: t.to_cpp())
+                if isinstance(a, TpyType) else str(a)
                 for a in self.type_args
             )
             return f"{base}<{rendered}>"
@@ -10258,9 +10259,6 @@ class TypeAliasInfo:
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)
     loc: Optional[Any] = None  # SourceLocation from parse.py (avoid circular import)
     is_recursive: bool = False
-    # `alias_class_arg_params`, computed on first ask.
-    class_arg_params: 'frozenset[str] | None' = field(
-        default=None, compare=False, repr=False)
 
 
 @dataclass

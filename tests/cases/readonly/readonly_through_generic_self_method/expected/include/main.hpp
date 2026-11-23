@@ -83,7 +83,7 @@ inline int32_t Holder<T>::lookup(int32_t x) const {
 // def __init__(self, val: T) -> None:
 //     super().__init__(val)
 template<typename T>
-inline SubHolder<T>::SubHolder(::tpy::param_val_or_ref_t<T> val) : Holder<T>(val) {}
+inline SubHolder<T>::SubHolder(::tpy::param_val_or_ref_t<T> val) : Holder<T>(::tpy::param_pass_last<T>(val)) {}
 
 // def super_lookup(self, x: int32) -> int32:
 //     return super().identity(x)

@@ -4,10 +4,10 @@
 namespace tpyapp::fixtures {
 
 
-// def mk(k: int32) -> Own[P]:
-//     return P(k)
-P mk(int32_t k) {
-    return P(k);
+// def mk() -> Own[P]:
+//     return P(2)
+P mk() {
+    return P(2);
 }
 
 void __tpy_init() {

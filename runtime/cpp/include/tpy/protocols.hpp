@@ -67,12 +67,12 @@ concept proto_result = std::convertible_to<From, To> ||
  * Fixed-width integer concepts - constrain generic functions to fixed-int types
  */
 template<typename T>
-concept AnyFixedInt = std::is_integral_v<T> && !std::is_same_v<T, bool>;
+concept AnyFixedInt = std::is_integral_v<storage_t<T>> && !std::is_same_v<storage_t<T>, bool>;
 
 template<typename T>
-concept AnyFixedSigned = AnyFixedInt<T> && std::is_signed_v<T>;
+concept AnyFixedSigned = AnyFixedInt<T> && std::is_signed_v<storage_t<T>>;
 
 template<typename T>
-concept AnyFixedUnsigned = AnyFixedInt<T> && std::is_unsigned_v<T>;
+concept AnyFixedUnsigned = AnyFixedInt<T> && std::is_unsigned_v<storage_t<T>>;
 
 } // namespace tpy

@@ -3,110 +3,117 @@
 
 namespace tpyapp::main {
 
+::tpyapp::fixtures::Box<::tpy::own_arg<::tpyapp::fixtures::P>>* G{};
 
-// def by_param(c: C[Own[P]]) -> int32:  # tpyc: warning(/`Own\[P\]` in a type argument of class 'C' has no effect yet; write `C\[P\]`/)
-//     h = c.get()
-//     h.x = 9
-//     return c.items[0].x
-int32_t by_param(::tpyapp::fixtures::C<::tpyapp::fixtures::P>& c) {
-    ::tpyapp::fixtures::P& h = c.get();
-    h.x = 9;
-    return ::tpy::__getitem__(c.items, 0).x;
+// # an annotation alone forms the class too
+// def count(b: Box[Own[P]]) -> int32:  # tpyc: warning(/copies P into owned storage in 'Box.get'/) warning(/'Box.push_v'/) warning(/'Box.__iter__'/)
+//     return len(b.items)
+int32_t count(const ::tpyapp::fixtures::Box<::tpy::own_arg<::tpyapp::fixtures::P>>& b) {
+    return ::tpy::__len__(b.items);
 }
 
-// def by_return() -> Own[C[Own[P]]]:  # tpyc: warning(/has no effect yet/)
-//     c = C[P]()
-//     c.items.append(P(1))
-//     return c
-::tpyapp::fixtures::C<::tpyapp::fixtures::P> by_return() {
-    ::tpyapp::fixtures::C<::tpyapp::fixtures::P> c = ::tpyapp::fixtures::C<::tpyapp::fixtures::P>();
-    c.items.push_back(::tpyapp::fixtures::P(1));
-    return c;
+// def core() -> None:
+//     # a fresh value and a local at its last use move in
+//     b = Box[Own[P]](P(2))  # tpyc: warning(/'Box.get'/) warning(/'Box.push_v'/) warning(/'Box.__iter__'/)
+//     q = P(3)
+//     b.push(q)  # tpyc: ok
+//     b.push(P(5))  # tpyc: ok
+//     b.items[0].n = 30
+//     print("core", b.v.n, b.items[0].n, len(b.items), count(b))
+void core() {
+    ::tpyapp::fixtures::Box<::tpy::own_arg<::tpyapp::fixtures::P>> b = ::tpyapp::fixtures::Box<::tpy::own_arg<::tpyapp::fixtures::P>>(::tpyapp::fixtures::P(2));
+    ::tpyapp::fixtures::P q = ::tpyapp::fixtures::P(3);
+    b.push(std::move(q));
+    b.push(::tpyapp::fixtures::P(5));
+    ::tpy::__getitem__(b.items, 0).n = 30;
+    std::cout << "core" << " " << b.v.n << " " << ::tpy::__getitem__(b.items, 0).n << " " << ::tpy::__len__(b.items) << " " << ::tpyapp::main::count(b) << "\n" << ::tpy::check_signals;
 }
 
-// def pending(f: Callable[[int32], Own[P]]) -> None:
-//     # a construction completed by `fill`: `f`'s `Own[P]` result meets
-//     # `fill`'s `Own[T]`, so it binds `T = P`
-//     c = C()
-//     c.fill(f, 3)  # tpyc: ok
-//     h = c.get()
-//     h.x = 9
-//     print("pending", c.items[0].x)
-void pending(const std::function<::tpyapp::fixtures::P(int32_t)>& f) {
-    ::tpyapp::fixtures::C<::tpyapp::fixtures::P> c = ::tpyapp::fixtures::C<::tpyapp::fixtures::P>();
-    c.fill(f, 3);
-    ::tpyapp::fixtures::P& h = c.get();
-    h.x = 9;
-    std::cout << "pending" << " " << ::tpy::__getitem__(c.items, 0).x << "\n" << ::tpy::check_signals;
+// def plain() -> None:
+//     # `Box[P]`'s `get` lends, as CPython's
+//     b = Box[P](P(2))
+//     g = b.get()
+//     g.n = 9
+//     print("plain", b.v.n)
+void plain() {
+    ::tpyapp::fixtures::Box<::tpyapp::fixtures::P> b = ::tpyapp::fixtures::Box<::tpyapp::fixtures::P>(::tpyapp::fixtures::P(2));
+    ::tpyapp::fixtures::P& g = b.get();
+    g.n = 9;
+    std::cout << "plain" << " " << b.v.n << "\n" << ::tpy::check_signals;
 }
 
-// def class_method(f: Callable[[int32], Own[P]]) -> None:
-//     # a class method whose class `T` the callable's `Own[P]` result binds to
-//     # `P` through `build`'s `Own[T]`
-//     c = C.build(f, 4)  # tpyc: ok
-//     h = c.get()
-//     h.x = 9
-//     print("classmethod", c.items[0].x)
-void class_method(const std::function<::tpyapp::fixtures::P(int32_t)>& f) {
-    ::tpyapp::fixtures::C<::tpyapp::fixtures::P> c = C<::tpyapp::fixtures::P>::build(f, 4);
-    ::tpyapp::fixtures::P& h = c.get();
-    h.x = 9;
-    std::cout << "classmethod" << " " << ::tpy::__getitem__(c.items, 0).x << "\n" << ::tpy::check_signals;
+// def nocopy_payload() -> None:
+//     # `Bag[Own[N]]` holds a non-copyable payload: every store moves
+//     b = Bag[Own[N]](N(4))  # tpyc: ok
+//     b.push(N(5))  # tpyc: ok
+//     print("nocopy", b.v.n, b.items[0].n)
+void nocopy_payload() {
+    ::tpyapp::fixtures::Bag<::tpy::own_arg<::tpyapp::fixtures::N>> b = ::tpyapp::fixtures::Bag<::tpy::own_arg<::tpyapp::fixtures::N>>(::tpyapp::fixtures::N(4));
+    b.push(::tpyapp::fixtures::N(5));
+    std::cout << "nocopy" << " " << b.v.n << " " << ::tpy::__getitem__(b.items, 0).n << "\n" << ::tpy::check_signals;
+}
+
+// def subclass() -> None:
+//     sub = Sub(P(3))
+//     sub.bump()
+//     sub.v.n += 10
+//     print("sub", sub.v.n)
+void subclass() {
+    Sub sub = Sub(::tpyapp::fixtures::P(3));
+    sub.bump();
+    sub.v.n = ::tpy::add_check<int32_t>(sub.v.n, 10);
+    std::cout << "sub" << " " << sub.v.n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
-//     # a written constructor
-//     c = C[Own[P]]()  # tpyc: warning(/`Own\[P\]` in a type argument of class 'C' has no effect yet; write `C\[P\]`/)
-//     c.items.append(P(1))
-//     h = c.get()
-//     h.x = 9
-//     print("ctor", c.items[0].x)
-//     # a parameter annotation
-//     d = C[P]()
-//     d.items.append(P(1))
-//     print("param", by_param(d))
-//     # a return annotation
-//     r = by_return()
-//     g = r.get()
-//     g.x = 9
-//     print("return", r.items[0].x)
-//     # a local annotation
-//     loc: C[Own[P]] = C()  # tpyc: warning(/has no effect yet/)
-//     loc.items.append(P(1))
-//     lh = loc.get()
-//     lh.x = 9
-//     print("local", loc.items[0].x)
-//     pending(mk)
-//     class_method(mk)
-//     part_positions.main()
-//     part_declared.main()
+//     core()
+//     plain()
+//     nocopy_payload()
+//     subclass()
+//     G.push(P(8))
+//     G.items[0].n = 80
+//     print("global", G.v.n, G.items[0].n)
+//     part_members.main()
+//     part_generic.main()
+//     part_lib.main()
+//     part_scopes.main()
+//     part_fields.main()
+//     part_base.main()
+//     part_handover.main()
+//     part_binder.main()
+//     part_pending.main()
 void main() {
-    ::tpyapp::fixtures::C<::tpyapp::fixtures::P> c = ::tpyapp::fixtures::C<::tpyapp::fixtures::P>();
-    c.items.push_back(::tpyapp::fixtures::P(1));
-    ::tpyapp::fixtures::P& h = c.get();
-    h.x = 9;
-    std::cout << "ctor" << " " << ::tpy::__getitem__(c.items, 0).x << "\n" << ::tpy::check_signals;
-    ::tpyapp::fixtures::C<::tpyapp::fixtures::P> d = ::tpyapp::fixtures::C<::tpyapp::fixtures::P>();
-    d.items.push_back(::tpyapp::fixtures::P(1));
-    std::cout << "param" << " " << ::tpyapp::main::by_param(d) << "\n" << ::tpy::check_signals;
-    ::tpyapp::fixtures::C<::tpyapp::fixtures::P> r = ::tpyapp::main::by_return();
-    ::tpyapp::fixtures::P& g = r.get();
-    g.x = 9;
-    std::cout << "return" << " " << ::tpy::__getitem__(r.items, 0).x << "\n" << ::tpy::check_signals;
-    ::tpyapp::fixtures::C<::tpyapp::fixtures::P> loc = ::tpyapp::fixtures::C<::tpyapp::fixtures::P>();
-    loc.items.push_back(::tpyapp::fixtures::P(1));
-    ::tpyapp::fixtures::P& lh = loc.get();
-    lh.x = 9;
-    std::cout << "local" << " " << ::tpy::__getitem__(loc.items, 0).x << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::pending(::tpyapp::fixtures::mk);
-    ::tpyapp::main::class_method(::tpyapp::fixtures::mk);
-    ::tpyapp::part_positions::main();
-    ::tpyapp::part_declared::main();
+    ::tpyapp::main::core();
+    ::tpyapp::main::plain();
+    ::tpyapp::main::nocopy_payload();
+    ::tpyapp::main::subclass();
+    G->push(::tpyapp::fixtures::P(8));
+    ::tpy::__getitem__(G->items, 0).n = 80;
+    std::cout << "global" << " " << G->v.n << " " << ::tpy::__getitem__(G->items, 0).n << "\n" << ::tpy::check_signals;
+    ::tpyapp::part_members::main();
+    ::tpyapp::part_generic::main();
+    ::tpyapp::part_lib::main();
+    ::tpyapp::part_scopes::main();
+    ::tpyapp::part_fields::main();
+    ::tpyapp::part_base::main();
+    ::tpyapp::part_handover::main();
+    ::tpyapp::part_binder::main();
+    ::tpyapp::part_pending::main();
 }
 
-// from fixtures import C, P, mk
-// import part_declared
-// import part_positions
+// from fixtures import Bag, Box, N, P
+// import part_members
+// import part_generic
+// import part_lib
+// import part_scopes
+// import part_fields
+// import part_base
+// import part_handover
+// import part_binder
+// import part_pending
+//
+// # a module-level global forms the class: each member's copy is reported here
+// G = Box[Own[P]](P(7))  # tpyc: warning(/copies P into owned storage in 'Box.get' \(fixtures.py:33\)/) warning(/'Box.push_v' \(fixtures.py:40\)/) warning(/'Box.__iter__' \(fixtures.py:45\)/)
 //
 // main()
 void __tpy_init() {
@@ -114,6 +121,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    static ::tpyapp::fixtures::Box<::tpy::own_arg<::tpyapp::fixtures::P>> __global_slot_1 = ::tpyapp::fixtures::Box<::tpy::own_arg<::tpyapp::fixtures::P>>(::tpyapp::fixtures::P(7));
+    G = &__global_slot_1;
     ::tpyapp::main::main();
 }
 

@@ -18,13 +18,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def leaf_count[T](t: Tree[T]) -> int32:
 template<typename T>
-int32_t leaf_count(const Tree<::tpy::storage_t<T>>& t);
+int32_t leaf_count(const Tree<T>& t);
 // def main() -> None:
 void main();
 
 template<typename T>
 struct Tree {
-    using variant_type = ::tpy::Union<::tpy::storage_t<T>, std::vector<Tree<::tpy::storage_t<T>>>>;
+    using variant_type = ::tpy::Union<::tpy::storage_t<T>, std::vector<Tree<T>>>;
     variant_type value;
 
     Tree() requires std::default_initializable<variant_type> = default;
@@ -50,11 +50,11 @@ struct Tree {
 template<typename T>
 struct Holder {
     // data: Box[Tree[T]]
-    ::tpystd::tplib::box::Box<Tree<::tpy::storage_t<T>>> data;
+    ::tpystd::tplib::box::Box<Tree<T>> data;
 
     // def __init__(self, data: Own[Box[Tree[T]]]) -> None:
     Holder() = default;
-    explicit Holder(::tpystd::tplib::box::Box<Tree<::tpy::storage_t<T>>>&& data);
+    explicit Holder(::tpystd::tplib::box::Box<Tree<T>>&& data);
     // non-copyable (field 'data')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -73,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 // def __init__(self, data: Own[Box[Tree[T]]]) -> None:
 //     self.data = data
 template<typename T>
-inline Holder<T>::Holder(::tpystd::tplib::box::Box<Tree<::tpy::storage_t<T>>>&& data) : data(std::move(data)) {}
+inline Holder<T>::Holder(::tpystd::tplib::box::Box<Tree<T>>&& data) : data(std::move(data)) {}
 
 // def leaf_count[T](t: Tree[T]) -> int32:
 //     match t:
@@ -85,7 +85,7 @@ inline Holder<T>::Holder(::tpystd::tplib::box::Box<Tree<::tpy::storage_t<T>>>&& 
 //         case _:
 //             return 1
 template<typename T>
-int32_t leaf_count(const Tree<::tpy::storage_t<T>>& t) {
+int32_t leaf_count(const Tree<T>& t) {
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
     case 1: {

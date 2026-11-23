@@ -1323,11 +1323,13 @@ class Compiler:
         # N modules is walked once rather than N times; one verdict table,
         # since the module that composes a verdict is not the one that gave it.
         own_copy_seen: set = set()
-        for module_name in self.compile_order:
-            analyzer = self.modules[module_name].analyzer
-            if analyzer is not None:
-                analyzer.discharge_own_copy_verdicts(own_copy_seen,
-                                                     self.own_copy_verdicts)
+        for records in (True, False):
+            for module_name in self.compile_order:
+                analyzer = self.modules[module_name].analyzer
+                if analyzer is not None:
+                    analyzer.discharge_own_copy_verdicts(
+                        own_copy_seen, self.own_copy_verdicts,
+                        records=records)
         for module_name in self.compile_order:
             compiled = self.modules[module_name]
             analyzer = compiled.analyzer

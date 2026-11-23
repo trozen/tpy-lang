@@ -62,9 +62,9 @@ void main();
 
 // class GBox1[W](GBox[W]):
 template<typename W>
-struct GBox1 : ::nb::GBox<W> {
+struct GBox1 : ::nb::GBox<::tpy::storage_t<W>> {
 
-    using ::nb::GBox<W>::GBox;
+    using ::nb::GBox<::tpy::storage_t<W>>::GBox;
     static constexpr std::string_view __tpy_class_name__ = "__main__.GBox1";
 };
 

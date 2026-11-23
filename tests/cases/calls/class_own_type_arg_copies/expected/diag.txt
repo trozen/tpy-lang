@@ -1,0 +1,186 @@
+fixtures.py:20: warning: may copy T into field if not a value type; use copy() to make this explicit
+fixtures.py:28: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_formations.py:23: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_formations.py:28: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_formations.py:44: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_formations.py:70: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_formations.py:70: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_formations.py:70: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_formations.py:82: warning: copies P into owned storage in 'Gen.via_genexpr' (part_formations.py:33); use copy() to make this explicit
+part_formations.py:82: warning: copies P into owned storage in 'Gen.via_ptr' (part_formations.py:37); use copy() to make this explicit
+part_formations.py:91: warning: copies P into owned storage in 'Lot.get' (part_formations.py:47); use copy() to make this explicit, or declare 'f: Callable[[], Own[T]]' so the result is lent
+part_formations.py:99: warning: copies P into owned storage in 'Lots.pick' (part_formations.py:61); use copy() to make this explicit, or declare 'f: Callable[[], Own[T]]' so the result is lent
+part_generic.py:45: warning: may copy A into owned storage if not a value type; use copy() to make this explicit
+part_generic.py:48: warning: may copy B into owned storage if not a value type; use copy() to make this explicit
+part_generic.py:77: warning: Own[T] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_generic.py:107: warning: copies P into owned storage; use copy() to make this explicit
+part_generic.py:122: warning: copies P into owned storage; use copy() to make this explicit
+part_generic.py:153: warning: copies P into owned storage; use copy() to make this explicit
+part_generic.py:102: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_generic.py:102: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_generic.py:102: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_generic.py:107: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_generic.py:107: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_generic.py:107: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_generic.py:122: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_generic.py:122: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_generic.py:122: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_generic.py:131: warning: copies list[int32] into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_generic.py:131: warning: copies list[int32] into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_generic.py:131: warning: copies list[int32] into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_generic.py:138: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_generic.py:138: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_generic.py:138: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_generic.py:150: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_generic.py:150: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_generic.py:150: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_generic.py:111: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_generic.py:111: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_generic.py:111: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_generic.py:115: warning: copies P into owned storage; use copy() to make this explicit
+part_generic.py:115: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_generic.py:115: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_generic.py:115: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_generic.py:153: warning: copies P into owned storage; use copy() to make this explicit
+part_generic.py:164: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_generic.py:164: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_generic.py:164: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_generic.py:172: warning: copies P into owned storage in 'Duo.first' (part_generic.py:51); use copy() to make this explicit
+part_generic.py:176: warning: copies P into owned storage in 'Duo.first' (part_generic.py:51); use copy() to make this explicit
+part_handover.py:18: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_handover.py:27: warning: Own[T] param 'value' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_handover.py:31: warning: Own[T] param 'value' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_handover.py:43: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_handover.py:45: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_handover.py:52: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_handover.py:60: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_handover.py:68: warning: Own[T] param 'v' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_handover.py:78: warning: copies P into owned storage; use copy() to make this explicit
+part_handover.py:76: warning: copies P into owned storage in 'Outer.put_twice' (part_handover.py:33); use copy() to make this explicit
+part_handover.py:84: warning: copies P into escaping closure 'inner' in 'Keep.get_after' (part_handover.py:42); use copy() to make this explicit
+part_implicit.py:16: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_implicit.py:44: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_implicit.py:48: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_implicit.py:71: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_implicit.py:93: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_implicit.py:123: warning: Escaping closure captures local 'x' by value, but 'x' is reassigned after the closure is created; the closure keeps the value from capture time (CPython would observe the later value). Capture a fresh local that is not reassigned (e.g. `snap = x`), or use copy() to make the snapshot explicit.
+part_implicit.py:141: warning: copies P into owned storage in 'Cup.__getitem__' (part_implicit.py:23); use copy() to make this explicit
+part_implicit.py:141: warning: copies P into owned storage in 'Cup.__add__' (part_implicit.py:26); use copy() to make this explicit
+part_implicit.py:141: warning: copies P into owned storage in 'Cup.__iter__' (part_implicit.py:32); use copy() to make this explicit
+part_implicit.py:141: warning: copies P into owned storage in 'Cup.val' (part_implicit.py:20); use copy() to make this explicit
+part_implicit.py:145: warning: copies P into owned storage in 'Cup.__getitem__' (part_implicit.py:23); use copy() to make this explicit
+part_implicit.py:145: warning: copies P into owned storage in 'Cup.__add__' (part_implicit.py:26); use copy() to make this explicit
+part_implicit.py:145: warning: copies P into owned storage in 'Cup.__iter__' (part_implicit.py:32); use copy() to make this explicit
+part_implicit.py:145: warning: copies P into owned storage in 'Cup.val' (part_implicit.py:20); use copy() to make this explicit
+part_implicit.py:154: warning: copies P into owned storage in 'Jar.__setitem__' (part_implicit.py:52); use copy() to make this explicit
+part_implicit.py:154: warning: copies P into owned storage in 'Jar.__delitem__' (part_implicit.py:55); use copy() to make this explicit
+part_implicit.py:154: warning: copies P into owned storage in 'Jar.__enter__' (part_implicit.py:58); use copy() to make this explicit
+part_implicit.py:154: warning: copies P into owned storage in 'Jar.__bool__' (part_implicit.py:64); use copy() to make this explicit
+part_implicit.py:158: warning: copies P into owned storage in 'Jar.__setitem__' (part_implicit.py:52); use copy() to make this explicit
+part_implicit.py:158: warning: copies P into owned storage in 'Jar.__delitem__' (part_implicit.py:55); use copy() to make this explicit
+part_implicit.py:158: warning: copies P into owned storage in 'Jar.__enter__' (part_implicit.py:58); use copy() to make this explicit
+part_implicit.py:158: warning: copies P into owned storage in 'Jar.__bool__' (part_implicit.py:64); use copy() to make this explicit
+part_implicit.py:142: warning: copies P into owned storage in 'Cup.__getitem__' (part_implicit.py:23); use copy() to make this explicit
+part_implicit.py:142: warning: copies P into owned storage in 'Cup.__add__' (part_implicit.py:26); use copy() to make this explicit
+part_implicit.py:142: warning: copies P into owned storage in 'Cup.__iter__' (part_implicit.py:32); use copy() to make this explicit
+part_implicit.py:142: warning: copies P into owned storage in 'Cup.val' (part_implicit.py:20); use copy() to make this explicit
+part_implicit.py:155: warning: copies P into owned storage in 'Jar.__setitem__' (part_implicit.py:52); use copy() to make this explicit
+part_implicit.py:155: warning: copies P into owned storage in 'Jar.__delitem__' (part_implicit.py:55); use copy() to make this explicit
+part_implicit.py:155: warning: copies P into owned storage in 'Jar.__enter__' (part_implicit.py:58); use copy() to make this explicit
+part_implicit.py:155: warning: copies P into owned storage in 'Jar.__bool__' (part_implicit.py:64); use copy() to make this explicit
+part_implicit.py:170: warning: copies P into owned storage in 'Tin.__len__' (part_implicit.py:74); use copy() to make this explicit
+part_implicit.py:176: warning: copies P into owned storage in 'Sink.put_loop' (part_implicit.py:104); use copy() to make this explicit
+part_implicit.py:197: warning: copies P into owned storage in 'Cup.__getitem__' (part_implicit.py:23); use copy() to make this explicit
+part_implicit.py:197: warning: copies P into owned storage in 'Cup.__add__' (part_implicit.py:26); use copy() to make this explicit
+part_implicit.py:197: warning: copies P into owned storage in 'Cup.__iter__' (part_implicit.py:32); use copy() to make this explicit
+part_implicit.py:197: warning: copies P into owned storage in 'Cup.val' (part_implicit.py:20); use copy() to make this explicit
+part_implicit.py:186: warning: copies P into escaping closure 'g'; use copy() to make this explicit
+part_implicit.py:186: warning: copies P into escaping closure 'h'; use copy() to make this explicit
+part_lib.py:13: warning: copies P into owned storage; use copy() to make this explicit
+part_lib.py:11: warning: copies P into owned storage in 'ArrayList.__getitem__' (array_list.py:126); use copy() to make this explicit
+part_lib.py:24: warning: copies P into owned storage in 'Rc.get' (rc.py:142); use copy() to make this explicit
+part_members.py:15: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_members.py:51: warning: lambda at line 51 may keep its own copy of 'x'; changes made after it is created may not be seen
+part_members.py:55: warning: lambda at line 55 may keep its own copy of 'x'; changes made after it is created may not be seen
+part_members.py:85: warning: copies P into owned storage; use copy() to make this explicit
+part_members.py:108: warning: copies P into owned storage; use copy() to make this explicit
+part_members.py:58: warning: copies P into owned storage in 'Cell.peek' (part_members.py:22); use copy() to make this explicit
+part_members.py:58: warning: copies P into owned storage in 'Cell.__getitem__' (part_members.py:25); use copy() to make this explicit
+part_members.py:58: warning: copies P into owned storage in 'Cell.first' (part_members.py:29); use copy() to make this explicit
+part_members.py:58: warning: copies P into owned storage in 'Cell.each' (part_members.py:32); use copy() to make this explicit
+part_members.py:58: warning: copies P into owned storage in 'Cell.val' (part_members.py:19); use copy() to make this explicit
+part_members.py:67: warning: copies P into owned storage in 'Cell.peek' (part_members.py:22); use copy() to make this explicit
+part_members.py:67: warning: copies P into owned storage in 'Cell.__getitem__' (part_members.py:25); use copy() to make this explicit
+part_members.py:67: warning: copies P into owned storage in 'Cell.first' (part_members.py:29); use copy() to make this explicit
+part_members.py:67: warning: copies P into owned storage in 'Cell.each' (part_members.py:32); use copy() to make this explicit
+part_members.py:67: warning: copies P into owned storage in 'Cell.val' (part_members.py:19); use copy() to make this explicit
+part_members.py:85: warning: copies P into owned storage in 'Cell.peek' (part_members.py:22); use copy() to make this explicit
+part_members.py:85: warning: copies P into owned storage in 'Cell.__getitem__' (part_members.py:25); use copy() to make this explicit
+part_members.py:85: warning: copies P into owned storage in 'Cell.first' (part_members.py:29); use copy() to make this explicit
+part_members.py:85: warning: copies P into owned storage in 'Cell.each' (part_members.py:32); use copy() to make this explicit
+part_members.py:85: warning: copies P into owned storage in 'Cell.val' (part_members.py:19); use copy() to make this explicit
+part_members.py:108: warning: copies P into owned storage in 'Keep.__init__' (part_members.py:51); use copy() to make this explicit
+part_members.py:103: warning: copies P into owned storage; use copy() to make this explicit
+part_pending_method.py:73: warning: may copy A into owned storage if not a value type; use copy() to make this explicit
+part_pending_method.py:77: warning: may copy B into owned storage if not a value type; use copy() to make this explicit
+part_pending_method.py:87: warning: Mutation of 'd' while borrowed ('add_b' may invalidate references)
+part_pending_method.py:96: warning: Mutation of 'd' while borrowed ('add_b' may invalidate references)
+part_pending_method.py:132: warning: copies P into owned storage; use copy() to make this explicit
+part_pending_method.py:133: warning: copies P into owned storage; use copy() to make this explicit
+part_restored.py:99: warning: copies C[Own[P]] into Tree[Own[P]] parameter 't'; use copy() to make this explicit
+part_restored.py:26: warning: copies P into owned storage in 'Later.get' (part_restored.py:24); use copy() to make this explicit
+part_restored.py:11: warning: copies P into owned storage in 'Later.get' (part_restored.py:24); use copy() to make this explicit
+part_restored.py:13: warning: copies P into owned storage in 'Later.get' (part_restored.py:24); use copy() to make this explicit
+part_restored.py:36: warning: copies P into owned storage in 'C.get' (fixtures.py:47); use copy() to make this explicit
+part_restored.py:47: warning: copies P into owned storage in 'C.get' (fixtures.py:47); use copy() to make this explicit
+part_restored.py:40: warning: copies P into owned storage in 'C.get' (fixtures.py:47); use copy() to make this explicit
+part_restored.py:67: warning: copies P into owned storage in 'C.get' (fixtures.py:47); use copy() to make this explicit
+part_restored.py:73: warning: copies P into owned storage in 'C.get' (fixtures.py:47); use copy() to make this explicit
+part_restored.py:58: warning: copies P into owned storage in 'C.get' (fixtures.py:47); use copy() to make this explicit
+part_restored.py:62: warning: copies P into owned storage in 'C.get' (fixtures.py:47); use copy() to make this explicit
+part_restored.py:74: warning: copies P into owned storage in 'C.get' (fixtures.py:47); use copy() to make this explicit
+part_restored.py:80: warning: copies P into owned storage in 'C.get' (fixtures.py:47); use copy() to make this explicit
+part_restored.py:87: warning: copies P into owned storage in 'C.get' (fixtures.py:47); use copy() to make this explicit
+part_restored.py:92: warning: copies P into owned storage in 'C.get' (fixtures.py:47); use copy() to make this explicit
+part_restored.py:97: warning: copies P into owned storage in 'C.get' (fixtures.py:47); use copy() to make this explicit
+part_restored.py:101: warning: copies P into owned storage in 'Later.get' (part_restored.py:24); use copy() to make this explicit
+part_restored.py:106: warning: copies P into owned storage in 'Later.get' (part_restored.py:24); use copy() to make this explicit
+part_walk.py:30: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_walk.py:42: warning: may copy A into field if not a value type; use copy() to make this explicit
+part_walk.py:70: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_walk.py:74: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_walk.py:102: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_walk.py:102: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_walk.py:102: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_walk.py:86: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_walk.py:86: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_walk.py:86: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_walk.py:90: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_walk.py:90: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_walk.py:90: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_walk.py:94: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_walk.py:94: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_walk.py:94: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_walk.py:107: warning: copies P into owned storage in 'Rot.get' (part_walk.py:46); use copy() to make this explicit
+part_walk.py:115: warning: copies P into owned storage in 'Perm.get' (part_walk.py:59); use copy() to make this explicit
+part_walk.py:87: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_walk.py:87: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_walk.py:87: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_walk.py:125: warning: copies P into owned storage in 'Node.get' (part_walk.py:34); use copy() to make this explicit
+part_walk.py:126: warning: copies P into owned storage in 'Node.get' (part_walk.py:34); use copy() to make this explicit
+part_walk.py:143: warning: copies P into owned storage in 'Gen.via_u' (part_walk.py:79); use copy() to make this explicit
+part_walk.py:148: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_walk.py:148: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_walk.py:148: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_walk.py:149: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_walk.py:149: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_walk.py:149: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+part_walk.py:150: warning: copies P into owned storage in 'Rot.get' (part_walk.py:46); use copy() to make this explicit
+part_walk.py:138: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+part_walk.py:138: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+part_walk.py:138: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit
+main.py:20: warning: copies P into owned storage; use copy() to make this explicit
+main.py:28: warning: copies P into owned storage; use copy() to make this explicit
+main.py:20: warning: copies P into owned storage in 'Box.get' (fixtures.py:25); use copy() to make this explicit
+main.py:20: warning: copies P into owned storage in 'Box.push_v' (fixtures.py:32); use copy() to make this explicit
+main.py:20: warning: copies P into owned storage in 'Box.__iter__' (fixtures.py:37); use copy() to make this explicit

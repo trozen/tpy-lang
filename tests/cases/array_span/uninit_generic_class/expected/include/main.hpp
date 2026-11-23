@@ -17,7 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T>
 struct Holder {
     // _storage: UninitHeapStorage[T]
-    ::tpy::UninitHeapStorage<T> _storage;
+    ::tpy::UninitHeapStorage<::tpy::storage_t<T>> _storage;
 
     // def __init__(self, value: T):
     Holder() = default;
@@ -50,8 +50,8 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 //     self._storage = UninitHeapStorage[T](1)
 //     self._storage.init0(value)
 template<typename T>
-inline Holder<T>::Holder(::tpy::param_val_or_cref_t<T> value) : _storage(::tpy::UninitHeapStorage<T>(1)) {
-    this->_storage.init0(::tpy::param_consume<T>(value));
+inline Holder<T>::Holder(::tpy::param_val_or_cref_t<T> value) : _storage(::tpy::UninitHeapStorage<::tpy::storage_t<T>>(1)) {
+    this->_storage.init0(::tpy::param_consume<::tpy::storage_t<T>>(value));
 }
 
 // def get(self) -> T:
@@ -67,7 +67,7 @@ inline ::tpy::val_or_ref_t<T> Holder<T>::get() {
 template<typename T>
 inline void Holder<T>::set(::tpy::param_val_or_ref_t<T> value) {
     this->_storage.drop0();
-    this->_storage.init0(::tpy::param_consume<T>(value));
+    this->_storage.init0(::tpy::param_consume<::tpy::storage_t<T>>(value));
 }
 
 // def take(self) -> Own[T]:

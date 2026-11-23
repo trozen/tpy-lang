@@ -25,8 +25,7 @@ P& bigger(P& a, P& b) {
 // def main() -> None:
 //     # `U: T` at `T = U = Own[P]`: the substituted bound owns `P` as well
 //     print("bounds-dep", dep[Own[P], Own[P]](P(1)))  # tpyc: ok
-//     # a class-shadowed method bound at the receiver `C[P]` (a class type
-//     # argument is never `Own[X]` until unit 2b: BUGS.md#class-own-type-arg-method-result-ill-formed)
+//     # a class-shadowed method bound at the receiver `C[P]`
 //     c = C[P]()
 //     print("bounds-class", c.test())  # tpyc: ok
 //     # `T = Own[P]` owns: `d` copies into the result (warned), so the write
@@ -55,11 +54,10 @@ P& bigger(P& a, P& b) {
 //     oq = list[Own[Q]]()
 //     oq.append(Q(1))
 //     print("bounds-list-count", oq.count(Q(1)))  # tpyc: ok
-//     # a static method spelled at the class's `T = Own[P]`: the class type
-//     # drops the `Own` (warned), so the result lends as at `D[P]`
-//     # (BUGS.md#class-own-type-arg-method-result-ill-formed)
+//     # a static method spelled at the class's `T = Own[P]`: `return xs[0]`
+//     # copies the element into the owned result, reported at the call
 //     ds = [P(1)]
-//     dh = D.first[Own[P]](ds)  # tpyc: warning(/`Own\[P\]` in a type argument of class 'D' has no effect yet; write `D\[P\]`/)
+//     dh = D.first[Own[P]](ds)  # tpyc: warning(/copies P into owned storage/)
 //     dh.x = 9
 //     print("bounds-static-spelled", ds[0].x)
 void main() {
@@ -86,7 +84,7 @@ void main() {
     oq.push_back(Q(1));
     std::cout << "bounds-list-count" << " " << ::tpy::list_count(oq, Q(1)) << "\n" << ::tpy::check_signals;
     std::vector<P> ds = {P(1)};
-    P& dh = D<P>::first(ds);
+    P dh = D<::tpy::own_arg<P>>::first(ds);
     dh.x = 9;
     std::cout << "bounds-static-spelled" << " " << ::tpy::__getitem__(ds, 0).x << "\n" << ::tpy::check_signals;
 }

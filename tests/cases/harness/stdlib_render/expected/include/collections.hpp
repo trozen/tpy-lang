@@ -79,7 +79,7 @@ inline Counter<T>::Counter(const T_items* items) : _data(::tpy::ordered_map<::tp
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& x = ::tpy::unwrap_ref(*__r_1);
-            ::tpy::__setitem__(this->_data, x, ((::tpy::dict_get_default(this->_data, x, ::tpy::BigInt(0))) + (::tpy::BigInt(1))));
+            ::tpy::__setitem__(this->_data, x, ((::tpy::dict_get_default(this->_data, ::tpy::param_pass<T>(x), ::tpy::BigInt(0))) + (::tpy::BigInt(1))));
         }
     }
 }
@@ -89,7 +89,7 @@ inline Counter<T>::Counter(const T_items* items) : _data(::tpy::ordered_map<::tp
 //     return self._data.get(key, 0)
 template<::tpystd::tpy::Hashable T>
 inline ::tpy::BigInt Counter<T>::__getitem__(::tpy::param_val_or_cref_t<T> key) const {
-    return ::tpy::dict_get_default(this->_data, key, ::tpy::BigInt(0));
+    return ::tpy::dict_get_default(this->_data, ::tpy::param_pass_last<T>(key), ::tpy::BigInt(0));
 }
 
 // def __setitem__(self, key: T, count: int) -> None:
@@ -170,7 +170,7 @@ inline void Counter<T>::update(const Counter<T>& other) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& k = *__beg_0;
-        ::tpy::__setitem__(this->_data, ::tpy::storage_t<T>(k), ((::tpy::dict_get_default(this->_data, k, ::tpy::BigInt(0))) + (::tpy::__getitem__(other._data, k))));
+        ::tpy::__setitem__(this->_data, ::tpy::storage_t<T>(k), ((::tpy::dict_get_default(this->_data, ::tpy::param_pass<T>(k), ::tpy::BigInt(0))) + (::tpy::__getitem__(other._data, k))));
     }
 }
 
@@ -184,7 +184,7 @@ inline void Counter<T>::subtract(const Counter<T>& other) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& k = *__beg_0;
-        ::tpy::__setitem__(this->_data, ::tpy::storage_t<T>(k), ((::tpy::dict_get_default(this->_data, k, ::tpy::BigInt(0))) - (::tpy::__getitem__(other._data, k))));
+        ::tpy::__setitem__(this->_data, ::tpy::storage_t<T>(k), ((::tpy::dict_get_default(this->_data, ::tpy::param_pass<T>(k), ::tpy::BigInt(0))) - (::tpy::__getitem__(other._data, k))));
     }
 }
 

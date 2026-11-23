@@ -1,9 +1,9 @@
 part_bounds.py:70: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 part_bounds.py:83: warning: Own[P] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 part_bounds.py:83: warning: Own[P] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-part_bounds.py:101: warning: copies P into owned storage; use copy() to make this explicit
-part_bounds.py:128: warning: `Own[P]` in a type argument of class 'D' has no effect yet; write `D[P]`
-part_bounds.py:106: warning: copies P into owned storage; use copy() to make this explicit
+part_bounds.py:100: warning: copies P into owned storage; use copy() to make this explicit
+part_bounds.py:126: warning: copies P into owned storage in 'D.first' (part_bounds.py:80); use copy() to make this explicit
+part_bounds.py:105: warning: copies P into owned storage; use copy() to make this explicit
 part_forms.py:89: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 part_forms.py:96: warning: copies P into owned storage; use copy() to make this explicit
 part_forms.py:100: warning: copies P into owned storage; use copy() to make this explicit

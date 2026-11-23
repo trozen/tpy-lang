@@ -42,14 +42,16 @@ comparison.
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Collection
 
+from ..compilation_context import get_current_compiler
 from ..diagnostics import Diagnostic, DiagnosticLevel, NOCOPY_REMEDIATION_HINT
 from ..identity_map import IdentityMap
 from ..parse import (ResultForm, TpyCallLike, TpyCoerce, TpyExpr, TpyFieldAccess,
                      TpyName, TpySubscript, is_property_getter_read)
 from ..typesys import (CallableType, NominalType, OptionalType, OwnType,
                        ReadonlyType, TpyType, TupleType, TypeParamRef,
-                       UnionType,
+                       UnionType, class_own_arg_is_identity, unwrap_own,
                        contains_reference_type, inner_type_param_names,
+                       named_class_types,
                        unwrap_qualifiers, unwrap_readonly, unwrap_ref_type)
 
 if TYPE_CHECKING:
@@ -87,6 +89,9 @@ class OwnCopyObligation:
     # The read hands its value on where its open `T` is `Own[X]`
     # (`SemanticContext.hands_on_at_own`): no copy at that instantiation.
     hands_on: bool = False
+    # Decided by its class's type parameters alone (`class_owns`): the
+    # class's instantiation answers it, not a call of the member.
+    of_class: bool = False
 
 
 @dataclass(frozen=True, eq=False)
@@ -103,6 +108,48 @@ class OwnCompositeLeaf:
     composite: TpyType
     # The generic whose body declares `param`.
     owner: str
+    # `param` is the class's, `owner` the class declaring the method.
+    of_class: bool = False
+
+
+@dataclass(frozen=True, eq=False)
+class OpenClosureCapture:
+    """A lambda or nested def at a `Callable` slot whose result names the
+    body's open `T` (`T`, `readonly[T]`), returning what the closure
+    captures (`message`: the concrete twin's refusal,
+    `_check_callable_result_roots`). Whether the result is a borrow is the
+    instantiation's: refused where the substituted slot returns one
+    (`T = P`), admitted at `Own[X]` and at a value `T`."""
+
+    slot: CallableType
+    message: str
+    line: 'int | None'
+    # The generic whose body holds the closure.
+    owner: str
+    # The closure as the refusal names it: "the lambda", "nested def 'f'".
+    closure: str = "the lambda"
+    of_class: bool = False
+
+
+@dataclass(frozen=True, eq=False)
+class OwnStorageArgFlow:
+    """A class formed at the storage form of the body's open `param`
+    (`C[Unowned(T)]`, a construction the binder inferred) flowing into a
+    slot declared at `param` itself (`C[T]`): the same class at
+    `T = P`, two classes at a non-plain `T = Own[X]` -- the twin's
+    `C[X]` meeting `C[Own[X]]`, refused there with the twin's mismatch."""
+
+    param: TypeParamRef
+    value: TpyType
+    slot: TpyType
+    context: str
+    line: 'int | None'
+    # The generic whose body declares `param`.
+    owner: str
+    # The class spelled at the open parameter, for the remedy
+    # (`Crate[T](...)`).
+    cls: str
+    of_class: bool = False
 
 
 def shown_type(t: TpyType) -> TpyType:
@@ -130,16 +177,15 @@ def binding_sources(callee: object, own_sources: 'tuple[tuple[str, int], ...]',
 
 def composite_leaves(typ: TpyType, declared: 'Collection[str]'
                      ) -> list[TypeParamRef]:
-    """Every open type parameter of `declared` that is a leaf of a tuple, of
-    an Optional / union, or a type argument of a class TPy emits itself
-    (`is_emitted_generic_class`: `C[T]`, which takes no `Own[X]` yet) in `typ`
-    -- at any depth, through a callable's parameters and result, an
-    iterator's step, a container's elements. An element of any other type
-    (`list[T]`) is no leaf: a container owns its elements whether or not
-    they are `Own` (`list[Own[P]]` is `list[P]`); a tuple element
-    (`list[tuple[T, int32]]`) still is, as that normalizes only a whole
-    element. A protocol's type argument is none, and neither is the
-    storage form `Unowned(T)`: it is never `Own`."""
+    """Every open type parameter of `declared` that is a leaf of a tuple or
+    of an Optional / union in `typ` -- at any depth, through a callable's
+    parameters and result, an iterator's step, a container's elements. An
+    element of any other type (`list[T]`) is no leaf: a container owns its
+    elements whether or not they are `Own` (`list[Own[P]]` is `list[P]`),
+    and a class TPy emits is instantiated at `Own[X]` itself (`C[T]`); a
+    tuple element (`list[tuple[T, int32]]`) still is, as that normalizes
+    only a whole element. A protocol's type argument is none, and neither
+    is the storage form `Unowned(T)`: it is never `Own`."""
     found: dict[str, TypeParamRef] = {}
 
     def walk(t: TpyType, inside: bool) -> None:
@@ -148,9 +194,7 @@ def composite_leaves(typ: TpyType, declared: 'Collection[str]'
             if inside and t.name in declared:
                 found.setdefault(t.name, t)
             return
-        member = (isinstance(t, (TupleType, OptionalType, UnionType))
-                  or (isinstance(t, NominalType)
-                      and t.is_emitted_generic_class()))
+        member = isinstance(t, (TupleType, OptionalType, UnionType))
         for inner in t.inner_types():
             walk(inner, member)
     walk(typ, False)
@@ -198,19 +242,62 @@ class OwnCopyVerdicts:
     def __len__(self) -> int:
         return len(self._by_obligation)
 
-    def instantiation_copy(self, ctx, obligation: OwnCopyObligation,
-                           target: 'OwnType', loc: object,
-                           remedy: str = "") -> None:
-        """Report, at the instantiating call `loc`, the copy obligation's
-        read makes at this `Own[X]` instantiation: the twin's warning (its
-        error for a type that has no copy); `remedy` names the signature
-        that would lend instead."""
-        key = (id(obligation), loc_key(loc))
+    def closure_capture(self, ctx, obligation: 'OpenClosureCapture',
+                        slot: CallableType, edge: 'OwnCopyEdge',
+                        member: str) -> None:
+        """Refuse, at the instantiation `edge`, a closure returning its
+        capture through a slot this instantiation makes a borrow."""
+        self._refuse_at(ctx, obligation, str(slot), edge, member, lambda where: (
+            f"{obligation.message} ({obligation.closure} in {where}, "
+            f"instantiated here with a result of '{slot.return_type}')"))
+
+    def storage_arg_mismatch(self, ctx, obligation: 'OwnStorageArgFlow',
+                             types: 'tuple[TpyType, TpyType]', member: str,
+                             edge: 'OwnCopyEdge') -> None:
+        """Refuse, at the instantiation `edge`, a storage-form class value
+        meeting its slot's class at an `Own[X]` argument, as the twin's
+        check does."""
+        # The twin's mismatch names the classes, not a slot's `Ref` / `Own`.
+        value, slot = (unwrap_own(unwrap_ref_type(t)) for t in types)
+        self._refuse_at(ctx, obligation, str(slot), edge, member, lambda where: (
+            f"Type mismatch in {obligation.context}: expected {slot}, got "
+            f"{value} (in {where}, instantiated here); spell the class "
+            f"argument (`{obligation.cls}(...)`)"))
+
+    def _refuse_at(self, ctx, obligation, target: str, edge: 'OwnCopyEdge',
+                   member: str, message) -> None:
+        """One refusal per (obligation, target, site): `message` given where
+        the body is -- the class `member` with the obligation's line, or the
+        generic owning it."""
+        key = (id(obligation), target, edge.site)
         if key in self._instantiation_seen:
             return
         self._instantiation_seen.add(key)
+        where = member or f"'{obligation.owner}'"
+        if obligation.line is not None:
+            where = (where[:-1] + f":{obligation.line})" if member
+                     else f"{where} (line {obligation.line})")
+        ctx.diagnostics.append(Diagnostic(DiagnosticLevel.ERROR,
+                                          message(where), edge.loc))
+
+    def instantiation_copy(self, ctx, obligation: OwnCopyObligation,
+                           target: 'OwnType', edge: 'OwnCopyEdge',
+                           remedy: str = "", member: str = "") -> None:
+        """Report, at the instantiating call or class formation `edge`, the
+        copy obligation's read makes at this `Own[X]` instantiation: the
+        twin's warning (its error for a type that has no copy); `remedy`
+        names the signature that would lend instead, `member` the class
+        member whose body copies (`member_site`). Once per site
+        (`site_key`)."""
+        loc = edge.loc
+        key = (id(obligation), str(target), edge.site)
+        if key in self._instantiation_seen:
+            return
+        self._instantiation_seen.add(key)
+        dest = (f"{obligation.dest} in {member}" if member
+                else obligation.dest)
         level, message = slot_message(
-            target.wrapped, target.wrapped, obligation.dest, KIND_SLOT,
+            target.wrapped, target.wrapped, dest, KIND_SLOT,
             obligation.hint, non_copyable=ctx.is_type_non_copyable(
                 target.wrapped),
             remedy="use copy() to make this explicit" + remedy)
@@ -241,6 +328,15 @@ class OwnCopyEdge:
     # non-plain `Own[X]`, the callee's parameter whose argument bound it and
     # that argument's name (None when it is no name).
     sources: tuple[tuple[str, str, 'str | None'], ...] = ()
+    # Where the instantiation reports (`site_key`): its module and line,
+    # as a SourceLocation names no file.
+    site: tuple = ()
+    # Of a forward: its substitution names only the enclosing class's type
+    # parameters (`class_owns`), so the class's instantiation walks it.
+    of_class: bool = False
+    # The frame of the body's own generator expression: what it copies is
+    # the enclosing body's, reported as that member's.
+    inline: bool = False
 
     def key(self) -> tuple:
         """Identity for dedupe: a RecordInfo / FunctionInfo is not hashable.
@@ -250,12 +346,15 @@ class OwnCopyEdge:
         return (id(self.callee), self.subst, self.is_record)
 
 
-def loc_key(loc: object) -> tuple:
-    """A hashable identity of a source location (None for none)."""
+def site_key(module: str, loc: object) -> tuple:
+    """The site an instantiation reports at: its module and line, so a
+    line instantiating one generic several ways -- an annotation and the
+    constructor it types, a static method spelled at its class's
+    arguments -- reports each copy once, whichever module's analysis
+    reaches it first."""
     if loc is None:
-        return ()
-    return (getattr(loc, "file", None), getattr(loc, "line", None),
-            getattr(loc, "column", None))
+        return (module,)
+    return (module, getattr(loc, "line", None))
 
 
 def holds_only_values(typ: TpyType) -> bool:
@@ -397,22 +496,43 @@ def _still_open(display: TpyType, target: TpyType) -> bool:
 
 
 def _apply(ctx, type_ops, obligation: OwnCopyObligation,
-           subst: dict, verdicts: OwnCopyVerdicts, copies: list) -> None:
+           subst: dict, verdicts: OwnCopyVerdicts, copies: list,
+           member: str = "") -> None:
     """Record the verdict this instantiation implies for one obligation; a
     copy only an `Own` instantiation makes joins `copies`, as does a
-    composite leaf this instantiation makes `Own`."""
+    composite leaf this instantiation makes `Own` -- each with the class
+    `member` whose body it is in (`member_site`), "" for a function's."""
     if isinstance(obligation, OwnCompositeLeaf):
         leaf = type_ops.substitute_types(obligation.param, subst)
         if (isinstance(leaf, OwnType) and not leaf.is_plain()
                 and not type_has_type_param(leaf)):
-            copies.append((obligation, leaf))
+            copies.append((obligation, leaf, member))
+        return
+    if isinstance(obligation, OwnStorageArgFlow):
+        arg = type_ops.substitute_types(obligation.param, subst)
+        if (isinstance(arg, OwnType) and not arg.is_plain()
+                and not type_has_type_param(arg)):
+            copies.append((obligation, (
+                type_ops.substitute_types(obligation.value, subst),
+                type_ops.substitute_types(obligation.slot, subst)), member))
+        return
+    if isinstance(obligation, OpenClosureCapture):
+        slot = type_ops.substitute_types(obligation.slot, subst)
+        if (isinstance(slot, CallableType)
+                and not type_has_type_param(slot.return_type)
+                and slot.returns_borrow()):
+            copies.append((obligation, slot, member))
         return
     display = type_ops.substitute_types(obligation.display_type, subst)
     target = type_ops.substitute_types(obligation.target_type, subst)
     if obligation.kind == KIND_OWN_INSTANTIATION:
+        # A copy holding only values (`Own[str]`) is no divergence, as the
+        # twin's `-> Own[str]` says nothing; one that cannot be made is.
         if (isinstance(target, OwnType) and not target.is_plain()
-                and not _still_open(display, target)):
-            copies.append((obligation, target))
+                and not _still_open(display, target)
+                and not (holds_only_values(target.wrapped)
+                         and not ctx.is_type_non_copyable(target.wrapped))):
+            copies.append((obligation, target, member))
         return
     if _still_open(display, target):
         # A method-level type param this route does not bind; the method
@@ -441,19 +561,82 @@ def _collapse_readonly(typ: TpyType) -> TpyType:
     return typ.map_inner_types(_collapse_readonly)
 
 
+def obligation_params(obligation) -> set[str]:
+    """The type parameters an obligation's verdict depends on."""
+    if isinstance(obligation, (OwnCompositeLeaf, OwnStorageArgFlow)):
+        return {obligation.param.name}
+    if isinstance(obligation, OpenClosureCapture):
+        return set(inner_type_param_names(obligation.slot.return_type))
+    return (set(inner_type_param_names(obligation.display_type))
+            | set(inner_type_param_names(obligation.target_type)))
+
+
 def _discharge_function(ctx, type_ops, fi, subst: dict, seen: set,
-                        verdicts: OwnCopyVerdicts, copies: list) -> None:
+                        verdicts: OwnCopyVerdicts, copies: list,
+                        member: str = "", class_part: bool = True):
+    """`class_part` False: a member call, whose class's own obligations
+    and forwards (`of_class`) its class's instantiation answers. A step
+    of `_walk_edge`: yields each instantiation it forms, and is sent
+    that one's copies."""
     for obligation in fi.own_copy_obligations:
-        _apply(ctx, type_ops, obligation, subst, verdicts, copies)
+        if not class_part and obligation.of_class:
+            continue
+        _apply(ctx, type_ops, obligation, subst, verdicts, copies,
+               member)
     for forward in fi.own_copy_forwards:
+        if not class_part and forward.of_class:
+            continue
         composed = tuple(
             (name, _collapse_readonly(type_ops.substitute_types(value, subst)))
             for name, value in forward.subst
         )
-        copies.extend(_walk_edge(
-            ctx, type_ops,
-            OwnCopyEdge(forward.callee, composed, forward.is_record),
-            seen, verdicts))
+        if forward.inline and not class_part:
+            # A generator expression's frame is the member's own body: its
+            # class part is answered where the member's is.
+            found = []
+            yield from _discharge_function(ctx, type_ops, forward.callee,
+                                           dict(composed), seen, verdicts,
+                                           found, member, class_part=False)
+        else:
+            found = yield OwnCopyEdge(forward.callee, composed,
+                                      forward.is_record)
+        if forward.inline and member:
+            found = [(o, t, m or member) for o, t, m in found]
+        copies.extend(found)
+
+
+def _class_edge(ctx, type_ops, typ: TpyType) -> 'OwnCopyEdge | None':
+    """The instantiation a generic class type at its arguments forms, as a
+    written one does (`TypeOps._note_class_formation`); None for any other
+    type."""
+    if not isinstance(typ, NominalType) or not typ.type_args:
+        return None
+    info = ctx.registry.get_record_for_type(typ)
+    if (info is None or not info.is_generic()
+            or len(typ.type_args) != len(info.type_params)):
+        return None
+    pairs = tuple((n, v) for n, v in type_ops.record_subst(typ, info).items()
+                  if isinstance(v, TpyType))
+    return OwnCopyEdge(info, pairs, True) if pairs else None
+
+
+def _owner_class_edge(ctx, edge: OwnCopyEdge) -> 'OwnCopyEdge | None':
+    """The instantiation of the class declaring method `edge.callee` that a
+    call of it at `edge.subst` names: the class part of the substitution.
+    None for a function, or a method of a class taking no `Own[X]`
+    argument as its identity."""
+    fi = edge.callee
+    if not class_own_arg_is_identity(fi):
+        return None
+    owner = ctx.registry.find_record_by_qname(fi.owning_type_qname)
+    params = (owner.type_params or ()) if owner is not None else ()
+    subst = dict(edge.subst)
+    # An integer argument is no part of an edge (`record_own_copy_
+    # instantiation`), so the formation's key holds only the types.
+    pairs = tuple((p, subst[p]) for p in params if p in subst)
+    if not pairs:
+        return None
+    return OwnCopyEdge(owner, pairs, True)
 
 
 def _record_methods(record_info):
@@ -466,11 +649,20 @@ def _record_methods(record_info):
 
 
 def _discharge_record(ctx, type_ops, record_info, subst: dict,
-                      seen: set, verdicts: OwnCopyVerdicts,
-                      copies: list) -> None:
+                      seen: set, verdicts: OwnCopyVerdicts, copies: list):
+    """A step of `_walk_edge`, as `_discharge_function` is."""
     for fi in _record_methods(record_info):
-        _discharge_function(ctx, type_ops, fi.root, subst, seen, verdicts,
-                            copies)
+        yield from _discharge_function(ctx, type_ops, fi.root, subst, seen,
+                                       verdicts, copies,
+                                       member_site(record_info, fi.root))
+    # A field's class is formed with this one (`class Outer[T]: b: Box[T]`
+    # at `Outer[Own[P]]` holds a `Box[Own[P]]`), written nowhere else.
+    for fld in record_info.fields:
+        held = type_ops.substitute_types(fld.type, subst)
+        for part in named_class_types(held):
+            inner = _class_edge(ctx, type_ops, part)
+            if inner is not None and not _nested_too_deep(verdicts, inner):
+                copies.extend((yield inner))
     # An ancestor named only through an intermediate generic (`class Kid(
     # Mid[Cell])` over `class Mid[T](Base[T])`) is never spelled at concrete
     # args anywhere, so its instantiation exists only as this composition.
@@ -488,9 +680,49 @@ def _discharge_record(ctx, type_ops, record_info, subst: dict,
         )
         if not composed:
             continue
-        copies.extend(_walk_edge(
-            ctx, type_ops, OwnCopyEdge(parent_info, composed, True), seen,
-            verdicts))
+        copies.extend((yield OwnCopyEdge(parent_info, composed, True)))
+
+
+# How many instantiations of one class at ever larger arguments a field
+# walk nests: a field naming its own class at a growing argument
+# (`children: list[Node[list[T]]]`) forms a new instantiation at every
+# level. One at arguments that do not grow (`kids: list[Node[B, A]]`)
+# ranges over finitely many, which the walk's `seen` ends.
+_FIELD_NESTING_BOUND = 4
+
+
+def _nested_too_deep(verdicts: OwnCopyVerdicts, edge: OwnCopyEdge) -> bool:
+    callee = id(edge.callee)
+    size = _subst_size(edge.subst)
+    return sum(1 for key in verdicts.walk_stack
+               if key[0] == callee and _subst_size(key[1]) < size
+               ) >= _FIELD_NESTING_BOUND
+
+
+def _subst_size(pairs: tuple) -> int:
+    """How many type nodes an edge's arguments hold."""
+    total = 0
+    stack = [v for _, v in pairs]
+    while stack:
+        t = stack.pop()
+        if isinstance(t, TpyType):
+            total += 1
+            stack.extend(t.inner_types())
+    return total
+
+
+def member_site(record_info, fi) -> str:
+    """A class member as a report at its class's instantiation names it:
+    the member and the declaring file (a `SourceLocation` names a line
+    only), so a member of a class from another module is found."""
+    module = record_info.defining_module or record_info.module or "__main__"
+    modules = getattr(get_current_compiler(), "modules", {})
+    compiled = modules.get(module) or (next(
+        (m for m in modules.values() if m.is_entry_point), None)
+        if module == "__main__" else None)
+    file = (compiled.path.name if compiled is not None
+            else f"{module.replace('.', '/')}.py")
+    return f"'{record_info.name}.{fi.name}' ({file})"
 
 
 def discharge_edge(ctx, type_ops, edge: OwnCopyEdge, seen: set,
@@ -504,27 +736,54 @@ def discharge_edge(ctx, type_ops, edge: OwnCopyEdge, seen: set,
     compilation's table the walk records into.
     """
     copies = _walk_edge(ctx, type_ops, edge, seen, verdicts)
-    refused = next(((o, t) for o, t in copies
+    refused = next(((o, t, m) for o, t, m in copies
                     if isinstance(o, OwnCompositeLeaf)), None)
     if refused is not None:
         # The refusal stands alone: the copies it would also report are
         # of a form the instantiation does not build.
         _refuse_composite_leaf(ctx, edge, *refused)
         return
+    mismatch = next(((o, t, m) for o, t, m in copies
+                     if isinstance(o, OwnStorageArgFlow)), None)
+    if mismatch is not None:
+        verdicts.storage_arg_mismatch(ctx, *mismatch, edge)
+        return
     remedy = (_owned_result_remedy(edge) if copies and edge.inferred
               else "")
-    for obligation, target in copies:
-        verdicts.instantiation_copy(ctx, obligation, target, edge.loc, remedy)
+    for obligation, target, member in copies:
+        if isinstance(obligation, OpenClosureCapture):
+            verdicts.closure_capture(ctx, obligation, target, edge, member)
+            continue
+        verdicts.instantiation_copy(ctx, obligation, target, edge, remedy,
+                                    _at_line(member, obligation))
+
+
+def _at_line(member: str, obligation: OwnCopyObligation) -> str:
+    """`member` with the line of the obligation's read, "" for none."""
+    if not member:
+        return ""
+    line = getattr(obligation.diag.loc, "line", None)
+    if line is None:
+        return member
+    return member[:-1] + f":{line})"
 
 
 def _refuse_composite_leaf(ctx, edge: OwnCopyEdge, leaf: OwnCompositeLeaf,
-                           target: OwnType) -> None:
+                           target: OwnType, member: str = "") -> None:
     callee = getattr(edge.callee, "name", "?")
     where = (f"'{leaf.param.name}'" if leaf.owner == callee
              else f"'{leaf.param.name}' of '{leaf.owner}'")
     inside = f"{where} appears inside '{leaf.composite}'"
     if edge.inferred:
+        # The call wrote no type argument: name what inferred it.
         message = _inferred_refusal(edge, leaf, target, callee, inside)
+    elif leaf.of_class:
+        site = f" in {member}" if member else ""
+        message = (f"`{target}` as a type argument of class "
+                   f"'{leaf.owner}' is not supported yet: '{leaf.param.name}' "
+                   f"appears inside '{leaf.composite}'{site}; use "
+                   f"`{target.wrapped}` as the type argument, or write the "
+                   f"class with `{target}` in place of '{leaf.param.name}'")
     else:
         message = (f"`{target}` as a type argument of '{callee}' is not "
                    f"supported yet: {inside}; use `{target.wrapped}` as the "
@@ -597,6 +856,37 @@ def _owned_result_remedy(edge: OwnCopyEdge, name: 'str | None' = None) -> str:
 
 def _walk_edge(ctx, type_ops, edge: OwnCopyEdge, seen: set,
                verdicts: OwnCopyVerdicts) -> list:
+    """`_walk_steps` of `edge`, and of every instantiation it forms in
+    turn, run from a work list: a finite cycle can nest more instantiations
+    than the Python stack holds frames."""
+    frames = [_walk_steps(ctx, type_ops, edge, seen, verdicts)]
+    sent: 'list | None' = None
+    failed: 'BaseException | None' = None
+    while True:
+        try:
+            if failed is not None:
+                exc, failed = failed, None
+                child = frames[-1].throw(exc)
+            else:
+                child = frames[-1].send(sent)
+        except StopIteration as done:
+            frames.pop()
+            if not frames:
+                return done.value
+            sent = done.value
+            continue
+        except BaseException as exc:
+            frames.pop()
+            if not frames:
+                raise
+            failed = exc
+            continue
+        frames.append(_walk_steps(ctx, type_ops, child, seen, verdicts))
+        sent = None
+
+
+def _walk_steps(ctx, type_ops, edge: OwnCopyEdge, seen: set,
+                verdicts: OwnCopyVerdicts):
     """Walk one instantiation once (`seen`), returning the copies only an
     `Own` instantiation makes in it and under it -- the walked one's
     recorded list on a repeat visit. Mutually recursive instantiations
@@ -626,11 +916,17 @@ def _walk_edge(ctx, type_ops, edge: OwnCopyEdge, seen: set,
     subst = dict(edge.subst)
     try:
         if edge.is_record:
-            _discharge_record(ctx, type_ops, edge.callee, subst, seen,
-                              verdicts, copies)
+            yield from _discharge_record(ctx, type_ops, edge.callee, subst,
+                                         seen, verdicts, copies)
         else:
-            _discharge_function(ctx, type_ops, edge.callee, subst, seen,
-                                verdicts, copies)
+            owner = _owner_class_edge(ctx, edge)
+            if owner is not None and owner.key() not in seen:
+                # No formation walked the class at these arguments (an
+                # inferred static call): the call forms it.
+                copies.extend((yield owner))
+            yield from _discharge_function(ctx, type_ops, edge.callee,
+                                           subst, seen, verdicts, copies,
+                                           class_part=owner is None)
     finally:
         stack.pop()
         low = verdicts.walk_low.pop(key)

@@ -64,7 +64,7 @@ inline void Bag<T>::add_all(T_items&& items) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const auto& x = ::tpy::unwrap_ref(*__r_1);
-        ::tpy::__setitem__(this->_data, x, ((::tpy::dict_get_default(this->_data, x, ::tpy::BigInt(0))) + (::tpy::BigInt(1))));
+        ::tpy::__setitem__(this->_data, x, ((::tpy::dict_get_default(this->_data, ::tpy::param_pass<T>(x), ::tpy::BigInt(0))) + (::tpy::BigInt(1))));
     }
 }
 
@@ -73,7 +73,7 @@ inline void Bag<T>::add_all(T_items&& items) {
 //     return self._data.get(key, 0)  # tpyc: ok
 template<::tpystd::tpy::Hashable T>
 inline ::tpy::BigInt Bag<T>::__getitem__(::tpy::param_val_or_cref_t<T> key) const {
-    return ::tpy::dict_get_default(this->_data, key, ::tpy::BigInt(0));
+    return ::tpy::dict_get_default(this->_data, ::tpy::param_pass_last<T>(key), ::tpy::BigInt(0));
 }
 
 // def __contains__(self, key: T) -> bool:

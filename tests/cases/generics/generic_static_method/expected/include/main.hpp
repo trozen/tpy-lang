@@ -72,7 +72,7 @@ inline Container<T> Container<T>::create(::tpy::own_param_t<T> v) {
 template<typename T>
 inline std::optional<Container<T>> Container<T>::wrap_optional(std::optional<::tpy::storage_t<T>> v) {
     if ((v.has_value())) {
-        return Container<T>(std::move((*v)));
+        return Container<::tpy::storage_t<T>>(std::move((*v)));
     }
     return std::nullopt;
 }

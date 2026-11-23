@@ -64,7 +64,7 @@ inline Box<T>::Box(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(
 //     return g
 template<typename T>
 inline std::function<void()> Box<T>::mk(::tpy::param_val_or_cref_t<T> x) const {
-    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(::tpy::param_pass_last<T>(x))]() {
         auto& x = __cap_x.v;
         std::cout << "meth.T" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
     };
@@ -78,7 +78,7 @@ inline std::function<void()> Box<T>::mk(::tpy::param_val_or_cref_t<T> x) const {
 template<typename T>
 template<typename U>
 inline std::function<void()> Box<T>::mk2(::tpy::param_val_or_cref_t<U> y) const {
-    auto g = [__cap_y = ::tpy::capture_slot<::tpy::storage_t<U>, decltype(y)>(y)]() {
+    auto g = [__cap_y = ::tpy::capture_slot<::tpy::storage_t<U>, decltype(y)>(::tpy::param_pass_last<U>(y))]() {
         auto& y = __cap_y.v;
         std::cout << "meth.U" << " " << ::tpy::ValuePrinter(y) << "\n" << ::tpy::check_signals;
     };
@@ -91,7 +91,7 @@ inline std::function<void()> Box<T>::mk2(::tpy::param_val_or_cref_t<U> y) const 
 //     return g
 template<typename T, typename U>
 std::function<void()> two(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<U> y) {
-    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x), __cap_y = ::tpy::capture_slot<::tpy::storage_t<U>, decltype(y)>(y)]() {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(::tpy::param_pass_last<T>(x)), __cap_y = ::tpy::capture_slot<::tpy::storage_t<U>, decltype(y)>(::tpy::param_pass_last<U>(y))]() {
         auto& x = __cap_x.v;
         auto& y = __cap_y.v;
         std::cout << "two" << " " << ::tpy::ValuePrinter(x) << " " << ::tpy::ValuePrinter(y) << "\n" << ::tpy::check_signals;
@@ -106,7 +106,7 @@ std::function<void()> two(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_re
 template<::tpy::ValueType T>
 std::function<void()> rebound(::tpy::param_val_or_ref_t<T> __param_x, ::tpy::param_val_or_ref_t<T> y) {
     ::tpy::storage_t<T> x = ::tpy::param_to_storage<T>(::tpy::param_handoff<T>(__param_x));
-    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(::tpy::param_pass_last<T>(x))]() {
         auto& x = __cap_x.v;
         std::cout << "rebound" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
     };

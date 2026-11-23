@@ -355,7 +355,7 @@ template<typename __F0>
   }
 inline void K<T>::g(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f) const {
     auto y = x;
-    f(::tpy::tuple_elem_ref(std::get<0>(y)));
+    f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
     std::cout << "method" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(x)))) << " " << this->n << "\n" << ::tpy::check_signals;
 }
 
@@ -467,7 +467,7 @@ template<typename T, typename __F0>
 void s_closure(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f) {
     auto inner = [&f, &x]() {
         auto y = x;
-        f(::tpy::tuple_elem_ref(std::get<0>(y)));
+        f(::tpy::param_pass<T>(::tpy::tuple_elem_ref(std::get<0>(y))));
         std::cout << "closure" << " " << ::tpy::print_bool(::tpy::eq(::tpy::tuple_elem_ref(std::get<0>(y)), ::tpy::tuple_elem_ref(std::get<0>(x)))) << "\n" << ::tpy::check_signals;
     };
     inner();

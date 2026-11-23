@@ -49,7 +49,7 @@ struct _RcCell : _RcCellBase {
     // weak: uint32
     uint32_t weak;
     // storage: UninitStorage[U]
-    ::tpy::UninitStorage<U> storage;
+    ::tpy::UninitStorage<::tpy::storage_t<U>> storage;
 
     // def __init__(self) -> None:
     _RcCell();
@@ -294,7 +294,7 @@ template<typename U>
 inline _RcCell<U>::_RcCell()
     : strong(1),
       weak(1),
-      storage(::tpy::UninitStorage<U>()) {}
+      storage(::tpy::UninitStorage<::tpy::storage_t<U>>()) {}
 
 // def incr_strong(self) -> None:
 //     self.strong = self.strong + 1

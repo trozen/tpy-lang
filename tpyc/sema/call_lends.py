@@ -65,7 +65,7 @@ from ..typesys import (
     contains_reference_type, FunctionInfo, NominalType, OptionalType, OwnType,
     PendingViewType, PtrType,
     ReadonlyType, TpyType, TupleType, TypeParamRef, UnionType,
-    class_type_param, contains_type_param, declares_no_writes,
+    body_open_type_params, contains_type_param, declares_no_writes,
     held_whole_borrow_sources,
     is_bodyless_binding, is_bufferless_scalar, is_void_like_type,
     is_dyn_protocol, is_open_type_param_return, is_protocol_type,
@@ -520,13 +520,14 @@ def _owned_at_instantiation(fi: FunctionInfo) -> bool:
     """A bodied callee's `-> T` result of a type parameter it declares
     itself, instantiated at `T = Own[X]`: the signature hands the value
     over (`val_or_ref_t` renders it by value), as a declared `-> Own[X]`
-    does. A method's `T` re-declaring its class's parameter is the
-    class's, and a body-less binding renders its own result."""
+    does; a class TPy emits counts its own (`body_open_type_params`). A
+    body-less binding renders its own result."""
     root = fi.root
     declared = unwrap_readonly(unwrap_ref_type(root.return_type))
     return (isinstance(declared, TypeParamRef)
-            and declared.name in (root.type_params or ())
-            and not class_type_param(root, declared.name)
+            and declared.name in body_open_type_params(
+                root.type_params or (),
+                root.owning_type_qname if root.is_method else None)
             and not is_bodyless_binding(root)
             and isinstance(unwrap_readonly(fi.return_type), OwnType))
 

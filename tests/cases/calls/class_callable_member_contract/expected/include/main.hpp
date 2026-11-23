@@ -222,7 +222,7 @@ inline Map1<T>::Map1(std::function<::tpy::val_or_ref_t<T>(::tpy::param_val_or_re
 //     return self.g(x)  # tpyc: ok
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Map1<T>::apply(::tpy::param_val_or_ref_t<T> x) const {
-    return (*this).g(x);
+    return (*this).g(::tpy::param_pass_last<T>(x));
 }
 
 // def __init__(self, f: Callable[[], T]) -> None:

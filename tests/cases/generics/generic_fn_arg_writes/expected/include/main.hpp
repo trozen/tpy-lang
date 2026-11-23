@@ -240,21 +240,21 @@ template<typename __F0>
       __fn(static_cast<decltype(__a0)&&>(__a0));
   }
 inline void Runner<T>::run(__F0&& f, std::vector<::tpy::storage_t<T>>& xs) const {
-    f(::tpy::__getitem__(xs, 0));
+    f(::tpy::param_pass<T>(::tpy::__getitem__(xs, 0)));
 }
 
 // def invoke(self, x: T) -> None:
 //     self.cb(x)
 template<typename T>
 inline void Runner<T>::invoke(::tpy::param_val_or_ref_t<T> x) const {
-    (*this).cb(x);
+    (*this).cb(::tpy::param_pass_last<T>(x));
 }
 
 // def invoke_at(self, x: T) -> None:
 //     self.cbs[0](x)
 template<typename T>
 inline void Runner<T>::invoke_at(::tpy::param_val_or_ref_t<T> x) const {
-    (::tpy::__getitem__(this->cbs, 0))(x);
+    (::tpy::__getitem__(this->cbs, 0))(::tpy::param_pass_last<T>(x));
 }
 
 // def red[T](func: Fn[[T, T], Own[T]], a: list[T]) -> Own[T]:

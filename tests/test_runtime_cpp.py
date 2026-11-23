@@ -39,6 +39,8 @@ _SELFCHECKS = [
      "dict/set update converts a narrower source's entries"),
     ("test_yield_slot_forms.cpp",
      "the generic yield slot's spelling, const-ness and copy count"),
+    ("test_capture_slot_forms.cpp",
+     "a closure's capture slot owns an X&& parameter and aliases an X& one"),
     ("test_next_step_result.cpp",
      "the iterator step result's size, the range-for adapter's stepping, next_or's step form, and an iterator owning a temporary container"),
     ("test_owning_combinator_move.cpp",

@@ -113,14 +113,14 @@ inline ::tpy::val_or_ref_t<U> Base<T, U>::get_second() {
 // def __init__(self, first: T, second: int32) -> None:
 //     super().__init__(first, second)
 template<typename T>
-inline Middle<T>::Middle(::tpy::param_val_or_ref_t<T> first, int32_t second) : Base<T, int32_t>(first, second) {}
+inline Middle<T>::Middle(::tpy::param_val_or_ref_t<T> first, int32_t second) : Base<T, int32_t>(::tpy::param_pass_last<T>(first), second) {}
 
 // def __init__(self, first: T, second: int32, extra: str) -> None:
 //     super().__init__(first, second)
 //     self.extra = extra
 template<typename T>
 inline Leaf<T>::Leaf(::tpy::param_val_or_ref_t<T> first, int32_t second, std::string_view extra)
-    : Middle<T>(first, second),
+    : Middle<T>(::tpy::param_pass_last<T>(first), second),
       extra(extra) {}
 
 // def get_extra(self) -> str:

@@ -1,0 +1,36 @@
+part_members.py:27: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_members.py:31: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_members.py:51: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_members.py:55: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_members.py:79: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_members.py:86: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_members.py:110: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+part_members.py:162: error: cannot copy non-copyable type 'N' into owned storage in 'Jar.__setitem__' (part_members.py:34) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+part_members.py:162: error: cannot copy non-copyable type 'N' into owned storage in 'Jar.__enter__' (part_members.py:37) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+part_members.py:162: error: cannot copy non-copyable type 'N' into owned storage in 'Jar.__bool__' (part_members.py:43) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+part_members.py:172: error: cannot copy non-copyable type 'N' into owned storage in 'Tin.__delitem__' (part_members.py:58) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+part_members.py:172: error: cannot copy non-copyable type 'N' into owned storage in 'Tin.__len__' (part_members.py:61) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+part_members.py:180: error: cannot copy non-copyable type 'N' into owned storage in 'Rot4.get' (part_members.py:141) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+part_members.py:185: error: cannot copy non-copyable type 'N' into owned storage in 'Perm.get' (part_members.py:154) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+part_members.py:190: error: cannot copy non-copyable type 'N' into owned storage in 'Rot.get' (part_members.py:133) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+part_members.py:201: error: cannot copy non-copyable type 'N' into owned storage in 'Box.get' (part_members.py:83) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+part_members.py:203: error: cannot copy non-copyable type 'N' into owned storage in 'Outer.put_loop' (part_members.py:124) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+part_members.py:196: error: cannot copy non-copyable type 'N' into owned storage in 'Lots.pick' (part_members.py:71) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+part_members.py:199: error: cannot copy non-copyable type 'N' into owned storage in 'Box.get' (part_members.py:83) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+part_members.py:202: error: cannot copy non-copyable type 'N' into owned storage (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+main.py:28: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:40: warning: may copy B into field if not a value type; use copy() to make this explicit
+main.py:50: error: cannot copy non-copyable type 'Pair[N, int32]' into owned storage (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+main.py:69: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:74: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:89: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:119: error: cannot copy non-copyable type 'N' into owned storage in 'Box.get' (main.py:31) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+main.py:109: error: cannot copy non-copyable type 'N' into owned storage in 'Box.get' (main.py:31) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+main.py:104: error: cannot copy non-copyable type 'N' into owned storage in 'Box.get' (main.py:31) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+main.py:114: error: cannot copy non-copyable type 'N' into owned storage in 'Gen.via_genexpr' (main.py:78) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+main.py:114: error: cannot copy non-copyable type 'N' into owned storage in 'Gen.via_ptr' (main.py:81) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+main.py:124: error: cannot copy non-copyable type 'N' into owned storage in 'Box.get' (main.py:31) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+main.py:129: warning: copies P into owned storage in 'Box.get' (main.py:31); use copy() to make this explicit
+main.py:131: error: cannot copy non-copyable type 'N' into owned storage in 'Box.get' (main.py:31) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+main.py:134: error: cannot copy non-copyable type 'N' into owned storage in 'Rc.get' (rc.py:142) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+main.py:141: error: cannot copy non-copyable type 'N' into owned storage in 'Lone.get' (main.py:92) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)

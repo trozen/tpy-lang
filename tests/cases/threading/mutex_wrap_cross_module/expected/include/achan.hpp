@@ -28,7 +28,7 @@ Producer<T> make_producer();
 template<typename T>
 struct Cell {
     // _buf: UninitHeapStorage[T]
-    ::tpy::UninitHeapStorage<T> _buf;
+    ::tpy::UninitHeapStorage<::tpy::storage_t<T>> _buf;
     // _cap: uint32
     uint32_t _cap;
 
@@ -107,7 +107,7 @@ inline std::ostream& operator<<(std::ostream& os, const Producer<T>& obj) {
 //     self._cap = cap
 template<typename T>
 inline Cell<T>::Cell(uint32_t cap)
-    : _buf(::tpy::UninitHeapStorage<T>(cap)),
+    : _buf(::tpy::UninitHeapStorage<::tpy::storage_t<T>>(cap)),
       _cap(cap) {}
 
 // def __init__(self) -> None:

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
 from ..holders import Holder, IterHolder
-from ..typesys import pending_view_of, protocol_param_alternatives, without_class_own_args
+from ..typesys import pending_view_of, protocol_param_alternatives
 from ..typesys import (frame_module_qual, unwrap_qualifiers, bound_as_spelled, contains_reference_type, unwrap_value_own, drop_own_marker, pointer_repr_optional, pointer_variant_union,
                        holds_result_member,
                        ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
@@ -6493,9 +6493,7 @@ class StatementAnalyzer:
             # at a local should surface "Own[T] not allowed as variable",
             # not "use Optional[T] or Box[T]" -- the user can't use either
             # in a local context either).
-            # An `Own[X]` a class type argument drops is warned there
-            # (`check_type_args`), not refused here.
-            if type_contains_own(without_class_own_args(stmt.type),
+            if type_contains_own(stmt.type,
                                  allow_optional_own=False):
                 raise self.ctx.error(
                     f"Own[T] is redundant in this variable type ('{stmt.type}'): a "
@@ -8571,8 +8569,8 @@ class StatementAnalyzer:
             if callee.root.element_access is None:
                 # `del t[k]` is the explicit `t.__delitem__(k)` call, whose
                 # code may write anything.
-                record_implicit_call(subscript, callee.root, subscript.obj,
-                                     callee.name)
+                record_implicit_call(self.ctx, subscript, callee.root,
+                                     subscript.obj, callee.name)
 
     def _write_target_receiver(self, target: TpyFieldAccess) -> TpyType | None:
         """The type of write target `target`'s receiver, analyzed ahead of

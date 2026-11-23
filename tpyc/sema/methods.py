@@ -6,7 +6,7 @@ Method call and super() analysis.
 
 from __future__ import annotations
 from dataclasses import replace as dc_replace
-from typing import TYPE_CHECKING, Callable, NamedTuple
+from typing import TYPE_CHECKING, Callable, NamedTuple, Sequence
 
 from .. import qnames
 from ..typesys import (
@@ -18,7 +18,7 @@ from ..typesys import (
     RecordInfo, InitInheritBlock, InitInheritBlocker,
     contains_type_param, contains_pending_leaf,
     FloatLiteralType, resolve_int_literals,
-    PendingContainerType, same_class, record_owner,
+    PendingContainerType, same_class, record_owner, UnownedParam,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyStrLiteral, TpyStmt,
@@ -51,7 +51,7 @@ from .overloads import CallShape, operand_param_type
 from .list_elem import (ContainerCall, Effect, Role, container_call,
                         container_calls, container_overloads)
 from .pending_num import (ContainerCells, Entry, root_of, with_container)
-from .type_ops import settle_class_type_args
+from .type_ops import InferenceBindings, settle_inferred
 from .receiver_calls import (call_mutates_receiver, check_receiver_call_loans,
                              credit_receiver_mutation, implicit_readonly_result_hint,
                              receiver_is_readonly, record_protocol_arg_calls)
@@ -75,6 +75,29 @@ from .local_deduction import (mark_pending_list_mutated, pending_elem_read,
 # Single-element container inserts and the arg index that lands in element
 # storage -- used to reject a temporary rvalue stored into a view-typed element.
 _VIEW_ELEM_INSERTS = {"append": 0, "add": 0, "insert": 1}
+
+
+def _settle_pending(inferred: InferenceBindings,
+                    type_params: 'Sequence[str]') -> None:
+    """Settle pending instance bindings `inferred` in place, with no
+    ownership kind inferred across statements: every class parameter keeps
+    the type it binds (an open `T` stays `T`, an argument's storage form
+    `Unowned(T)` is `T`), and a top-level `Own[X]` is `X` unless the
+    position is pinned -- spelled at the construction or bound from the
+    expected type (`InferenceBindings.spelled`). Settled bindings settle
+    to themselves."""
+    plain = dict(inferred)
+    settle_inferred(plain, frozenset(type_params))
+    for tp in type_params:
+        t = plain.get(tp)
+        if not isinstance(t, TpyType):
+            continue
+        if isinstance(t, OwnType) and tp not in inferred.spelled:
+            t = t.wrapped
+        if isinstance(t, UnownedParam):
+            t = TypeParamRef(t.name, t.bound, t.kind)
+        # Item assignment keeps the accumulator's provenance.
+        inferred[tp] = t
 
 
 def _unresolved_params_in_type(typ: TpyType, inferred: dict[str, TpyType], param_names: set[str]) -> list[str]:
@@ -617,8 +640,8 @@ class MethodAnalyzer:
         # method body's owning-slot copy obligations are answered.
         if (self.ctx.slot_step_commits() and type_subst
                 and expr.resolved_function_info is not None):
-            self.ctx.record_own_copy_instantiation(
-                expr.resolved_function_info.root, type_subst, at=expr)
+            root = expr.resolved_function_info.root
+            self.ctx.record_own_copy_instantiation(root, type_subst, at=expr)
         self.calls.commit_facts(expr, resolved)
         return resolved.return_type
 
@@ -764,8 +787,7 @@ class MethodAnalyzer:
         type_subst = self.type_ops.build_type_substitution(obj_type)
         # Send/Sync markers constrain stores into the field, not calls
         fld_type = unwrap_send_sync(
-            self.type_ops.substitute_type_params(fld.type, type_subst)
-            if type_subst else fld.type)
+            self.type_ops.field_type_at(fld.type, type_subst))
         callable_type = None
         is_optional_field = False
         if isinstance(fld_type, CallableType):
@@ -1676,6 +1698,10 @@ class MethodAnalyzer:
         # For MVP: use first overload (user records have single overloads per name)
         method = overloads[0]
 
+        # Borrow conflict, as at a resolved receiver (`analyze_method_call`).
+        check_receiver_call_loans(self.ctx, expr.obj, obj_type, expr.method,
+                                  expr, callee=method)
+
         binding = self.calls.bind_args(expr, method.params, expr.method)
 
         # Analyze arguments and accumulate constraints. analyze_call_arg so a
@@ -1684,6 +1710,9 @@ class MethodAnalyzer:
         typed = [(slot, self.expr.analyze_call_arg(arg))
                  for slot, arg in binding.evidence(source_view(expr))]
         type_param_names = set(info.type_params)
+        # A pinned position is matched against, never merged into.
+        pinned = {tp: info.inferred[tp] for tp in info.inferred.spelled
+                  if tp in info.inferred}
         for slot, arg_type in typed:
             pname = method.params[slot].name
             ptype = operand_param_type(method.params[slot])
@@ -1699,23 +1728,31 @@ class MethodAnalyzer:
                     if tp in info.inferred:
                         existing = info.inferred[tp]
                         # Try matching just this param to see if it conflicts
-                        test: dict[str, TpyType] = {}
+                        test = InferenceBindings()
                         self.type_ops.match_type_with_inference(ptype, resolved_arg, test)
                         if tp in test and test[tp] != existing:
+                            implied = InferenceBindings(test)
+                            settle_inferred(implied)
+                            shown = InferenceBindings(info.inferred)
+                            _settle_pending(shown, info.type_params)
                             raise self.ctx.error(
                                 f"Conflicting type inference for '{tp}' in '{record.name}': "
-                                f"previously inferred as '{existing}', "
-                                f"but '{expr.method}' argument '{pname}' implies '{test[tp]}'",
+                                f"previously inferred as '{shown[tp]}', "
+                                f"but '{expr.method}' argument '{pname}' implies '{implied[tp]}'",
                                 expr,
                             )
 
-        # Resolve literal markers in any newly inferred params, settled as
-        # a construction's (`infer_type_params_for_record`).
+        # What this statement's constraints asked for, before the pinned
+        # positions are restored and the bindings settle.
+        asked = dict(info.inferred)
+        for tp, t in pinned.items():
+            info.inferred[tp] = t
         for k, v in list(info.inferred.items()):
             if isinstance(v, TpyType):
                 info.inferred[k] = resolve_int_literals(
                     v, self.ctx.default_int_for_literal)
-        settle_class_type_args(info.inferred, info.record_info)
+        _settle_pending(info.inferred, info.type_params)
+        self._refuse_pending_own_inference(expr, info, method, typed, asked)
 
         # Check if all type params are now resolved
         all_resolved = all(tp in info.inferred for tp in info.type_params)
@@ -1734,6 +1771,22 @@ class MethodAnalyzer:
                     f"'{resolved_type}' has no method '{expr.method}'", expr)
             return result
 
+        # A method's own type parameters are inferred only on the resolved
+        # path (`_analyze_generic_method_call`); here they would go
+        # unrecorded (BUGS.md#pending-generic-method-one-call-path).
+        declared = self.type_ops.declaring_class_params(method)
+        class_params = (declared if declared is not None
+                        else set(record.type_params or ()))
+        if any(tp not in class_params for tp in method.type_params):
+            receiver = (expr.obj.name if isinstance(expr.obj, TpyName)
+                        else record.name)
+            raise self.ctx.error(
+                f"Cannot call generic method '{expr.method}' on '{receiver}' "
+                f"before the type arguments of '{record.name}' are known; "
+                f"call a constraining method first or spell the class type "
+                f"arguments: {record.name}[{', '.join(record.type_params)}](...)",
+                expr)
+
         # Not fully resolved yet -- check return type
         return_type = method.return_type
         if contains_type_param(return_type, type_param_names):
@@ -1750,10 +1803,18 @@ class MethodAnalyzer:
             # All params in return type are resolved, substitute
             return_type = self.type_ops.substitute_call_result(return_type, info.inferred)
 
+        # The call keeps the pending signature, committed as any call is
+        # (a re-dispatched one commits against its resolved receiver above):
+        # the member as the bindings known so far substitute it, and a
+        # parameter the open type parameters still spell takes its argument
+        # as the argument was typed.
+        unresolved = type_param_names - set(info.inferred)
+        view = self._pending_member_view(info, method)
+
         # Set minimal function info for void methods
         stamp = FunctionInfo(
             name=expr.method,
-            params=method.params,
+            params=view.params,
             return_type=return_type,
             # Resumable-factory flags drive call-site capture decisions
             # (e.g. temporary-receiver lift); a pending-generic generator/
@@ -1774,14 +1835,6 @@ class MethodAnalyzer:
             error_return_type=method.error_return_type,
             canonical_fi=method.root,
         )
-        # The call keeps the pending signature, committed as any call is
-        # (a re-dispatched one commits against its resolved receiver above):
-        # a parameter the open type parameters still spell takes its
-        # argument as the argument was typed.
-        unresolved = type_param_names - set(info.inferred)
-        view = self.type_ops.substitute_method_type_params(
-            method, {**{tp: TypeParamRef(tp) for tp in unresolved},
-                     **info.inferred})
         by_slot = dict(typed)
         held = {i: by_slot[i] for i, p in enumerate(method.params)
                 if i in by_slot and contains_type_param(p.type, unresolved)}
@@ -1797,6 +1850,57 @@ class MethodAnalyzer:
             expr, method,
             CallOperands(method, None, ops.args) if ops is not None else None)
         return return_type
+
+    def _pending_member_view(self, info: 'PendingGenericInstanceInfo',
+                             method: FunctionInfo) -> FunctionInfo:
+        """`method` as pending instance `info`'s bindings so far substitute
+        it; a parameter still unbound stays itself."""
+        return self.type_ops.substitute_method_type_params(
+            method, {**{tp: TypeParamRef(tp) for tp in info.type_params
+                        if tp not in info.inferred},
+                     **info.inferred})
+
+    def _refuse_pending_own_inference(
+        self, expr: TpyMethodCall, info: 'PendingGenericInstanceInfo',
+        method: FunctionInfo, typed: 'list[tuple[int, TpyType]]',
+        asked: 'dict[str, TpyType | int]',
+    ) -> None:
+        """Refuse member call `expr` on pending instance `info` when an
+        argument fits only where a class type argument is `Own`, which a
+        pending instance never infers (`_settle_pending`): its other
+        statements were analyzed at the settled type, so the call is
+        checked at it, as the spelled class's would be."""
+        owned = {tp for tp, t in asked.items()
+                 if isinstance(t, OwnType) and not t.is_plain()
+                 and not isinstance(info.inferred.get(tp), OwnType)}
+        if not owned:
+            return
+        view = self._pending_member_view(info, method)
+        open_params = {tp for tp in info.type_params
+                       if tp not in info.inferred}
+        for slot, arg_type in typed:
+            if not contains_type_param(
+                    operand_param_type(method.params[slot]), owned):
+                continue
+            ptype = operand_param_type(view.params[slot])
+            # Undecidable while another parameter is open: refused, a
+            # temporary guard's safe side.
+            if (not contains_type_param(ptype, open_params)
+                    and self.compat.is_type_compatible(
+                        arg_type, ptype, CoercionContext.ARG)):
+                continue
+            tp = next(t for t in info.type_params if t in owned)
+            receiver = (expr.obj.name if isinstance(expr.obj, TpyName)
+                        else info.record_info.name)
+            spelled = ", ".join(
+                str(asked[t]) if t in owned
+                else str(info.inferred[t]) if t in info.inferred else t
+                for t in info.type_params)
+            raise self.ctx.error(
+                f"Cannot infer 'Own' for type argument '{tp}' of "
+                f"'{info.record_info.name}' from a later call on "
+                f"'{receiver}'; spell the class type arguments: "
+                f"{info.record_info.name}[{spelled}](...)", expr)
 
     def try_resolve_pending_from_expected_type(
         self, pending: PendingGenericInstanceType, expected: TpyType,
@@ -1829,12 +1933,15 @@ class MethodAnalyzer:
         if not target.type_args or len(target.type_args) != len(info.type_params):
             return None
 
-        # Inferred on a copy: only a committing step writes it back.
-        inferred = dict(info.inferred)
-        # Build pattern with TypeParamRefs for unresolved params
+        # Inferred on a copy: only a committing step writes it back. The
+        # pattern spells the bindings known so far, so only the names it
+        # leaves open take new constraints; those are pinned as the
+        # expected type spells them.
+        known = info.inferred
+        inferred = InferenceBindings(known)
         pattern = NominalType(
             info.record_info.name,
-            tuple(inferred.get(tp, TypeParamRef(tp)) for tp in info.type_params),
+            tuple(known.get(tp, TypeParamRef(tp)) for tp in info.type_params),
             _module_qname=info.record_info.qualified_name(),
         )
 
@@ -1842,33 +1949,38 @@ class MethodAnalyzer:
         if not self.type_ops.match_type_with_inference(pattern, target, inferred):
             # Check if a previously-inferred param conflicts with the expected type
             for tp, expected_arg in zip(info.type_params, target.type_args):
-                if (commit and tp in info.inferred
+                if (commit and tp in known
                         and isinstance(expected_arg, TpyType)
-                        and info.inferred[tp] != expected_arg):
+                        and known[tp] != expected_arg):
                     raise SemanticError(
                         f"Conflicting type for '{tp}' in '{info.record_info.name}': "
-                        f"previously inferred as '{info.inferred[tp]}', "
+                        f"previously inferred as '{known[tp]}', "
                         f"but expected type requires '{expected_arg}'",
                         loc,
                     )
             return None
 
-        # Resolve literal markers in any newly inferred params
-        for k, v in list(inferred.items()):
-            if isinstance(v, TpyType):
-                inferred[k] = resolve_int_literals(v, self.ctx.default_int_for_literal)
+        # Resolve literal markers in any newly inferred params.
+        fresh = InferenceBindings.like(inferred, {
+            k: (resolve_int_literals(v, self.ctx.default_int_for_literal)
+                if isinstance(v, TpyType) else v)
+            for k, v in inferred.items() if k not in known})
+        fresh.spelled |= fresh.keys()
+        settled = InferenceBindings(known)
+        settled.update(fresh)
+        _settle_pending(settled, info.type_params)
         if commit:
             self.ctx.assert_slot_effect(
                 "a pending generic instance's inferred type arguments")
-            info.inferred.update(inferred)
+            info.inferred.update(settled.subset(fresh))
 
         # Check if all type params are now resolved
-        if not all(tp in inferred for tp in info.type_params):
+        if not all(tp in settled for tp in info.type_params):
             return None
         if not commit:
-            resolved = self._pending_generic_type(info, inferred)
+            resolved = self._pending_generic_type(info, settled)
             return resolved if self.calls.construction_bound_error(
-                info.record_info, resolved.name, inferred) is None else None
+                info.record_info, resolved.name, settled) is None else None
         return self._eagerly_resolve_pending_generic(info)
 
     def _pending_generic_type(self, info: 'PendingGenericInstanceInfo',
@@ -1904,9 +2016,7 @@ class MethodAnalyzer:
         type_subst = self.type_ops.build_type_substitution(obj_type)
         for fld in record_info.fields:
             if fld.name == key:
-                field_type = fld.type
-                if type_subst:
-                    field_type = self.type_ops.substitute_type_params(field_type, type_subst)
+                field_type = self.type_ops.field_type_at(fld.type, type_subst)
                 # total=False: field stored as Optional[T], unwrap to get inner type
                 # total=True: field is always present, even if annotated Optional[T]
                 is_absent_optional = record_info.is_total_false

@@ -180,13 +180,13 @@ inline void Waker::wake() const {
 //     return Poll[T].ready(value)
 template<typename T>
 ::tpystd::tpy::Poll<T> poll_ready(::tpy::own_param_t<T> value) {
-    return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::ready(std::move(value));
+    return ::tpystd::tpy::Poll<T>::ready(std::move(value));
 }
 // def poll_pending[T]() -> Own[Poll[T]]:
 //     return Poll[T].pending()
 template<typename T>
 ::tpystd::tpy::Poll<T> poll_pending() {
-    return ::tpystd::tpy::Poll<::tpy::storage_t<T>>::pending();
+    return ::tpystd::tpy::Poll<T>::pending();
 }
 // # Synchronous one-step driver. Calls `__poll__(Waker())` once and
 // # returns the Poll[T] for the caller to inspect. Useful for tests and

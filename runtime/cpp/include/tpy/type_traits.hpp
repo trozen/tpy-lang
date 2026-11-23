@@ -369,10 +369,14 @@ inline constexpr bool param_holds_value_v =
 // through the parameter's own reference, so its const-ness stays the signature's.
 // A struct because an init-capture deduces a value; this keeps the reference arm
 // with one spelling. The forwarding ctor, not brace-init: `string_view` converts
-// to `std::string` only explicitly.
+// to `std::string` only explicitly. A parameter passed as `X&&` owns its value,
+// so the closure holds an `X` of its own: `T = Own[X]` shows through `P` only,
+// as the first argument is the storage form (`X`).
 template<typename T, typename P>
 struct capture_slot {
-    std::conditional_t<is_value_type<T>::value, val_or_ref_t<T>, P> v;
+    std::conditional_t<is_value_type<T>::value, val_or_ref_t<T>,
+                       std::conditional_t<std::is_rvalue_reference_v<P>,
+                                          std::remove_cvref_t<P>, P>> v;
     template<typename U>
         requires (!std::same_as<std::remove_cvref_t<U>, capture_slot>)
     explicit capture_slot(U&& u) : v(std::forward<U>(u)) {}
@@ -848,6 +852,8 @@ namespace detail {
     template<typename T> struct yield_slot_impl<const val_or_ref<T>> { using type = val_or_ref<const T>; };
     // An owned step (`Iterator[Own[X]]`'s slot) at `T = Own[X]`.
     template<typename X> struct yield_slot_impl<own_arg<X>> { using type = own_return_t<X>; };
+    // A `readonly[T]` step at `T = Own[X]`: the step is the caller's own.
+    template<typename X> struct yield_slot_impl<const own_arg<X>> { using type = own_return_t<X>; };
 }
 template<typename T> using yield_slot_t = typename detail::yield_slot_impl<T>::type;
 

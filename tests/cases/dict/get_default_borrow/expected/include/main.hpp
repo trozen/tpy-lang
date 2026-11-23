@@ -569,7 +569,7 @@ int32_t generic_opt(const ::tpy::ordered_map<std::string, std::optional<::tpy::s
     if ((!::tpy::opt_has_value(m))) {
         return -1;
     }
-    return read(::tpy::param_pass<V>((*m)));
+    return read(::tpy::param_pass_last<V>((*m)));
 }
 
 void __tpy_init();

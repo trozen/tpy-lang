@@ -13,7 +13,7 @@ from typing import Callable, Iterable, Iterator, Literal, NamedTuple, Sequence, 
 
 from ..holders import IterHolder
 from ..identity_map import IdentityMap, IdentitySet
-from ..typesys import canonical_readonly, make_iterable, make_readonly
+from ..typesys import canonical_readonly, inner_type_param_names, make_iterable, make_readonly
 from ..typesys import none_identity_of, pointer_repr_optional, readonly_access, repr_shape
 from ..typesys import own_tuple_target, strip_own_type_args
 from ..typesys import binds_runtime_symbol, body_function_info
@@ -127,12 +127,14 @@ from .local_deduction import (collect_pending_source_types,
                               note_pending_elem_read, pending_elem_read)
 from .operators import OperatorAmbiguity
 from .overloads import CallShape, OverloadAmbiguityError, pins_const_receiver
-from .type_ops import frame_yield_may_borrow, settle_inferred
+from .type_ops import InferenceBindings, frame_yield_may_borrow, settle_inferred
 from .registration import referent_type
+from . import own_copy
 from .own_copy import warn_value_call_binding
 from .scope_tracker import lend_places
 from .receiver_calls import (check_implicit_readonly_receiver,
                              credit_implicit_receiver_call, receiver_is_readonly,
+                             record_member_instantiation,
                              record_protocol_arg_calls, record_truth_calls)
 from .storage_walk import Leaf, LeafKind, StorageKey, leaves
 from ..storage_trace import StepKind
@@ -4127,10 +4129,7 @@ class ExpressionAnalyzer:
             field_info = self.protocols.lookup_record_field(record, expr.field)
             if field_info:
                 expr.native_field_name = field_info.native_name
-                field_type = field_info.type
-                if type_subst:
-                    field_type = self.type_ops.substitute_type_params(field_type, type_subst)
-                return field_type
+                return self.type_ops.field_type_at(field_info.type, type_subst)
             # Check properties (getter access)
             prop = self.protocols.lookup_record_property(record, expr.field)
             if prop is not None:
@@ -4287,9 +4286,7 @@ class ExpressionAnalyzer:
 
         parent_type, type_subst = self.protocols.resolve_ancestor_instantiation(
             current_rec, record_info)
-        field_type = field_info.type
-        if type_subst:
-            field_type = self.type_ops.substitute_type_params(field_type, type_subst)
+        field_type = self.type_ops.field_type_at(field_info.type, type_subst)
 
         # Readonly self propagates into non-value reads so writes through
         # the result are rejected and references come back const.
@@ -4445,6 +4442,9 @@ class ExpressionAnalyzer:
                     # spell `obj.prop` off `expr.field`. From this point on
                     # every position answers for it at its call arm, with no
                     # property-specific code.
+                    record_member_instantiation(
+                        self.ctx, expr.resolved_property_getter,
+                        current_type, expr)
                     become_method_call(
                         expr, method=expr.field, args=[],
                         fi=expr.resolved_property_getter)
@@ -7031,9 +7031,8 @@ class ExpressionAnalyzer:
                 type_subst = self.type_ops.build_type_substitution(actual_obj)
                 for fld in record_info.fields:
                     if fld.name == key:
-                        field_type = fld.type
-                        if type_subst:
-                            field_type = self.type_ops.substitute_type_params(field_type, type_subst)
+                        field_type = self.type_ops.field_type_at(fld.type,
+                                                                 type_subst)
                         expr.typed_dict_field = key
                         # total=False: field is Optional[T], unwrap to T with runtime check
                         if isinstance(field_type, OptionalType):
@@ -7774,6 +7773,8 @@ class ExpressionAnalyzer:
                     self._resolve_literals_with_hint(unwrap_own(body_type),
                                                      ret_slot)))
             expr.inferred_return_type = body_type
+            self._check_closure_result_roots(expr, fn_type, expr,
+                                             fn_slot.member)
             self.compat.check_view_return_dangle(expr.body, body_type, expr.loc)
             self._queue_lambda_borrow_check(expr, body_type, None,
                                             factory_of)
@@ -7799,10 +7800,7 @@ class ExpressionAnalyzer:
         # The lambda's result is the slot's contract, read as a def's
         # declared return: a bare reference type is a borrow.
         contract = fn_type.closure_return()
-        if (not fn_type.is_template and fn_type.returns_borrow()
-                and self.ctx.slot_step_commits()):
-            self._check_callable_result_roots(expr, fn_type, expr,
-                                              fn_slot.member)
+        self._check_closure_result_roots(expr, fn_type, expr, fn_slot.member)
         self._queue_lambda_borrow_check(expr, contract, fn_type, factory_of,
                                         fn_slot.member)
         self._lambda_result_sink(expr, contract)
@@ -7813,6 +7811,34 @@ class ExpressionAnalyzer:
 
         expr.inferred_return_type = contract
         return fn_type
+
+    def _check_closure_result_roots(
+            self, closure: 'TpyLambda | TpyNestedDef', slot: CallableType,
+            site: TpyExpr, member: 'ClassMember | None') -> None:
+        """The root check (`_check_callable_result_roots`) of a lambda or
+        nested def at a committed `Callable` slot that may return a borrow:
+        now where the slot's result is one, else -- a result naming this
+        body's open `T` (`T`, `readonly[T]`), which only the instantiation
+        makes a borrow or not -- recorded for the instantiation to answer
+        (`own_copy.OpenClosureCapture`)."""
+        if slot.is_template or not self.ctx.slot_step_commits():
+            return
+        if slot.returns_borrow():
+            self._check_callable_result_roots(closure, slot, site, member)
+            return
+        open_params = self.ctx.body_open_type_params()
+        named = inner_type_param_names(slot.return_type) & open_params
+        if not named or self.ctx.trial_depth:
+            return
+        try:
+            self._check_callable_result_roots(closure, slot, site, member)
+        except SemanticError as err:
+            owner, _ = self.ctx.open_param_owner(named)
+            what = ("the lambda" if isinstance(closure, TpyLambda)
+                    else f"nested def '{closure.func.name}'")
+            self.ctx.add_own_copy_obligation(own_copy.OpenClosureCapture(
+                slot, err.message, getattr(err.loc, "line", None), owner,
+                what))
 
     def _check_callable_result_roots(
             self, closure: 'TpyLambda | TpyNestedDef',
@@ -8152,9 +8178,9 @@ class ExpressionAnalyzer:
             if not hint.is_template and self.ctx.slot_step_commits():
                 self.ctx.mark_nested_def_escape(expr.name)
                 node = self.ctx.visible_nested_def(expr.name)
-                if node is not None and hint.returns_borrow():
-                    self._check_callable_result_roots(node, hint, expr,
-                                                      slot.member)
+                if node is not None:
+                    self._check_closure_result_roots(node, hint, expr,
+                                                     slot.member)
         if self.ctx.slot_step_commits():
             if type_args is not None:
                 # The reference instantiates the generic as a call would:
@@ -8328,7 +8354,7 @@ class ExpressionAnalyzer:
         which a refusal names (`Fn[[P], Own[P]]`, not `Fn[[T], Own[T]]`)."""
         if not contains_type_param(hint):
             return hint
-        trial: dict[str, TpyType] = {}
+        trial = InferenceBindings()
         self.type_ops.match_type_with_inference(
             hint, self.fit_signature(fi, None), trial)
         settle_inferred(trial)
@@ -8356,7 +8382,7 @@ class ExpressionAnalyzer:
         (None, None) on type mismatch (not a candidate at all).
         """
         own = set(fi.type_params)
-        inferred: dict[str, TpyType] = {}
+        inferred = InferenceBindings()
         for (_, ptype), htype in zip(fi.params, hint.param_types):
             if (contains_type_param(ptype, own)
                     and not self.type_ops.match_type_with_inference(ptype, htype, inferred)):

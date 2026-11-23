@@ -70,7 +70,7 @@ inline ::tpy::val_or_ref_t<U> Base<T>::transform(::tpy::param_val_or_ref_t<U> ot
 // def __init__(self, val: T):
 //     super().__init__(val)
 template<typename T>
-inline Child<T>::Child(::tpy::param_val_or_ref_t<T> val) : Base<T>(val) {}
+inline Child<T>::Child(::tpy::param_val_or_ref_t<T> val) : Base<T>(::tpy::param_pass_last<T>(val)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

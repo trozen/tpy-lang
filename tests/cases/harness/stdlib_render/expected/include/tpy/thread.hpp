@@ -27,13 +27,13 @@ JoinHandle<R> spawn(::tpy::own_param_t<T> task);
 template<typename R>
 struct JoinHandle {
     // _raw: _RawJoin[R]
-    ::tpy::JoinHandle<R> _raw;
+    ::tpy::JoinHandle<::tpy::storage_t<R>> _raw;
     // _consumed: bool
     bool _consumed;
     bool __tpy_owned_ = true;
 
     // def __init__(self, raw: Own[_RawJoin[R]]) -> None:
-    explicit JoinHandle(::tpy::JoinHandle<R>&& raw);
+    explicit JoinHandle(::tpy::JoinHandle<::tpy::storage_t<R>>&& raw);
     // non-copyable (@nocopy)
     JoinHandle(const JoinHandle&) = delete;
     JoinHandle& operator=(const JoinHandle&) = delete;
@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const JoinHandle<R>& obj) {
 //     self._raw = raw
 //     self._consumed = False
 template<typename R>
-inline JoinHandle<R>::JoinHandle(::tpy::JoinHandle<R>&& raw)
+inline JoinHandle<R>::JoinHandle(::tpy::JoinHandle<::tpy::storage_t<R>>&& raw)
     : _raw(std::move(raw)),
       _consumed(false) {}
 

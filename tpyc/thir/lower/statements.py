@@ -4974,9 +4974,14 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
                     held = _fresh_narrow_local(f"__cap_{cpp_n}",
                                                cap_taken)
                     cap_taken.add(held)
+                    # At its last use the read hands the value on where
+                    # `T = Own[X]`, as an argument's `param_pass_last` does.
+                    value = (OpenTSink.PASS.render(t.to_cpp_tag(), cpp_n,
+                                                   last=True)
+                             if n in stmt.move_captures else cpp_n)
                     parts.append(
                         f"{held} = ::tpy::capture_slot<{t.to_cpp()},"
-                        f" decltype({cpp_n})>({cpp_n})")
+                        f" decltype({cpp_n})>({value})")
                     capture_prologue.append(f"auto& {cpp_n} = {held}.v;")
                 elif n in stmt.ref_captures:
                     parts.append(f"&{cpp_n}")

@@ -18,7 +18,7 @@ void main();
 template<typename T>
 struct Wrapper {
     // _storage: UninitHeapStorage[T]
-    ::tpy::UninitHeapStorage<T> _storage;
+    ::tpy::UninitHeapStorage<::tpy::storage_t<T>> _storage;
     bool __tpy_owned_ = true;
 
     // def __init__(self, val: Own[T]):
@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 //     self._storage = UninitHeapStorage(1)  # tpyc: ok
 //     self._storage.init0(val)
 template<typename T>
-inline Wrapper<T>::Wrapper(::tpy::own_param_t<T> val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
+inline Wrapper<T>::Wrapper(::tpy::own_param_t<T> val) : _storage(::tpy::UninitHeapStorage<::tpy::storage_t<T>>(1)) {
     this->_storage.init0(std::move(val));
 }
 

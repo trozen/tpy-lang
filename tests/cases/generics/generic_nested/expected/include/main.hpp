@@ -76,7 +76,7 @@ inline ::tpy::val_or_ref_t<T> Box<T>::get() {
 // def __init__(self, value: T) -> None:
 //     self.inner = Box[T](value)
 template<typename T>
-inline Container<T>::Container(::tpy::param_val_or_ref_t<T> value) : inner(Box<T>(value)) {}
+inline Container<T>::Container(::tpy::param_val_or_ref_t<T> value) : inner(Box<T>(::tpy::param_pass_last<T>(value))) {}
 
 // def get_inner(self) -> Box[T]:
 //     return self.inner

@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const ChannelClosed& obj) {
 template<typename T>
 struct _Buf {
     // _buf: UninitHeapStorage[T]
-    ::tpy::UninitHeapStorage<T> _buf;
+    ::tpy::UninitHeapStorage<::tpy::storage_t<T>> _buf;
     // _cap: uint32
     uint32_t _cap;
     // _head: uint32
@@ -271,7 +271,7 @@ inline __gen_Receiver___iter__<T> Receiver<T>::__iter__() const {
 //     self._senders = 1
 template<typename T>
 inline _Buf<T>::_Buf(uint32_t capacity)
-    : _buf(::tpy::UninitHeapStorage<T>(capacity)),
+    : _buf(::tpy::UninitHeapStorage<::tpy::storage_t<T>>(capacity)),
       _cap(capacity),
       _head(0),
       _count(0),

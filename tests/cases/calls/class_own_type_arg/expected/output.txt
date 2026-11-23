@@ -1,16 +1,60 @@
-ctor 9
-param 9
-return 9
-local 9
+core 2 30 2 2
+plain 9
+nocopy 4 5
+sub 14
+global 7 80
+own-t 1 6
+static 22 33
+own-list 2 2
+gen 16
+ro-field 3
+method-u 3 3 1
+str s 1
+wrap 5
+make_from 4
+infer 9 8
+nested 60 60
+pick 40
+give 50
+bound-default 1 0 0
+bound-chain 1 0
+al 7 1
+lazy 55 2
+dyn-base 1
+lambda-value 3
+lambda-class 5
+opt 5
+comp [2, 3] 3
+kid 4
+match 5
 pending 9
 classmethod 9
-method 9
-nested 9
-tuple 9 1
-alias 9
 inferred 9
 builtin 9
-static 9
-own-method 9
-field-before 1
-alias-cp 9
+capture-own 5
+capture-plain 8
+binder-fresh 0 0
+binder-hand 30
+binder-sink 40
+binder-proto 1 1
+binder-int 1 1
+binder-own-pair 1 2
+binder-int-pair 2
+binder-pending 2
+binder-pending-p 2
+binder-two 1 1 1 1
+binder-lid 1 1
+binder-maker 11 2
+binder-overload 13
+binder-overload-own 140 2
+pending-settle 0 7 7
+pending-lf 7 0
+pending-fl 7 0
+pending-p 7 0
+pending-lone 0 0
+pending-storage 7 7
+pending-mixed 42
+pending-mixed 42
+pending-mixed 42
+pending-mixed 42
+pending-twice 2 1

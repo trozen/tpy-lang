@@ -865,7 +865,7 @@ inline DictReader<W>::DictReader(::tpy::param_val_or_ref_t<W> fp, std::optional<
 //     self._restval = restval
 template<::tpystd::tpy::Writable W>
 inline DictWriter<W>::DictWriter(::tpy::param_val_or_ref_t<W> fp, std::vector<std::string>&& fieldnames, std::string_view restval, std::string_view delimiter, std::string_view quotechar, bool doublequote, std::string_view lineterminator)
-    : _w(_Writer<W>(fp, delimiter, quotechar, doublequote, lineterminator)),
+    : _w(_Writer<W>(::tpy::param_pass_last<W>(fp), delimiter, quotechar, doublequote, lineterminator)),
       fieldnames(std::move(fieldnames)),
       _restval(restval) {}
 

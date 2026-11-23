@@ -108,7 +108,7 @@ void main();
 
 template<typename T>
 struct TreeHeap {
-    using variant_type = ::tpy::Union<int32_t, std::vector<::tpy::storage_t<T>>, std::vector<TreeHeap<::tpy::storage_t<T>>>>;
+    using variant_type = ::tpy::Union<int32_t, std::vector<::tpy::storage_t<T>>, std::vector<TreeHeap<T>>>;
     variant_type value;
 
     TreeHeap() requires std::default_initializable<variant_type> = default;
@@ -131,7 +131,7 @@ struct TreeHeap {
 };
 template<typename T>
 struct TreeInline {
-    using variant_type = ::tpy::Union<::tpy::storage_t<T>, std::vector<TreeInline<::tpy::storage_t<T>>>>;
+    using variant_type = ::tpy::Union<::tpy::storage_t<T>, std::vector<TreeInline<T>>>;
     variant_type value;
 
     TreeInline() requires std::default_initializable<variant_type> = default;
@@ -154,7 +154,7 @@ struct TreeInline {
 };
 template<typename T>
 struct TreePtr {
-    using variant_type = ::tpy::Union<::tpy::storage_t<T>*, int32_t, std::vector<TreePtr<::tpy::storage_t<T>>>>;
+    using variant_type = ::tpy::Union<::tpy::storage_t<T>*, int32_t, std::vector<TreePtr<T>>>;
     variant_type value;
 
     TreePtr() requires std::default_initializable<variant_type> = default;

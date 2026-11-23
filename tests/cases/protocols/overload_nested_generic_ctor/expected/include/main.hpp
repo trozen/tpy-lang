@@ -99,7 +99,7 @@ inline std::string_view Dog::name() const {
 //     return Rc.new(x)
 template<typename T>
 ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> wrap__Own_Box_T(::tpystd::tplib::box::Box<T>&& x) {
-    return Rc<::tpystd::tplib::box::Box<::tpy::storage_t<T>>>::template new_<::tpystd::tplib::box::Box<::tpy::storage_t<T>>>(std::move(x));
+    return Rc<::tpystd::tplib::box::Box<T>>::template new_<::tpystd::tplib::box::Box<T>>(std::move(x));
 }
 
 void __tpy_init();

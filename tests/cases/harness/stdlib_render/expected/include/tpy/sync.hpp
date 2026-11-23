@@ -34,7 +34,7 @@ struct _MutexCell {
     // _mu: _RawMutex
     ::tpy::MovableMutex _mu;
     // storage: UninitStorage[T]
-    ::tpy::UninitStorage<T> storage;
+    ::tpy::UninitStorage<::tpy::storage_t<T>> storage;
     bool __tpy_owned_ = true;
 
     // def __init__(self) -> None:
@@ -69,7 +69,7 @@ struct _RwLockCell {
     // _mu: _RawSharedMutex
     ::tpy::MovableSharedMutex _mu;
     // storage: UninitStorage[T]
-    ::tpy::UninitStorage<T> storage;
+    ::tpy::UninitStorage<::tpy::storage_t<T>> storage;
     bool __tpy_owned_ = true;
 
     // def __init__(self) -> None:
@@ -427,7 +427,7 @@ inline void Condvar::notify_all() const {
 template<typename T>
 inline _MutexCell<T>::_MutexCell()
     : _mu(::tpy::MovableMutex()),
-      storage(::tpy::UninitStorage<T>()) {}
+      storage(::tpy::UninitStorage<::tpy::storage_t<T>>()) {}
 
 template<typename T>
 inline _MutexCell<T>::_MutexCell(_MutexCell&& other) noexcept
@@ -473,7 +473,7 @@ inline void _MutexCell<T>::unlock() {
 template<typename T>
 inline _RwLockCell<T>::_RwLockCell()
     : _mu(::tpy::MovableSharedMutex()),
-      storage(::tpy::UninitStorage<T>()) {}
+      storage(::tpy::UninitStorage<::tpy::storage_t<T>>()) {}
 
 template<typename T>
 inline _RwLockCell<T>::_RwLockCell(_RwLockCell&& other) noexcept

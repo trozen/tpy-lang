@@ -543,7 +543,7 @@ inline Counter<T>& Counter<T>::__aiter__() {
 // def __init__(self, v: U) -> None:
 //     super().__init__(v)
 template<typename U>
-inline Mid<U>::Mid(::tpy::param_val_or_ref_t<U> v) : Box<U>(v) {}
+inline Mid<U>::Mid(::tpy::param_val_or_ref_t<U> v) : Box<U>(::tpy::param_pass_last<U>(v)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

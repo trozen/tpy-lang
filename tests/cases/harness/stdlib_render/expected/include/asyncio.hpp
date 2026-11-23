@@ -150,7 +150,7 @@ template <typename T>
 __coro_gather_list<T> gather_list(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks);
 // def gather[T](*tasks: Task[T]) -> Own[_GatherFuture[T]]:
 template<typename T>
-_GatherFuture<T> gather(::tpy::varargs<::tpystd::asyncio::_executor::Task<::tpy::storage_t<T>>> tasks);
+_GatherFuture<T> gather(::tpy::varargs<::tpystd::asyncio::_executor::Task<T>> tasks);
 // async def gather_list_settled[T](
 //         tasks: list[Task[T]]) -> Own[list[Settled[T]]]:
 template <typename T>
@@ -550,7 +550,7 @@ struct Future {
     // _waiter: Waker
     ::tpystd::coro::Waker _waiter;
     // _result: UninitStorage[T]
-    ::tpy::UninitStorage<T> _result;
+    ::tpy::UninitStorage<::tpy::storage_t<T>> _result;
     bool __tpy_owned_ = true;
 
     // def __init__(self) -> None:
@@ -2941,7 +2941,7 @@ inline ::tpystd::tpy::Poll<std::vector<::tpy::storage_t<T>>> _GatherFuture<T>::_
                         if (this->_cleanup) {
                         } else {
                             this->_completion_indices.push_back(i);
-                            this->_completion_boxes.push_back(::tpystd::tplib::box::Box<::tpy::storage_t<T>>(std::move(p).value()));
+                            this->_completion_boxes.push_back(::tpystd::tplib::box::Box<T>(std::move(p).value()));
                         }
                     }
                 } catch (const ::tpy::SystemExit&) {
@@ -2979,7 +2979,7 @@ inline ::tpystd::tpy::Poll<std::vector<::tpy::storage_t<T>>> _GatherFuture<T>::_
         int32_t kn = ::tpy::__len__(this->_completion_indices);
         while ((k < kn)) {
             if ((::tpy::__getitem__(this->_completion_indices, k) == orig_i)) {
-                ::tpystd::tplib::box::Box<::tpy::storage_t<T>> box = ::tpy::list_pop_at(this->_completion_boxes, k);
+                ::tpystd::tplib::box::Box<T> box = ::tpy::list_pop_at(this->_completion_boxes, k);
                 ::tpy::list_pop_at(this->_completion_indices, k);
                 result.push_back(std::move(box).take());
                 break;
@@ -3169,7 +3169,7 @@ inline ::tpystd::tpy::Poll<std::vector<Settled<T>>> _GatherSettledFuture<T>::__p
                         ::tpy::__setitem__(this->_settled, i, true);
                         this->_completed = ::tpy::add_check<int32_t>(this->_completed, 1);
                         this->_result_indices.push_back(i);
-                        this->_result_boxes.push_back(::tpystd::tplib::box::Box<::tpy::storage_t<T>>(std::move(p).value()));
+                        this->_result_boxes.push_back(::tpystd::tplib::box::Box<T>(std::move(p).value()));
                     }
                 } catch (const ::tpy::SystemExit&) {
                     throw;
@@ -3200,7 +3200,7 @@ inline ::tpystd::tpy::Poll<std::vector<Settled<T>>> _GatherSettledFuture<T>::__p
         while ((k < kn)) {
             if ((::tpy::__getitem__(this->_result_indices, k) == orig_i)) {
                 ::tpy::list_pop_at(this->_result_indices, k);
-                ::tpystd::tplib::box::Box<::tpy::storage_t<T>> box = ::tpy::list_pop_at(this->_result_boxes, k);
+                ::tpystd::tplib::box::Box<T> box = ::tpy::list_pop_at(this->_result_boxes, k);
                 entry = &*(__slot_1 = Settled<T>());
                 entry->value = std::move(box);
                 result.push_back(std::move((*entry)));
@@ -3243,7 +3243,7 @@ inline Future<T>::Future()
       _has_waiter(false),
       _exception(std::nullopt),
       _waiter(::tpystd::coro::Waker()),
-      _result(::tpy::UninitStorage<T>()) {}
+      _result(::tpy::UninitStorage<::tpy::storage_t<T>>()) {}
 
 template<typename T>
 inline Future<T>::Future(Future&& other) noexcept
@@ -3605,7 +3605,7 @@ template<typename T>
     if ((::tpystd::asyncio::_executor::_get_current_executor() != nullptr)) {
         throw ::tpy::RuntimeError("asyncio.run() cannot be called from a running event loop");
     }
-    ::tpystd::asyncio::_executor::Task<::tpy::storage_t<T>> task = ::tpystd::asyncio::_executor::make_executor_owned_task<T>(std::move(coro));
+    ::tpystd::asyncio::_executor::Task<T> task = ::tpystd::asyncio::_executor::make_executor_owned_task<T>(std::move(coro));
     ::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::AnyTask> box = ::tpystd::asyncio::_executor::task_to_any_box<T>(task);
     bool interrupted = ::tpystd::asyncio::_run_drain_main_task(std::move(box));
     {
@@ -3650,7 +3650,7 @@ template<typename T>
     if ((handle == nullptr)) {
         throw ::tpy::RuntimeError("asyncio.create_task: no running event loop (call asyncio.run(coro) to drive it)");
     }
-    ::tpystd::asyncio::_executor::Task<::tpy::storage_t<T>> task = ::tpystd::asyncio::_executor::make_executor_owned_task<T>(std::move(coro));
+    ::tpystd::asyncio::_executor::Task<T> task = ::tpystd::asyncio::_executor::make_executor_owned_task<T>(std::move(coro));
     ::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::AnyTask> box = ::tpystd::asyncio::_executor::task_to_any_box<T>(task);
     int32_t slot_id = handle->spawn(std::move(box));
     task._waker = handle->make_waker_for_slot(slot_id, ::tpy::__getitem__(handle->slots, slot_id).generation);
@@ -3675,7 +3675,7 @@ template<typename T>
 //         task_list.append(t.clone())
 //     return _GatherFuture[T](task_list)
 template<typename T>
-_GatherFuture<T> gather(::tpy::varargs<::tpystd::asyncio::_executor::Task<::tpy::storage_t<T>>> tasks) {
+_GatherFuture<T> gather(::tpy::varargs<::tpystd::asyncio::_executor::Task<T>> tasks) {
     std::vector<::tpystd::asyncio::_executor::Task<T>> task_list = std::vector<::tpystd::asyncio::_executor::Task<T>>{};
     auto& __obj_0 = tasks;
     auto __beg_0 = __obj_0.begin();

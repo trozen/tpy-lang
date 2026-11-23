@@ -43,8 +43,8 @@ struct Container {
     // @overload
     // @auto_readonly
     // def __getitem__(self, index: slice) -> Span[auto_readonly[T]]: ...
-    std::span<T> __getitem____slice(::tpy::Slice index);
-    std::span<T> __getitem__(::tpy::Slice index);
+    std::span<::tpy::storage_t<T>> __getitem____slice(::tpy::Slice index);
+    std::span<::tpy::storage_t<T>> __getitem__(::tpy::Slice index);
 
     // @overload
     // @auto_readonly
@@ -58,7 +58,7 @@ struct Container {
 
     std::span<const ::tpy::storage_t<T>> operator[](::tpy::Slice index) const;
 
-    std::span<T> operator[](::tpy::Slice index);
+    std::span<::tpy::storage_t<T>> operator[](::tpy::Slice index);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -117,7 +117,7 @@ inline ::tpy::val_or_cref_t<T> Container<T>::__getitem__(int32_t index) const {
 // @auto_readonly
 // def __getitem__(self, index: slice) -> Span[auto_readonly[T]]: ...
 template<typename T>
-inline std::span<T> Container<T>::__getitem____slice(::tpy::Slice index) {
+inline std::span<::tpy::storage_t<T>> Container<T>::__getitem____slice(::tpy::Slice index) {
     if (true) {
         std::optional<int32_t> s_start = index.start;
         std::optional<int32_t> s_stop = index.stop;
@@ -128,7 +128,7 @@ inline std::span<T> Container<T>::__getitem____slice(::tpy::Slice index) {
 }
 
 template<typename T>
-inline std::span<T> Container<T>::__getitem__(::tpy::Slice index) {
+inline std::span<::tpy::storage_t<T>> Container<T>::__getitem__(::tpy::Slice index) {
     return this->__getitem____slice(index);
 }
 
@@ -167,7 +167,7 @@ inline std::span<const ::tpy::storage_t<T>> Container<T>::operator[](::tpy::Slic
 }
 
 template<typename T>
-inline std::span<T> Container<T>::operator[](::tpy::Slice index) {
+inline std::span<::tpy::storage_t<T>> Container<T>::operator[](::tpy::Slice index) {
     return __getitem__(index);
 }
 

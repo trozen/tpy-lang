@@ -1,0 +1,2 @@
+main.py:17: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:24: error: `Own[P]` as a type argument of class 'Tagged' is not supported yet: 'T' appears inside 'tuple[T, int32]' in 'Tagged.tagged' (main.py); use `P` as the type argument, or write the class with `Own[P]` in place of 'T'

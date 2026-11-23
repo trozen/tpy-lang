@@ -29,7 +29,7 @@ def _adopt_skeleton(skeleton, full):
 
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..emitted_members import clone_families
-from ..typesys import (without_class_own_args, 
+from ..typesys import (
     ReadonlyCause, READONLY_RESULT_CAUSE_RANK, strongest_readonly_cause, readonly_result, readonly_protects, RESULT_ROOT,
     mark_overload_group, name_overload_variants,
     unique_cpp_name,
@@ -1837,9 +1837,7 @@ class TypeRegistrar:
         # redundant -- including `Optional[Own[T]]`, since a field
         # `Optional[T]` is `std::optional<T>` either way (the borrow default
         # that makes the exemption load-bearing exists only for locals).
-        # An `Own[X]` a class type argument drops is warned there
-        # (`check_type_args`), not refused here.
-        if type_contains_own(without_class_own_args(fld.type),
+        if type_contains_own(fld.type,
                              allow_optional_own=False):
             raise SemanticError(
                 f"Own[T] is redundant in this field type ('{fld.type}'): a "

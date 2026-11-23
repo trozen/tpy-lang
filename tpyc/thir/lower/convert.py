@@ -1461,7 +1461,9 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         _witness("call.open_same_t_arg")
         return Plan(replace(
             open_t_convert(expr, slot.open_same_t, OpenTSink.PASS),
-            open_t_last=s.open_last and _open_param_read(s),
+            # An open-`T` parameter form's last use, or a name owning its
+            # value (an `Own[T]` parameter, an owning local) sema lets move.
+            open_t_last=s.open_last and (_open_param_read(s) or s.movable),
             open_slot_last=s.slot_last),
             Effect.PASS)
 

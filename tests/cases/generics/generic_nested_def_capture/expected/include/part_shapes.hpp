@@ -113,7 +113,7 @@ inline int32_t Cnt::bump() {
 //     self.cb = g
 template<typename T>
 inline Holder<T>::Holder(::tpy::param_val_or_cref_t<T> x) {
-    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(::tpy::param_pass_last<T>(x))]() {
         auto& x = __cap_x.v;
         std::cout << "ctor" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
     };
@@ -126,7 +126,7 @@ inline Holder<T>::Holder(::tpy::param_val_or_cref_t<T> x) {
 //     return g
 template<typename T>
 std::function<void()> mk(::tpy::param_val_or_ref_t<T> x) {
-    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(::tpy::param_pass_last<T>(x))]() {
         auto& x = __cap_x.v;
         std::cout << "bytes" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
     };
@@ -144,7 +144,7 @@ void show(std::string_view tag, ::tpy::param_val_or_ref_t<U> v) {
 //     return g
 template<typename T>
 std::function<void()> mks(::tpy::param_val_or_ref_t<T> x) {
-    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(::tpy::param_pass_last<T>(x))]() {
         auto& x = __cap_x.v;
         ::tpyapp::part_shapes::show<::tpy::storage_t<T>>("send", x);
     };
@@ -156,7 +156,7 @@ std::function<void()> mks(::tpy::param_val_or_ref_t<T> x) {
 //     return g
 template<typename T>
 std::function<void()> mky(::tpy::param_val_or_ref_t<T> x) {
-    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(::tpy::param_pass_last<T>(x))]() {
         auto& x = __cap_x.v;
         ::tpyapp::part_shapes::show<::tpy::storage_t<T>>("sync", x);
     };
@@ -172,7 +172,7 @@ std::function<void()> mky(::tpy::param_val_or_ref_t<T> x) {
 //     return g
 template<typename T>
 std::function<void()> sib(::tpy::param_val_or_ref_t<T> x) {
-    auto h = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
+    auto h = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(::tpy::param_pass_last<T>(x))]() {
         auto& x = __cap_x.v;
         std::cout << "sib" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
     };
@@ -188,7 +188,7 @@ std::function<void()> sib(::tpy::param_val_or_ref_t<T> x) {
 //     return g
 template<typename T>
 std::function<void()> mkn(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> __cap_x) {
-    auto g = [__cap___cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(__cap_x)>(__cap_x), __cap_x_2 = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
+    auto g = [__cap___cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(__cap_x)>(::tpy::param_pass_last<T>(__cap_x)), __cap_x_2 = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(::tpy::param_pass_last<T>(x))]() {
         auto& __cap_x = __cap___cap_x.v;
         auto& x = __cap_x_2.v;
         std::cout << "names" << " " << ::tpy::ValuePrinter(x) << " " << ::tpy::ValuePrinter(__cap_x) << "\n" << ::tpy::check_signals;
@@ -201,7 +201,7 @@ std::function<void()> mkn(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_re
 //     return g
 template<typename T>
 std::function<void(int32_t)> mkg(::tpy::param_val_or_ref_t<T> x) {
-    auto g = [__cap_x_2 = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)](int32_t __cap_x) {
+    auto g = [__cap_x_2 = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(::tpy::param_pass_last<T>(x))](int32_t __cap_x) {
         auto& x = __cap_x_2.v;
         std::cout << "names.g" << " " << ::tpy::ValuePrinter(x) << " " << __cap_x << "\n" << ::tpy::check_signals;
     };
@@ -214,7 +214,7 @@ std::function<void(int32_t)> mkg(::tpy::param_val_or_ref_t<T> x) {
 //     return g
 template<typename T>
 std::function<void(int32_t)> mkl(::tpy::param_val_or_ref_t<T> x) {
-    auto g = [__cap_x_2 = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)](int32_t k) {
+    auto g = [__cap_x_2 = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(::tpy::param_pass_last<T>(x))](int32_t k) {
         auto& x = __cap_x_2.v;
         int32_t __cap_x = (::tpy::mul_check<int32_t>(k, 2));
         std::cout << "names.l" << " " << ::tpy::ValuePrinter(x) << " " << __cap_x << "\n" << ::tpy::check_signals;
@@ -227,7 +227,7 @@ std::function<void(int32_t)> mkl(::tpy::param_val_or_ref_t<T> x) {
 //     return g
 template<::tpyapp::part_shapes::Bump T>
 std::function<void()> mkm(::tpy::param_val_or_ref_t<T> x) {
-    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(x)]() {
+    auto g = [__cap_x = ::tpy::capture_slot<::tpy::storage_t<T>, decltype(x)>(::tpy::param_pass_last<T>(x))]() {
         auto& x = __cap_x.v;
         std::cout << "mut" << " " << x.bump() << "\n" << ::tpy::check_signals;
     };

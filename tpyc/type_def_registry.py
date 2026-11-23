@@ -548,8 +548,11 @@ class _ViewTemplateFormatter:
         self.cpp_name = cpp_name
 
     def __call__(self, args: tuple) -> str:
-        from tpyc.typesys import template_arg_cpp
-        elem = template_arg_cpp(args[0], True, lambda a: a.to_cpp())
+        from tpyc.typesys import template_type_arg_cpp
+        # A native borrowing view's facts (`template_args_cpp`).
+        elem = template_type_arg_cpp(args[0], identity=False, storage=True,
+                                     const_readonly=True,
+                                     render=lambda a: a.to_cpp())
         return f"{self.cpp_name}<{elem}>"
 
 

@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "tplib.array_list";
 template<typename T, std::size_t N>
 struct ArrayList {
     // _storage: UninitArrayStorage[T, N]
-    ::tpy::UninitArrayStorage<T, N> _storage;
+    ::tpy::UninitArrayStorage<::tpy::storage_t<T>, N> _storage;
     // _size: uint32
     uint32_t _size;
     bool __tpy_owned_ = true;
@@ -98,8 +98,8 @@ struct ArrayList {
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
-    std::span<T> __getitem____basic_slice(::tpy::BasicSlice index);
-    std::span<T> __getitem__(::tpy::BasicSlice index);
+    std::span<::tpy::storage_t<T>> __getitem____basic_slice(::tpy::BasicSlice index);
+    std::span<::tpy::storage_t<T>> __getitem__(::tpy::BasicSlice index);
 
     // @dispatch
     // @auto_readonly
@@ -123,7 +123,7 @@ struct ArrayList {
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[T]]:
-    std::span<T> __span__();
+    std::span<::tpy::storage_t<T>> __span__();
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[T]]:
@@ -131,7 +131,7 @@ struct ArrayList {
 
     // @auto_readonly
     // def __iter__(self) -> SpanIter[auto_readonly[T]]:
-    ::tpy::SpanIter<T> __iter__();
+    ::tpy::SpanIter<::tpy::storage_t<T>> __iter__();
 
     // @auto_readonly
     // def __iter__(self) -> SpanIter[auto_readonly[T]]:
@@ -157,7 +157,7 @@ struct ArrayList {
 
     std::span<const ::tpy::storage_t<T>> operator[](::tpy::BasicSlice index) const;
 
-    std::span<T> operator[](::tpy::BasicSlice index);
+    std::span<::tpy::storage_t<T>> operator[](::tpy::BasicSlice index);
 
     friend decltype(auto) operator==(const ArrayList& lhs, const ArrayList<T, N>& other) {
         return lhs.__eq__(other);
@@ -186,7 +186,7 @@ template<typename T, std::size_t N>
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, ::tpy::storage_t<T>> || ::tpystd::tpy::Spannable<T_items, T>)
 inline ArrayList<T, N>::ArrayList(const T_items* items)
-    : _storage(::tpy::UninitArrayStorage<T, N>()),
+    : _storage(::tpy::UninitArrayStorage<::tpy::storage_t<T>, N>()),
       _size(0) {
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
         this->extend((*items));
@@ -476,12 +476,12 @@ inline ::tpy::val_or_cref_t<T> ArrayList<T, N>::__getitem__(int32_t index) const
 // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
 //     return self.__span__()[index]
 template<typename T, std::size_t N>
-inline std::span<T> ArrayList<T, N>::__getitem____basic_slice(::tpy::BasicSlice index) {
+inline std::span<::tpy::storage_t<T>> ArrayList<T, N>::__getitem____basic_slice(::tpy::BasicSlice index) {
     return ::tpy::list_slice(this->__span__(), index);
 }
 
 template<typename T, std::size_t N>
-inline std::span<T> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) {
+inline std::span<::tpy::storage_t<T>> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) {
     return this->__getitem____basic_slice(index);
 }
 
@@ -570,7 +570,7 @@ inline bool ArrayList<T, N>::__eq__(const ArrayList<T, N>& other) const
 // def __span__(self) -> Span[auto_readonly[T]]:
 //     return self._storage.ptr().span(int32.wrap(self._size))
 template<typename T, std::size_t N>
-inline std::span<T> ArrayList<T, N>::__span__() {
+inline std::span<::tpy::storage_t<T>> ArrayList<T, N>::__span__() {
     return std::span(this->_storage.ptr(), static_cast<size_t>(static_cast<int32_t>(this->_size)));
 }
 
@@ -586,8 +586,8 @@ inline std::span<const ::tpy::storage_t<T>> ArrayList<T, N>::__span__() const {
 // def __iter__(self) -> SpanIter[auto_readonly[T]]:
 //     return SpanIter(self.__span__())
 template<typename T, std::size_t N>
-inline ::tpy::SpanIter<T> ArrayList<T, N>::__iter__() {
-    return ::tpy::SpanIter<T>(this->__span__());
+inline ::tpy::SpanIter<::tpy::storage_t<T>> ArrayList<T, N>::__iter__() {
+    return ::tpy::SpanIter<::tpy::storage_t<T>>(this->__span__());
 }
 
 // @auto_readonly
@@ -695,7 +695,7 @@ inline std::span<const ::tpy::storage_t<T>> ArrayList<T, N>::operator[](::tpy::B
 }
 
 template<typename T, std::size_t N>
-inline std::span<T> ArrayList<T, N>::operator[](::tpy::BasicSlice index) {
+inline std::span<::tpy::storage_t<T>> ArrayList<T, N>::operator[](::tpy::BasicSlice index) {
     return __getitem__(index);
 }
 

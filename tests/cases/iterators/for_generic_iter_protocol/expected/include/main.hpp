@@ -19,7 +19,7 @@ void main();
 template<typename T, std::size_t N>
 struct StorageIter {
     // _storage: Ptr[UninitArrayStorage[T, N]]
-    ::tpy::UninitArrayStorage<T, N>* _storage;
+    ::tpy::UninitArrayStorage<::tpy::storage_t<T>, N>* _storage;
     // _size: int32
     int32_t _size;
     // _index: int32
@@ -27,7 +27,7 @@ struct StorageIter {
 
     // def __init__(self, storage: Ptr[UninitArrayStorage[T, N]], size: int32) -> None:
     StorageIter() = default;
-    explicit StorageIter(::tpy::UninitArrayStorage<T, N>* storage, int32_t size);
+    explicit StorageIter(::tpy::UninitArrayStorage<::tpy::storage_t<T>, N>* storage, int32_t size);
 
     auto& __iter__() { return *this; }
 
@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const StorageIter<T, N>& obj) 
 template<typename T, std::size_t N>
 struct SimpleList {
     // _storage: UninitArrayStorage[T, N]
-    ::tpy::UninitArrayStorage<T, N> _storage;
+    ::tpy::UninitArrayStorage<::tpy::storage_t<T>, N> _storage;
     // _size: int32
     int32_t _size;
     bool __tpy_owned_ = true;
@@ -82,7 +82,7 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleList<T, N>& obj) {
 //     self._size = size
 //     self._index = 0
 template<typename T, std::size_t N>
-inline StorageIter<T, N>::StorageIter(::tpy::UninitArrayStorage<T, N>* storage, int32_t size)
+inline StorageIter<T, N>::StorageIter(::tpy::UninitArrayStorage<::tpy::storage_t<T>, N>* storage, int32_t size)
     : _storage(storage),
       _size(size),
       _index(0) {}
@@ -98,7 +98,7 @@ inline StorageIter<T, N>::StorageIter(::tpy::UninitArrayStorage<T, N>* storage, 
 template<typename T, std::size_t N>
 inline std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> StorageIter<T, N>::__next__() {
     if ((this->_index < this->_size)) {
-        ::tpy::val_or_ref_t<T> val = ::tpy::none_attr(this->_storage, "load").load(::tpy::int_cast_check<uint32_t>(this->_index));
+        ::tpy::val_or_ref_t<::tpy::storage_t<T>> val = ::tpy::none_attr(this->_storage, "load").load(::tpy::int_cast_check<uint32_t>(this->_index));
         this->_index = ::tpy::add_check<int32_t>(this->_index, 1);
         return val;
     }
@@ -110,7 +110,7 @@ inline std::expected<::tpy::storage_t<T>, ::tpy::StopIteration> StorageIter<T, N
 //     self._size = 0
 template<typename T, std::size_t N>
 inline SimpleList<T, N>::SimpleList()
-    : _storage(::tpy::UninitArrayStorage<T, N>()),
+    : _storage(::tpy::UninitArrayStorage<::tpy::storage_t<T>, N>()),
       _size(0) {}
 
 template<typename T, std::size_t N>

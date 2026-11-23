@@ -72,7 +72,7 @@ inline std::ostream& operator<<(std::ostream& os, const WithDict<K, V>& obj) {
 template<typename T>
 struct WithHeapStorage {
     // _storage: UninitHeapStorage[T]
-    ::tpy::UninitHeapStorage<T> _storage;
+    ::tpy::UninitHeapStorage<::tpy::storage_t<T>> _storage;
     bool __tpy_owned_ = true;
 
     // def __init__(self, val: Own[T]):
@@ -117,7 +117,7 @@ inline WithDict<K, V>::WithDict() : data(::tpy::ordered_map<::tpy::storage_t<K>,
 //     self._storage = UninitHeapStorage(1)  # tpyc: ok -- infer UninitHeapStorage[T]
 //     self._storage.init0(val)
 template<typename T>
-inline WithHeapStorage<T>::WithHeapStorage(::tpy::own_param_t<T> val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
+inline WithHeapStorage<T>::WithHeapStorage(::tpy::own_param_t<T> val) : _storage(::tpy::UninitHeapStorage<::tpy::storage_t<T>>(1)) {
     this->_storage.init0(std::move(val));
 }
 

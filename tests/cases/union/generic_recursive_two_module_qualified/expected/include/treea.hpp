@@ -13,11 +13,11 @@ inline constexpr std::string_view __name__ = "treea";
 
 // def leaf_count[T](t: Tree[T]) -> int32:
 template<typename T>
-int32_t leaf_count(const Tree<::tpy::storage_t<T>>& t);
+int32_t leaf_count(const Tree<T>& t);
 
 template<typename T>
 struct Tree {
-    using variant_type = ::tpy::Union<::tpy::storage_t<T>, std::vector<Tree<::tpy::storage_t<T>>>>;
+    using variant_type = ::tpy::Union<::tpy::storage_t<T>, std::vector<Tree<T>>>;
     variant_type value;
 
     Tree() requires std::default_initializable<variant_type> = default;
@@ -49,7 +49,7 @@ struct Tree {
 //         case _:
 //             return 1
 template<typename T>
-int32_t leaf_count(const Tree<::tpy::storage_t<T>>& t) {
+int32_t leaf_count(const Tree<T>& t) {
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
     case 1: {

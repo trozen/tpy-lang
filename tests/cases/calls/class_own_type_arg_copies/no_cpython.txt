@@ -1,0 +1,4 @@
+`C[Own[P]]` copies where CPython aliases -- the divergence the program asks
+for by writing `Own`, each copy warned -- and CPython cannot subscript a
+generic function (`make_box[Own[P]](...)`, `mkf[Own[P]](...)`) nor
+default-construct the fields of a class without `__init__` (`Agg[...]()`).

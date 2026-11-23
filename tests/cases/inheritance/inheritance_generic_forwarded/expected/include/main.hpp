@@ -73,7 +73,7 @@ inline ::tpy::val_or_ref_t<T> Container<T>::get_value() {
 //     self.extra = extra
 template<typename T>
 inline Wrapper<T>::Wrapper(::tpy::param_val_or_ref_t<T> value, int32_t extra)
-    : Container<T>(value),
+    : Container<T>(::tpy::param_pass_last<T>(value)),
       extra(extra) {}
 
 // def get_extra(self) -> int32:

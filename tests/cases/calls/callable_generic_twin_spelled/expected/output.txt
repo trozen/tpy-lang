@@ -64,7 +64,7 @@ bounds-fold-lend 102
 bounds-keep 7
 bounds-list-own 1
 bounds-list-count 1
-bounds-static-spelled 9
+bounds-static-spelled 1
 refs-unbounded 2 5
 refs-bounded 2 6
 refs-reduce-named 116 10

@@ -125,7 +125,7 @@ inline Wrapper<T>::Wrapper() {
 //     return Rc.new(x)
 template<typename T>
 inline ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> Wrapper<T>::wrap__Own_Box_T(::tpystd::tplib::box::Box<T>&& x) const {
-    return Rc<::tpystd::tplib::box::Box<::tpy::storage_t<T>>>::template new_<::tpystd::tplib::box::Box<::tpy::storage_t<T>>>(std::move(x));
+    return Rc<::tpystd::tplib::box::Box<T>>::template new_<::tpystd::tplib::box::Box<T>>(std::move(x));
 }
 
 template<typename T>

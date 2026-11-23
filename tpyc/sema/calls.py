@@ -115,7 +115,7 @@ from .protocols import (
     protocol_methods,
 )
 from .dyn_erasure import erased_source
-from .type_ops import (ConstraintOrigin, ReturnSeed, _fills_none_arm, partial_substitute, settle_class_type_args, settle_inferred,
+from .type_ops import (ConstraintOrigin, InferenceBindings, ReturnSeed, _fills_none_arm, partial_substitute, settle_inferred,
                        seeded_arg_hint)
 from .expressions import star_source_element_type
 from .slot_hint import ClassMember, SlotHint
@@ -1458,7 +1458,7 @@ class CallAnalyzer:
         # copy obligations unanswered (sema/own_copy.py).
         if type_subst and commit:
             self.ctx.record_own_copy_instantiation(record, type_subst,
-                                                   is_record=True)
+                                                   is_record=True, at=expr)
         has_init = (cand is not None and cand.declared is not None
                     and cand.declared is not record.field_ctor)
         expr.resolved_function_info = FunctionInfo(
@@ -6551,7 +6551,6 @@ class CallAnalyzer:
             self.check_own_param(arg, arg_type, pname, check_ptype)
             self.check_alias_member_arg(arg, arg_type, check_ptype,
                                         self.param_label(declared, pname))
-        self.compat.note_open_same_t_arg(arg, check_ptype)
         self.consume_at_iterating_slot(arg, check_ptype,
                                        call if call is not None else arg)
         skip_coerce = (is_char_literal_init(check_ptype, arg_type, arg)
@@ -6562,6 +6561,8 @@ class CallAnalyzer:
                 coercion_ctx=CoercionContext.ARG,
                 inferred_slot=inferred_slot,
                 param=self.param_label(declared, pname))
+        # After the coercion: a handle's deref reads the place it points at.
+        self.compat.note_open_same_t_arg(args[i], check_ptype)
         if vpc:
             args[i] = self._address_of_arg(args[i], arg, ptype, pname, call)
         if own_checks:
@@ -6795,7 +6796,7 @@ class CallAnalyzer:
         bound_failures: list[tuple[TpyType, TpyType]] = []
         bound_free_fit = False
         for overload, addressed in shape_candidates():
-            inferred: dict[str, TpyType] = {}
+            inferred = InferenceBindings()
             if explicit:
                 for tp, ta in zip(overload.type_params, explicit):
                     inferred[tp] = ta
@@ -7940,9 +7941,10 @@ class CallAnalyzer:
                                  record.name, scored=True) as scope:
             cand = self._ctor_group_candidate(expr, record, ctors, None,
                                               scope)
-            subst = {tp: self._resolve_inferred_type_arg(cand.subst[tp])
-                     for tp in record.type_params if tp in cand.subst}
-            settle_class_type_args(subst, record)
+            subst = InferenceBindings.like(cand.subst, {
+                tp: self._resolve_inferred_type_arg(cand.subst[tp])
+                for tp in record.type_params if tp in cand.subst})
+            settle_inferred(subst, frozenset())
             if len(subst) != len(record.type_params):
                 raise self.ctx.error(
                     f"Cannot infer type arguments for '{record.name}'. "
@@ -8070,8 +8072,11 @@ class CallAnalyzer:
                 f"field state after default-initialization "
                 f"(provide an __init__ or an in-class field default)",
                 expr)
-        def check(typ: TpyType, label: str) -> None:
-            resolved = self.type_ops.substitute_type_params(typ, type_subst) if type_subst else typ
+        def check(typ: TpyType, label: str, field: bool) -> None:
+            resolved = (self.type_ops.field_type_at(typ, type_subst or {})
+                        if field else
+                        self.type_ops.substitute_type_params(typ, type_subst)
+                        if type_subst else typ)
             if contains_type_param(resolved):
                 return
             if not self.protocols._is_default_constructible(resolved):
@@ -8080,7 +8085,7 @@ class CallAnalyzer:
                     f"{label} of type '{resolved}' has no default value",
                     expr)
         for parent in record.parents:
-            check(parent, f"parent '{parent}'")
+            check(parent, f"parent '{parent}'", False)
         for fld in record.fields:
             # A field with an explicit constant default never blocks
             # zero-arg construction: codegen emits it as an in-class
@@ -8088,7 +8093,7 @@ class CallAnalyzer:
             # is irrelevant.
             if fld.default_expr is not None:
                 continue
-            check(fld.type, f"field '{fld.name}'")
+            check(fld.type, f"field '{fld.name}'", True)
 
     def _can_defer_generic_inference(self, record: RecordInfo, expr: TpyCall) -> bool:
         """Check whether a generic constructor can use deferred type inference."""
@@ -8122,11 +8127,12 @@ class CallAnalyzer:
         self.ctx.pending_generic_counter += 1
 
         # Seed inferred dict from explicit _ wildcard type args
-        inferred: dict[str, TpyType] = {}
+        inferred = InferenceBindings()
         if expr.type_args and None in expr.type_args:
             for tp, arg in zip(record.type_params, expr.type_args):
                 if arg is not None:
                     inferred[tp] = arg
+                    inferred.spelled.add(tp)
         # Seed from constructor args
         if evidence:
             # Try partial inference from available args
@@ -8136,10 +8142,10 @@ class CallAnalyzer:
                 expected_type=None,
             )
             if partial:
-                for k, v in partial.items():
-                    if isinstance(v, TpyType):
-                        v = resolve_int_literals(v, self.ctx.default_int_for_literal)
-                    inferred[k] = v
+                inferred.update(InferenceBindings.like(partial, {
+                    k: (resolve_int_literals(v, self.ctx.default_int_for_literal)
+                        if isinstance(v, TpyType) else v)
+                    for k, v in partial.items()}))
 
         info = PendingGenericInstanceInfo(
             instance_id=instance_id,

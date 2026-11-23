@@ -1,0 +1,1 @@
+main.py:39: error: Cannot infer 'Own' for type argument 'A' of 'Duo' from a later call on 'd'; spell the class type arguments: Duo[Own[P], B](...)

@@ -206,7 +206,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 template<typename T>
 struct Shelf {
     // box: Box[T]
-    ::tpystd::tplib::box::Box<::tpy::storage_t<T>> box;
+    ::tpystd::tplib::box::Box<T> box;
 
     // def __init__(self, box: Own[Box[T]]) -> None:
     Shelf() = default;

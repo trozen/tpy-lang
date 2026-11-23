@@ -126,7 +126,7 @@ inline Container<T>::Container(::tpy::own_param_t<T> val) : payload(std::move(va
 template<typename T>
 template<typename U>
 inline ::tpystd::tplib::rc::Rc<U> Container<T>::wrap(::tpy::own_param_t<U> value) const {
-    return Rc<::tpy::storage_t<U>>::template new_<::tpy::storage_t<U>>(std::move(value));
+    return Rc<U>::template new_<::tpy::storage_t<U>>(std::move(value));
 }
 
 void __tpy_init();

@@ -5,14 +5,17 @@ Type validation, substitution, and inference operations.
 """
 
 from __future__ import annotations
+import os
 from dataclasses import dataclass, field, replace as dc_replace
-from typing import Callable, Iterator, Literal, Mapping, Sequence, TYPE_CHECKING
+from typing import Callable, Iterable, Literal, Mapping, Sequence, TYPE_CHECKING
 
 from ..typesys import (
+    native_storage_arg, own_arg_is_identity,
     call_result_form,
     attach_type_param_bounds,
     same_class,
-    canonical_readonly, settled_substitution,
+    canonical_readonly, settled_substitution, inner_type_param_refs,
+    named_class_types,
     TpyType, TypeParamRef, NominalType, RecursiveAliasInstanceType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, InteriorMutableType,
     bound_as_spelled, make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType, FinalType, ClassVarType,
@@ -21,7 +24,6 @@ from ..typesys import (
     NoneType, VoidType, SendType, SyncType, unwrap_send_sync,
     RecordInfo, FunctionInfo, ParamInfo, PropertyInfo, is_protocol_type, unwrap_readonly,
     unwrap_ref_type, unwrap_qualifiers, unwrap_own, RefType, is_dyn_protocol,
-    without_class_own_args,
     is_polymorphic_class_type, is_dynamic_dispatch_inner,
     is_callable_type, is_integer_type, is_float_type,
     is_void_like_type,
@@ -175,6 +177,26 @@ class ExactBorrow(TpyType):
         return ExactBorrow(types[0])
 
 
+# The test harness checks that no binder carrier (`ExactBorrow`) is inside
+# a committed type (`assert_no_binder_carrier`).
+_ASSERT_BINDER_CARRIERS = bool(os.environ.get("TPY_ASSERT_BINDER_CARRIERS"))
+
+
+def assert_no_binder_carrier(t: 'TpyType | int', where: str) -> None:
+    """Internal error when `t` holds a carrier that lives only inside an
+    inference accumulator until `settle_inferred` (`ExactBorrow`)."""
+    if not isinstance(t, TpyType):
+        return
+    stack = [t]
+    while stack:
+        cur = stack.pop()
+        if isinstance(cur, ExactBorrow):
+            raise AssertionError(
+                f"binder carrier {cur!r} inside the committed type {t} "
+                f"({where})")
+        stack.extend(i for i in cur.inner_types() if isinstance(i, TpyType))
+
+
 def _constraint_entry(arg: TpyType, was_owned: bool, exact: bool) -> TpyType:
     """The inferred entry an argument `arg` (its top-level `Own` already
     peeled, `was_owned` telling) records for a bare type parameter: an exact
@@ -191,6 +213,108 @@ def _constraint_entry(arg: TpyType, was_owned: bool, exact: bool) -> TpyType:
     if core.is_value_type():
         return core
     return ExactBorrow(core)
+
+
+class InferenceBindings(dict):
+    """An inference accumulator `match_type_with_inference` fills: the
+    entry per type parameter, and the names whose binding `settle_inferred`
+    keeps as written where a value's neutral `T` settles to its storage
+    form -- the open `T` an emitted generic class's type argument gave
+    (`Box[U]` against `Box[T]`, `class_args`) and the positions the program
+    wrote (`Pair[T, _]`, explicit call type arguments, `spelled`). The
+    provenance stays with the accumulator, so no entry carries it: a reader
+    that never settles sees the plain `T`. Forks (`copy`) and merges
+    (`update`) take it along; a plain `dict(...)` copy drops it."""
+    __slots__ = ('class_args', 'spelled')
+
+    def __init__(self, src: 'Mapping[str, TpyType | int] | None' = None
+                 ) -> None:
+        super().__init__(src or {})
+        marked = isinstance(src, InferenceBindings)
+        self.class_args: set[str] = set(src.class_args if marked else ())
+        self.spelled: set[str] = set(src.spelled if marked else ())
+
+    def copy(self) -> 'InferenceBindings':
+        return InferenceBindings(self)
+
+    def subset(self, names: 'Iterable[str]') -> 'InferenceBindings':
+        """The bindings of `names` only, with their provenance."""
+        return InferenceBindings.like(
+            self, {n: self[n] for n in names if n in self})
+
+    @staticmethod
+    def like(src: 'Mapping[str, TpyType | int]',
+             items: 'Mapping[str, TpyType | int]') -> 'InferenceBindings':
+        """`items` -- `src`'s bindings, each perhaps resolved further --
+        with `src`'s provenance for the names it keeps."""
+        out = InferenceBindings(items)
+        if isinstance(src, InferenceBindings):
+            out.class_args = src.class_args & out.keys()
+            out.spelled = src.spelled & out.keys()
+        return out
+
+    def update(self, other: 'Mapping[str, TpyType | int]' = (),
+               **kw: 'TpyType | int') -> None:
+        super().update(other, **kw)
+        for name in (*getattr(other, 'keys', lambda: ())(), *kw):
+            self._take_provenance(name, other, name)
+
+    def bind_as(self, name: str, src_name: str) -> None:
+        """Bind `name` to `src_name`'s binding, provenance included."""
+        self[name] = self[src_name]
+        self._take_provenance(name, self, src_name)
+
+    def _take_provenance(self, name: str, src: object, src_name: str) -> None:
+        marked = isinstance(src, InferenceBindings)
+        for mine, theirs in ((self.class_args,
+                              src.class_args if marked else ()),
+                             (self.spelled, src.spelled if marked else ())):
+            if src_name in theirs:
+                mine.add(name)
+            else:
+                mine.discard(name)
+
+    def __delitem__(self, name: str) -> None:
+        super().__delitem__(name)
+        self.class_args.discard(name)
+        self.spelled.discard(name)
+
+    def pop(self, name: str, *default: object) -> object:
+        self.class_args.discard(name)
+        self.spelled.discard(name)
+        return super().pop(name, *default)
+
+
+def note_class_arg(inferred: 'Mapping[str, TpyType | int]', name: str) -> None:
+    """`name`'s binding is an open `T` a class argument gave
+    (`InferenceBindings.class_args`)."""
+    if isinstance(inferred, InferenceBindings):
+        inferred.class_args.add(name)
+
+
+def _bare_open_type_param(t: TpyType) -> bool:
+    bare = unwrap_ref_type(t.wrapped if isinstance(t, ExactBorrow) else t)
+    return type(bare) is TypeParamRef and bare.kind is TypeParamKind.TYPE
+
+
+def _identity_arg_exact(arg: TpyType) -> bool:
+    """Whether a class type argument (`own_arg_is_identity`) binds its
+    parameter exactly: as written, `Own[X]` is `Own[X]`; any other type's
+    neutral entry is the type itself, which an exact one would make a
+    borrow (`ExactBorrow`) disagreeing with an owned value."""
+    bare = unwrap_ref_type(arg)
+    return isinstance(bare, OwnType) and not bare.is_plain()
+
+
+def _protocol_positions(inferred: InferenceBindings, type_params: list[str],
+                        class_args: 'set[int] | None') -> list[TpyType | None]:
+    """A protocol's arguments `inferred` binds, aligned to its
+    `type_params`; the positions a class argument gave go to
+    `class_args` (the caller binds them under its own names)."""
+    if class_args is not None:
+        class_args.update(i for i, p in enumerate(type_params)
+                          if p in inferred.class_args)
+    return [inferred.get(p) for p in type_params]
 
 
 def _plain_value(t: TpyType) -> bool:
@@ -239,8 +363,14 @@ def settle_inferred(inferred: dict[str, 'TpyType | int'],
     (`val_or_ref` is never a type argument), and a binding only neutral
     positions gave to an open type parameter of the enclosing body is that
     parameter's storage form (`Unowned(T)`), as the hand-written twin
-    infers. `spelled` names the positions the call wrote, which keep what
-    they say."""
+    infers -- unless a class argument gave it
+    (`InferenceBindings.class_args`), which is `T` as written. `spelled`
+    names the positions the call wrote, which keep what they say; the
+    accumulator keeps them (`InferenceBindings.spelled`), so settling
+    settled bindings changes nothing."""
+    if isinstance(inferred, InferenceBindings):
+        inferred.spelled |= spelled & inferred.keys()
+        spelled = spelled | inferred.class_args | inferred.spelled
     for name, t in list(inferred.items()):
         if not isinstance(t, TpyType):
             continue
@@ -256,28 +386,9 @@ def settle_inferred(inferred: dict[str, 'TpyType | int'],
         if (name not in spelled and type(t) is TypeParamRef
                 and t.kind is TypeParamKind.TYPE):
             inferred[name] = unowned(t)
-
-
-def settle_class_type_args(inferred: dict[str, 'TpyType | int'],
-                           record: 'RecordInfo') -> None:
-    """`settle_inferred` for a class's type parameters, which are never
-    bound to `Own[X]`: a callable's `Own[X]` result included (a
-    `defaultdict(lambda: [])` holds `list[int32]`); and the class type they
-    form is normalized as every class type is (`without_class_own_args`)."""
-    settle_inferred(inferred, frozenset(record.type_params))
-    for tp in record.type_params:
-        t = inferred.get(tp)
-        if isinstance(t, OwnType):
-            inferred[tp] = t.wrapped
-    formed = NominalType(record.name, tuple(
-        inferred[tp] if isinstance(inferred.get(tp), TpyType)
-        else TypeParamRef(tp) for tp in record.type_params),
-        _module_qname=record.qualified_name())
-    normalized = without_class_own_args(formed)
-    if normalized is not formed:
-        for tp, arg in zip(record.type_params, normalized.type_args):
-            if tp in inferred:
-                inferred[tp] = arg
+    if _ASSERT_BINDER_CARRIERS:
+        for name, t in inferred.items():
+            assert_no_binder_carrier(t, f"settled binding '{name}'")
 
 
 def to_owned_storage_form(typ: TpyType) -> TpyType:
@@ -534,9 +645,6 @@ class TypeOperations:
 
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
-        # The written class spellings warned of dropping an `Own[X]`
-        # (`_warn_class_own_arg`), so a re-checked spelling warns once.
-        self._warned_class_own: set[tuple] = set()
         # The last two exact constraints that disagreed on ownership, for the
         # refusal to name: the type parameter, the borrow and the owned
         # binding, and where each came from.
@@ -663,29 +771,26 @@ class TypeOperations:
         bound part needs every declaration's conformance facts, so before
         `drain_bound_checks` it is asked only through `queue_bound_check`.
 
-        Returns `typ` as a written type is formed (`without_class_own_args`),
-        which the caller keeps; an `Own[X]` it drops is warned here, where
-        it is spelled."""
-        dropped: list[tuple[TpyType, TpyType, OwnType]] = []
-        normalized = without_class_own_args(typ, dropped)
-        for before, after, own in dropped:
-            self._warn_class_own_arg(before, after, own, loc)
-        self._check_type_args(normalized, loc, bounds=bounds)
-        return normalized
+        NOT pure: without `bounds`, every generic class `typ` names is
+        formed there (`_note_class_formation`), so a caller that checks a
+        type the program does not write would surface that class's copy
+        verdicts.
 
-    def _warn_class_own_arg(self, before: TpyType, after: TpyType,
-                            own: OwnType, loc: SourceLocation | None) -> None:
-        """One warning per written class or alias spelling whose `Own[X]`
-        the class type drops (`without_class_own_args`)."""
-        key = (repr(loc), str(before))
-        if key in self._warned_class_own:
-            return
-        self._warned_class_own.add(key)
-        owner = (f"class '{before.name}'" if isinstance(before, NominalType)
-                 else f"type alias '{getattr(before, 'name', '') or before}'")
-        self.ctx.warning_from_loc(
-            f"`{own}` in a type argument of {owner} has no effect yet; "
-            f"write `{after}`", loc)
+        Returns `typ`."""
+        if not bounds:
+            self.note_class_formations(typ, loc)
+        self._check_type_args(typ, loc, bounds=bounds)
+        return typ
+
+    def note_class_formations(self, typ: TpyType,
+                              loc: SourceLocation | None, *,
+                              open_only: bool = False) -> None:
+        """Form every generic class `typ` names (`named_class_types`);
+        `open_only` the ones at an open type parameter, which a generic
+        body forwards."""
+        for named in named_class_types(typ):
+            if not open_only or contains_type_param(named):
+                self._note_class_formation(named, loc)
 
     def _check_type_args(self, typ: TpyType, loc: SourceLocation | None, *,
                          bounds: bool) -> None:
@@ -1220,6 +1325,27 @@ class TypeOperations:
         the copy check reads."""
         return call_result_form(self.substitute_type_params(typ, subst))
 
+    def field_type_at(self, field_type: TpyType,
+                      subst: dict[str, TpyType | int]) -> TpyType:
+        """A field declared `field_type` as a receiver at `subst` reads it:
+        substituted, in its storage form -- a field `v: T` at `T = Own[P]`
+        holds a `P`, as the hand-written twin's `v: P` (a `readonly[T]`
+        field a `readonly[P]`). The one rule every field read applies."""
+        # The storage form is taken before `canonical_readonly`, which
+        # reads `readonly[Own[X]]` as the caller's own `Own[X]` (a result).
+        if not subst:
+            return field_type
+        # A parameter the receiver's arguments do not bind (a base's field
+        # read at the subclass's arguments) stays as written.
+        unbound = {n: r for n, r in inner_type_param_refs(field_type).items()
+                   if n not in subst}
+        t = self._substitute(field_type, {**unbound, **subst})
+        if isinstance(t, ReadonlyType) and isinstance(t.wrapped, OwnType):
+            t = ReadonlyType(unowned(t.wrapped))
+        elif isinstance(t, OwnType):
+            t = unowned(t)
+        return canonical_readonly(t)
+
     def substitute_type_params(self, typ: TpyType, subst: dict[str, TpyType | int]) -> TpyType:
         """Substitute type parameters with concrete types.
 
@@ -1230,8 +1356,7 @@ class TypeOperations:
         Returns:
             The type with all TypeParamRef instances replaced by their concrete types.
         """
-        return without_class_own_args(
-            canonical_readonly(self._substitute(typ, subst)))
+        return canonical_readonly(self._substitute(typ, subst))
 
     def _substitute(self, typ: TpyType, subst: dict[str, TpyType | int]) -> TpyType:
         # Keeps every readonly: only the value positions `canonical_readonly`
@@ -1302,19 +1427,13 @@ class TypeOperations:
             result = PtrType(to_bare_slot_form(result.pointee), result.is_readonly)
         return result
 
-    def build_type_substitution(self, record_type: TpyType) -> dict[str, TpyType | int]:
+    def build_type_substitution(self, record_type: TpyType
+                                ) -> dict[str, TpyType | int]:
         """Build a type parameter substitution map for a generic record instantiation.
 
         Works for all types: user records and module types (NominalType) use
         RecordInfo.type_params + type_args; non-NominalType builtins (
         etc.) use extract_type_params from the module system.
-
-        NOT pure: for a concrete generic record this also RECORDS the
-        instantiation for the owning-slot copy verdict (`sema/own_copy.py`),
-        which is deduped and discharged in
-        `Compiler._finalize_workspace`. Callers that only want the map are
-        unaffected, but a caller that fabricates a record type it does not
-        mean the program to name would surface that record's copy warnings.
 
         Returns:
             Mapping from type parameter names to concrete types or integers.
@@ -1324,20 +1443,39 @@ class TypeOperations:
             record_info = self.ctx.registry.get_record_for_type(record_type)
             if not record_info or not record_info.is_generic():
                 return {}
-            if not record_type.type_args:
-                return {}
-            subst = dict(zip(record_info.type_params, record_type.type_args))
-            # Naming a generic record at concrete args is what brings its
-            # monomorphic twin into being, whether that happens at a
-            # constructor, a method call, a field access or a
-            # `class Child(Base[X])` header -- so this is where the record's
-            # owning-slot copy obligations are discharged, by a check that
-            # commits: a query names the type without instantiating it.
-            if self.ctx.slot_step_commits():
-                self.ctx.record_own_copy_instantiation(record_info, subst,
-                                                       is_record=True)
-            return subst
+            return self.record_subst(record_type, record_info)
         return builtin_modules.extract_type_params(record_type)
+
+    @staticmethod
+    def record_subst(record_type: NominalType, record_info: RecordInfo
+                      ) -> dict[str, TpyType | int]:
+        if not record_type.type_args:
+            return {}
+        subst = dict(zip(record_info.type_params, record_type.type_args))
+        if native_storage_arg(type_def_of(record_type)):
+            # An open `T` argument is its storage form; a written
+            # `SpanIter[Own[Cell]]` keeps what it says.
+            subst = {k: unowned(v) if isinstance(v, TypeParamRef) else v
+                     for k, v in subst.items()}
+        return subst
+
+    def _note_class_formation(self, typ: NominalType,
+                              loc: SourceLocation | None) -> None:
+        """A written class type at type arguments forms that instantiation
+        of the class -- an annotation, a base, a constructor's or an
+        alias's spelling alike -- so its members' owning-slot copy
+        obligations are answered there (`sema/own_copy.py`), by a check
+        that commits: a query names the type without forming it. A
+        construction is the other formation (`calls.py`)."""
+        if not self.ctx.slot_step_commits():
+            return
+        record_info = self.ctx.registry.get_record_for_type(typ)
+        if (record_info is None or not record_info.is_generic()
+                or len(typ.type_args) != len(record_info.type_params)):
+            return
+        self.ctx.record_own_copy_instantiation(
+            record_info, self.record_subst(typ, record_info),
+            is_record=True, at=loc)
 
     def substitute_types(self, typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
         """Recursively substitute types throughout a type structure.
@@ -1347,8 +1485,7 @@ class TypeOperations:
         Uses map_inner_types for generic traversal of wrapper types. The
         result is settled (`settled_substitution`).
         """
-        return without_class_own_args(
-            settled_substitution(typ, _substitute_types(typ, subst)))
+        return settled_substitution(typ, _substitute_types(typ, subst))
 
     def substitute_self(self, typ: TpyType, actual: TpyType) -> TpyType:
         """Recursively substitute SelfType with actual type throughout a type structure.
@@ -1356,8 +1493,6 @@ class TypeOperations:
         Handles nested types like Own[Self], Ptr[Self], list[Self], etc.
         Uses map_inner_types for generic traversal of wrapper types.
         """
-        # Not normalized (`without_class_own_args`): it is applied to
-        # written types, whose `Own[X]` the written check warns of.
         return settled_substitution(typ, _substitute_types(typ, {"Self": actual}))
 
     def is_forwarded_type_param(self, typ: TpyType, type_params: list[str]) -> bool:
@@ -1687,11 +1822,15 @@ class TypeOperations:
 
     def protocol_type_args_of(
         self, arg_type: TpyType, protocol: NominalType,
+        class_args: 'set[int] | None' = None,
     ) -> list[TpyType | None] | None:
         """The type args `arg_type` instantiates `protocol` (by its name)
         with, aligned to the protocol's own type params -- `dict[int8,
         int32]` gives `[int8]` for `Iterable`. An entry is None where the
-        conformer does not pin that param; None when nothing is known."""
+        conformer does not pin that param; None when nothing is known.
+        `class_args`, when given, gets the positions whose open `T` a
+        class argument of the conformer's signatures gave
+        (`InferenceBindings.class_args`)."""
         # Mirror classify_protocol_conformance: conformance is on the
         # underlying record, not its Ref/readonly/Own wrapper.
         arg_type = unwrap_qualifiers(arg_type)
@@ -1740,7 +1879,8 @@ class TypeOperations:
             arg_type, protocol_name, registry=self.ctx.registry)
         if ext is not None:
             return [ext]
-        return self._infer_protocol_type_arg_structurally(arg_type, protocol)
+        return self._infer_protocol_type_arg_structurally(arg_type, protocol,
+                                                          class_args)
 
     def _match_protocol_type_args_with_inference(
         self,
@@ -1749,37 +1889,45 @@ class TypeOperations:
         inferred: dict[str, TpyType],
     ) -> bool:
         """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T], Iterator[T])."""
-        elem_types = self.protocol_type_args_of(arg_type, param_type)
+        class_args: set[int] = set()
+        elem_types = self.protocol_type_args_of(arg_type, param_type,
+                                                class_args)
         if not elem_types:
             return False
+
+        def match_at(i: int, ta: TpyType, elem: TpyType,
+                     exact: bool = False) -> bool:
+            # A protocol argument a class argument gave binds as that
+            # class argument does, through the ordinary merge.
+            if i in class_args:
+                return self._match_class_arg(ta, elem, inferred, exact)
+            return self.match_type_with_inference(ta, elem, inferred, exact)
+
         # Single type_arg: recursive matching handles compound types like
         # NativeIterable[tuple[K, V]] where the type_arg is a TupleType.
         if len(param_type.type_args) == 1:
             elem = elem_types[0]
-            return elem is not None and self.match_type_with_inference(
-                param_type.type_args[0], elem, inferred)
+            return elem is not None and match_at(
+                0, param_type.type_args[0], elem)
         # Multi-param: bind each bound type_arg to its matching protocol param
         # positionally. A None entry (protocol param the conformer didn't pin)
         # leaves that bound arg unresolved for the caller's reject loop; but a
         # conformer that pins NOTHING (every entry None) provided no evidence,
         # so fail like the single-param gate above rather than matching vacuously.
         bound_any = False
-        for ta, elem in zip(param_type.type_args, elem_types):
+        for i, (ta, elem) in enumerate(zip(param_type.type_args, elem_types)):
             if elem is None:
                 continue
             bound_any = True
-            if isinstance(ta, TypeParamRef):
-                if ta.name in inferred:
-                    if not self.types_match_for_inference(inferred[ta.name], elem):
-                        return False
-                else:
-                    inferred[ta.name] = elem
-            elif not self.match_type_with_inference(ta, elem, inferred):
+            # A conformer's owned argument (`Own[X]`) binds as it says.
+            if not match_at(i, ta, elem, isinstance(elem, OwnType)
+                            and not elem.is_plain()):
                 return False
         return bound_any
 
     def _infer_protocol_type_arg_structurally(
         self, arg_type: TpyType, protocol: NominalType,
+        class_args: 'set[int] | None' = None,
     ) -> list[TpyType | None] | None:
         """Infer a protocol's type args by matching method signatures structurally.
 
@@ -1804,7 +1952,7 @@ class TypeOperations:
             arg_protocol_info = protocol_info_of(arg_type)
             if arg_protocol_info is not None:
                 return self._infer_protocol_type_arg_from_protocol(
-                    arg_type, arg_protocol_info, protocol_info)
+                    arg_type, arg_protocol_info, protocol_info, class_args)
 
         record = self.ctx.registry.get_record_for_type(arg_type)
         if record is None:
@@ -1825,7 +1973,7 @@ class TypeOperations:
                 return t
             return self.substitute_types(t, type_subst)
 
-        inferred: dict[str, TpyType] = {}
+        inferred = InferenceBindings()
         for method_sig in protocol_info.methods:
             for method_info in self.ctx.registry.get_method_overloads_with_parents(record, method_sig.name):
                 if len(method_info.params) != len(method_sig.params):
@@ -1842,13 +1990,15 @@ class TypeOperations:
                         proto_ptype, _substitute(record_ptype), inferred)
                 break
 
-        return [inferred.get(p) for p in protocol_info.type_params]
+        return _protocol_positions(inferred, protocol_info.type_params,
+                                   class_args)
 
     def _infer_protocol_type_arg_from_protocol(
         self,
         arg_type: NominalType,
         arg_protocol: 'ProtocolInfo',
         target_protocol: 'ProtocolInfo',
+        class_args: 'set[int] | None' = None,
     ) -> list[TpyType | None]:
         """Infer the target protocol's type args from an arg protocol's methods.
 
@@ -1863,7 +2013,7 @@ class TypeOperations:
         if arg_protocol.type_params and arg_type.type_args:
             arg_subst.update(dict(zip(arg_protocol.type_params, arg_type.type_args)))
 
-        inferred: dict[str, TpyType] = {}
+        inferred = InferenceBindings()
         for target_method in target_protocol.methods:
             for arg_method in arg_protocol.methods:
                 if arg_method.name != target_method.name:
@@ -1882,7 +2032,8 @@ class TypeOperations:
                         target_ptype, resolved_ptype, inferred)
                 break
 
-        return [inferred.get(p) for p in target_protocol.type_params]
+        return _protocol_positions(inferred, target_protocol.type_params,
+                                   class_args)
 
     def _match_array_with_inference(
         self,
@@ -1927,12 +2078,21 @@ class TypeOperations:
         if len(param_type.type_args) != len(arg_type.type_args):
             return False
         # An element of a container owning its elements (`dict`, `set`)
-        # binds neutrally; a user class's type argument as its position does.
+        # binds neutrally; a user class's type argument as its position
+        # does, and one TPy emits takes an `Own[X]` argument exactly
+        # (`Box[T]` against `Box[Own[P]]` is `T = Own[P]`, a class of its own).
         td = type_def_of(param_type)
         exact = exact and not (td is not None and td.owns_elements)
+        identity = own_arg_is_identity(td)
         for pt, at in zip(param_type.type_args, arg_type.type_args):
             if isinstance(pt, TpyType) and isinstance(at, TpyType):
-                if not self.match_type_with_inference(pt, at, inferred, exact):
+                if identity:
+                    if not self._match_class_arg(
+                            pt, at, inferred,
+                            exact or _identity_arg_exact(at)):
+                        return False
+                elif not self.match_type_with_inference(pt, at, inferred,
+                                                        exact):
                     return False
             elif isinstance(pt, TypeParamRef) and pt.kind == TypeParamKind.INT and isinstance(at, int):
                 if pt.name in inferred:
@@ -1948,6 +2108,19 @@ class TypeOperations:
                     return False
             else:
                 return False
+        return True
+
+    def _match_class_arg(self, pt: TpyType, at: TpyType,
+                         inferred: dict[str, TpyType], exact: bool) -> bool:
+        """`match_type_with_inference` of an emitted generic class's type
+        argument `at` (`own_arg_is_identity`) at `pt`: a parameter it binds
+        to an open `T` is the class argument's `T`
+        (`InferenceBindings.class_args`)."""
+        if not self.match_type_with_inference(pt, at, inferred, exact):
+            return False
+        bare = unwrap_qualifiers(pt)
+        if type(bare) is TypeParamRef and _bare_open_type_param(at):
+            note_class_arg(inferred, bare.name)
         return True
 
     def _bind_direct_fixed_ints(
@@ -2054,7 +2227,7 @@ class TypeOperations:
         # A fill-only hint prefers no protocol form for the result.
         expected_return_type = (return_hint.type if return_hint is not None
                                 and not return_hint.is_fill else None)
-        inferred: dict[str, TpyType] = {}
+        inferred = InferenceBindings()
         self._exact_origins = {}
         self._match_param = None
         if explicit_type_args:
@@ -2223,7 +2396,7 @@ class TypeOperations:
                         continue
                     src = inferred.get(u_name)
                     if src is not None and not isinstance(src, UnknownElementType):
-                        inferred[t_name] = src
+                        inferred.bind_as(t_name, u_name)
                         changed = True
 
         # Reject leftover UnknownElementType: letting it ride through
@@ -2239,11 +2412,6 @@ class TypeOperations:
         settle_inferred(inferred, frozenset(
             tp for tp, arg in zip(func.type_params, explicit_type_args or ())
             if arg is not None))
-        owner = self._static_call_class(func)
-        if owner is not None:
-            # A static or class method's call binds its class's parameters
-            # too, which settle as the class's (`settle_class_type_args`).
-            settle_class_type_args(inferred, owner)
 
         for param_name, type_arg in inferred.items():
             if param_name in func.type_param_bounds:
@@ -2253,20 +2421,6 @@ class TypeOperations:
                     return None
 
         return inferred
-
-    def _static_call_class(self, func: FunctionInfo) -> 'RecordInfo | None':
-        """The generic class whose parameters a static or class method's
-        call binds as its own (`_analyze_generic_static_method_call`), else
-        None."""
-        if not func.is_staticmethod:
-            return None
-        qname = func.root.owning_type_qname
-        record = (self.ctx.registry.find_record_by_qname(qname)
-                  if qname else None)
-        if (record is None or not record.type_params
-                or not set(record.type_params) <= set(func.type_params)):
-            return None
-        return record
 
     def _bind_none_arms(self, none_arms: list[tuple[TpyType, TpyType]],
                         inferred: dict[str, TpyType]) -> bool:
@@ -2301,7 +2455,7 @@ class TypeOperations:
         If explicit_type_args is provided, pre-populates inferred with those (positional, None = skip).
         """
         hint = SlotHint.of(expected_type)
-        inferred: dict[str, TpyType] = {}
+        inferred = InferenceBindings()
         if explicit_type_args:
             if len(explicit_type_args) > len(record.type_params):
                 return None
@@ -2336,7 +2490,21 @@ class TypeOperations:
         for tp in record.type_params:
             if tp not in inferred:
                 return None
-        settle_class_type_args(inferred, record)
+        spelled = {tp for tp, arg in zip(record.type_params,
+                                         explicit_type_args or ())
+                   if arg is not None}
+        if hint is not None and not hint.is_fill:
+            # The slot's own spelling of an open `T` (`heap: list[Entry[T]]`
+            # taking `Entry(x)`) is what the construction instantiates.
+            exp = unwrap_qualifiers(hint.type)
+            if (isinstance(exp, NominalType)
+                    and exp.qualified_name() == record.qualified_name()):
+                spelled |= {tp for tp, h in zip(record.type_params,
+                                                exp.type_args)
+                            if type(h) is TypeParamRef
+                            and isinstance(inferred.get(tp), TpyType)
+                            and unwrap_ref_type(inferred[tp]) == h}
+        settle_inferred(inferred, frozenset(spelled))
 
         # LHS-hint @dynamic-protocol preference (structural conformer -> Adapter
         # wrap at call site). See `_apply_dyn_hint_at_position` for the gate.
@@ -2410,9 +2578,12 @@ class TypeOperations:
         """
         p = unwrap_qualifiers(pattern)
         h = unwrap_qualifiers(hint)
-        tmp: dict[str, TpyType] = {}
+        tmp = InferenceBindings()
         if not self.match_type_with_inference(p, h, tmp):
             return {}
+        # A seed is a hint, not a constraint: the types the hint names (an
+        # exact class argument's entry is the argument itself).
+        settle_inferred(tmp, frozenset(tmp))
         return {k: v for k, v in tmp.items() if _is_useful_seed_binding(v)}
 
     def compute_representational_subst_params(
@@ -2501,14 +2672,14 @@ class TypeOperations:
         # A parameter type may carry readonly / reference qualifiers a
         # local's type does not.
         exp = unwrap_qualifiers(expected.type) if fill else unwrap_own(expected.type)
-        trial = dict(inferred)
+        trial = InferenceBindings(inferred)
         self.match_type_with_inference(pattern, exp, trial)
         if fill:
-            return {tp: t for tp, t in trial.items() if tp in unbound}
+            return trial.subset(unbound)
         if func is None:
             return trial
-        return self.drop_inferred_non_int_defaults(
-            func, trial, params_at_inferred(pattern, expected))
+        return trial.subset(self.drop_inferred_non_int_defaults(
+            func, trial, params_at_inferred(pattern, expected)))
 
     @staticmethod
     def record_pattern(record: RecordInfo) -> NominalType:
@@ -2725,7 +2896,7 @@ class TypeOperations:
         without needing an explicit type annotation. Function inference keeps the strict check
         to preserve helpful errors (e.g. "unsafe_store() requires a mutable pointer").
         """
-        inferred: dict[str, TpyType] = {}
+        inferred = InferenceBindings()
         for pt, arg_type in placed:
             # For Ptr[TypeParam] constructor params, allow T = readonly[X] inference
             # from Ptr[readonly[X]] arguments. This is safe here (constructor context)
@@ -2956,6 +3127,17 @@ class TypeOperations:
         if subst:
             method = self.substitute_method_type_params(method, subst)
         return owner, method
+
+    def member_class_subst(self, method: FunctionInfo, receiver: TpyType
+                           ) -> dict[str, TpyType | int]:
+        """The substitution of the class declaring `method` that a call of
+        it on a `receiver` names (an inherited method's at the receiver's
+        instantiation of its declaring base)."""
+        bare = unwrap_readonly(unwrap_own(unwrap_ref_type(receiver)))
+        if not isinstance(bare, NominalType):
+            return {}
+        return self.build_type_substitution(coro_struct_owner(
+            method.owning_type_qname, bare, self.ctx.registry))
 
     def inherits_in_cpp(self, child: TpyType, base: TpyType) -> bool:
         """`dyn_erasure.inherits_in_cpp` in this module's registry: the

@@ -1942,7 +1942,9 @@ class TpyNestedDef(TpyStmt):
     # Non-value locals to move into the closure (last use, no copy needed)
     move_captures: set[str] = field(default_factory=set)
     # Escaping-closure captures of a type-parameter parameter, held in the
-    # parameter's storage form (`capture_slot`) rather than its passing form
+    # parameter's storage form (`capture_slot`) rather than its passing form;
+    # one in `move_captures` too takes the value over at `T = Own[X]`, as
+    # the twin's `[x = std::move(x)]`
     storage_captures: set[str] = field(default_factory=set)
     # Escaping-closure captures of a parameter passed in a by-value borrow
     # slot (a pointer-form Optional, a pointer-variant union, the generic

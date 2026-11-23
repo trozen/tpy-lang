@@ -109,7 +109,7 @@ struct TaskState {
     // frame: Box[Cancellable[T]] | None
     std::optional<::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>> frame;
     // result: UninitStorage[T]
-    ::tpy::UninitStorage<T> result;
+    ::tpy::UninitStorage<::tpy::storage_t<T>> result;
     // exc: Box[Throwable] | None
     std::optional<::tpystd::tplib::box::Box<::tpy::Throwable>> exc;
     // awaiter: Waker
@@ -912,7 +912,7 @@ inline _ExecutorScope::~_ExecutorScope() {
 template<typename T>
 inline TaskState<T>::TaskState(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>&& frame)
     : frame(std::move(frame)),
-      result(::tpy::UninitStorage<T>()),
+      result(::tpy::UninitStorage<::tpy::storage_t<T>>()),
       exc(std::nullopt),
       awaiter(::tpystd::coro::Waker()),
       done(false),

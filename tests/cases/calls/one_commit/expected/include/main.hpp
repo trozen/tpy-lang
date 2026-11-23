@@ -587,7 +587,7 @@ inline G<T>::G(::tpy::param_val_or_cref_t<T> a, int32_t b)
 // def __init__(self, cb: Callable[[T], T], x: T) -> None:
 //     self.r = f"{cb(x)}"
 template<typename T>
-inline Cb<T>::Cb(std::function<::tpy::val_or_ref_t<T>(::tpy::param_val_or_ref_t<T>)> cb, ::tpy::param_val_or_ref_t<T> x) : r(std::format("{}", ::tpy::__str__(cb(x)))) {}
+inline Cb<T>::Cb(std::function<::tpy::val_or_ref_t<T>(::tpy::param_val_or_ref_t<T>)> cb, ::tpy::param_val_or_ref_t<T> x) : r(std::format("{}", ::tpy::__str__(cb(::tpy::param_pass_last<T>(x))))) {}
 
 // def __init__(self, cb: Callable[[int32], int32], x: T) -> None:
 //     self.r = f"{cb(5)}:{x}"

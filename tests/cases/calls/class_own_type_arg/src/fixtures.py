@@ -1,37 +1,72 @@
-# A reference class and a generic class written in TPy, shared by the parts.
+# Classes shared by the parts: generic classes written in TPy whose `T` the
+# sections instantiate at `Own[P]` (each member's copy reported there).
 from __future__ import annotations
-from typing import Callable
-from tpy import Own, int32
+from typing import Callable, Iterator
+from tpy import Own, int32, nocopy
 
 
 class P:
-    x: int32
+    n: int32
 
-    def __init__(self, x: int32) -> None:
-        self.x = x
+    def __init__(self, n: int32) -> None:
+        self.n = n
 
 
-class C[T]:
+@nocopy
+class N:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+
+class Box[T]:
+    v: T
     items: list[T]
 
-    def __init__(self) -> None:
+    def __init__(self, v: T) -> None:
+        self.v = v  # tpyc: warning(/may copy T into field/)
         self.items = []
 
-    def put(self, x: T) -> None:
+    def get(self) -> T:
+        # at `Own[P]` an owned copy of the stored value
+        return self.v
+
+    def push(self, x: T) -> None:
         self.items.append(x)  # tpyc: warning(/may copy T into owned storage/)
 
-    def fill(self, f: Callable[[int32], Own[T]], k: int32) -> None:
-        self.items.append(f(k))
+    def push_v(self) -> None:
+        # the class's `T` handed on to its own `T` parameter
+        self.push(self.v)
+
+    def __iter__(self) -> Iterator[T]:
+        for it in self.items:
+            # at `Own[P]` each step is an owned copy
+            yield it
+
+
+# The class without a getter: at `Own[N]` nothing copies.
+class Bag[T]:
+    v: T
+    items: list[T]
+
+    def __init__(self, v: T) -> None:
+        self.v = v  # tpyc: warning(/may copy T into field/)
+        self.items = []
+
+    def push(self, x: T) -> None:
+        self.items.append(x)  # tpyc: warning(/may copy T into owned storage/)
+
+
+class Holder[T]:
+    f: Callable[[], T]
+
+    def __init__(self, f: Callable[[], T]) -> None:
+        self.f = f
 
     def get(self) -> T:
-        return self.items[0]
-
-    @classmethod
-    def build(cls, f: Callable[[int32], Own[T]], k: int32) -> Own[C[T]]:
-        c = C[T]()
-        c.items.append(f(k))
-        return c
+        return self.f()
 
 
-def mk(k: int32) -> Own[P]:
-    return P(k)
+def mk() -> Own[P]:
+    return P(2)

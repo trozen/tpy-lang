@@ -2643,16 +2643,18 @@ yielded, or handed to a callee's `x: T` at the same `T` -- is reported at the
 instantiating call with the twin's words (`copies P into owned storage; use
 copy() to make this explicit`), and
 the last use moves (`std::move`), with no warning. A generic whose own type
-parameter is a leaf of a tuple, of a `T | None` / union, or a type argument
-of a class written in TPy (`C[T]`) -- anywhere in its
+parameter (a method's class `T` included) is a leaf of a tuple or of a
+`T | None` / union -- anywhere in its
 signature, a nested def's or lambda's signature, or any type in its body
 (an expression, a local annotation) -- is refused at a non-plain `Own[X]`,
-spelled or inferred from a callable's `Own[X]` result. The refusal is a
+spelled or inferred from a callable's `Own[X]` result (a type argument of a
+class written in TPy is not such a leaf: the class is instantiated at
+`Own[X]`). The refusal is a
 conservative guard: it also refuses a composite that only lends a stored
 element (a `d.get(k)` result over `dict[str, T]`), while an `enumerate(xs)`
 or `zip` step over `list[T]` compiles (`BUGS.md#own-type-arg-composite-leaf-refused`).
-A class's own type parameters never take `Own[X]` until unit 2b-2
-(`BUGS.md#class-own-type-arg-method-result-ill-formed`).
+A class's type parameters are open in its methods' bodies as a function's
+are, every verdict above reported at the class's instantiation.
 
 **Accepted divergence from the monomorphic twin.** The twin names the type it
 copies, once per concrete type; the generic hedges once, at its declaration,
@@ -3001,9 +3003,10 @@ collect them first (list(...))*). The step is read off the declaration, per
 overload C++ may select: one handing over among `@dispatch` `__next__` or
 `__iter__` overloads refuses the source, an inherited `__iter__` returning
 the object runs the subclass's `__next__` override, and an `Own` substituted
-into a generic class (`Bag[Own[Cell]]` over `__next__ -> T`) hands nothing
-over (it lends its stored elements) -- moot until unit 2b-2, which refuses
-`Bag[Own[Cell]]` (`BUGS.md#class-own-type-arg-method-result-ill-formed`). The rule is per leaf: a
+into a generic class TPy emits steps as its instantiation substitutes it
+(`Bag[Own[Cell]]` over `__next__ -> T` hands its owned copies over, as the
+hand-written twin's `-> Own[Cell]`), while an `Own` argument of a native
+iterator (`SpanIter[Own[Cell]]`) lends. The rule is per leaf: a
 `__next__ -> tuple[Own[Cell], Cell]` is refused at `Iterable[tuple[Cell,
 Cell]]` for its handed-over first member (and, partly owned, at the owning
 `Iterable[Own[tuple[Cell, Cell]]]` too), a whole `Own[tuple[Cell, int32]]`
@@ -6190,18 +6193,84 @@ substituted literally: at `T = Own[P]` a parameter `x: T` takes ownership
 element of a container that owns its elements is held either way
 (`list[T]` at `T = Own[P]` is `list[P]`). `Own[X]` of a by-value scalar
 (`int32`, `float`, `bool`) is `X`, and `Own[Own[X]]` is `Own[X]` (an
-`Own[T]` result at `T = Own[P]` owns a `P`). **Restriction (until unit 2b-2)**: a type argument of
-a class written in TPy (a user or tplib generic class such as `Box`; not a
-builtin container, a `@native` binding or a protocol) ignores a non-plain
-`Own[X]`, at any depth: `C[Own[P]]` is `C[P]` (what the C++ instantiates),
-wherever the class type is formed -- written, substituted or inferred
-(a static or class method's call binding the class's `T` included; a
-callable's `Own` inside the argument is its contract and stays). A
-written one warns (*`Own[P]` in a type argument of class 'Box' has no
-effect yet; write `Box[P]`*); an inferred or substituted one is dropped
-silently. A generic body holding `C[T]` still refuses `T = Own[X]` at the
-instantiating call, as a tuple leaf does: its C++ body would instantiate
-the class at the owned tag. `C[Own[int32]]` and `list[Own[P]]` are left as
+`Own[T]` result at `T = Own[P]` owns a `P`). A class written in TPy (a user or
+tplib generic class such as `Box`) is no exception: `C[Own[P]]` is the class
+with `Own[P]` substituted for `T` -- a class of its own, not `C[P]` -- and
+behaves as the class written by hand with `Own[P]` in place of `T`; where `Own`
+cannot be written (a field, a container element, a local) the slot holds `P`.
+So `b = Box[Own[P]](loc)` copies a live `loc` into the field (warned at the
+argument), `b.get()` over `-> T` returns an owned copy of the stored value,
+`b.push(x)` over `x: T` takes ownership (a live argument copied and warned,
+the last use and a fresh value moved), and `for p in b` over
+`__iter__ -> Iterator[T]` steps owned copies. A copy a member makes only at
+`Own[X]` is reported where the class is instantiated -- at every line forming
+it: a construction, an annotation (a parameter, a local, a field, an alias
+body, a global), a base, a class another class at `Own[P]` names anywhere
+in a field (`b: Box[T]`, `p: Ptr[Box[T]]`, `f: Callable[[], Box[T]]`, a
+`list[Node[Own[T]]]` of itself in `Node[P]`, or of itself at rotated
+arguments, `kids: list[Node[B, A]]`), a generic function's or
+method's signature at its instantiation (`def first[T](b: Box[T])` called at
+`Box[Own[P]]`), a recursive alias's body (`Tree[Own[P]]`), and a member call
+where nothing else formed the class (an inferred static method) -- naming
+the member and its line (*copies P into owned storage in 'Box.get'
+(main.py:18)*), once per line, as a generic function's is at each call; a
+generator expression or a handle's deref (`self.push(self._p)` over
+`_p: Ptr[T]`) in a member copies as the member's own read does. A member the
+program calls without spelling it -- a property, a subscript, item
+assignment and `del b[i]`, an operator, `len(b)`, a truth test, `for p in b`,
+`with b` -- answers as the named call does. A method
+call reports only what its own type parameters decide (a copy over the
+class's `T` and the method's `U` there).
+A getter reading through a `Ptr[T]` (tplib `Rc[Own[P]].get`, `Box`, `Arc`)
+copies as a field read does. A `readonly[T]` field holds `readonly[P]`. A
+copy holding only values (`Box[Own[str]]`) says nothing, as its twin's
+`-> Own[str]`; a non-copyable
+payload (`Box[Own[N]]`, `@nocopy N`) is refused there by any member that
+copies, called or not, as its twin is -- a class whose members only store
+compiles and moves. `C[Own[P]]` is no `C[P]`: one where the other is declared
+is a type mismatch. CPython aliases instead: a program writes `Own` to ask
+for the copies, and `Box[P]` keeps CPython's aliasing. Inference through a
+class argument binds exactly (`def first[T](b: Box[T])` at a `Box[Own[P]]` is
+`first[Own[P]]`, and inside a generic body a `Box[T]` argument binds the
+callee's parameter to that `T` itself -- whichever argument comes first,
+through a protocol argument as well -- where a value argument `x: T` alone
+binds its storage form); a class's construction infers as a call does (an owning
+callable `Callable[[], Own[P]]` binds `T = Own[P]`, a fresh value `P`, an
+open `T` inside a generic body its storage form). A native template's open
+`T` argument is the storage form (`UninitArrayStorage[T, N]` holds `P` at
+`Own[P]`), so `tplib.ArrayList[Own[P], N]` owns its elements and `a[i]` is an
+owned copy (warned at the instantiation) while iteration lends. Refused at
+`C[Own[X]]`: a member holding `T` inside a tuple, Optional or union (*`Own[P]`
+as a type argument of class 'C' is not supported yet: 'T' appears inside
+'tuple[T, int32]' in 'C.m'; ... or write the class with `Own[P]` in place of
+'T'*, `BUGS.md#own-type-arg-composite-leaf-refused`). A static protocol
+requiring `-> T` over a `C[Own[P]]` (or its twin's `-> Own[P]`) member does
+not compile yet (`BUGS.md#static-protocol-owning-result-ill-formed`), and a
+`C[Own[X]]` conforms to a @dynamic protocol only as its declared base, not
+structurally through an adapter yet (`BUGS.md#dynamic-adapter-own-type-arg-refused`).
+A class at `C[Own[X]]` formed only through a parent's substituted type
+arguments, a recursive alias in a protocol method signature or a `*args`
+annotation, or a protocol's substituted signature does not answer its
+uncalled members there yet (`BUGS.md#class-own-arg-formation-census`).
+A class a generic function or method constructs by inference holds the
+storage form (`c = Crate(v)` is `Crate[P]` at `T = Own[P]`, as the twin
+infers), so where it meets the class at `T` -- returned at `Own[Crate[T]]`,
+passed to a `Crate[T]` parameter, assigned to a `Crate[T]` local or the
+reverse, at any class argument (`Pair(a, b)` at `Pair[int32, Own[P]]`) -- it
+is refused at that instantiation with the twin's *Type mismatch in return
+value: expected Crate[Own[P]], got Crate[P]* (naming the function and line);
+`Crate[T](v)` spells the class at `T`. A construction at a slot spelling the
+class at `T` (`return Crate(v)` into `-> Own[Crate[T]]`) still takes the
+slot's `T` (`BUGS.md#class-method-inferred-class-arg-not-storage-form`). An
+`Own[T]` parameter or an owning local handed at its last use to a `T`
+parameter of the same instantiation moves on (`param_pass_last<T>`) -- a local
+only where no later binding makes it refer to existing storage (`loc = f()`
+rebound to `self.v` in a loop copies, warned) -- and a nested def
+capturing a `T` parameter at its last use takes it over at `Own[P]`
+(`capture_slot<storage_t<T>, decltype(x)>(param_pass_last<T>(x))`, the
+twin's `[x = std::move(x)]`); a capture read again afterwards copies at
+`Own[P]`, warned at the instantiation.
+`C[Own[int32]]` and `list[Own[P]]` are left as
 written. Inferred and spelled agree: a callable
 argument binds its DECLARED parameter types and return, `Own` kept --
 `app(identity, p)` with `identity(p: P) -> P` binds `R = P` and lends `p`,
@@ -6412,7 +6481,19 @@ consume(c)           # T = int32, resolved from parameter type
 ```
 
 The pending type is eagerly resolved the moment all type parameters are
-constrained. While pending, field access is rejected with clear diagnostics.
+constrained. While pending, field access is rejected with clear diagnostics,
+and so is a call to a method with its own type parameters (`def m[U](self,
+...)`): call a constraining method first or spell the class type arguments
+(BUGS.md#pending-generic-method-one-call-path). A pending instance infers
+no `Own` across statements: each statement's bindings settle to the types
+they name, so the statement order of the constraining calls does not change
+the class it completes to, and a later call that would need a type argument
+to be `Own[P]` (an owning `Callable[[], Own[P]]` after `A = P`) is refused --
+spell the class type arguments (`Duo[Own[P], int32]()`). A position spelled at
+the construction or bound from the expected type keeps its `Own`; a class
+formed in one expression (`Duo(f)`) infers it as a call does. Lifting the
+refusal needs whole-function inference (TODO.md "The pending generic
+construction registry is a deferred path beside immediate construction").
 Works for all generic records (user-defined and library types), in every
 function body: a free function, a method of any kind (static, class, generic,
 `@auto_readonly`, generator, async), a nested def (one completing an instance
@@ -10453,7 +10534,7 @@ Send/Sync rules for built-in types:
   defaults are not supported; TODO.md "Closure defaults evaluated at creation").
 - **Working**: `Fn` in method parameters -- generates per-method template with `requires` constraint.
 - **Working**: A callable's return reads as a `def`'s, at `Callable`, `Fn`, a lambda, a `__call__` object and a class used as a callable: a bare reference type `R` is a BORROW of the call's arguments, `readonly[R]` a const one, `Own[R]` a fresh value; value payloads (numbers, `str`, `bytes`) are unchanged. So `def via(f: Fn[[P], P], x: P): r = f(x); r.n += 100` writes through to `x`, as `r = ident(x)` does: the `std::function` is `std::function<P&(P&)>`, the `Fn` requires clause asks for an lvalue (`requires std::is_lvalue_reference_v<decltype(__fn(__a0))>`; an `Fn[[P], Own[P]]` one for a value), the binding is `P& r = f(x);`, a lambda at the slot returns `P&` (`[](P& q) -> P& { return q; }`), and a frame holds `P*`. The call's result may point into each pointer-holding argument -- at an `Fn` parameter the callable itself too, which it holds by reference -- so the def's checks apply unchanged: `return f(x)` lends `x`, `return f(P(1))` is the temporary-return error, `return f(x)` at `-> Own[P]` is the warned copy `return P(f(x));`, `out.append(f(x))` warns. A callable that builds its result is spelled `Own[R]`: `Callable[[int32], P] = lambda i: P(i)` and `Callable[[int32], Widget] = Widget` are refused naming `Callable[[int32], Own[P]]`. At a `Callable` slot the borrow may point into the arguments only, since the `std::function` holds its own copy of what a lambda captures and of a callable object, and only signatures decide it: a lambda returning a capture (`lambda: h`) or `self` (`lambda: self.p`) is refused, and so is every stateful callable whatever its body returns -- a nested def capturing state (a capture holding a reference type, a tuple holding a class included, or another nested def that is itself stateful), a lambda whose result is such a def's, any `__call__` object (see the Restriction below) -- take the value as a parameter (`Callable[[Obj], P] = lambda o: o.p` aliases), pass the callable to an `Fn` parameter (which holds it by reference), or return `Own[P]`. A capture-free nested def fits by its signature, as a module function does. A slot whose declared return is an open type parameter reads as its substitution: `pick[T](f: Callable[[], T]) -> Callable[[], T]` returns a `Callable[[], int32]` at `T = int32` (so `[a, pick(a)]` with `a: Callable[[], int32]` is a `list[Callable[[], int32]]`), a lending `Callable[[], P]` at `T = P` (`std::function<P&()>`: `pick(l)()` with `l: Callable[[], P]` hands back the object `l` lends) and a `Callable[[], Own[P]]` at `T = Own[P]` (`pick(m)` with `m: Callable[[], Own[P]]`, `std::function<P()>`). MIR does not yet see calls through a callable value (TODO.md "Callable contract unit 3"). A generic class's `Callable[..., T]` field, method parameter and method result follow the same rule as a function's: at a reference instantiation a bare `T` result is a borrow (`Lazy[P](lend).make()` hands back the `P` that `lend` lends; `std::function<::tpy::val_or_ref_t<T>()>`), `Callable[[], Own[T]]` a fresh value (`std::function<::tpy::storage_t<T>()>`), and a call through the field from outside the class (`b.f()` at `Box[int32]`) has the instantiation's type.
-- **Restriction**: A `Callable`'s borrowed result points into its arguments only, and only signatures decide it. TPy refuses these valid Python shapes where the slot is a `Callable` whose return is a bare reference type or `readonly[...]`: a lambda whose result points into what it captures (`lambda: h`, `lambda: self.p` in a method, `lambda: helper(local)` whatever the order `helper` is defined in) -- *this lambda's result points into 'h', which it captures, not into an argument* --; a STATEFUL callable, whatever its body returns, since its signature cannot promise where its borrow points: a nested def capturing state -- a local or parameter that may hold a pointer, view or reference into storage elsewhere (a `Ptr`, a `Span[P]`, a value record with a `Ptr` field, a by-reference class parameter, `self`) or holds a class instance (a `P`, a `list[P]`, a `tuple[P, int32]`), or another nested def that is itself stateful (one calling a sibling captures it; a sibling capturing no state is no state, however deep the chain) -- (*'get' cannot be passed as Callable[[P], P]: it captures 'h', so its signature cannot promise that the borrow it returns points only into its arguments*), a lambda whose result is such a def's result (`lambda p: get(p)`), any object with a `__call__` (*it is an object, so the signature of its '__call__' cannot promise ...*), and an `Fn` parameter's value (`g: Callable[[], P] = f` with `f: Fn[[], P]`: *an Fn may return a borrow of its own state, and a borrow returned through Callable[[], P] must point into its arguments*). A capture that holds nothing of the kind is no state (`int32`, `str`, a pointer-free value record, a `list[int32]`, an undecided literal such as `[1, 2]` or `"big"` read as the type it defaults to), and a captured `Callable` value -- bare or inside an Optional, a tuple or a container -- is state unless its result is covered by the contract (a bare reference type or `readonly[...]`: `Callable[[P], P]` points into its arguments only) or is handed back by value as the caller's own and holds no pointer, view or reference (`Callable[[int32], Own[P]]`, `Callable[[P], int32]`, `Callable[[P], tuple[P, int32]]`, a `Callable` returning such a `Callable`); one returning a `Ptr`, a view or an open type parameter (`Callable[[P], Ptr[P]]`, `Callable[[P], Span[P]]`) may hand back a pointer into its own target, so it is state, as is a captured `Fn` value. A lambda's result that is a call through a `Callable` or `Fn` VALUE (captured, a parameter's field, a temporary) is read by that value's signature: (a) a rule-R return (a bare reference type or `readonly[...]`) is read as a module function's call is -- its result points into its reference-holding arguments, and a temporary argument is handled as the `def` twin handles it (`lambda q: cb(q)` with `cb: Callable[[P], P]` fits, and so does a rule-R call through a temporary callee, `lambda x: x.get_cb()(x, 1)`; a temporary argument the result may point into is the twin's *Cannot return a borrow of a temporary from this lambda* -- `lambda q: cb(P(5))`, `lambda q: cb([q])` at `Callable[[list[P]], P]` -- and so, as for the twin, is a value record temporary holding a `Ptr` to an argument, `lambda q: cw(Wrap(q))`, although its result points into `q`: `BUGS.md#shared-handle-payload-through-temp-rejected`); (b) any other return that may point (`Ptr[P]`, a view, a storage type holding one) is refused, whatever the callee and the arguments, since the signature cannot promise it points only into its arguments (`lambda q: lend(q)` with `lend: Callable[[P], Ptr[P]]`, `lambda: lend()`, `lambda h: h.cb(n)`, `lambda: mk_cb(3)()`, `lambda: mk_cb(3)[0]()`: *this lambda's result comes from a call through 'lend', whose signature cannot promise it points only into its arguments*); (c) a return that cannot point lends nothing. A lambda and a capture-free nested def are judged by their signatures as a module function is: where a lambda's result points is read off each callee's signature, never its body, so the verdict does not depend on which body was analyzed first (a temporary argument is judged as for the `def` twin, by the callee's recorded sources where it has a body) (a result whose storage no contract names is refused), and a capture-free nested def binds like a module function of its signature (`r = p; return r`, a loop picking an element, aliases as CPython does) -- its own return check is a module function's too, gaps included (`BUGS.md#plain-return-loop-back-edge-local`, `BUGS.md#return-temp-arg-pending-callee`). An `Fn` slot accepts all of these: it holds the callable by reference. A `Callable` value a generic hands back from an open return holds its result by value, so it does not fit a bare-return `Callable` either: `h: Callable[[], P] = pick(c)` with `c: Callable[[], Own[P]]` is refused (*expected Callable[[], P], got Callable[[], Own[P]]: it returns Own[P], but Callable[[], P] returns a borrow; declare Callable[[], Own[P]]*), per the rule that a callable building its result is declared `Own[R]`. The spellings that compile: take the value as a parameter (`Callable[[Obj], P] = lambda o: o.p` aliases), pass the callable to an `Fn` parameter, make a stateful nested def a module function or a lambda, or return a copy with `Own[P]` on both the callable and the slot (`Callable[[], Own[P]]`, and `Fn[[], Own[P]]` for the `Fn` parameter), which copies, warned. A `Callable` parameter whose declared return is a type parameter refuses a callable returning a borrow too (see the callable-fit bullet above). Lifting this for a callable's own state is filed (TODO.md "[design][low] Lift the Callable environment-borrow refusal").
+- **Restriction**: A `Callable`'s borrowed result points into its arguments only, and only signatures decide it. TPy refuses these valid Python shapes where the slot is a `Callable` whose return is a bare reference type or `readonly[...]`: a lambda whose result points into what it captures (`lambda: h`, `lambda: self.p` in a method, `lambda: helper(local)` whatever the order `helper` is defined in) -- *this lambda's result points into 'h', which it captures, not into an argument* --; a STATEFUL callable, whatever its body returns, since its signature cannot promise where its borrow points: a nested def capturing state -- a local or parameter that may hold a pointer, view or reference into storage elsewhere (a `Ptr`, a `Span[P]`, a value record with a `Ptr` field, a by-reference class parameter, `self`) or holds a class instance (a `P`, a `list[P]`, a `tuple[P, int32]`), or another nested def that is itself stateful (one calling a sibling captures it; a sibling capturing no state is no state, however deep the chain) -- (*'get' cannot be passed as Callable[[P], P]: it captures 'h', so its signature cannot promise that the borrow it returns points only into its arguments*), a lambda whose result is such a def's result (`lambda p: get(p)`), any object with a `__call__` (*it is an object, so the signature of its '__call__' cannot promise ...*), and an `Fn` parameter's value (`g: Callable[[], P] = f` with `f: Fn[[], P]`: *an Fn may return a borrow of its own state, and a borrow returned through Callable[[], P] must point into its arguments*). A capture that holds nothing of the kind is no state (`int32`, `str`, a pointer-free value record, a `list[int32]`, an undecided literal such as `[1, 2]` or `"big"` read as the type it defaults to), and a captured `Callable` value -- bare or inside an Optional, a tuple or a container -- is state unless its result is covered by the contract (a bare reference type or `readonly[...]`: `Callable[[P], P]` points into its arguments only) or is handed back by value as the caller's own and holds no pointer, view or reference (`Callable[[int32], Own[P]]`, `Callable[[P], int32]`, `Callable[[P], tuple[P, int32]]`, a `Callable` returning such a `Callable`); one returning a `Ptr`, a view or an open type parameter (`Callable[[P], Ptr[P]]`, `Callable[[P], Span[P]]`) may hand back a pointer into its own target, so it is state, as is a captured `Fn` value. A lambda's result that is a call through a `Callable` or `Fn` VALUE (captured, a parameter's field, a temporary) is read by that value's signature: (a) a rule-R return (a bare reference type or `readonly[...]`) is read as a module function's call is -- its result points into its reference-holding arguments, and a temporary argument is handled as the `def` twin handles it (`lambda q: cb(q)` with `cb: Callable[[P], P]` fits, and so does a rule-R call through a temporary callee, `lambda x: x.get_cb()(x, 1)`; a temporary argument the result may point into is the twin's *Cannot return a borrow of a temporary from this lambda* -- `lambda q: cb(P(5))`, `lambda q: cb([q])` at `Callable[[list[P]], P]` -- and so, as for the twin, is a value record temporary holding a `Ptr` to an argument, `lambda q: cw(Wrap(q))`, although its result points into `q`: `BUGS.md#shared-handle-payload-through-temp-rejected`); (b) any other return that may point (`Ptr[P]`, a view, a storage type holding one) is refused, whatever the callee and the arguments, since the signature cannot promise it points only into its arguments (`lambda q: lend(q)` with `lend: Callable[[P], Ptr[P]]`, `lambda: lend()`, `lambda h: h.cb(n)`, `lambda: mk_cb(3)()`, `lambda: mk_cb(3)[0]()`: *this lambda's result comes from a call through 'lend', whose signature cannot promise it points only into its arguments*); (c) a return that cannot point lends nothing. A lambda and a capture-free nested def are judged by their signatures as a module function is: where a lambda's result points is read off each callee's signature, never its body, so the verdict does not depend on which body was analyzed first (a temporary argument is judged as for the `def` twin, by the callee's recorded sources where it has a body) (a result whose storage no contract names is refused), and a capture-free nested def binds like a module function of its signature (`r = p; return r`, a loop picking an element, aliases as CPython does) -- its own return check is a module function's too, gaps included (`BUGS.md#plain-return-loop-back-edge-local`, `BUGS.md#return-temp-arg-pending-callee`). An `Fn` slot accepts all of these: it holds the callable by reference. A `Callable` value a generic hands back from an open return holds its result by value, so it does not fit a bare-return `Callable` either: `h: Callable[[], P] = pick(c)` with `c: Callable[[], Own[P]]` is refused (*expected Callable[[], P], got Callable[[], Own[P]]: it returns Own[P], but Callable[[], P] returns a borrow; declare Callable[[], Own[P]]*), per the rule that a callable building its result is declared `Own[R]`. The spellings that compile: take the value as a parameter (`Callable[[Obj], P] = lambda o: o.p` aliases), pass the callable to an `Fn` parameter, make a stateful nested def a module function or a lambda, or return a copy with `Own[P]` on both the callable and the slot (`Callable[[], Own[P]]`, and `Fn[[], Own[P]]` for the `Fn` parameter), which copies, warned. A `Callable` parameter whose declared return is a type parameter refuses a callable returning a borrow too (see the callable-fit bullet above). At a slot whose result is a generic body's open `T` (`def mkf[T](x: T) -> Callable[[], T]: return lambda: x`, a class's `self.f = lambda: x` at `f: Callable[[], T]`), whether the result is a borrow is the instantiation's: the same check runs per instantiation and refuses, at the instantiating call or class formation, where the substituted result is one (`mkf(P(20))`: *this lambda's result points into 'x', which it captures ... (the lambda in 'mkf' (line 10), instantiated here with a result of 'P')*), while a value `T` (`mkf(3)`) and `T = Own[P]` (an owned copy) are admitted. Lifting this for a callable's own state is filed (TODO.md "[design][low] Lift the Callable environment-borrow refusal").
 - **Restriction**: A generic class's `Callable[[], V]` member (a field, or a method or constructor parameter) is a borrow at a reference `V`, so a callable that builds a fresh value is refused there: an owning def (*'mk' returns Own[P], but parameter 'f' of Lazy.__init__ (Callable[[], T]) returns a borrow; declare parameter 'f' of Lazy.__init__ as Callable[[], Own[T]]*) or `lambda: []` (*this lambda builds a new list[int32], but 'DefaultMap.factory' (Callable[[], V]) returns a borrow; declare 'DefaultMap.factory' as Callable[[], Own[V]] to return it by value*). The refusal names the member as the class declaring it spells it -- an inherited field by its base (`'Base.factory'`), a static, class or generic method's parameter by its method, a `*args` parameter at its element, an optional one with its `| None` -- and so does a lambda or nested def refused there for what it captures. A member is a slot the class spells as a `Callable` (under `Own`, `readonly` or `| None` at most); a bare `x: T` instantiated at a `Callable` is named as instantiated. The class declares a factory of fresh values `Callable[[], Own[V]]`. Some positions name the substituted slot instead -- a `Callable` VALUE or a `__call__` object stored into the member, an overloaded method's parameter, a property setter, a store through a `Ptr` (BUGS.md#class-callable-member-value-unnamed). A call through an INHERITED `Callable` field is not lowered yet (BUGS.md#inherited-callable-field-call-rejects).
 - **Working**: `Callable[[A, B], R]` type -- type-erased callable (`std::function`). Valid in all positions: the callable itself binds as `const std::function<...>&` (params), or by value in fields/returns/containers/locals. The `std::function`'s own param types (`A`, `B`) spell mutable by default for non-value types -- see the callable-value-call bullet above for the mutability contract. `Callable | None` maps to `std::optional<std::function<...>>` with `is not None` narrowing for both fields and parameters; a lambda literal, a function by name, or `None` may be passed directly to a `Callable[...] | None` parameter (the optional wrapper is unwrapped to recover the callable shape for arg inference, then the value coerces back into the optional slot).
   ```python

@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING
 
 from ..parse.nodes import GENEXPR_FUNC_PREFIX
 from ..resumable_shape import ResumableShape
-from ..typesys import type_arg_cpp
+from ..type_def_registry import type_def_of
+from ..typesys import template_args_cpp, type_arg_cpp
 from .context import (CodeGenError, FrameSourceUnnameable, escape_cpp_name,
                       module_to_cpp_namespace,
                       resumable_struct_name)
@@ -98,8 +99,9 @@ def frame_struct_qualname(
             if owner_module and owner_module != analyzer.ctx.module_name:
                 ns_qual = f"::{module_to_cpp_namespace(owner_module)}::"
         if owner.type_args:
-            inner_cpps = [type_to_cpp(ta) for ta in owner.type_args]
-            owner_args_suffix = "<" + ", ".join(inner_cpps) + ">"
+            owner_args_suffix = "<" + template_args_cpp(
+                owner.name, type_def_of(owner), owner.type_args,
+                type_to_cpp) + ">"
     elif module_qual is not None:
         # Cross-module free function: qualify with the callee module's
         # C++ namespace.

@@ -34,7 +34,7 @@ void fence(::std::memory_order order = ::std::memory_order::seq_cst);
 template<::tpy::AnyFixedInt T>
 struct Atomic {
     // _raw: _RawAtomic[T]
-    ::tpy::MovableAtomic<T> _raw;
+    ::tpy::MovableAtomic<::tpy::storage_t<T>> _raw;
 
     // def __init__(self, value: T) -> None:
     Atomic() = default;
@@ -113,7 +113,7 @@ inline std::ostream& operator<<(std::ostream& os, const Atomic<T>& obj) {
 // def __init__(self, value: T) -> None:
 //     self._raw = _RawAtomic[T](value)
 template<::tpy::AnyFixedInt T>
-inline Atomic<T>::Atomic(::tpy::param_val_or_ref_t<T> value) : _raw(::tpy::MovableAtomic<T>(value)) {}
+inline Atomic<T>::Atomic(::tpy::param_val_or_ref_t<T> value) : _raw(::tpy::MovableAtomic<::tpy::storage_t<T>>(value)) {}
 
 // @readonly
 // def load(self, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:

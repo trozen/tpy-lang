@@ -75,8 +75,7 @@ def main() -> None:
     w[0].xs.append(8)
     print("tuple-two-lend", q.xs, w[1].xs)
     print("tuple-plain-own", second[Own[int32]]((3, 1)))  # tpyc: ok
-    # the class at a plain `T` (no `Own[X]` class type argument until unit
-    # 2b: BUGS.md#class-own-type-arg-method-result-ill-formed)
+    # the class at a plain `T`
     b = Box[P](P(4))  # tpyc: ok
     b.v.xs.append(5)
     print("tuple-class-own", len(b.v.xs))

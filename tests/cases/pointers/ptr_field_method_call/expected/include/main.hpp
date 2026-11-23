@@ -18,11 +18,11 @@ void main();
 template<typename T>
 struct Wrapper {
     // _storage: Ptr[UninitHeapStorage[T]]
-    ::tpy::UninitHeapStorage<T>* _storage;
+    ::tpy::UninitHeapStorage<::tpy::storage_t<T>>* _storage;
 
     // def __init__(self, storage: Ptr[UninitHeapStorage[T]]) -> None:
     Wrapper() = default;
-    explicit Wrapper(::tpy::UninitHeapStorage<T>* storage);
+    explicit Wrapper(::tpy::UninitHeapStorage<::tpy::storage_t<T>>* storage);
 
     // def load_at(self, index: uint32) -> T:
     ::tpy::val_or_ref_t<T> load_at(uint32_t index) const;
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 // def __init__(self, storage: Ptr[UninitHeapStorage[T]]) -> None:
 //     self._storage = storage
 template<typename T>
-inline Wrapper<T>::Wrapper(::tpy::UninitHeapStorage<T>* storage) : _storage(storage) {}
+inline Wrapper<T>::Wrapper(::tpy::UninitHeapStorage<::tpy::storage_t<T>>* storage) : _storage(storage) {}
 
 // def load_at(self, index: uint32) -> T:
 //     return self._storage.load(index)

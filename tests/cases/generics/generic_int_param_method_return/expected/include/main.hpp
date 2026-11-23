@@ -48,14 +48,14 @@ inline Grid<T, N>::Grid(::tpy::param_val_or_cref_t<T> value) : _value(::tpy::par
 //     return Grid[T, N](self._value)
 template<typename T, std::size_t N>
 inline Grid<T, N> Grid<T, N>::copy() {
-    return Grid<T, N>(this->_value);
+    return Grid<T, N>(::tpy::param_pass<T>(this->_value));
 }
 
 // def with_value(self, value: T) -> Own[Grid[T, N]]:
 //     return Grid[T, N](value)
 template<typename T, std::size_t N>
 inline Grid<T, N> Grid<T, N>::with_value(::tpy::param_val_or_ref_t<T> value) const {
-    return Grid<T, N>(value);
+    return Grid<T, N>(::tpy::param_pass_last<T>(value));
 }
 
 void __tpy_init();

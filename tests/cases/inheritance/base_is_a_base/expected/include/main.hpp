@@ -325,7 +325,7 @@ inline GDict<K, V>::GDict() : ::tpy::ordered_map<::tpy::storage_t<K>, ::tpy::sto
 //     return k in self  # tpyc: ok
 template<::tpystd::tpy::Hashable K, typename V>
 inline bool GDict<K, V>::put(::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> v) {
-    ::tpy::__setitem__((*this), k, ::tpy::param_consume<V>(v));
+    ::tpy::__setitem__((*this), ::tpy::param_pass<K>(k), ::tpy::param_consume<V>(v));
     return ((*this).contains(k));
 }
 
@@ -338,7 +338,7 @@ inline GSub<K, V>::GSub() : Base<K, V>() {}
 //     self[k] = v  # tpyc: warning(/may copy V/)
 template<::tpystd::tpy::Hashable K, typename V>
 inline void GSub<K, V>::put(::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> v) {
-    (*this).__setitem__(k, v);
+    (*this).__setitem__(::tpy::param_pass_last<K>(k), v);
 }
 
 // # A class bound gives the body no members (as for any class bound); the

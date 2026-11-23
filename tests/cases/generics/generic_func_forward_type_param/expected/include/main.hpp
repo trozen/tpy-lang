@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 //     return identity[T](self.val)  # tpyc: ok
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Container<T>::forward_val() {
-    return ::tpyapp::main::identity<T>(this->val);
+    return ::tpyapp::main::identity<T>(::tpy::param_pass<T>(this->val));
 }
 
 // def sink[T](x: Own[T]) -> None:

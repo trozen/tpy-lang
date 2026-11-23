@@ -1,0 +1,2 @@
+main.py:26: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:35: error: Type Box[Own[P]] does not conform to protocol Sink in argument 's'

@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const ChannelClosed& obj) {
 template<typename T>
 struct _ChanState {
     // _buf: UninitHeapStorage[T]
-    ::tpy::UninitHeapStorage<T> _buf;
+    ::tpy::UninitHeapStorage<::tpy::storage_t<T>> _buf;
     // _cap: uint32
     uint32_t _cap;
     // _head: uint32
@@ -143,7 +143,7 @@ struct _Send {
     // _cancelled: bool
     bool _cancelled;
     // _value: UninitStorage[T]
-    ::tpy::UninitStorage<T> _value;
+    ::tpy::UninitStorage<::tpy::storage_t<T>> _value;
     bool __tpy_owned_ = true;
 
     // def __init__(self, state: Own[Rc[_ChanState[T]]], value: Own[T]) -> None:
@@ -247,7 +247,7 @@ inline std::ostream& operator<<(std::ostream& os, const Receiver<T>& obj) {
 //     self._has_recv_waiter = False
 template<typename T>
 inline _ChanState<T>::_ChanState(uint32_t capacity)
-    : _buf(::tpy::UninitHeapStorage<T>(capacity)),
+    : _buf(::tpy::UninitHeapStorage<::tpy::storage_t<T>>(capacity)),
       _cap(capacity),
       _head(0),
       _count(0),
@@ -431,7 +431,7 @@ template<typename T>
 inline _Send<T>::_Send(::tpystd::tplib::rc::Rc<_ChanState<T>>&& state, ::tpy::own_param_t<T> value)
     : _state(std::move(state)),
       _cancelled(false),
-      _value(::tpy::UninitStorage<T>()) {
+      _value(::tpy::UninitStorage<::tpy::storage_t<T>>()) {
     this->_value.construct(std::move(value));
 }
 

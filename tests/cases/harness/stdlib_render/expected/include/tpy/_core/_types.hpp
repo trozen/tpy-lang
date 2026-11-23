@@ -131,7 +131,7 @@ template<typename T> struct Poll;
 template<typename T>
 struct Poll {
     // _slot: _UninitStorage[T]
-    ::tpy::UninitStorage<T> _slot;
+    ::tpy::UninitStorage<::tpy::storage_t<T>> _slot;
 
     // def __init__(self) -> None:
     Poll();
@@ -177,7 +177,7 @@ namespace tpystd::tpy {
 // def __init__(self) -> None:
 //     self._slot = _UninitStorage[T]()
 template<typename T>
-inline Poll<T>::Poll() : _slot(::tpy::UninitStorage<T>()) {}
+inline Poll<T>::Poll() : _slot(::tpy::UninitStorage<::tpy::storage_t<T>>()) {}
 
 // @staticmethod
 // def pending() -> Own["Poll[T]"]:

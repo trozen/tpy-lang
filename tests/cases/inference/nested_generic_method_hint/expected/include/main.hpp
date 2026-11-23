@@ -108,7 +108,7 @@ inline std::string Frog::greet() const {
 //     return Rc.new(value)
 template<typename T>
 inline ::tpystd::tplib::rc::Rc<T> Wrapper::wrap(::tpy::own_param_t<T> value) const {
-    return Rc<::tpy::storage_t<T>>::template new_<::tpy::storage_t<T>>(std::move(value));
+    return Rc<T>::template new_<::tpy::storage_t<T>>(std::move(value));
 }
 
 void __tpy_init();

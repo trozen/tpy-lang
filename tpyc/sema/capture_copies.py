@@ -527,9 +527,14 @@ def warn_closure_captures(ctx: 'SemanticContext', body: list[TpyStmt],
         reads = reads_of[closure]
         bindings = reads.bindings
         copied = by_value_captures(closure, bindings)
-        names = [n for n in copied
-                 if n not in (inherited.get(closure) or ())]
-        captures[closure] = (names, bindings)
+        skip = inherited.get(closure) or ()
+        names = [n for n in copied if n not in skip]
+        # A storage capture the closure takes over is still a value of its
+        # own, which a later rebinding does not reach.
+        held = names + [n for n in getattr(closure, "storage_captures", ())
+                        if n in closure.move_captures and n not in names
+                        and n not in skip]
+        captures[closure] = (held, bindings)
         reasons = (def_reasons.get(closure) if def_reasons is not None
                    else None) or {}
         sibling_defs = ctx.func.closure_captured_defs.get(closure) or {}

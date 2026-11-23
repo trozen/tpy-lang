@@ -75,8 +75,8 @@ from ...parse.nodes import (
 from ...emitted_members import frame_struct_is_template
 from ...typesys import ANY, binds_runtime_symbol, indirection_referent_readonly, is_readonly_result_type, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
 from ...typesys import (
-    drop_own_marker, dyn_protocol_borrow_result,
-    make_readonly, param_takes_ownership)
+    drop_own_marker, dyn_protocol_borrow_result, make_readonly,
+    param_takes_ownership, template_args_cpp)
 from ...modules.type_resolution import owning_element_slot, traverses_owning
 from ...typesys import (
     ConcreteFrameType,
@@ -132,7 +132,7 @@ from ...typesys import (
     unwrap_send_sync,
     property_getter_returns_storage_ref,
 )
-from ...type_def_registry import (ParamPassing, 
+from ...type_def_registry import (ParamPassing, get_type_def,
     enum_info_of,
     has_view_param_form,
     is_array,
@@ -14260,8 +14260,9 @@ def _compose_static_targs(cpp_class: str, record_info, cpp_method: str,
     class_args = e.inferred_type_args[:n_class]
     method_args = e.inferred_type_args[n_class:]
     if class_args:
-        spelled = ", ".join(lc.render_type(unwrap_ref_type(t))
-                            for t in class_args)
+        spelled = template_args_cpp(
+            record_info.name, get_type_def(record_info.qualified_name()),
+            tuple(unwrap_ref_type(t) for t in class_args), lc.render_type)
         cpp_class = f"{cpp_class}<{spelled}>"
     template_kw = ("template "
                    if method_args and any(contains_type_param(t)

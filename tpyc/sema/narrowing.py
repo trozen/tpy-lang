@@ -188,10 +188,7 @@ class NarrowingTracker:
                 field_info = self.protocols.lookup_record_field(record, expr.field)
                 if field_info is None:
                     return None
-                field_type = field_info.type
-                if type_subst:
-                    field_type = self.type_ops.substitute_type_params(field_type, type_subst)
-                return field_type
+                return self.type_ops.field_type_at(field_info.type, type_subst)
 
             if isinstance(actual_type, TypeParamRef):
                 bound = self.type_ops.get_type_param_bound(actual_type)
