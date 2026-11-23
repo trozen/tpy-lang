@@ -35,7 +35,7 @@ from .nodes import (
 )
 from .value import (
     AGGREGATE_CLASSES, CONTAINER_CLASSES, SUM_CLASSES, MIRField, MIRHolding, MIRRecords, MIRShape,
-    MIRValidationError, WRAPPER_CLASSES,
+    MIRValidationError, WRAPPER_CLASSES, inline_members,
 )
 from .validate import owned_leaf_place_type, statement_reads
 
@@ -175,12 +175,14 @@ def _member_records(shape: MIRShape) -> tuple[TpyType, ...] | None:
     an owned leaf's storage (private to the body) hold none; a holder of a
     record its record; whatever holds a container (a pointer at it, a view,
     a cursor) its record elements, destroyed and copied by the container
-    itself. Inline aggregate storage is admitted by its slot
+    itself, as it stores them (`inline_members`: through its wrapper
+    members; a nested container's are its own). Inline aggregate storage
+    is admitted by its slot
     (`_private_records`), not here. A cursor over a leaf walks scalars."""
     if shape.is_scalar or shape.cls is MIRClass.LEAF and shape.holding is MIRHolding.ALIAS:
         return ()
     if shape.cls in CONTAINER_CLASSES:
-        return tuple(m.type for m in shape.members if m.cls is MIRClass.RECORD)
+        return tuple(m.type for m in inline_members(shape.members) if m.cls is MIRClass.RECORD)
     if shape.view_holder or shape.leaf_storage or shape.leaf_cursor:
         return ()
     if shape.is_pointer:
@@ -647,4 +649,3 @@ def _obligations(prepared: MIRPrepared) -> frozenset[MIRAliasObligation] | str:
         if obligation is not None:
             found.add(obligation)
     return frozenset(found)
-

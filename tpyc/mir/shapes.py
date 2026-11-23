@@ -6,7 +6,7 @@ imports only `value`."""
 
 from dataclasses import dataclass, replace
 
-from ..thir.scalar_leaves import MIRClass, modeled_members, value_class
+from ..thir.scalar_leaves import MemberKind, MemberSelector, MIRClass, modeled_members, value_class
 from ..typesys import TpyType
 from .value import (
     SUM_CLASSES, MIRField, MIRFieldId, MIRHolding, MIRRecords, MIRShape, MIRValidationError, RecordFields, holder_form,
@@ -48,6 +48,20 @@ Projection = (MIRDeref | MIRField | MIRTupleIndex | MIRUnionPayload
 
 # An Optional's payload: the sum's alternative beside the absent 0.
 OPTIONAL_PAYLOAD = MIRUnionPayload(1)
+
+
+def member_projection(selector: object) -> Projection:
+    """The projection reaching a stored member (`stored_members`) by its
+    selector: a tuple's element, a sum's alternative, a container's elements
+    region; a record's field is its own selector."""
+    if not isinstance(selector, MemberSelector):
+        return selector
+    match selector.kind:
+        case MemberKind.ELEMENT:
+            return MIRTupleIndex(selector.index)
+        case MemberKind.ALTERNATIVE:
+            return MIRUnionPayload(selector.index)
+    return MIRContainerElements()
 
 
 def optional_payload(holder: MIRClass | None, projection: Projection) -> bool:

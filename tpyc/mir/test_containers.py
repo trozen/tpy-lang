@@ -33,7 +33,7 @@ from .nodes import (
     MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRContainerElements, MIRDeref, object_prefix
-from .value import MIRHolding, MIRValidationError, container_members, with_access
+from .value import MIRHolding, MIRValidationError, storage_shape, with_access
 from .test_constructors import built, field_write, rewritten
 from .testutil import (
     construct, compiled_definitions, ContainerValue, bind_parameters, Reference, bound, execute, leaf_shape, owned_shape,
@@ -618,7 +618,7 @@ def test_validator_rejects_damaged_container_slots(active) -> None:
     ps = next(s for s in first.slots if s.name == "ps")
     # Placed and well formed, so only the binding refuses it: its passing lends a region.
     _rejects(_reslot(first, "ps", holding=MIRHolding.VALUE, readonly=False, storage_duration=MIRStorageDuration.BODY,
-                     members=container_members(ps.type, False)),
+                     members=storage_shape(ps.type).members),
              "parameter call parameter binding differs from its derivation")
     xs = _storage(own, "xs")
     _rejects(replace(own, slots=tuple(reslot(s, readonly=True, members=with_access(xs.shape.members, True))
@@ -737,7 +737,7 @@ def test_a_mutable_container_replaces_a_readonly_element(active) -> None:
     ps = _slot(record, "ps")
     point = ps.type.type_args[0]
     frozen = NominalType("list", (ReadonlyType(point),), _module_qname="builtins.list")
-    members = container_members(frozen, False)
+    members = storage_shape(frozen).members
     assert all(m.readonly for m in members)
     slots = tuple(reslot(s, type=frozen, members=members) if s.id == ps.id
                   else reslot(s, readonly=True) if s.name == "p" else s for s in record.slots)

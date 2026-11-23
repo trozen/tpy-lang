@@ -207,6 +207,15 @@ fix, and file the symptoms under it. The language rule a user reads should
 stay one sentence; everything the implementation cannot yet honour goes in
 a "current limitations" list pointing at that unit, never into the rule.
 
+**Facts first, consumers after.** List every gate or condition the design
+puts on its rule ("only callees with one record parameter", "only when the
+callee cannot raise") and ask which missing fact each stands for. A gate
+that stands for a missing fact is not a design choice: the fact is its own
+unit, ordered before the feature that needs it, and the feature is built on
+it without the gate. The design states what share of everyday code each
+remaining gate admits. Critic rounds that keep finding holes are never
+converged by narrowing the rule's domain.
+
 The change that fixes the root cause. Note:
 
 - **Blast radius:** which files, which phases.

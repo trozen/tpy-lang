@@ -11366,10 +11366,10 @@ def record_construction_fields(record: RecordInfo, resolve: Callable[[NominalTyp
     """Every field `record`'s C++ struct contains, with its declaring
     record, in the order C++ constructs them: each struct base in
     `parents` order (recursively, each resolved by `resolve`), then the
-    record's own fields in emitted member order. The one enumeration behind
-    THIR's record layouts and MIR's declared fields; it takes the base
-    resolution as an input because MIR resolves a record through its
-    TypeDef, not through one module's registry. Differs from
+    record's own fields in emitted member order. The enumeration behind
+    THIR's record layouts (MIR reads the same fields of a hierarchy it
+    models, nearest record first: `scalar_leaves.chain_fields`); it takes
+    the base resolution as an input. Differs from
     `get_all_fields` for a multi-base record, whose reversed-MRO walk lists
     the last base's fields first."""
     result: list[tuple[RecordInfo, FieldInfo]] = []

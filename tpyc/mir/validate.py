@@ -9,8 +9,8 @@ from ..parse import SourceLocation
 from ..thir.nodes import COMPARISON_OPS, THIRStubCallee, THIRStubContract
 from ..type_def_registry import is_array
 from ..thir.scalar_leaves import (
-    MIRClass, leaf_constant, modeled_field, owned_constant, owned_value_type,
-    primitive_leaf, record_type, value_class,
+    UNEXPANDED, MIRClass, leaf_constant, modeled_field, owned_constant, owned_value_type,
+    primitive_leaf, record_type, stored_types, value_class,
 )
 from ..type_def_registry import type_def_of, zero_value_of
 from ..typesys import (
@@ -30,7 +30,8 @@ from .nodes import (
 )
 from .value import (
     AGGREGATE_CLASSES, CONTAINER_CLASSES, MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape,
-    MIRValidationError, admitted_members, member_compatible, require_valid as _require, shape_problem, with_access, SUM_CLASSES, WRAPPER_CLASSES, member_binds, wrapper_compatible, caller_storage,
+    MIRValidationError, member_compatible, no_fields, require_valid as _require, shape_problem, storage_shape,
+    with_access, SUM_CLASSES, WRAPPER_CLASSES, member_binds, wrapper_compatible, caller_storage,
 )
 from .coverage import primitive_operand, read_leaf, slot_representation, view_compatible
 from .region_flow import MIRRegionFlow, outgoing_edges
@@ -52,6 +53,38 @@ def handed_storage(slot: MIRSlot, bindings: 'Mapping[MIRSlotId, MIRParameterBind
     binding = bindings.get(slot.id)
     return (binding is not None and owned_aggregate_parameter(binding) is not None
             and slot.storage_duration is MIRStorageDuration.BODY)
+
+
+# What a field misses, named by the field's own class: the classes of a
+# modeled field (`modeled_field`) whose storage holds a layout.
+_FIELD_LAYOUT_PROBLEMS = {
+    MIRClass.OWNED_LEAF: "owned-leaf field needs its opaque layout",
+    MIRClass.RECORD: "record field needs its layout",
+    MIRClass.OPTIONAL: "optional record field needs its payload layout",
+}
+
+
+def field_layout_problem(typ: TpyType, records: MIRRecords) -> str | None:
+    """Why `records` misses a layout storage of a modeled record field
+    (`modeled_field`) declared `typ` holds inline, the field's own and,
+    through its wrappers, its members' at any depth (`stored_members`): a
+    record's layout, an owned leaf's opaque buffer -- the layouts
+    `close_layouts` brings along; None when it misses none. A container's
+    layouts are its slot's check."""
+    pending = [typ]
+    while pending:
+        member = pending.pop()
+        bare, cls = unwrap_readonly(member), value_class(member)
+        layout = records.get(bare)
+        if (cls is MIRClass.RECORD and (layout is None or layout.opaque)
+                or cls is MIRClass.OWNED_LEAF and (layout is None or not layout.opaque)):
+            return _FIELD_LAYOUT_PROBLEMS[value_class(typ)]
+        if cls in WRAPPER_CLASSES:
+            members = stored_types(bare, no_fields)
+            if members is UNEXPANDED:
+                return _FIELD_LAYOUT_PROBLEMS[value_class(typ)]
+            pending.extend(members)
+    return None
 
 
 def elements_place(place: MIRPlace) -> bool:
@@ -630,16 +663,10 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
                      and member.id not in seen and modeled_field(member.type),
                      "invalid record layout field")
             # An owned-leaf field is a place of that leaf's opaque storage,
-            # a record field a place of its member record's.
-            cls = value_class(member.type)
-            bare = unwrap_readonly(member.type)
-            _require(cls is not MIRClass.OWNED_LEAF or bare in records and records[bare].opaque,
-                     "owned-leaf field needs its opaque layout")
-            _require(cls is not MIRClass.RECORD or bare in records and not records[bare].opaque,
-                     "record field needs its layout")
-            # An Optional record field stores its payload record inline.
-            _require(cls is not MIRClass.OPTIONAL or bare.inner in records and not records[bare.inner].opaque,
-                     "optional record field needs its payload layout")
+            # a record field a place of its member record's, a wrapper's
+            # members places of theirs.
+            problem = field_layout_problem(member.type, records)
+            _require(problem is None, problem or "")
             seen.add(member.id)
             # A field is one storage of one type in every layout carrying it
             # (its declaring owner's and each descendant's).
@@ -691,7 +718,7 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
         # A container's members are its type's (`shape_problem`); the
         # layouts this body supplies for them are checked here.
         _require(shape.cls not in CONTAINER_CLASSES
-                 or not isinstance(admitted_members(slot.type, slot.readonly, records), str),
+                 or not isinstance(storage_shape(slot.type, slot.readonly, layouts=records), str),
                  "unsupported native element")
         if shape.holding is MIRHolding.CURSOR:
             _require(slot.kind is MIRSlotKind.TEMPORARY, "iterator must be an internal temporary")
@@ -877,8 +904,7 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
             _require(shape is not None, REGION_END)
             match projection:
                 case MIRUnionPayload():
-                    _require(not shape.is_storage or shape.type in records or shape.cls is MIRClass.CONTAINER,
-                             "optional payload needs its layout")
+                    _require(not shape.is_storage or defined(shape.type), "optional payload needs its layout")
                     optional_member = True
                 case MIRTupleIndex():
                     tuple_member = True
@@ -1144,10 +1170,9 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
         target = field_write(stmt, initializing, owned=True)
         _require(target.cls is MIRClass.OPTIONAL, "store through readonly storage")
         payload = target.payload.type
-        container = target.payload.cls is MIRClass.CONTAINER
-        layout = records.get(payload)
-        # A container payload (a slot's only) is defined by its container layout, moved whole.
-        _require(container or layout is not None and not layout.opaque, "optional record field needs its payload layout")
+        # A record's or a container's storage payload, each defined as any aggregate is.
+        _require(target.payload.cls in AGGREGATE_CLASSES and defined(payload),
+                 "optional record field needs its payload layout")
         for operand in operands(stmt.value):
             _require(operand in slots and slots[operand].kind is not MIRSlotKind.GLOBAL,
                      "global value needs explicit read")
@@ -1158,7 +1183,7 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
                 operand = payload_operand(source)
                 _require(operand.type == payload and operand.is_storage and not operand.readonly
                          and slots[source.root].kind is MIRSlotKind.TEMPORARY
-                         and defined(payload) and (container or layout.movable)
+                         and facts(payload).movable
                          and source.root not in wrapped_payloads,
                          "optional field payload needs a moved temporary")
                 wrapped_payloads.add(source.root)

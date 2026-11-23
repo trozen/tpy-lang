@@ -11,20 +11,19 @@ from ..compilation_context import activate_compiler, get_current_compiler
 from ..thir import nodes as th
 from ..thir.validate import _iter_children
 from ..thir.scalar_leaves import (
-    MIRClass, holds_loan, inline_member_type, loan_free, modeled_field, modeled_hierarchy,
-    record_type, value_class,
-    view_compatible,
+    UNEXPANDED, MIRClass, chain_fields, holds_loan, loan_free, modeled_chain,
+    modeled_field, stored_types, value_class, view_compatible,
 )
 from ..type_def_registry import ParamPassing, type_def_of
 from ..typesys import (
-    NominalType, RecordInfo, TpyType, init_is_default_ctor, record_construction_fields, record_owner,
+    NominalType, RecordInfo, TpyType, init_is_default_ctor, record_owner,
     unwrap_readonly,
 )
 from .call_contract import MIRParameterBinding
 from .coverage import MIRUnsupported, plain, require
 from .value import (
     AGGREGATE_CLASSES, CONTAINER_CLASSES, WRAPPER_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRShape,
-    RecordFields, admitted_members, container_members, loan_field, nested_members,
+    RecordFields, inline_members, loan_field, nested_members, no_fields, storage_shape,
 )
 
 
@@ -84,24 +83,33 @@ def aggregate_parameter(binding: MIRParameterBinding) -> bool:
             and binding.readonly or owned_aggregate_parameter(binding) is not None)
 
 
-def layout_copy_may_raise(layout: MIRRecordLayout,
-                          layout_of: Callable[[NominalType], MIRRecordLayout | None]) -> bool:
+def layout_copy_may_raise(layout: MIRRecordLayout, layout_of: Callable[[NominalType], MIRRecordLayout | None],
+                          inside: frozenset[TpyType] = frozenset()) -> bool:
     """Whether copying storage of `layout` can exit by exception: some owned
     leaf in it copies a buffer that may (`TypeDef.copy_may_raise`), a
     container field copies its elements into a new allocation, or a member
     record's copy may (`layout_of`, recursively). A member whose layout is
-    unknown may."""
+    unknown may. `inside` holds the records the walk is inside, each
+    answered where the walk entered it."""
     if layout.opaque:
         return bool(type_def_of(layout.type).copy_may_raise)
-    for f in layout.fields:
-        bare = inline_member_type(f.type)
+    inside = inside | {layout.type}
+    pending = [f.type for f in reversed(layout.fields)]
+    while pending:
+        bare = unwrap_readonly(pending.pop())
         cls = value_class(bare)
         if cls is MIRClass.OWNED_LEAF and type_def_of(bare).copy_may_raise:
             return True
         if cls in AGGREGATE_CLASSES:
-            member = aggregate_facts(bare, layout_of)
+            member = aggregate_facts(bare, layout_of, inside)
             if member is None or member.copy_may_raise:
                 return True
+        elif cls in WRAPPER_CLASSES:
+            # A wrapper copies the members it stores inline.
+            members = stored_types(bare, no_fields)
+            if members is UNEXPANDED:
+                return True
+            pending.extend(reversed(members))
     return False
 
 
@@ -115,25 +123,29 @@ class MIRAggregateFacts:
     copy_may_raise: bool
 
 
-def aggregate_facts(typ: TpyType, layout_of: Callable[[NominalType], MIRRecordLayout | None]
-                    ) -> MIRAggregateFacts | None:
+def aggregate_facts(typ: TpyType, layout_of: Callable[[NominalType], MIRRecordLayout | None],
+                    inside: frozenset[TpyType] = frozenset()) -> MIRAggregateFacts | None:
     """The copy and move facts of record or container storage of type
     `typ`, one derivation for both (`layout_of` supplies the layouts): a
     record's from its layout (`layout_copy_may_raise`), a container's from
     its members' -- its copy is its elements' into a new allocation, its
-    buffer changes hands on a move. None when a layout it needs is missing."""
+    buffer changes hands on a move. None when a layout it needs is missing.
+    A record the walk is inside (`inside`) adds no copy that may raise of
+    its own: the walk that entered it answers for its members."""
     if value_class(typ) is MIRClass.CONTAINER:
-        members = container_members(typ, False)
-        if isinstance(members, str):
+        stored = storage_shape(typ)
+        if isinstance(stored, str):
             return None
-        facts = [aggregate_facts(m.type, layout_of) for m in members if m.cls in AGGREGATE_CLASSES]
+        facts = [aggregate_facts(m.type, layout_of, inside) for m in inline_members(stored.members)
+                 if m.cls in AGGREGATE_CLASSES]
         if any(f is None for f in facts):
             return None
         return MIRAggregateFacts(all(f.copyable for f in facts), True, True)
     layout = layout_of(typ)
     if layout is None:
         return None
-    return MIRAggregateFacts(layout.copyable, layout.movable, layout_copy_may_raise(layout, layout_of))
+    return MIRAggregateFacts(layout.copyable, layout.movable,
+                             typ not in inside and layout_copy_may_raise(layout, layout_of, inside))
 
 
 def copy_may_raise(shape: MIRShape, facts: Callable[[TpyType], MIRAggregateFacts]) -> bool:
@@ -177,8 +189,9 @@ def _member_definitions(ctor: th.THIRConstructor, layout: th.THIRRecordLayout, d
     """A record's storage is hook-free to build, copy, move and destroy only
     when each member's is: a member record's verified definition, and a
     container field's elements as a container holds them (`container_definition`)."""
-    for f in layout.fields:
-        bare = inline_member_type(f.type)
+    pending = [f.type for f in reversed(layout.fields)]
+    while pending:
+        bare = unwrap_readonly(pending.pop())
         cls = value_class(bare)
         if cls is MIRClass.RECORD:
             member = definitions.get(bare, "missing constructor definition")
@@ -187,6 +200,11 @@ def _member_definitions(ctor: th.THIRConstructor, layout: th.THIRRecordLayout, d
         # A container has no constructor: its elements verify as it holds them.
         elif cls is MIRClass.CONTAINER:
             container_definition(ctor, bare, lambda t: definitions.get(t, "missing constructor definition"))
+        elif cls in WRAPPER_CLASSES:
+            # A wrapper stores its members inline: each verifies as a field would.
+            members = stored_types(bare, no_fields)
+            require(ctor, members is not UNEXPANDED, "unsupported record fields")
+            pending.extend(reversed(members))
 
 
 def _record_identity(node: object, layout: object) -> None:
@@ -458,11 +476,10 @@ def _type_def_record(typ: NominalType) -> RecordInfo | None:
 
 class _DeclaredFields:
     """The fields the storage of a record whose hierarchy MIR models
-    (`modeled_hierarchy`, the chain admission and the layouts' ancestors
-    are read from) contains, each keyed by its declaring owner, resolved
-    per record from its TypeDef under the compilation that registered it:
-    the fields the one enumeration (`typesys.record_construction_fields`)
-    lists, as it does for THIR's record layouts. A `RecordFields` lookup."""
+    contains (`chain_fields`, the enumeration admission reads too), each
+    keyed by its declaring owner, resolved per record from its TypeDef
+    under the compilation that registered it; a record with no TypeDef is
+    unknown here. A `RecordFields` lookup."""
 
     def __init__(self, compiler: object) -> None:
         self._compiler = compiler
@@ -471,11 +488,9 @@ class _DeclaredFields:
     def _resolve(self, typ: TpyType) -> frozenset[MIRField] | None:
         if typ not in self._resolved:
             with activate_compiler(self._compiler) if self._compiler is not None else nullcontext():
-                td = type_def_of(typ) if record_type(typ) else None
-                record = td.record if td is not None else None
-                self._resolved[typ] = None if record is None or modeled_hierarchy(record) is None else frozenset(
-                    MIRField(MIRFieldId(record_owner(r), f.name), f.type)
-                    for r, f in record_construction_fields(record, _type_def_record))
+                chain = modeled_chain(typ)
+                self._resolved[typ] = None if chain is None else frozenset(
+                    MIRField(MIRFieldId(record_owner(r), f.name), f.type) for r, f in chain_fields(chain))
         return self._resolved[typ]
 
     def __getitem__(self, typ: TpyType, /) -> frozenset[MIRField]:
@@ -642,25 +657,50 @@ def body_calls(fn: th.THIRFunction | th.THIRConstructor, definitions: MIRDefinit
 
 
 def _read_records(ctor: th.THIRConstructor) -> list[NominalType]:
-    """The records whose definitions `ctor`'s definition reads: its struct
-    bases, its record fields, and its container fields' record members."""
+    """The records whose definitions `ctor`'s definition reads, in the
+    order it reads them: its struct bases, then each record reached from
+    its fields, once, the last field first -- a record field, an Optional
+    record field's payload (`optional_record_field`, the one Optional
+    `modeled_field` admits), and the records a container field's declared
+    members (`declared_members`) hold through nested containers, at any
+    depth. A member record's own definition reads what lies past it. No
+    other member is read through: a field `modeled_field` refuses (a
+    tuple, a union, a pointer Optional, an `Own[...]`), nor a container
+    member that is a wrapper or an `Own[...]`, whose refusal is the
+    certificate's."""
     reads = [bi.base for bi in ctor.base_inits if isinstance(bi.base, NominalType)]
-    # A member record's own definition reads what lies past it.
-    members = nested_members((inline_member_type(f.type) for f in ctor.record_layout.fields), lambda _: ())
-    return reads + [typ for typ in members if value_class(typ) is MIRClass.RECORD]
+    pending: list[TpyType] = []
+    for f in ctor.record_layout.fields:
+        if modeled_field(f.type):
+            optional = value_class(f.type) is MIRClass.OPTIONAL
+            pending.extend(stored_types(f.type, no_fields) if optional else (f.type,))
+    seen: set[TpyType] = set()
+    while pending:
+        typ = unwrap_readonly(pending.pop())
+        if typ in seen:
+            continue
+        seen.add(typ)
+        match value_class(typ):
+            case MIRClass.RECORD:
+                reads.append(typ)
+            case MIRClass.CONTAINER if (members := stored_types(typ, no_fields)) is not UNEXPANDED:
+                pending.extend(members)
+    return reads
 
 
 def container_definition(node: object, typ: NominalType,
                          definition_of: Callable[[NominalType], MIRConstructorDefinition | str]
                          ) -> MIRContainerDefinition:
-    """A native container's or container view's members (`container_members`;
+    """A native container's or container view's members (`storage_shape`;
     a view's own, at its own type arguments), a record member read through
     its verified definition (`definition_of`) whose layout the container
-    admits (`admitted_members`), or the refusal of its members."""
+    admits (`storage_shape` given the layouts), or the refusal of its members."""
     # The members' own refusal first: a definition is read only for a member MIR models.
-    members = container_members(typ, False)
-    if isinstance(members, str):
-        raise MIRUnsupported(node, members)
+    if value_class(typ) not in CONTAINER_CLASSES:
+        raise MIRUnsupported(node, "unsupported native container type")
+    stored = storage_shape(typ)
+    if isinstance(stored, str):
+        raise MIRUnsupported(node, stored)
     records: dict[NominalType, MIRConstructorDefinition] = {}
     layouts: dict[TpyType, MIRRecordLayout] = {}
 
@@ -670,14 +710,16 @@ def container_definition(node: object, typ: NominalType,
             raise MIRUnsupported(node, definition)
         records[record] = definition
         layouts[record] = definition.layout
-        return definition.layout.fields
+        # An element record stores leaves and containers only (`_layouts_problem`, below): any
+        # other field refuses its layout, so no definition is read behind one.
+        return tuple(f for f in definition.layout.fields if value_class(f.type) is MIRClass.CONTAINER)
 
-    for member in nested_members((m.type for m in members), fields_of):
+    for member in nested_members((m.type for m in stored.members), fields_of):
         cls = value_class(member)
         if cls is MIRClass.OWNED_LEAF:
             layouts[member] = owned_leaf_layout(member)
-        elif cls is MIRClass.CONTAINER and isinstance(nested := container_members(member, False), str):
+        elif cls is MIRClass.CONTAINER and isinstance(nested := storage_shape(member), str):
             raise MIRUnsupported(node, nested)
-    admitted = admitted_members(typ, False, layouts)
+    admitted = storage_shape(typ, layouts=layouts)
     require(node, not isinstance(admitted, str), admitted)
-    return MIRContainerDefinition(admitted, tuple(records.values()))
+    return MIRContainerDefinition(admitted.members, tuple(records.values()))

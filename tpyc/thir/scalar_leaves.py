@@ -1,5 +1,7 @@
 """The scalar leaves and records THIR storage facts and MIR model."""
 
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from enum import Enum, auto
 
 from ..type_def_registry import (
@@ -7,7 +9,7 @@ from ..type_def_registry import (
 )
 from ..typesys import (
     Loan, NominalType, OptionalType, OwnType, ReadonlyType, RecordInfo, Representation, TpyType, TupleType,
-    TypeParamRef, TypeRegistry, UnionType,
+    TypeParamRef, TypeRegistry, UnionType, is_void_like_type,
     is_inert_leaf, loan_class, is_owned_leaf, is_primitive_owned_leaf, record_owner, unwrap_readonly, unwrap_ref_type,
     view_family_of, view_owned_leaf,
 )
@@ -167,6 +169,94 @@ def declared_members(typ: object) -> tuple[TpyType, TpyType | None, bool] | None
     return args[members.element], None if members.value is None else args[members.value], members.keyed
 
 
+class MemberKind(Enum):
+    """How a stored member is selected from the value holding it."""
+    # A tuple's element, by position.
+    ELEMENT = auto()
+    # A sum's alternative, by its index among the union's members (an
+    # Optional's payload is 1, beside the absent 0).
+    ALTERNATIVE = auto()
+    # A native container's declared member: 0 the element, 1 a dict's value.
+    CONTAINED = auto()
+
+
+@dataclass(frozen=True)
+class MemberSelector:
+    kind: MemberKind
+    index: int
+
+
+@dataclass(frozen=True)
+class StoredMembers:
+    """The members a stored value holds inline (`stored_members`), each
+    with its selector, and how many its holder selects among (`arity`: a
+    tuple's elements, a sum's alternatives -- an absent one counts though
+    it is no member --, a container's members, a record's fields)."""
+    members: tuple[tuple[object, TpyType], ...]
+    arity: int
+
+
+class Unexpanded(Enum):
+    """The members of a value no rule enumerates: its reader takes it as
+    holding anything."""
+    UNEXPANDED = auto()
+
+
+UNEXPANDED = Unexpanded.UNEXPANDED
+
+# A record's fields as a reader knows them, each with its selector; None
+# when the reader has none for that record. Readers differ in where fields
+# come from and in what an unknown record means, so the source is theirs.
+FieldSource = Callable[[NominalType], Iterable[tuple[object, TpyType]] | None]
+
+
+def stored_members(typ: object, fields: FieldSource) -> 'StoredMembers | Unexpanded':
+    """The members a value of `typ` holds inline when stored, one step deep,
+    each with its selector: a tuple's elements, an Optional's payload, a
+    union's alternatives in canonical member order (the void one has none),
+    the members a native container declares (`declared_members`; a
+    container view's, the members it views), a record's fields as `fields`
+    gives them. A leaf holds none. Each member is as declared, its
+    wrappers kept; the value's own `readonly` is seen through. An `Own[...]`
+    is no value MIR models (storage never holds one: a field refuses the
+    spelling), so neither the step nor a walk unwraps it: as a member it is
+    one of a class no walk enters, as the value it is UNEXPANDED. In
+    storage the form is fixed by the type mapping, so an Optional pinned to
+    a pointer at a boundary (`force_pointer_repr`) still stores its payload
+    inline. UNEXPANDED for a recursive alias union, a record `fields` does
+    not know, and a type MIR does not model."""
+    bare = unwrap_readonly(unwrap_ref_type(typ)) if isinstance(typ, TpyType) else typ
+    match value_class(bare):
+        case MIRClass.LEAF | MIRClass.OWNED_LEAF | MIRClass.VIEW:
+            return StoredMembers((), 0)
+        case MIRClass.TUPLE:
+            return _selected(MemberKind.ELEMENT, bare.element_types)
+        case MIRClass.OPTIONAL:
+            return _selected(MemberKind.ALTERNATIVE, (None, bare.inner))
+        case MIRClass.UNION if not bare.needs_wrapper():
+            return _selected(MemberKind.ALTERNATIVE, tuple(None if is_void_like_type(t) else t for t in bare.members))
+        case MIRClass.CONTAINER | MIRClass.CONTAINER_VIEW if (declared := declared_members(bare)) is not None:
+            element, value, _ = declared
+            return _selected(MemberKind.CONTAINED, (element, *(() if value is None else (value,))))
+        case MIRClass.RECORD if (known := fields(bare)) is not None:
+            known = tuple(known)
+            return StoredMembers(known, len(known))
+    return UNEXPANDED
+
+
+def _selected(kind: MemberKind, members: tuple[TpyType | None, ...]) -> StoredMembers:
+    """`members` each with its selector by position; an absent alternative
+    (None) holds nothing, so it is no member, though it counts in the arity."""
+    selected = tuple((MemberSelector(kind, i), t) for i, t in enumerate(members) if t is not None)
+    return StoredMembers(selected, len(members))
+
+
+def stored_types(typ: object, fields: FieldSource) -> 'tuple[TpyType, ...] | Unexpanded':
+    """The types of `stored_members`, in order."""
+    stored = stored_members(typ, fields)
+    return stored if stored is UNEXPANDED else tuple(t for _, t in stored.members)
+
+
 def binds_cursor(typ: object) -> bool:
     """Whether iterating `typ` binds one element at a time (its declared
     element member): False for a type that yields both members at once."""
@@ -184,12 +274,14 @@ def members_problem(typ: object, path: frozenset[TpyType] = frozenset()) -> str 
     member is a container element (`element_problem`), and a type with a
     value member stores no record directly in either member. `path` holds
     the types the enclosing members' rule is walking through."""
-    members = declared_members(typ)
-    if members is None:
+    # The declared members: an `Own[...]` member is no element MIR models.
+    declared = declared_members(typ) if value_class(typ) in (MIRClass.CONTAINER, MIRClass.CONTAINER_VIEW) else None
+    if declared is None:
         return UNSUPPORTED_ELEMENT
-    element, value, _ = members
-    for member in (element, *(() if value is None else (value,))):
-        if value is not None and record_type(unwrap_readonly(member)):
+    element, value, _ = declared
+    members = (element,) if value is None else (element, value)
+    for member in members:
+        if len(members) > 1 and record_type(unwrap_readonly(member)):
             return UNSUPPORTED_ELEMENT
         if (problem := element_problem(member, path)) is not None:
             return problem
@@ -236,9 +328,36 @@ def modeled_ancestors(typ: object) -> tuple[NominalType, ...] | None:
     """The struct-base ancestors of a modeled record `typ`
     (`modeled_hierarchy`), MRO order, nearest first, each spelled as an
     identity (`record_owner`); None for any other type."""
-    td = type_def_of(typ) if record_type(typ) else None
-    chain = modeled_hierarchy(td.record) if td is not None and td.record is not None else None
+    chain = modeled_chain(typ)
     return None if chain is None else tuple(record_owner(r) for r in chain[1:])
+
+
+def modeled_chain(typ: object) -> tuple[RecordInfo, ...] | None:
+    """The modeled hierarchy (`modeled_hierarchy`) of record `typ`, from its
+    TypeDef; None for any other type, and for a record with no TypeDef
+    (lowered outside its compilation), which each reader reads by its own
+    rule. Asked under the compilation that registered the records."""
+    td = type_def_of(typ) if record_type(typ) else None
+    return modeled_hierarchy(td.record) if td is not None and td.record is not None else None
+
+
+def chain_fields(chain: tuple[RecordInfo, ...]) -> tuple[tuple[RecordInfo, object], ...]:
+    """Each field storage of a record of modeled hierarchy `chain`
+    (`modeled_chain`) contains, with the record declaring it, nearest record
+    first: the one enumeration of a record's declared fields MIR reads."""
+    return tuple((r, f) for r in chain for f in r.fields)
+
+
+def typedef_fields(typ: NominalType) -> tuple[tuple[object, TpyType], ...] | None:
+    """The field source (`stored_members`) of the records' declarations
+    (`chain_fields`), each selected by its declaration at its declared
+    type; None for a record whose hierarchy MIR does not model. A record
+    with no TypeDef (lowered outside its compilation) has none, as
+    `record_type` reads it."""
+    if type_def_of(typ) is None:
+        return ()
+    chain = modeled_chain(typ)
+    return None if chain is None else tuple((f, f.type) for _, f in chain_fields(chain))
 
 
 def _plain_record_fields(typ: object) -> tuple[TpyType, ...] | None:
@@ -251,15 +370,15 @@ def _plain_record_fields(typ: object) -> tuple[TpyType, ...] | None:
     no fields, as `record_type` reads it, rather than failing closed."""
     if not record_type(typ):
         return None
-    td = type_def_of(typ)
-    if td is None:
+    if type_def_of(typ) is None:
         return ()
-    chain = modeled_hierarchy(td.record) if td.record is not None else None
+    chain = modeled_chain(typ)
     if chain is None or any(r.has_copy or r.has_move or r.has_del for r in chain):
         return None
     if any(r.get_method_overloads(name) for r in chain for name in _ELEMENT_DISPATCH_DUNDERS):
         return None
-    return tuple(f.type for r in chain for f in r.fields)
+    # The declared field types: an `Own[...]` field is no leaf MIR models.
+    return tuple(t for _, t in typedef_fields(typ))
 
 
 def plain_record_element(typ: object) -> bool:
@@ -377,18 +496,9 @@ def optional_record_field(typ: object) -> NominalType | None:
     bare = unwrap_readonly(typ)
     if not isinstance(bare, OptionalType) or bare.force_pointer_repr:
         return None
+    # The declared payload: an `Own[...]` one is no record MIR models in place.
     inner = bare.inner
     return inner if isinstance(inner, NominalType) and plain_record_element(inner) and loan_free(inner) else None
-
-
-def inline_member_type(typ: object) -> TpyType:
-    """What a record member of declared type `typ` stores inline: an
-    Optional record field's payload record (`optional_record_field`), else
-    the member's bare type -- so an inline record is found the same way
-    whether it is a record member or an Optional field's payload."""
-    return optional_record_field(typ) or unwrap_readonly(typ)
-
-
 
 
 def converted_literal(typ: object, value: object) -> object | None:

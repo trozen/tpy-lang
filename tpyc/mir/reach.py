@@ -8,8 +8,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
-from ..thir.scalar_leaves import MIRClass, inline_member_type, value_class
-from ..typesys import OptionalType, TpyType, TupleType, UnionType, is_void_like_type, unwrap_readonly
+from ..thir.scalar_leaves import UNEXPANDED, MIRClass, stored_members, stored_types, value_class
+from ..typesys import TpyType, unwrap_readonly
 from .nodes import (
     MIRAssign, MIRCall, MIRCopy, MIRMove, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRStatement,
     MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode, MIRWrap, builds_base, place_shape,
@@ -20,7 +20,7 @@ from .shapes import (
 )
 from .value import (
     AGGREGATE_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRShape, RecordFields, lent_record,
-    member_types,
+    declared_record_fields,
 )
 
 
@@ -182,17 +182,26 @@ def _container_holds(container: TpyType, target: TpyType, records: MIRRecords) -
     container among its members at any depth: a member of that type, a
     container member that may hold one, or a record member with a
     container field that may -- a record whose declared fields are unknown
-    here may. Members are acyclic (`element_problem` refuses a recursive one)."""
+    here may, as may a modeled value whose members nothing enumerates (a
+    recursive alias union); a member of no class MIR models (an
+    `Own[...]`) is only itself, never entered. A type the walk already
+    entered answers there (a record reaching itself through its fields)."""
+    fields = declared_record_fields(records.fields)
+    seen: set[TpyType] = set()
+
     # A walk of types, not of the holder's member shapes: a record member's
     # shape carries no fields, so below it only declared field types answer.
     def holds(member: TpyType) -> bool:
         bare = unwrap_readonly(member)
-        cls = value_class(bare)
-        if cls is MIRClass.RECORD:
-            declared = records.fields.get(bare, None)
-            return declared is None or any(holds(f.type) for f in declared)
-        return bare == target or cls is MIRClass.CONTAINER and any(map(holds, member_types(bare) or ()))
-    return any(map(holds, member_types(container) or ()))
+        if bare == target:
+            return True
+        if bare in seen or value_class(bare) is None:
+            return False
+        seen.add(bare)
+        members = stored_types(bare, fields)
+        return members is UNEXPANDED or any(map(holds, members))
+    members = stored_types(container, fields)
+    return members is not UNEXPANDED and any(map(holds, members))
 
 
 def _referent_shape(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot],
@@ -241,11 +250,11 @@ _HOLDS_NO_RECORD = frozenset({MIRClass.LEAF, MIRClass.OWNED_LEAF, MIRClass.VIEW,
 def _may_hold(typ: TpyType | None, member: MIRFieldId, fields: RecordFields) -> bool:
     """Whether storage of `typ` may hold record member `member`. Only what
     is proven not to answers no: a scalar leaf, an owned leaf or a view
-    holds no record; a tuple, an Optional or a union holds the member only
-    if an element, the payload or an alternative may; a record holds it
-    only if its declared fields (`fields`), or those of a record stored
-    inline in it (`inline_member_type`), include it. Any other type --
-    unknown, a container, a record whose fields MIR does not model -- may."""
+    holds no record; a wrapper or a record holds it only if a member it
+    stores inline (`stored_members`; a record's declared fields, `fields`)
+    is the member or may hold it. Any other type -- unknown, a container,
+    a record whose fields MIR does not model -- may."""
+    declared = declared_record_fields(fields)
     pending = [typ]
     seen: set[TpyType] = set()
     while pending:
@@ -253,28 +262,19 @@ def _may_hold(typ: TpyType | None, member: MIRFieldId, fields: RecordFields) -> 
         if current is None:
             return True
         current = unwrap_readonly(current)
-        if value_class(current) in _HOLDS_NO_RECORD:
+        cls = value_class(current)
+        if cls in _HOLDS_NO_RECORD:
             continue
         if current in seen:
             continue
         seen.add(current)
-        match current:
-            case TupleType():
-                pending.extend(current.element_types)
-                continue
-            case OptionalType():
-                pending.append(current.inner)
-                continue
-            case UnionType():
-                pending.extend(m for m in current.members if not is_void_like_type(m))
-                continue
-        declared = fields.get(current) if value_class(current) is MIRClass.RECORD else None
-        if declared is None:
+        stored = stored_members(current, declared) if cls is not MIRClass.CONTAINER else UNEXPANDED
+        if stored is UNEXPANDED:
             return True
-        for f in declared:
-            if f.id == member:
+        for selector, typ in stored.members:
+            if isinstance(selector, MIRField) and selector.id == member:
                 return True
-            pending.append(inline_member_type(f.type))
+            pending.append(typ)
     return False
 
 

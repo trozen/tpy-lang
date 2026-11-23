@@ -10,7 +10,7 @@ from .call_contract import (
     MIRLoanTransfer, MIRResultHolder, MIRStaticLoan, owned_aggregate_result, path_step, return_endpoint_problem,
 )
 from ..thir.scalar_leaves import (
-    MIRClass, holds_loan, value_class,
+    UNEXPANDED, MIRClass, holds_loan, stored_members, stored_types, value_class,
 )
 from ..typesys import NominalType, TpyType, unwrap_readonly
 from .place_text import _place
@@ -24,11 +24,11 @@ from .nodes import (
 )
 from .value import (
     MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError,
-    CONTAINER_CLASSES, loan_field, member_types, WRAPPER_CLASSES,
+    CONTAINER_CLASSES, layout_members, loan_field, no_fields, WRAPPER_CLASSES,
 )
 from .shapes import (
     REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload,
-    Projection, construct_members, object_prefix, optional_payload, wrapper_members,
+    Projection, construct_members, member_projection, object_prefix, optional_payload, wrapper_members,
 )
 from .validate import successors
 from .presence import MIRPresence
@@ -156,34 +156,54 @@ def object_keys(slot: MIRSlot, layouts: Mapping[TpyType, MIRRecordLayout]) -> tu
     if slot.shape.owned_sum or slot.shape.owned_tuple:
         # A record a slot's own tuple or sum stores inline, keyed under the
         # member's place (`t[i].s`, `slot.alternative[k].s`).
-        return tuple(key for selector, member in _inline_members(slot.shape)
+        return tuple(key for selector, member in _inline_records(slot.shape)
                      for key in _member_keys(MIRPlace(slot.id, (selector,)), layouts.get(member.type), layouts))
     # Each object a parameter lends is keyed at its origin (`origin`).
     return tuple(key for prefix, lent in parameter_objects(slot)
                  for key in _member_keys(MIRPlace(slot.id, prefix), layouts.get(lent.type), layouts))
 
 
-def _inline_members(shape: MIRShape) -> tuple[tuple[Projection, MIRShape], ...]:
+def _inline_records(shape: MIRShape) -> tuple[tuple[Projection, MIRShape], ...]:
     """The record members an owned tuple or sum slot stores inline, each with its selector."""
     step = MIRTupleIndex if shape.cls is MIRClass.TUPLE else MIRUnionPayload
     return tuple((step(k), m) for k, m in enumerate(shape.members)
                  if m is not None and m.is_storage and m.cls is MIRClass.RECORD)
 
 
-def _member_keys(place: MIRPlace, layout: MIRRecordLayout | None,
-                 layouts: Mapping[TpyType, MIRRecordLayout]) -> tuple[MIRPlace, ...]:
+def _member_keys(place: MIRPlace, layout: MIRRecordLayout | None, layouts: Mapping[TpyType, MIRRecordLayout],
+                 inside: frozenset[TpyType] = frozenset()) -> tuple[MIRPlace, ...]:
+    """The stored-loan keys under record storage of `layout` at `place`
+    (`_stored_keys`). `inside` holds the records the walk is inside: no
+    storage holds itself inline."""
     if layout is None:
         return ()
+    if layout.type in inside:
+        raise MIRValidationError("record storage holds itself")
+    return _stored_keys(place, layout_members(layout), layouts, inside | {layout.type})
+
+
+def _stored_keys(place: MIRPlace, members: tuple[tuple[object, TpyType], ...],
+                 layouts: Mapping[TpyType, MIRRecordLayout], inside: frozenset[TpyType]) -> tuple[MIRPlace, ...]:
+    """The stored-loan keys under storage at `place` holding `members`
+    (`stored_members`): a view member is one, a record member's (from its
+    layout) and a wrapper member's lie under it; a container's elements
+    key none."""
     keys: list[MIRPlace] = []
-    for f in layout.fields:
-        member = MIRPlace(place.root, (*place.projections, f))
-        bare = unwrap_readonly(f.type)
-        if loan_field(f.type):
+    for selector, member_type in members:
+        member = MIRPlace(place.root, (*place.projections, member_projection(selector)))
+        cls = value_class(member_type)
+        if loan_field(member_type):
             keys.append(member)
-        elif value_class(f.type) is MIRClass.RECORD:
+        elif cls is MIRClass.RECORD:
+            bare = unwrap_readonly(member_type)
             if bare not in layouts:
                 raise MIRValidationError("record field needs its layout")
-            keys.extend(_member_keys(member, layouts[bare], layouts))
+            keys.extend(_member_keys(member, layouts[bare], layouts, inside))
+        elif cls in WRAPPER_CLASSES:
+            stored = stored_members(member_type, no_fields)
+            if stored is UNEXPANDED:
+                raise MIRValidationError("unenumerated stored members")
+            keys.extend(_stored_keys(member, stored.members, layouts, inside))
     return tuple(keys)
 
 
@@ -295,8 +315,7 @@ def _stored_loans(refs: frozenset[MIRReferent], member: MIRField, state: MIRRefe
 
 
 def _project(refs: frozenset[MIRReferent],
-             *projections: MIRField | MIRUnionPayload | MIRContainerStructure | MIRContainerElements
-             ) -> frozenset[MIRReferent]:
+             *projections: Projection) -> frozenset[MIRReferent]:
     return frozenset(MIRReferent(MIRPlace(r.place.root, (*r.place.projections, projection)), r.external)
                      for r in refs for projection in projections)
 
@@ -333,29 +352,22 @@ def resolve_referents(place: MIRPlace, state: MIRReferents, slots: Mapping[MIRSl
                       records: Mapping[TpyType, MIRRecordLayout]) -> frozenset[MIRReferent]:
     """Resolve a validated place against the referents at its program point."""
     empty: frozenset[MIRReferent] = frozenset()
-    # Payload selectors address a holder leaf; dereference follows its value.
-    leaf = MIRPlace(place.root)
     # A global's storage lies outside the body, where a parameter may reach it.
     external = slots[place.root].kind is MIRSlotKind.GLOBAL
-    refs = (frozenset({MIRReferent(leaf, external)})
-            if slots[place.root].shape.owns_storage else state.get(leaf, empty))
+    refs = (frozenset({MIRReferent(MIRPlace(place.root), external)})
+            if slots[place.root].shape.owns_storage else state.get(MIRPlace(place.root), empty))
     # A container view's referents already are an elements region: a container
     # projection on the view itself names that region, never a region of it --
     # for a view holder reached at any hop, and only for the hop right after it.
     through_view = slots[place.root].shape.container_view_holder
-    for hop in place_walk(place, slots, records).hops:
+    for index, hop in enumerate(place_walk(place, slots, records).hops):
         match projection := hop.projection:
-            case MIRTupleIndex():
-                leaf = MIRPlace(leaf.root, (*leaf.projections, projection))
-                refs = (frozenset({MIRReferent(leaf, external)}) if hop.reached.is_storage
-                        else state.get(leaf, empty))
-            case MIRUnionPayload() if hop.reached.is_storage:
-                # An inline payload is storage under the record that holds it.
-                leaf = MIRPlace(leaf.root, (*leaf.projections, projection))
+            case MIRTupleIndex() | MIRUnionPayload() if hop.reached.owns_storage:
+                # An inline member is storage under the object that holds it.
                 refs = _project(refs, projection)
-            case MIRUnionPayload():
-                leaf = MIRPlace(leaf.root, (*leaf.projections, projection))
-                refs = state.get(leaf, empty)
+            case MIRTupleIndex() | MIRUnionPayload():
+                # A holder member is a dependency leaf of its own.
+                refs = state.get(MIRPlace(place.root, place.projections[:index + 1]), empty)
             case MIRDeref():
                 pass
             case MIRField() if loan_field(projection.type):
@@ -456,7 +468,7 @@ def _sum_fill(target: MIRSlotId, shape: MIRShape, value: object, state: MIRRefer
             # A pointer member's payload is the object it points at.
             through = () if slots[source.root].shape.owns_storage else (MIRDeref(),)
             filled: dict[MIRPlace, frozenset[MIRReferent]] = {}
-            for selector, member in _inline_members(shape):
+            for selector, member in _inline_records(shape):
                 at = MIRPlace(target, (selector,))
                 for key in _member_keys(at, layouts.get(member.type), layouts):
                     entry = MIRPlace(source.root, (*source.projections, selector, *through, *key.projections[1:]))
@@ -552,10 +564,10 @@ def written_record(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
         typ = hop.holder.type
         match hop.projection:
             case MIRContainerStructure() | MIRContainerElements():
-                # Not `container_members`: an element place MIR does not
+                # Not `storage_shape`: an element place MIR does not
                 # model (a nested container) still holds no loan.
-                members = member_types(typ)
-                if members is not None and not any(holds_loan(m) for m in members):
+                members = stored_types(typ, no_fields) if value_class(typ) in CONTAINER_CLASSES else UNEXPANDED
+                if members is not UNEXPANDED and not any(holds_loan(m) for m in members):
                     return None
                 raise _DependencyRefusal("loan-holding write under an unmodeled place")
         # UNKNOWN reads as no loan, as everywhere in MIR (`holds_loan`): a

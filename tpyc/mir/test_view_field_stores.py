@@ -30,7 +30,7 @@ from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRCall, MIRCallStmt, MIRConstant, MIRCopy, MIREdge, MIRFunction, MIRPlace,
     MIRPresentCall, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
-from .value import MIRRecords, MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError, container_members
+from .value import MIRRecords, MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError, storage_shape
 from .retention import analyze_retention
 from .storage import analyze_storage
 from .storage_evidence import MIRStorageConflict, MIRStorageConflictKind, analyze_escapes, dump_escapes
@@ -647,7 +647,7 @@ def test_a_transfer_through_a_widened_path_step_fails_closed(program: _Program) 
     # container whose elements hold a loan is refused upstream, so no
     # summary stores a loan under an elements region.
     tok = next(t for t in program.definitions.records if t.name == "Tok")
-    assert container_members(NominalType("list", (tok,), _module_qname="builtins.list"), False) == (
+    assert storage_shape(NominalType("list", (tok,), _module_qname="builtins.list")) == (
         "container holds a borrow")
     # A forged transfer under a step the caller's object has no member for
     # (a tuple member of a record) raises rather than storing nowhere.

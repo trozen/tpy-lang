@@ -21,10 +21,10 @@ from ..thir.frame import (
 from ..thir.source import BindingConstruct, BindingRepr, Held
 from ..thir.temp_plan import if_chain, validate_plan
 from ..thir.scalar_leaves import (
-    MIRClass, binds_cursor, container_view, converted_literal, declared_members, holds_loan, inline_member_type,
+    UNEXPANDED, MIRClass, binds_cursor, container_view, converted_literal, declared_members, holds_loan,
     leaf_constant, leaf_global, native_container_subject, native_container_type, optional_record_field,
     owned_constant, owned_leaf,
-    owned_value_type, primitive_leaf, primitive_owned_leaf, record_type, storage_leaf, value_class,
+    owned_value_type, primitive_leaf, primitive_owned_leaf, record_type, storage_leaf, stored_types, value_class,
     view_compatible, view_leaf,
 )
 from ..type_def_registry import ParamPassing, int_traits_of, record_info_of, zero_value_of
@@ -44,9 +44,10 @@ from .nodes import (
 )
 from .value import (
     AGGREGATE_CLASSES, Declared, Local, MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRecords,
-    MIRRole, MIRShape, MIRValidationError, admission_problem, lent_shape_problem, container_members, fact_shape,
-    holder_form, layout_fact, leaf_element, loan_access, member_compatible, nested_members, position_problem,
-    shape_problem, subject_class, thir_member, value_shape, caller_storage,
+    MIRRole, MIRShape, MIRValidationError, WRAPPER_CLASSES, admission_problem, lent_shape_problem, fact_shape,
+    holder_form, layout_fact, layout_members, leaf_element, loan_access, member_compatible, nested_members,
+    no_fields, position_problem,
+    shape_problem, slot_storage, storage_shape, subject_class, thir_member, value_shape, caller_storage,
 )
 from .coverage import MIRUnsupported, literal_type, plain as _plain, require as _require
 from .definitions import (
@@ -191,15 +192,6 @@ def _loan(fact: th.THIRBorrowedRecord) -> MIRShape:
     """A holder of the storage a borrow fact names, at the access the fact
     carries (decided where its source is named, `loan_access`)."""
     return value_shape(fact.type, access=fact.readonly, role=MIRRole.LOAN)
-
-
-def _owned_optional(typ: TpyType) -> MIRShape:
-    """An Optional storing a record of `typ` inline: storage that starts
-    empty and that each fill selects (C++ `std::optional<T>`)."""
-    if value_class(typ) is MIRClass.RECORD:
-        return value_shape(OptionalType(typ), facts=th.THIROptionalLayout(th.THIROwnedRecord(typ)))
-    # A container held inline: its own storage shape as the payload.
-    return MIRShape(OptionalType(typ), MIRClass.OPTIONAL, MIRHolding.VALUE, False, (None, value_shape(typ)))
 
 
 @dataclass(frozen=True, eq=False)
@@ -1182,7 +1174,7 @@ class _Lowering:
         """A record in storage the temporary plan places, lent through a
         holder of it (of shape `holder`); the statement declaring it places
         both slots."""
-        shape = _owned_optional(holder.type) if placement.optional else value_shape(holder.type)
+        shape = slot_storage(OptionalType(holder.type)) if placement.optional else value_shape(holder.type)
         problem = shape_problem(shape, shape.type, producer=True) if placement.optional else None
         _require(node, problem is None, problem)
         storage = self.mir.record(shape, MIRSlotKind.LOCAL, loc=node.loc)
@@ -1196,7 +1188,7 @@ class _Lowering:
         empty where C++ declares it -- at the statement THIR anchors the
         rebind slot at, or the body's top for a hoisted local -- and filled at
         the site, each loop pass."""
-        shape = _owned_optional(typ)
+        shape = slot_storage(OptionalType(typ))
         problem = shape_problem(shape, shape.type, producer=True)
         _require(node, problem is None, problem)
         if hoisted:
@@ -1390,7 +1382,7 @@ class _Lowering:
         an owned leaf's opaque layout, a tuple's inline records
         (`tuple_members`, an owning tuple only where `allow_owned`), record
         storage's verified definition. A sum storing a record inline is a
-        producer's slot (`_owned_optional`), never a value laid out here."""
+        producer's slot (`slot_storage`), never a value laid out here."""
         _require(node, not shape.owned_sum, f"unsupported {shape.cls.name.lower()} record holding")
         match shape.cls:
             case MIRClass.CONTAINER | MIRClass.CONTAINER_VIEW:
@@ -2376,7 +2368,7 @@ class _Lowering:
         _plain(expr, {"elements", "values", "make_container", "elem_cpp", "typed_brace_cpp", "bare_empty"})
         _require(expr, expr.result_type == typ and expr.form in (th.Form.VALUE, th.Form.STORAGE),
                  "container initializer type mismatch")
-        members = container_members(typ, False)
+        members = storage_shape(typ).members
         # Literal construction: the one place the compiler knows a container's length.
         _require(expr, len(expr.values) == (0 if len(members) == 1 else len(expr.elements))
                  and (not is_array(typ) or len(expr.elements) == typ.type_args[1]),
@@ -2403,7 +2395,7 @@ class _Lowering:
         _require(expr, expr.result_type == typ and expr.form in (th.Form.VALUE, th.Form.STORAGE),
                  "container initializer type mismatch")
         _require(expr, self.mir.active_temporaries is not None, "temporary needs full-expression boundary")
-        problem = container_members(typ, False)
+        problem = storage_shape(typ)
         _require(expr, not isinstance(problem, str), problem if isinstance(problem, str) else "")
         f = self.fragment()
         shape = value_shape(typ)
@@ -2520,7 +2512,7 @@ class _Lowering:
                        and self.container_view_access(expr.name) is not None):
                 _plain(expr, {"name", "is_last_use", "is_movable"})
                 source = self.bound(expr.name).type
-                _require(expr, container_members(source, False)[0].type == element, "view source type mismatch")
+                _require(expr, storage_shape(source).members[0].type == element, "view source type mismatch")
                 f = self.place(expr)
                 place, loc = f.value.value, expr.loc
                 readonly = self.container_view_access(expr.name)
@@ -2740,19 +2732,29 @@ class _Lowering:
         member record's storage, so their layouts come along, transitively."""
         pending = list(self.records.values())
         while pending:
-            for member in pending.pop().layout.fields:
-                if owned_leaf(member.type):
-                    self.leaf_layout(self.node, member.type)
-                    continue
-                bare = inline_member_type(member.type)
-                if native_container_type(bare):
-                    # A container field: what its members reach comes along (`define`).
-                    known = set(self.records)
-                    self.define(self.node, bare)
-                    pending.extend(self.records[t] for t in set(self.records) - known)
-                elif record_type(bare) and bare not in self.records:
-                    self.records[bare] = self.definitions.get(self.node, bare)
-                    pending.append(self.records[bare])
+            for _, member in layout_members(pending.pop().layout):
+                self.close_member(member, pending)
+
+    def close_member(self, typ: TpyType, pending: list[object]) -> None:
+        """What a record member of `typ` stored inline brings along
+        (`close_layouts`): an owned leaf's layout, a container's members, a
+        record's layout, a wrapper's members' (`stored_members`). A record
+        already registered is not entered again."""
+        bare = unwrap_readonly(typ)
+        if owned_leaf(bare):
+            self.leaf_layout(self.node, bare)
+        elif native_container_type(bare):
+            # A container field: what its members reach comes along (`define`).
+            known = set(self.records)
+            self.define(self.node, bare)
+            pending.extend(self.records[t] for t in set(self.records) - known)
+        elif record_type(bare) and bare not in self.records:
+            self.records[bare] = self.definitions.get(self.node, bare)
+            pending.append(self.records[bare])
+        elif value_class(bare) in WRAPPER_CLASSES:
+            members = stored_types(bare, no_fields)
+            for member in () if members is UNEXPANDED else members:
+                self.close_member(member, pending)
 
     def value(self, expr: th.THIRExpr, expected: TpyType | None = None) -> Fragment:
         """Check an operand, as the slot an operation reads: a view holder,
@@ -5288,7 +5290,7 @@ class _Lowering:
             definition = self.definitions.get(node, reference.type)
             _require(node, definition.layout.movable, "optional backing needs movable record")
             self.records[reference.type] = definition
-            backing = _owned_optional(reference.type)
+            backing = slot_storage(OptionalType(reference.type))
             problem = shape_problem(backing, backing.type, producer=True)
             _require(node, problem is None, problem)
             shape = value_shape(reference.type, access=False, role=MIRRole.LOAN)

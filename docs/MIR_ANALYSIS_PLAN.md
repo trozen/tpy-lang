@@ -2549,7 +2549,7 @@ as the corpus grows).
   subscript is keyed when its index parameter is the element (dict), else
   positional, and a subscript on a type whose keyedness disagrees with
   having a value member refuses ("unsupported keyed container").
-  `dict[K, K]` has two members (`value.container_members`, shared by the
+  `dict[K, K]` has two members (`value.storage_shape`, shared by the
   definitions and the validator). Each member is an `MIRShape` held by
   value -- the container stores it -- whose class is an inert leaf, an
   owned leaf, a plain record or a container of admitted members, its
@@ -4488,8 +4488,8 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   does for every declared member (metadata; no render reads it), and
   `thir/validate.py` accepts a whole access (STORAGE form, the Optional
   type, or the payload type at an assign target inside a narrowed region)
-  and a narrowed access (`narrowed_deref`, the payload type). `scalar_leaves.inline_member_type` is the record a member stores
-  inline (the payload of such a field, else the member's own type).
+  and a narrowed access (`narrowed_deref`, the payload type). `scalar_leaves.stored_members` steps into what a member stores
+  inline (such a field's payload, one step deep: "The member step for stored values").
 - **Reads.** A narrowed read `h.p.x` is the place `h.<p>.alternative[1].x`; `is
   None` / `is not None` on a field is `MIRIsAlternative(place, (1,))`; `o = h.p`
   binds an Optional holder of the inline payload (C++
@@ -5057,6 +5057,113 @@ expression, `THIRArrayComprehension`, and generator expressions (their
 frame, TODO.md "Generator expressions"). Its result storage being the
 body's own, as a local list's is, a body with a comprehension has a
 known summary, as its `append` twin does.
+
+#### The member step for stored values
+
+Every MIR walk that steps into what a value holds inline takes the members
+from ONE function, `scalar_leaves.stored_members(typ, fields)`: one step
+deep, each member with its selector -- a tuple's elements (`ELEMENT i`),
+an Optional's payload and a union's alternatives in canonical
+`UnionType.members` order (`ALTERNATIVE i`, the void member skipped), a
+native container's declared members (`CONTAINED 0` the element, `1` a
+dict's value; a container view's, the members it views), a record's
+fields from the field source its reader passes. The answer
+(`StoredMembers`) also carries the arity of what its holder selects among
+(a sum's absent alternative included), so a shape built from the step has
+a slot per member. The value's own `readonly` is seen through; each
+member is as declared, its wrappers kept. An `Own[...]` is read as
+declared and never modeled: storage never legitimately holds one (a field
+refuses the spelling), so neither the step nor any walk unwraps it -- as a
+member it has no class a walk enters (`value_class` is None: skipped or
+refused by each walk's own rule, as before the step), as the value asked
+about it is `UNEXPANDED`, and the composer stores none ("unsupported
+stored members"). Admission refuses it where it did (`members_problem`,
+`_plain_record_fields`, `optional_record_field`, `_layouts_problem`,
+`_member_problem`'s "reference type mismatch" / "unsupported <wrapper>
+scalar"). Where a written `Own` inside a parameter's type argument should
+mean the owned form is the overloads line's (TODO.md "A written
+`list[Own[P]]` parameter", TODO.md "Composite open-T leaves at Own[X]
+(with Callable contract unit 2b)", BUGS.md#own-tuple-component-type-arg);
+MIR adds no `Own` logic. In
+storage the form is the type mapping's, so a `force_pointer_repr`
+Optional (a boundary property) still stores its payload inline. A
+recursive alias union, a record the source does not know and a type MIR
+does not model answer `UNEXPANDED`, which each reader takes as "may hold
+anything" in its own terms. `shapes.member_projection` maps a selector to
+its projection.
+
+It is one step, not one walk: each reader keeps its own recursion, stop
+rule, dedupe and rule for an unknown record, and only its per-kind
+"which members" branching went. `value.nested_members` is a pure storage
+walk: it steps through every member. Which members a reader may read
+through is the reader's. `definitions._read_records` reads, after the
+struct bases, the records reached from the fields, once each, the last
+field first: a record field, a modeled Optional field's payload
+(`optional_record_field`), and the records a container field's declared
+members hold through nested containers -- never through a tuple, union,
+pointer-Optional or `Own[...]` field, nor a wrapper or `Own[...]` container
+member; definitions verify depth-first in that order, so a cycle reports
+the refusal of the record it re-enters first. `container_definition`
+reads an element record's definition and then only its container fields'
+records: any other field refuses the element's layout ("unsupported
+native container element") before a definition behind it is read. The field
+sources differ by reader, over one enumeration of a record's declared
+fields (`scalar_leaves.chain_fields`, the modeled hierarchy nearest record
+first): `scalar_leaves.typedef_fields` (admission: a record with no
+TypeDef has none), `value.declared_record_fields` over
+`definitions.declared_fields` (may-hold: unknown -> may) and
+`value.layout_members` (one layout of the body's, its own record's fields;
+stored-loan keys read a nested record's layout from the body's layouts:
+missing -> error). A layout is a record's or an owned leaf's opaque buffer
+(no members): `value.layout_members` refuses any other ("layout of no
+record") for `_member_keys` and `close_layouts`. A walk
+starting at a
+SLOT reads the slot's `MIRShape` members, which THIR chose (a slot tuple
+mixes inline and borrowed members); the step applies at and below a
+member held as storage.
+
+The readers: `value.storage_shape` (the members storage of a type holds,
+at every depth, with a container's refusals and, given layouts, the
+layouts it needs, read through wrapper members (`inline_members`) -- one
+composer behind a field's Optional and container, a container slot and
+its layouts, a container definition, a reseat's or a hoisted backing's
+`std::optional<T>`; `_members_problem` compares a slot Optional's container
+payload and a container's members against it); `value.nested_members` and its users
+(`definitions._read_records`, `container_definition`, `_Lowering.define`);
+`definitions._member_definitions`, `layout_copy_may_raise`,
+`aggregate_facts`; `_Lowering.close_layouts` / `close_member`;
+`dependencies.written_record`'s container step; `summaries._member_records`
+(below a container's members); `reach._container_holds` and
+`reach._may_hold` (two questions, both stepping with it);
+`dependencies._member_keys` (stored-loan keys, records from layouts,
+stopping at containers); `validate.field_layout_problem` (the layouts a
+record field stores inline -- its own and, through wrappers, its
+members' at any depth -- one walk from the field's type); `dependencies.resolve_referents` (a tuple or sum
+member that owns storage -- storage, or a wrapper storing some inline --
+is the holder's referent projected, else the holder leaf at the full
+path); admission (`members_problem`,
+`_plain_record_fields`, `optional_record_field`'s payload). Kept as they
+are: `written_record`'s step list, `whole_wrapper_field`,
+`_under_optional_field_payload`, `thir_member` (slots), the
+narrowed-Optional readers, `summaries._object_root`,
+`reach._referent_shape` / `fields_past_origin` and
+`storage_evidence.py`'s skip of a referent past a non-field step (TODO.md, the first [MIR] entry's
+steps B-D).
+
+Every walk over stored members that can recurse through records carries
+its own guard, so a record reaching itself (`class Node: nxt: Node |
+None`) ends it even with forged inputs -- admission refuses such a record
+first, so no admitted program has one: `nested_members`,
+`_read_records`, `reach._may_hold` and `reach._container_holds` keep a
+seen set (a type already entered answers where it was entered);
+`aggregate_facts` / `layout_copy_may_raise` and `_layouts_problem` carry
+the records they are inside (one answers for its members where the walk
+entered it); `dependencies._member_keys` refuses storage holding itself
+inline ("record storage holds itself": C++ forbids it, so a layout that
+does is malformed); `close_member` enters a record once. The others end
+by structure: `_member_definitions`, `storage_shape` / `_stored_shapes`,
+`inline_members` and `validate.field_layout_problem` step through
+wrappers only, stopping at a record, and a wrapper type is finite.
 
 ## Scope matrix and remaining increments
 
