@@ -17,12 +17,20 @@ using ::tpystd::tplib::box::Box;
 using ::tpystd::tplib::rc::Rc;
 
 struct Acc;
+struct ViewBag;
+struct GBag;
 
+extern Acc* SHARED;
 inline constexpr std::string_view __name__ = "part_receiver_fresh";
 
 struct __coro_wrappers;
 struct __coro_elements;
 struct __coro_opt_box;
+struct __gen_sv_chars;
+struct __gen_each_int;
+struct __gen_each_acc;
+struct __coro_co_view;
+struct __coro_view_args;
 struct __coro_Acc_add;
 struct __coro_Acc_read;
 
@@ -40,6 +48,26 @@ __coro_wrappers wrappers(int32_t n);
 __coro_elements elements(int32_t n);
 // async def opt_box(b: Box[Acc] | None) -> int32:
 __coro_opt_box opt_box(::tpystd::tplib::box::Box<Acc>* b);
+// def sv_id(s: StrView) -> StrView:
+std::string_view sv_id(std::string_view s);
+// def sv_chars(s: StrView) -> Iterator[str]:
+__gen_sv_chars sv_chars(std::string_view s);
+// def each_int(x: int32) -> Iterator[int32]:
+__gen_each_int each_int(int32_t x);
+// def each_acc(a: Acc) -> Iterator[int32]:
+__gen_each_acc each_acc(const Acc& a);
+// def getitem_heads() -> None:
+void getitem_heads();
+// async def co_view(s: StrView) -> str:
+__coro_co_view co_view(std::string_view s);
+// async def view_args(p: StrView) -> None:
+__coro_view_args view_args(std::string_view p);
+// def view_heads(f: bool) -> None:
+void view_heads(bool f);
+// def mks(n: int32) -> str:
+std::string mks(int32_t n);
+// def mk_ints(n: int32) -> Own[list[int32]]:
+std::vector<int32_t> mk_ints(int32_t n);
 // def main() -> None:
 void main();
 
@@ -66,6 +94,56 @@ struct Acc {
 
 inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
     ::tpy::print_object_default(os, Acc::__tpy_class_name__, obj);
+    return os;
+}
+
+// class ViewBag:
+struct ViewBag {
+    // items: list[str]
+    std::vector<std::string> items;
+
+    // def __init__(self, n: int32) -> None:
+    ViewBag() = default;
+    explicit ViewBag(int32_t n);
+
+    // def __getitem__(self, i: int32) -> StrView:
+    std::string_view __getitem__(int32_t i) const;
+
+    // def first(self) -> StrView:
+    std::string_view first() const;
+
+    std::string_view operator[](int32_t i) const;
+    static constexpr std::string_view __tpy_class_name__ = "part_receiver_fresh.ViewBag";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ViewBag& obj) {
+    ::tpy::print_object_default(os, ViewBag::__tpy_class_name__, obj);
+    return os;
+}
+
+// class GBag:
+struct GBag {
+    // items: list[int32]
+    std::vector<int32_t> items;
+
+    // def __init__(self, n: int32) -> None:
+    GBag() = default;
+    explicit GBag(int32_t n);
+
+    // def __getitem__(self, i: int32) -> Acc:
+    Acc& __getitem__(int32_t i);
+
+    // def __getitem__(self, i: int32) -> Acc:
+    const Acc& __getitem__(int32_t i) const;
+
+    const Acc& operator[](int32_t i) const;
+
+    Acc& operator[](int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "part_receiver_fresh.GBag";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const GBag& obj) {
+    ::tpy::print_object_default(os, GBag::__tpy_class_name__, obj);
     return os;
 }
 
@@ -232,9 +310,184 @@ struct __coro_opt_box {
     }
 };
 
+// async def co_view(s: StrView) -> str:
+struct __coro_co_view {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::string_view s;
+    ::tpy::frame_slot<std::array<Acc, 4>> junk;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_co_view(std::string_view s_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          s(std::move(s_)) {}
+
+    ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_co_view&) {
+        return os << "<coroutine co_view>";
+    }
+};
+
+// async def view_args(p: StrView) -> None:
+struct __coro_view_args {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::string_view p;
+    std::string __await_lift_0;
+    std::optional<__coro_co_view> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_view_args(std::string_view p_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          p(std::move(p_)) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_view_args&) {
+        return os << "<coroutine view_args>";
+    }
+};
+
+// def sv_chars(s: StrView) -> Iterator[str]:
+struct __gen_sv_chars : public ::tpy::next_iter_mixin<__gen_sv_chars, std::string> {
+    ::tpy::frame_state __state;
+    std::string_view s;
+    char c;
+    ::tpy::frame_slot<std::array<Acc, 4>> junk;
+    using __for_src_0_t = decltype((s));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_sv_chars(std::string_view s_)
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_sv_chars& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_sv_chars&) {
+        return os << "<generator sv_chars>";
+    }
+};
+
+// def each_int(x: int32) -> Iterator[int32]:
+struct __gen_each_int : public ::tpy::next_iter_mixin<__gen_each_int, int32_t> {
+    ::tpy::frame_state __state;
+    int32_t x;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_each_int(int32_t x_)
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_each_int& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_each_int&) {
+        return os << "<generator each_int>";
+    }
+};
+
+// def each_acc(a: Acc) -> Iterator[int32]:
+struct __gen_each_acc : public ::tpy::next_iter_mixin<__gen_each_acc, int32_t> {
+    ::tpy::frame_state __state;
+    const Acc& a;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_each_acc(const Acc& a)
+        : __state(S_INITIAL),
+          a(a) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_each_acc& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_each_acc&) {
+        return os << "<generator each_acc>";
+    }
+};
+
 
 // def __init__(self, base: int32) -> None:
 //     self.base = base
 inline Acc::Acc(int32_t base) : base(base) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.items = ["bag" + str(n) * 30]
+inline ViewBag::ViewBag(int32_t n) : items(std::vector<std::string>{(::tpy::str_concat("bag", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 30))))}) {}
+
+// def __getitem__(self, i: int32) -> StrView:
+//     return self.items[i]
+inline std::string_view ViewBag::__getitem__(int32_t i) const {
+    return ::tpy::__getitem__(this->items, i);
+}
+
+// def first(self) -> StrView:
+//     return self.items[0]
+inline std::string_view ViewBag::first() const {
+    return ::tpy::__getitem__(this->items, 0);
+}
+
+inline std::string_view ViewBag::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.items = [n]
+inline GBag::GBag(int32_t n) : items(std::vector<int32_t>{n}) {}
+
+// def __getitem__(self, i: int32) -> Acc:
+//     return SHARED
+inline Acc& GBag::__getitem__(int32_t i) {
+    return (*SHARED);
+}
+
+// def __getitem__(self, i: int32) -> Acc:
+//     return SHARED
+inline const Acc& GBag::__getitem__(int32_t i) const {
+    return (*SHARED);
+}
+
+inline const Acc& GBag::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline Acc& GBag::operator[](int32_t i) {
+    return __getitem__(i);
+}
 void __tpy_init();
 } // namespace tpyapp::part_receiver_fresh

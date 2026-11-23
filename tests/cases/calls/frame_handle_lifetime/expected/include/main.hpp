@@ -220,7 +220,6 @@ struct __coro_nested_temp {
     std::string __await_lift_1;
     ::tpy::frame_slot<Src> __head_arg_0;
     ::tpy::frame_slot<std::string> __head_arg_1;
-    ::tpy::frame_slot<std::string_view> __head_arg_2;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
     ::tpystd::asyncio::_executor::Task<std::string>* __sub_1 = nullptr;
 

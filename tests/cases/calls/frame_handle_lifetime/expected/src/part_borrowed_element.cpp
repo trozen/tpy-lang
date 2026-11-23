@@ -240,7 +240,58 @@ __coro_owned_element owned_element() {
     return __coro_owned_element();
 }
 
+
+// def echo_chars(s: StrView) -> Iterator[str]:
+__gen_echo_chars echo_chars(std::string_view s) {
+    return __gen_echo_chars(s);
+}
+
+// def mk_key(n: int32) -> str:
+//     return "key" + str(n) * 20
+std::string mk_key(int32_t n) {
+    return (::tpy::str_concat("key", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 20))));
+}
+
+// def dispatch_key_and_owned_view() -> None:
+//     # The key of a `@dispatch` `__getitem__` is its call's argument: the
+//     # fresh key string is held for the bound handle.
+//     echo = MultiEcho(0)
+//     h = echo_chars(echo[mk_key(3)])  # tpyc: ok
+//     print("dispatch_key", "".join(h), echo[4])
+//     # A subscript is its `__getitem__` call: viewing only the named key, it
+//     # holds no receiver and warns at neither spelling.
+//     k = mk_key(5)
+//     h2 = echo_chars(MultiEcho(0)[k])  # tpyc: ok
+//     h3 = echo_chars(MultiEcho(0).__getitem__(k))  # tpyc: ok
+//     print("subscript_call", "".join(h2) == "".join(h3))
+//     # A view out of the owned element of a fresh bag: the bag dies with the
+//     # statement, so the bound handle warns (never advanced here).
+//     g = echo_chars(HolderBag(4)[0].sv)  # tpyc: warning(/Result borrows from temporary argument/)
+//     # ... and its explicit `__getitem__` call, the same call.
+//     g2 = echo_chars(HolderBag(5).__getitem__(0).sv)  # tpyc: warning(/Result borrows from temporary argument/)
+//     # A view a generic `__getitem__` hands back of a fresh string's view.
+//     g3 = echo_chars(ViewCell(StrView(mk_key(4)))[0])  # tpyc: warning(/Result borrows from temporary argument/)
+//     print("owned_element_view warned")
+void dispatch_key_and_owned_view() {
+    MultiEcho echo = MultiEcho(0);
+    std::string __tmp_1 = ::tpyapp::part_borrowed_element::mk_key(3);
+    __gen_echo_chars h = ::tpyapp::part_borrowed_element::echo_chars(echo.__getitem____str(__tmp_1));
+    std::cout << "dispatch_key" << " " << ::tpy::str_join("", h) << " " << echo.__getitem____int32(4) << "\n" << ::tpy::check_signals;
+    std::string k = ::tpyapp::part_borrowed_element::mk_key(5);
+    __gen_echo_chars h2 = ::tpyapp::part_borrowed_element::echo_chars(MultiEcho(0).__getitem____str(k));
+    __gen_echo_chars h3 = ::tpyapp::part_borrowed_element::echo_chars(MultiEcho(0).__getitem____str(k));
+    std::cout << "subscript_call" << " " << ::tpy::print_bool((::tpy::str_join("", h2) == ::tpy::str_join("", h3))) << "\n" << ::tpy::check_signals;
+    ViewHolder __tmp_2 = HolderBag(4)[0];
+    __gen_echo_chars g = ::tpyapp::part_borrowed_element::echo_chars(__tmp_2.sv);
+    ViewHolder __tmp_3 = HolderBag(5).__getitem__(0);
+    __gen_echo_chars g2 = ::tpyapp::part_borrowed_element::echo_chars(__tmp_3.sv);
+    ViewCell<std::string_view> __tmp_4 = ViewCell<std::string_view>(::tpyapp::part_borrowed_element::mk_key(4));
+    __gen_echo_chars g3 = ::tpyapp::part_borrowed_element::echo_chars(__tmp_4[0]);
+    std::cout << "owned_element_view warned" << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
+//     dispatch_key_and_owned_view()
 //     bag = Bag()
 //     asyncio.run(awaited(bag))
 //     sync_head(bag)
@@ -250,6 +301,7 @@ __coro_owned_element owned_element() {
 //     asyncio.run(async_body(bag))
 //     asyncio.run(owned_element())
 void main() {
+    ::tpyapp::part_borrowed_element::dispatch_key_and_owned_view();
     Bag bag = Bag();
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::part_borrowed_element::awaited(bag)));
     ::tpyapp::part_borrowed_element::sync_head(bag);
@@ -329,6 +381,8 @@ void main() {
 // # bound in place, so the mutation the frame makes shows in the bag after.
 // # The records are @nocopy, so a silent copy of an element cannot compile, and
 // # fresh allocations across each suspension reuse any storage freed early.
+// # A `@dispatch` `__getitem__` takes a fresh key's view as the call argument
+// # it is; a view out of an owned element of a fresh bag warns.
 // import asyncio
 void __tpy_init() {
     static bool initialized = false;

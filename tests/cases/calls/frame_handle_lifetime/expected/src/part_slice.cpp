@@ -94,7 +94,7 @@ __coro_co_str co_str(std::string_view s) {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         std::cout << "slice" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
-        __sub_1.emplace(__head_arg_2.emplace(::tpy::str_strip(::tpy::str_slice(__head_arg_1.emplace(std::format("  {}abc  ", n)), ::tpy::BasicSlice{1, std::nullopt}))));
+        __sub_1.emplace(::tpy::str_strip(::tpy::str_slice(__head_arg_1.emplace(std::format("  {}abc  ", n)), ::tpy::BasicSlice{1, std::nullopt})));
         __state = S_RESUME_1;
         continue;
     }
@@ -104,7 +104,7 @@ __coro_co_str co_str(std::string_view s) {
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
         std::cout << "slice_strip" << " " << __await_lift_1 << "\n" << ::tpy::check_signals;
-        __sub_2.emplace(::tpy::bytes_slice(__head_arg_3.emplace(::tpyapp::part_slice::make_bytes(n)), ::tpy::BasicSlice{2, 6}));
+        __sub_2.emplace(::tpy::bytes_slice(__head_arg_2.emplace(::tpyapp::part_slice::make_bytes(n)), ::tpy::BasicSlice{2, 6}));
         __state = S_RESUME_2;
         continue;
     }
@@ -114,7 +114,7 @@ __coro_co_str co_str(std::string_view s) {
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
         std::cout << "slice_bytes" << " " << __await_lift_2 << "\n" << ::tpy::check_signals;
-        __sub_3.emplace(::tpy::list_slice(__head_arg_4.emplace(::tpyapp::part_slice::make_list((::tpy::add_check<int32_t>(n, 3)))), ::tpy::BasicSlice{1, 3}));
+        __sub_3.emplace(::tpy::list_slice(__head_arg_3.emplace(::tpyapp::part_slice::make_list((::tpy::add_check<int32_t>(n, 3)))), ::tpy::BasicSlice{1, 3}));
         __state = S_RESUME_3;
         continue;
     }
@@ -154,7 +154,7 @@ __coro_co_str co_str(std::string_view s) {
         __await_lift_6 = std::move(__r6).value();
         __sub_6.reset();
         std::cout << "slice_bytes_literal" << " " << __await_lift_6 << "\n" << ::tpy::check_signals;
-        __sub_7.emplace(__head_arg_5.emplace(::tpy::bytes_strip_view(::tpy::bytes_literal("  hello-bytes-literal  ", 23))));
+        __sub_7.emplace(::tpy::bytes_strip_view(::tpy::bytes_literal("  hello-bytes-literal  ", 23)));
         __state = S_RESUME_7;
         continue;
     }
@@ -206,8 +206,7 @@ void sync_head() {
     for (int32_t i = 0; i < 2; ++i) {
         {
             std::string __tmp_1 = ::tpyapp::part_slice::make((::tpy::add_check<int32_t>(i, 1)));
-            std::string_view __tmp_2 = ::tpy::str_strip(::tpy::str_slice(__tmp_1, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), std::nullopt}));
-            auto __src_1 = ::tpyapp::part_slice::views(__tmp_2);
+            auto __src_1 = ::tpyapp::part_slice::views(::tpy::str_strip(::tpy::str_slice(__tmp_1, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), std::nullopt})));
             auto&& __itr_1 = ::tpy::__iter__(__src_1);
             for (;;) {
                 auto __r_2 = __itr_1.__next__();
@@ -219,8 +218,7 @@ void sync_head() {
     }
     std::cout << "slice_sync_head" << " " << ::tpy::ListPrinter(out) << "\n" << ::tpy::check_signals;
     {
-        ::tpy::BytesView __tmp_3 = ::tpy::bytes_strip_view(::tpy::bytes_literal("  hello-bytes-literal  ", 23));
-        auto __src_3 = ::tpyapp::part_slice::bviews(__tmp_3);
+        auto __src_3 = ::tpyapp::part_slice::bviews(::tpy::bytes_strip_view(::tpy::bytes_literal("  hello-bytes-literal  ", 23)));
         auto&& __itr_3 = ::tpy::__iter__(__src_3);
         for (;;) {
             auto __r_4 = __itr_3.__next__();
@@ -235,12 +233,232 @@ void sync_head() {
     }
 }
 
+
+// def span_gen(s: Span[int32]) -> Iterator[int32]:
+__gen_span_gen span_gen(std::span<int32_t> s) {
+    return __gen_span_gen(s);
+}
+
+// def slice_of_param(xs: list[int32]) -> None:
+//     # A slice of a parameter views storage that outlives the loop: passed
+//     # in place, as at a plain call. The read-only face does not build
+//     # (BUGS.md#readonly-list-slice-span-mutable).
+//     xs[0] = xs[0]
+//     for v in span_gen(xs[1:4]):  # tpyc: ok
+//         print("slice_param", v)
+void slice_of_param(std::vector<int32_t>& xs) {
+    ::tpy::__setitem__(xs, 0, ::tpy::__getitem__(xs, 0));
+    {
+        auto __src_0 = ::tpyapp::part_slice::span_gen(::tpy::list_slice(xs, ::tpy::BasicSlice{1, 4}));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
+            std::cout << "slice_param" << " " << v << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
+
+// def each_pad(p: Pad) -> Iterator[str]:
+__gen_each_pad each_pad(const Pad& p) {
+    return __gen_each_pad(p);
+}
+
+// def method_steps() -> None:
+//     # A view under a method step and a field of a fresh object: the head
+//     # holds the object.
+//     for w in views(Pad(3).me().s.strip()):  # tpyc: ok
+//         print("step_strip", w)
+//     # A method result pointing into a fresh object, at a generator head.
+//     for t in each_pad(Pad(4).me()):  # tpyc: ok
+//         print("step_head", t)
+//     # A handle over a lent part of a fresh object: held, and nothing warns.
+//     g = each_pad(Pad(5).me())  # tpyc: ok
+//     junk = [make(3) for _ in range(6)]
+//     # Joined, not `list(g)`: BUGS.md#runtime-collect-adl-user-coroutine.
+//     print("step_handle", "".join(g), len(junk))
+void method_steps() {
+    {
+        Pad __tmp_1 = Pad(3);
+        auto __src_0 = ::tpyapp::part_slice::views(::tpy::str_strip(__tmp_1.me().s));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view w = ::tpy::unwrap_ref(*__r_1);
+            std::cout << "step_strip" << " " << w << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        Pad __tmp_2 = Pad(4);
+        auto __src_2 = ::tpyapp::part_slice::each_pad(__tmp_2.me());
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view t = ::tpy::unwrap_ref(*__r_3);
+            std::cout << "step_head" << " " << t << "\n" << ::tpy::check_signals;
+        }
+    }
+    Pad __tmp_3 = Pad(5);
+    __gen_each_pad g = ::tpyapp::part_slice::each_pad(__tmp_3.me());
+    std::array<std::string, 6> junk = ::tpy::array_from_index<std::string, 6>([&](std::size_t __i_4) -> std::string {
+        int32_t _ = int32_t(__i_4);
+        return ::tpyapp::part_slice::make(3);
+    });
+    std::cout << "step_handle" << " " << ::tpy::str_join("", g) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+}
+
+// def pass_view(s: StrView) -> StrView:
+//     return s
+std::string_view pass_view(std::string_view s) {
+    return s;
+}
+
+// def via_callable(fn: Callable[[StrView], StrView]) -> None:
+//     # A view a callable value returns may point into its argument: the
+//     # fresh argument is held, at a bound handle and at a loop head.
+//     it = views(fn(make(1)))  # tpyc: ok
+//     junk = [make(3) for _ in range(6)]
+//     for v in it:
+//         print("callable_handle", str(v)[0:6], len(junk))
+//     for w in views(fn(make(2))):  # tpyc: ok
+//         print("callable_head", str(w)[0:6])
+void via_callable(const std::function<std::string_view(std::string_view)>& fn) {
+    std::string __tmp_1 = ::tpyapp::part_slice::make(1);
+    __gen_views it = ::tpyapp::part_slice::views(fn(__tmp_1));
+    std::array<std::string, 6> junk = ::tpy::array_from_index<std::string, 6>([&](std::size_t __i_0) -> std::string {
+        int32_t _ = int32_t(__i_0);
+        return ::tpyapp::part_slice::make(3);
+    });
+    auto& __src_1 = it;
+    auto&& __itr_1 = ::tpy::__iter__(__src_1);
+    for (;;) {
+        auto __r_2 = __itr_1.__next__();
+        if (!__r_2.has_value()) break;
+        std::string_view v = ::tpy::unwrap_ref(*__r_2);
+        std::cout << "callable_handle" << " " << ::tpy::str_slice(std::string(v), ::tpy::BasicSlice{0, 6}) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+    }
+    {
+        std::string __tmp_2 = ::tpyapp::part_slice::make(2);
+        auto __src_3 = ::tpyapp::part_slice::views(fn(__tmp_2));
+        auto&& __itr_3 = ::tpy::__iter__(__src_3);
+        for (;;) {
+            auto __r_4 = __itr_3.__next__();
+            if (!__r_4.has_value()) break;
+            std::string_view w = ::tpy::unwrap_ref(*__r_4);
+            std::cout << "callable_head" << " " << ::tpy::str_slice(std::string(w), ::tpy::BasicSlice{0, 6}) << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
+
+// def gen_fresh_slice() -> Iterator[str]:
+__gen_gen_fresh_slice gen_fresh_slice() {
+    return __gen_gen_fresh_slice();
+}
+
+// def make_identity() -> Callable[[StrView], StrView]:
+//     return pass_view
+std::function<std::string_view(std::string_view)> make_identity() {
+    return pass_view;
+}
+
+// def view_of_string(s: String) -> StrView:
+//     return s
+std::string_view view_of_string(const ::tpy::String& s) {
+    return s;
+}
+
+
+// def owned_of_view() -> Iterator[str]:
+__gen_owned_of_view owned_of_view() {
+    return __gen_owned_of_view();
+}
+
+// def callable_expression() -> None:
+//     # A callable reached through an expression viewing a literal: static
+//     # storage, passed in place.
+//     for w in views(make_identity()("literal-view")):  # tpyc: ok
+//         print("callable_expr", w)
+void callable_expression() {
+    {
+        auto __src_0 = ::tpyapp::part_slice::views((::tpyapp::part_slice::make_identity())("literal-view"));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view w = ::tpy::unwrap_ref(*__r_1);
+            std::cout << "callable_expr" << " " << w << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
+// def view_of_char(s: StrView) -> StrView:
+//     return s
+std::string_view view_of_char(std::string_view s) {
+    return s;
+}
+
+// def char_view() -> None:
+//     # A `char` viewed as a string views static storage, nothing of the
+//     # fresh object (read through a property) it was read from.
+//     v = view_of_char(CharBox("x").inner.c)  # tpyc: ok
+//     print("char_view", v)
+void char_view() {
+    std::string v = std::string(::tpyapp::part_slice::view_of_char(::tpy::char_to_str(CharBox('x').inner().c)));
+    std::cout << "char_view" << " " << v << "\n" << ::tpy::check_signals;
+}
+
+// def select_of_fields(f: bool) -> None:
+//     # A select of fields of fresh objects at a bound handle: each arm holds
+//     # its object, and nothing warns.
+//     it = views(Pad(7).s if f else Pad(8).s)  # tpyc: ok
+//     junk = [make(3) for _ in range(6)]
+//     for w in it:
+//         print("select_fields", str(w)[0:6], len(junk))
+void select_of_fields(bool f) {
+    std::optional<Pad> __tmp_1;
+    std::optional<Pad> __tmp_2;
+    __gen_views it = ::tpyapp::part_slice::views(((f) ? (__tmp_1.emplace(Pad(7)), (*__tmp_1).s) : (__tmp_2.emplace(Pad(8)), (*__tmp_2).s)));
+    std::array<std::string, 6> junk = ::tpy::array_from_index<std::string, 6>([&](std::size_t __i_0) -> std::string {
+        int32_t _ = int32_t(__i_0);
+        return ::tpyapp::part_slice::make(3);
+    });
+    auto& __src_1 = it;
+    auto&& __itr_1 = ::tpy::__iter__(__src_1);
+    for (;;) {
+        auto __r_2 = __itr_1.__next__();
+        if (!__r_2.has_value()) break;
+        std::string_view w = ::tpy::unwrap_ref(*__r_2);
+        std::cout << "select_fields" << " " << ::tpy::str_slice(std::string(w), ::tpy::BasicSlice{0, 6}) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+    }
+}
+
 // def main() -> None:
 //     asyncio.run(body(2))
 //     sync_head()
+//     slice_of_param([1, 2, 3, 4, 5])
+//     method_steps()
+//     via_callable(pass_view)
+//     print("owned_of_view", "".join(owned_of_view()))
+//     callable_expression()
+//     print("gen_fresh_slice", "".join(gen_fresh_slice()))
+//     select_of_fields(False)
+//     char_view()
 void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::part_slice::body(2)));
     ::tpyapp::part_slice::sync_head();
+    ::tpyapp::part_slice::slice_of_param(::tpy::as_mut_lvalue(std::vector<int32_t>{1, 2, 3, 4, 5}));
+    ::tpyapp::part_slice::method_steps();
+    ::tpyapp::part_slice::via_callable(pass_view);
+    std::cout << "owned_of_view" << " " << ::tpy::str_join("", ::tpyapp::part_slice::owned_of_view()) << "\n" << ::tpy::check_signals;
+    ::tpyapp::part_slice::callable_expression();
+    std::cout << "gen_fresh_slice" << " " << ::tpy::str_join("", ::tpyapp::part_slice::gen_fresh_slice()) << "\n" << ::tpy::check_signals;
+    ::tpyapp::part_slice::select_of_fields(false);
+    ::tpyapp::part_slice::char_view();
 }
 
 // # A slice of a fresh value handed to an awaited coroutine: the frame holds the

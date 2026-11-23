@@ -228,6 +228,19 @@ def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
     return False
 
 
+class OperandStorage(Enum):
+    """Whether a coercion's result is its operand's storage: READS hands
+    back the operand's storage (a view conversion, a `Ptr` deref, a pointer
+    conversion), COPIES is a value of its own pointing into nothing of the
+    operand's (a built value, a numeric widening, a store into `Any`),
+    STATIC a view of static storage, nothing of the operand's (a `char`'s
+    one-character string), UNKNOWN says neither."""
+    READS = "reads"
+    COPIES = "copies"
+    STATIC = "static"
+    UNKNOWN = "unknown"
+
+
 # Convenience matchers for the Ptr-shape rules (kept readable as helpers).
 def _is_user_record(t: TpyType) -> bool:
     return isinstance(t, NominalType) and t.is_user_record
@@ -308,6 +321,17 @@ class Coercion:
     # must stay out.
     context_free_wrap: bool = False
     codegen: Callable[[str, TpyType, TpyType, CoercionContext], str] = lambda expr, _a, _e, _c: expr
+    # THE pass-through fact (`OperandStorage`), as the rule states it; a
+    # rule that builds a value or widens a number copies (`operand_storage`).
+    operand: OperandStorage = OperandStorage.UNKNOWN
+
+    @property
+    def operand_storage(self) -> OperandStorage:
+        if self.operand is not OperandStorage.UNKNOWN:
+            return self.operand
+        if self.builds_fresh_value or self.widening_safe:
+            return OperandStorage.COPIES
+        return OperandStorage.UNKNOWN
 
 
 # Optional[StrView] <-> Optional[str]: plain `Optional[str]` params at ARG
@@ -329,6 +353,7 @@ OPTIONAL_STRVIEW_TO_STR = Coercion(
 
 OPTIONAL_STR_TO_STRVIEW = Coercion(
     name="optional_str_to_strview",
+    operand=OperandStorage.READS,
     from_type=lambda t: isinstance(t, OptionalType) and is_str_type(t.inner),
     to_type=lambda t: isinstance(t, OptionalType) and is_str_view_type(t.inner),
     codegen=lambda e, _a, b, c: (
@@ -559,6 +584,8 @@ COERCIONS: list[Coercion] = [
     # char to StrView coercion
     Coercion(
         name="char_to_strview",
+        # `char_to_str` views a static table entry.
+        operand=OperandStorage.STATIC,
         from_type=is_char_type,
         to_type=is_str_view_type,
         builds_fresh_value=True,
@@ -592,12 +619,14 @@ COERCIONS: list[Coercion] = [
     # String -> StrView (safe implicit, C++ handles std::string -> string_view)
     Coercion(
         name="string_to_strview",
+        operand=OperandStorage.READS,
         from_type=is_string_type,
         to_type=is_str_view_type,
     ),
     # str -> StrView (safe implicit, C++ handles std::string -> string_view)
     Coercion(
         name="str_to_strview",
+        operand=OperandStorage.READS,
         from_type=is_str_type,
         to_type=is_str_view_type,
     ),
@@ -647,11 +676,13 @@ COERCIONS: list[Coercion] = [
     # bytes/bytearray -> BytesView (safe implicit, vector -> span)
     Coercion(
         name="bytes_to_bytesview",
+        operand=OperandStorage.READS,
         from_type=is_bytes_type,
         to_type=is_bytes_view_type,
     ),
     Coercion(
         name="bytearray_to_bytesview",
+        operand=OperandStorage.READS,
         from_type=is_bytearray_type,
         to_type=is_bytes_view_type,
     ),
@@ -675,6 +706,7 @@ COERCIONS: list[Coercion] = [
     # Pointer coercions
     Coercion(
         name="record_to_ptr",
+        operand=OperandStorage.READS,
         from_type=_is_user_record,
         to_type=_is_mutable_ptr,
         type_match=lambda rec, ptr: (
@@ -690,6 +722,7 @@ COERCIONS: list[Coercion] = [
     ),
     Coercion(
         name="record_to_const_ptr",
+        operand=OperandStorage.READS,
         from_type=_is_user_record,
         to_type=_is_readonly_ptr_match,
         type_match=lambda rec, ptr: (
@@ -704,12 +737,14 @@ COERCIONS: list[Coercion] = [
     ),
     Coercion(
         name="ptr_to_const_ptr",
+        operand=OperandStorage.READS,
         from_type=_is_mutable_ptr,
         to_type=_is_readonly_ptr_match,
         type_match=lambda p1, p2: p1.inner_pointee == p2.inner_pointee,
     ),
     Coercion(
         name="span_to_readonly_span",
+        operand=OperandStorage.READS,
         from_type=_is(NominalType),
         to_type=_is(NominalType),
         type_match=lambda s1, s2: (
@@ -729,6 +764,7 @@ COERCIONS: list[Coercion] = [
     # Arg context allows temporaries
     Coercion(
         name="spanlike_to_span_arg",
+        operand=OperandStorage.READS,
         from_type=_match_any_side,  # Matches any type; _spanlike_to_span_match filters by protocol
         to_type=_is(NominalType),
         type_match=_spanlike_to_span_match,
@@ -737,6 +773,7 @@ COERCIONS: list[Coercion] = [
     # Non-arg contexts require lvalue (can't take span of temporary)
     Coercion(
         name="spanlike_to_span",
+        operand=OperandStorage.READS,
         from_type=_match_any_side,  # Matches any type; _spanlike_to_span_match filters by protocol
         to_type=_is(NominalType),
         type_match=_spanlike_to_span_match,
@@ -1311,6 +1348,7 @@ def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: CoercionCo
 
 DEREF_COERCION = Coercion(
     name="deref_to_target",
+    operand=OperandStorage.READS,
     from_type=_match_any_side,
     to_type=_match_any_side,
     codegen=_deref_codegen,
@@ -1320,6 +1358,7 @@ DEREF_COERCION = Coercion(
 # Applied explicitly by calls.py for functions with @value_ptr_coercion.
 VALUE_TO_PTR = Coercion(
     name="value_to_ptr",
+    operand=OperandStorage.READS,
     from_type=_match_any_side,
     to_type=_is(PtrType),
     requires_lvalue=True,
@@ -1335,6 +1374,7 @@ VALUE_TO_PTR = Coercion(
 # Used directly by compatibility.py.
 UPCAST_TO_PTR = Coercion(
     name="upcast_to_ptr",
+    operand=OperandStorage.READS,
     from_type=_is(NominalType),
     to_type=_is(PtrType),
     requires_lvalue=True,
@@ -1351,6 +1391,7 @@ UPCAST_TO_PTR = Coercion(
 # Arg context: temporaries allowed.
 SPAN_METHOD_TO_SPAN_ARG = Coercion(
     name="span_method_to_span_arg",
+    operand=OperandStorage.READS,
     from_type=_match_any_side,
     to_type=_is(NominalType),
 )
@@ -1358,6 +1399,7 @@ SPAN_METHOD_TO_SPAN_ARG = Coercion(
 # Non-arg contexts: lvalue required, no returning locals.
 SPAN_METHOD_TO_SPAN = Coercion(
     name="span_method_to_span",
+    operand=OperandStorage.READS,
     from_type=_match_any_side,
     to_type=_is(NominalType),
     requires_lvalue=True,
@@ -1366,6 +1408,7 @@ SPAN_METHOD_TO_SPAN = Coercion(
 
 UPCAST_TO_CONST_PTR = Coercion(
     name="upcast_to_const_ptr",
+    operand=OperandStorage.READS,
     from_type=_is(NominalType),
     to_type=_is(PtrType),
     requires_lvalue=True,
@@ -1461,6 +1504,7 @@ def _into_any_codegen(
 
 INTO_ANY = Coercion(
     name="into_any",
+    operand=OperandStorage.COPIES,
     from_type=_match_any_side,
     to_type=_is(AnyType),
     codegen=_into_any_codegen,

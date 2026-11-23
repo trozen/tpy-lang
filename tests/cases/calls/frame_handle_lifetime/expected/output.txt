@@ -9,6 +9,8 @@ receiver_select False [7, 102, 12, 103, 32] 102
 receiver_select True [104, 105, 12, 106, 32] 105
 receiver_alias 27 22 77 71
 receiver_bound 46
+held_slice d-444444
+unviewed_arg literal-xyz global-gggggggggggggggggggg
 forms_opt 5 9 9
 forms_opt_none AttributeError
 forms_opt_sync_none AttributeError
@@ -16,6 +18,18 @@ forms_box 25 25
 forms_ptr_call 15 15
 forms_union 1717 16 0 16
 forms_readonly 16 16
+getitem_view bag555555555555555555555555555555
+getitem_view_frame bag666666666666666666666666666666
+getitem_int 20
+getitem_int 21
+getitem_global 70
+getitem_global 140
+view_local_gen locallocallocallocallocallocal
+view_local_comp 30
+view_local_await locallocallocallocallocallocal4
+view_param_await locallocallocallocallocallocal4
+view_select bag888888888888888888888888888888
+view_handle mks11111111111111111111 bag222222222222222222222222222222 4
 fresh_wrapper 1 17 21
 fresh_element 2 8 32
 fresh_opt_box 43 43
@@ -42,7 +56,35 @@ slice_bytes_literal 10810811132119/6
 strip_bytes_literal 10410110810811145981211161011154510810511610111497108/6
 slice_sync_head ['bcd', 'cde']
 strip_bytes_sync_head b'hello-bytes-literal' 6
+slice_param 2
+slice_param 3
+step_strip pad33333333333333333333
+step_head pad44444444444444444444
+step_handle pad55555555555555555555 6
+callable_handle abcdef 6
+callable_head abcdef
+owned_of_view pad66666666666666666666
+callable_expr literal-view
+gen_fresh_slice cdefgh
+select_fields   pad8 6
+char_view x
 generator [0, 1, 10, 11, 20, 21]
+span_local [3] 6 4
+vpad_field v
+vpad_method v
+key_view hello-final!
+tuple_value_element warned
+unnamed_head h
+unnamed_handle hello-final
+unnamed_task 11
+unnamed_await 11
+unnamed_scalar beta
+unnamed_span 6
+unnamed_callable hello-final
+btuple_elem [3, 4]
+dispatch_key key33333333333333333333 4
+subscript_call True
+owned_element_view warned
 lent_field_recv 101
 lent_field_recv after 101
 lent_recv 9

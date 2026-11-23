@@ -3,10 +3,12 @@
 # bound in place, so the mutation the frame makes shows in the bag after.
 # The records are @nocopy, so a silent copy of an element cannot compile, and
 # fresh allocations across each suspension reuse any storage freed early.
+# A `@dispatch` `__getitem__` takes a fresh key's view as the call argument
+# it is; a view out of an owned element of a fresh bag warns.
 import asyncio
 from typing import Iterator
 
-from tpy import Own, int32, nocopy
+from tpy import Own, StrView, dispatch, int32, nocopy
 
 
 def make_junk() -> Own[list[list[int32]]]:
@@ -127,7 +129,81 @@ async def owned_element() -> None:
     print("owned_await", await co_outer(OwnBag()[1]))  # tpyc: ok
 
 
+class MultiEcho:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+    @dispatch
+    def __getitem__(self, k: int32) -> int32:
+        return k + self.n
+
+    @dispatch
+    def __getitem__(self, k: str) -> StrView:
+        return k
+
+
+class ViewHolder:
+    sv: StrView
+
+    def __init__(self, sv: StrView) -> None:
+        self.sv = sv
+
+
+class HolderBag:
+    items: list[str]
+
+    def __init__(self, k: int32) -> None:
+        self.items = ["hbag" + str(k) * 20]
+
+    def __getitem__(self, i: int32) -> Own[ViewHolder]:
+        return ViewHolder(self.items[i])
+
+
+class ViewCell[T]:
+    v: T
+
+    def __init__(self, v: T) -> None:
+        self.v = v
+
+    def __getitem__(self, i: int32) -> T:
+        return self.v
+
+
+def echo_chars(s: StrView) -> Iterator[str]:
+    for c in s:
+        yield c
+
+
+def mk_key(n: int32) -> str:
+    return "key" + str(n) * 20
+
+
+def dispatch_key_and_owned_view() -> None:
+    # The key of a `@dispatch` `__getitem__` is its call's argument: the
+    # fresh key string is held for the bound handle.
+    echo = MultiEcho(0)
+    h = echo_chars(echo[mk_key(3)])  # tpyc: ok
+    print("dispatch_key", "".join(h), echo[4])
+    # A subscript is its `__getitem__` call: viewing only the named key, it
+    # holds no receiver and warns at neither spelling.
+    k = mk_key(5)
+    h2 = echo_chars(MultiEcho(0)[k])  # tpyc: ok
+    h3 = echo_chars(MultiEcho(0).__getitem__(k))  # tpyc: ok
+    print("subscript_call", "".join(h2) == "".join(h3))
+    # A view out of the owned element of a fresh bag: the bag dies with the
+    # statement, so the bound handle warns (never advanced here).
+    g = echo_chars(HolderBag(4)[0].sv)  # tpyc: warning(/Result borrows from temporary argument/)
+    # ... and its explicit `__getitem__` call, the same call.
+    g2 = echo_chars(HolderBag(5).__getitem__(0).sv)  # tpyc: warning(/Result borrows from temporary argument/)
+    # A view a generic `__getitem__` hands back of a fresh string's view.
+    g3 = echo_chars(ViewCell(StrView(mk_key(4)))[0])  # tpyc: warning(/Result borrows from temporary argument/)
+    print("owned_element_view warned")
+
+
 def main() -> None:
+    dispatch_key_and_owned_view()
     bag = Bag()
     asyncio.run(awaited(bag))
     sync_head(bag)

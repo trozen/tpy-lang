@@ -2,9 +2,11 @@
 #include "part_receiver_forms.hpp"
 #include "tpystd/io_inl.hpp"
 #include "tpystd/os_inl.hpp"
+#include "part_receiver_forms_inl.hpp"
 
 namespace tpyapp::part_receiver_forms {
 
+std::string GLOBAL_TEXT;
 
 // def mk_ptr(a: Acc) -> Ptr[Acc]:
 //     return a
@@ -241,7 +243,73 @@ __coro_readonly_bound readonly_bound(const Acc& r) {
     return __coro_readonly_bound(r);
 }
 
+// def mk_text(n: int32) -> str:
+//     return "pad-" + str(n) * 30
+std::string mk_text(int32_t n) {
+    return (::tpy::str_concat("pad-", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 30))));
+}
+
+// def mk_texts(n: int32) -> Own[list[str]]:
+//     return [mk_text(n), mk_text(n + 1)]
+std::vector<std::string> mk_texts(int32_t n) {
+    return std::vector<std::string>{::tpyapp::part_receiver_forms::mk_text(n), ::tpyapp::part_receiver_forms::mk_text((::tpy::add_check<int32_t>(n, 1)))};
+}
+
+// def text_view(s: String) -> StrView:
+//     return s
+std::string_view text_view(const ::tpy::String& s) {
+    return s;
+}
+
+
+// def view_items(s: StrView) -> Iterator[str]:
+__gen_view_items view_items(std::string_view s) {
+    return __gen_view_items(s);
+}
+
+// def literal_of(s: StrView) -> StrView:
+//     return "literal-xyz"
+std::string_view literal_of(std::string_view s) {
+    return "literal-xyz";
+}
+
+// def global_of(s: StrView) -> StrView:
+//     return GLOBAL_TEXT
+std::string_view global_of(std::string_view s) {
+    return GLOBAL_TEXT;
+}
+
+// def unheld_views() -> None:
+//     # Views of fresh values nothing holds: each bound handle warns (never
+//     # advanced here).
+//     h1 = view_items(mk_texts(1)[0][2:10])  # tpyc: warning(/Result borrows from temporary argument/)
+//     h2 = view_items(text_view(mk_text(2)[1:8]))  # tpyc: warning(/Result borrows from temporary argument/)
+//     # A `str` element of a fresh list or field chain, slice or no slice.
+//     h5 = view_items(mk_texts(5)[0])  # tpyc: warning(/Result borrows from temporary argument/)
+//     h6 = view_items(TextOuter(6).inner.items[0])  # tpyc: warning(/Result borrows from temporary argument/)
+//     # A slice of a fresh string is held for the handle: no warning.
+//     h4 = view_items(mk_text(4)[2:10])  # tpyc: ok
+//     print("held_slice", "".join(h4))
+//     # A result its callee records as static or global storage views none
+//     # of the fresh argument: no warning.
+//     h7 = view_items(literal_of(mk_text(7)))  # tpyc: ok
+//     h8 = view_items(global_of(mk_text(8)))  # tpyc: ok
+//     print("unviewed_arg", "".join(h7), "".join(h8))
+void unheld_views() {
+    __gen_view_items h1 = ::tpyapp::part_receiver_forms::view_items(::tpy::str_slice(::tpy::__getitem__(::tpyapp::part_receiver_forms::mk_texts(1), 0), ::tpy::BasicSlice{2, 10}));
+    __gen_view_items h2 = ::tpyapp::part_receiver_forms::view_items(::tpyapp::part_receiver_forms::text_view(::tpy::String(::tpy::str_slice(::tpyapp::part_receiver_forms::mk_text(2), ::tpy::BasicSlice{1, 8}))));
+    __gen_view_items h5 = ::tpyapp::part_receiver_forms::view_items(::tpy::__getitem__(::tpyapp::part_receiver_forms::mk_texts(5), 0));
+    __gen_view_items h6 = ::tpyapp::part_receiver_forms::view_items(::tpy::__getitem__(TextOuter(6).inner.items, 0));
+    std::string __tmp_1 = ::tpyapp::part_receiver_forms::mk_text(4);
+    __gen_view_items h4 = ::tpyapp::part_receiver_forms::view_items(::tpy::str_slice(__tmp_1, ::tpy::BasicSlice{2, 10}));
+    std::cout << "held_slice" << " " << ::tpy::str_join("", h4) << "\n" << ::tpy::check_signals;
+    __gen_view_items h7 = ::tpyapp::part_receiver_forms::view_items(::tpyapp::part_receiver_forms::literal_of(::tpyapp::part_receiver_forms::mk_text(7)));
+    __gen_view_items h8 = ::tpyapp::part_receiver_forms::view_items(::tpyapp::part_receiver_forms::global_of(::tpyapp::part_receiver_forms::mk_text(8)));
+    std::cout << "unviewed_arg" << " " << ::tpy::str_join("", h7) << " " << ::tpy::str_join("", h8) << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
+//     unheld_views()
 //     a = Acc(1)
 //     print("forms_opt", asyncio.run(opt_recv(a)), opt_sync(a), a.base)
 //     try:
@@ -261,6 +329,7 @@ __coro_readonly_bound readonly_bound(const Acc& r) {
 //     print("forms_readonly", asyncio.run(readonly_recv(a)),
 //           asyncio.run(readonly_bound(a)))
 void main() {
+    ::tpyapp::part_receiver_forms::unheld_views();
     Acc a = Acc(1);
     std::cout << "forms_opt" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::part_receiver_forms::opt_recv(&(a)))) << " " << ::tpyapp::part_receiver_forms::opt_sync(&(a)) << " " << a.base << "\n" << ::tpy::check_signals;
     {
@@ -343,16 +412,20 @@ void main() {
 
 // # The receiver of an awaited method is the object the sync member call of
 // # the same method runs on, whatever reaches it: a None check, a `Ptr`, a
-// # Deref wrapper, a narrowed union member, a readonly reference.
+// # Deref wrapper, a narrowed union member, a readonly reference. A bound
+// # generator handle over a view of a fresh value warns where nothing holds it.
 // import asyncio
 //
 // from tplib.box import Box
+//
+// GLOBAL_TEXT: str = "global-" + "g" * 20
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
+    GLOBAL_TEXT = (::tpy::str_concat("global-", (::tpy::str_repeat("g", 20))));
 }
 
 } // namespace tpyapp::part_receiver_forms

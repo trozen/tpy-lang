@@ -47,7 +47,7 @@ from typing import TYPE_CHECKING, Callable, Iterable
 from ..parse import (
     TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess, TpyIntLiteral,
     TpyMethodCall, TpyName, TpyStarUnpack, TpyStrLiteral, TpySubscript,
-    TpyVarargPack, is_property_getter_read,
+    TpyVarargPack, SubscriptDunder, is_property_getter_read,
 )
 from ..storage_trace import Step, StepKind, Trace, is_unbound_field, trace
 from ..typesys import (
@@ -55,7 +55,7 @@ from ..typesys import (
     unwrap_readonly,
 )
 from ..type_def_registry import is_borrowing_view_type
-from ..value_category import (tuple_subscript_index, 
+from ..value_category import (tuple_subscript_index, getitem_call_of,
     ExprTypeOf, call_operands, call_returns_cpp_ref, lent_operands,
 )
 
@@ -741,6 +741,16 @@ class Leaf:
         return [s for s in self.path if s.kind is StepKind.CALL]
 
 
+def _getitem_call_step(step: Step) -> bool:
+    """An element step that is a `__getitem__` call handing back a value
+    (`getitem_call_of`): the climb takes it as that call, as it takes the
+    explicit `__getitem__` call. A slice and a reference element are
+    places of the container."""
+    return (step.kind is StepKind.INDEX
+            and step.node.slice_function_info is None
+            and getitem_call_of(step.node) is not None)
+
+
 class _Leaves(_Roots):
     """The LIFETIME climb of one operand a value may be (`leaves`): the
     trace's steps, each select or pack below the value the policy follows,
@@ -832,7 +842,7 @@ class _Leaves(_Roots):
         elem: int | None = None
         while i < len(t.steps):
             step = t.steps[i]
-            if step.kind is StepKind.GETTER:
+            if step.kind is StepKind.GETTER or _getitem_call_step(step):
                 self._call(step.node)
                 self.trail = trail
                 return
@@ -895,6 +905,13 @@ def leaves(expr: TpyExpr, policy: CallPolicy, *,
         _Leaves(policy, t.node_at(j),
                 None if t is top else t.node_at(0), out).climb(t, j)
     return out
+
+
+def leaf_is_temporary(leaf: Leaf) -> bool:
+    """One leaf of the LIFETIME climb that lacks durable storage: a
+    temporary, an unclassified view node or unplaceable."""
+    return leaf.kind in (LeafKind.TEMPORARY, LeafKind.VIEWNODE,
+                         LeafKind.UNPLACEABLE)
 
 
 def view_leaves(expr: TpyExpr, policy: CallPolicy) -> list[Leaf]:

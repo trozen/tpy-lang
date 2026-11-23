@@ -93,8 +93,8 @@ from .arg_binding import source_view
 from .calls import class_callee, filled_default
 from .scope_tracker import register_binder, unregister_binder
 from .call_lends import (
-    MayLend, ViewLend, borrowing_ctor_arg, call_callee, call_result_lenders,
-    frame_call,
+    CalleeFact, MayLend, ViewLend, borrowing_ctor_arg, call_callee,
+    call_result_lenders, callee_lend_fact, frame_call,
     frame_operand_keys,
     path_holds_root,
 )
@@ -108,8 +108,8 @@ from .context import (
     frame_binding_calls, frame_binding_fact, record_frame_binding_roots,
     NestedMutationMark,
 )
-from .storage_walk import (EscapePosition, LoanSource, MarkRequest, Use,
-                           borrow_key, call_loans, holder_root, mark_roots,
+from .storage_walk import (EscapePosition, LoanSource, MarkRequest, Unkeyed,
+                           Use, borrow_key, call_loans, holder_root, mark_roots,
                            path_key, receiver_leaves,
                            storage_key, storage_roots, StorageKey,
                            view_leaves)
@@ -565,8 +565,15 @@ def register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
                               holds_root=holds)
             continue
         if key is None:
-            if fi is None or not (loan.fresh and is_dangling_temporary_arg(
-                    ctx, loan.operand)):
+            # A call result no operand names (`Unkeyed.NOT_A_PLACE`, not
+            # fresh) may still point into a temporary it was handed -- unless
+            # its callee records what it borrows (static or global storage).
+            unknown = (loan.key is Unkeyed.NOT_A_PLACE
+                       and callee_lend_fact(loan.operand, ctx.registry).kind
+                       not in (CalleeFact.RECORDED, CalleeFact.KNOWN_EMPTY))
+            if fi is None or not (
+                    (loan.fresh or unknown)
+                    and is_dangling_temporary_arg(ctx, loan.operand)):
                 continue
             if src.idx >= 0 and frame_call(peel_coerce(src.expr)) is not None:
                 # A frame handed on keeps its temporaries by its own rule.

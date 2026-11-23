@@ -1260,6 +1260,16 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         _walk_arg_list(owner, node.args, return_type, argtemp_ok=argtemp_ok,
                        eager_only=eager_only)
         return
+    if isinstance(node, THIRSubscript) and (
+            node.record_getitem or node.bound_getitem is not None):
+        # A subscript is the `__getitem__` call it renders (the record's
+        # operator or the stamped variant's binding): its key is that
+        # call's argument, its object the receiver.
+        _walk_receiver(owner, node.receiver, return_type,
+                       argtemp_ok=argtemp_ok, eager_only=eager_only)
+        _walk_arg_list(owner, [node.index], return_type,
+                       argtemp_ok=argtemp_ok, eager_only=eager_only)
+        return
     if (isinstance(node, (THIRFieldAccess, THIRSubscript, THIRStrSlice))
             and isinstance(node.receiver, THIRArgTemp)):
         _walk_receiver(owner, node.receiver, return_type,

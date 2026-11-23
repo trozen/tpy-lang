@@ -149,10 +149,9 @@ struct __coro_awaited {
     ::tpy::frame_slot<std::string> __head_arg_0;
     ::tpy::frame_slot<std::vector<std::string>> __head_arg_1;
     ::tpy::frame_slot<std::string> __head_arg_2;
-    ::tpy::frame_slot<std::decay_t<decltype((::tpy::str_strip(std::declval<std::string&>())))>> __head_arg_3;
-    ::tpy::frame_slot<std::vector<std::string>> __head_arg_4;
+    ::tpy::frame_slot<std::vector<std::string>> __head_arg_3;
     std::optional<__coro_collect<std::string, ::tpy::await_arg_capture_t<decltype((std::declval<std::vector<std::string>&>()))>>> __sub_0;
-    std::optional<__coro_collect<char, ::tpy::await_arg_capture_t<decltype((std::declval<std::decay_t<decltype((::tpy::str_strip(std::declval<std::string&>())))>&>()))>>> __sub_1;
+    std::optional<__coro_collect<char, ::tpy::await_arg_capture_t<decltype((::tpy::str_strip(std::declval<std::string&>())))>>> __sub_1;
     std::optional<__coro_collect<char, ::tpy::await_arg_capture_t<decltype((::tpy::str_slice("abcdefghijklmnopqrstuvwxyz0123456789", ::tpy::BasicSlice{2, 12})))>>> __sub_2;
     ::tpystd::asyncio::_executor::Task<std::string>* __sub_3 = nullptr;
 

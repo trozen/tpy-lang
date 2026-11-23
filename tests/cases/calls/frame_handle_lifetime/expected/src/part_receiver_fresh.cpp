@@ -2,9 +2,11 @@
 #include "part_receiver_fresh.hpp"
 #include "tpystd/io_inl.hpp"
 #include "tpystd/os_inl.hpp"
+#include "part_receiver_fresh_inl.hpp"
 
 namespace tpyapp::part_receiver_fresh {
 
+Acc* SHARED{};
 
 // def mk_box(n: int32) -> Own[Box[Acc]]:
 //     return Box(Acc(n))
@@ -169,7 +171,243 @@ __coro_opt_box opt_box(::tpystd::tplib::box::Box<Acc>* b) {
     return __coro_opt_box(b);
 }
 
+// def sv_id(s: StrView) -> StrView:
+//     return s
+std::string_view sv_id(std::string_view s) {
+    return s;
+}
+
+
+// def sv_chars(s: StrView) -> Iterator[str]:
+__gen_sv_chars sv_chars(std::string_view s) {
+    return __gen_sv_chars(s);
+}
+
+
+// def each_int(x: int32) -> Iterator[int32]:
+__gen_each_int each_int(int32_t x) {
+    return __gen_each_int(x);
+}
+
+
+// def each_acc(a: Acc) -> Iterator[int32]:
+__gen_each_acc each_acc(const Acc& a) {
+    return __gen_each_acc(a);
+}
+
+// def getitem_heads() -> None:
+//     # A view a `__getitem__` returns by value points into the receiver:
+//     # the loop head holds the receiver, at a borrowing call and a frame.
+//     out = ""
+//     for c in sv_id(ViewBag(5)[0]):  # tpyc: ok
+//         junk = [Acc(999) for _ in range(4)]
+//         out += c * (len(junk) - 3)
+//     print("getitem_view", out)
+//     out = ""
+//     for c in sv_chars(ViewBag(6)[0]):  # tpyc: ok
+//         out += c
+//     print("getitem_view_frame", out)
+//     # A by-value element of a builtin container: a number is copied in.
+//     for x in each_int(mk_ints(10)[1]):  # tpyc: ok
+//         print("getitem_int", x)
+//     # A reference `__getitem__` hands back from a global points into no
+//     # operand: the receiver is not held for it.
+//     for y in each_acc(GBag(3)[0]):  # tpyc: ok
+//         print("getitem_global", y)
+void getitem_heads() {
+    std::string out = "";
+    {
+        ViewBag __tmp_1 = ViewBag(5);
+        auto __obj_0 = ::tpyapp::part_receiver_fresh::sv_id(__tmp_1[0]);
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            char c = *__beg_0;
+            std::array<Acc, 4> junk = ::tpy::array_from_index<Acc, 4>([&](std::size_t __i_1) -> Acc {
+                int32_t _ = int32_t(__i_1);
+                return Acc(999);
+            });
+            out += (::tpy::str_repeat(::tpy::char_to_str(c), (::tpy::sub_check<int32_t>(::tpy::__len__(junk), 3))));
+        }
+    }
+    std::cout << "getitem_view" << " " << out << "\n" << ::tpy::check_signals;
+    out = "";
+    {
+        ViewBag __tmp_2 = ViewBag(6);
+        auto __src_2 = ::tpyapp::part_receiver_fresh::sv_chars(__tmp_2[0]);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view c = ::tpy::unwrap_ref(*__r_3);
+            out += c;
+        }
+    }
+    std::cout << "getitem_view_frame" << " " << out << "\n" << ::tpy::check_signals;
+    {
+        auto __src_4 = ::tpyapp::part_receiver_fresh::each_int(::tpy::__getitem__(::tpyapp::part_receiver_fresh::mk_ints(10), 1));
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_5);
+            std::cout << "getitem_int" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        auto __src_6 = ::tpyapp::part_receiver_fresh::each_acc(GBag(3)[0]);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            int32_t y = ::tpy::unwrap_ref(*__r_7);
+            std::cout << "getitem_global" << " " << y << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
+// async def co_view(s: StrView) -> str:
+//     await asyncio.sleep(0.0)             # -> S_RESUME_0
+//     junk = [Acc(999) for _ in range(4)]
+//     return str(s) + str(len(junk))
+::tpystd::tpy::Poll<std::string> __coro_co_view::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        junk.emplace(::tpy::array_from_index<Acc, 4>([&](std::size_t __i_0) -> Acc {
+            int32_t _ = int32_t(__i_0);
+            return Acc(999);
+        }));
+        __state = S_DONE;
+        std::string __tpy_async_ret = (::tpy::str_concat(std::string(s), ::tpy::fixed_to_str<int32_t>(::tpy::__len__((*junk)))));
+        return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def co_view(s: StrView) -> str:
+__coro_co_view co_view(std::string_view s) {
+    return __coro_co_view(s);
+}
+
+// async def view_args(p: StrView) -> None:
+//     # A view of a parameter through a user function: durable, passed in place.
+//     print("view_param_await", await co_view(sv_id(p)))  # tpyc: ok              # -> S_RESUME_0
+::tpystd::tpy::Poll<::std::monostate> __coro_view_args::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __sub_0.emplace(::tpyapp::part_receiver_fresh::sv_id(p));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: print("view_param_await", await co_view(sv_id(p)))  # tpyc: ok
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        __await_lift_0 = std::move(__r0).value();
+        __sub_0.reset();
+        std::cout << "view_param_await" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def view_args(p: StrView) -> None:
+__coro_view_args view_args(std::string_view p) {
+    return __coro_view_args(p);
+}
+
+// def view_heads(f: bool) -> None:
+//     s = "local" * 6
+//     # A view of a durable local through a user function, at a generator
+//     # argument, in a comprehension and awaited.
+//     print("view_local_gen", "".join(sv_chars(sv_id(s))))  # tpyc: ok
+//     print("view_local_comp", len([c for c in sv_chars(sv_id(s))]))  # tpyc: ok
+//     print("view_local_await", asyncio.run(co_view(sv_id(s))))  # tpyc: ok
+//     asyncio.run(view_args(s))
+//     # A select of views on fresh receivers: each arm seats its receiver.
+//     out = ""
+//     for c in sv_chars(ViewBag(7).first() if f else ViewBag(8).first()):  # tpyc: ok
+//         out += c
+//     print("view_select", out)
+//     # A handle bound to a local over views of fresh values: the frame holds
+//     # each one, and nothing warns.
+//     it = sv_chars(sv_id(mks(1)))  # tpyc: ok
+//     it2 = sv_chars(ViewBag(2).first())  # tpyc: ok
+//     junk = [Acc(999) for _ in range(4)]
+//     print("view_handle", "".join(it), "".join(it2), len(junk))
+void view_heads(bool f) {
+    std::string s = (::tpy::str_repeat("local", 6));
+    std::cout << "view_local_gen" << " " << ::tpy::str_join("", ::tpyapp::part_receiver_fresh::sv_chars(::tpyapp::part_receiver_fresh::sv_id(s))) << "\n" << ::tpy::check_signals;
+    std::cout << "view_local_comp" << " " << ::tpy::__len__(({
+        std::vector<std::string> __result;
+        auto __obj_0 = ::tpyapp::part_receiver_fresh::sv_chars(::tpyapp::part_receiver_fresh::sv_id(s));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const std::string& c = *__beg_0;
+            __result.push_back(c);
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+    std::cout << "view_local_await" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::part_receiver_fresh::co_view(::tpyapp::part_receiver_fresh::sv_id(s)))) << "\n" << ::tpy::check_signals;
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::part_receiver_fresh::view_args(s)));
+    std::string out = "";
+    {
+        std::optional<ViewBag> __tmp_1;
+        std::optional<ViewBag> __tmp_2;
+        auto __src_1 = ::tpyapp::part_receiver_fresh::sv_chars(((f) ? (__tmp_1.emplace(ViewBag(7)), (*__tmp_1).first()) : (__tmp_2.emplace(ViewBag(8)), (*__tmp_2).first())));
+        auto&& __itr_1 = ::tpy::__iter__(__src_1);
+        for (;;) {
+            auto __r_2 = __itr_1.__next__();
+            if (!__r_2.has_value()) break;
+            std::string_view c = ::tpy::unwrap_ref(*__r_2);
+            out += c;
+        }
+    }
+    std::cout << "view_select" << " " << out << "\n" << ::tpy::check_signals;
+    std::string __tmp_3 = ::tpyapp::part_receiver_fresh::mks(1);
+    __gen_sv_chars it = ::tpyapp::part_receiver_fresh::sv_chars(::tpyapp::part_receiver_fresh::sv_id(__tmp_3));
+    ViewBag __tmp_4 = ViewBag(2);
+    __gen_sv_chars it2 = ::tpyapp::part_receiver_fresh::sv_chars(__tmp_4.first());
+    std::array<Acc, 4> junk = ::tpy::array_from_index<Acc, 4>([&](std::size_t __i_3) -> Acc {
+        int32_t _ = int32_t(__i_3);
+        return Acc(999);
+    });
+    std::cout << "view_handle" << " " << ::tpy::str_join("", it) << " " << ::tpy::str_join("", it2) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+}
+
+// def mks(n: int32) -> str:
+//     return "mks" + str(n) * 20
+std::string mks(int32_t n) {
+    return (::tpy::str_concat("mks", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 20))));
+}
+
+// def mk_ints(n: int32) -> Own[list[int32]]:
+//     return [n, n + 10]
+std::vector<int32_t> mk_ints(int32_t n) {
+    return std::vector<int32_t>{n, (::tpy::add_check<int32_t>(n, 10))};
+}
+
 // def main() -> None:
+//     getitem_heads()
+//     view_heads(False)
 //     asyncio.run(wrappers(1))
 //     asyncio.run(elements(2))
 //     b = Box(Acc(40))
@@ -179,6 +417,8 @@ __coro_opt_box opt_box(::tpystd::tplib::box::Box<Acc>* b) {
 //     except AttributeError:
 //         print("fresh_opt_box_none AttributeError")
 void main() {
+    ::tpyapp::part_receiver_fresh::getitem_heads();
+    ::tpyapp::part_receiver_fresh::view_heads(false);
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::part_receiver_fresh::wrappers(1)));
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::part_receiver_fresh::elements(2)));
     ::tpystd::tplib::box::Box<Acc> b = ::tpystd::tplib::box::Box<Acc>(Acc(40));
@@ -263,17 +503,22 @@ void main() {
 // # An awaited method whose receiver is reached through a fresh object -- a
 // # Deref wrapper, an element of a fresh container: the frame holds that object
 // # while the coroutine runs. An unproven Optional wrapper is checked before
-// # its `__deref__()`.
+// # its `__deref__()`. A loop head holds the receiver of a `__getitem__` whose
+// # result points into it, builtin or user type alike.
 // import asyncio
 //
 // from tplib.box import Box
 // from tplib.rc import Rc
+//
+// SHARED = Acc(70)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
+    static Acc __global_slot_1 = Acc(70);
+    SHARED = &__global_slot_1;
 }
 
 } // namespace tpyapp::part_receiver_fresh

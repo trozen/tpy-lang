@@ -51,7 +51,7 @@ __gen_gen_user_view gen_user_view(int32_t n) {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         std::cout << "recv awaited split" << " " << __await_lift_0 << " " << ::tpy::__getitem__(::tpy::__getitem__((*pads), 0), 0) << "\n" << ::tpy::check_signals;
-        __sub_1.emplace(__head_arg_3.emplace(::tpy::str_strip(__head_arg_2.emplace(std::format("  {}abcdefghij  ", n)))));
+        __sub_1.emplace(::tpy::str_strip(__head_arg_2.emplace(std::format("  {}abcdefghij  ", n))));
         __state = S_RESUME_1;
         continue;
     }
@@ -71,7 +71,7 @@ __gen_gen_user_view gen_user_view(int32_t n) {
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
         std::cout << "recv awaited literal slice" << " " << __await_lift_2 << " " << ::tpy::__getitem__(::tpy::__getitem__((*pads), 1), 1) << "\n" << ::tpy::check_signals;
-        t.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::part_plan_fresh_receivers::collect<std::string>(__head_arg_4.emplace(::tpy::str_split(std::format("{}abcdefghij", n), "e"))))));
+        t.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::part_plan_fresh_receivers::collect<std::string>(__head_arg_3.emplace(::tpy::str_split(std::format("{}abcdefghij", n), "e"))))));
         __sub_3 = &((*t));
         __state = S_RESUME_3;
         continue;

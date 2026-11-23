@@ -41,4 +41,104 @@ inline std::expected<::tpy::BytesView, ::tpy::StopIteration> __gen_bviews::__nex
     __builtin_unreachable();
 }
 
+// def span_gen(s: Span[int32]) -> Iterator[int32]:
+//     yield s[0]                                    # -> S_RESUME_0
+//     yield s[1]                                    # -> S_RESUME_1
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_span_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __state = S_RESUME_0;
+        return ::tpy::__getitem__(s, 0);
+    }
+    case S_RESUME_0: {  // after: yield s[0]
+        __state = S_RESUME_1;
+        return ::tpy::__getitem__(s, 1);
+    }
+    case S_RESUME_1: {  // after: yield s[1]
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def each_pad(p: Pad) -> Iterator[str]:
+//     yield str(p.s.strip())              # -> S_RESUME_0
+inline std::expected<std::string, ::tpy::StopIteration> __gen_each_pad::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __state = S_RESUME_0;
+        return std::string(::tpy::str_strip(p.s));
+    }
+    case S_RESUME_0: {  // after: yield str(p.s.strip())
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def gen_fresh_slice() -> Iterator[str]:
+//     # A slice of a fresh string at a structural parameter a generator head
+//     # keeps: the frame holds the sliced-from string.
+//     for c in chars(make(1)[2:8]):  # tpyc: ok
+//         yield str(c)                                                        # -> S_RESUME_0
+inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_fresh_slice::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __for_src_0.emplace(::tpyapp::part_slice::chars(__head_arg_1.emplace(::tpy::str_slice(__head_arg_0.emplace(::tpyapp::part_slice::make(1)), ::tpy::BasicSlice{2, 8}))));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield str(c)
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        c = ::tpy::unwrap_ref(*(*__for_r_0));
+        __state = S_RESUME_0;
+        return std::string(::tpy::char_to_str(c));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def owned_of_view() -> Iterator[str]:
+//     # A view of a fresh object copied into an owned `String` argument: the
+//     # copy is the frame's own, held beside the object.
+//     for c in view_of_string(Pad(6).me().s.strip()):  # tpyc: ok
+//         yield str(c)                                                        # -> S_RESUME_0
+inline std::expected<std::string, ::tpy::StopIteration> __gen_owned_of_view::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __for_src_0.emplace(::tpyapp::part_slice::view_of_string(__head_arg_1.emplace(::tpy::String(::tpy::str_strip(__head_arg_0.emplace(Pad(6)).me().s)))));
+        __for_it_0.emplace(((*__for_src_0)).begin());
+        __for_end_0.emplace(((*__for_src_0)).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield str(c)
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        c = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return std::string(::tpy::char_to_str(c));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 } // namespace tpyapp::part_slice

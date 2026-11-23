@@ -137,7 +137,7 @@ __coro_consumed consumed() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __sub_0.emplace(__head_arg_1.emplace(::tpyapp::part_frame_seat_lifted::sp(__head_arg_0.emplace(::tpyapp::part_frame_seat_lifted::mks()))));
+        __sub_0.emplace(::tpyapp::part_frame_seat_lifted::sp(__head_arg_0.emplace(::tpyapp::part_frame_seat_lifted::mks())));
         __state = S_RESUME_0;
         continue;
     }

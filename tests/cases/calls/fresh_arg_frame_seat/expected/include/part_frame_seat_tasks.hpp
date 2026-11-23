@@ -611,12 +611,10 @@ struct __coro_a_for {
     bool __cancel_pending;
     std::string out;
     std::string y;
-    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::part_frame_seat_tasks::chars(std::declval<std::string_view&>())))>;
-    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::part_frame_seat_tasks::chars(std::declval<std::string_view&>())))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::part_frame_seat_tasks::chars(::tpyapp::part_frame_seat_tasks::sp(std::declval<std::string&>()))))>;
+    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::part_frame_seat_tasks::chars(std::declval<P&>().name())))>;
     ::tpy::frame_slot<std::string> __head_arg_0;
-    ::tpy::frame_slot<std::string_view> __head_arg_1;
-    ::tpy::frame_slot<P> __head_arg_2;
-    ::tpy::frame_slot<std::string_view> __head_arg_3;
+    ::tpy::frame_slot<P> __head_arg_1;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
     ::tpy::frame_loop_slot<__for_src_1_t> __for_src_1;

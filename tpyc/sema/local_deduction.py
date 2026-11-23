@@ -73,7 +73,8 @@ from ..namespace import BindingKind
 from .receiver_calls import method_writes_receiver
 from ..storage_trace import StepKind
 from .storage_walk import (Leaf, LeafKind, StorageKey, borrow_key, leaves,
-                           receiver_leaves, ternary_operands, view_leaves)
+                           leaf_is_temporary, receiver_leaves,
+                           ternary_operands, view_leaves)
 from ..diagnostics import Scope, SemanticError
 from .type_join import (InferredJoin, JoinOutcome, descend,
                         find_int_float_mix, flipped, join_inferred_value_types,
@@ -149,13 +150,6 @@ def view_source_is_temporary(ctx: 'SemanticContext', expr: TpyExpr) -> bool:
     """
     return any(leaf_is_temporary(leaf)
                for leaf in leaves(expr, TempLend(ctx), split=False))
-
-
-def leaf_is_temporary(leaf: Leaf) -> bool:
-    """One leaf of `view_source_is_temporary`'s climb that lacks durable
-    storage: a temporary, an unclassified view node or unplaceable."""
-    return leaf.kind in (LeafKind.TEMPORARY, LeafKind.VIEWNODE,
-                         LeafKind.UNPLACEABLE)
 
 
 def view_slot_source_is_temporary(ctx: 'SemanticContext', slot: 'TpyType',

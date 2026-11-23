@@ -7,6 +7,8 @@
 #include "part_fresh_element_inl.hpp"
 #include "part_fresh_with_inl.hpp"
 #include "part_generator_inl.hpp"
+#include "part_receiver_forms_inl.hpp"
+#include "part_receiver_fresh_inl.hpp"
 #include "part_root_seat_inl.hpp"
 #include "part_slice_inl.hpp"
 
@@ -267,7 +269,7 @@ __coro_foreign foreign(Reg& reg) {
         __await_lift_0 = std::move(__r0).value();
         __sub_0 = nullptr;
         std::cout << "nested_temp" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
-        u.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::show(__head_arg_2.emplace(::tpyapp::main::head(__head_arg_1.emplace(::tpyapp::main::mk(1))))))));
+        u.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::show(::tpyapp::main::head(__head_arg_1.emplace(::tpyapp::main::mk(1)))))));
         __sub_1 = &((*u));
         __state = S_RESUME_1;
         continue;
@@ -382,6 +384,7 @@ void __tpy_init() {
     ::tpyapp::part_borrowed_element::__tpy_init();
     ::tpyapp::part_fresh_element::__tpy_init();
     ::tpyapp::part_fresh_with::__tpy_init();
+    ::tpyapp::part_generator::__tpy_init();
     ::tpyapp::part_receiver::__tpy_init();
     ::tpyapp::part_receiver_forms::__tpy_init();
     ::tpyapp::part_receiver_fresh::__tpy_init();

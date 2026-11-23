@@ -14,25 +14,37 @@ main::main@105:0: uncovered (unsupported expression type), summary: opaque (unsu
 main::Src.__init__@36:4: covered (storage: no_proof_required), summary: known
 main::Reg.__init__@43:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 part_borrowed_element::__tpy_init: uncovered (module initialization)
-part_borrowed_element::make_junk@12:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
-part_borrowed_element::bump@69:0: uncovered (unsupported hoisted value)
-part_borrowed_element::bump_outer@75:0: uncovered (unsupported hoisted value)
-part_borrowed_element::co_outer@81:0: uncovered (async body)
-part_borrowed_element::awaited@88:0: uncovered (async body)
-part_borrowed_element::sync_head@97:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-part_borrowed_element::gen_body@104:0: uncovered (container source needs a place)
-part_borrowed_element::async_body@113:0: uncovered (async body)
-part_borrowed_element::owned_element@124:0: uncovered (async body)
-part_borrowed_element::main@130:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-part_borrowed_element::Inner.cbump@26:4: uncovered (async body)
-part_borrowed_element::Outer.co@39:4: uncovered (async body)
-part_borrowed_element::Bag.__getitem__@52:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-part_borrowed_element::Bag.__getitem__@52:4#2: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-part_borrowed_element::OwnBag.__getitem__@65:4: covered (storage: no_proof_required), summary: known
-part_borrowed_element::Inner.__init__@23:4: covered (storage: no_proof_required), summary: known
-part_borrowed_element::Outer.__init__@36:4: covered (storage: no_proof_required), summary: known
-part_borrowed_element::Bag.__init__@49:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-part_borrowed_element::OwnBag.__init__@62:4: covered (storage: no_proof_required), summary: known
+part_borrowed_element::make_junk@14:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+part_borrowed_element::bump@71:0: uncovered (unsupported hoisted value)
+part_borrowed_element::bump_outer@77:0: uncovered (unsupported hoisted value)
+part_borrowed_element::co_outer@83:0: uncovered (async body)
+part_borrowed_element::awaited@90:0: uncovered (async body)
+part_borrowed_element::sync_head@99:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_borrowed_element::gen_body@106:0: uncovered (container source needs a place)
+part_borrowed_element::async_body@115:0: uncovered (async body)
+part_borrowed_element::owned_element@126:0: uncovered (async body)
+part_borrowed_element::echo_chars@174:0: uncovered (by-value capture of a borrowed parameter)
+part_borrowed_element::mk_key@179:0: covered (storage: no_proof_required), summary: known
+part_borrowed_element::dispatch_key_and_owned_view@183:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_borrowed_element::main@205:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_borrowed_element::Inner.cbump@28:4: uncovered (async body)
+part_borrowed_element::Outer.co@41:4: uncovered (async body)
+part_borrowed_element::Bag.__getitem__@54:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_borrowed_element::Bag.__getitem__@54:4#2: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_borrowed_element::OwnBag.__getitem__@67:4: covered (storage: no_proof_required), summary: known
+part_borrowed_element::MultiEcho.__getitem__@139:4: uncovered (no body to lower)
+part_borrowed_element::MultiEcho.__getitem__@143:4: uncovered (no body to lower)
+part_borrowed_element::HolderBag.__getitem__@160:4: covered (storage: no_proof_required), summary: opaque (summary transfer source is a member or element)
+part_borrowed_element::ViewCell.__getitem__@170:4: uncovered (generic body)
+part_borrowed_element::ViewCell.__getitem__@170:4#2: uncovered (generic body)
+part_borrowed_element::Inner.__init__@25:4: covered (storage: no_proof_required), summary: known
+part_borrowed_element::Outer.__init__@38:4: covered (storage: no_proof_required), summary: known
+part_borrowed_element::Bag.__init__@51:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_borrowed_element::OwnBag.__init__@64:4: covered (storage: no_proof_required), summary: known
+part_borrowed_element::MultiEcho.__init__@135:4: covered (storage: no_proof_required), summary: known
+part_borrowed_element::ViewHolder.__init__@150:4: covered (storage: no_proof_required), summary: known
+part_borrowed_element::HolderBag.__init__@157:4: uncovered (container element type mismatch), summary: opaque (container element type mismatch)
+part_borrowed_element::ViewCell.__init__@167:4: uncovered (generic constructor)
 part_fresh_element::__tpy_init: uncovered (module initialization)
 part_fresh_element::make_loose@56:0: uncovered (owned record result needs movable record), summary: opaque (owned record result needs movable record)
 part_fresh_element::make_nested@74:0: uncovered (owned record result needs movable record), summary: opaque (owned record result needs movable record)
@@ -96,11 +108,31 @@ part_fresh_with::Box.__init__@88:4: covered (storage: no_proof_required), summar
 part_fresh_with::Src.__init__@95:4: covered (storage: no_proof_required), summary: known
 part_fresh_with::Mgr.__init__@106:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 part_generator::__tpy_init: uncovered (module initialization)
-part_generator::ident@16:0: certified, summary: known
-part_generator::inner@20:0: covered (storage: no_facts: storage facts have not been published)
-part_generator::outer@26:0: uncovered (argument held across a suspension)
-part_generator::main@32:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-part_generator::Cell.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_generator::ident@22:0: certified, summary: known
+part_generator::inner@26:0: covered (storage: no_facts: storage facts have not been published)
+part_generator::outer@32:0: uncovered (argument held across a suspension)
+part_generator::greeting@38:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+part_generator::name_of@42:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+part_generator::nums@46:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+part_generator::sv_chars@50:0: uncovered (by-value capture of a borrowed parameter)
+part_generator::gen_span@55:0: uncovered (by-value capture of a borrowed parameter)
+part_generator::co_len@60:0: uncovered (async body)
+part_generator::task_len@65:0: uncovered (async body)
+part_generator::unnamed_views@70:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_generator::pick_t@86:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_generator::borrow_tuple_element@90:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_generator::gen_len@97:0: uncovered (unsupported parameter type)
+part_generator::span_local@101:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+part_generator::sv_same@133:0: covered (storage: no_proof_required), summary: known
+part_generator::value_type_and_key_views@137:0: uncovered (leaf iteration needs a named place), summary: opaque (leaf iteration needs a named place)
+part_generator::vpad_pair@152:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_generator::tuple_value_element@156:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_generator::main@163:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_generator::VPad.trimmed@119:4: uncovered (missing receiver fact)
+part_generator::KeyEcho.__getitem__@129:4: covered (storage: no_proof_required), summary: known
+part_generator::Cell.__init__@18:4: covered (storage: no_proof_required), summary: known
+part_generator::VPad.__init__@116:4: uncovered (missing record layout)
+part_generator::KeyEcho.__init__@126:4: covered (storage: no_proof_required), summary: known
 part_receiver::__tpy_init: uncovered (module initialization)
 part_receiver::make_pair@36:0: covered (storage: no_proof_required), summary: known
 part_receiver::outer@40:0: uncovered (async body)
@@ -115,33 +147,58 @@ part_receiver::Summer.add@17:4: uncovered (async body)
 part_receiver::Summer.__init__@14:4: covered (storage: no_proof_required), summary: known
 part_receiver::Pair.__init__@31:4: covered (storage: no_proof_required), summary: known
 part_receiver_forms::__tpy_init: uncovered (module initialization)
-part_receiver_forms::mk_ptr@41:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-part_receiver_forms::opt_recv@45:0: uncovered (async body)
-part_receiver_forms::opt_sync@50:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
-part_receiver_forms::box_recv@54:0: uncovered (async body)
-part_receiver_forms::ptr_call_recv@59:0: uncovered (async body)
-part_receiver_forms::union_recv@64:0: uncovered (async body)
-part_receiver_forms::isinstance_recv@71:0: uncovered (async body)
-part_receiver_forms::readonly_recv@77:0: uncovered (async body)
-part_receiver_forms::readonly_bound@81:0: uncovered (async body)
-part_receiver_forms::main@87:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
-part_receiver_forms::Acc.add@17:4: uncovered (async body)
-part_receiver_forms::Acc.sync_add@23:4: covered (storage: no_proof_required), summary: known
-part_receiver_forms::Acc.read@28:4: uncovered (async body)
-part_receiver_forms::Acc.__init__@14:4: covered (storage: no_proof_required), summary: known
-part_receiver_forms::Other.__init__@37:4: covered (storage: no_proof_required), summary: known
+part_receiver_forms::mk_ptr@43:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_receiver_forms::opt_recv@47:0: uncovered (async body)
+part_receiver_forms::opt_sync@52:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+part_receiver_forms::box_recv@56:0: uncovered (async body)
+part_receiver_forms::ptr_call_recv@61:0: uncovered (async body)
+part_receiver_forms::union_recv@66:0: uncovered (async body)
+part_receiver_forms::isinstance_recv@73:0: uncovered (async body)
+part_receiver_forms::readonly_recv@79:0: uncovered (async body)
+part_receiver_forms::readonly_bound@83:0: uncovered (async body)
+part_receiver_forms::mk_text@89:0: covered (storage: no_proof_required), summary: known
+part_receiver_forms::mk_texts@93:0: covered (storage: no_proof_required), summary: known
+part_receiver_forms::text_view@97:0: covered (storage: no_proof_required), summary: known
+part_receiver_forms::view_items@101:0: uncovered (by-value capture of a borrowed parameter)
+part_receiver_forms::literal_of@109:0: covered (storage: no_proof_required), summary: opaque (view result origin outside the parameters)
+part_receiver_forms::global_of@113:0: covered (storage: no_proof_required), summary: opaque (view result origin outside the parameters)
+part_receiver_forms::unheld_views@131:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_receiver_forms::main@149:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_receiver_forms::Acc.add@19:4: uncovered (async body)
+part_receiver_forms::Acc.sync_add@25:4: covered (storage: no_proof_required), summary: known
+part_receiver_forms::Acc.read@30:4: uncovered (async body)
+part_receiver_forms::Acc.__init__@16:4: covered (storage: no_proof_required), summary: known
+part_receiver_forms::Other.__init__@39:4: covered (storage: no_proof_required), summary: known
+part_receiver_forms::TextBag.__init__@120:4: covered (storage: no_proof_required), summary: known
+part_receiver_forms::TextOuter.__init__@127:4: covered (storage: no_proof_required), summary: known
 part_receiver_fresh::__tpy_init: uncovered (module initialization)
-part_receiver_fresh::mk_box@35:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-part_receiver_fresh::mk_rc@39:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-part_receiver_fresh::mk_list@43:0: covered (storage: no_proof_required), summary: known
-part_receiver_fresh::mk_dict@47:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-part_receiver_fresh::wrappers@53:0: uncovered (async body)
-part_receiver_fresh::elements@62:0: uncovered (async body)
-part_receiver_fresh::opt_box@70:0: uncovered (async body)
-part_receiver_fresh::main@75:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
-part_receiver_fresh::Acc.add@19:4: uncovered (async body)
-part_receiver_fresh::Acc.read@29:4: uncovered (async body)
-part_receiver_fresh::Acc.__init__@16:4: covered (storage: no_proof_required), summary: known
+part_receiver_fresh::mk_box@37:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_receiver_fresh::mk_rc@41:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_receiver_fresh::mk_list@45:0: covered (storage: no_proof_required), summary: known
+part_receiver_fresh::mk_dict@49:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_receiver_fresh::wrappers@55:0: uncovered (async body)
+part_receiver_fresh::elements@64:0: uncovered (async body)
+part_receiver_fresh::opt_box@72:0: uncovered (async body)
+part_receiver_fresh::sv_id@103:0: covered (storage: no_proof_required), summary: known
+part_receiver_fresh::sv_chars@107:0: uncovered (by-value capture of a borrowed parameter)
+part_receiver_fresh::each_int@113:0: covered (storage: no_facts: storage facts have not been published)
+part_receiver_fresh::each_acc@118:0: covered (storage: no_facts: storage facts have not been published)
+part_receiver_fresh::getitem_heads@123:0: uncovered (leaf iteration needs a named place), summary: opaque (leaf iteration needs a named place)
+part_receiver_fresh::co_view@144:0: uncovered (async body)
+part_receiver_fresh::view_args@150:0: uncovered (async body)
+part_receiver_fresh::view_heads@155:0: uncovered (unsupported stub receiver), summary: opaque (unsupported stub receiver)
+part_receiver_fresh::mks@176:0: covered (storage: no_proof_required), summary: known
+part_receiver_fresh::mk_ints@180:0: covered (storage: no_proof_required), summary: known
+part_receiver_fresh::main@184:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_receiver_fresh::Acc.add@21:4: uncovered (async body)
+part_receiver_fresh::Acc.read@31:4: uncovered (async body)
+part_receiver_fresh::ViewBag.__getitem__@83:4: covered (storage: no_proof_required), summary: known
+part_receiver_fresh::ViewBag.first@86:4: covered (storage: no_proof_required), summary: known
+part_receiver_fresh::GBag.__getitem__@96:4: uncovered (unknown reference source), summary: opaque (unknown reference source)
+part_receiver_fresh::GBag.__getitem__@96:4#2: uncovered (unknown reference source), summary: opaque (unknown reference source)
+part_receiver_fresh::Acc.__init__@18:4: covered (storage: no_proof_required), summary: known
+part_receiver_fresh::ViewBag.__init__@80:4: uncovered (container element type mismatch), summary: opaque (container element type mismatch)
+part_receiver_fresh::GBag.__init__@93:4: covered (storage: no_proof_required), summary: known
 part_root_seat::__tpy_init: uncovered (module initialization)
 part_root_seat::mk_list_outer@27:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 part_root_seat::make_junk@32:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
@@ -177,4 +234,25 @@ part_slice::body@40:0: uncovered (async body)
 part_slice::views@58:0: uncovered (by-value capture of a borrowed parameter)
 part_slice::bviews@62:0: uncovered (by-value capture of a borrowed parameter)
 part_slice::sync_head@66:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-part_slice::main@79:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+part_slice::span_gen@79:0: uncovered (by-value capture of a borrowed parameter)
+part_slice::slice_of_param@84:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_slice::each_pad@103:0: uncovered (unsupported view source)
+part_slice::method_steps@107:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_slice::pass_view@122:0: covered (storage: no_proof_required), summary: known
+part_slice::via_callable@126:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_slice::chars@137:0: uncovered (unsupported parameter type)
+part_slice::gen_fresh_slice@142:0: uncovered (argument held across a suspension)
+part_slice::make_identity@149:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_slice::view_of_string@153:0: covered (storage: no_proof_required), summary: known
+part_slice::owned_of_view@157:0: uncovered (argument held across a suspension)
+part_slice::callable_expression@164:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_slice::view_of_char@189:0: covered (storage: no_proof_required), summary: known
+part_slice::char_view@193:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
+part_slice::select_of_fields@200:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_slice::main@209:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+part_slice::Pad.me@99:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_slice::CharBox.inner@185:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_slice::CharBox.inner@185:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_slice::Pad.__init__@96:4: covered (storage: no_proof_required), summary: known
+part_slice::CharCell.__init__@174:4: covered (storage: no_proof_required), summary: known
+part_slice::CharBox.__init__@181:4: covered (storage: no_proof_required), summary: known

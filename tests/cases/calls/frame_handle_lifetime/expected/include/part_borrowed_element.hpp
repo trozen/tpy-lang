@@ -14,6 +14,10 @@ struct Inner;
 struct Outer;
 struct Bag;
 struct OwnBag;
+struct MultiEcho;
+struct ViewHolder;
+struct HolderBag;
+template<typename T> struct ViewCell;
 
 inline constexpr std::string_view __name__ = "part_borrowed_element";
 
@@ -24,6 +28,7 @@ struct __coro_awaited;
 struct __gen_gen_body;
 struct __coro_async_body;
 struct __coro_owned_element;
+struct __gen_echo_chars;
 struct __coro_Inner_cbump;
 struct __coro_Outer_co;
 
@@ -45,6 +50,12 @@ __gen_gen_body gen_body(Bag& bag);
 __coro_async_body async_body(Bag& bag);
 // async def owned_element() -> None:
 __coro_owned_element owned_element();
+// def echo_chars(s: StrView) -> Iterator[str]:
+__gen_echo_chars echo_chars(std::string_view s);
+// def mk_key(n: int32) -> str:
+std::string mk_key(int32_t n);
+// def dispatch_key_and_owned_view() -> None:
+void dispatch_key_and_owned_view();
 // def main() -> None:
 void main();
 
@@ -150,6 +161,101 @@ struct OwnBag {
 
 inline std::ostream& operator<<(std::ostream& os, const OwnBag& obj) {
     ::tpy::print_object_default(os, OwnBag::__tpy_class_name__, obj);
+    return os;
+}
+
+// class MultiEcho:
+struct MultiEcho {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    MultiEcho() = default;
+    explicit MultiEcho(int32_t n);
+
+    // @dispatch
+    // def __getitem__(self, k: int32) -> int32:
+    int32_t __getitem____int32(int32_t k) const;
+    int32_t __getitem__(int32_t k) const;
+
+    // @dispatch
+    // def __getitem__(self, k: str) -> StrView:
+    std::string_view __getitem____str(std::string_view k) const;
+    std::string_view __getitem__(std::string_view k) const;
+
+    int32_t operator[](int32_t k) const;
+
+    std::string_view operator[](std::string_view k) const;
+    static constexpr std::string_view __tpy_class_name__ = "part_borrowed_element.MultiEcho";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const MultiEcho& obj) {
+    ::tpy::print_object_default(os, MultiEcho::__tpy_class_name__, obj);
+    return os;
+}
+
+// class ViewHolder:
+struct ViewHolder {
+    // sv: StrView
+    std::string_view sv;
+
+    // def __init__(self, sv: StrView) -> None:
+    ViewHolder() = default;
+    explicit ViewHolder(std::string_view sv);
+    static constexpr std::string_view __tpy_class_name__ = "part_borrowed_element.ViewHolder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ViewHolder& obj) {
+    ::tpy::print_object_default(os, ViewHolder::__tpy_class_name__, obj);
+    return os;
+}
+
+// class HolderBag:
+struct HolderBag {
+    // items: list[str]
+    std::vector<std::string> items;
+
+    // def __init__(self, k: int32) -> None:
+    HolderBag() = default;
+    explicit HolderBag(int32_t k);
+
+    // def __getitem__(self, i: int32) -> Own[ViewHolder]:
+    ViewHolder __getitem__(int32_t i) const;
+
+    ViewHolder operator[](int32_t i) const;
+    static constexpr std::string_view __tpy_class_name__ = "part_borrowed_element.HolderBag";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const HolderBag& obj) {
+    ::tpy::print_object_default(os, HolderBag::__tpy_class_name__, obj);
+    return os;
+}
+
+// class ViewCell[T]:
+template<typename T>
+struct ViewCell {
+    // v: T
+    ::tpy::storage_t<T> v;
+
+    // def __init__(self, v: T) -> None:
+    ViewCell() = default;
+    explicit ViewCell(::tpy::param_val_or_cref_t<T> v);
+
+    // def __getitem__(self, i: int32) -> T:
+    ::tpy::val_or_ref_t<T> __getitem__(int32_t i);
+
+    // def __getitem__(self, i: int32) -> T:
+    ::tpy::val_or_cref_t<T> __getitem__(int32_t i) const;
+
+    ::tpy::val_or_cref_t<T> operator[](int32_t i) const;
+
+    ::tpy::val_or_ref_t<T> operator[](int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "part_borrowed_element.ViewCell";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const ViewCell<T>& obj) {
+    ::tpy::print_object_default(os, ViewCell<T>::__tpy_class_name__, obj);
     return os;
 }
 
@@ -406,6 +512,34 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     }
 };
 
+// def echo_chars(s: StrView) -> Iterator[str]:
+struct __gen_echo_chars : public ::tpy::next_iter_mixin<__gen_echo_chars, std::string> {
+    ::tpy::frame_state __state;
+    std::string_view s;
+    char c;
+    using __for_src_0_t = decltype((s));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_echo_chars(std::string_view s_)
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_echo_chars& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_echo_chars&) {
+        return os << "<generator echo_chars>";
+    }
+};
+
 
 // def __init__(self, x: int32) -> None:
 //     self.x = x
@@ -452,5 +586,87 @@ inline Outer OwnBag::__getitem__(int32_t i) const {
 inline Outer OwnBag::operator[](int32_t i) const {
     return __getitem__(i);
 }
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline MultiEcho::MultiEcho(int32_t n) : n(n) {}
+
+// @dispatch
+// def __getitem__(self, k: int32) -> int32:
+//     return k + self.n
+inline int32_t MultiEcho::__getitem____int32(int32_t k) const {
+    return (::tpy::add_check<int32_t>(k, this->n));
+}
+
+inline int32_t MultiEcho::__getitem__(int32_t k) const {
+    return this->__getitem____int32(k);
+}
+
+// @dispatch
+// def __getitem__(self, k: str) -> StrView:
+//     return k
+inline std::string_view MultiEcho::__getitem____str(std::string_view k) const {
+    return k;
+}
+
+inline std::string_view MultiEcho::__getitem__(std::string_view k) const {
+    return this->__getitem____str(k);
+}
+
+inline int32_t MultiEcho::operator[](int32_t k) const {
+    return __getitem__(k);
+}
+
+inline std::string_view MultiEcho::operator[](std::string_view k) const {
+    return __getitem__(k);
+}
+
+// def __init__(self, sv: StrView) -> None:
+//     self.sv = sv
+inline ViewHolder::ViewHolder(std::string_view sv) : sv(sv) {}
+
+// def __init__(self, k: int32) -> None:
+//     self.items = ["hbag" + str(k) * 20]
+inline HolderBag::HolderBag(int32_t k) : items(std::vector<std::string>{(::tpy::str_concat("hbag", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(k), 20))))}) {}
+
+// def __getitem__(self, i: int32) -> Own[ViewHolder]:
+//     return ViewHolder(self.items[i])
+inline ViewHolder HolderBag::__getitem__(int32_t i) const {
+    return ViewHolder(::tpy::__getitem__(this->items, i));
+}
+
+inline ViewHolder HolderBag::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+// def __init__(self, v: T) -> None:
+//     self.v = v
+template<typename T>
+inline ViewCell<T>::ViewCell(::tpy::param_val_or_cref_t<T> v) : v(::tpy::param_consume<T>(v)) {}
+
+// def __getitem__(self, i: int32) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_ref_t<T> ViewCell<T>::__getitem__(int32_t i) {
+    return this->v;
+}
+
+// def __getitem__(self, i: int32) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_cref_t<T> ViewCell<T>::__getitem__(int32_t i) const {
+    return this->v;
+}
+
+template<typename T>
+inline ::tpy::val_or_cref_t<T> ViewCell<T>::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+template<typename T>
+inline ::tpy::val_or_ref_t<T> ViewCell<T>::operator[](int32_t i) {
+    return __getitem__(i);
+}
+
 void __tpy_init();
 } // namespace tpyapp::part_borrowed_element

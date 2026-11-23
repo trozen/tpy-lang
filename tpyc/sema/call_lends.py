@@ -56,6 +56,7 @@ from ..parse import (
     TpySubscript, TpyUnaryOp, TpyVarargPack, is_property_getter_read,
 )
 from .. import qnames
+from ..coercions import OperandStorage
 from ..type_def_registry import (
     is_borrowing_view_type, is_bytearray_type, is_bytes_type, is_enum_type,
     is_bytes_view_type, is_str_type, is_str_view_type, is_string_type,
@@ -87,8 +88,8 @@ from ..value_category import (
     lent_operand_binds_open_param, iterator_source_callee,
     is_iterator_protocol,
     lent_operands, method_owner_type, property_access_returns_cpp_ref,
-    holds_no_pointer, is_lvalue_iterable, is_rvalue_source, may_hold_pointer,
-    peel_coerce,
+    holds_no_pointer, is_lvalue_iterable, is_rvalue_source,
+    materializing_temp_source, may_hold_pointer, peel_coerce,
     origin, OriginKind, OwningArg, carries_borrow, element_borrow_form,
     reference_may_hold_pointer, result_carries_borrow,
 )
@@ -1036,6 +1037,13 @@ def _stub_result_retains(fi: FunctionInfo, index: int, slot: TpyType | None,
     return _owned_result_carries(result, slot)
 
 
+def slot_can_lend(slot: TpyType | None) -> bool:
+    """Whether an argument at parameter type `slot` can be storage a
+    result points into: a parameter that takes a value (a number) is not
+    (`param_type_can_lend`); an unknown slot may be."""
+    return slot is None or param_type_can_lend(slot)
+
+
 def _declared_result_points_nowhere(fi: FunctionInfo, call: TpyExpr | None,
                                     type_of: ExprTypeOf | None) -> bool:
     """Whether a binding's result channel is a declared borrow whose value
@@ -1525,6 +1533,58 @@ class MayLend(CallPolicy):
                 for s in srcs]
 
 
+def coercion_reads_operand(c: TpyCoerce) -> bool:
+    """Whether coercion `c` hands back its operand's storage rather than a
+    value of its own (its rule's `OperandStorage.READS`: a view
+    conversion, a deref of a `Ptr`, a pointer conversion)."""
+    return c.coercion.operand_storage is OperandStorage.READS
+
+
+def peel_reading_coercions(e: TpyExpr) -> TpyExpr:
+    """`e` past the coercions that hand back their operand's storage
+    (`coercion_reads_operand`): what is the same storage as `e`."""
+    while isinstance(e, TpyCoerce) and coercion_reads_operand(e):
+        e = e.expr
+    return e
+
+
+def fresh_receiver_root(obj: TpyExpr,
+                        ctx: 'SemanticContext') -> TpyExpr | None:
+    """The fresh object a member reached through receiver `obj` lives in:
+    `obj` itself, or the materializing temporary under its chain of field
+    reads, calls and coercions that build nothing (a Deref hop adds no
+    node). A field, and an element no callee reads (a tuple's), is part of
+    its object. A call -- a subscript
+    and a slice are `__getitem__` calls, a getter is one too -- is part of
+    its receiver where the call policy (`MayLend`) says its result may
+    point into the receiver, else its own object when it materializes one,
+    the same for every type. None where the chain reaches storage that
+    outlives the statement (a reference the policy places in no operand),
+    or a pointer, which names its object."""
+    policy = MayLend(ctx)
+    n = obj
+    while True:
+        peeled = peel_reading_coercions(n)
+        if any(t is not None and t.is_pointer()
+               for t in (ctx.get_expr_type(n), ctx.get_expr_type(peeled))):
+            # A deref of a `Ptr` reads storage the pointer names.
+            return None
+        n = peeled
+        ops = call_operands(n) if isinstance(
+            n, (TpySubscript, TpyMethodCall)) else None
+        if isinstance(n, TpyFieldAccess) or (isinstance(n, TpySubscript)
+                                             and ops is None):
+            # No callee: a tuple element or a TypedDict field.
+            n = n.obj
+            continue
+        if ops is not None and ops.obj is not None:
+            srcs = policy.at_call(n, (), Ask.LIFETIME)
+            if srcs and any(s.idx == -1 for s in srcs):
+                n = ops.obj
+                continue
+        return n if materializing_temp_source(n, ctx) else None
+
+
 def _handed_frames(call: TpyExpr) -> list[LendSource]:
     """The generator or coroutine frames `call` takes ownership of: an
     argument that builds a frame (`frame_call`) at an `Own` parameter. The
@@ -1622,12 +1682,14 @@ class ViewLend(CallPolicy):
 
     def at_call(self, call: TpyExpr, path: tuple,
                 ask: Ask) -> list[LendSource] | None:
-        if not isinstance(call, (TpyCall, TpyMethodCall)):
+        if not isinstance(call, (TpyCall, TpyMethodCall, TpySubscript)):
             return None
         rt = self.ctx.get_expr_type(call)
         if rt is None or not is_borrowing_view_type(unwrap_readonly(rt)):
             return []
         lend = callee_lend_fact(call, self.ctx.registry)
+        if lend.ops is None:
+            return None
         if lend.kind is CalleeFact.RECORDED and not lend.fresh:
             return [s._replace(how=Lent.RECORDED)
                     for s in call_lend_sources(
@@ -1636,15 +1698,17 @@ class ViewLend(CallPolicy):
                         declared_of=declared_reader(self.ctx),
                         temp_backing=True)
                     ] or None
+        # A subscript is the `__getitem__` call its operands name.
         operands = [LendSource(i, a, None, how=Lent.CONTRACT)
-                    for i, a in enumerate(call.args)]
+                    for i, a in enumerate(lend.ops.args) if a is not None]
         operands += [LendSource(-2, a, None, how=Lent.CONTRACT)
-                     for a in (call.kwargs or {}).values()]
+                     for a in (lend.ops.kwargs or {}).values()]
         # A callable value's receiver operand is its callee held by
         # reference, never a field's holder (`call_operands`); a method
         # call's is the object it runs on (`TpyMethodCall.receiver`).
         recv = (lend.ops.obj if lend.kind is CalleeFact.CALLABLE
                 else call.receiver if isinstance(call, TpyMethodCall)
+                else call.obj if isinstance(call, TpySubscript)
                 else None)
         if recv is not None and self.ctx.get_expr_type(recv) is not None:
             operands.append(LendSource(-1, recv, None, how=Lent.CONTRACT))
@@ -2060,6 +2124,8 @@ class TempLend(CallPolicy):
             if isinstance(call, TpyMethodCall):
                 return [LendSource(-1, call.receiver, None,
                                    how=Lent.CONTRACT)]
+            if isinstance(call, TpySubscript):
+                return [LendSource(-1, call.obj, None, how=Lent.CONTRACT)]
             return None
         if view:
             return self.view.at_call(call, path, ask)

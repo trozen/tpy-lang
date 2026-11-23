@@ -254,7 +254,7 @@ std::string_view sp(std::string_view s) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         out = "";
-        __for_src_0.emplace(::tpyapp::part_frame_seat_tasks::chars(__head_arg_1.emplace(::tpyapp::part_frame_seat_tasks::sp(__head_arg_0.emplace(::tpyapp::part_frame_seat_tasks::mks(3))))));
+        __for_src_0.emplace(::tpyapp::part_frame_seat_tasks::chars(::tpyapp::part_frame_seat_tasks::sp(__head_arg_0.emplace(::tpyapp::part_frame_seat_tasks::mks(3)))));
         __state = S_JOIN_0;
         continue;
     }
@@ -279,7 +279,7 @@ std::string_view sp(std::string_view s) {
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
-            __for_src_1.emplace(::tpyapp::part_frame_seat_tasks::chars(__head_arg_3.emplace(__head_arg_2.emplace(P(2)).name())));
+            __for_src_1.emplace(::tpyapp::part_frame_seat_tasks::chars(__head_arg_1.emplace(P(2)).name()));
             __state = S_JOIN_1;
             continue;
         }

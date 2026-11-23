@@ -4,15 +4,30 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::part_generator {
 
 struct Cell;
+struct VPad;
+struct KeyEcho;
 
+extern std::vector<std::string>* NAMES;
+extern std::vector<int32_t>* NUMS;
 inline constexpr std::string_view __name__ = "part_generator";
+// GREETING: Final[str] = "hello-final"
+inline constexpr std::string_view GREETING = "hello-final";
 
 struct __gen_inner;
 struct __gen_outer;
+struct __gen_sv_chars;
+struct __gen_gen_span;
+struct __coro_co_len;
+struct __coro_task_len;
+template <::tpystd::typing::Sized T_v>
+struct __gen_gen_len;
 
 // def ident(c: Cell) -> Cell:
 Cell& ident(Cell& c);
@@ -20,6 +35,39 @@ Cell& ident(Cell& c);
 __gen_inner inner(Cell& c);
 // def outer() -> Iterator[int32]:
 __gen_outer outer();
+// def greeting() -> StrView:
+std::string_view greeting();
+// def name_of(i: int32) -> StrView:
+std::string_view name_of(int32_t i);
+// def nums() -> Span[int32]:
+std::span<int32_t> nums();
+// def sv_chars(s: StrView) -> Iterator[str]:
+__gen_sv_chars sv_chars(std::string_view s);
+// def gen_span(s: Span[int32]) -> Iterator[int32]:
+__gen_gen_span gen_span(std::span<int32_t> s);
+// async def co_len(s: StrView) -> int32:
+__coro_co_len co_len(std::string_view s);
+// async def task_len() -> int32:
+__coro_task_len task_len();
+// def unnamed_views(fn: Callable[[], StrView]) -> None:
+void unnamed_views(const std::function<std::string_view()>& fn);
+// def pick_t(c: Cell) -> tuple[Cell, int32]:
+std::tuple<Cell*, int32_t> pick_t(Cell& c);
+// def borrow_tuple_element() -> None:
+void borrow_tuple_element();
+// def gen_len(v: Sized) -> Iterator[int32]:
+template <::tpystd::typing::Sized T_v>
+__gen_gen_len<T_v> gen_len(T_v&& v);
+// def span_local() -> None:
+void span_local();
+// def sv_same(s: StrView) -> StrView:
+std::string_view sv_same(std::string_view s);
+// def value_type_and_key_views() -> None:
+void value_type_and_key_views();
+// def vpad_pair(n: int32) -> tuple[VPad, int32]:
+std::tuple<VPad, int32_t> vpad_pair(int32_t n);
+// def tuple_value_element() -> None:
+void tuple_value_element();
 // def main() -> None:
 void main();
 
@@ -44,6 +92,103 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
     ::tpy::print_object_default(os, Cell::__tpy_class_name__, obj);
     return os;
 }
+
+// class VPad(ValueType):
+struct VPad {
+    // s: str
+    std::string s;
+
+    // def __init__(self, n: int32) -> None:
+    VPad() = default;
+    explicit VPad(int32_t n);
+
+    // def trimmed(self) -> StrView:
+    std::string_view trimmed() const;
+    static constexpr std::string_view __tpy_class_name__ = "part_generator.VPad";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const VPad& obj) {
+    ::tpy::print_object_default(os, VPad::__tpy_class_name__, obj);
+    return os;
+}
+} // namespace tpyapp::part_generator
+
+template<> struct tpy::is_value_type<::tpyapp::part_generator::VPad> : std::true_type {};
+
+namespace tpyapp::part_generator {
+
+
+// class KeyEcho:
+struct KeyEcho {
+    // tag: int32
+    int32_t tag;
+
+    // def __init__(self, tag: int32) -> None:
+    KeyEcho() = default;
+    explicit KeyEcho(int32_t tag);
+
+    // def __getitem__(self, k: StrView) -> StrView:
+    std::string_view __getitem__(std::string_view k) const;
+
+    std::string_view operator[](std::string_view k) const;
+    static constexpr std::string_view __tpy_class_name__ = "part_generator.KeyEcho";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const KeyEcho& obj) {
+    ::tpy::print_object_default(os, KeyEcho::__tpy_class_name__, obj);
+    return os;
+}
+
+// async def co_len(s: StrView) -> int32:
+struct __coro_co_len {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::string_view s;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_co_len(std::string_view s_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          s(std::move(s_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_co_len&) {
+        return os << "<coroutine co_len>";
+    }
+};
+
+// async def task_len() -> int32:
+struct __coro_task_len {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t;
+    ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_task_len()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_task_len&) {
+        return os << "<coroutine task_len>";
+    }
+};
 
 // def inner(c: Cell) -> Iterator[int32]:
 struct __gen_inner : public ::tpy::next_iter_mixin<__gen_inner, int32_t> {
@@ -99,9 +244,138 @@ struct __gen_outer : public ::tpy::next_iter_mixin<__gen_outer, int32_t> {
     }
 };
 
+// def sv_chars(s: StrView) -> Iterator[str]:
+struct __gen_sv_chars : public ::tpy::next_iter_mixin<__gen_sv_chars, std::string> {
+    ::tpy::frame_state __state;
+    std::string_view s;
+    char c;
+    using __for_src_0_t = decltype((s));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_sv_chars(std::string_view s_)
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_sv_chars& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_sv_chars&) {
+        return os << "<generator sv_chars>";
+    }
+};
+
+// def gen_span(s: Span[int32]) -> Iterator[int32]:
+struct __gen_gen_span : public ::tpy::next_iter_mixin<__gen_gen_span, int32_t> {
+    ::tpy::frame_state __state;
+    std::span<int32_t> s;
+    int32_t x;
+    using __for_src_0_t = decltype((s));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_span(std::span<int32_t> s_)
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_span& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_span&) {
+        return os << "<generator gen_span>";
+    }
+};
+
+// def gen_len(v: Sized) -> Iterator[int32]:
+template <::tpystd::typing::Sized T_v>
+struct __gen_gen_len : public ::tpy::next_iter_mixin<__gen_gen_len<T_v>, int32_t> {
+    ::tpy::frame_state __state;
+    T_v v;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_gen_len(T_v&& v_)
+        : __state(S_INITIAL),
+          v(std::forward<T_v>(v_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_len& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_len<T_v>&) {
+        return os << "<generator gen_len>";
+    }
+};
+// def gen_len(v: Sized) -> Iterator[int32]:
+//     yield len(v)                           # -> S_RESUME_0
+template <::tpystd::typing::Sized T_v>
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_len<T_v>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __state = S_RESUME_0;
+        return ::tpy::__len__(v);
+    }
+    case S_RESUME_0: {  // after: yield len(v)
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_len(v: Sized) -> Iterator[int32]:
+template <::tpystd::typing::Sized T_v>
+__gen_gen_len<T_v> gen_len(T_v&& v) {
+    return __gen_gen_len<T_v>(std::forward<T_v>(v));
+}
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 inline Cell::Cell(int32_t n) : n(n) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.s = "vpad" + str(n) * 20
+inline VPad::VPad(int32_t n) : s((::tpy::str_concat("vpad", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 20))))) {}
+
+// def trimmed(self) -> StrView:
+//     return self.s
+inline std::string_view VPad::trimmed() const {
+    return this->s;
+}
+
+// def __init__(self, tag: int32) -> None:
+//     self.tag = tag
+inline KeyEcho::KeyEcho(int32_t tag) : tag(tag) {}
+
+// def __getitem__(self, k: StrView) -> StrView:
+//     return k
+inline std::string_view KeyEcho::__getitem__(std::string_view k) const {
+    return k;
+}
+
+inline std::string_view KeyEcho::operator[](std::string_view k) const {
+    return __getitem__(k);
+}
 void __tpy_init();
 } // namespace tpyapp::part_generator

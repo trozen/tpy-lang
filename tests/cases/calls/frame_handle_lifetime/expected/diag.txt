@@ -1,3 +1,12 @@
-part_receiver_forms.py:47: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-part_receiver_forms.py:51: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-part_receiver_fresh.py:72: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+part_borrowed_element.py:168: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_borrowed_element.py:197: warning: Result borrows from temporary argument 's'; the temporary is destroyed at end-of-statement
+part_borrowed_element.py:199: warning: Result borrows from temporary argument 's'; the temporary is destroyed at end-of-statement
+part_borrowed_element.py:201: warning: Result borrows from temporary argument 's'; the temporary is destroyed at end-of-statement
+part_generator.py:159: warning: Result borrows from temporary argument 's'; the temporary is destroyed at end-of-statement
+part_receiver_forms.py:49: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+part_receiver_forms.py:53: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+part_receiver_forms.py:134: warning: Result borrows from temporary argument 's'; the temporary is destroyed at end-of-statement
+part_receiver_forms.py:135: warning: Result borrows from temporary argument 's'; the temporary is destroyed at end-of-statement
+part_receiver_forms.py:137: warning: Result borrows from temporary argument 's'; the temporary is destroyed at end-of-statement
+part_receiver_forms.py:138: warning: Result borrows from temporary argument 's'; the temporary is destroyed at end-of-statement
+part_receiver_fresh.py:74: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.

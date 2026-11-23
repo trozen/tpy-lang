@@ -255,7 +255,6 @@ struct __coro_nested_view {
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<int32_t>> result;
     ::tpy::frame_slot<std::string> __head_arg_0;
-    ::tpy::frame_slot<std::string_view> __head_arg_1;
     std::optional<__coro_values> __sub_0;
 
     enum : int32_t {

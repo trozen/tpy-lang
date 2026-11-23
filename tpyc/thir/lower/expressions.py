@@ -104,7 +104,6 @@ from ...typesys import (
     collapse_tuple_own_elements,
     contains_pending_leaf,
     PtrType,
-    holds_borrowing_view,
     Representation,
     ReadonlyType,
     STR_FAMILY,
@@ -206,8 +205,8 @@ from ...value_category import (
     call_hands_back_value, call_result_is_reference, carries_borrow,
     call_returns_cpp_ref,
     is_rvalue_source, lends_pointer_form_result, OwningArg,
-    frame_temp_arg_source, fresh_receiver_root, method_owner_type,
-    may_hold_pointer, protocol_twin_slot, origin_shared, static_buffer,
+    borrowing_view_result, frame_temp_arg_source, method_owner_type,
+    may_hold_pointer, protocol_twin_slot, origin_shared,
 )
 from ..reject import (ThirUnsupported, call_reject_reason, current_detail,
                       expr_kind_tag, replace_detail,
@@ -218,14 +217,15 @@ from ...sema.literal_utils import numeric_literal_truth
 from ..param_contract import (Adapts, HandleUse, Materializer, ParamContract, arg_retention, const_ref_slot, frame_captured, operand_retention,
                               instantiation_storage, pack_element_contract, param_const, param_contract,
                               instantiated_param, protocol_slot)
-from ...sema.call_lends import Retention, TempLend, callee_retains_arg
+from ...sema.call_lends import (Retention, TempLend, callee_retains_arg,
+                                fresh_receiver_root, peel_reading_coercions)
 from ...sema.own_copy import contains_reference_type
 from ...typesys import (TypeParamKind, contains_type_kind_param,
                         type_arg_cpp)
-from ...sema.local_deduction import (leaf_is_temporary,
-                                     view_slot_source_is_temporary,
+from ...sema.local_deduction import (view_slot_source_is_temporary,
                                      view_source_is_temporary)
-from ...sema.storage_walk import Leaf, LeafKind, leaves, pack_operands
+from ...sema.storage_walk import (Leaf, LeafKind, leaf_is_temporary, leaves,
+                                  pack_operands)
 from ...storage_trace import StepKind
 from ...sema.alias_rebind import alias_sources, bare_tuple, reference_paths
 from ...sema.binding_ownership import read_ownership
@@ -5929,7 +5929,9 @@ def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
                 return Held.VALUE if t.is_value_type() else Held.FRESH
             return Held.BORROWED
         if node.record_getitem:
-            return Held.VALUE
+            # A view the `__getitem__` hands back views storage, as a
+            # view-typed slice does.
+            return Held.BORROWED if borrowing_view_result(t) else Held.VALUE
         vf = _viewfam_of(t, an)
         if vf is not None:
             return _held_of_form(_viewfam_result_form(vf))
@@ -5956,6 +5958,10 @@ def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
             e if isinstance(e, (TpyCall, TpyMethodCall)) else None, t)
         if declared is not None:
             return declared
+        if borrowing_view_result(t):
+            # A view a call hands back views storage, as a view-typed slice
+            # does.
+            return Held.BORROWED
         if (is_property_getter_read(e)
                 and property_getter_returns_storage_ref(
                     e.resolved_function_info.return_type)):
@@ -6368,11 +6374,14 @@ def _temporary(e: 'TpyExpr | None', node: THIRExpr,
         return False
     if e is not None:
         # A part, at any depth, of a fresh object its statement seats lives
-        # as the seat does (`fresh_seat_root`).
-        peeled = _peel_coerce(e)
-        if isinstance(peeled, (TpyFieldAccess, TpySubscript)) and (
-                fresh_seat_root(peeled.obj, lc) is not None):
-            return False
+        # as the seat does (`fresh_seat_root`): a member read, or a call
+        # result pointing into its receiver.
+        # A coercion that builds a value of its own is no part of it.
+        peeled = peel_reading_coercions(e)
+        if isinstance(peeled, (TpyFieldAccess, TpySubscript, TpyMethodCall)):
+            root = fresh_seat_root(peeled, lc)
+            if root is not None and root is not peeled:
+                return False
         return place_dies(lc.analyzer, e)
     if isinstance(node, (THIRName, THIRSelf, THIRTempRead)):
         # A temp read with no source of its creator's is a loop's step, an
@@ -16375,11 +16384,11 @@ def fresh_seat_root(obj: TpyExpr, lc: '_LowerCtx') -> 'TpyExpr | None':
     """THE seat decision for the fresh object a receiver or read object
     `obj` lives in -- a method's receiver, a field read's or a slice's
     object: its fresh root (`fresh_receiver_root`, under any chain of
-    field reads, subscripts and Deref hops) where the keep plan keeps it
-    for the statement or a callee frame takes it (`Keep.taken`) and this
-    position can seat it. None for a root nothing keeps, or a view (its
-    borrower keeps what it points into)."""
-    root = fresh_receiver_root(obj, lc.analyzer)
+    field reads, calls lending their receiver and Deref hops) where the
+    keep plan keeps it for the statement or a callee frame takes it
+    (`Keep.taken`) and this position can seat it. None for a root nothing
+    keeps, or a view (its borrower keeps what it points into)."""
+    root = fresh_receiver_root(obj, lc.analyzer.ctx)
     if root is None or is_view_value(root, lc.analyzer):
         return None
     keep = planned(root, lc)
@@ -16883,14 +16892,6 @@ def _arg_converted(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
                          lend_forms=read_forms)
     else:
         read = stamped(read, lc, record_of=a)
-    if (frame_kept and holds_borrowing_view(slot.type)
-            and not _lendable(read.source)
-            # A literal's buffer is static, and so is a select of literals.
-            and not static_buffer(_peel_coerce(a))):
-        # The frame would hold a view of storage that dies with the
-        # statement.
-        note_detail(note)
-        raise ThirUnsupported(call_reject_reason(reason))
     # The object a reference or a pointer parameter binds.
     bound_t = (unwrap_readonly(slot.type.inner)
                if cls is ParamSlotClass.POINTER

@@ -57,6 +57,7 @@ from .type_def_registry import (has_view_param_form, is_bool_type,
                                 is_str_view_type, is_varargs, type_def_of,
                                 RUNTIME_CONTAINER_CATEGORIES, TypeCategory)
 from . import qnames
+from .coercions import OperandStorage
 
 
 ElemPath = tuple[int, ...]
@@ -1100,12 +1101,11 @@ def _handed_on_types(analyzer: 'ValueCategoryAnalyzer',
 
 def _coercion_copies(expr: 'TpyCoerce') -> bool:
     """A coercion whose result is a value of its own, never pointing into
-    its operand: one that builds a fresh value (`builds_fresh_value`), a
-    numeric widening (`widening_safe`), or the store into `Any`, a cell that
-    owns its contents (`_any_storage_form`)."""
-    c = expr.coercion
-    return (c.builds_fresh_value or c.widening_safe
-            or isinstance(unwrap_qualifiers(expr.expected_type), AnyType))
+    its operand (its rule's `OperandStorage.COPIES`: a built value, a
+    numeric widening, the store into `Any`, a cell that owns its contents;
+    or `STATIC`, a view of static storage)."""
+    return expr.coercion.operand_storage in (OperandStorage.COPIES,
+                                             OperandStorage.STATIC)
 
 
 def borrowing_ctor_arg(call: TpyExpr) -> TpyExpr | None:
@@ -1733,22 +1733,30 @@ def materializing_temp_source(a: TpyExpr, analyzer) -> bool:
         # A Ptr deref coercion is an lvalue; every other coercion produces
         # a temporary.
         return not isinstance(a.actual_type, PtrType)
-    if isinstance(a, (TpyCall, TpyMethodCall)):
-        fi = a.resolved_function_info
+    if isinstance(a, (TpyCall, TpyMethodCall, TpySubscript)):
+        # A subscript is the `__getitem__` call it renders.
+        fi = (a.dunder(SubscriptDunder.GET) if isinstance(a, TpySubscript)
+              else a.resolved_function_info)
         if (fi is not None and fi.return_type is not None
                 and is_open_type_param_return(fi.return_type)):
             # An open `T` result (`val_or_ref_t<T>`) is a reference at a
             # reference instantiation: nothing materializes.
             return False
+        if borrowing_view_result(analyzer.get_expr_type(a)):
+            # A view points into what it views: it holds no storage of its
+            # own for a statement to keep.
+            return False
         return is_rvalue_source(analyzer, a)
-    if isinstance(a, TpySubscript):
-        # A user `__getitem__` materializes only when it returns by value; a
-        # reference result is the container's element, bound in place.
-        ct = analyzer.get_expr_type(a.obj)
-        ct = unwrap_readonly(ct) if ct is not None else None
-        return (isinstance(ct, NominalType) and ct.is_user_record
-                and is_rvalue_source(analyzer, a))
     return False
+
+
+def borrowing_view_result(t: 'TpyType | None') -> bool:
+    """Whether a call result of type `t` is a borrowing view (`StrView`,
+    `BytesView`, `Span[T]`, a user type declaring itself one)."""
+    if t is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return isinstance(t, PendingViewType) or is_borrowing_view_type(t)
 
 
 def method_owner_type(call: TpyMethodCall,
@@ -1762,24 +1770,6 @@ def method_owner_type(call: TpyMethodCall,
         return None
     t = unwrap_qualifiers(t)
     return unwrap_qualifiers(t.inner) if isinstance(t, OptionalType) else t
-
-
-def fresh_receiver_root(obj: TpyExpr, analyzer) -> 'TpyExpr | None':
-    """The fresh object a member reached through receiver `obj` lives in:
-    `obj` itself, or the materializing temporary under its chain of field
-    reads and subscripts (a Deref hop adds no node). None where the chain
-    starts at storage that outlives the statement, or at a pointer, which
-    names its object."""
-    n = obj
-    while True:
-        t = analyzer.get_expr_type(n)
-        if t is not None and t.is_pointer():
-            return None
-        if materializing_temp_source(n, analyzer):
-            return n
-        if not isinstance(n, (TpyFieldAccess, TpySubscript)):
-            return None
-        n = n.obj
 
 
 def is_iterator_protocol(t: 'TpyType | None') -> bool:
@@ -2202,16 +2192,6 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
     if not materializing_temp_source(src, analyzer):
         return None
     return src
-
-
-def static_buffer(e: TpyExpr) -> bool:
-    """A `str` / `bytes` literal, or a select every arm of which is one:
-    its buffer is static storage."""
-    if isinstance(e, (TpyStrLiteral, TpyBytesLiteral)):
-        return True
-    arms = _select_arms(e)
-    return arms is not None and all(static_buffer(peel_coerce(a))
-                                    for a in arms)
 
 
 def _select_arms(e: TpyExpr) -> 'tuple[TpyExpr, ...] | None':

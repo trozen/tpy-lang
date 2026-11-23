@@ -16,7 +16,10 @@ using ::tpystd::tplib::box::Box;
 
 struct Acc;
 struct Other;
+struct TextBag;
+struct TextOuter;
 
+extern std::string GLOBAL_TEXT;
 inline constexpr std::string_view __name__ = "part_receiver_forms";
 
 struct __coro_opt_recv;
@@ -26,6 +29,7 @@ struct __coro_union_recv;
 struct __coro_isinstance_recv;
 struct __coro_readonly_recv;
 struct __coro_readonly_bound;
+struct __gen_view_items;
 struct __coro_Acc_add;
 struct __coro_Acc_read;
 
@@ -47,6 +51,20 @@ __coro_isinstance_recv isinstance_recv(::tpy::Union<Acc*, Other*> w);
 __coro_readonly_recv readonly_recv(const Acc& r);
 // async def readonly_bound(r: readonly[Acc]) -> int32:
 __coro_readonly_bound readonly_bound(const Acc& r);
+// def mk_text(n: int32) -> str:
+std::string mk_text(int32_t n);
+// def mk_texts(n: int32) -> Own[list[str]]:
+std::vector<std::string> mk_texts(int32_t n);
+// def text_view(s: String) -> StrView:
+std::string_view text_view(const ::tpy::String& s);
+// def view_items(s: StrView) -> Iterator[str]:
+__gen_view_items view_items(std::string_view s);
+// def literal_of(s: StrView) -> StrView:
+std::string_view literal_of(std::string_view s);
+// def global_of(s: StrView) -> StrView:
+std::string_view global_of(std::string_view s);
+// def unheld_views() -> None:
+void unheld_views();
 // def main() -> None:
 void main();
 
@@ -98,6 +116,38 @@ struct Other {
 
 inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
     ::tpy::print_object_default(os, Other::__tpy_class_name__, obj);
+    return os;
+}
+
+// class TextBag:
+struct TextBag {
+    // items: list[str]
+    std::vector<std::string> items;
+
+    // def __init__(self, n: int32) -> None:
+    TextBag() = default;
+    explicit TextBag(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "part_receiver_forms.TextBag";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const TextBag& obj) {
+    ::tpy::print_object_default(os, TextBag::__tpy_class_name__, obj);
+    return os;
+}
+
+// class TextOuter:
+struct TextOuter {
+    // inner: TextBag
+    TextBag inner;
+
+    // def __init__(self, n: int32) -> None:
+    TextOuter() = default;
+    explicit TextOuter(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "part_receiver_forms.TextOuter";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const TextOuter& obj) {
+    ::tpy::print_object_default(os, TextOuter::__tpy_class_name__, obj);
     return os;
 }
 
@@ -346,6 +396,34 @@ struct __coro_readonly_bound {
     }
 };
 
+// def view_items(s: StrView) -> Iterator[str]:
+struct __gen_view_items : public ::tpy::next_iter_mixin<__gen_view_items, std::string> {
+    ::tpy::frame_state __state;
+    std::string_view s;
+    char c;
+    using __for_src_0_t = decltype((s));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_view_items(std::string_view s_)
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_view_items& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_view_items&) {
+        return os << "<generator view_items>";
+    }
+};
+
 
 // def __init__(self, base: int32) -> None:
 //     self.base = base
@@ -362,5 +440,13 @@ inline int32_t Acc::sync_add(int32_t x) {
 // def __init__(self, v: int32) -> None:
 //     self.v = v
 inline Other::Other(int32_t v) : v(v) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.items = [mk_text(n)]
+inline TextBag::TextBag(int32_t n) : items(std::vector<std::string>{::tpyapp::part_receiver_forms::mk_text(n)}) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.inner = TextBag(n)
+inline TextOuter::TextOuter(int32_t n) : inner(TextBag(n)) {}
 void __tpy_init();
 } // namespace tpyapp::part_receiver_forms

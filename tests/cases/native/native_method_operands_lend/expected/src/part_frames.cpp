@@ -92,7 +92,7 @@ void generic_gen() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         t = (::tpy::str_repeat("cd", 3));
-        c.emplace(::tpyapp::part_frames::task_generic<std::string_view>(__head_arg_0.emplace(t)));
+        c.emplace(::tpyapp::part_frames::task_generic<std::string_view>(t));
         t += "!";
         __state = S_RESUME_0;
         continue;

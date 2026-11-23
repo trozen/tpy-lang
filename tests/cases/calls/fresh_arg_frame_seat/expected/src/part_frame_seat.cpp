@@ -61,7 +61,7 @@ __coro_values values(std::string_view s) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         total = 0;
-        __sub_0.emplace(__head_arg_1.emplace(::tpyapp::part_frame_seat::sp(__head_arg_0.emplace(::tpyapp::part_frame_seat::mks()))));
+        __sub_0.emplace(::tpyapp::part_frame_seat::sp(__head_arg_0.emplace(::tpyapp::part_frame_seat::mks())));
         __state = S_RESUME_0;
         continue;
     }

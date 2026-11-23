@@ -112,7 +112,6 @@ from ...sema.source_records import Disposition, moves_place, verdict
 from ..param_contract import arg_retention, param_const, protocol_slot
 from ...storage_trace import MEMBER_PATH, path_root
 from ...type_def_registry import (
-    is_borrowing_view_type,
     is_varargs,
     type_def_of,
     enum_info_of, is_value_text_enum_type,
@@ -5958,14 +5957,12 @@ def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
         # @dynamic slot for non-conformance before lowering sees it.
         return temps_ok and _witness("argtemp.protocol")
     elif (frame_taken and not is_dyn_protocol(proto)
-          and is_rvalue_source(analyzer, a)
-          and not is_borrowing_view_type(unwrap_readonly(unwrap_ref_type(
-              unwrap_send_sync(at))))):
+          and is_rvalue_source(analyzer, a)):
         # A fresh value (an f-string, a list repeat, a select of fresh
-        # lists) handed to a coroutine or generator call the keep plan has
-        # the frame hold with what it borrows (`frame_taken`): its seat
-        # takes the value itself, whatever the protocol's type arguments.
-        # A view of a fresh value (a slice) would dangle.
+        # lists, a slice) handed to a coroutine or generator call the keep
+        # plan has the frame hold with what it borrows (`frame_taken`): its
+        # seat takes the value itself, whatever the protocol's type
+        # arguments.
         return temps_ok and _witness("argtemp.protocol")
     elif (isinstance(a, TpySubscript) and not is_dyn_protocol(proto)
           and _record_getitem_rvalue_arg(a, analyzer)):

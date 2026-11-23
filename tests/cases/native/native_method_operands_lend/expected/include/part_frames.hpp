@@ -121,7 +121,6 @@ struct __coro_generic_task {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string t;
-    ::tpy::frame_slot<std::string_view> __head_arg_0;
     std::optional<__coro_task_generic<std::string_view>> c;
 
     enum : int32_t {

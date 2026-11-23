@@ -377,12 +377,10 @@ struct __gen_gen_views : public ::tpy::next_iter_mixin<__gen_gen_views, std::str
     int32_t n;
     std::string ch;
     int32_t i;
-    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::part_head_convs::chars(std::declval<std::string_view&>())))>;
-    using __for_src_2_t = ::tpy::for_source_t<decltype((::tpyapp::part_head_convs::chars(std::declval<std::string_view&>())))>;
+    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpyapp::part_head_convs::chars(::tpyapp::part_head_convs::sp(std::declval<std::string&>()))))>;
+    using __for_src_2_t = ::tpy::for_source_t<decltype((::tpyapp::part_head_convs::chars(std::declval<Maker&>().name())))>;
     ::tpy::frame_slot<std::string> __head_arg_0;
-    ::tpy::frame_slot<std::string_view> __head_arg_1;
-    ::tpy::frame_slot<Maker> __head_arg_2;
-    ::tpy::frame_slot<std::string_view> __head_arg_3;
+    ::tpy::frame_slot<Maker> __head_arg_1;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     ::tpy::frame_loop_slot<__for_src_1_t> __for_src_1;

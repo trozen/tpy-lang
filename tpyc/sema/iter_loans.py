@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from enum import Enum
-from typing import TYPE_CHECKING, Iterable, NamedTuple, Union
+from typing import TYPE_CHECKING, Callable, Iterable, NamedTuple, Union
 
 from tpyc import modules as builtin_modules
 from .. import qnames
@@ -32,6 +32,8 @@ from ..parse import (
     is_property_getter_read,
 )
 from ..parse.nodes import walk_expr_tree
+from ..storage_trace import StepKind
+from ..coercions import OperandStorage
 from ..type_def_registry import (get_type_def, is_borrowing_view_type,
                                  protocol_info_of)
 from ..typesys import (
@@ -47,8 +49,7 @@ from ..typesys import (
 )
 from ..value_category import (
     OriginKind, call_operands, held_type, frame_factory_callee, frame_receiver_temp,
-    frame_param_lends, fresh_receiver_root, materializing_temp_source,
-    is_rvalue_source,
+    frame_param_lends, is_rvalue_source,
     frame_temp_arg_source, head_kept_argument, may_hold_pointer,
     param_type_can_lend,
     peel_coerce, instantiated_slot,
@@ -57,13 +58,15 @@ from ..value_category import (
 from ..modules.type_resolution import owning_element_slot
 from .call_lends import (
     CalleeFact, MayLend, borrowing_ctor_arg, call_callee, call_lend_sources,
-    callee_lend_fact, frame_operand_keys,
+    callee_lend_fact, coercion_reads_operand, frame_operand_keys,
+    fresh_receiver_root, peel_reading_coercions, slot_can_lend, TempLend,
 )
 from ..holders import Holder, IterHolder
 from .context import BorrowKind, LoanInfo, element_index_key
 from .elem_paths import ElemPath, declared_lent_paths
-from .storage_walk import (LoanKey, MarkRequest, StorageKey, call_loans,
-                           loan_key, mark_roots)
+from .storage_walk import (Leaf, LeafKind, LoanKey, MarkRequest, StorageKey,
+                           call_loans, leaf_is_temporary, leaves, loan_key,
+                           mark_roots, receiver_leaves)
 from .receiver_calls import (
     check_implicit_readonly_receiver, implicit_call_mutates_receiver,
     check_receiver_call_loans, credit_implicit_receiver_call,
@@ -579,7 +582,7 @@ def is_dangling_temporary_arg(ctx: SemanticContext, expr: TpyExpr) -> bool:
     argument lives for the statement that evaluates it, whatever its
     parameter. A scalar, str or bytes literal is static storage; names and
     fields of existing storage have addresses."""
-    if isinstance(expr, TpyCoerce) and not expr.coercion.builds_fresh_value:
+    if isinstance(expr, TpyCoerce) and coercion_reads_operand(expr):
         return is_dangling_temporary_arg(ctx, expr.expr)
     # A borrowing constructor lends its argument, so its temporariness
     # follows the arg: StrView("lit") / Ptr(name) wrap stable storage and do
@@ -594,6 +597,13 @@ def is_dangling_temporary_arg(ctx: SemanticContext, expr: TpyExpr) -> bool:
         # A `*args` pack's array is a local its statement declares before it.
         return False
     if any(leaf.kind is not OriginKind.SHARED for leaf in origin(ctx, expr)):
+        return True
+    # A value element read off a fresh container (`mk()[0]` of a
+    # `list[str]`) is that container's storage, which dies with it -- not
+    # one a walrus names (`(t := mk())[0]`), whose target holds it.
+    if any(leaf_is_temporary(leaf) and _leaf_in_value_element(leaf, ctx)
+           and not any(step.kind is StepKind.WALRUS for step in leaf.path)
+           for leaf in leaves(expr, TempLend(ctx), split=False)):
         return True
     # A borrow of a fresh operand (`items(mkb(40))`) dies with it.
     return any(loan.fresh and not isinstance(loan.key, StorageKey)
@@ -635,22 +645,24 @@ def keep_head_arguments(ctx: SemanticContext, head: TpyExpr) -> None:
             ctx.head_kept_args.update(peel_coerce(arg).elements)
 
     def fresh_root(obj: TpyExpr) -> TpyExpr | None:
-        # The fresh object a member read off `obj` lives in, under any
-        # chain of field reads, subscripts and Deref hops -- the root the
-        # lowering seats (`fresh_seat_root`).
+        # The fresh object `obj` lives in, under any chain of field reads,
+        # calls and Deref hops -- the root the lowering seats
+        # (`fresh_seat_root`).
         root = fresh_receiver_root(obj, ctx)
         return (root if root is not None and _parameter_borrows(
             ctx.get_expr_type(root), root, ctx) else None)
 
     def keep(e: TpyExpr) -> None:
-        root = (fresh_root(e.obj)
-                if isinstance(e, (TpyFieldAccess, TpySubscript))
-                and e in ctx.head_kept_args
-                and not materializing_temp_source(e, ctx) else None)
-        if root is not None:
-            # A kept field or lent element read of a fresh object borrows
-            # that object: the object is kept, as a method's fresh receiver
-            # is, and the read is a borrow of it, no object of its own.
+        # A kept part already borrows: the object it is part of holds what
+        # it borrows, whatever that object's type (a value-type record
+        # owning a buffer too).
+        root = (fresh_receiver_root(e, ctx) if e in ctx.head_kept_args
+                else None)
+        if root is not None and root is not peel_reading_coercions(e):
+            # A kept part of a fresh object -- a field, a lent element, a
+            # call result pointing into it -- borrows that object: the
+            # object is kept, as a method's fresh receiver is, and the part
+            # is a borrow of it, no object of its own.
             record(root)
             ctx.head_kept_args.discard(e)
             ctx.head_kept_borrows.add(e)
@@ -774,18 +786,15 @@ def borrow_roots(ctx: SemanticContext,
 
 
 def _field_chain_root(ctx: SemanticContext, e: TpyExpr) -> TpyExpr:
-    """The object a field or lent element read of a fresh value
-    (`mkh().b.c`, `mk()[0].cm`) is part of, through a chain of any depth
-    and its conversions (`fresh_receiver_root`): the read is a borrow of
+    """The object a part of a fresh value -- a field, a lent element, a
+    call result pointing into it (`mkh().b.c`, `mk()[0].cm`,
+    `mk().get()`) -- is part of, through a chain of any depth and its
+    conversions (`fresh_receiver_root`): the part is a borrow of
     that object, no object of its own -- the root `keep_head_arguments`
     records. Any other value is its own root."""
-    bare = peel_coerce(e)
-    if (isinstance(bare, (TpyFieldAccess, TpySubscript))
-            and not materializing_temp_source(bare, ctx)):
-        root = fresh_receiver_root(bare.obj, ctx)
-        if root is not None:
-            return root
-    return e
+    root = fresh_receiver_root(e, ctx)
+    return (root if root is not None
+            and root is not peel_reading_coercions(e) else e)
 
 
 def _field_read_root(ctx: SemanticContext, e: TpyExpr) -> TpyExpr:
@@ -826,6 +835,79 @@ def _parameter_borrows(ptype: TpyType | None, arg: TpyExpr,
     return param_type_can_lend(bare, callables=False)
 
 
+def _leaf_is_durable(leaf: Leaf) -> bool:
+    """A LIFETIME leaf PROVEN to outlive the statement: a name, static
+    storage, a module or class read, or nothing at all."""
+    return leaf.static_read or leaf.kind in (
+        LeafKind.PLACE, LeafKind.STATIC, LeafKind.NULL, LeafKind.CONSTANT,
+        LeafKind.GLOBAL)
+
+
+def _leaf_in_value_element(leaf: Leaf, ctx: SemanticContext) -> bool:
+    """The climb reached the leaf through an element read whose value is a
+    value of its own (a `str` element of a list, a tuple's value element):
+    the keep plan takes such a read as a copy, so it seats nothing of the
+    container for it. A reference element names its object, a slice and a
+    view element view storage, and are no copy."""
+    for step in leaf.path:
+        if not (step.kind is StepKind.INDEX
+                and isinstance(step.node, TpySubscript)
+                and step.node.slice_function_info is None):
+            continue
+        t = ctx.get_expr_type(step.node)
+        bare = unwrap_readonly(t) if t is not None else None
+        if (bare is not None and bare.is_value_type()
+                and not is_borrowing_view_type(bare)):
+            return True
+    return False
+
+
+def _storage_proven(expr: TpyExpr, ctx: SemanticContext,
+                    seated: Callable[[Leaf], bool]) -> bool:
+    """Whether the storage `expr`'s value views is PROVEN to outlive the
+    statement (the temporary-argument warning's question): no coercion on
+    the way builds a value of its own, and every LIFETIME leaf is durable
+    (`_leaf_is_durable`), a temporary `seated` says the statement holds --
+    not the object a value element is read from, nor a fresh result that
+    may hold a pointer to what no policy names -- or a call result no
+    operand names whose operands that can lend are each durable."""
+    policy = TempLend(ctx)
+    found = leaves(expr, policy, split=False)
+    if not found:
+        return False
+    for leaf in found:
+        built = next((step.node for step in leaf.path
+                      if step.kind is StepKind.COERCE
+                      and not coercion_reads_operand(step.node)), None)
+        if built is not None:
+            if built.coercion.operand_storage is OperandStorage.STATIC:
+                # A view of static storage (a `char`'s string).
+                continue
+            # The climb went through a coercion that builds a value of its
+            # own (a view copied into an owned `String`): that value is the
+            # storage, a temporary no seat names.
+            return False
+        if _leaf_is_durable(leaf):
+            continue
+        if leaf.kind is LeafKind.UNNAMED:
+            ops = call_operands(leaf.node)
+            if ops is None or not all(
+                    _storage_proven(op, ctx, lambda _leaf: False)
+                    for i, op in ops.indexed()
+                    if not 0 <= i < len(ops.fi.params)
+                    or slot_can_lend(ops.fi.params[i].type)):
+                return False
+            continue
+        t = ctx.get_expr_type(leaf.node)
+        if not (leaf_is_temporary(leaf)
+                and not _leaf_in_value_element(leaf, ctx)
+                and not (leaf.at_call and t is not None
+                         and may_hold_pointer(t))
+                and seated(leaf)):
+            return False
+    return True
+
+
 def temp_arg_kept_alive(fi: FunctionInfo, idx: int, arg: TpyExpr,
                         slot: TpyType | None, ctx: SemanticContext) -> bool:
     """Whether a temporary argument outlives the statement although the
@@ -864,7 +946,24 @@ def temp_arg_kept_alive(fi: FunctionInfo, idx: int, arg: TpyExpr,
     if (owning_element_slot(fi.params[idx].type, ctx.registry)
             and owning_arg(ctx, arg) is OwningArg.HANDED_OVER):
         return True
-    return frame_temp_arg_source(arg, slot, ctx) is not None
+    if frame_temp_arg_source(arg, slot, ctx) is not None:
+        return True
+    # A part of what the argument lends lives as that storage does
+    # (`_storage_proven`), each temporary of it one the hoist seats as it
+    # would the argument itself.
+    # The fresh object each operand the argument may be is part of: a
+    # select's arm is seated in its arm.
+    roots = [fresh_receiver_root(operand, ctx)
+             for operand in receiver_leaves(arg)]
+
+    def seated(leaf: Leaf) -> bool:
+        # What the lowering seats of it: a temporary the frame hoist takes
+        # as a call's operand, or the fresh object the argument is part of.
+        node = peel_coerce(leaf.node)
+        return (frame_temp_arg_source(node, slot, ctx) is not None
+                and (bool(leaf.calls) or any(node is r for r in roots)))
+
+    return _storage_proven(arg, ctx, seated)
 
 
 def _borrows_kept_roots(ctx: SemanticContext, arg: TpyExpr) -> bool:

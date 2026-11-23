@@ -44,13 +44,11 @@ __gen_gen_span gen_span(std::span<const int32_t> s) {
 //     print("more span", drain_span(gen_span(id_span([10, 20, 30]))))  # tpyc: ok
 void coerced() {
     std::string __tmp_1 = ::tpyapp::part_plan_reads_more::mks(2);
-    std::string_view __tmp_2 = ::tpyapp::part_plan_reads_more::id_view(__tmp_1);
-    auto __tmp_3 = ::tpyapp::part_plan_reads_more::gen_view(__tmp_2);
-    std::cout << "more coerced" << " " << ::tpyapp::part_plan_reads_more::drain_view(__tmp_3) << "\n" << ::tpy::check_signals;
-    std::array<int32_t, 3> __tmp_4 = std::array<int32_t, 3>{10, 20, 30};
-    std::span<const int32_t> __tmp_5 = ::tpyapp::part_plan_reads_more::id_span(::tpy::as_span(__tmp_4));
-    auto __tmp_6 = ::tpyapp::part_plan_reads_more::gen_span(__tmp_5);
-    std::cout << "more span" << " " << ::tpyapp::part_plan_reads_more::drain_span(__tmp_6) << "\n" << ::tpy::check_signals;
+    auto __tmp_2 = ::tpyapp::part_plan_reads_more::gen_view(::tpyapp::part_plan_reads_more::id_view(__tmp_1));
+    std::cout << "more coerced" << " " << ::tpyapp::part_plan_reads_more::drain_view(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::array<int32_t, 3> __tmp_3 = std::array<int32_t, 3>{10, 20, 30};
+    auto __tmp_4 = ::tpyapp::part_plan_reads_more::gen_span(::tpyapp::part_plan_reads_more::id_span(::tpy::as_span(__tmp_3)));
+    std::cout << "more span" << " " << ::tpyapp::part_plan_reads_more::drain_span(__tmp_4) << "\n" << ::tpy::check_signals;
 }
 
 // async def membership() -> int32:

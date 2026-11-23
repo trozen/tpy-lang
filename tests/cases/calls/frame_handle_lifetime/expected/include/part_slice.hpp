@@ -10,6 +10,10 @@
 
 namespace tpyapp::part_slice {
 
+struct Pad;
+struct CharCell;
+struct CharBox;
+
 inline constexpr std::string_view __name__ = "part_slice";
 
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
@@ -18,6 +22,12 @@ struct __coro_co_str;
 struct __coro_body;
 struct __gen_views;
 struct __gen_bviews;
+struct __gen_span_gen;
+struct __gen_each_pad;
+template <::tpystd::typing::Iterable<char> T_xs>
+struct __gen_chars;
+struct __gen_gen_fresh_slice;
+struct __gen_owned_of_view;
 
 // def make(n: int32) -> str:
 std::string make(int32_t n);
@@ -38,8 +48,98 @@ __gen_views views(std::string_view s);
 __gen_bviews bviews(::tpy::BytesView b);
 // def sync_head() -> None:
 void sync_head();
+// def span_gen(s: Span[int32]) -> Iterator[int32]:
+__gen_span_gen span_gen(std::span<int32_t> s);
+// def slice_of_param(xs: list[int32]) -> None:
+void slice_of_param(std::vector<int32_t>& xs);
+// def each_pad(p: Pad) -> Iterator[str]:
+__gen_each_pad each_pad(const Pad& p);
+// def method_steps() -> None:
+void method_steps();
+// def pass_view(s: StrView) -> StrView:
+std::string_view pass_view(std::string_view s);
+// def via_callable(fn: Callable[[StrView], StrView]) -> None:
+void via_callable(const std::function<std::string_view(std::string_view)>& fn);
+// def chars(xs: Iterable[char]) -> Iterator[char]:
+template <::tpystd::typing::Iterable<char> T_xs>
+__gen_chars<T_xs> chars(T_xs&& xs);
+// def gen_fresh_slice() -> Iterator[str]:
+__gen_gen_fresh_slice gen_fresh_slice();
+// def make_identity() -> Callable[[StrView], StrView]:
+std::function<std::string_view(std::string_view)> make_identity();
+// def view_of_string(s: String) -> StrView:
+std::string_view view_of_string(const ::tpy::String& s);
+// def owned_of_view() -> Iterator[str]:
+__gen_owned_of_view owned_of_view();
+// def callable_expression() -> None:
+void callable_expression();
+// def view_of_char(s: StrView) -> StrView:
+std::string_view view_of_char(std::string_view s);
+// def char_view() -> None:
+void char_view();
+// def select_of_fields(f: bool) -> None:
+void select_of_fields(bool f);
 // def main() -> None:
 void main();
+
+// class Pad:
+struct Pad {
+    // s: str
+    std::string s;
+
+    // def __init__(self, n: int32) -> None:
+    Pad() = default;
+    explicit Pad(int32_t n);
+
+    // def me(self) -> "Pad":
+    Pad& me();
+    static constexpr std::string_view __tpy_class_name__ = "part_slice.Pad";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Pad& obj) {
+    ::tpy::print_object_default(os, Pad::__tpy_class_name__, obj);
+    return os;
+}
+
+// class CharCell:
+struct CharCell {
+    // c: char
+    char c;
+
+    // def __init__(self, c: char) -> None:
+    CharCell() = default;
+    explicit CharCell(char c);
+    static constexpr std::string_view __tpy_class_name__ = "part_slice.CharCell";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const CharCell& obj) {
+    ::tpy::print_object_default(os, CharCell::__tpy_class_name__, obj);
+    return os;
+}
+
+// class CharBox:
+struct CharBox {
+    // cell: CharCell
+    CharCell cell;
+
+    // def __init__(self, c: char) -> None:
+    CharBox() = default;
+    explicit CharBox(char c);
+
+    // @property
+    // def inner(self) -> CharCell:
+    CharCell& inner();
+
+    // @property
+    // def inner(self) -> CharCell:
+    const CharCell& inner() const;
+    static constexpr std::string_view __tpy_class_name__ = "part_slice.CharBox";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const CharBox& obj) {
+    ::tpy::print_object_default(os, CharBox::__tpy_class_name__, obj);
+    return os;
+}
 
 // async def collect[T](it: Iterable[T]) -> str:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
@@ -163,18 +263,16 @@ struct __coro_body {
     std::string __await_lift_7;
     ::tpy::frame_slot<std::string> __head_arg_0;
     ::tpy::frame_slot<std::string> __head_arg_1;
-    ::tpy::frame_slot<std::decay_t<decltype((::tpy::str_strip(::tpy::str_slice(std::declval<std::string&>(), ::tpy::BasicSlice{1, std::nullopt}))))>> __head_arg_2;
-    ::tpy::frame_slot<::tpy::Bytes> __head_arg_3;
-    ::tpy::frame_slot<std::vector<int32_t>> __head_arg_4;
-    ::tpy::frame_slot<std::decay_t<decltype((::tpy::bytes_strip_view(::tpy::bytes_literal("  hello-bytes-literal  ", 23))))>> __head_arg_5;
+    ::tpy::frame_slot<::tpy::Bytes> __head_arg_2;
+    ::tpy::frame_slot<std::vector<int32_t>> __head_arg_3;
     std::optional<__coro_collect<char, ::tpy::await_arg_capture_t<decltype((::tpy::str_slice(std::declval<std::string&>(), ::tpy::BasicSlice{2, 12})))>>> __sub_0;
-    std::optional<__coro_collect<char, ::tpy::await_arg_capture_t<decltype((std::declval<std::decay_t<decltype((::tpy::str_strip(::tpy::str_slice(std::declval<std::string&>(), ::tpy::BasicSlice{1, std::nullopt}))))>&>()))>>> __sub_1;
+    std::optional<__coro_collect<char, ::tpy::await_arg_capture_t<decltype((::tpy::str_strip(::tpy::str_slice(std::declval<std::string&>(), ::tpy::BasicSlice{1, std::nullopt}))))>>> __sub_1;
     std::optional<__coro_collect<uint8_t, ::tpy::await_arg_capture_t<decltype((::tpy::bytes_slice(std::declval<::tpy::Bytes&>(), ::tpy::BasicSlice{2, 6})))>>> __sub_2;
     std::optional<__coro_collect<int32_t, ::tpy::await_arg_capture_t<decltype((::tpy::list_slice(std::declval<std::vector<int32_t>&>(), ::tpy::BasicSlice{1, 3})))>>> __sub_3;
     std::optional<__coro_co_str> __sub_4;
     std::optional<__coro_collect<char, ::tpy::await_arg_capture_t<decltype((::tpy::str_slice("hello world", ::tpy::BasicSlice{2, 7})))>>> __sub_5;
     std::optional<__coro_collect<uint8_t, ::tpy::await_arg_capture_t<decltype((::tpy::bytes_slice(::tpy::bytes_literal("hello world", 11), ::tpy::BasicSlice{2, 7})))>>> __sub_6;
-    std::optional<__coro_collect<uint8_t, ::tpy::await_arg_capture_t<decltype((std::declval<std::decay_t<decltype((::tpy::bytes_strip_view(::tpy::bytes_literal("  hello-bytes-literal  ", 23))))>&>()))>>> __sub_7;
+    std::optional<__coro_collect<uint8_t, ::tpy::await_arg_capture_t<decltype((::tpy::bytes_strip_view(::tpy::bytes_literal("  hello-bytes-literal  ", 23))))>>> __sub_7;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -248,5 +346,203 @@ struct __gen_bviews : public ::tpy::next_iter_mixin<__gen_bviews, ::tpy::BytesVi
     }
 };
 
+// def span_gen(s: Span[int32]) -> Iterator[int32]:
+struct __gen_span_gen : public ::tpy::next_iter_mixin<__gen_span_gen, int32_t> {
+    ::tpy::frame_state __state;
+    std::span<int32_t> s;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_span_gen(std::span<int32_t> s_)
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_span_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_span_gen&) {
+        return os << "<generator span_gen>";
+    }
+};
+
+// def each_pad(p: Pad) -> Iterator[str]:
+struct __gen_each_pad : public ::tpy::next_iter_mixin<__gen_each_pad, std::string> {
+    ::tpy::frame_state __state;
+    const Pad& p;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_each_pad(const Pad& p)
+        : __state(S_INITIAL),
+          p(p) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_each_pad& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_each_pad&) {
+        return os << "<generator each_pad>";
+    }
+};
+
+// def chars(xs: Iterable[char]) -> Iterator[char]:
+template <::tpystd::typing::Iterable<char> T_xs>
+struct __gen_chars : public ::tpy::next_iter_mixin<__gen_chars<T_xs>, char> {
+    ::tpy::frame_state __state;
+    T_xs xs;
+    char x;
+    using __for_src_0_t = decltype((xs));
+    using __for_itr_0_t = ::tpy::iter_type_t<__for_src_0_t>;
+    ::tpy::frame_loop_slot<__for_itr_0_t> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_itr_0_t>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_chars(T_xs&& xs_)
+        : __state(S_INITIAL),
+          xs(std::forward<T_xs>(xs_)) {}
+
+    std::expected<char, ::tpy::StopIteration> __next__();
+    __gen_chars& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_chars<T_xs>&) {
+        return os << "<generator chars>";
+    }
+};
+// def chars(xs: Iterable[char]) -> Iterator[char]:
+//     for x in xs:
+//         yield x                                   # -> S_RESUME_0
+template <::tpystd::typing::Iterable<char> T_xs>
+std::expected<char, ::tpy::StopIteration> __gen_chars<T_xs>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        ::tpy::resumable_iter_init(__for_itr_0, xs);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield x
+    case S_JOIN_0: {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, xs));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = ::tpy::unwrap_ref(*(*__for_r_0));
+        __state = S_RESUME_0;
+        return x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def chars(xs: Iterable[char]) -> Iterator[char]:
+template <::tpystd::typing::Iterable<char> T_xs>
+__gen_chars<T_xs> chars(T_xs&& xs) {
+    return __gen_chars<T_xs>(std::forward<T_xs>(xs));
+}
+
+// def gen_fresh_slice() -> Iterator[str]:
+struct __gen_gen_fresh_slice : public ::tpy::next_iter_mixin<__gen_gen_fresh_slice, std::string> {
+    ::tpy::frame_state __state;
+    char c;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::part_slice::chars(std::declval<std::decay_t<decltype((::tpy::str_slice(std::declval<std::string&>(), ::tpy::BasicSlice{2, 8})))>&>())))>;
+    ::tpy::frame_slot<std::string> __head_arg_0;
+    ::tpy::frame_slot<std::decay_t<decltype((::tpy::str_slice(std::declval<std::string&>(), ::tpy::BasicSlice{2, 8})))>> __head_arg_1;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_fresh_slice() : __state(S_INITIAL) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_gen_fresh_slice& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_fresh_slice&) {
+        return os << "<generator gen_fresh_slice>";
+    }
+};
+
+// def owned_of_view() -> Iterator[str]:
+struct __gen_owned_of_view : public ::tpy::next_iter_mixin<__gen_owned_of_view, std::string> {
+    ::tpy::frame_state __state;
+    char c;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::part_slice::view_of_string(std::declval<::tpy::String&>())))>;
+    ::tpy::frame_slot<Pad> __head_arg_0;
+    ::tpy::frame_slot<::tpy::String> __head_arg_1;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_owned_of_view() : __state(S_INITIAL) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_owned_of_view& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_owned_of_view&) {
+        return os << "<generator owned_of_view>";
+    }
+};
+
+
+// def __init__(self, n: int32) -> None:
+//     self.s = "  pad" + str(n) * 20 + "  "
+inline Pad::Pad(int32_t n) : s((::tpy::str_concat((::tpy::str_concat("  pad", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 20)))), "  "))) {}
+
+// def me(self) -> "Pad":
+//     return self
+inline Pad& Pad::me() {
+    return (*this);
+}
+
+// def __init__(self, c: char) -> None:
+//     self.c = c
+inline CharCell::CharCell(char c) : c(c) {}
+
+// def __init__(self, c: char) -> None:
+//     self.cell = CharCell(c)
+inline CharBox::CharBox(char c) : cell(CharCell(c)) {}
+
+// @property
+// def inner(self) -> CharCell:
+//     return self.cell
+inline CharCell& CharBox::inner() {
+    return this->cell;
+}
+
+// @property
+// def inner(self) -> CharCell:
+//     return self.cell
+inline const CharCell& CharBox::inner() const {
+    return this->cell;
+}
 void __tpy_init();
 } // namespace tpyapp::part_slice
