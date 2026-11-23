@@ -1,0 +1,28 @@
+free: 5
+free: bound
+method: 4
+generator: 7
+twin free: 4
+twin method: 5 5
+twin str arg: abc 4
+twin native static: 7
+d3 ptr: 6
+d3 string: abc
+d3 method ptr: 8
+d3 method string: xyz
+frame gen: [1, 9]
+frame static: [2, 8]
+frame async: 7
+frame generic gen: 1 ababab!
+frame generic task: 2
+mem: 9 8 7
+generic numbers: 20 9
+generic frame: [1, 9]
+generic temp: bound
+lookup temp: bound
+reach subclass: 4
+reach opaque: 42
+reach lookups: 6
+reach optional tuple: 7
+reach tuple beside number: 9 3
+reach base-part call: 2 3 4

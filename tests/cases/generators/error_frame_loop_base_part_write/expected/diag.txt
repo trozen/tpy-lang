@@ -1,0 +1,1 @@
+main.py:27: error: cannot keep 'it' open across passes of this loop: the loop calls 'grow', which may write 'self' while 'it' from the previous pass still borrows it; close it with 'del it' before the pass ends, or iterate it inside a helper function

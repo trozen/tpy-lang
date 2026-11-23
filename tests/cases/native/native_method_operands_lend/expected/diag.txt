@@ -1,0 +1,15 @@
+part_frames.py:70: warning: Mutation of 't' while borrowed ('+=' may invalidate references)
+part_generic.py:78: warning: Result borrows from temporary argument 'n'; the temporary is destroyed at end-of-statement
+part_generic.py:81: warning: Result borrows from temporary argument 'r'; the temporary is destroyed at end-of-statement
+part_lend_reach.py:89: warning: Mutation of 'self' while borrowed (field assignment may invalidate references)
+part_lend_reach.py:95: warning: Mutation of 'self' while borrowed (field assignment may invalidate references)
+part_lend_reach.py:100: warning: Mutation of 'self' while borrowed (field assignment may invalidate references)
+part_lend_reach.py:56: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+part_lend_reach.py:106: warning: Result borrows from temporary argument 'n'; the temporary is destroyed at end-of-statement
+part_lend_reach.py:108: warning: Result borrows from temporary argument 'h'; the temporary is destroyed at end-of-statement
+part_lend_reach.py:111: warning: Result borrows from temporary argument 'x'; the temporary is destroyed at end-of-statement
+part_lend_reach.py:118: warning: Result borrows from temporary argument 'a'; the temporary is destroyed at end-of-statement
+part_lend_reach.py:127: warning: Result borrows from temporary argument 'k'; the temporary is destroyed at end-of-statement
+part_lend_reach.py:134: warning: Result borrows from temporary argument 'b'; the temporary is destroyed at end-of-statement
+part_twin.py:58: warning: Passing borrowed container 'n' to non-readonly parameter 'n' (function may invalidate references)
+main.py:38: warning: Result borrows from temporary argument 'other'; the temporary is destroyed at end-of-statement

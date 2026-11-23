@@ -4,8 +4,11 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "part_own_elem.hpp"
 
 namespace tpyapp::main {
+
+inline auto& own_elem_main = ::tpyapp::part_own_elem::main;
 
 struct Box;
 

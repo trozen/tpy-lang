@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Callable
 
-from ..typesys import (FunctionInfo, MethodSignature, NominalType,
+from ..typesys import (ElementEffect, FunctionInfo, MethodSignature, NominalType,
                        OptionalType, ParamInfo, PendingContainerType,
                        PendingListType, RecordInfo, TpyType, TypeParamRef,
                        UnionType, NoneType, contains_type_param,
@@ -47,18 +47,6 @@ class Role(Enum):
     SOURCE = auto()
 
 
-class Effect(Enum):
-    # The arguments are values the container holds from then on: each is
-    # a store into its cells (an inserting key widens the key).
-    INSERT = auto()
-    # The arguments are only compared with what the container holds (a
-    # lookup key, a `get` / `pop` default handed back): each must fit.
-    LOOKUP = auto()
-
-
-_EFFECTS = {"insert": Effect.INSERT, "lookup": Effect.LOOKUP}
-
-
 @dataclass(frozen=True)
 class ContainerCall:
     """A method of a container stub as a call on a container literal sees
@@ -76,7 +64,7 @@ class ContainerCall:
     # default) rather than one the method only compares (their key).
     returned: tuple[bool, ...]
     builds: bool
-    effect: Effect | None
+    effect: ElementEffect | None
     result_follows: bool
     # The result mentions no part at all.
     result_blind: bool
@@ -97,7 +85,7 @@ class ContainerCall:
     def compares(self, i: int) -> bool:
         """Whether argument `i` is a value a lookup only compares with what
         the container holds, rather than one it hands back."""
-        return self.effect is Effect.LOOKUP and not self.returned[i]
+        return self.effect is ElementEffect.LOOKUP and not self.returned[i]
 
     @property
     def names_parts(self) -> bool:
@@ -109,7 +97,7 @@ class ContainerCall:
     def stores_elements(self) -> bool:
         """The method's one argument is entries the container then holds
         (`extend`, `update`, `|=`): each is a store into it."""
-        return (self.effect is Effect.INSERT and not self.builds
+        return (self.effect is ElementEffect.INSERT and not self.builds
                 and self.roles == ((Role.SOURCE, ""),))
 
     @property
@@ -217,7 +205,7 @@ def _classify(fn: FunctionInfo, at: 'list[int | None]',
             roles.append(None)
             returned.append(False)
             builds = builds or contains_type_param(p.type, params)
-    effect = _EFFECTS.get(fn.native_element_effect or "")
+    effect = fn.native_element_effect
     protocol = any(r is not None and r[0] is Role.SOURCE
                    and is_protocol_type(bare_slot(p.type))
                    for r, p in zip(roles, fn.params))

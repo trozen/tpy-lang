@@ -46,6 +46,7 @@ from ...value_category import (
     const_indirect_local, const_storage_source, unpack_source_const_slots,
     is_rvalue_source, call_value_optional,
     declared_call_const, for_source_is_rvalue, for_hands_source_over, peel_coerce,
+    result_access_follows_receiver,
     call_returns_cpp_ref, property_access_returns_cpp_ref,
     is_value_emit_rvalue, head_kept_argument,
 )
@@ -1701,6 +1702,12 @@ class FrameBuilder:
             # borrow-declared call's const-ness is its lenders', which sema
             # already folded into the result type -- its receiver may not lend.
             if declared_call_const(self.analyzer, src) is not None:
+                return
+            # A method result that does not take its receiver's access is
+            # as const as its declared type, whatever its receiver is.
+            if (isinstance(src, TpyMethodCall)
+                    and not result_access_follows_receiver(
+                        src.resolved_function_info)):
                 return
             record_const_source_edge(state, target, root_name(src))
 

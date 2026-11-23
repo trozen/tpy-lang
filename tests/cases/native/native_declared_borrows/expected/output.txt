@@ -1,6 +1,6 @@
 declared 10 2
 element 30
-undeclared 1 2 20
+undeclared 20 2 20
 method_arg 1 50
 method_ro_receiver 1 60
 method_ro_gen 1 60

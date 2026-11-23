@@ -38,6 +38,13 @@ def popped() -> None:
     if o is not None:
         o.x += 1
         print("pop", o.x, len(d), "c" in d)
+    # pop(k, None) with the literal None default: a miss hands back None.
+    m = d.pop("zz", None)  # tpyc: ok
+    print("pop default", m is None, len(d))
+    # a tuple-literal default holding a list builds into the owned default
+    t: dict[str, tuple[list[str], int32]] = {}
+    a, b = t.pop("z", (["d"], 0))  # tpyc: ok
+    print("pop tuple default", a, b)
 
 
 main()

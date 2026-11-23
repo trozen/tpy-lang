@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Callable, NamedTuple, Sequence
 
 from .. import qnames
 from ..typesys import (
+    ElementEffect,
     TpyType, NominalType, OwnType, OptionalType, PendingListType, PendingSetType,
     SuperType, TypeParamRef, FunctionInfo, protocol_param_infos, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly,
@@ -45,14 +46,16 @@ from .calls import (
     resolve_inferred_type_arg,
 )
 from .bound_check import validate_type_param_bounds
-from .context import (CallOperands, ConsumeCause, CompTarget, GenericMethodRoute,
+from .context import (CallOperands, HandleConsumer, ConsumeCause, CompTarget, GenericMethodRoute,
                       PENDING_CONTAINER_TYPES)
 from .overloads import CallShape, operand_param_type
-from .list_elem import (ContainerCall, Effect, Role, container_call,
+from .list_elem import (ContainerCall, Role, container_call,
                         container_calls, container_overloads)
 from .pending_num import (ContainerCells, Entry, root_of, with_container)
 from .type_ops import InferenceBindings, settle_inferred
+from .iter_loans import iterated_storage
 from .receiver_calls import (call_mutates_receiver, check_receiver_call_loans,
+                             consumer_decides,
                              credit_receiver_mutation, implicit_readonly_result_hint,
                              receiver_is_readonly, record_protocol_arg_calls)
 from ..symbol_binding import SymbolBinding, SymbolKind
@@ -442,7 +445,7 @@ class MethodAnalyzer:
                 sources.append((len(pre), arg, t, cc.source_is_protocol))
                 pre.append(None)
         stored = None
-        if cc.effect is Effect.INSERT:
+        if cc.effect is ElementEffect.INSERT:
             if all(step in parts for step in root.STEPS):
                 stored, held = pend.store_value(
                     obj_type, Entry(tuple(parts[s] for s in root.STEPS)),
@@ -463,7 +466,7 @@ class MethodAnalyzer:
                 continue
             # Whatever the store left open is decided as any argument is.
             t = self.expr._pending_gate(arg, t)
-            if cc.effect is not Effect.INSERT or (lc is None
+            if cc.effect is not ElementEffect.INSERT or (lc is None
                                                   and stored is None):
                 # A source an empty container's cells did not take (it holds
                 # no number) is checked as itself.
@@ -1053,14 +1056,27 @@ class MethodAnalyzer:
                 # Track non-readonly method calls on for-each loop variables
                 # and string view sources (receiver mutation invalidates views)
                 info = expr.resolved_function_info
-                if (info is not None and call_mutates_receiver(info)
+                consumer = self.ctx.handle_consumer(expr)
+                if (info is not None
+                        and call_mutates_receiver(
+                            info, handle_climbs=self._iterated_by_loop(
+                                expr, consumer))
                         and not expr.is_callable_field):
                     # A select receiver is each operand it may pick, and
                     # each is credited exactly as a single receiver would be.
                     # The self-rooted call edge is `_record_mutation_call_edges`'s.
-                    credit_receiver_mutation(self.ctx, expr.obj, obj_type,
-                                             expr.method, edges_recorded=True,
-                                             eager=receiver_lends_handle(info))
+                    obj = expr.obj
+
+                    def credit() -> None:
+                        credit_receiver_mutation(
+                            self.ctx, obj, obj_type, expr.method,
+                            edges_recorded=True,
+                            eager=receiver_lends_handle(info))
+                    if consumer_decides(consumer, info):
+                        assert consumer is not None
+                        consumer.credit(credit)
+                    else:
+                        credit()
                 return result
 
             deref_target = self.expr.get_deref_target_type(
@@ -1076,6 +1092,16 @@ class MethodAnalyzer:
             deref_depth += 1
 
         raise self.ctx.error(f"Cannot call method '{expr.method}' on type {original_type}", expr)
+
+    def _iterated_by_loop(self, call: TpyMethodCall,
+                          consumer: 'HandleConsumer | None') -> bool:
+        """Whether the handle `call` lends is reached only through a loop
+        variable whose writes climb to the call's receiver: its consumer is
+        a `for` or a comprehension clause, so no name holds the handle, and
+        the iteration's loans reach the receiver through the call
+        (`call_mutates_receiver(handle_climbs=...)`)."""
+        return (consumer is not None and consumer.loop
+                and bool(iterated_storage(self.ctx, call).loans))
 
     def _validate_consuming_call(self, expr: TpyMethodCall) -> None:
         """Validate a consuming method call (self: Own[Self]).
@@ -1848,7 +1874,7 @@ class MethodAnalyzer:
         # The facts read the declaration's, which the minimal stamp lacks.
         self.calls.commit_facts(
             expr, method,
-            CallOperands(method, None, ops.args) if ops is not None else None)
+            CallOperands(method, ops.obj, ops.args) if ops is not None else None)
         return return_type
 
     def _pending_member_view(self, info: 'PendingGenericInstanceInfo',

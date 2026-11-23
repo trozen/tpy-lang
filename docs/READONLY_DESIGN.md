@@ -540,21 +540,28 @@ existing loan machinery (a reference), never by the binding site:
 
 - **A handle's referent** (`Ptr[auto_readonly[T]]`, `Span[auto_readonly[T]]`, an `Rc`'s payload):
   every copy of the handle reaches it and nothing tracks the copies, so the CALL demotes its
-  receiver (`receiver_calls.call_mutates_receiver`), whatever is done with the result -- a
-  read-only use keeps the receiver mutable. A `for` statement's `__iter__` is the exception the
-  loop owns: its handle is reached only through the loop variable, whose writes climb to the
-  iterable (`call_mutates_receiver(handle_climbs=...)`, keyed on the loop variable's iteration
-  loans, `iter_loans._loop_var_climbs`; a comprehension or an `in` test takes no exemption).
+  receiver (`receiver_calls.call_mutates_receiver`) -- unless its CONSUMER, the expression the
+  call is a direct operand of, decides otherwise once it resolves (`context.HandleConsumer`,
+  `receiver_calls.consumer_decides`): a readonly argument slot -- what the SIGNATURE says: a
+  `readonly[...]` parameter, a `Ptr[readonly[T]]` or a view over readonly elements, or a
+  non-value parameter of a callee DECLARED `@readonly` (never an inferred one; `@pure` is
+  trusted, not enforced, so it does not count) -- and the haystack of `in` through a readonly
+  `__contains__` take no credit; any other consumer, and a call with none, credits as before.
+  An overloaded or generic call's arguments, analyzed before the winner, wait for it
+  (`awaiting_consumers`). A `for` statement's or a comprehension's iterable is the same
+  mechanism's loop arm: its handle is reached only through the loop variable, whose writes
+  climb to the iterable (`call_mutates_receiver(handle_climbs=...)`, keyed on the loop
+  variable's iteration loans, `iter_loans._loop_var_climbs`).
   A write made through a callee the loop variable is passed to reaches the iterable through
-  the call edge's element step, and one inside a nested def through the same climb; a
-  comprehension takes no exemption.
+  the call edge's element step, and one inside a nested def through the same climb.
   Both the call-site demotion and the loop exemption are interim approximations of one rule:
   the receiver is mutated exactly when a write reaches it through the handle. The intended
   end state stays in sema (MIR runs after inference and cannot feed it back): (1) close the
   remaining climb gaps so the loop exemption is exact; (2) generalise the loop variable's
   trace to any local holding a handle from a declared `@auto_readonly` call, recorded by the
   order-free whole-function pre-pass, with an ALLOW-LIST of harmless uses (a value-field read,
-  `is None` / comparison, a `readonly[...]` parameter, a declared or implicit `@readonly` call)
+  `is None` / comparison, a `readonly[...]` parameter, a declared or implicit `@readonly` call;
+  partly landed: a handle passed STRAIGHT into a readonly slot, without a local, is exempt)
   -- every other use (a write, a non-readonly call, passing, storing, capturing, returning,
   yielding) demotes as today, so the rule stays sound and only gains precision; read-only uses
   of `Ptr`-returning accessors and of `Rc.clone` / `Weak.upgrade` then keep the receiver const.

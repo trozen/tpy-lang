@@ -29,7 +29,7 @@ def _adopt_skeleton(skeleton, full):
 
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..emitted_members import clone_families
-from ..typesys import (
+from ..typesys import (ElementEffect,
     ReadonlyCause, READONLY_RESULT_CAUSE_RANK, strongest_readonly_cause, readonly_result, readonly_protects, RESULT_ROOT,
     mark_overload_group, name_overload_variants,
     unique_cpp_name,
@@ -71,7 +71,7 @@ from ..parse import (
     TpyNoneLiteral, TpyStrLiteral, TpyRaise, TpyTry, collect_name_refs,
     TpyForEach, TpyNestedDef, TpyWith, TpyUnaryOp,
 )
-from .call_lends import NO_CALLS
+from .call_lends import NO_CALLS, lends_by_signature, stub_result_lenders
 from .storage_walk import holder_root
 from ..parse.nodes import (COPY_HOOK, INIT_METHOD, DefaultReferent,
                           NON_CONSTANT_DEFAULT_MSG, OverloadForm,
@@ -92,7 +92,7 @@ from ..type_def_registry import (
 from ..diagnostics import SemanticError
 from .method_expansion import (copy_overload_implementation,
                                expand_methods_for_record)
-from .type_ops import VALUE_TYPE_PROTOCOL, int_type_param_as_type_error, signature_may_return_borrow
+from .type_ops import VALUE_TYPE_PROTOCOL, int_type_param_as_type_error
 from ..value_category import (frame_param_lends, iterator_source_callee,
                               param_type_can_lend)
 from .macros import run_macro_phase_for_record
@@ -2501,8 +2501,7 @@ class TypeRegistrar:
             if compiler is not None and not method.is_stub:
                 compiler.method_bodies.setdefault(
                     (owning_type_qname, method.name), []).append(method)
-            contract = (None if method.is_generator
-                        else self._resolve_result_contract(method, func_info))
+            contract = self._resolve_result_contract(method, func_info)
             if method.is_generator:
                 # The frame also stores the receiver by reference, but -1 is
                 # not stamped yet; the receiver borrow is tracked in BUGS.md.
@@ -2512,23 +2511,15 @@ class TypeRegistrar:
             elif contract is not None and contract.declares_borrow:
                 # What the stub declares replaces the signature inference.
                 self._stamp_declared_borrow(func_info, contract)
-            elif ((func_info.native_name is not None
-                       or func_info.is_native
-                       or func_info.cpp_template is not None)
-                    and method.is_stub
-                    and not method.is_consuming
-                    and not method.is_staticmethod
-                    and signature_may_return_borrow(func_info)):
-                # Body-less native methods get no body-derived borrow facts,
-                # so derive the receiver borrow from the signature: a native
-                # accessor returning a non-value, non-Own type hands out a
-                # borrow of (or view into) its receiver (dict views,
-                # __getitem__, get, setdefault), whose access is the
-                # receiver's: the C++ overload set picks the const half for a
-                # const receiver. Readonly inference is not affected --
-                # builtin stubs declare readonly-ness explicitly.
-                func_info.return_borrows_from = frozenset({-1})
-                func_info.following_components = frozenset({RESULT_ROOT})
+            elif lends_by_signature(func_info):
+                # Body-less stubs get no body-derived borrow facts: the
+                # lifetime checks read what their signature lets the result
+                # point into (`stub_result_lenders`, open type parameters
+                # holding anything until a call instantiates them). Its
+                # ACCESS is the signature's, as for the TPy twin: an accessor
+                # whose result follows the receiver spells `@auto_readonly`.
+                func_info.return_borrows_from = stub_result_lenders(
+                    func_info, self.ctx.registry)
             # Propagate qualified name back to AST so codegen can use it directly.
             # ReturnException validation is deferred to validate_method_error_returns()
             # because the ReturnException marker on exception records is set during
@@ -4616,6 +4607,10 @@ class TypeRegistrar:
         contract = self._resolve_result_contract(func, info)
         if contract is not None and contract.declares_borrow:
             self._stamp_declared_borrow(info, contract)
+        elif lends_by_signature(info):
+            # As for a method stub (`stub_result_lenders`).
+            info.return_borrows_from = stub_result_lenders(
+                info, self.ctx.registry)
         else:
             self._stamp_iterator_retention(func, info)
         if contract is not None and contract.adopts:
@@ -4705,7 +4700,7 @@ class TypeRegistrar:
                         f"'{ptype}' holds no storage the result could take "
                         f"over", func.loc)
             elif rel != "none" and not (
-                    param_type_can_lend(ptype)
+                    param_type_can_lend(ptype, pointers=True)
                     or rel == "borrow" and lends_owned_leaf(ptype)):
                 raise SemanticError(
                     f"result= names '{name}', whose type '{ptype}' holds no "
@@ -4737,26 +4732,25 @@ class TypeRegistrar:
     @staticmethod
     def _declared_arg_effects(
             method: TpyFunction, params: 'list[ParamInfo]',
-    ) -> tuple[str | None, str | None]:
+    ) -> tuple[bool, ElementEffect | None]:
         """`FunctionInfo.native_mutates` / `native_element_effect` from a
         method binding's `args=` map: "writes" on `self` replaces elements
-        in place ("elements"); "compared" / "stored" name the arguments the
-        method compares with what it holds ("lookup") or holds from then on
-        ("insert")."""
+        in place; "compared" / "stored" name the arguments the method
+        compares with what it holds or holds from then on."""
         if method.declared_args is None:
-            return None, None
+            return False, None
         names = {p.name for p in params}
-        mutates: str | None = None
-        effect: str | None = None
+        mutates = False
+        effect: ElementEffect | None = None
         for name, eff in method.declared_args:
             if name != "self" and name not in names:
                 raise SemanticError(
                     f"args= names '{name}', which is not a parameter of "
                     f"'{method.name}'", method.loc)
             if eff == "writes":
-                mutates = "elements"
+                mutates = True
             else:
-                effect = "lookup" if eff == "compared" else "insert"
+                effect = ElementEffect(eff)
         return mutates, effect
 
     @staticmethod

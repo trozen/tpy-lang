@@ -164,7 +164,7 @@ def test_result_consumers(
 @pytest.mark.parametrize("native,method,constructor,expected", [
     (False, False, False, True),
     (False, True, False, True),
-    (True, False, False, False),
+    (True, False, False, True),
     (True, True, False, True),
     (False, False, True, False),
     (True, True, True, False),
@@ -175,7 +175,7 @@ def test_callee_metadata_controls_call_reference(
     fi = FunctionInfo(name="get", params=[], return_type=CELL,
                       linkage=linkage, is_method=method,
                       is_constructor=constructor)
-    # The free-native exception must not swallow native record methods.
+    # A native binding's result form is its signature's, as a TPy twin's.
     assert call_returns_cpp_ref(cast(ValueCategoryAnalyzer, None), fi) is expected
 
 
@@ -265,7 +265,7 @@ def _own_element_instance() -> FunctionInfo:
                               is_constructor=True), False, id="ctor"),
     pytest.param(FunctionInfo(name="get", params=[], return_type=CELL,
                               linkage=FunctionLinkage.NATIVE),
-                 False, id="undeclared-free-native"),
+                 True, id="undeclared-free-native"),
 ])
 def test_sync_call_convention_rows(fi: FunctionInfo, expected: bool) -> None:
     assert call_returns_cpp_ref(cast(ValueCategoryAnalyzer, None), fi) is expected

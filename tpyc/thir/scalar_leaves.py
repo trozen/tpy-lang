@@ -8,6 +8,7 @@ from ..type_def_registry import (
     NativeMembers, float_traits_of, int_traits_of, is_borrowing_view_type, type_def_of, zero_value_of,
 )
 from ..typesys import (
+    readonly_elements,
     Loan, NominalType, OptionalType, OwnType, ReadonlyType, RecordInfo, Representation, TpyType, TupleType,
     TypeParamRef, TypeRegistry, UnionType, is_void_like_type,
     is_inert_leaf, loan_class, is_owned_leaf, is_primitive_owned_leaf, record_owner, unwrap_readonly, unwrap_ref_type,
@@ -129,12 +130,6 @@ def holds_elements(typ: TpyType) -> bool:
 
 def _element_arguments(typ: NominalType) -> tuple[TpyType, ...]:
     return tuple(unwrap_readonly(a) for a in typ.type_args if isinstance(a, TpyType))
-
-
-def readonly_elements(typ: NominalType) -> bool:
-    """A view whose element argument is readonly (`Span[readonly[T]]`):
-    no write goes through it."""
-    return any(isinstance(a, ReadonlyType) for a in typ.type_args)
 
 
 def _native_members(typ: object) -> NativeMembers | None:

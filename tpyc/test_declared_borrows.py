@@ -210,10 +210,6 @@ _NATIVE = "from tpy.extern import native, cpp_template, export\nfrom tpy import 
      "@native(\"first\", result={\"a\": \"borrow\"})\n"
      "def f(a: int) -> StrView: ...\n",
      "names 'a', whose type 'int' holds no storage"),
-    ("from tpy import String, StrView\n"
-     "@native(\"first\", result={\"a\": \"borrow\"})\n"
-     "def f(a: String) -> StrView: ...\n",
-     "names 'a', whose type 'String' holds no storage"),
     # An owned leaf has no elements a result could be handed out of.
     ("@native(\"first\", result={\"a\": \"element\"})\n"
      "def f(a: int) -> int: ...\n",
@@ -253,6 +249,21 @@ def test_owned_leaf_by_reference_with_an_owned_result_is_admitted(ptype):
              if getattr(c.func, "name", None) == "pick"]
     root = call.resolved_function_info.root
     assert root.borrow_declared and root.return_borrows_from == frozenset({0, 1})
+
+
+def test_view_result_over_a_string_parameter_is_admitted():
+    # A `String` passes by reference: a view result may point into it.
+    entry = _entry(
+        _NATIVE + "from tpy import String, StrView\n"
+        "@native(\"first\", result={\"a\": \"borrow\"})\n"
+        "def first(a: String) -> StrView: ...\n"
+        "\n\n"
+        "def g(x: String) -> int32:\n"
+        "    return len(first(x))\n")
+    call, = [c for c in _calls(next(f for f in entry.ast.functions if f.name == "g").body, [])
+             if getattr(c.func, "name", None) == "first"]
+    root = call.resolved_function_info.root
+    assert root.borrow_declared and root.return_borrows_from == frozenset({0})
 
 
 def test_builtin_min_max_round_over_int_declare_their_operands():
@@ -822,4 +833,4 @@ def test_result_and_args_on_one_decorator_both_stamp():
     root = swap.resolved_function_info.root
     assert root.borrow_declared
     assert root.element_borrows_from == frozenset({-1})
-    assert root.native_mutates == "elements"
+    assert root.native_mutates

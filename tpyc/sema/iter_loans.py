@@ -519,7 +519,7 @@ def _callee_provenance(ctx: SemanticContext, call: TpyExpr,
                     return unnamed
             # Only a nested lending call has a yield structure of its own; a
             # named operand's roots are already `sources`, deep chains included.
-            lend = callee_lend_fact(op.arg)
+            lend = callee_lend_fact(op.arg, ctx.registry)
             if lend.kind is CalleeFact.UNRESOLVED or lend.fresh:
                 return op.sources
             return iteration_elem_provenance(ctx, op.arg)
@@ -1267,8 +1267,8 @@ def iterator_advanced_twice(ctx: 'SemanticContext', exprs: 'list[TpyExpr]'
     statement, not a consumer advancing the iterator through a capture or a
     global. A COPY result holds no reference, a BORROW is a container's
     element, and a value-type element (`next(it, 0)`) is not
-    borrow-declared, so none of them counts. Neither does an `element_of=`
-    operand that is a CONTAINER the callee leaves alone -- a `@readonly`
+    borrow-declared, so none of them counts. Neither does a `result=`
+    "element" operand that is a CONTAINER the callee leaves alone -- a `@readonly`
     stub's receiver, a `readonly[...]` parameter (`d.get(k, P(0))`): its element is not a step, and a second call leaves it in
     place. A callee that mutates the container (`b.grow_or(P(0))`) may move
     the first call's element, so it counts like an advance."""

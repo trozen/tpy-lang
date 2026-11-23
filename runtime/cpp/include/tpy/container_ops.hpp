@@ -14,6 +14,7 @@
 #include <format>
 #include <functional>
 #include <initializer_list>
+#include <iterator>
 #include <ranges>
 #include <span>
 #include <string_view>
@@ -490,6 +491,28 @@ std::vector<T> list_concat(const std::vector<T>& a, const std::vector<T>& b) {
     result.insert(result.end(), a.begin(), a.end());
     result.insert(result.end(), b.begin(), b.end());
     return result;
+}
+
+// A fresh operand's buffer is reused and its elements moved, not copied.
+// The operands are distinct objects (an rvalue aliases nothing the caller
+// still names), so inserting one into the other is never a self-insert.
+template<typename T>
+std::vector<T> list_concat(std::vector<T>&& a, const std::vector<T>& b) {
+    a.insert(a.end(), b.begin(), b.end());
+    return std::move(a);
+}
+
+template<typename T>
+std::vector<T> list_concat(const std::vector<T>& a, std::vector<T>&& b) {
+    b.insert(b.begin(), a.begin(), a.end());
+    return std::move(b);
+}
+
+template<typename T>
+std::vector<T> list_concat(std::vector<T>&& a, std::vector<T>&& b) {
+    a.insert(a.end(), std::make_move_iterator(b.begin()),
+             std::make_move_iterator(b.end()));
+    return std::move(a);
 }
 
 /**

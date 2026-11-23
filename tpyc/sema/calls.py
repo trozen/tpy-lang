@@ -16,7 +16,8 @@ from ..typesys import (
     contains_reference_type, lands_in_indirection, make_readonly,
     substitute_type_params_structural,
     substitute_cpp_ret, bound_as_spelled,
-    declares_no_writes, param_may_be_written, is_dyn_protocol,
+    declares_no_writes, param_may_be_written, readonly_elements,
+    is_dyn_protocol,
     default_emittable_at,
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, PendingNumType,
     is_polymorphic_class_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
@@ -102,7 +103,7 @@ from .storage_walk import (Ask, MarkRequest, StorageKey, Use, mark_roots,
                            storage_roots)
 from .dead_arms import (Relation, class_relation, queue_disjoint_check,
                         truthy_operands)
-from .receiver_calls import (call_mutates_receiver,
+from .receiver_calls import (call_mutates_receiver, consumer_decides,
                              credit_implicit_receiver_call,
                              record_receiver_edges,
                              record_truth_calls)
@@ -701,6 +702,17 @@ _MARKER_NOUNS = {
     qnames.VALUE_TYPE: "a value type",
     qnames.REFERENCE_TYPE: "a reference type",
 }
+
+
+def _param_cannot_write_caller(ptype: TpyType) -> bool:
+    """Whether an argument at a parameter of this type is out of reach of
+    the callee's writes: a value type that is no borrowing view (a `Span`
+    writes through), holds no mutable borrow and names no type parameter
+    (an open `T` may be a reference)."""
+    bare = unwrap_send_sync(unwrap_readonly(unwrap_ref_type(ptype)))
+    return (bare.is_value_type() and not is_borrowing_view_type(bare)
+            and not param_has_mutable_borrow_surface(ptype)
+            and not contains_type_param(bare))
 
 
 def _is_genexpr_frame(fi: FunctionInfo) -> bool:
@@ -4172,10 +4184,14 @@ class CallAnalyzer:
         the layout holds, by parameter index; None when it resolved to no
         callee. A call its step did not commit holds what was written; the
         ones that reach this uncommitted (a callable value's, a generator
-        expression's frame creation) are positional and keep no binding."""
+        expression's frame creation) are positional and keep no binding.
+        A method call's receiver is `TpyMethodCall.receiver`."""
         fi = expr.resolved_function_info
         if fi is None:
             return None
+        obj = None
+        if isinstance(expr, TpyMethodCall):
+            obj = expr.receiver
         if not committed(expr):
             # Positionals alone: a keyword or an unpacking here would land
             # on a positional index.
@@ -4183,8 +4199,8 @@ class CallAnalyzer:
                 expr, "double_star_unpack", None) and not any(
                 isinstance(a, TpyStarUnpack) for a in expr.args), (
                 "an uncommitted call with keywords or unpacking")
-            return CallOperands(fi, None, list(expr.args))
-        return CallOperands(fi, None, expr.binding.operands(args=expr.args))
+            return CallOperands(fi, obj, list(expr.args))
+        return CallOperands(fi, obj, expr.binding.operands(args=expr.args))
 
     def _check_borrow_arg_conflicts(
             self, expr: 'TpyExpr', ops: CallOperands | None = None) -> None:
@@ -4209,7 +4225,8 @@ class CallAnalyzer:
         if ops is None:
             ops = self.committed_operands(expr)
         fi = ops.fi if ops is not None else None
-        if fi is None or fi.is_pure or declares_no_writes(fi):
+        # `@pure` on a body is trusted, not enforced: its facts answer.
+        if fi is None or declares_no_writes(fi):
             return
         # Use structural_mutated_params when available (precise); fall back to mutated_params.
         # structural_mutated_params is set for all locally-analyzed functions (None for builtins/imports).
@@ -4242,6 +4259,10 @@ class CallAnalyzer:
                 # An `Own` parameter takes a copy of a borrowed container
                 # (a move never happens while it is borrowed): the callee
                 # cannot reach the caller's container.
+                continue
+            if _param_cannot_write_caller(param.type):
+                # A `str` / `bytes` (or other plain value) parameter is a
+                # view or a copy: no write through it reaches the caller.
                 continue
             bt = self.ctx.func.borrow_tracker
             storage = bt.effective_storage(arg.name)
@@ -4337,7 +4358,7 @@ class CallAnalyzer:
         if ops is None:
             ops = self.committed_operands(expr)
         fi = ops.fi if ops is not None else None
-        if fi is None or fi.is_pure:
+        if fi is None:
             return
         # Without the declaration the unknown-callee leg would conservatively
         # mark every flowing argument mutated; a bodied callee's `is_readonly`
@@ -4351,8 +4372,20 @@ class CallAnalyzer:
         # the caller's self_mutated in Phase 2 (native clones have no analyzed
         # mutation facts). Mutation THROUGH the borrowed result is rooted at
         # the mutation site instead.
+        consumer = self.ctx.handle_consumer(expr)
+        if consumer_decides(consumer, fi):
+            assert consumer is not None
+            consumer.credit(lambda: self._record_call_edges(expr, ops))
+            return
         if fi.is_auto_readonly_mutable_clone and not call_mutates_receiver(fi):
             return
+        self._record_call_edges(expr, ops)
+
+    def _record_call_edges(self, expr: 'TpyExpr',
+                           ops: CallOperands) -> None:
+        """`_record_mutation_call_edges`' edges of the receiver and the
+        arguments of `expr`, whose callee writes."""
+        fi = ops.fi
         # Receivers whose mutation Phase 2 decides (`receiver_credits`):
         # whatever the receiver reaches past its member paths, borrows and
         # loop bindings (`write_reach`) -- super().method() is the
@@ -4974,7 +5007,10 @@ class CallAnalyzer:
         def _analyze_arg(k: int, arg: TpyExpr,
                          hint: SlotHint | None) -> TpyType:
             if overloads is None:
-                return self.expr.analyze_call_arg(arg, hint)
+                # The winner's parameter decides a handle it lends, as for
+                # a probed argument (`probe_arg`).
+                with self.ctx.consuming(arg, awaits=True):
+                    return self.expr.analyze_call_arg(arg, hint)
             return self.probe_arg(arg, overloads, shape,
                                   ats[k] if ats is not None else k, hint)
 
@@ -5948,7 +5984,10 @@ class CallAnalyzer:
         cells have so far) and the winner's parameter receives it; elsewhere
         the use fixes it."""
         stays_open = self.number_arg_stays_open(overloads, shape, at)
-        with self.pend.sink(arg if stays_open else None):
+        # The parameter the argument meets is known once the winner is: a
+        # handle the argument lends waits for it (`settle_operand`).
+        with self.pend.sink(arg if stays_open else None), \
+                self.ctx.consuming(arg, awaits=True):
             return self.expr.analyze_call_arg(arg, hint)
 
     def number_arg_stays_open(self, overloads: list[FunctionInfo],
@@ -6517,6 +6556,8 @@ class CallAnalyzer:
                    else f"argument '{pname}'")
         vpc = value_ptr and isinstance(ptype, PtrType)
         check_ptype = ptype.pointee if vpc else ptype
+        readonly_slot = self._readonly_slot(declared, check_ptype)
+        self.ctx.settle_operand(arg, readonly_slot)
         if given is not None:
             arg_type = given
         else:
@@ -6524,9 +6565,10 @@ class CallAnalyzer:
                     and i < len(declared_types) else ptype)
             member = (None if vpc
                       else self.class_member_param(declared, pname))
-            arg_type = self.expr.analyze_arg_at_param(
-                arg, check_ptype if member is None
-                else SlotHint(check_ptype, member=member), decl)
+            with self.ctx.consuming(arg, readonly=readonly_slot):
+                arg_type = self.expr.analyze_arg_at_param(
+                    arg, check_ptype if member is None
+                    else SlotHint(check_ptype, member=member), decl)
         if not self.ctx.trial_depth and self.ctx.slot_step_commits():
             # `args` is the call's layout, held apart from the tree until
             # it is stored: a decided argument's holder does not see it.
@@ -6568,6 +6610,27 @@ class CallAnalyzer:
         if own_checks:
             self.mark_pending_slot_context(arg, arg_type, ptype)
         return arg_type
+
+    @staticmethod
+    def _readonly_slot(callee: FunctionInfo | None, ptype: TpyType) -> bool:
+        """Whether an argument at parameter type `ptype` of `callee` is
+        readonly there by its SIGNATURE: a `readonly[...]` parameter, a
+        `Ptr[readonly[T]]` or a view over readonly elements
+        (`Span[readonly[T]]`), or a non-value parameter of a callee
+        declared `@readonly` (`declared_readonly`; all its non-value
+        parameters are readonly, READONLY_DESIGN "@readonly decorator").
+        `@pure` is trusted, not enforced, so it does not count."""
+        bare = unwrap_send_sync(unwrap_ref_type(ptype))
+        if isinstance(bare, ReadonlyType):
+            return True
+        if isinstance(bare, PtrType) and isinstance(bare.pointee, ReadonlyType):
+            return True
+        if (is_borrowing_view_type(bare) and isinstance(bare, NominalType)
+                and readonly_elements(bare)):
+            return True
+        if callee is None or bare.is_value_type():
+            return False
+        return declared_readonly(callee) or declared_readonly(callee.root)
 
     def consume_at_iterating_slot(self, arg: TpyExpr, ptype: TpyType,
                                   node: 'TpyExpr | TpyStmt') -> None:

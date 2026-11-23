@@ -37,7 +37,7 @@ void test_no_warn_literal() {
 // def test_no_warn_explicit_copy() -> None:
 //     a: list[Node] = [Node(int32(1)), Node(int32(2)), Node(int32(3))]
 //     b: list[Node] = [Node(int32(10)), Node(int32(20))]
-//     a[1:3] = b.copy()  # tpyc: ok  (explicit copy)
+//     a[1:3] = b.copy()  # tpyc: ok  (copies b's elements silently: BUGS.md#list-copy-concat-elements-copy-unwarned)
 //     print(b[0].val)
 void test_no_warn_explicit_copy() {
     std::vector<Node> a = {Node(1), Node(2), Node(3)};

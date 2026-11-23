@@ -2959,6 +2959,39 @@ class UnnamedHolder(Enum):
     POINTER_OR_ITERATOR = "pointer_or_iterator"
 
 
+@dataclass(eq=False)
+class HandleConsumer:
+    """The consumer of an operand being analyzed -- an argument slot of a
+    resolved call, the haystack of `in`, a loop's iterable -- which decides
+    the receiver credit of a handle-lending call written as that operand
+    (`receiver_lends_handle`): a handle passed straight into a readonly
+    slot writes nothing through it, so its receiver keeps its access; any
+    other consumer takes the credit the call gives on its own. `readonly`
+    is None until the consumer resolves (`settle`); credits filed before
+    then wait in `deferred`. A loop's iterable (`loop`) is reached only
+    through the loop variable, whose writes climb to the receiver."""
+    operand: 'TpyExpr'
+    readonly: 'bool | None' = None
+    loop: bool = False
+    deferred: 'list[Callable[[], None]]' = field(default_factory=list)
+
+    def credit(self, apply: 'Callable[[], None]') -> None:
+        """File the receiver credit `apply` of the call this consumes."""
+        if self.readonly is None:
+            self.deferred.append(apply)
+        elif not self.readonly:
+            apply()
+
+    def settle(self, readonly: bool) -> None:
+        """The consumer resolved: apply what was filed unless it is a
+        readonly slot."""
+        self.readonly = readonly
+        pending, self.deferred = self.deferred, []
+        if not readonly:
+            for apply in pending:
+                apply()
+
+
 @dataclass
 class SemanticContext:
     """Shared state for all semantic analysis components.
@@ -3458,6 +3491,13 @@ class SemanticContext:
     # genexpr created there is pulled once per iteration, so those bodies run
     # between its pulls.
     for_head_bodies: 'list[list[TpyStmt]]' = field(default_factory=list)
+    # The operands being analyzed whose consumer decides the receiver credit
+    # of a handle-lending call written there (`HandleConsumer`).
+    handle_consumers: 'list[HandleConsumer]' = field(default_factory=list)
+    # The consumers of operands analyzed before their consumer resolved (an
+    # overloaded call's probed arguments), settled when it does.
+    awaiting_consumers: 'IdentityMap[TpyExpr, HandleConsumer]' = field(
+        default_factory=IdentityMap)
     # The genexprs created while the current statement is analyzed, each with
     # the captures whose narrowing it took: a statement that KEEPS a lazy value
     # (binds it to a name) lets the genexpr outlive it, which the statement
@@ -6123,6 +6163,41 @@ class SemanticContext:
         self.assert_slot_effect("an Own element's consumption")
         if name in self.func.current_param_names:
             self.func.current_consumed_own_params.add(OwnSlot(name, index))
+
+    @contextmanager
+    def consuming(self, operand: 'TpyExpr', *, readonly: 'bool | None' = None,
+                  loop: bool = False,
+                  awaits: bool = False) -> 'Iterator[HandleConsumer]':
+        """Analyze `operand` under its consumer (`HandleConsumer`). One left
+        unsettled at the end credits as a non-readonly consumer -- unless
+        the consumer resolves only after (`awaits`: `settle_operand`)."""
+        entry = (self.awaiting_consumers.get(operand) if awaits else None)
+        if entry is None:
+            entry = HandleConsumer(operand, readonly, loop)
+            if awaits:
+                self.awaiting_consumers[operand] = entry
+        self.handle_consumers.append(entry)
+        try:
+            yield entry
+        finally:
+            self.handle_consumers.remove(entry)
+            if entry.readonly is None and not awaits:
+                entry.settle(False)
+
+    def settle_operand(self, operand: 'TpyExpr', readonly: bool) -> None:
+        """The consumer of an operand analyzed before it resolved: the
+        credits its handle-lending call filed apply unless `readonly`."""
+        if not self.awaiting_consumers:
+            return
+        entry = self.awaiting_consumers.pop(peel_coerce(operand), None)
+        if entry is not None:
+            entry.settle(readonly)
+
+    def handle_consumer(self, operand: 'TpyExpr') -> 'HandleConsumer | None':
+        """The consumer `operand` is being analyzed for, if it is the
+        innermost one's operand."""
+        heads = self.handle_consumers
+        return heads[-1] if heads and heads[-1].operand is operand else None
 
     def is_last_use(self, expr: 'TpyExpr | None') -> bool:
         """Sema's last-use verdict for one name read, as sema left it: the

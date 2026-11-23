@@ -296,7 +296,7 @@ template<::tpystd::tpy::Comparable T>
     return item;
 }
 // def nsmallest[T: Comparable](n: int32, a: list[T]) -> Own[list[T]]:
-//     h: list[T] = a.copy()
+//     h: list[T] = copy(a)
 //     heapify(h)
 //     result: list[T] = []
 //     total: int32 = int32(len(h))
@@ -308,7 +308,7 @@ template<::tpystd::tpy::Comparable T>
 //     return result
 template<::tpystd::tpy::Comparable T>
 std::vector<::tpy::storage_t<T>> nsmallest(int32_t n, const std::vector<::tpy::storage_t<T>>& a) {
-    std::vector<::tpy::storage_t<T>> h = ::tpy::list_copy(a);
+    std::vector<::tpy::storage_t<T>> h = std::vector<::tpy::storage_t<T>>(a);
     ::tpystd::heapq::heapify<::tpy::storage_t<T>>(h);
     std::vector<::tpy::storage_t<T>> result = std::vector<::tpy::storage_t<T>>{};
     int32_t total = ::tpy::__len__(h);
@@ -322,7 +322,7 @@ std::vector<::tpy::storage_t<T>> nsmallest(int32_t n, const std::vector<::tpy::s
 }
 // def nlargest[T: Comparable](n: int32, a: list[T]) -> Own[list[T]]:
 //     # Sort-based; a size-k heap variant (O(n log k)) is a perf follow-up.
-//     h: list[T] = a.copy()
+//     h: list[T] = copy(a)
 //     h.sort()
 //     h.reverse()
 //     result: list[T] = []
@@ -335,7 +335,7 @@ std::vector<::tpy::storage_t<T>> nsmallest(int32_t n, const std::vector<::tpy::s
 //     return result
 template<::tpystd::tpy::Comparable T>
 std::vector<::tpy::storage_t<T>> nlargest(int32_t n, const std::vector<::tpy::storage_t<T>>& a) {
-    std::vector<::tpy::storage_t<T>> h = ::tpy::list_copy(a);
+    std::vector<::tpy::storage_t<T>> h = std::vector<::tpy::storage_t<T>>(a);
     ::tpy::sort_in_place(h);
     ::tpy::list_reverse(h);
     std::vector<::tpy::storage_t<T>> result = std::vector<::tpy::storage_t<T>>{};

@@ -75,10 +75,10 @@ __gen_gen_chars gen_chars() {
 //     d[CHARS[6]] = CHARS[7]  # tpyc: ok
 //     print("setdict", len(st), len(d), d[CHARS[6]])
 //
-//     # the dict DEFAULT slot: the stub declares `default: V` (a borrow), so a
-//     # char reaches it as the view and the owned value comes back from the
-//     # native. Each call is its own statement -- `pop` mutates, and C++ leaves
-//     # argument order unspecified
+//     # the dict DEFAULT slot: `get` declares `default: V` (a borrow), so a char
+//     # reaches it as the view; `pop` declares `default: Own[V]`, so the char is
+//     # built into a `str` at the call. Each call is its own statement -- `pop`
+//     # mutates, and C++ leaves argument order unspecified
 //     dd: dict[str, str] = {CHARS[6]: CHARS[7]}
 //     hit = dd.get(CHARS[6], CHARS[1])  # tpyc: ok
 //     miss = dd.get(CHARS[0], CHARS[1])  # tpyc: ok
@@ -150,8 +150,8 @@ void main() {
     std::string hit = ::tpy::dict_get_default(dd, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 6)), ::tpy::char_to_str(::tpy::__getitem__(CHARS, 1)));
     std::string miss = ::tpy::dict_get_default(dd, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 0)), ::tpy::char_to_str(::tpy::__getitem__(CHARS, 1)));
     std::cout << "getdef" << " " << hit << " " << miss << "\n" << ::tpy::check_signals;
-    std::string pmiss = ::tpy::dict_pop_default(dd, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 0)), ::tpy::char_to_str(::tpy::__getitem__(CHARS, 2)));
-    std::string phit = ::tpy::dict_pop_default(dd, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 6)), ::tpy::char_to_str(::tpy::__getitem__(CHARS, 2)));
+    std::string pmiss = ::tpy::dict_pop_default(dd, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 0)), std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 2))));
+    std::string phit = ::tpy::dict_pop_default(dd, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 6)), std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 2))));
     std::cout << "popdef" << " " << pmiss << " " << phit << " " << ::tpy::__len__(dd) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<std::string> slit = ::tpy::ordered_set<std::string>({std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 1)))});
     ::tpy::set_update(slit, ::tpy::ordered_set<std::string>({std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 2)))}));

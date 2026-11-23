@@ -718,6 +718,13 @@ class TpyMethodCall(TpyCallLike, NoneChecked):
     def call_display(self) -> str:
         return f"'{self.method}(...)'"
 
+    @property
+    def receiver(self) -> TpyExpr:
+        """The object the method runs on: `obj`, or for a base-part call
+        (`super().m()`, `Base.m(self)`) the `self` it runs on."""
+        return (self.explicit_receiver if self.explicit_receiver is not None
+                else self.obj)
+
     def children(self) -> list[TpyExpr]:
         if self.macro_expansion is not None:
             return [self.macro_expansion]

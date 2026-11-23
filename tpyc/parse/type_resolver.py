@@ -338,6 +338,13 @@ class TypeResolver:
                     t.wrapped if isinstance(t, ReadonlyType) else t for t in parsed
                 ]
                 return ReadonlyType(make_union(*unwrapped))
+            # Readonly sits on a union as a whole, so the marker that applies
+            # it does too: `auto_readonly[V] | None` is `auto_readonly[V | None]`.
+            if non_none_count and all(isinstance(t, (AutoReadonlyType, VoidType))
+                                      for t in parsed):
+                return AutoReadonlyType(make_union(*(
+                    t.wrapped if isinstance(t, AutoReadonlyType) else t
+                    for t in parsed)))
             return make_union(*parsed)
 
         # Callable / Fn
@@ -433,6 +440,10 @@ class TypeResolver:
                         f"already nullable; use `{inner}` directly",
                         ref.loc,
                     )
+                # As for `auto_readonly[X] | None`: the marker sits on the
+                # Optional as a whole.
+                if isinstance(inner, AutoReadonlyType):
+                    return AutoReadonlyType(OptionalType(inner.wrapped))
                 return OptionalType(inner)
             if name == "typing:Final":
                 return FinalType(inner)

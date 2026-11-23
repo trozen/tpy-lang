@@ -37,7 +37,7 @@ void main() {
     ::tpy::String lv = ::tpy::String("lvalue");
     std::cout << ::tpy::dict_get_default(s, "a", lv) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::dict_get_default(s, "z", lv) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::dict_pop_default(s, "z", ::tpy::char_to_str(::tpy::char_from_str("q"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::dict_pop_default(s, "z", std::string(::tpy::char_to_str(::tpy::char_from_str("q")))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::Bytes> b = ::tpy::ordered_map<std::string, ::tpy::Bytes>({{"a", ::tpy::bytes_literal_owned("hi", 2)}});
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("zz", 2));
     std::cout << ::tpy::BytesPrinter(::tpy::dict_get_default(b, "a", ::tpy::Bytes(ba))) << "\n" << ::tpy::check_signals;

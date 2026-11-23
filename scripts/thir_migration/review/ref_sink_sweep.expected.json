@@ -1,13 +1,13 @@
 {
  "array_i__async__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw])"
  ],
  "array_i__async__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]"
  ],
  "array_i__async__borrow_method__field_write": [
   "ok",
@@ -1120,14 +1120,14 @@
   ""
  ],
  "array_i__gen__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw]) yield_values:"
  ],
  "array_i__gen__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]"
  ],
  "array_i__gen__borrow_method__field_write": [
   "ok",
@@ -2255,14 +2255,14 @@
   ""
  ],
  "bytearray__async__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) ["
  ],
  "bytearray__async__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__le"
  ],
  "bytearray__async__borrow_method__field_write": [
   "ok",
@@ -3665,14 +3665,14 @@
   ""
  ],
  "bytearray__gen__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) ["
  ],
  "bytearray__gen__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__le"
  ],
  "bytearray__gen__borrow_method__field_write": [
   "ok",
@@ -5105,14 +5105,14 @@
   ""
  ],
  "deref_list__async__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [method_call(*%b"
  ],
  "deref_list__async__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [call(deref "
  ],
  "deref_list__async__borrow_method__field_write": [
   "ok",
@@ -6515,14 +6515,14 @@
   ""
  ],
  "deref_list__gen__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [method_call(*%b"
  ],
  "deref_list__gen__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [call(deref "
  ],
  "deref_list__gen__borrow_method__field_write": [
   "ok",
@@ -7955,12 +7955,12 @@
   ""
  ],
  "deref_rec__async__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "reject:stmt.expr_stmt:field.receiver_shape",
   "",
   ""
  ],
  "deref_rec__async__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "reject:stmt.expr_stmt:field.receiver_shape",
   "",
   ""
  ],
@@ -9365,12 +9365,12 @@
   ""
  ],
  "deref_rec__gen__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "reject:stmt.expr_stmt:field.receiver_shape",
   "",
   ""
  ],
  "deref_rec__gen__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "reject:stmt.expr_stmt:field.receiver_shape",
   "",
   ""
  ],
@@ -10805,14 +10805,14 @@
   ""
  ],
  "dict_si__async__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] *%x[str('z')] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw])"
  ],
  "dict_si__async__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] *%x[str('z')] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(cal"
  ],
  "dict_si__async__borrow_method__field_write": [
   "ok",
@@ -12085,14 +12085,14 @@
   ""
  ],
  "dict_si__gen__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] *%x[str('z')] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw]) yield_values: [0] coerce(lit"
  ],
  "dict_si__gen__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] *%x[str('z')] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(cal"
  ],
  "dict_si__gen__borrow_method__field_write": [
   "ok",
@@ -13385,14 +13385,14 @@
   ""
  ],
  "gen_rec__async__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(method_call(*%b, v"
  ],
  "gen_rec__async__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] "
  ],
  "gen_rec__async__borrow_method__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14730,14 +14730,14 @@
   ""
  ],
  "gen_rec__gen__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(method_call(*%b, v"
  ],
  "gen_rec__gen__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] "
  ],
  "gen_rec__gen__borrow_method__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -16100,14 +16100,14 @@
   ""
  ],
  "list_i__async__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw])"
  ],
  "list_i__async__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw"
  ],
  "list_i__async__borrow_method__field_write": [
   "ok",
@@ -17445,14 +17445,14 @@
   ""
  ],
  "list_i__gen__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw]) yield_values"
  ],
  "list_i__gen__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw"
  ],
  "list_i__gen__borrow_method__field_write": [
   "ok",
@@ -18815,14 +18815,14 @@
   ""
  ],
  "list_r__async__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw])"
  ],
  "list_r__async__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) [6] print(call(len [tpy::__len__], ["
  ],
  "list_r__async__borrow_method__field_write": [
   "ok",
@@ -20000,14 +20000,14 @@
   ""
  ],
  "list_r__gen__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw]) y"
  ],
  "list_r__gen__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) [6] print(call(len [tpy::__len__], ["
  ],
  "list_r__gen__borrow_method__field_write": [
   "ok",
@@ -21205,14 +21205,14 @@
   ""
  ],
  "rec__async__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] %x->x = binop(%x->x, +, lit(1)) [4] print(method_call(*%b, v_m, []).x [raw])"
  ],
  "rec__async__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] %x->x = binop(%x->x, +, lit(1)) [6] print(*%s1.x [raw]) [7] print(method_call(*%b, v_m, []).x [raw])"
  ],
  "rec__async__borrow_method__field_write": [
   "ok",
@@ -22675,14 +22675,14 @@
   ""
  ],
  "rec__gen__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] %x->x = binop(%x->x, +, lit(1)) [4] print(method_call(*%b, v_m, []).x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "rec__gen__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] %x->x = binop(%x->x, +, lit(1)) [6] print(*%s1.x [raw]) [7] print(method_call(*%b, v_m, []).x [raw]) yi"
  ],
  "rec__gen__borrow_method__field_write": [
   "ok",
@@ -24410,14 +24410,14 @@
   ""
  ],
  "set_i__async__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw])"
  ],
  "set_i__async__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) "
  ],
  "set_i__async__borrow_method__field_write": [
   "ok",
@@ -25755,14 +25755,14 @@
   ""
  ],
  "set_i__gen__borrow_method__decl_alias": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](method_call(*%b, v_m, [])) [3] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw]) yield_values: ["
  ],
  "set_i__gen__borrow_method__decl_reassigned": [
-  "reject:res.alias_bind",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](method_call(*%b, v_m, [])) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) "
  ],
  "set_i__gen__borrow_method__field_write": [
   "ok",

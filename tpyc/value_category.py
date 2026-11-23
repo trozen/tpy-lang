@@ -26,7 +26,6 @@ from .typesys import (
     OptionalType, ResultPosition, ResultRepresentation, classify_result_representation,
     is_bodyless_binding, is_open_type_param_return, is_primitive_type, is_protocol_type,
     indirection_referent_readonly, declared_result_readonly, result_follows_receiver_root,
-    declares_whole_result_following,
     property_getter_returns_storage_ref, returns_cpp_reference_shape,
     unwrap_optional_own, unwrap_own, unwrap_readonly, unwrap_ref_type,
     unwrap_send_sync, bound_as_spelled,
@@ -53,6 +52,7 @@ from .parse.nodes import as_name_read
 from .type_def_registry import (has_view_param_form, is_bool_type,
                                 is_borrowing_view_type,
                                 is_bytes_type, is_bytes_view_type,
+                                is_string_type,
                                 is_owned_in_coro_frame, is_str_type,
                                 is_str_view_type, is_varargs, type_def_of,
                                 RUNTIME_CONTAINER_CATEGORIES, TypeCategory)
@@ -443,9 +443,7 @@ def call_operands(expr: TpyExpr) -> CallOperands | None:
         fi, obj, args = expr.resolved_function_info, None, expr.args
         kwargs = expr.kwargs or {}
     elif isinstance(expr, TpyMethodCall):
-        # A base-part call (`super().m()`, `Base.m(self)`) runs on `self`.
-        obj = (expr.explicit_receiver if expr.explicit_receiver is not None
-               else expr.obj)
+        obj = expr.receiver
         fi, args = expr.resolved_function_info, expr.args
         kwargs = expr.kwargs or {}
     elif isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
@@ -631,13 +629,12 @@ def call_returns_cpp_ref(analyzer: ValueCategoryAnalyzer, fi: 'FunctionInfo | No
     binding declares its C++ return convention through the same `-> V` vs
     `-> Own[V]` contract, so no per-native special case is needed.
 
-    A free `@native` function takes value semantics unless it declares what
-    its result borrows (`borrows=` / `element_of=`), which admits it to the shape
-    check (an undeclared one: BUGS.md, "An UNDECLARED free `@native`
-    function"). Native record METHODS honor the contract and fall through
-    to the shape check (so dict.setdefault / items aliasing holds). This is
-    the CALLEE's convention; whether one call's result may be HELD by
-    reference is `call_result_holdable`.
+    Free `@native` functions and native record METHODS take the same
+    shape check, as their TPy twins do: a binding's C++ has the signature
+    TPy renders for it (so dict.setdefault / items aliasing holds, and a
+    by-value C++ result is spelled `Own[V]`). This is the CALLEE's
+    convention; whether one call's result may be HELD by reference is
+    `call_result_holdable`.
     """
     return classify_result_representation(
         fi.return_type if fi is not None else None,
@@ -809,7 +806,7 @@ def call_result_holdable(analyzer: ValueCategoryAnalyzer,
     point into a temporary operand."""
     if isinstance(expr, TpyCallLike) and expr.result_form.is_fresh:
         return False
-    if lends_a_fresh_result(expr):
+    if lends_a_fresh_result(analyzer, expr):
         return False
     return call_returns_cpp_ref(
         analyzer, getattr(expr, "resolved_function_info", None))
@@ -827,28 +824,33 @@ def binds_fresh_call_value(analyzer: 'ValueCategoryAnalyzer',
                for leaf in origin(analyzer, expr))
 
 
-def lends_a_fresh_result(expr: TpyExpr) -> bool:
+def lends_a_fresh_result(analyzer: ValueCategoryAnalyzer,
+                         expr: TpyExpr) -> bool:
     """Whether a call hands back a reference that may point into a fresh
     result of a borrow-declared call among what it lends
     (`k.ret(min(a, P(-8), key=f))`: the reference may be the temporary
-    `P(-8)`). Read through the callee's recorded `return_borrows_from`,
-    recursively; a hoisted temporary lives only to the end of its block, so
+    `P(-8)`). Read through the call's lending answer at its instantiated
+    signature (`call_result_lenders`), recursively; a hoisted temporary
+    lives only to the end of its block, so
     a holder declared outside it must not keep the reference."""
     while isinstance(expr, TpyCoerce):
         expr = expr.expr
     if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-        return lends_a_fresh_result(expr.obj)
+        return lends_a_fresh_result(analyzer, expr.obj)
     if not isinstance(expr, (TpyCall, TpyMethodCall)):
         return False
     if expr.result_form.is_fresh:
         return True
     ops = call_operands(expr)
-    sources = ops.fi.root.return_borrows_from if ops is not None else None
+    # call_lends imports this module: a top-level import is a cycle.
+    from .sema.call_lends import call_result_lenders
+    sources = (call_result_lenders(ops.fi, analyzer.registry)
+               if ops is not None else None)
     # Whole operands, not `lent_operands`' tuple-literal elements: a fresh
     # result inside a tuple literal is held by the tuple temporary, whose
     # lifetime is the temp-backing question, not this one.
     return bool(sources) and any(
-        idx in sources and lends_a_fresh_result(operand)
+        idx in sources and lends_a_fresh_result(analyzer, operand)
         for idx, operand in ops.indexed())
 
 
@@ -1181,8 +1183,9 @@ def open_type_param_call_result(call: 'TpyExpr | None',
 def _open_param_result_lends(analyzer: ValueCategoryAnalyzer,
                              expr: TpyExpr) -> 'list[TpyExpr] | None':
     """The operands an open-T call result (`open_type_param_call_result`)
-    may be a reference into: its callee's recorded `return_borrows_from`,
-    every operand where it records none. None for any other expression,
+    may be a reference into: the call's lending answer at its instantiated
+    signature (`call_result_lenders`), every operand where the callee
+    records none. None for any other expression,
     a coercion that builds a fresh value among them."""
     while (isinstance(expr, TpyCoerce)
            and not expr.coercion.builds_fresh_value):
@@ -1192,8 +1195,12 @@ def _open_param_result_lends(analyzer: ValueCategoryAnalyzer,
     ops = call_operands(expr)
     if ops is None:
         return None
-    recorded = ops.fi.root.return_borrows_from
-    return [o for i, o in ops.indexed() if recorded is None or i in recorded]
+    if ops.fi.root.return_borrows_from is None:
+        return list(o for _, o in ops.indexed())
+    # call_lends imports this module: a top-level import is a cycle.
+    from .sema.call_lends import call_result_lenders
+    lenders = call_result_lenders(ops.fi, analyzer.registry)
+    return [o for i, o in ops.indexed() if i in lenders]
 
 
 def place_dies(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
@@ -1542,17 +1549,25 @@ def call_result_const(call: TpyMethodCall, type_of: "ExprTypeOf",
     result access (sema typed the call off it), or, for a callee declaring
     its whole result as following the receiver, the receiver's
     (`receiver_const`) -- C++ picks the clone by it, whichever clone sema
-    resolved. A borrowing VIEW so declared (`d.values()`) counts though
-    readonly does not attach to a view (`following_components` drops it):
-    its elements are the receiver's storage, and the C++ overload set hands
-    a const receiver a const view."""
+    resolved. A borrowing VIEW whose elements so follow
+    (`dict_values[K, auto_readonly[V]]`) counts though readonly does not
+    attach to a view: its elements are the receiver's storage, and the C++
+    overload set hands a const receiver a const view."""
     fi = call.resolved_function_info
     if isinstance(type_of(call), ReadonlyType) or declared_result_readonly(fi):
         return True
-    follows = result_follows_receiver_root(fi) or (
-        fi is not None and declares_whole_result_following(fi.root)
+    return (result_access_follows_receiver(fi)
+            and receiver_const(call.receiver, type_of, place_const, const_referent))
+
+
+def result_access_follows_receiver(fi: 'FunctionInfo | None') -> bool:
+    """Whether a method's result takes its receiver's access, so a const
+    receiver makes it const (`call_result_const`): its whole result follows
+    the receiver, or it is a borrowing view whose elements do. Any other
+    result's access is its declared type's, whatever it borrows."""
+    return result_follows_receiver_root(fi) or (
+        fi is not None and bool(fi.root.following_components)
         and is_borrowing_view_type(unwrap_ref_type(fi.return_type)))
-    return follows and receiver_const(call.obj, type_of, place_const, const_referent)
 
 
 def const_storage_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr, *,
@@ -1818,19 +1833,25 @@ def iterator_source_callee(fi: 'FunctionInfo | None') -> bool:
     return is_iterator_protocol(getattr(fi, "return_type", None))
 
 
-def param_type_can_lend(ptype: TpyType, *, callables: bool = True) -> bool:
+def param_type_can_lend(ptype: TpyType, *, callables: bool = True,
+                        pointers: bool = False) -> bool:
     """Whether an argument at a parameter of this type can be storage a
     callee's result borrows: a reference type or open `T` (passed by
     reference), a view, a `str` / `bytes` view parameter, a `*args` pack, a
     tuple with a borrowing element -- and, unless `callables` is off, a
-    callable, whose environment may hold references. The generator frame's
-    captures and the undeclared callee default read it; the `borrows=`
-    validation admits a by-reference owned leaf beside it."""
+    callable, whose environment may hold references. With `pointers`, also
+    a value holding a pointer (a `Ptr`) or a `String` passed by reference:
+    what a body-less binding's result may point into. The generator
+    frame's captures and the undeclared callee default read it; the
+    `result=` "borrow" validation admits a by-reference owned leaf beside
+    it."""
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
     return (not t.is_value_type() or binds_buffer_view(t)
             or is_borrowing_view_type(t) or is_varargs(t)
             or (isinstance(t, TupleType) and t.has_borrowing_element())
-            or (callables and (isinstance(t, CallableType) or is_fn_type(t))))
+            or (callables and (isinstance(t, CallableType) or is_fn_type(t)))
+            or (pointers and (not holds_no_pointer(t)
+                              or is_string_type(unwrap_qualifiers(t)))))
 
 
 def frame_param_lends(ptype: TpyType) -> bool:

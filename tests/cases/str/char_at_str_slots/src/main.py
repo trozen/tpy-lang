@@ -79,10 +79,10 @@ def main() -> None:
     d[CHARS[6]] = CHARS[7]  # tpyc: ok
     print("setdict", len(st), len(d), d[CHARS[6]])
 
-    # the dict DEFAULT slot: the stub declares `default: V` (a borrow), so a
-    # char reaches it as the view and the owned value comes back from the
-    # native. Each call is its own statement -- `pop` mutates, and C++ leaves
-    # argument order unspecified
+    # the dict DEFAULT slot: `get` declares `default: V` (a borrow), so a char
+    # reaches it as the view; `pop` declares `default: Own[V]`, so the char is
+    # built into a `str` at the call. Each call is its own statement -- `pop`
+    # mutates, and C++ leaves argument order unspecified
     dd: dict[str, str] = {CHARS[6]: CHARS[7]}
     hit = dd.get(CHARS[6], CHARS[1])  # tpyc: ok
     miss = dd.get(CHARS[0], CHARS[1])  # tpyc: ok

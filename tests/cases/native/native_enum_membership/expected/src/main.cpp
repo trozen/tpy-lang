@@ -57,7 +57,7 @@ void has(const ::Bag<::NColor>& b) {
 //     o = get_owner()
 //     has(o.colors)
 void main() {
-    ::Owner o = ::get_owner();
+    ::Owner& o = ::get_owner();
     ::tpyapp::main::has(o.colors);
 }
 

@@ -1,7 +1,7 @@
 # A @native property setter on a @native class called through a Ptr from a
 # @native function and through a tplib Box deref.
 __tpy__ = {"includes": ["native_types.hpp"]}
-from tpy import int32, Ptr
+from tpy import int32, Own, Ptr
 from tpy.extern import native
 from tplib.box import Box as HBox
 
@@ -22,7 +22,7 @@ def open_box(k: int32) -> Ptr[NBox]: ...
 
 
 @native("make_box")
-def make_box() -> NBox: ...
+def make_box() -> Own[NBox]: ...
 
 
 def via_hbox(h: HBox[NBox]) -> None:

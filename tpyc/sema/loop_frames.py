@@ -659,7 +659,7 @@ def call_parts(ctx: 'SemanticContext', call: 'TpyExpr | ImplicitCall'
                 else call.maybe_func_name or "a callable")
         if fi is None or fi.is_callable_value:
             return CallParts(name, None)
-        receiver = (call.obj if isinstance(call, TpyMethodCall)
+        receiver = (call.receiver if isinstance(call, TpyMethodCall)
                     and not call.is_static_call
                     and not call.user_module_call else None)
         index = {id(p): i for i, p in enumerate(fi.params)}

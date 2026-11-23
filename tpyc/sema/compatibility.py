@@ -912,6 +912,77 @@ class TypeCompatibility:
                                    check.hint, check.loc, check.copied)
         self.pending_iter_copy_checks.clear()
 
+    def check_element_copies(self, elem_types: Sequence[TpyType],
+                             source_expr: TpyExpr, prov_src: TpyExpr,
+                             copied_src: TpyExpr | None, is_lvalue_src: bool,
+                             iter_hint: str, lent_container: bool) -> bool:
+        """The copy verdict of each element type in `elem_types` that a slot
+        copies out of `source_expr` (lending them from `prov_src`; the copy
+        speaks for `copied_src`'s record): warned, deferred to a pending
+        callee or a generic instantiation, refused when non-copyable, or
+        silent when the provenance proves nothing CPython would share is
+        copied. Whether the source lends its elements."""
+        elements_lent = False
+        for elem_type in elem_types:
+            if not contains_reference_type(elem_type):
+                continue
+            display_type = unwrap_ref_type(elem_type)
+            # Lvalue source (container): suggest copy_iter or copy.
+            # Rvalue (iterator): only copy_iter -- unless
+            # copy_iter does not meet the protocol.
+            if is_lvalue_src or iter_hint == CONTAINER_COPY_HINT:
+                hint = iter_hint
+            else:
+                hint = "use copy_iter() to make this explicit"
+            # Rvalue iterators that yield Ref elements (e.g.
+            # map(identity, pts)) copy on materialization.
+            # RefType in the Own-wrapped element is the proof.
+            copied: list[TpyType] = [elem_type]
+            # A lent container's elements are copied out
+            # of it; an indirection it lends (`Ptr`) is
+            # copied as the pointer, its provenance says.
+            certain = is_lvalue_src or (
+                lent_container and contains_reference_type(
+                    elem_type, held_only=True))
+            if not (certain
+                    or _contains_semantic_ref(elem_type)):
+                # A combinator, view or generator lends its
+                # sources' elements with no Ref marker: the
+                # proof is their provenance.
+                if iteration_lend_pending(self.ctx, prov_src):
+                    elements_lent = True
+                    # A generic payload's hedge must be filed
+                    # before the copy verdicts discharge, so it
+                    # assumes the pending callee lends.
+                    if not own_copy.type_has_type_param(display_type):
+                        self.ctx.assert_slot_effect(
+                            "an iterator copy check")
+                        self.pending_iter_copy_checks.append(
+                            PendingIterCopyCheck(
+                                prov_src, elem_type, display_type,
+                                hint, self.ctx._resolve_loc(source_expr),
+                                copied_src))
+                        continue
+                else:
+                    copied = iteration_copied_leaves(
+                        self.ctx, prov_src, elem_type)
+                    if not copied:
+                        continue
+            elements_lent = True
+            if self.ctx.defer_own_copy_verdict(
+                    display_type, display_type,
+                    "owned storage", source_expr,
+                    kind=own_copy.KIND_ELEMENTS, hint=hint,
+                    source=copied_src):
+                continue
+            self._element_copy(
+                copied, display_type, hint,
+                self.ctx._resolve_loc(source_expr),
+                copied_src)
+        if is_lvalue_src:
+            elements_lent = True
+        return elements_lent
+
     def _element_copy(self, copied: Sequence[TpyType], display_type: TpyType,
                       hint: str, loc: SourceLocation | None,
                       source: TpyExpr | None) -> None:
@@ -2214,65 +2285,10 @@ class TypeCompatibility:
                         self.register_sink(copied_src, OwnType(expected),
                                            None)
                     if not is_auto_moved or lent_value is not None:
-                        for inner_t in owned_elems:
-                            elem_type = inner_t.wrapped
-                            if not contains_reference_type(elem_type):
-                                continue
-                            display_type = unwrap_ref_type(elem_type)
-                            # Lvalue source (container): suggest copy_iter or copy.
-                            # Rvalue (iterator): only copy_iter -- unless
-                            # copy_iter does not meet the protocol.
-                            if is_lvalue_src or iter_hint == CONTAINER_COPY_HINT:
-                                hint = iter_hint
-                            else:
-                                hint = "use copy_iter() to make this explicit"
-                            # Rvalue iterators that yield Ref elements (e.g.
-                            # map(identity, pts)) copy on materialization.
-                            # RefType in the Own-wrapped element is the proof.
-                            copied: list[TpyType] = [elem_type]
-                            # A lent container's elements are copied out
-                            # of it; an indirection it lends (`Ptr`) is
-                            # copied as the pointer, its provenance says.
-                            certain = is_lvalue_src or (
-                                lent_container and contains_reference_type(
-                                    elem_type, held_only=True))
-                            if not (certain
-                                    or _contains_semantic_ref(elem_type)):
-                                # A combinator, view or generator lends its
-                                # sources' elements with no Ref marker: the
-                                # proof is their provenance.
-                                if iteration_lend_pending(self.ctx, prov_src):
-                                    elements_lent = True
-                                    # A generic payload's hedge must be filed
-                                    # before the copy verdicts discharge, so it
-                                    # assumes the pending callee lends.
-                                    if not own_copy.type_has_type_param(display_type):
-                                        self.ctx.assert_slot_effect(
-                                            "an iterator copy check")
-                                        self.pending_iter_copy_checks.append(
-                                            PendingIterCopyCheck(
-                                                prov_src, elem_type, display_type,
-                                                hint, self.ctx._resolve_loc(source_expr),
-                                                copied_src))
-                                        continue
-                                else:
-                                    copied = iteration_copied_leaves(
-                                        self.ctx, prov_src, elem_type)
-                                    if not copied:
-                                        continue
-                            elements_lent = True
-                            if self.ctx.defer_own_copy_verdict(
-                                    display_type, display_type,
-                                    "owned storage", source_expr,
-                                    kind=own_copy.KIND_ELEMENTS, hint=hint,
-                                    source=copied_src):
-                                continue
-                            self._element_copy(
-                                copied, display_type, hint,
-                                self.ctx._resolve_loc(source_expr),
-                                copied_src)
-                        if is_lvalue_src:
-                            elements_lent = True
+                        elements_lent = self.check_element_copies(
+                            [t.wrapped for t in owned_elems], source_expr,
+                            prov_src, copied_src, is_lvalue_src, iter_hint,
+                            lent_container)
                 if (owning_slot and source_expr is not None
                         and self.ctx.slot_step_commits()):
                     # Every argument shape gets its record: the lowering
@@ -6283,7 +6299,7 @@ class TypeCompatibility:
         call = peel_coerce(expr)
         if not isinstance(call, TpyCallLike):
             return False
-        lend = callee_lend_fact(call)
+        lend = callee_lend_fact(call, self.ctx.registry)
         return (lend.kind is CalleeFact.CALLABLE
                 and lend.ops.fi.returns_open())
 

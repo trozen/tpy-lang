@@ -2312,8 +2312,9 @@ as the corpus grows).
   TypeDef is `loan_inert` or `owned_leaf` (no user dunder can run). A stub
   result is FRESH unless its declaration says where it comes from
   (since 2026-11-18): it borrows exactly the lent arguments named by
-  `THIRStubCallee.result_origins`, published from the binding's stamped
-  `return_borrows_from` (`result=` "borrow" / "element"; a native method's
+  `THIRStubCallee.result_origins`, published from the call's answer at
+  its instantiated signature, `call_result_lenders`, over the binding's
+  stamped `return_borrows_from` (`result=` "borrow" / "element"; a native method's
   inferred receiver borrow; a template rendering its one argument,
   `{0}` / `({0})`, as `int(x)` renders `x`). One THIR helper,
   `stub_result_origins`, decides the set, so it means "parameters whose

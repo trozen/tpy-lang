@@ -1404,11 +1404,26 @@ def pins_const_receiver(winner: FunctionInfo, overloads: list[FunctionInfo],
     (`rank_overload_candidates`) -- beside mutating variants of the same
     C++ name, which C++ would prefer for the mutable receiver whenever it
     can convert the arguments. A named variant shares its C++ name with
-    its clone family only (`variant_cpp_name`)."""
+    its clone family only (`variant_cpp_name`), a native one with the
+    variants bound to the same C++ symbol (`cpp_overload_name`)."""
+    name = cpp_overload_name(winner)
     return (winner.is_readonly and not readonly_receiver
             and any(not m.is_readonly
-                    and m.variant_cpp_name == winner.variant_cpp_name
+                    and (name is None or cpp_overload_name(m) in (name, None))
                     for m in overloads))
+
+
+def cpp_overload_name(fi: FunctionInfo) -> tuple | None:
+    """The C++ name a call of `fi` names, which C++ overload resolution
+    picks among: its variant name, else the free function or member its
+    `@native` binding (or its source name) spells. None for a
+    `@cpp_template`, whose text may call anything."""
+    if fi.variant_cpp_name is not None:
+        return ("member", fi.variant_cpp_name)
+    if fi.cpp_template is not None:
+        return None
+    return ("free" if fi.native_function else "member",
+            fi.native_name or fi.name)
 
 
 

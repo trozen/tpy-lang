@@ -171,7 +171,7 @@ Point* origin_if(bool flag) {
     return nullptr;
 }
 
-Point* origin_ro(bool flag) {
+const Point* origin_ro(bool flag) {
     if (flag) {
         return ORIGIN;
     }

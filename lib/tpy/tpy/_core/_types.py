@@ -1911,12 +1911,12 @@ class String(NativeIterable[char], Iterable[char], Comparable, Equatable, String
     @pure
     def swapcase(self) -> str: ...
 
-    @cpp_template("::tpy::str_removeprefix({self}, {0})")
+    @cpp_template("::tpy::str_removeprefix({self}, {0})", args={"prefix": "compared"})
     @readonly
     @pure
     def removeprefix(self, prefix: str, /) -> StrView: ...
 
-    @cpp_template("::tpy::str_removesuffix({self}, {0})")
+    @cpp_template("::tpy::str_removesuffix({self}, {0})", args={"suffix": "compared"})
     @readonly
     @pure
     def removesuffix(self, suffix: str, /) -> StrView: ...
@@ -2155,12 +2155,12 @@ class StrView(NativeIterable[char], Iterable[char], Comparable, Equatable, Strin
     @pure
     def swapcase(self) -> str: ...
 
-    @cpp_template("::tpy::str_removeprefix({self}, {0})")
+    @cpp_template("::tpy::str_removeprefix({self}, {0})", args={"prefix": "compared"})
     @readonly
     @pure
     def removeprefix(self, prefix: str, /) -> StrView: ...
 
-    @cpp_template("::tpy::str_removesuffix({self}, {0})")
+    @cpp_template("::tpy::str_removesuffix({self}, {0})", args={"suffix": "compared"})
     @readonly
     @pure
     def removesuffix(self, suffix: str, /) -> StrView: ...

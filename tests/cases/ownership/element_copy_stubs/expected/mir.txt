@@ -1,0 +1,47 @@
+main::__tpy_init: uncovered (module initialization)
+main::first@16:0: covered (storage: no_proof_required), summary: known
+main::mk@20:0: covered (storage: no_proof_required), summary: known
+main::lists@24:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::dicts@56:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::gc@76:0: uncovered (generic body)
+main::generic@81:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::hooks@96:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@108:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::<genexpr>@70:34: uncovered (unsupported native container element)
+main::K.__hash__@49:4: covered (storage: no_proof_required), summary: known
+main::K.__eq__@52:4: covered (storage: no_proof_required)
+main::C.__copy__@92:4: uncovered (custom record special member)
+main::A.__init__@12:4: covered (storage: no_proof_required), summary: known
+main::K.__init__@46:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@89:4: uncovered (custom record special member), summary: opaque (custom record special member)
+part_concat::__tpy_init: uncovered (module initialization)
+part_concat::joined@12:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+part_concat::main@19:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+part_concat::E.__init__@8:4: covered (storage: no_proof_required), summary: known
+part_cpy_copy::__tpy_init: uncovered (module initialization)
+part_cpy_copy::main@45:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+part_cpy_copy::Hooked.__copy__@35:4: uncovered (custom record special member)
+part_cpy_copy::CodeErr.__init__@20:4: uncovered (missing record layout)
+part_cpy_copy::PathErr.__init__@26:4: uncovered (missing record layout)
+part_cpy_copy::Hooked.__init__@32:4: uncovered (custom record special member), summary: opaque (custom record special member)
+part_cpy_copy::HookErr.__init__@40:4: uncovered (missing record layout)
+part_positions::__tpy_init: uncovered (module initialization)
+part_positions::count@24:0: covered (storage: no_proof_required), summary: known
+part_positions::gen@28:0: uncovered (reference yield)
+part_positions::main@33:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+part_positions::Holder.snapshot@19:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+part_positions::B.__init__@9:4: covered (storage: no_proof_required), summary: known
+part_positions::Holder.__init__@16:4: covered (storage: no_proof_required), summary: known
+part_sets::__tpy_init: uncovered (module initialization)
+part_sets::tags@21:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_sets::main@28:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_sets::H.__hash__@12:4: covered (storage: no_proof_required), summary: known
+part_sets::H.__eq__@17:4: covered (storage: no_proof_required)
+part_sets::H.__init__@8:4: covered (storage: no_proof_required), summary: known
+part_subclass::__tpy_init: uncovered (module initialization)
+part_subclass::main@44:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+part_subclass::A.__hash__@15:4: covered (storage: no_proof_required), summary: known
+part_subclass::A.__eq__@18:4: covered (storage: no_proof_required)
+part_subclass::LA.dup@23:4: uncovered (unsupported native container element)
+part_subclass::LA.dup_base@27:4: uncovered (unsupported native container element)
+part_subclass::A.__init__@12:4: covered (storage: no_proof_required), summary: known

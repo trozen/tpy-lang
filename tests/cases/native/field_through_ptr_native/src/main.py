@@ -2,7 +2,7 @@
 # field, and a native iterable subclass field iterated through a Ptr local.
 __tpy__ = {"includes": ["native_types.hpp"]}
 from typing import Iterable, Iterator
-from tpy import int32, Ptr, NativeIterable, ValueType, take_ptr
+from tpy import int32, Own, Ptr, NativeIterable, ValueType, take_ptr
 from tpy.extern import native, native_field
 
 
@@ -45,7 +45,7 @@ class Outer:
 
 
 @native
-def make_outer() -> Outer: ...
+def make_outer() -> Own[Outer]: ...
 
 
 @native

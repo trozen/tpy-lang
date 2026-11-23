@@ -118,7 +118,7 @@ All methods on a `@native` class must be stubs (`...` body). Non-native methods 
 - `-> V` means the C++ method returns `V&` (a reference into the receiver or other stable storage). A call result bound to a local *aliases* that storage -- `p = obj.get()` binds `V*`/`V&`, and mutations through `p` reach the original (matching `dict.setdefault`, container `__getitem__`).
 - `-> Own[V]` means the C++ method returns a fresh `V` by value (a factory / a moved-out value). The result is owned; binding it copies/moves, no aliasing.
 
-This is the same contract user-defined methods follow, so there is no native special case. The consequence is a hard requirement on the binding author: a method whose C++ returns by value (e.g. a `static Vec2 zero()` factory) **must** be declared `-> Own[V]`. Declaring it bare `-> V` makes codegen bind a reference to a destroyed temporary -- a dangling pointer (or, for a `@nocopy` `V`, a C++ build error). There is currently no compiler check that a bare `-> V` native method actually returns `V&`; it is the author's contract to honor. (Free `@native` *functions* are the exception: without a declaration they take value semantics regardless of the annotation; `result=` (below) declares what the result borrows.)
+This is the same contract user-defined methods follow, so there is no native special case. The consequence is a hard requirement on the binding author: a method whose C++ returns by value (e.g. a `static Vec2 zero()` factory) **must** be declared `-> Own[V]`. Declaring it bare `-> V` makes codegen bind a reference to a destroyed temporary -- a dangling pointer (or, for a `@nocopy` `V`, a C++ build error). There is currently no compiler check that a bare `-> V` native method actually returns `V&`; it is the author's contract to honor. Free `@native` *functions* follow the same contract: `@native def make() -> Node` renders `Node& x = ::make();`, so a C++ function returning `Node` by value fails the C++ build (*cannot bind non-const lvalue reference*) until the stub says `-> Own[Node]` -- never a silent copy.
 
 **Construction:**
 - C++ classes: constructor call syntax -- `Vec2(1.0, 2.0)` -> `b2::Vec2(1.0, 2.0)`
@@ -339,10 +339,18 @@ template's element is enforced by sema alone.
 
 ### The binding contract: `result=` and `args=`
 
-A binding without a body has no code for the compiler to read, so what it
-does with its arguments is declared on its own `@native` or `@cpp_template`,
-one schema for both, keyed by parameter NAME (`"self"` for a method's
-receiver):
+A binding behaves as the TPy function with the same signature: its C++
+must have the signature TPy renders for that user-function twin (parameter
+forms, `V&` for a bare reference-type result, `V` by value for `Own[V]`),
+for `@native` and `@cpp_template` alike, and a C++ that does not is a
+binding error, never a convention the compiler guesses around. What the
+signature cannot say -- what the body does with its arguments -- is
+declared on its own `@native` or `@cpp_template`, one schema for both,
+keyed by parameter NAME (`"self"` for a method's receiver). These
+declarations are information for the lifetime and copy checks only; they
+do not change the C++ forms (one exception remains, the per-call result
+form of a declared "borrow" / "element", which TODO.md "One rule for a
+result borrowed from a temporary" removes):
 
 | Keyword | Value | Says |
 |---|---|---|
@@ -463,8 +471,25 @@ binds as a borrow renders wrapped in `::tpy::assert_lent(...)`, so a
 declared binding whose C++ returns by value stops the C++ build with "a call
 the compiler bound as a borrow returns a value; return a reference, or
 declare the stub's result Own[...]". A free function without the
-declaration keeps a by-value result, even when its C++ returns a reference
-(`BUGS.md`, "An UNDECLARED free `@native` function").
+declaration takes its signature's form too: a bare `-> V` is `V&`.
+
+Without a declaration, a stub's result lends as its TPy twin's could
+(`stub_result_lenders`, one rule for free functions, methods, static
+methods, generics, `@native` and `@cpp_template`): a result that points --
+a reference, a pointer, an Optional / union of references, a view, an
+iterator -- may borrow the receiver and every argument whose type can hold
+its referent (for a view, any argument with storage behind it: a reference
+type, a view, a `Ptr`, a string or byte buffer), except an argument `args=`
+places. A generic stub's declaration lends from every argument an open `T`
+may be; each call reads its own instantiation. An argument can hold the
+referent unless it cannot lend at all (a number, an `Own[...]` argument),
+the result points at a value and the argument is a scalar nothing points
+into, or the result points at a class object and nothing the argument
+reaches is a reference type, an open `T` or a part that may hold a pointer
+(an opaque native class, a view field) -- no class relation is asked, so
+a method `find(self, k: Key) -> Node` lends from an unrelated `Key` too and
+warns a temporary key; `args={"k": "compared"}` is the lever that says the
+binding keeps nothing of it.
 
 A bodyless METHOD stub declares the same way, `self` naming the receiver:
 
@@ -496,9 +521,17 @@ a local holding it copies, warned). `self` is refused on a `@staticmethod` /
 receiver is moved into the call); a borrow is refused on an operator
 method (`__x__`) and a `@property`, which are reached through syntax of their
 own that does not take the declaration yet. A native method WITHOUT a
-`result=` still infers that its result borrows the receiver; requiring a
-declaration where the result could borrow several sources (the ambiguity rule)
-is deferred (TODO.md, "Borrow-declaration elision and the ambiguity rule for
+`result=` infers that a result which may point borrows the receiver AND
+every other operand that can lend -- the worst case, so a binding handing
+back an argument is safe without a declaration: `t = p.pick(Node(1))` over
+an undeclared `def pick(self, other: Node) -> Node` warns *Result borrows
+from temporary argument 'other'*, and `r = p.pick(n); r.v = 5` writes `n`.
+An operand its `args=` names ("compared" / "stored": the method only
+compares it with what it holds, or holds it from then on) is not one the
+result borrows, and neither is any operand when the result holds no
+pointer (`set.__iand__`, `str.removeprefix(prefix)` and `bytearray.__iadd__`
+say so). Requiring a declaration where the result could borrow several
+sources (the ambiguity rule) is deferred (TODO.md, "Borrow-declaration elision and the ambiguity rule for
 native stubs"). A declared result that is a value type HOLDING a class
 instance (an Optional, union or tuple of one) is refused: the by-value C++
 result would copy the instance. In a generic body, a call whose result is
@@ -511,13 +544,17 @@ that copy is certain whatever `T` turns out to be.
 
 Each name must be a parameter of the binding whose argument can hold storage
 the result borrows (a reference type, an open `T`, a view, a `str`, a callable
-whose environment may hold references); an unknown name, a scalar parameter,
-or the declaration on a function with a body is an error. `"borrow"` may
-also name an owned value the C++ passes by reference (`int`
-as `const BigInt&`, `String`) when the result is an owned value too: `min(a:
-int, b: int) -> int` binds `std::min`, which hands back one of its
-arguments. A view result over such a parameter, and a value passed by copy
-(`int32`), are refused: neither holds storage the result could borrow. The
+whose environment may hold references, a value holding a pointer such as a
+`Ptr`, a `String` passed by reference); an unknown name, a scalar
+parameter, or the declaration on a function with a body is an error. A view
+result over a `String` is the borrow it is (`@native(result={"s":
+"borrow"}) def view_of(s: String) -> StrView`: returning it over a
+temporary is refused). `"borrow"` may also name an owned value the C++
+passes by reference (`int` as `const BigInt&`) when the result is an owned
+value too: `min(a: int, b: int) -> int` binds `std::min`, which hands back
+one of its arguments. A view result over an `int`, and a value passed by
+copy (`int32`), are refused: neither holds storage the result could
+borrow. The
 builtin `min` / `max` (`"borrow"` for two or three operands, over `int` as
 over a reference type, `"element"` for one iterable), `round(number: int)`
 (`result={"number": "borrow"}`, its template renders the argument) and
@@ -552,6 +589,18 @@ str` is a fresh string. An undeclared binding whose C++ nevertheless returns
 a reference into an argument breaks this contract, for sema and MIR alike
 (no render check catches it yet:
 BUGS.md#undeclared-binding-reference-result-taken-fresh).
+
+#### Readonly results: spelled as on the TPy twin
+
+A method stub's result access is its signature's, as for the TPy method with
+the same signature: `@readonly def get(self) -> Node` is a const member
+returning `Node&` (not tied to the receiver), and `@readonly` makes every
+non-value parameter readonly (`const Node&`). An accessor whose result
+follows its receiver -- the const C++ overload handing back const access --
+spells `@auto_readonly`, as its twin does: `@auto_readonly def get(self, key:
+readonly[K]) -> auto_readonly[V] | None` (`dict.get`), `@auto_readonly def
+ptr(self) -> Ptr[auto_readonly[T]]` (`UninitStorage.ptr`). A binding whose C++
+builds a new object returns `Own[X]` (`bytearray.strip()`).
 
 #### Taking over a fresh argument: `result=` "adopts"
 
