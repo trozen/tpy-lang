@@ -11,8 +11,8 @@ from ..compilation_context import activate_compiler, get_current_compiler
 from ..thir import nodes as th
 from ..thir.validate import _iter_children
 from ..thir.scalar_leaves import (
-    UNEXPANDED, MIRClass, chain_fields, holds_loan, loan_free, modeled_chain,
-    modeled_field, stored_types, value_class, view_compatible,
+    MIRClass, chain_fields, holds_loan, loan_free, modeled_chain,
+    modeled_field, stored_types, value_class, view_compatible, walk_stored,
 )
 from ..type_def_registry import ParamPassing, type_def_of
 from ..typesys import (
@@ -94,22 +94,18 @@ def layout_copy_may_raise(layout: MIRRecordLayout, layout_of: Callable[[NominalT
     if layout.opaque:
         return bool(type_def_of(layout.type).copy_may_raise)
     inside = inside | {layout.type}
-    pending = [f.type for f in reversed(layout.fields)]
-    while pending:
-        bare = unwrap_readonly(pending.pop())
-        cls = value_class(bare)
-        if cls is MIRClass.OWNED_LEAF and type_def_of(bare).copy_may_raise:
+    # A wrapper copies the members it stores inline.
+    for step in walk_stored((f.type for f in layout.fields), no_fields, lambda _, cls: cls in WRAPPER_CLASSES):
+        if step.unexpanded:
             return True
-        if cls in AGGREGATE_CLASSES:
-            member = aggregate_facts(bare, layout_of, inside)
+        if not step.first:
+            continue
+        if step.cls is MIRClass.OWNED_LEAF and type_def_of(step.type).copy_may_raise:
+            return True
+        if step.cls in AGGREGATE_CLASSES:
+            member = aggregate_facts(step.type, layout_of, inside)
             if member is None or member.copy_may_raise:
                 return True
-        elif cls in WRAPPER_CLASSES:
-            # A wrapper copies the members it stores inline.
-            members = stored_types(bare, no_fields)
-            if members is UNEXPANDED:
-                return True
-            pending.extend(reversed(members))
     return False
 
 
@@ -189,22 +185,18 @@ def _member_definitions(ctor: th.THIRConstructor, layout: th.THIRRecordLayout, d
     """A record's storage is hook-free to build, copy, move and destroy only
     when each member's is: a member record's verified definition, and a
     container field's elements as a container holds them (`container_definition`)."""
-    pending = [f.type for f in reversed(layout.fields)]
-    while pending:
-        bare = unwrap_readonly(pending.pop())
-        cls = value_class(bare)
-        if cls is MIRClass.RECORD:
-            member = definitions.get(bare, "missing constructor definition")
+    # A wrapper stores its members inline: each verifies as a field would.
+    for step in walk_stored((f.type for f in layout.fields), no_fields, lambda _, cls: cls in WRAPPER_CLASSES):
+        require(ctor, not step.unexpanded, "unsupported record fields")
+        if not step.first:
+            continue
+        if step.cls is MIRClass.RECORD:
+            member = definitions.get(step.type, "missing constructor definition")
             if isinstance(member, str):
                 raise MIRUnsupported(ctor, f"member definition: {member}")
         # A container has no constructor: its elements verify as it holds them.
-        elif cls is MIRClass.CONTAINER:
-            container_definition(ctor, bare, lambda t: definitions.get(t, "missing constructor definition"))
-        elif cls in WRAPPER_CLASSES:
-            # A wrapper stores its members inline: each verifies as a field would.
-            members = stored_types(bare, no_fields)
-            require(ctor, members is not UNEXPANDED, "unsupported record fields")
-            pending.extend(reversed(members))
+        elif step.cls is MIRClass.CONTAINER:
+            container_definition(ctor, step.type, lambda t: definitions.get(t, "missing constructor definition"))
 
 
 def _record_identity(node: object, layout: object) -> None:
@@ -669,22 +661,14 @@ def _read_records(ctor: th.THIRConstructor) -> list[NominalType]:
     member that is a wrapper or an `Own[...]`, whose refusal is the
     certificate's."""
     reads = [bi.base for bi in ctor.base_inits if isinstance(bi.base, NominalType)]
-    pending: list[TpyType] = []
+    roots: list[TpyType] = []
     for f in ctor.record_layout.fields:
         if modeled_field(f.type):
             optional = value_class(f.type) is MIRClass.OPTIONAL
-            pending.extend(stored_types(f.type, no_fields) if optional else (f.type,))
-    seen: set[TpyType] = set()
-    while pending:
-        typ = unwrap_readonly(pending.pop())
-        if typ in seen:
-            continue
-        seen.add(typ)
-        match value_class(typ):
-            case MIRClass.RECORD:
-                reads.append(typ)
-            case MIRClass.CONTAINER if (members := stored_types(typ, no_fields)) is not UNEXPANDED:
-                pending.extend(members)
+            roots.extend(stored_types(f.type, no_fields) if optional else (f.type,))
+    reads.extend(step.type for step in walk_stored(roots, no_fields, lambda _, cls: cls is MIRClass.CONTAINER,
+                                                   last_first=True)
+                 if step.first and step.cls is MIRClass.RECORD)
     return reads
 
 

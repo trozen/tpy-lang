@@ -128,9 +128,10 @@ def _value_result_form(expr: th.THIRCall | th.THIRMethodCall) -> set[str]:
 
 
 def _root_name(place: th.THIRExpr) -> str | None:
-    """The binding a place's chain of field accesses starts from."""
+    """The binding a place's chain of field accesses and tuple members
+    starts from."""
     root = place
-    while isinstance(root, th.THIRFieldAccess):
+    while isinstance(root, th.THIRFieldAccess) or place_kind(root) is _Place.TUPLE_MEMBER:
         root = root.receiver
     return root.name if isinstance(root, th.THIRName) else "self" if isinstance(root, th.THIRSelf) else None
 
@@ -313,7 +314,7 @@ _OWNED_PLACES = (_Place.GLOBAL, _Place.NAME, _Place.FIELD, _Place.ELEMENT)
 _OWNED_REFUSALS = {_Place.FIELD: "owned-leaf field type mismatch", _Place.ELEMENT: "owned-leaf element type mismatch"}
 _VIEW_PLACES = (_Place.NAME, _Place.FIELD, _Place.ELEMENT)
 _SPAN_PLACES = (_Place.NAME,)
-_AGGREGATE_PLACES = (_Place.NAME, _Place.SELF, _Place.FIELD, _Place.ELEMENT)
+_AGGREGATE_PLACES = (_Place.NAME, _Place.SELF, _Place.FIELD, _Place.ELEMENT, _Place.TUPLE_MEMBER)
 # The places a field is read through: any record place but a global's; a
 # binding holding a record is one by its holder, any other is checked.
 _RECEIVER_PLACES = (_Place.NAME, _Place.SELF, _Place.FIELD, _Place.ELEMENT, _Place.UNION_PAYLOAD,
@@ -640,6 +641,7 @@ class _Lowering:
         payload, a field, a container element (raising as its index or key
         may), a tuple member (`binding_place` for a binding). The reader
         admits it at its position first."""
+        f = self.fragment()
         match place_kind(expr):
             case _Place.GLOBAL:
                 _plain(expr, {"cpp", "global_binding"} if isinstance(expr, th.THIRModuleVar)
@@ -657,11 +659,11 @@ class _Lowering:
             case _Place.ELEMENT:
                 return self.element_access(expr)
             case _Place.TUPLE_MEMBER:
-                return self.projection(expr)[1]
+                f, root = self.projection(expr)
             case _:
                 raise AssertionError("not a place expression")
-        return self.valued(MIRValue(MIRPlace(root.root, root.projections + self.mir.storage_steps(root)),
-                                    loc=expr.loc))
+        f.value = MIRValue(MIRPlace(root.root, root.projections + f.storage_steps(root)), loc=expr.loc)
+        return f
 
     def binding_place(self, name: str, loc: object) -> Fragment:
         """The storage binding `name` (`self` included) is or reaches -- a
@@ -2260,9 +2262,8 @@ class _Lowering:
         """A record or container holder bound or rebound to a place or a
         borrowed result: a name by its holding (a holder's referent
         aliased), any other source by the one classification a borrowed
-        result takes (`borrowed_source`; a tuple member only a parameter
-        captures), its operands evaluated within the binding's full
-        expression."""
+        result takes (`borrowed_source`), its operands evaluated within the
+        binding's full expression."""
         facts = {"alias_binding", "storage_borrow"}
         if declaration:
             _plain(stmt, {"name", "resolved_type", "init", "cpp_type", "is_const", "cpp_local_representation"
@@ -2299,10 +2300,11 @@ class _Lowering:
                 _require(stmt, not held.readonly or holder.readonly, "alias increases access")
                 value = self.valued(MIRValue(MIRAlias(self.slot_of(source_name)), holder, source.loc))
                 return self.put_borrow_binding(stmt.loc, bound_slot(), declaration, value, stmt)
-        if isinstance(source, th.THIRSubscript) and source.tuple_index is not None:
-            # A parameter's tuple member points at the parameter's own referent.
-            _require(source, declaration and isinstance(source.receiver, th.THIRName)
-                     and source.receiver.name in self.parameters, "tuple borrow needs parameter capture")
+        if place_kind(source) is _Place.TUPLE_MEMBER:
+            # A reference binding reads a pointer member's object (`(*std::get<N>(t))`); a
+            # pointer local holds the member's pointer itself.
+            _require(source, source.deref == (source.elem_pointer and isinstance(stmt, th.THIRVarDecl)),
+                     "tuple element deref disagreement")
         elif isinstance(source, th.THIRFieldAccess):
             _require(source, not source.narrowed_deref, "borrow of an Optional field's payload")
         value = self.full_expression(source, check=lambda: self.borrowed_source(source, holder).view(holder))
@@ -2722,6 +2724,9 @@ class _Lowering:
             if bare is not None and arg.narrowed_deref:
                 bare = optional_record_field(bare)
             return bare if bare is not None and record_type(bare) else None
+        if place_kind(arg) is _Place.TUPLE_MEMBER:
+            bare = unwrap_readonly(arg.result_type)
+            return bare if record_type(bare) else None
         name = arg.name if isinstance(arg, th.THIRName) else "self" if isinstance(arg, th.THIRSelf) else None
         held = self.holder(name)
         return held.type if held is not None and held.borrowed_record else None
@@ -2946,9 +2951,10 @@ class _Lowering:
                          and not self.holder(name).readonly
                          and expr.form in (expr.value.form, th.Form.STORAGE), "move needs fixed movable owned local")
                 f.value = MIRValue(MIRMove(self.scope[name].backing), value_shape(typ), expr.loc)
-            case (th.THIRName() | th.THIRSelf()) if expr.form is th.Form.BORROW:
-                # A borrowed name read into storage: C++ copies what it names
-                # (sema warned about the inline copy).
+            case _ if expr.form is th.Form.BORROW and (isinstance(expr, (th.THIRName, th.THIRSelf))
+                                                       or place_kind(expr) is _Place.TUPLE_MEMBER):
+                # A borrowed name or tuple member read into storage: C++
+                # copies what it names (sema warned about the inline copy).
                 source = self.aggregate_source(expr, cls)
                 _require(expr, source.shape_of().type == typ, "record source type mismatch")
                 _require(expr, self.copyable(typ), "record is not copyable or copy form")
@@ -3028,8 +3034,8 @@ class _Lowering:
                 value = self.wrapper_copy(f.splice(found[1]), shape)
             case th.THIROptionalPtrArg():
                 _plain(arg, {"value", "addr_of"})
-                _require(arg, isinstance(arg.value, (th.THIRName, th.THIRSelf, th.THIRFieldAccess)),
-                         "unsupported optional argument")
+                _require(arg, isinstance(arg.value, (th.THIRName, th.THIRSelf, th.THIRFieldAccess))
+                         or place_kind(arg.value) is _Place.TUPLE_MEMBER, "unsupported optional argument")
                 source = self.aggregate_source(arg.value, MIRClass.RECORD)
                 self.payload_compatible(arg, source.holder_shape_of(), target)
                 value = MIRWrap(1, MIRPlace(f.lend(source)))
@@ -3501,6 +3507,8 @@ class _Lowering:
                     bare = optional_record_field(bare)
                 in_place = bare is not None and expr.form in (th.Form.STORAGE, th.Form.BORROW)
                 return _Source.MEMBER, _aggregate_class(bare) if in_place else None
+            case _Place.TUPLE_MEMBER:
+                return _Source.MEMBER, _aggregate_class(expr.result_type) if expr.form is th.Form.BORROW else None
             case _Place.ELEMENT:
                 # An aggregate element is borrowed in place, at the type it is read at.
                 return _Source.ELEMENT, _aggregate_class(expr.result_type) if expr.form is th.Form.BORROW else None
@@ -3517,9 +3525,9 @@ class _Lowering:
         found = self.aggregate_place(expr)
         return found[1] if found is not None else None
 
-    def member_source(self, expr: th.THIRFieldAccess, cls: MIRClass) -> Fragment:
-        """An aggregate member read in place (`ln.a`, `self.items`), at the
-        access it is reached with, as that place."""
+    def member_source(self, expr: th.THIRFieldAccess | th.THIRSubscript, cls: MIRClass) -> Fragment:
+        """An aggregate member read in place (`ln.a`, `self.items`, `t[0]`),
+        at the access it is reached with, as that place."""
         _require(expr, expr.form in (th.Form.STORAGE, th.Form.BORROW), "record member read form")
         s = self.place(expr)
         _require(expr, s.shape_of().cls is cls, "record source needs record storage")
@@ -3564,10 +3572,10 @@ class _Lowering:
         the place it borrows in place or the holder whose referent it
         takes; never lent with more access than its path has. A member, a
         container element and a user call are told apart by the one
-        aggregate classification (`aggregate_place`); a tuple member, a
-        conditional (each arm through this same classification) and a
-        select arm's emplacement by their nodes; any other source needs a
-        holder's name."""
+        aggregate classification (`aggregate_place`), a tuple member among
+        the members; a conditional (each arm through this same
+        classification) and a select arm's emplacement by their nodes; any
+        other source needs a holder's name."""
         self.reference(expr, result, expr.result_type)
         match expr:
             case th.THIRSlotEmplace():
@@ -3595,15 +3603,6 @@ class _Lowering:
                 f.current = join
                 f.value = MIRValue(dest, loc=expr.loc)
                 return f
-            case th.THIRSubscript() if expr.tuple_index is not None:
-                # A tuple's pointer member, captured: the place it points at.
-                member, place = self.projection(expr, capture=True)
-                _require(expr, member.cls is result.cls and member.type == result.type,
-                         "storage borrow type mismatch")
-                _require(expr, not member.readonly or result.readonly, "alias increases access")
-                at = place.value.value
-                place.value = MIRValue(MIRPlace(at.root, (*at.projections, MIRDeref())), loc=place.value.loc)
-                return place
         found = self.aggregate_place(expr)
         kind = found[0] if found is not None else None
         if kind is _Source.CALL:
@@ -3913,11 +3912,10 @@ class _Lowering:
                            else MIRConstruct(tuple(elements)), holder, expr.loc)
         return t
 
-    def projection(self, expr: th.THIRSubscript, *, capture: bool = False) -> tuple[MIRShape, Fragment]:
-        """A tuple member read in place: its member shape, and its place."""
-        _plain(expr, {"receiver", "index", "tuple_index", "elem_pointer"}
-               | ({"deref"} if capture else set()))
-        _require(expr, not capture or expr.deref, "tuple capture needs dereferenced element")
+    def projection(self, expr: th.THIRSubscript) -> tuple[Fragment, MIRPlace]:
+        """A tuple member read in place: what reaches its tuple, and the
+        member's own place (a pointer member's object is `place`'s tail)."""
+        _plain(expr, {"receiver", "index", "tuple_index", "elem_pointer", "deref"})
         receiver = self.tuple_expr(expr.receiver, allow_owned=True)
         tuple_shape = receiver.shape_of()
         _require(expr, not tuple_shape.owned_tuple or isinstance(expr.receiver, th.THIRName),
@@ -3931,21 +3929,20 @@ class _Lowering:
         # The render's pointer fact must agree with the layout MIR reads.
         _require(expr, expr.elem_pointer == member.pointer_element,
                  "tuple element pointer disagreement")
+        # The render reads a pointer member's object as `(*std::get<N>(t))`.
+        _require(expr, not expr.deref or member.cls is MIRClass.RECORD and member.is_pointer,
+                 "tuple element deref disagreement")
         if member.cls is MIRClass.RECORD:
             self.reference(expr, member, expr.result_type)
             _require(expr, expr.form is th.Form.BORROW, "tuple reference projection form")
-            if member.is_storage:
-                _require(expr, not capture, "owned tuple element capture is unsupported")
         else:
-            _require(expr, not capture, "tuple capture needs record element")
             _require(expr, expr.result_type == member.type and expr.form is th.Form.VALUE,
                      "tuple scalar projection type or form")
-        place = self.fragment()
+        f = self.fragment()
         # A tuple member: of a binding, or of a tuple value written into a holder.
         root = (self.slot_of(expr.receiver.name) if isinstance(expr.receiver, th.THIRName)
-                else place.lend(receiver))
-        place.value = MIRValue(MIRPlace(root, (MIRTupleIndex(index),)), loc=expr.loc)
-        return member, place
+                else f.lend(receiver))
+        return f, MIRPlace(root, (MIRTupleIndex(index),))
 
     def field(self, expr: th.THIRFieldAccess, *, write: bool = False) -> tuple[MIRShape, Fragment]:
         """A field place, and the value it holds (`value_shape` at field position). An

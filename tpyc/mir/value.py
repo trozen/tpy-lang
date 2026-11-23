@@ -21,7 +21,7 @@ from ..thir.nodes import Form
 from ..thir.scalar_leaves import (
     UNEXPANDED, UNSUPPORTED_ELEMENT, FieldSource, MIRClass, binds_cursor, holds_loan, members_problem,
     modeled_ancestors, modeled_field, native_container_subject, readonly_elements, record_type, stored_members,
-    stored_types, value_class,
+    stored_types, value_class, walk_stored,
 )
 from ..type_def_registry import ParamPassing
 from ..typesys import (
@@ -582,18 +582,12 @@ def nested_members(types: Iterable[TpyType], fields_of: Callable[[NominalType], 
     def record_fields(record: NominalType) -> tuple[tuple[MIRField, TpyType], ...]:
         return tuple((f, f.type) for f in fields_of(record))
 
-    pending = list(types)
-    seen: set[TpyType] = set()
-    while pending:
-        typ = unwrap_readonly(pending.pop())
-        if typ in seen:
-            continue
-        seen.add(typ)
-        yield typ
-        cls = value_class(typ)
-        if cls in WRAPPER_CLASSES or cls is MIRClass.CONTAINER or cls is MIRClass.RECORD:
-            members = stored_types(typ, record_fields)
-            pending.extend(() if members is UNEXPANDED else members)
+    def entered(_: TpyType, cls: MIRClass | None) -> bool:
+        return cls in WRAPPER_CLASSES or cls is MIRClass.CONTAINER or cls is MIRClass.RECORD
+
+    for step in walk_stored(types, record_fields, entered, last_first=True):
+        if step.first:
+            yield step.type
 
 
 def subject_class(declared: TpyType) -> MIRClass | None:

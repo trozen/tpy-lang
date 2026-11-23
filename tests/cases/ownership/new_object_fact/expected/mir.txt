@@ -16,7 +16,7 @@ main::keep@134:0: covered (storage: no_proof_required), summary: known
 main::bump_item@138:0: covered (storage: no_proof_required), summary: known
 main::opt_bump@142:0: covered (storage: no_proof_required), summary: known
 main::gen_id@147:0: uncovered (generic body)
-main::ret_last@153:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::ret_last@153:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
 main::count@171:0: uncovered (unsupported parameter type)
 main::union_bump@182:0: covered (storage: no_proof_required), summary: opaque (summary record: unsupported record fields)
 main::any_store@188:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)

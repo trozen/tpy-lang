@@ -56,3 +56,15 @@ main::Log.__init__@203:4: uncovered (unsupported owned-leaf expression type), su
 main::Stack.__init__@229:4: covered (storage: no_proof_required), summary: known
 main::Cell.__init__@259:4: covered (storage: no_proof_required), summary: known
 main::Named.__init__@280:4: covered (storage: no_proof_required), summary: known
+part_tuple_member::__tpy_init: uncovered (module initialization)
+part_tuple_member::replace_then@21:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_tuple_member::clear_then@26:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_tuple_member::member_of_field@32:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: argument_alias, summary: known
+part_tuple_member::member_of_element@38:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: argument_alias, summary: known
+part_tuple_member::replace_pair@43:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_tuple_member::replace_opt@48:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_tuple_member::member_in_tuple@54:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: argument_alias, summary: known
+part_tuple_member::member_as_optional@60:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), conflicts: argument_alias, summary: known
+part_tuple_member::main@65:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_tuple_member::Q.__init__@10:4: covered (storage: no_proof_required), summary: known
+part_tuple_member::Hq.__init__@17:4: covered (storage: no_proof_required), summary: known

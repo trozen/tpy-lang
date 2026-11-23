@@ -26,7 +26,7 @@ main::first@215:0: uncovered (unsupported return type), summary: opaque (unsuppo
 main::returned@220:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
 main::stored_first@242:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::returned_stored@247:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-main::rec_arg@258:0: uncovered (unsupported optional argument), summary: opaque (unsupported optional argument)
+main::rec_arg@258:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
 main::rec_print@263:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
 main::mk_mixed@270:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::mk_pair@274:0: uncovered (unsupported return type), summary: opaque (unsupported return type)

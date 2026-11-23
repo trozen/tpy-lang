@@ -1,0 +1,2 @@
+main.py:134: warning: copies P into field; use copy() to make this explicit
+main.py:146: warning: 'u' is freed at the end of this block, but 'r' still refers to it and is used on line 147; create 'u' before the block

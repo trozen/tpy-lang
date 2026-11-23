@@ -339,6 +339,10 @@ def main() -> None:
     print("container_select pick b again:", pick(False, cells, others), len(cells))
     named = [Named("a"), Named("b")]
     print("touch", touch(named, "abc"), named[0].s, named[1].s)
+    tuple_member_main()
 
+
+# Imported here, not at the top, so the pinned lines above keep their numbers.
+from part_tuple_member import main as tuple_member_main
 
 main()

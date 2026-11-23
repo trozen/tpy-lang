@@ -31,7 +31,7 @@ main::store_g@459:0: uncovered (unsupported parameter type), summary: opaque (un
 main::slot_holder@465:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::slot_writes@479:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::literal_list_elem@507:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::elem_holder_fn@548:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::elem_holder_fn@548:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
 main::main@558:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::Src.peek@25:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Holder.writes@51:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
@@ -47,7 +47,7 @@ main::Slots.showu_g3@392:4: uncovered (unsupported expression form), summary: op
 main::Slots.writes@396:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::Slots.gen_writes@438:4: uncovered (unsupported native container element)
 main::Slots.async_writes@449:4: uncovered (async body)
-main::ElemHolder.from_local@523:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::ElemHolder.from_local@523:4: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
 main::ElemHolder.from_own_param@530:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::P.__init__@11:4: covered (storage: no_proof_required), summary: known
 main::Src.__init__@22:4: covered (storage: no_proof_required), summary: known

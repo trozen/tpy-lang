@@ -9,14 +9,13 @@ from ..parse import SourceLocation
 from ..thir.nodes import COMPARISON_OPS, THIRStubCallee, THIRStubContract
 from ..type_def_registry import is_array
 from ..thir.scalar_leaves import (
-    UNEXPANDED, MIRClass, leaf_constant, modeled_field, owned_constant, owned_value_type,
-    primitive_leaf, record_type, stored_types, value_class,
+    MIRClass, leaf_constant, modeled_field, owned_constant, owned_value_type,
+    primitive_leaf, record_type, value_class, walk_stored,
 )
 from ..type_def_registry import type_def_of, zero_value_of
 from ..typesys import (
     BOOL, INT32, NominalType, TpyType, VoidType,
-    certified_primitive_comparison, unwrap_own,
-    unwrap_readonly, view_family_of,
+    certified_primitive_comparison, unwrap_own, view_family_of,
 )
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRGoto,
@@ -71,19 +70,11 @@ def field_layout_problem(typ: TpyType, records: MIRRecords) -> str | None:
     record's layout, an owned leaf's opaque buffer -- the layouts
     `close_layouts` brings along; None when it misses none. A container's
     layouts are its slot's check."""
-    pending = [typ]
-    while pending:
-        member = pending.pop()
-        bare, cls = unwrap_readonly(member), value_class(member)
-        layout = records.get(bare)
-        if (cls is MIRClass.RECORD and (layout is None or layout.opaque)
-                or cls is MIRClass.OWNED_LEAF and (layout is None or not layout.opaque)):
+    for step in walk_stored([typ], no_fields, lambda _, cls: cls in WRAPPER_CLASSES, last_first=True):
+        layout = records.get(step.type)
+        if (step.unexpanded or step.cls is MIRClass.RECORD and (layout is None or layout.opaque)
+                or step.cls is MIRClass.OWNED_LEAF and (layout is None or not layout.opaque)):
             return _FIELD_LAYOUT_PROBLEMS[value_class(typ)]
-        if cls in WRAPPER_CLASSES:
-            members = stored_types(bare, no_fields)
-            if members is UNEXPANDED:
-                return _FIELD_LAYOUT_PROBLEMS[value_class(typ)]
-            pending.extend(members)
     return None
 
 
@@ -862,14 +853,18 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
 
     def record_copy_ok(value: MIRCopy, typ: TpyType) -> bool:
         """A copy of record or container storage of type `typ`: the owned
-        storage a holder points at, the body's own storage, an inline
-        member or a container element; it may raise exactly when copying it
-        may (or an element access on the way)."""
+        storage a holder or a tuple's pointer member points at, the body's
+        own storage, an inline member (a field, a tuple's member) or a
+        container element; it may raise exactly when copying it may (or an
+        element access on the way)."""
         source = place_info(value.source)
-        projections = value.source.projections
+        root, projections = value.source.root, value.source.projections
+        # The member a source lies in or points from: its place less that member's object prefix.
+        member = projections[:-1] if projections and isinstance(projections[-1], MIRDeref) else projections
+        in_member = (bool(member) and isinstance(member[-1], (MIRField, MIRTupleIndex, MIRContainerElements))
+                     and projections[len(member):] == object_prefix(shape_at(MIRPlace(root, member))))
         return (facts(typ).copyable and source.type == typ and source.owned_place
-                and (projections in ((), object_prefix(slots[value.source.root].shape))
-                     or isinstance(projections[-1], (MIRField, MIRContainerElements)))
+                and (projections in ((), object_prefix(slots[root].shape)) or in_member)
                 and value.may_raise is (record_copy_may_raise(typ) or reaches_element(value.source)))
 
     def global_operand_ok(operand: MIRSlotId, value: MIRRvalue, *, copies: bool = True, borrows: bool = False,

@@ -1,0 +1,36 @@
+fixtures::__tpy_init: uncovered (module initialization)
+fixtures::touch@20:0: covered (storage: no_proof_required), summary: known
+fixtures::bump_base@24:0: covered (storage: no_proof_required), summary: known
+fixtures::take_opt@28:0: covered (storage: no_proof_required), summary: known
+fixtures::P.reset@11:4: covered (storage: no_proof_required), summary: known
+fixtures::P.__init__@8:4: covered (storage: no_proof_required), summary: known
+fixtures::S.__init__@16:4: covered (storage: no_proof_required), summary: known
+fixtures::Holder.__init__@38:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::tup_bind@12:0: certified, summary: opaque (summary storage or value shape)
+main::tup_call@20:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
+main::tup_arg@27:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
+main::loop_member@62:0: certified, summary: known
+main::reseat@73:0: certified, summary: known
+main::readonly_member@81:0: certified, summary: known
+main::tup_borrowed@89:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::opt_arg@101:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
+main::sub_arg@108:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
+main::copied@115:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
+main::copied_pointer@123:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::stored@132:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
+main::tuple_scope@141:0: covered (storage: conflict), conflicts: scope_end, summary: known
+main::main@150:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::M.meth@40:4: certified, summary: opaque (summary storage or value shape)
+main::M.__init__@37:4: covered (storage: no_proof_required), summary: known
+main::C.__init__@51:4: certified, summary: opaque (summary storage or value shape)
+part_limits::__tpy_init: uncovered (module initialization)
+part_limits::gen_member@11:0: uncovered (unsupported hoisted value)
+part_limits::async_member@20:0: uncovered (async body)
+part_limits::guarded@29:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_limits::mixed@40:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+part_limits::main@48:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_views::__tpy_init: uncovered (module initialization)
+part_views::view_alias@13:0: certified, summary: opaque (summary storage or value shape)
+part_views::main@20:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_views::T.__init__@9:4: covered (storage: no_proof_required), summary: known

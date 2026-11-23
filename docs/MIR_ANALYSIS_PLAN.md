@@ -2976,14 +2976,14 @@ as the corpus grows).
   injected operator template (`p.__eq__(q)`), "unsupported expression"; a
   constructor tail calling a method on `self` (`Tally.__init__`) lowers
   since unit 7 (the constructor is an ordinary body); a
-  call-result, constructor-temporary or
-  element receiver (`pick(g).read()`, `Gauge(k).read()`,
-  `gs[0].bump()`), "call needs borrowed record name", the limit record
-  arguments of free functions have (an inline record field receiver,
-  `o.inner.bump()`, lowers through a holder of the member:
-  [nested records](#nested-records)) -- a getter through a call result
-  (`c.via().count`) is the same refusal (`mir/accessor_calls`
-  `twin_via`); a generic record's
+  constructor-temporary receiver (`Gauge(k).read()`), "call receiver
+  access disagrees with its binding" -- a call-result receiver
+  (`pick(g).read()`), an element receiver (`gs[0].bump()`,
+  `mir/method_calls` `element_receiver`), an inline record field receiver
+  (`o.inner.bump()`, through a holder of the member:
+  [nested records](#nested-records)), a tuple member receiver
+  (`t[0].reset()`, `mir/tuple_member_loans`) and a getter through a call
+  result (`c.via().count`, `mir/accessor_calls` `twin_via`) lower; a generic record's
   method, where the caller's parameter of that record refuses first
   ("unsupported parameter type"); a generic or a consuming method,
   "unsupported expression"; a staticmethod, "call needs resolved ordinary
@@ -3007,9 +3007,9 @@ as the corpus grows).
   (`INIT_METHOD`) are the names the language defines them by, decided once
   at the parse node and read by the record's accessors and the body
   predicate alike. Receivers beyond a name, `self` or an inline record
-  field (a call result, a temporary, an element) refuse, so a getter
-  reached through `c.via().count` refuses where `c.count` and
-  `self.c.count` lower.
+  field (a call result, a temporary, an element) refused when this landed;
+  a getter reached through `c.via().count` lowers since (see "Kept
+  refusals" in the accessor section).
 - **Measured, user method summaries** (same tool and sample; branch base
   d1fb396703 vs the finished branch; 11046 test bodies on the base, 11140
   on the branch, the 94 more being `mir/method_calls`): lowered 2033 ->
@@ -3161,10 +3161,7 @@ validator) and `tpyc/mir/test_return_origins.py` (MIR).
   covers with no conflict
   (`BUGS.md#getter-borrow-whole-record-false-positive`).
 - **Kept refusals.** A getter on a record inheriting a `@dynamic`
-  protocol, "unsupported expression" (`call_virtual_getter`); a getter
-  through a call result, "call needs borrowed record name"
-  (`twin_via`; a getter through an inline record field receiver lowers,
-  `getter_through_field`); a field read through a getter CALL result
+  protocol, "unsupported expression" (`call_virtual_getter`); a field read through a getter CALL result
   (`h.part.x` in `record_accessors`), "reference needs local name": THIR
   publishes no field identity on a field read whose receiver is a call,
   while `q = h.part; q.x` lowers (the getter returning the inline field,
@@ -5093,9 +5090,34 @@ does not model answer `UNEXPANDED`, which each reader takes as "may hold
 anything" in its own terms. `shapes.member_projection` maps a selector to
 its projection.
 
-It is one step, not one walk: each reader keeps its own recursion, stop
-rule, dedupe and rule for an unknown record, and only its per-kind
-"which members" branching went. `value.nested_members` is a pure storage
+The searches over it are one walk, `scalar_leaves.walk_stored(roots,
+fields, enter, last_first=...)`: it owns the stack, the `readonly` peel,
+the seen set and the step, and yields a `StoredStep` per member reached
+-- its type, class and selector, `first` on the type's first visit (a
+repeat is yielded too, so a reader answering on a selector sees every
+one), and an `unexpanded` step after an entered type whose members no
+rule enumerates. It enters a type only on its first visit and only when
+the reader's `enter` agrees, and only once the reader has taken that
+type's step, so a reader stopping there never has the type's fields
+asked (`container_definition`'s field source records and refuses). The
+order is the reader's: the stack's own (`last_first`) or the first
+member first, which decides which refusal a raising reader meets first.
+Each reader states only its roots, `enter` and per-step answer:
+`definitions._read_records` (enters containers; a record's first step
+is a read), `value.nested_members` (enters wrappers, containers and
+records; yields first steps), `reach._container_holds` (roots: the
+container's members; enters every modeled class; the target or an
+unexpanded step answers yes), `reach._may_hold` (enters what may hold a
+record, never a container; a container, an unexpanded step -- an `Own`
+lands there -- or the member's selector answers yes),
+`definitions.layout_copy_may_raise`, `definitions._member_definitions`
+and `validate.field_layout_problem` (enter wrappers only). Not on it:
+`close_member` / `close_layouts` (side effects in order, guarded by the
+body's registered records, whose refusal raises first),
+`aggregate_facts` (supplied layouts, a per-path guard), `_member_keys`
+(a place per member, a per-path guard where re-entry is an error; step
+C), `storage_shape` (a fold that builds the shape) and admission (per
+path). `value.nested_members` is a pure storage
 walk: it steps through every member. Which members a reader may read
 through is the reader's. `definitions._read_records` reads, after the
 struct bases, the records reached from the fields, once each, the last
@@ -5154,17 +5176,44 @@ steps B-D).
 Every walk over stored members that can recurse through records carries
 its own guard, so a record reaching itself (`class Node: nxt: Node |
 None`) ends it even with forged inputs -- admission refuses such a record
-first, so no admitted program has one: `nested_members`,
-`_read_records`, `reach._may_hold` and `reach._container_holds` keep a
-seen set (a type already entered answers where it was entered);
-`aggregate_facts` / `layout_copy_may_raise` and `_layouts_problem` carry
-the records they are inside (one answers for its members where the walk
-entered it); `dependencies._member_keys` refuses storage holding itself
-inline ("record storage holds itself": C++ forbids it, so a layout that
-does is malformed); `close_member` enters a record once. The others end
-by structure: `_member_definitions`, `storage_shape` / `_stored_shapes`,
-`inline_members` and `validate.field_layout_problem` step through
-wrappers only, stopping at a record, and a wrapper type is finite.
+first, so no admitted program has one: `walk_stored` enters a type once,
+so its seven readers end (a type already entered answers where it was
+entered); `aggregate_facts` / `layout_copy_may_raise` and
+`_layouts_problem` carry the records they are inside (one answers for
+its members where the walk entered it); `dependencies._member_keys`
+refuses storage holding itself inline ("record storage holds itself":
+C++ forbids it, so a layout that does is malformed); `close_member`
+enters a record once. The others end by structure: `storage_shape` /
+`_stored_shapes` and `inline_members` step through wrappers only,
+stopping at a record, and a wrapper type is finite.
+
+#### A tuple member is an aggregate source in place (step B1)
+
+A tuple's record member is a member read in place, as a record field is:
+`aggregate_place` classifies `t[0]` as `_Source.MEMBER`, so a binding
+(`r = t[0]`, declared or reseated), a receiver (`t[0].reset()`), an
+argument (`touch(t[0])`, `take_opt(t[0])` at an Optional parameter,
+`bump_base(t[0])` at a base parameter), a copy (`copy(t[0])`, a member read
+into storage `h.p = t[0]`) and a holder of it all go through
+`member_source` / `aggregate_source` and `Fragment.lend`, with no
+tuple-specific arm. `place()` gives a tuple member the tail every place
+takes (`storage_steps`, `shapes.object_prefix`): nothing for an inline
+member of an owned tuple, a dereference for a borrow tuple's pointer
+member, so a member place always names the object. THIR's `deref` on the
+subscript is how the render spells that object (`(*std::get<N>(t))`):
+`projection` admits it only on a pointer record member, and a binding
+checks it against its own form -- a reference declaration reads the
+object, a pointer local (`Cell* saved = std::get<0>(pair)`) the member's
+pointer. `_root_name` and `bound_record` step through a tuple member as
+through a field; the validator's copy-source rule admits an inline tuple
+member and a pointer member's object. The `borrowed_source` tuple arm and
+the "tuple borrow needs parameter capture" gate are deleted. An
+argument-alias warning spells a tuple-member argument as the object it is
+("argument 't[0]' is what ... modifies"); only a container element or a
+slice lies inside the storage it names. Not here: an Optional field's
+payload as a source (`r = h.o` under narrowing) waits for step B2 (TODO.md),
+and a move out of a member (`h.p = t[0]` as the tuple's last use) refuses
+"reference needs local name".
 
 ## Scope matrix and remaining increments
 

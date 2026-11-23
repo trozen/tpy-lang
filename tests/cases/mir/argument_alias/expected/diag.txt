@@ -1,3 +1,8 @@
+part_tuple_member.py:34: warning: argument 't[0]' is what 'replace_then' modifies through parameter 'h' while it still uses 'q'; pass a copy ('copy(t[0])') or restructure so the call does not hand over both
+part_tuple_member.py:40: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
+part_tuple_member.py:40: warning: argument 't[0]' points into 'xs', which 'clear_then' modifies through parameter 'xs' while it still uses 'q'; pass a copy ('copy(t[0])') or restructure so the call does not hand over both
+part_tuple_member.py:56: warning: argument 't[0]' is what 'replace_pair' modifies through parameter 'h' while it still uses 'pair'; pass a copy bound to a local ('v = copy(t[0])') or restructure so the call does not hand over both
+part_tuple_member.py:62: warning: argument 't[0]' is what 'replace_opt' modifies through parameter 'h' while it still uses 'q'; pass a copy ('copy(t[0])') or restructure so the call does not hand over both
 main.py:44: warning: argument 'xs[0]' points into 'xs', which 'bound' modifies through parameter 'events' while it still uses 'value'; bind it to a local first ('v = xs[0]') or restructure so the call does not hand over both
 main.py:54: warning: 'xs' is passed as both 'src' and 'dst' of 'other_int', which modifies it through 'dst' while it still uses 'src'; pass a copy ('copy(xs)') or restructure so the call does not hand over both
 main.py:66: warning: 'xs' is passed as both 'src' and 'dst' of 'walk', which modifies it through 'dst' while it still uses 'src'; pass a copy ('copy(xs)') or restructure so the call does not hand over both

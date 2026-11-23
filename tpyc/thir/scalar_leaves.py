@@ -1,6 +1,6 @@
 """The scalar leaves and records THIR storage facts and MIR model."""
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -250,6 +250,56 @@ def stored_types(typ: object, fields: FieldSource) -> 'tuple[TpyType, ...] | Une
     """The types of `stored_members`, in order."""
     stored = stored_members(typ, fields)
     return stored if stored is UNEXPANDED else tuple(t for _, t in stored.members)
+
+
+@dataclass(frozen=True)
+class StoredStep:
+    """One step of `walk_stored`: a type the walk reaches, its `readonly`
+    seen through, with its class (`value_class`) and the selector that
+    reached it (None at a root). `first` when the walk reaches the type for
+    the first time -- only then may it enter it. `unexpanded` marks the
+    step that follows an entered type's own when no rule enumerates its
+    members (`stored_members` is UNEXPANDED): its reader takes it as
+    holding anything."""
+    type: object
+    cls: 'MIRClass | None'
+    selector: object | None
+    first: bool
+    unexpanded: bool = False
+
+
+def walk_stored(roots: Iterable[object], fields: FieldSource,
+                enter: Callable[[object, 'MIRClass | None'], bool], *,
+                last_first: bool = False) -> Iterator[StoredStep]:
+    """Every member step under storage of `roots`, at any depth, one
+    `stored_members` step at a time: each root, then the members of each
+    type the walk enters -- a type `enter` admits, on its first visit only,
+    so a type reaching itself ends. A repeat is yielded too (`first`
+    False): a reader answering on a selector sees every one. A type is
+    entered only once the reader has taken its step, so `fields` is never
+    asked for a record whose step the reader stopped at. The first member
+    first, or the last when `last_first` (a stack's own order); the order
+    decides which refusal a raising reader meets first."""
+    def pushed(members: Iterable[tuple[object | None, object]]) -> list[tuple[object | None, object]]:
+        members = list(members)
+        return members if last_first else members[::-1]
+
+    pending = pushed((None, r) for r in roots)
+    seen: set[object] = set()
+    while pending:
+        selector, member = pending.pop()
+        typ = unwrap_readonly(member)
+        cls = value_class(typ)
+        first = typ not in seen
+        seen.add(typ)
+        yield StoredStep(typ, cls, selector, first)
+        if not first or not enter(typ, cls):
+            continue
+        stored = stored_members(typ, fields)
+        if stored is UNEXPANDED:
+            yield StoredStep(typ, cls, selector, False, True)
+            continue
+        pending.extend(pushed(stored.members))
 
 
 def binds_cursor(typ: object) -> bool:

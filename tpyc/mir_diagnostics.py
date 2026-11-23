@@ -31,8 +31,8 @@ from .mir.place_text import (
 from .mir.shapes import REGION_STEPS, MIRTupleIndex
 from .mir.dependencies import MIRReferents, resolve_referents
 from .mir.nodes import (
-    MIRCall, MIREdge, MIRFunction, MIRGoto, MIRPlace, MIRPoint, call_place, source_order, statement_call,
-    statement_target, view_member,
+    MIRCall, MIREdge, MIRFunction, MIRGoto, MIRPlace, MIRPoint, call_place,
+    source_order, statement_call, statement_target, view_member,
 )
 from .mir.witness import MIREffect, MIRHazardKind, MIRMayCause, MIRVerdict, MIRWitness, holder_views
 from .typesys import contains_reference_type, unwrap_readonly, view_owned_leaf
@@ -388,8 +388,11 @@ def alias_warning(alias: MIRArgumentAlias, program: MIRProgram, sites: CallSites
     relation = alias.relation
     if relation is MIRAliasRelation.INTO and argument is not None and argument == storage:
         relation = MIRAliasRelation.IS
-    if relation is MIRAliasRelation.IS and not (
-            analyzed is not None and isinstance(peel_coerce(analyzed), TpySubscript)):
+    # A slice has no MIR step, so only its spelling says it lies inside; an
+    # element's borrow keeps its region step, so MIR's relation says so.
+    peeled = peel_coerce(analyzed) if analyzed is not None else None
+    inside = isinstance(peeled, TpySubscript) and peeled.slice_key
+    if relation is MIRAliasRelation.IS and not inside:
         message = (f"{subject} is what '{callee}' modifies through parameter '{writer}' "
                    f"while it still uses '{held}'; {remedy}")
         return Diagnostic(DiagnosticLevel.WARNING, message, alias.loc)

@@ -352,6 +352,7 @@ int32_t element_field(std::vector<Named>& ps) {
 //     print("container_select pick b again:", pick(False, cells, others), len(cells))
 //     named = [Named("a"), Named("b")]
 //     print("touch", touch(named, "abc"), named[0].s, named[1].s)
+//     tuple_member_main()
 void main() {
     std::cout << "other_int" << " " << ::tpyapp::main::other_int(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{1}), {2}) << "\n" << ::tpy::check_signals;
     std::cout << "local_copy" << " " << ::tpyapp::main::local_copy(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{3})) << "\n" << ::tpy::check_signals;
@@ -382,9 +383,13 @@ void main() {
     std::cout << "container_select pick b again:" << " " << ::tpyapp::main::pick(false, cells, others) << " " << ::tpy::__len__(cells) << "\n" << ::tpy::check_signals;
     std::vector<Named> named = {Named("a"), Named("b")};
     std::cout << "touch" << " " << ::tpyapp::main::touch(named, "abc") << " " << ::tpy::__getitem__(named, 0).s << " " << ::tpy::__getitem__(named, 1).s << "\n" << ::tpy::check_signals;
+    ::tpyapp::part_tuple_member::main();
 }
 
 // from helpers import grow_then_read as gtr
+//
+// # Imported here, not at the top, so the pinned lines above keep their numbers.
+// from part_tuple_member import main as tuple_member_main
 //
 // main()
 void __tpy_init() {

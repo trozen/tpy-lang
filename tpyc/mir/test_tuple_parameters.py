@@ -231,12 +231,12 @@ def test_empty_tuple_parameter_at_internal_boundary() -> None:
     assert execute(lower(fn), TupleValue(())) == 1
 
 
-def test_rebound_tuple_element_not_yet_mir_covered(artifacts: Artifacts) -> None:
-    # A rebound element capture is the scalar's reseatable pointer over the
-    # raw element (`Cell* saved = std::get<0>(pair);`), which MIR's tuple
-    # capture does not read yet (TODO.md "MIR coverage of a rebound
-    # tuple-element local"); once it does, execute it as the siblings do.
+def test_rebound_tuple_element_writes_each_referent(artifacts: Artifacts) -> None:
+    # A rebound element capture is a reseatable pointer over the raw element
+    # (`Cell* saved = std::get<0>(pair);`): the member's place all the same.
     functions, _ = artifacts
-    result = lower_function(functions["reseated"], MIRBodyId("tuples", "reseated"))
-    assert isinstance(result, MIRNotCovered)
-    assert result.reason == "tuple capture needs dereferenced element"
+    fn = lower(functions["reseated"])
+    value = MIRFieldId(fn.slots[0].shape.elements[0].type, "value")
+    heap = {1: {value: 1}, 2: {value: 2}}
+    assert execute(fn, TupleValue((Reference(1),)), Reference(2), heap=heap) == 27
+    assert heap[2][value] == 28
