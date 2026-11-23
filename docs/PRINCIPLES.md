@@ -28,7 +28,7 @@ fixing or reviewing anything; rules, skills and designs never contradict them.
 
 ## Engineering
 
-**10. One implementation per concept.** A new feature first reuses existing mechanisms, or unifies similar ones, before adding anything. Each rule is implemented once, on a generic path. Parallel implementations and special cases are defects.
+**10. One implementation per concept.** A new feature first reuses existing mechanisms, or unifies similar ones, before adding anything. Each rule is implemented once, on a generic path. Parallel implementations and special cases are defects. Twins behave alike: two spellings of one thing behave identically. A generic behaves as its concrete version, written with each type argument replaced; a `@native` or `@cpp_template` binding behaves as the TPy function with the same signature. A difference between twins is a defect in the existing logic, fixed there, never a convention to design around.
 
 **11. TPy first, through a narrow compiler interface.** Whatever can be written in TPy is written in TPy rather than C++: library composition, protocols, and runtime logic above the system boundary. Stdlib types are ordinary types: the compiler knows them through general mechanisms (annotations, protocols, decorators), not by name, and special-cases one only where the language leaves no other way -- such as deducing a list literal's element type.
 

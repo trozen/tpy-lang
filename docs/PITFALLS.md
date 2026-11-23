@@ -192,6 +192,34 @@ different form, verdict or warning is the defect, and a temporary, copy or alloc
 does not pay is a different form. Where the corpus spells only the generic,
 the twin is a probe.
 
+### `binding-equals-user-function-twin`
+
+**Rule.** A `@native` or `@cpp_template` binding has exactly the call semantics, diagnostics and
+emitted form of a TPy function with the same signature: the bound C++ is assumed to have the
+signature TPy renders for that function, so a `-> T` result is a reference, `-> Own[T]` a fresh
+value, and each parameter takes its rendered form. `@native("f")` and
+`@cpp_template("f({0}, ...)")` are the same binding. The contract keywords (`result=`, `args=`)
+are information for MIR and the copy and lifetime checks; a keyword or the binding kind that
+changes the C++ form is where the twin drifts. What a call accepts, copies or moves comes from the
+signature on both sides: a parameter a user function's body only reads may render `const T&` as
+an optimization, but its bare `T` still refuses a `readonly` argument; a stub has only its
+signature, so a parameter it does not modify is declared `readonly[T]`.
+
+**Example.** A free `@native` function `def get_owner() -> Owner` bound to a C++ function
+returning `Owner&`: `a = get_owner()` is copied, `Owner a = ::get_owner();`, while the TPy twin
+`def get_owner() -> Owner: return _OWNER` and `@cpp_template("::get_owner()")` both bind
+`Owner& a`. `a.n = 2` reaches the owner under the twins and is lost under the `@native`
+spelling, with no diagnostic. Right: the `@native` call binds the reference, as its
+twins do. Same class, still open: a `result=` keyword picks the C++ result form per call
+(a copy at one call of a callee, a reference at another); a `@native @readonly` method returning
+`-> Node` acts as an implicit `@auto_readonly` where its TPy twin is refused; a `str` argument to
+a non-`@pure` binding demotes views of it to an owned `std::string` the twin does not allocate.
+
+**Check.** For a changed rule a binding can reach, write the binding's user-function twin (same
+signature, a body returning what the C++ returns) and its `@cpp_template` twin, and diff the
+emitted C++ at the call and the diagnostics; a copy, temporary or form the twin does not have
+is the defect.
+
 ### `iterating-a-protocol-param-writes-it`
 
 **Rule.** Iterating a protocol-typed parameter calls the protocol's `__iter__`, and
