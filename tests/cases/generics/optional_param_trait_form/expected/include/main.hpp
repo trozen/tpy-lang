@@ -6,6 +6,11 @@
 #include "tpystd/typing/_typing.hpp"
 #include "tpystd/coro.hpp"
 #include "tpystd/asyncio.hpp"
+#include "part_frame.hpp"
+#include "part_qualified.hpp"
+#include "part_ro_positions.hpp"
+#include "part_send_positions.hpp"
+#include "part_store.hpp"
 
 namespace tpyapp::main {
 
@@ -46,7 +51,7 @@ std::expected<bool, Stop> er_gen(int32_t n);
 // @error_return(Stop)
 // def er_twin(n: int32) -> bool:
 std::expected<bool, Stop> er_twin(int32_t n);
-// async def probe_async[T](val: T | None) -> bool:
+// async def probe_async[T](val: T | None) -> bool:  # tpyc: frame_send(no)
 template <typename T>
 __coro_probe_async<T> probe_async(::tpy::opt_param_t<T> val);
 // async def probe_async_twin(val: int32 | None) -> bool:
@@ -189,7 +194,7 @@ inline std::ostream& operator<<(std::ostream& os, const CellBox& obj) {
     return os;
 }
 
-// async def probe_async[T](val: T | None) -> bool:
+// async def probe_async[T](val: T | None) -> bool:  # tpyc: frame_send(no)
 template <typename T>
 struct __coro_probe_async {
     ::tpy::frame_state __state;
@@ -213,7 +218,7 @@ struct __coro_probe_async {
         return os << "<coroutine probe_async>";
     }
 };
-// async def probe_async[T](val: T | None) -> bool:
+// async def probe_async[T](val: T | None) -> bool:  # tpyc: frame_send(no)
 //     # The coroutine twin: the frame field is the same per-instantiation slot.
 //     return val is not None  # tpyc: ok
 template <typename T>
@@ -232,7 +237,7 @@ template <typename T>
 }
 
 
-// async def probe_async[T](val: T | None) -> bool:
+// async def probe_async[T](val: T | None) -> bool:  # tpyc: frame_send(no)
 template <typename T>
 __coro_probe_async<T> probe_async(::tpy::opt_param_t<T> val) {
     return __coro_probe_async<T>(val);

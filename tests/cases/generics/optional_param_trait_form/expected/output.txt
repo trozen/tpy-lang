@@ -16,4 +16,121 @@ error_return True True
 async_value True False True False
 async_ref True False True True 7
 async_unit False True
+plain True 1
+plain True V(2)
+plain True s
+plain True P(3)
+plain False None
+send True 1
+send True V(2)
+send True s
+send True P(3)
+send False None
+sync True 1
+sync True V(2)
+sync True s
+sync True P(3)
+sync False None
+ro True 1
+ro True V(2)
+ro True s
+ro True P(3)
+ro False None
+opt_ro True 1
+opt_ro True V(2)
+opt_ro True s
+opt_ro True P(3)
+send_ro True 1
+send_ro True V(2)
+send_ro True s
+send_ro True P(3)
+plain True 123456789012345678901234567890
+send True 123456789012345678901234567890
+sync True 123456789012345678901234567890
+ro True 123456789012345678901234567890
+opt_ro True 123456789012345678901234567890
+send_ro True 123456789012345678901234567890
+send_closure True True True False
+bound True V(2)
+bound True P(3)
+frame 1
+frame V(2)
+frame s
+frame [False, True] [False, True] [False, True]
+frame P(9)
+frame [False, True]
+frame_send [True] [True] [True] [True]
+frame_ro P(11)
+frame_send_ro P(11)
+frame_ro 1
+frame_send_ro s
+frame_ro V(5)
+frame_ro [True] [True] [True] [True] [True] [False] [True]
+async_ro P(13)
+async_send_ro P(13)
+async_ro_bar P(13)
+async_ro 1
+async_ro s
+async_send_ro 1
+async_ro_bar 1
+async_ro_bar s
+async_ro True True True True True True True True
+ctor True True True True False
+send_store 1
+send_store_narrowed 1
+send_store V(2)
+send_store_narrowed V(2)
+send_store s
+send_store_narrowed s
+send_store C(3)
+send_store_narrowed C(3)
+send_store None
+sync_store_unbounded 1
+sync_store_unbounded V(2)
+sync_store_unbounded s
+sync_store_unbounded C(4)
+sync_store_unbounded None
+sync_store 1
+sync_store_narrowed 1
+sync_store V(2)
+sync_store_narrowed V(2)
+sync_store None
+local True 1
+local True V(2)
+local True s
+local True P(5)
+local False None
+bounded True 3
+bounded_local True 3
+bounded True V(4)
+bounded_local True V(4)
+bounded True s
+bounded_local True s
+bounded True 123456789012345678901234567890
+bounded_local True 123456789012345678901234567890
+bounded True (1, 2)
+bounded_local True (1, 2)
+bounded False None
+bounded_local False None
+send_ctor True True True
+send_method True True
+sync_ctor True True True
+sync_method True True
+sync_gen [True] [True] [True] [True]
+fwd True True True True
+fwd_bounded True True True
+send_async True True True
+sync_async True True True
+ro_ctor True True True True
+opt_ro_ctor True True True True
+send_ro_ctor True True True True
+ro_method 2
+ro_method P(8)
+ro_method True True
+opt_ro_method V(4)
+opt_ro_method P(8)
+opt_ro_method True True
+send_ro_method t
+send_ro_method P(8)
+send_ro_method True True
 module True True

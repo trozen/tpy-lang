@@ -59,7 +59,7 @@ from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
 from ...sema.call_lends import expr_lends_storage
 from ...typesys import (drop_own_marker, is_bodyless_binding, make_readonly, peel_binding, peel_slot,
                        pointer_repr_optional, readonly_access, repr_shape)
-from ...typesys import element_access, element_access_getitem, generic_opt_trait_type
+from ...typesys import element_access, element_access_getitem, generic_opt_trait_type, open_type_param
 from ...typesys import NONE, pending_view_of, protocol_param_alternatives
 from ...typesys import (
     RecordInfo, body_function_info, body_method_info,
@@ -4075,14 +4075,13 @@ def _optional_ptr_borrow_wide(t: TpyType | None,
     opt = pointer_repr_optional(t)
     if opt is None and open_param_any_form and isinstance(t, TpyType):
         shape = repr_shape(t)
-        if (isinstance(shape, OptionalType)
-                and isinstance(unwrap_readonly(shape.inner), TypeParamRef)
-                and unwrap_readonly(shape.inner).kind == TypeParamKind.TYPE):
+        if isinstance(shape, OptionalType) and shape.uses_generic_param_trait():
             opt = shape
     t = opt
     if t is None:
         return None
-    inner = unwrap_readonly(t.inner)
+    # A Send / Sync / readonly qualifier on an open `T` is still that `T`.
+    inner = open_type_param(t.inner) or unwrap_readonly(t.inner)
     if isinstance(inner, OwnType):
         return None
     # A VALUE-scalar pointee is reachable only through force_pointer_repr

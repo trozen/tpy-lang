@@ -1,13 +1,15 @@
 # A generic `T | None` parameter takes its form per instantiation: the value form
-# at a value T (the argument passes by value, as in the twin) and the pointer
-# form at a reference T (a mutation through it is still the caller's object).
-# Inverses elsewhere: the ValueType-bounded T that keeps `std::optional<T>`
-# spelled (generics/generic_optional_value_bound), and `match` over a generic
-# `T | None` subject, a pre-existing reject (BUGS.md) with no section here.
+# at a value T, the pointer form at a reference T (mutations stay the caller's).
 import asyncio
 from typing import Iterator
 
 from tpy import int32, ReturnException, error_return, nocopy
+
+import part_frame
+import part_qualified
+import part_ro_positions
+import part_send_positions
+import part_store
 
 
 class Stop(Exception, ReturnException):
@@ -123,7 +125,7 @@ def er_twin(n: int32) -> bool:
     return probe_twin(n + 1)
 
 
-async def probe_async[T](val: T | None) -> bool:
+async def probe_async[T](val: T | None) -> bool:  # tpyc: frame_send(no)
     # The coroutine twin: the frame field is the same per-instantiation slot.
     return val is not None  # tpyc: ok
 
@@ -225,10 +227,14 @@ def main() -> None:
         print("error_return raised")
 
     asyncio.run(amain(n))
+    part_qualified.main()
+    part_frame.main()
+    part_store.main()
+    part_send_positions.main()
+    part_ro_positions.main()
 
 
 main()
 
-# module-level statement position. The int32() spelling is load-bearing: a bare
-# int literal at a generic `T | None` slot is not admitted (see BUGS.md).
+# module-level statement position.
 print("module", probe_gen(int32(2)), probe_twin(int32(2)))

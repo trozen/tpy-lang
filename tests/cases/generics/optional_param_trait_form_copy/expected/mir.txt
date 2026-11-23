@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::main@37:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::C.__str__@12:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::SendHolder.show@23:4: uncovered (generic body)
+main::CBox.show@33:4: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::C.__init__@9:4: covered (storage: no_proof_required), summary: known
+main::SendHolder.__init__@19:4: uncovered (generic constructor)
+main::CBox.__init__@30:4: covered (storage: no_proof_required), summary: known

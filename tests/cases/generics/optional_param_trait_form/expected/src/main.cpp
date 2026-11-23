@@ -298,6 +298,11 @@ __coro_amain amain(int32_t n) {
 //         print("error_return raised")
 //
 //     asyncio.run(amain(n))
+//     part_qualified.main()
+//     part_frame.main()
+//     part_store.main()
+//     part_send_positions.main()
+//     part_ro_positions.main()
 void main() {
     int32_t n = 3;
     std::cout << "free_value" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)))) << "\n" << ::tpy::check_signals;
@@ -379,20 +384,26 @@ void main() {
         __after_try_1:;
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain(n)));
+    ::tpyapp::part_qualified::main();
+    ::tpyapp::part_frame::main();
+    ::tpyapp::part_store::main();
+    ::tpyapp::part_send_positions::main();
+    ::tpyapp::part_ro_positions::main();
 }
 
 // # A generic `T | None` parameter takes its form per instantiation: the value form
-// # at a value T (the argument passes by value, as in the twin) and the pointer
-// # form at a reference T (a mutation through it is still the caller's object).
-// # Inverses elsewhere: the ValueType-bounded T that keeps `std::optional<T>`
-// # spelled (generics/generic_optional_value_bound), and `match` over a generic
-// # `T | None` subject, a pre-existing reject (BUGS.md) with no section here.
+// # at a value T, the pointer form at a reference T (mutations stay the caller's).
 // import asyncio
+//
+// import part_frame
+// import part_qualified
+// import part_ro_positions
+// import part_send_positions
+// import part_store
 //
 // main()
 //
-// # module-level statement position. The int32() spelling is load-bearing: a bare
-// # int literal at a generic `T | None` slot is not admitted (see BUGS.md).
+// # module-level statement position.
 // print("module", probe_gen(int32(2)), probe_twin(int32(2)))
 void __tpy_init() {
     static bool initialized = false;
@@ -400,6 +411,8 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
+    ::tpyapp::part_frame::__tpy_init();
+    ::tpyapp::part_send_positions::__tpy_init();
     ::tpyapp::main::main();
     std::cout << "module" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>(2)) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin(2)) << "\n" << ::tpy::check_signals;
 }

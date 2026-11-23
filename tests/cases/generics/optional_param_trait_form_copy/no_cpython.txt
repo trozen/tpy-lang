@@ -1,0 +1,3 @@
+The constructor's field store copies the class payload (warned), so a mutation
+of the original after the store is not seen through the field; CPython stores
+the very object, so the outputs differ by design.

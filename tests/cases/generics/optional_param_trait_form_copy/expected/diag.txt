@@ -1,0 +1,2 @@
+main.py:21: warning: may copy Send[T] | None into field if not a value type; use copy() to make this explicit
+main.py:31: warning: copies C | None into field; use copy() to make this explicit

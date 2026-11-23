@@ -164,8 +164,8 @@ def generic_use(d: dict[str, P], fb: P) -> None:
 
 # generic body over `V | None` values: the result is the by-value optional,
 # a copy at every V (warned); read only, since CPython would alias it. The
-# default is the stored entry under `fk`: an `int32 | None` argument at the
-# generic call is `BUGS.md#optional-value-local-at-generic-slot`
+# default is the stored entry under `fk`, which the call names by its
+# `str` key rather than passing it as a `V | None` value.
 def generic_opt[V](d: dict[str, V | None], k: str, fk: str,
                    read: Callable[[V], int32]) -> int32:
     dflt = d[fk]

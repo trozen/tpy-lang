@@ -5326,11 +5326,13 @@ class OptionalType(TpyType):
         A `ValueType` bound does not settle it: a `str` / `bytes` value still
         takes its view form, which only the trait knows.
 
+        The payload is read through `open_type_param`, so a Send / Sync or
+        readonly qualifier on `T` does not hide it.
+
         Parameters only. The return position stays committed to `T*` (see
         force_pointer_repr): an optional return cannot alias a field.
         """
-        return (isinstance(self.inner, TypeParamRef)
-                and self.inner.kind == TypeParamKind.TYPE)
+        return open_type_param(self.inner) is not None
 
     def wraps_pointer_repr_tuple(self) -> bool:
         """True when this Optional wraps a tuple that has a pointer-repr element.
@@ -5393,9 +5395,15 @@ class OptionalType(TpyType):
             return inner
         return None
 
+    def _generic_param_trait_cpp(self, const: bool = False) -> str:
+        # A readonly payload (`Optional[readonly[T]]`) is the const trait
+        # wherever the slot is spelled, a frame field included.
+        const = const or readonly_access(self.inner)
+        return f"{pointer_trait_cpp('opt_param_t', const)}<{self.inner.to_cpp_tag()}>"
+
     def to_cpp_param_type(self) -> str:
         if self.uses_generic_param_trait():
-            return f"{pointer_trait_cpp('opt_param_t', False)}<{self.inner.to_cpp_tag()}>"
+            return f"{self._generic_param_trait_cpp()}"
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}*"
         fam = view_family_for_type(self.inner)
@@ -5417,7 +5425,7 @@ class OptionalType(TpyType):
 
     def to_cpp_param(self, name: str) -> str:
         if self.uses_generic_param_trait():
-            return f"{pointer_trait_cpp('opt_param_t', False)}<{self.inner.to_cpp_tag()}> {name}"
+            return f"{self._generic_param_trait_cpp()} {name}"
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}* {name}"
         fam = view_family_for_type(self.inner)
@@ -5427,7 +5435,7 @@ class OptionalType(TpyType):
 
     def to_cpp_const_param(self, name: str) -> str:
         if self.uses_generic_param_trait():
-            return f"{pointer_trait_cpp('opt_param_t', True)}<{self.inner.to_cpp_tag()}> {name}"
+            return f"{self._generic_param_trait_cpp(const=True)} {name}"
         if self.uses_pointer_repr():
             return f"const {self.inner.to_cpp()}* {name}"
         fam = view_family_for_type(self.inner)

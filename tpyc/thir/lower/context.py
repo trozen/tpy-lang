@@ -906,7 +906,7 @@ def _slot_class(t: 'TpyType | None', analyzer) -> SlotClass:
     if isinstance(t, OptionalType):
         inner = unwrap_readonly(t.inner)
         if (record_like(inner, analyzer)
-                or isinstance(inner, TypeParamRef)
+                or t.uses_generic_param_trait()
                 or _value_opt_owned_view(t, analyzer) is not None
                 or _value_tuple(inner, analyzer) is not None):
             return SlotClass.STORAGE
@@ -1275,7 +1275,7 @@ def param_slot(t: TpyType, contract: 'ParamContract', analyzer, *,
     # A still-open `T | None` parameter is `opt_param_t<T>`: a value
     # Optional or a pointer, as the instantiation decides.
     open_opt = (passing is ParamPassing.TRAIT and isinstance(st, OptionalType)
-                and isinstance(unwrap_readonly(st.inner), TypeParamRef))
+                and st.uses_generic_param_trait())
     slot = _built_slot(t, st, rep,
                        SlotPosition.PARAM, SlotConstruct.PASS, analyzer,
                        placement=placement, const=const,

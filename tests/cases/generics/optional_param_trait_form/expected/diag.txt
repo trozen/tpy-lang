@@ -1,2 +1,5 @@
-main.py:78: warning: may copy T | None into field if not a value type; use copy() to make this explicit
-main.py:105: warning: copies Cell | None into field; use copy() to make this explicit
+part_store.py:16: warning: may copy T | None into field if not a value type; use copy() to make this explicit
+part_store.py:28: warning: may copy Send[T] | None into field if not a value type; use copy() to make this explicit
+part_store.py:42: warning: may copy Sync[T] | None into field if not a value type; use copy() to make this explicit
+main.py:80: warning: may copy T | None into field if not a value type; use copy() to make this explicit
+main.py:107: warning: copies Cell | None into field; use copy() to make this explicit
