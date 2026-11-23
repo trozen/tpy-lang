@@ -58,10 +58,11 @@ from ..parse import (
 from .. import qnames
 from ..type_def_registry import (
     is_borrowing_view_type, is_bytearray_type, is_bytes_type, is_enum_type,
-    is_str_type, is_str_view_type, is_string_type, is_varargs, get_type_def,
-    type_def_of,
+    is_bytes_view_type, is_str_type, is_str_view_type, is_string_type,
+    is_varargs, get_type_def, type_def_of,
 )
 from ..typesys import (
+    type_parts_any, is_owned_shape, repr_shape,
     contains_reference_type, FunctionInfo, NominalType, OptionalType, OwnType,
     PendingViewType, PtrType,
     ReadonlyType, TpyType, TupleType, TypeParamRef, UnionType,
@@ -75,6 +76,7 @@ from ..typesys import (
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync, view_is_inherently_const, is_indirection_type,
+    NoneType,
 )
 from ..value_category import (
     CONTAINER_LITERAL_NODES, CallOperands, ExprTypeOf,
@@ -82,7 +84,8 @@ from ..value_category import (
     call_returns_cpp_ref, declared_result_is_value, frame_factory_callee,
     DeclaredOf, frame_param_lends, getitem_call_of, param_type_can_lend,
     is_generic_protocol, param_written, protocol_twin_slot,
-    lent_operand_binds_open_param,
+    lent_operand_binds_open_param, iterator_source_callee,
+    is_iterator_protocol,
     lent_operands, method_owner_type, property_access_returns_cpp_ref,
     holds_no_pointer, is_lvalue_iterable, is_rvalue_source, may_hold_pointer,
     peel_coerce,
@@ -497,10 +500,14 @@ def callee_fact(fi: FunctionInfo) -> CalleeFact:
             else CalleeFact.KNOWN_EMPTY)
 
 
-def callee_lend_fact(call: TpyExpr) -> CalleeLend:
+def callee_lend_fact(call: TpyExpr,
+                     registry: 'TypeRegistry | None' = None) -> CalleeLend:
     """THE classification of what a call's callee says about the operands
     its result may point into (`callee_fact`); every call policy maps this
-    one value to its own answer rather than re-deciding it."""
+    one value to its own answer rather than re-deciding it. The sources
+    are the call's answer at its instantiation (`call_result_lenders`):
+    a recorded fact the instantiation empties is a known-empty one. With
+    no `registry` they are the declaration's."""
     access = _callee_access(call)
     ops = call_operands(call)
     if ops is None:
@@ -511,9 +518,11 @@ def callee_lend_fact(call: TpyExpr) -> CalleeLend:
     declares_view = rt is not None and is_borrowing_view_type(
         unwrap_readonly(rt))
     fresh = isinstance(call, TpyCallLike) and call.result_form.is_fresh
-    return CalleeLend(callee_fact(fi), ops,
-                      recorded_return_borrow_sources(fi), declares_view,
-                      fresh, access)
+    kind = callee_fact(fi)
+    sources = call_result_lenders(fi, registry)
+    if kind is CalleeFact.RECORDED and not sources:
+        kind = CalleeFact.KNOWN_EMPTY
+    return CalleeLend(kind, ops, sources, declares_view, fresh, access)
 
 
 def _owned_at_instantiation(fi: FunctionInfo) -> bool:
@@ -591,7 +600,7 @@ def borrow_declared_sources(call: TpyCallLike,
     sources (`result=` "borrow" / "element") lends by that declaration --
     what `stamp_result_borrow` decides the call's result form from; None for
     a call whose result is already decided fresh."""
-    lend = callee_lend_fact(call)
+    lend = callee_lend_fact(call, analyzer.registry)
     if lend.kind is CalleeFact.UNRESOLVED or lend.fresh:
         return None
     return call_lend_sources(lend.ops, lend.sources, analyzer=analyzer,
@@ -673,7 +682,7 @@ def _contract_sources(call: TpyExpr, lend: CalleeLend, type_of: ExprTypeOf,
     if ops is None:
         if not isinstance(call, (TpyCall, TpyMethodCall)):
             return []
-        recv = [call.obj] if isinstance(call, TpyMethodCall) else []
+        recv = [call.receiver] if isinstance(call, TpyMethodCall) else []
         srcs = ([LendSource(-1, e, None) for e in recv]
                 + [LendSource(i, a, None) for i, a in enumerate(call.args)]
                 + [LendSource(-2, a, None)
@@ -774,7 +783,7 @@ def _retention_slot(fi: FunctionInfo, index: int, call: TpyExpr | None,
     owner = None
     type_of = analyzer.get_expr_type if analyzer is not None else None
     if recv is None and isinstance(call, TpyMethodCall):
-        recv = call.obj
+        recv = call.receiver
     if type_of is not None:
         owner = (type_of(recv) if recv is not None
                  else type_of(call) if call is not None and _builds_object(fi)
@@ -810,9 +819,192 @@ def _retention_slot(fi: FunctionInfo, index: int, call: TpyExpr | None,
         slot, dict(zip(rec.type_params, bare.type_args)))
 
 
+def lends_by_signature(fi: FunctionInfo) -> bool:
+    """Whether a binding's result lends by its signature alone
+    (`stub_result_lenders`): a body-less stub declaring no borrow, which no
+    other rule answers (a frame, a lazy combinator's retention, a
+    constructor's object; a free iterator stub keeps its arguments as a
+    frame does, `TypeRegistrar._stamp_iterator_retention`)."""
+    root = fi.root
+    # A binding, not a protocol method's signature: the conforming type's
+    # own method answers a protocol call.
+    binds = (root.native_name is not None or root.is_native
+             or root.cpp_template is not None)
+    return (binds and is_bodyless_binding(root) and not root.borrow_declared
+            and not (root.is_generator or root.is_async)
+            and not root.is_constructor
+            and not (iterator_source_callee(root) and not root.is_method))
+
+
+def stub_result_lenders(fi: FunctionInfo,
+                        registry: 'TypeRegistry') -> frozenset[int]:
+    """The stamp of a body-less stub's DECLARED signature: the operands
+    (the receiver at -1) its result may point into, whatever its TPy twin
+    could return -- the receiver and every operand that can hold the
+    result's referent (`_holds_referent`), except an operand its `args=`
+    places ("compared" / "stored"). An open `T` may hold anything; a call
+    reads the stamp at its instantiation (`call_result_lenders`)."""
+    if not _result_may_point(fi):
+        return frozenset()
+    root = fi.root
+    decl = root.variant_decl
+    placed = ({name for name, _ in decl.declared_args or ()}
+              if decl is not None else set())
+    out: set[int] = set()
+    if (root.is_method and not root.is_staticmethod
+            and not root.is_consuming):
+        out.add(-1)
+    referents = _result_referents(fi)
+    out.update(i for i, p in enumerate(fi.params)
+               if p.name not in placed
+               and _holds_referent(p.type, referents, registry))
+    return frozenset(out)
+
+
+def call_result_lenders(fi: FunctionInfo,
+                        registry: 'TypeRegistry | None') -> frozenset[int]:
+    """THE lending answer at a call: the operands (the receiver at -1) the
+    result of a call to `fi` may point into, read at `fi`'s INSTANTIATED
+    signature. Of what the callee says its result may borrow (its
+    `return_borrows_from`: a body's recorded sources, a binding's declared
+    `result=`, a stub's stamp), each keeps only what can hold the result's
+    referent there (`_holds_referent`): `pick[T](a: T, b: T) -> T` at
+    `int32` lends nothing, as its concrete twin. A generator or coroutine
+    result is its frame, which holds what the frame captures by reference
+    (`frame_param_lends`). A declared `result=` is believed as written (what the C++ hands
+    back is the binding's to state: a reinterpreting cast). With no
+    registry, or at the declaration itself, it is the stamp."""
+    root = fi.root
+    stamped = root.return_borrows_from or frozenset()
+    if (not stamped or fi is root or registry is None
+            or root.borrow_declared):
+        return stamped
+    if _stamped_as_frame(root):
+        return frozenset(
+            i for i in stamped
+            if not 0 <= i < len(fi.params)
+            or frame_param_lends(fi.params[i].type))
+    if (contains_type_param(root.return_type)
+            and not _result_may_point(fi)):
+        return frozenset()
+    referents = _result_referents(fi)
+    return frozenset(
+        i for i in stamped
+        if not 0 <= i < len(fi.params)
+        or _holds_referent(fi.params[i].type, referents, registry))
+
+
+def _result_shape(t: TpyType) -> TpyType:
+    """A result's shape under its access and marker wrappers
+    (`repr_shape`); an owned one (`Own[...]`) keeps its wrapper, since it
+    points nowhere."""
+    return t if is_owned_shape(t) else repr_shape(t)
+
+
+def _result_may_point(fi: FunctionInfo) -> bool:
+    """Whether a result at `fi`'s signature may point into an operand: it
+    renders a reference, a pointer, a view or an iterator handle -- an
+    Optional, a union or a tuple holding one included -- or is an open `T`
+    that may be one. What a constructor builds, or nothing, points
+    nowhere."""
+    if (fi.return_type is None or is_void_like_type(fi.return_type)
+            or _builds_object(fi)):
+        return False
+    rt = _result_shape(fi.return_type)
+    if isinstance(rt, (OptionalType, UnionType, TupleType)):
+        return any(_part_points(m) for m in rt.inner_types())
+    return (_result_points(fi) or is_iterator_protocol(rt)
+            or is_open_type_param_return(rt) or _part_points(rt))
+
+
+def _part_points(t: TpyType) -> bool:
+    """A part of a result that points: a reference, a pointer or view, an
+    iterator handle, an open `T`, or an Optional / union / tuple with such a
+    part; an owned part (`Own[...]`) and an owned `str` / `bytes` value
+    hold their own storage. A reference type (`bytearray`, `String`) is a
+    reference here."""
+    if is_owned_shape(t):
+        return False
+    t = repr_shape(t)
+    if isinstance(t, (OptionalType, UnionType, TupleType)):
+        return any(_part_points(m) for m in t.inner_types())
+    if isinstance(t, NoneType) or is_str_type(t) or is_bytes_type(t):
+        return False
+    return (not t.is_value_type() or may_hold_pointer(t)
+            or is_iterator_protocol(t) or isinstance(t, TypeParamRef))
+
+
+def _result_referents(fi: FunctionInfo) -> 'list[TpyType] | None':
+    """What a pointing result points at (`_referents`), or None for a
+    result that views storage rather than being an object: a view, a
+    string or byte view, an iterator handle, or an Optional / union of
+    one."""
+    rt = _result_shape(fi.return_type)
+    members = ([repr_shape(m) for m in rt.inner_types()
+                if not isinstance(m, NoneType)]
+               if isinstance(rt, (OptionalType, UnionType)) else [rt])
+    if any(is_borrowing_view_type(m) or is_str_view_type(m)
+           or is_bytes_view_type(m) or is_iterator_protocol(m)
+           for m in members):
+        return None
+    return _referents(rt)
+
+
+def _holds_referent(ptype: TpyType | None, referents: 'list[TpyType] | None',
+                    registry: 'TypeRegistry') -> bool:
+    """Whether an argument of `ptype` can be or hold what a result points
+    at. It must be able to lend storage (`param_type_can_lend`, a `Ptr` and
+    a `String` included; an owned argument, moved in, lends only what a
+    pointer or view it holds points at); a
+    view result may then view it, and so may a pointer to a value or to an
+    open `T` (an owned buffer lends into itself) unless the argument is a
+    scalar nothing can point into (`is_bufferless_scalar`).
+    A reference-type referent lives only in an argument reaching
+    (`type_parts_any`) a reference type -- a subclass, a field's object --
+    an open `T`, or a part that may hold a pointer (`may_hold_pointer`: an
+    opaque native object, a view field)."""
+    if ptype is None or not param_type_can_lend(ptype, pointers=True):
+        return False
+    # An owned argument is moved in, but a pointer or view it holds still
+    # points where it did.
+    if is_owned_shape(ptype) and not may_hold_pointer(repr_shape(ptype)):
+        return False
+    if referents is None:
+        return True
+    bare = repr_shape(ptype)
+    # An open `T` referent may be instantiated at a value type, and the
+    # instantiation only filters this stamp, never adds to it.
+    if any(r.is_value_type() or isinstance(r, TypeParamRef)
+           for r in referents):
+        return not is_bufferless_scalar(bare)
+    return type_parts_any(
+        bare, lambda x: isinstance(x, TypeParamRef) or not x.is_value_type()
+        or (isinstance(x, NominalType) and not isinstance(x, PtrType)
+            and may_hold_pointer(x)), registry)
+
+
+def _referents(result: TpyType) -> 'list[TpyType]':
+    """What a reference result points at (each under its wrappers,
+    `repr_shape`): itself; a pointer's pointee, each member of an Optional
+    / union pointee; for an Optional / union / tuple what each of its
+    pointing members (`_part_points`) points at."""
+    result = repr_shape(result)
+    if isinstance(result, PtrType):
+        pointee = repr_shape(result.pointee)
+        if isinstance(pointee, (OptionalType, UnionType)):
+            return [repr_shape(m) for m in pointee.inner_types()
+                    if not isinstance(repr_shape(m), NoneType)]
+        return [pointee]
+    if isinstance(result, (OptionalType, UnionType, TupleType)):
+        return [r for m in result.inner_types() if _part_points(m)
+                for r in _referents(m)]
+    return [result]
+
+
 def _stub_result_retains(fi: FunctionInfo, index: int, slot: TpyType | None,
                          call: TpyExpr | None,
-                         type_of: ExprTypeOf | None) -> bool:
+                         type_of: ExprTypeOf | None,
+                         registry: 'TypeRegistry | None') -> bool:
     """The RESULT channel of a body-less binding: whether its result may
     keep operand `index`. What the binding declares (`result=` "borrow" /
     "element", stamped with the iterator and receiver conventions at
@@ -825,12 +1017,12 @@ def _stub_result_retains(fi: FunctionInfo, index: int, slot: TpyType | None,
     owned result that may hold a pointer carries the borrows of the
     operands whose components may hold one (`_owned_result_carries`)."""
     root = fi.root
-    stamped = root.return_borrows_from or frozenset()
+    lenders = call_result_lenders(fi, registry)
     if root.borrow_declared:
-        return index in stamped and (
+        return index in lenders and (
             not declared_result_is_value(fi)
             or fi.return_type is None or may_hold_pointer(fi.return_type))
-    if index in stamped:
+    if index in lenders:
         return True
     if (call is not None and index == 0
             and borrowing_ctor_arg(call) is not None):
@@ -841,10 +1033,6 @@ def _stub_result_retains(fi: FunctionInfo, index: int, slot: TpyType | None,
         result = fi.return_type
         if result is None or is_void_like_type(result):
             return False
-        if _result_points(fi):
-            if fi.is_method and not fi.is_staticmethod:
-                return index == -1
-            return slot is None or param_type_can_lend(slot)
     return _owned_result_carries(result, slot)
 
 
@@ -1037,7 +1225,9 @@ def _measured_retention(fi: 'FunctionInfo', index: int,
                     if fi.initializes_type
                     and index not in root.foreign_addr_escapes_params
                     else Retention.MEASURED)
-        if index in recorded_return_borrow_sources(fi):
+        if index in recorded_return_borrow_sources(fi) or (
+                index in call_result_lenders(
+                    fi, analyzer.registry if analyzer is not None else None)):
             return Retention.MEASURED | Retention.MEASURED_RESULT
         return None
     if arg is None and isinstance(call, (TpyCall, TpyMethodCall)) and (
@@ -1046,7 +1236,9 @@ def _measured_retention(fi: 'FunctionInfo', index: int,
     slot = _retention_slot(fi, index, call, analyzer, arg, recv)
     type_of = analyzer.get_expr_type if analyzer is not None else None
     keeps = Retention(0)
-    if _stub_result_retains(fi, index, slot, call, type_of) and not (
+    registry = analyzer.registry if analyzer is not None else None
+    if _stub_result_retains(fi, index, slot, call, type_of,
+                            registry) and not (
             _adopts_fresh(fi, index, arg, analyzer)):
         keeps |= (Retention.DECLARED_RESULT
                   if _declared_result_points_nowhere(fi, call, type_of)
@@ -1179,6 +1371,15 @@ def _frame_callee(fi: FunctionInfo) -> bool:
     return fi.is_async or frame_factory_callee(fi)
 
 
+def _stamped_as_frame(fi: FunctionInfo) -> bool:
+    """Whether `fi`'s stamp is what a frame captures by reference
+    (`generator_borrow_param_indices`): a generator or coroutine, or a free
+    body-less iterator source (`zip`, `enumerate`), whose C++ object keeps
+    its arguments as a frame does."""
+    return _frame_callee(fi) or (is_bodyless_binding(fi) and not fi.is_method
+                                 and iterator_source_callee(fi))
+
+
 def _builds_frame(call: TpyExpr) -> bool:
     """Whether the call builds a generator or coroutine frame (a generator
     expression builds one through the call sema made for it)."""
@@ -1249,7 +1450,7 @@ class MayLend(CallPolicy):
             # an open `T` may be a reference; WHERE it points is the method
             # rule below.
             return []
-        lend = callee_lend_fact(call)
+        lend = callee_lend_fact(call, self.ctx.registry)
         kind = lend.kind
         if lend.fresh or (lend.ops is not None
                           and _owned_at_instantiation(lend.ops.fi)
@@ -1288,11 +1489,13 @@ class MayLend(CallPolicy):
             return srcs
         stub = kind is CalleeFact.STUB
         if stub:
-            # A body-less stub records no fact; its declared convention is
-            # the answer, and a reference it returns is into its receiver --
-            # by declaration only, so the loan's shape is unknown.
-            indices = (frozenset({-1}) if ops.obj is not None and (
-                getter or call_returns_cpp_ref(ctx, fi)) else frozenset())
+            # No fact and no binding behind the signature (a protocol
+            # method's): the conforming type's method answers the call, so
+            # only a reference it returns is taken to be into its receiver.
+            indices = (frozenset({-1}) if getter
+                       or call_returns_cpp_ref(ctx, fi) else frozenset())
+            if ops.obj is None:
+                indices = indices - {-1}
         else:
             indices = lend.sources
         only_declared = stub or (declared and -1 not in indices)
@@ -1370,8 +1573,9 @@ def frame_operands(call: TpyExpr, analyzer: 'ValueCategoryAnalyzer | None',
     out: list[TpyExpr] = []
     if (isinstance(frame, TpyMethodCall) and not frame.is_static_call
             and not frame.user_module_call):
-        out.append(frame.obj)
-    lend = callee_lend_fact(frame)
+        out.append(frame.receiver)
+    lend = callee_lend_fact(
+        frame, analyzer.registry if analyzer is not None else None)
     ops = CallOperands(fi, None, list(frame.args), frame.kwargs or {})
     out += [s.expr for s in call_lend_sources(
         ops, lend.sources if lend.kind in _RECORDS_A_FACT else None,
@@ -1423,7 +1627,7 @@ class ViewLend(CallPolicy):
         rt = self.ctx.get_expr_type(call)
         if rt is None or not is_borrowing_view_type(unwrap_readonly(rt)):
             return []
-        lend = callee_lend_fact(call)
+        lend = callee_lend_fact(call, self.ctx.registry)
         if lend.kind is CalleeFact.RECORDED and not lend.fresh:
             return [s._replace(how=Lent.RECORDED)
                     for s in call_lend_sources(
@@ -1438,9 +1642,10 @@ class ViewLend(CallPolicy):
                      for a in (call.kwargs or {}).values()]
         # A callable value's receiver operand is its callee held by
         # reference, never a field's holder (`call_operands`); a method
-        # call's is the receiver as spelled, a base-part call's too.
+        # call's is the object it runs on (`TpyMethodCall.receiver`).
         recv = (lend.ops.obj if lend.kind is CalleeFact.CALLABLE
-                else call.obj if isinstance(call, TpyMethodCall) else None)
+                else call.receiver if isinstance(call, TpyMethodCall)
+                else None)
         if recv is not None and self.ctx.get_expr_type(recv) is not None:
             operands.append(LendSource(-1, recv, None, how=Lent.CONTRACT))
         out = []
@@ -1551,7 +1756,7 @@ def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
         return False
     if isinstance(call, TpyCall) and call.call_type is not None:
         return is_borrowing_view_type(call.call_type) and not call.args
-    lend = callee_lend_fact(call)
+    lend = callee_lend_fact(call, ctx.registry)
     if lend.kind is CalleeFact.UNRESOLVED or (
             isinstance(call, TpyCallLike) and call.result_form.is_declared):
         return False
@@ -1596,7 +1801,7 @@ def _builtin_own_result(ctx: 'SemanticContext', call: TpyExpr) -> bool:
     if isinstance(call, TpyMethodCall):
         # The receiver the method resolved on: a `Ptr`, `Box` or `Rc`
         # receiver reaches its pointee's method through `__deref__`.
-        recv = method_owner_type(call, ctx.get_expr_type(call.obj))
+        recv = method_owner_type(call, ctx.get_expr_type(call.receiver))
         # Through a protocol or a type parameter the call may reach a user
         # filler, whose `Own[T]` result is fresh like a concrete method's.
         if isinstance(recv, TypeParamRef) or is_protocol_type(recv):
@@ -1721,7 +1926,7 @@ class ReturnLend(CallPolicy):
             return []
         if borrowing_ctor_arg(call) is not None:
             return None if self.proof else self.may.at_call(call, path, ask)
-        lend = callee_lend_fact(call)
+        lend = callee_lend_fact(call, self.ctx.registry)
         if _opaque_callee(lend) or lend.kind in _NO_DURABLE_FACT:
             return None
         srcs = self.may.at_call(call, path, ask)
@@ -1736,7 +1941,8 @@ class ReturnLend(CallPolicy):
         if srcs is not None:
             return (LeafKind.NULL if _is_null_ptr(call)
                     else LeafKind.TEMPORARY)
-        if not self.proof and _opaque_callee(callee_lend_fact(call)):
+        if not self.proof and _opaque_callee(
+                callee_lend_fact(call, self.ctx.registry)):
             return LeafKind.TEMPORARY
         return LeafKind.UNNAMED
 
@@ -1746,8 +1952,8 @@ class ReturnLend(CallPolicy):
         op = step.node.value
         if not isinstance(op, (TpyCall, TpyMethodCall)):
             return LeafKind.TEMPORARY
-        lend = callee_lend_fact(op)
-        obj = op.obj if isinstance(op, TpyMethodCall) else None
+        lend = callee_lend_fact(op, self.ctx.registry)
+        obj = op.receiver if isinstance(op, TpyMethodCall) else None
         if lend.kind is CalleeFact.RECORDED:
             return [s._replace(how=Lent.AWAITED) for s in call_lend_sources(
                 lend.ops, lend.sources, analyzer=self.ctx,
@@ -1780,7 +1986,8 @@ class ContractReturnLend(ReturnLend):
             return self.may.at_call(call, path, ask)
         if unrooted_callable_result(ctx, call):
             return None
-        srcs = contract_lend_sources(ctx, call, callee_lend_fact(call), ctx)
+        srcs = contract_lend_sources(
+            ctx, call, callee_lend_fact(call, ctx.registry), ctx)
         return None if srcs is None else srcs or None
 
 
@@ -1789,7 +1996,7 @@ def unrooted_callable_result(ctx: 'SemanticContext', call: TpyExpr) -> bool:
     result may point (`_contract_result_points`) but is no rule-R borrow (a
     bare reference type or `readonly`): a `Ptr[P]` or a view, which its
     signature cannot promise points only into its arguments."""
-    lend = callee_lend_fact(call)
+    lend = callee_lend_fact(call, ctx.registry)
     return (lend.kind is CalleeFact.CALLABLE
             and not lend.ops.fi.callable_type.returns_borrow()
             and _contract_result_points(ctx, call, lend))
@@ -1842,7 +2049,7 @@ class TempLend(CallPolicy):
             # A view's constructor with no argument views nothing that
             # outlives it.
             return []
-        lend = callee_lend_fact(call)
+        lend = callee_lend_fact(call, self.ctx.registry)
         if lend.kind is CalleeFact.PENDING or (
                 view and not _view_names_operands(lend)):
             # Trusted by the callee's DECLARED result: a type parameter
@@ -1851,7 +2058,8 @@ class TempLend(CallPolicy):
             if not (view and lend.declares_view):
                 return []
             if isinstance(call, TpyMethodCall):
-                return [LendSource(-1, call.obj, None, how=Lent.CONTRACT)]
+                return [LendSource(-1, call.receiver, None,
+                                   how=Lent.CONTRACT)]
             return None
         if view:
             return self.view.at_call(call, path, ask)
@@ -1953,7 +2161,8 @@ class EveryTempLend(CallPolicy):
             return fresh()
         if ops.fi.root.return_borrows_from is None:
             return lent
-        return call_lend_sources(ops, recorded_return_borrow_sources(ops.fi),
+        return call_lend_sources(ops, call_result_lenders(
+                                     ops.fi, self.ctx.registry),
                                  analyzer=self.ctx,
                                  declared_of=declared_reader(self.ctx),
                                  temp_backing=True)
@@ -2007,7 +2216,7 @@ class MustLend(CallPolicy):
                 ask: Ask) -> list[LendSource] | None:
         if is_property_getter_read(call):
             return None
-        lend = callee_lend_fact(call)
+        lend = callee_lend_fact(call, self.ctx.registry)
         if (isinstance(call, TpyCallLike)
                 and call.result_form.is_declared):
             if call.result_form is not ResultForm.BORROW:
@@ -2045,7 +2254,7 @@ class ContractLend(CallPolicy):
     def at_call(self, call: TpyExpr, path: tuple,
                 ask: Ask) -> list[LendSource] | None:
         if isinstance(call, TpyGeneratorExpression):
-            lend = callee_lend_fact(call)
+            lend = callee_lend_fact(call, self.ctx.registry)
             if lend.kind is CalleeFact.UNRESOLVED:
                 return None
             return [s for s in call_lend_sources(
@@ -2055,7 +2264,8 @@ class ContractLend(CallPolicy):
                     if not (s.held_whole and s.idx >= 0)]
         if not isinstance(call, (TpyCall, TpyMethodCall)):
             return None
-        return _contract_sources(call, callee_lend_fact(call), self.type_of,
+        return _contract_sources(call, callee_lend_fact(call, self.ctx.registry),
+                                 self.type_of,
                                  None, declared_reader(self.ctx))
 
 

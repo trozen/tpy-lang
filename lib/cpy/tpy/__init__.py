@@ -1190,8 +1190,95 @@ def copy(obj):
         return copy(target)
     if hasattr(obj, '__copy__'):
         return obj.__copy__()
+    return _copy_value(obj)
+
+
+# An exception's traceback and chaining are not part of its value, and
+# `__new__` already set its `__class__`.
+_EXC_UNCOPIED = frozenset({'__dict__', '__weakref__', '__traceback__',
+                           '__context__', '__cause__',
+                           '__suppress_context__', 'args', '__class__'})
+
+
+def _copy_value(obj):
+    """TPy's by-value copy of `obj`: a list, dict, set, tuple or record
+    copies each part as `copy()` does, so a part's own `__copy__` runs as
+    the C++ copy runs it; anything else (and a type with its own
+    `__deepcopy__`, a field `Ptr` sharing its target) as `deepcopy`."""
     import copy as _copy_module
+    t = type(obj)
+    if t is list:
+        return [_copy_part(x) for x in obj]
+    if t is dict:
+        return {_copy_part(k): _copy_part(v) for k, v in obj.items()}
+    if t is set:
+        return {_copy_part(x) for x in obj}
+    if t is tuple:
+        return tuple(_copy_part(x) for x in obj)
+    if isinstance(obj, (int, float, complex, str, bytes)):
+        # An immutable value (`int32` is an `int` subclass): `__new__`
+        # without its value would build a zero.
+        return obj
+    if isinstance(obj, BaseException):
+        # `__init__` may take other arguments than `args`, so it is not
+        # called; `__new__` takes the `args`, then every C-level slot
+        # (an OSError's errno / filename, SystemExit.code, set after
+        # construction too) and the `__dict__` fields are copied.
+        args = tuple(_copy_part(a) for a in obj.args)
+        new = t.__new__(t, *args)
+        # An OSError subclass with its own `__init__` leaves `__new__`'s
+        # `args` unset.
+        new.args = args
+        for cls in reversed(t.__mro__):
+            for name, d in vars(cls).items():
+                if (name in _EXC_UNCOPIED or not isinstance(
+                        d, (_types.MemberDescriptorType,
+                            _types.GetSetDescriptorType))):
+                    continue
+                try:
+                    v = getattr(obj, name)
+                except AttributeError:
+                    continue
+                # An unset slot reads as None too, and setting it (an
+                # OSError's `filename2`) changes what `str()` shows.
+                if v is None:
+                    continue
+                try:
+                    setattr(new, name, _copy_part(v))
+                except (AttributeError, TypeError):
+                    pass
+        for k, v in getattr(obj, '__dict__', {}).items():
+            object.__setattr__(new, k, _copy_part(v))
+        return new
+    if isinstance(obj, (list, dict, set)):
+        # A subclass of a builtin container: its parts, then its fields.
+        new = t.__new__(t)
+        if isinstance(obj, list):
+            list.extend(new, (_copy_part(x) for x in obj))
+        elif isinstance(obj, dict):
+            dict.update(new, {_copy_part(k): _copy_part(v)
+                              for k, v in obj.items()})
+        else:
+            set.update(new, (_copy_part(x) for x in obj))
+        for k, v in getattr(obj, '__dict__', {}).items():
+            object.__setattr__(new, k, _copy_part(v))
+        return new
+    if (hasattr(obj, '__dict__') and not hasattr(t, '__deepcopy__')
+            and not isinstance(obj, (type, _types.ModuleType,
+                                     _types.FunctionType))
+            and t.__module__ != 'builtins'):
+        new = t.__new__(t)
+        for k, v in obj.__dict__.items():
+            object.__setattr__(new, k, _copy_part(v))
+        return new
     return _copy_module.deepcopy(obj)
+
+
+def _copy_part(obj):
+    """One part of a copied value: its `__copy__` when it has one."""
+    if not isinstance(obj, (_Ptr, _ConstPtr)) and hasattr(obj, '__copy__'):
+        return obj.__copy__()
+    return _copy_value(obj)
 
 def copy_iter(iterable):
     """Explicit element-by-element copy acknowledgment for iterables.

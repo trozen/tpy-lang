@@ -1,0 +1,8 @@
+main::__tpy_init: uncovered (module initialization)
+main::gen@33:0: uncovered (unsupported hoisted value)
+main::held@41:0: uncovered (async body)
+main::main@49:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::Bag.pick@22:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Bag.walk@25:4: uncovered (unsupported hoisted value)
+main::Item.__init__@14:4: covered (storage: no_proof_required), summary: known
+main::Bag.__init__@19:4: covered (storage: no_proof_required), summary: known

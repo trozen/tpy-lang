@@ -53,6 +53,13 @@ void main() {
 //     if o is not None:
 //         o.x += 1
 //         print("pop", o.x, len(d), "c" in d)
+//     # pop(k, None) with the literal None default: a miss hands back None.
+//     m = d.pop("zz", None)  # tpyc: ok
+//     print("pop default", m is None, len(d))
+//     # a tuple-literal default holding a list builds into the owned default
+//     t: dict[str, tuple[list[str], int32]] = {}
+//     a, b = t.pop("z", (["d"], 0))  # tpyc: ok
+//     print("pop tuple default", a, b)
 void popped() {
     ::tpy::ordered_map<std::string, std::optional<P>> d = ::tpy::ordered_map<std::string, std::optional<P>>({{"a", P(10)}, {"c", P(30)}});
     std::optional<P> __slot_1 = ::tpy::dict_pop(d, "c");
@@ -61,6 +68,14 @@ void popped() {
         o->x = ::tpy::add_check<int32_t>(o->x, 1);
         std::cout << "pop" << " " << o->x << " " << ::tpy::__len__(d) << " " << ::tpy::print_bool((d.contains("c"))) << "\n" << ::tpy::check_signals;
     }
+    std::optional<P> __slot_2 = ::tpy::dict_pop_default(d, "zz", std::nullopt);
+    P* m = ::tpy::optional_to_ptr(__slot_2);
+    std::cout << "pop default" << " " << ::tpy::print_bool((m == nullptr)) << " " << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
+    ::tpy::ordered_map<std::string, std::tuple<std::vector<std::string>, int32_t>> t = ::tpy::ordered_map<std::string, std::tuple<std::vector<std::string>, int32_t>>();
+    auto __tup_1 = ::tpy::dict_pop_default(t, "z", std::tuple<std::vector<std::string>, int32_t>{{"d"}, 0});
+    auto&& a = std::move(std::get<0>(__tup_1));
+    int32_t b = std::get<1>(__tup_1);
+    std::cout << "pop tuple default" << " " << ::tpy::ListPrinter(a) << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // main()

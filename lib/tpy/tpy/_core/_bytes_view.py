@@ -145,7 +145,7 @@ class BytesView(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def rstrip(self) -> BytesView: ...
     @dispatch
-    @native("tpy::bytes_rstrip_chars_view", function=True)
+    @native("tpy::bytes_rstrip_chars_view", function=True, args={"chars": "compared"})
     @readonly
     @pure
     def rstrip(self, chars: BytesView) -> BytesView: ...

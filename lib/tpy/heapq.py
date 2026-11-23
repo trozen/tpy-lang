@@ -107,7 +107,7 @@ def heappushpop[T: Comparable](heap: list[T], item: Own[T]) -> Own[T]:
     return item
 
 def nsmallest[T: Comparable](n: int32, a: list[T]) -> Own[list[T]]:
-    h: list[T] = a.copy()
+    h: list[T] = copy(a)
     heapify(h)
     result: list[T] = []
     total: int32 = int32(len(h))
@@ -120,7 +120,7 @@ def nsmallest[T: Comparable](n: int32, a: list[T]) -> Own[list[T]]:
 
 def nlargest[T: Comparable](n: int32, a: list[T]) -> Own[list[T]]:
     # Sort-based; a size-k heap variant (O(n log k)) is a perf follow-up.
-    h: list[T] = a.copy()
+    h: list[T] = copy(a)
     h.sort()
     h.reverse()
     result: list[T] = []

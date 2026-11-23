@@ -60,7 +60,7 @@ from ...sema.call_lends import expr_lends_storage
 from ...typesys import (drop_own_marker, is_bodyless_binding, make_readonly, peel_binding, peel_slot,
                        pointer_repr_optional, readonly_access, repr_shape)
 from ...typesys import element_access, element_access_getitem, generic_opt_trait_type
-from ...typesys import NONE, pending_view_of, protocol_param_alternatives, result_follows_receiver_root
+from ...typesys import NONE, pending_view_of, protocol_param_alternatives
 from ...typesys import (
     RecordInfo, body_function_info, body_method_info,
     ConcreteFrameType,
@@ -9123,14 +9123,9 @@ def _call_lends_held_storage(init: TpyExpr, analyzer) -> bool:
 
 def _alias_call_source_ok(init: TpyExpr, analyzer) -> bool:
     """`_call_lends_held_storage` for a frame alias slot, which takes its
-    const from the call's receiver: an undeclared method's result must
-    follow its receiver's access (`result_follows_receiver_root`) -- one
-    pointing at an argument or a global does not share it."""
-    if not _call_lends_held_storage(init, analyzer):
-        return False
-    return (not isinstance(init, TpyMethodCall)
-            or init.result_form is ResultForm.BORROW
-            or result_follows_receiver_root(init.resolved_function_info))
+    const from the call's result access: the receiver's where the result
+    follows it, else the declared type's (`result_access_follows_receiver`)."""
+    return _call_lends_held_storage(init, analyzer)
 
 
 def _call_storage_optional_return(call: 'TpyCall | TpyMethodCall',

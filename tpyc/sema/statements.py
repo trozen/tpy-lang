@@ -93,7 +93,8 @@ from .arg_binding import source_view
 from .calls import class_callee, filled_default
 from .scope_tracker import register_binder, unregister_binder
 from .call_lends import (
-    MayLend, ViewLend, borrowing_ctor_arg, call_callee, frame_call,
+    MayLend, ViewLend, borrowing_ctor_arg, call_callee, call_result_lenders,
+    frame_call,
     frame_operand_keys,
     path_holds_root,
 )
@@ -540,8 +541,7 @@ def register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
         if frame_only and (
                 key is None or fi is None
                 or not (frame_factory_callee(fi) or fi.is_async)
-                or src.idx not in (fi.root.return_borrows_from
-                                   or frozenset())):
+                or src.idx not in call_result_lenders(fi, ctx.registry)):
             continue
         if loan.temp_backed:
             # An owned tuple element copied into the argument temporary: the
@@ -3051,8 +3051,9 @@ class StatementAnalyzer:
                     # after the loop, which still decides it (TODO.md slice
                     # (7d): a binding deciding its declaration once).
                     decides = stmt.var_live_after is not False
-                    with self.pend.list_sink(None if decides
-                                             else stmt.iterable):
+                    with self.ctx.consuming(stmt.iterable, loop=True), \
+                            self.pend.list_sink(None if decides
+                                                else stmt.iterable):
                         iterable_type = self.expr.analyze_expr(stmt.iterable)
                 finally:
                     self.ctx.for_head_bodies.pop()

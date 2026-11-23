@@ -56,7 +56,7 @@ int32_t opt_dict(const ::tpy::ordered_map<std::string, int32_t>* d);
 std::optional<std::tuple<int32_t, std::string>> opt_pair(std::optional<std::tuple<int32_t, std::string>> t);
 Point* never(const Point& p);
 Point* origin_if(bool flag);
-Point* origin_ro(bool flag);
+const Point* origin_ro(bool flag);
 std::optional<Point> fresh(bool flag);
 std::optional<Token> mint(bool flag);
 

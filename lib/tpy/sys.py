@@ -2,12 +2,12 @@
 __tpy__ = {"cpp_namespace": "tpystd::sys",
            "includes": ["<tpy/platform.hpp>"]}
 from typing import Final
-from tpy import int32, dispatch
+from tpy import int32, dispatch, Own
 from tpy.extern import native, native_global
 
 
 @native("tpy::get_sys_argv")
-def _get_sys_argv() -> list[str]: ...
+def _get_sys_argv() -> Own[list[str]]: ...
 
 
 argv: list[str] = _get_sys_argv()
@@ -33,11 +33,11 @@ class _StdStream:
 
 
 @native("tpy::get_sys_stdout")
-def _get_sys_stdout() -> _StdStream: ...
+def _get_sys_stdout() -> Own[_StdStream]: ...
 
 
 @native("tpy::get_sys_stderr")
-def _get_sys_stderr() -> _StdStream: ...
+def _get_sys_stderr() -> Own[_StdStream]: ...
 
 
 stdout: _StdStream = _get_sys_stdout()

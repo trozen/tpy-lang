@@ -2872,6 +2872,12 @@ def _wrapped_by(typ: 'TpyType', wrapper: type) -> bool:
     return False
 
 
+def is_owned_shape(typ: 'TpyType') -> bool:
+    """Whether `Own` is among the wrappers `repr_shape` peels: an owned
+    value, moved in or out, which no one borrows."""
+    return _wrapped_by(typ, OwnType)
+
+
 def readonly_access(typ: 'TpyType') -> bool:
     """Whether `readonly` is among the wrappers `repr_shape` peels, in
     whatever order they were applied: the access half beside the shape."""
@@ -3550,12 +3556,6 @@ def classify_result_representation(
                 else ResultRepresentation.ERASED_DECLARED_TYPE)
     if position is ResultPosition.SYNC_CALL:
         if fi is None or fi.is_constructor:
-            return ResultRepresentation.STORAGE
-        # Free native declarations do not establish the C++ reference ABI
-        # unless they declare what their result borrows (`result=` "borrow" /
-        # "element").
-        if (fi.is_native_import and not fi.is_method
-                and not fi.root.borrow_declared):
             return ResultRepresentation.STORAGE
         return (ResultRepresentation.CPP_REFERENCE
                 if _sync_result_is_reference(_type_arg_own_peeled(ret_type,
@@ -5357,6 +5357,8 @@ class OptionalType(TpyType):
     def to_cpp_return(self) -> str:
         passing = self.return_passing()
         if passing is ReturnPassing.POINTER:
+            if isinstance(self.inner, ReadonlyType):
+                return self.to_cpp_return_const()
             return f"{self.inner.to_cpp()}*"
         if passing is ReturnPassing.ELEMENTS:
             tup = self._returned_tuple()
@@ -9013,6 +9015,17 @@ def variant_cpp_name_of(candidates: 'list[FunctionInfo] | None',
     return None
 
 
+class ElementEffect(Enum):
+    """What a container method binding does with an argument naming its
+    receiver's element, key or value (`args=` "stored" / "compared")."""
+    # The arguments are values the container holds from then on: each is
+    # a store into its cells (an inserting key widens the key).
+    INSERT = "stored"
+    # The arguments are only compared with what the container holds (a
+    # lookup key): each must fit.
+    LOOKUP = "compared"
+
+
 class FunctionLinkage(Enum):
     """Linkage mode for functions."""
     DEFAULT = "default"
@@ -9194,14 +9207,14 @@ class FunctionInfo:
     native_function: bool = False  # @native("func", function=True) -> generates func(self, args)
     # @native(args={"self": "writes"}): the method replaces elements in place and
     # moves none, so it invalidates no iterator or reference into the
-    # receiver's structure. None on a mutating method: it may move or free
+    # receiver's structure. False on a mutating method: it may move or free
     # every element.
-    native_mutates: Optional[str] = None
-    # @native(args={...: "stored" | "compared"}) -> "insert" | "lookup": what
-    # the method does with an argument naming its receiver's element, key or
-    # value -- holds it from then on, or only compares it / hands it back
-    # (`tpyc/sema/list_elem.py`). None: neither is declared.
-    native_element_effect: Optional[str] = None
+    native_mutates: bool = False
+    # @native(args={...: "stored" | "compared"}): what the method does with
+    # an argument naming its receiver's element, key or value -- holds it
+    # from then on, or only compares it (`tpyc/sema/list_elem.py`). None:
+    # neither is declared.
+    native_element_effect: Optional[ElementEffect] = None
     # @native / @cpp_template(element_access=...) on a subscript dunder
     # variant: it performs the container's own operation on the slot the key
     # names and nothing else (docs/NATIVE_INTEROP.md). True: plain element
@@ -9734,6 +9747,23 @@ def signature_only(fi: 'FunctionInfo') -> bool:
     root = fi.root
     return (root.body is None and root.declaration is None
             and not root.is_callable_value)
+
+
+def readonly_elements(typ: 'NominalType') -> bool:
+    """A view whose element argument is readonly (`Span[readonly[T]]`):
+    no write goes through it."""
+    return any(isinstance(a, ReadonlyType) for a in typ.type_args)
+
+
+def declared_param_consts(types: 'tuple[TpyType, ...]', *, is_pure: bool,
+                          is_readonly: bool) -> tuple[bool, ...]:
+    """The const verdict a declaration states per parameter of `types`,
+    with no body inferred: a `readonly[...]` parameter, or a whole-callable
+    promise -- `@pure`, or `@readonly`, which makes every parameter readonly
+    on a method as on a free function, as it does on the TPy twin
+    (docs/READONLY_DESIGN.md "@readonly decorator")."""
+    whole = is_pure or is_readonly
+    return tuple(whole or isinstance(unwrap_ref_type(t), ReadonlyType) for t in types)
 
 
 def declares_no_writes(fi: 'FunctionInfo') -> bool:

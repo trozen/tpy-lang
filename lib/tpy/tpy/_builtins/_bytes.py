@@ -210,7 +210,7 @@ class bytes(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def rstrip(self) -> BytesView: ...
     @dispatch
-    @native("tpy::bytes_rstrip_chars_view", function=True)
+    @native("tpy::bytes_rstrip_chars_view", function=True, args={"chars": "compared"})
     @readonly
     @pure
     def rstrip(self, chars: bytes, /) -> BytesView: ...
@@ -363,13 +363,13 @@ class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     # A @native class carries no TPy bodies, so the in-place forms are runtime
     # helpers.
     @dispatch
-    @native("tpy::bytearray_iadd", function=True)
+    @native("tpy::bytearray_iadd", function=True, args={"other": "stored"})
     def __iadd__(self, other: bytes) -> bytearray: ...
     @dispatch
-    @native("tpy::bytearray_iadd", function=True)
+    @native("tpy::bytearray_iadd", function=True, args={"other": "stored"})
     def __iadd__(self, other: readonly[bytearray]) -> bytearray: ...
     @dispatch
-    @native("tpy::bytearray_iadd", function=True)
+    @native("tpy::bytearray_iadd", function=True, args={"other": "stored"})
     def __iadd__(self, other: BytesView) -> bytearray: ...
 
     @native("tpy::bytearray_irepeat", function=True)
@@ -481,25 +481,25 @@ class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @native("tpy::bytes_strip", function=True)
     @readonly
     @pure
-    def strip(self) -> bytearray: ...
+    def strip(self) -> Own[bytearray]: ...
 
     @native("tpy::bytes_lstrip", function=True)
     @readonly
     @pure
-    def lstrip(self) -> bytearray: ...
+    def lstrip(self) -> Own[bytearray]: ...
 
     @dispatch
     @native("tpy::bytes_rstrip", function=True)
     @readonly
     @pure
-    def rstrip(self) -> bytearray: ...
+    def rstrip(self) -> Own[bytearray]: ...
     @dispatch
     @native("tpy::bytes_rstrip_chars", function=True)
     @readonly
     @pure
-    def rstrip(self, chars: bytes, /) -> bytearray: ...
+    def rstrip(self, chars: bytes, /) -> Own[bytearray]: ...
 
     @native("tpy::bytearray_upper", function=True)
     @readonly
     @pure
-    def upper(self) -> bytearray: ...
+    def upper(self) -> Own[bytearray]: ...

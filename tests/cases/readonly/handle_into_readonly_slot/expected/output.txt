@@ -1,0 +1,9 @@
+readonly slot: 3 2 True 3 2
+mutable slot: 3 7 5
+loop: 3
+overload: 1
+optional: 4 5 5
+bytearray: bytearray(b'AbBb CabDabEAB ') bytearray(b' ab ')
+writes: 99 98
+writes pure: 97
+base call: 8 8 8

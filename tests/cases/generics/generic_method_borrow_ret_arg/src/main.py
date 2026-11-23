@@ -4,12 +4,9 @@
 # pinned by the `generic_borrow` section of `calls/argument_sink`.
 # `T` is BOUND here only so the body can call a member and mutate: the alias is
 # observed through that mutation, and an unbounded `T` could not touch one.
-# The method stays `-> None` because the return-through form belongs to two
-# other entries: returning the parameter warns about a temporary that is really
-# a borrow, BUGS.md#generic-return-through-param-spurious-temporary-warning,
-# and binding a generic method's `T` return to a caller local emits an
-# ill-formed non-const alias,
-# BUGS.md#generic-method-inferred-readonly-return-binding.
+# The method stays `-> None` because the return-through form belongs to
+# another entry: returning the parameter warns about a temporary that is
+# really a borrow, BUGS.md#generic-return-through-param-spurious-temporary-warning.
 from __future__ import annotations
 from typing import Protocol
 from tpy import int32

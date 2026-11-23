@@ -131,11 +131,11 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     @dispatch
     @native("tpy::dict_get", function=True, args={"key": "compared"})
     @pure
-    @readonly
-    def get(self, key: readonly[K], /) -> V | None: ...
+    @auto_readonly
+    def get(self, key: readonly[K], /) -> auto_readonly[V] | None: ...
 
     @dispatch
-    @native("tpy::dict_get_default", function=True, args={"key": "compared", "default": "compared"},
+    @native("tpy::dict_get_default", function=True, args={"key": "compared"},
             result={"default": "borrow", "self": "element", "key": "none"})
     @pure
     @readonly
@@ -146,8 +146,8 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     def pop(self, key: readonly[K], /) -> Own[V]: ...
 
     @dispatch
-    @native("tpy::dict_pop_default", function=True, args={"key": "compared", "default": "compared"})
-    def pop(self, key: readonly[K], default: V, /) -> Own[V]: ...
+    @native("tpy::dict_pop_default", function=True, args={"key": "compared"})
+    def pop(self, key: readonly[K], default: Own[V], /) -> Own[V]: ...
 
     @native
     def clear(self) -> None: ...

@@ -1,0 +1,3 @@
+main.py:60: warning: copies K into owned storage; use copy() to make this explicit
+main.py:63: warning: copies A elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:66: warning: copies A into owned storage; use copy() to make this explicit

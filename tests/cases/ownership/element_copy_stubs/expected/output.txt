@@ -1,0 +1,35 @@
+module: 2
+lists: 3 4 1
+lists: source 1 4
+lists: fresh 5
+hooks: 101 102
+dicts: 2 9
+dicts: key shared False
+dicts: default 9
+generic: 1 2
+sets: 1 3 2
+sets: and b
+sets: and tie c
+sets: intersection b
+sets: iand f
+sets: intersection_update g
+method: 2
+generator: 2
+comprehension: [2, 4]
+closure: 1
+concat: 1 3 3 3
+cpy identity: True True True
+cpy subclass source: 2 1 1
+cpy subclass copy: 3 9 2
+cpy exception: 7 8 boom
+cpy oserror: 2 nope [Errno 2] nope
+cpy oserror filename: a.txt [Errno 2] nope: 'a.txt'
+cpy oserror errno: 5
+cpy oserror subclass: 2 missing b.txt a.txt [Errno 2] missing
+cpy systemexit: 2
+cpy fixed ints: 42 7
+cpy field hook: 1 101
+subclass: 1 1 1 1 1 1
+subclass super: 1
+subclass base call: 1
+subclass own T: 1 2 1 2

@@ -38,7 +38,7 @@ void element() {
     std::cout << "element" << " " << ::tpy::__getitem__(ns, 0).v << "\n" << ::tpy::check_signals;
 }
 
-// # free function, undeclared: an independent copy
+// # free function, undeclared: the signature's reference, so the write reaches `a`
 // def undeclared() -> None:
 //     a = Node(1)
 //     b = Node(2)
@@ -48,7 +48,7 @@ void element() {
 void undeclared() {
     ::Node a = ::Node(1);
     ::Node b = ::Node(2);
-    ::Node c = ::pick_copy(a, b);
+    ::Node& c = ::pick_copy(a, b);
     c.v = 20;
     std::cout << "undeclared" << " " << a.v << " " << b.v << " " << c.v << "\n" << ::tpy::check_signals;
 }
@@ -194,8 +194,8 @@ void main() {
 // # its result IS one of the named arguments (`self` naming a method's
 // # receiver): the call binds as a borrow (`Node& n`) and a write through it
 // # reaches that argument; `"element"` says it is an ELEMENT of one, which a
-// # container argument lends. Without the declaration the result is a fresh
-// # value: binding it copies.
+// # container argument lends. Without the declaration the result's form is the
+// # signature's, as for the TPy twin: a bare `-> Node` binds `Node&`.
 // import asyncio
 //
 // from tpy.extern import native

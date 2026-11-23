@@ -5,17 +5,24 @@ namespace tpyapp::main {
 
 
 
+
 // def main() -> None:
 //     r = R(A(1), A(2))
 //     xs: list[A] = []
 //     ys: list[tuple[A, int32]] = []
-//     # The scalar member and its tuple twin: both copy, both warned.
-//     xs.append(copy_of(r).item)  # tpyc: warning(/copies A into owned storage/)
-//     ys.append(copy_of(r).pair)  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
+//     # The scalar member and its tuple twin: taken from the fresh result.
+//     xs.append(copy_of(r).item)  # tpyc: ok
+//     ys.append(copy_of(r).pair)  # tpyc: ok
 //     xs[0].n = 5
 //     ys[0][0].n = 6
 //     print("scalar", r.item.n, xs[0].n)
 //     print("tuple", r.pair[0].n, ys[0][0].n)
+//     # The bare result's members: copies of `r`'s, warned.
+//     xs.append(same_of(r).item)  # tpyc: warning(/copies A into owned storage/)
+//     ys.append(same_of(r).pair)  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
+//     xs[1].n = 7
+//     ys[1][0].n = 8
+//     print("bare", r.item.n, xs[1].n, r.pair[0].n, ys[1][0].n)
 void main() {
     R r = R(A(1), A(2));
     std::vector<A> xs = std::vector<A>{};
@@ -26,6 +33,11 @@ void main() {
     std::get<0>(::tpy::__getitem__(ys, 0)).n = 6;
     std::cout << "scalar" << " " << r.item.n << " " << ::tpy::__getitem__(xs, 0).n << "\n" << ::tpy::check_signals;
     std::cout << "tuple" << " " << std::get<0>(r.pair).n << " " << std::get<0>(::tpy::__getitem__(ys, 0)).n << "\n" << ::tpy::check_signals;
+    xs.push_back(::nb::same_of(r).item);
+    ys.push_back(::nb::same_of(r).pair);
+    ::tpy::__getitem__(xs, 1).n = 7;
+    std::get<0>(::tpy::__getitem__(ys, 1)).n = 8;
+    std::cout << "bare" << " " << r.item.n << " " << ::tpy::__getitem__(xs, 1).n << " " << std::get<0>(r.pair).n << " " << std::get<0>(::tpy::__getitem__(ys, 1)).n << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

@@ -151,10 +151,10 @@ class set[T](Iterable[T], NativeIterable[T]):
     @native("tpy::set_update", function=True, args={"other": "stored"})
     def __ior__(self, other: set[T]) -> set[T]: ...
 
-    @native("tpy::set_intersection_update", function=True)
+    @native("tpy::set_intersection_update", function=True, args={"other": "compared"})
     def __iand__(self, other: set[T]) -> set[T]: ...
 
-    @native("tpy::set_difference_update", function=True)
+    @native("tpy::set_difference_update", function=True, args={"other": "compared"})
     def __isub__(self, other: set[T]) -> set[T]: ...
 
     @native("tpy::set_symmetric_difference_update", function=True, args={"other": "stored"})

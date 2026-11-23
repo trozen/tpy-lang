@@ -24,7 +24,7 @@ from .call_lends import Retention, callee_retains_arg, retention_channel
 
 _SRC = '''
 from typing import Iterator, overload
-from tpy import Span, StrView, ValueType, int32, pure, readonly
+from tpy import Own, Ptr, Span, StrView, ValueType, int32, pure, readonly
 from tpy.extern import native
 
 
@@ -73,6 +73,18 @@ def span_of(xs: readonly[list[int32]]) -> Span[readonly[int32]]: ...
 def gkeep[T](x: T, y: T = T()) -> T: ...
 
 
+@native("giter")
+def giter[T](x: T) -> Iterator[int32]: ...
+
+
+@native("take_into")
+def take_into(keep: Box, item: Own[Box]) -> Box: ...
+
+
+@native("take_ptr_into")
+def take_ptr_into(keep: Ptr[int32], item: Own[Ptr[int32]]) -> Ptr[int32]: ...
+
+
 @native("tlen", transient=True)
 def tlen(v: StrView) -> int32: ...
 
@@ -100,7 +112,8 @@ def over(x: StrView | int32) -> int32:
 def subject(acc: list[Box], xs: list[Box], b: Box, vs: list[StrView],
             ws: list[StrView], v: StrView, d: dict[StrView, int32],
             e: dict[StrView, int32], ss: set[int32], tt: set[int32],
-            names: list[str], nums: list[int32], h: Holder) -> None:
+            names: list[str], nums: list[int32], h: Holder,
+            p: Ptr[int32]) -> None:
     acc.extend(xs)
     vs.extend(ws)
     acc.append(b)
@@ -127,6 +140,9 @@ def subject(acc: list[Box], xs: list[Box], b: Box, vs: list[StrView],
     pick_box(b, b)
     span_of(nums)
     b.walk(1)
+    giter(names[0])
+    take_into(b, Box(1))
+    take_ptr_into(p, p)
 '''
 
 
@@ -148,7 +164,8 @@ def calls() -> Iterator[tuple[object, object, dict[str, TpyExpr]]]:
               "pick_a", "pick_any", "list_views", "transient", "plain",
               "overload", "ref_result", "ctor", "generic_str",
               "generic_pending", "generic_view", "total_ints",
-              "keep_spread", "pick_box", "span", "gen_method"]
+              "keep_spread", "pick_box", "span", "gen_method",
+              "iter_stub_str", "own_arg", "own_ptr_arg"]
     assert len(by_line) == len(labels)
     with activate_compiler(compiler):
         yield (compiler, entry.analyzer.ctx,
@@ -196,13 +213,24 @@ def _retains(case, label: str, index: int) -> bool:
     # binding never keeps; at a spelled `StrView` it is the view.
     ("generic_str", 0, False),
     ("generic_str", 1, False),
-    ("generic_pending", 0, False),
-    ("generic_pending", 1, False),
+    # A pending `str` literal at `gkeep[T]` is no settled `str` slot at the
+    # instantiation, so the lending rule cannot rule it out and it may lend:
+    # conservative, a false warning at worst, never a missed borrow.
+    ("generic_pending", 0, True),
+    ("generic_pending", 1, True),
     ("generic_view", 0, True),
     # A `*args` pack's array is never kept; its elements follow the copies
     # channel: numbers hold no pointer, views are pointers.
     ("total_ints", 0, False),
     ("keep_spread", 0, True),
+    # A free iterator source keeps its arguments as a frame does: at `str`
+    # the object holds its own copy, as the concrete `giter(x: str)`.
+    ("iter_stub_str", 0, False),
+    # An owned argument is moved in: the result lends from the kept one only.
+    ("own_arg", 0, True),
+    ("own_arg", 1, False),
+    # A moved-in pointer still points where it did.
+    ("own_ptr_arg", 1, True),
 ])
 def test_stub_channels(calls, label: str, index: int, want: bool) -> None:
     assert _retains(calls, label, index) is want

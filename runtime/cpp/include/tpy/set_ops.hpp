@@ -103,11 +103,17 @@ ordered_set<T> set_union(const ordered_set<T>& a, const ordered_set<T>& b) {
     return result;
 }
 
+// Iterates the smaller operand (the right one on a tie) and keeps its
+// elements, as CPython does: with an `__eq__` over fewer fields than the
+// element holds, which operand's object survives is observable.
 template<typename T>
 ordered_set<T> set_intersection(const ordered_set<T>& a, const ordered_set<T>& b) {
+    const bool left = a.size() < b.size();
+    const ordered_set<T>& kept = left ? a : b;
+    const ordered_set<T>& probed = left ? b : a;
     ordered_set<T> result;
-    for (auto& v : a) {
-        if (b.contains(v)) result.insert(v);
+    for (auto& v : kept) {
+        if (probed.contains(v)) result.insert(v);
     }
     return result;
 }
@@ -187,11 +193,10 @@ void set_update(ordered_set<T>& s, const ordered_set<T2>& other) {
 // so no width conversion is needed.
 template<typename T>
 void set_intersection_update(ordered_set<T>& s, const ordered_set<T>& other) {
-    ordered_set<T> result;
-    for (auto& v : s) {
-        if (other.contains(v)) result.insert(v);
+    for (auto it = s.begin(); it != s.end();) {
+        const T& v = *it++;
+        if (!other.contains(v)) s.erase(v);
     }
-    s = std::move(result);
 }
 
 template<typename T>

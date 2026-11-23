@@ -2,8 +2,8 @@
 # its result IS one of the named arguments (`self` naming a method's
 # receiver): the call binds as a borrow (`Node& n`) and a write through it
 # reaches that argument; `"element"` says it is an ELEMENT of one, which a
-# container argument lends. Without the declaration the result is a fresh
-# value: binding it copies.
+# container argument lends. Without the declaration the result's form is the
+# signature's, as for the TPy twin: a bare `-> Node` binds `Node&`.
 import asyncio
 from typing import Iterator
 from tpy import int32, Own, NativeIterable, pure, readonly
@@ -44,7 +44,7 @@ def pick_ref(a: Node, b: Node) -> Node: ...
 def first(items: list[Node]) -> Node: ...
 
 
-# The same C++ shape, undeclared: the result is copied into the local.
+# The same C++ shape, undeclared: the result binds by reference all the same.
 @native
 def pick_copy(a: Node, b: Node) -> Node: ...
 
@@ -66,7 +66,7 @@ def element() -> None:
     print("element", ns[0].v)
 
 
-# free function, undeclared: an independent copy
+# free function, undeclared: the signature's reference, so the write reaches `a`
 def undeclared() -> None:
     a = Node(1)
     b = Node(2)

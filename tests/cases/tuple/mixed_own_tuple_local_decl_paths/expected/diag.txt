@@ -1,5 +1,8 @@
-main.py:69: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit ('t' is bound to existing storage at line 66)
-main.py:72: warning: Own[T] param 'q' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:101: warning: Result borrows from temporary argument 'q'; the temporary is destroyed at end-of-statement
-main.py:104: warning: Result borrows from temporary argument 'q'; the temporary is destroyed at end-of-statement
-main.py:107: warning: Result borrows from temporary argument 'q'; the temporary is destroyed at end-of-statement
+part_own_elem.py:12: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+part_own_elem.py:16: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+part_own_elem.py:22: warning: Result borrows from temporary argument 't'; the temporary is destroyed at end-of-statement
+part_own_elem.py:23: warning: Result borrows from temporary argument 't'; the temporary is destroyed at end-of-statement
+main.py:70: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit ('t' is bound to existing storage at line 67)
+main.py:73: warning: Own[T] param 'q' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:106: warning: Result borrows from temporary argument 'q'; the temporary is destroyed at end-of-statement
+main.py:109: warning: Result borrows from temporary argument 'q'; the temporary is destroyed at end-of-statement

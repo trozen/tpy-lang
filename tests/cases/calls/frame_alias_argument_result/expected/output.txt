@@ -1,0 +1,5 @@
+free: 1
+free: 5
+method: 1
+method: 9
+async: 7

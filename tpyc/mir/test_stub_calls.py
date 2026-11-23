@@ -474,8 +474,9 @@ def test_a_method_stub_owned_result_is_fresh_unless_declared(active) -> None:
     callee = _method_stub(active.thir["stored_setdefault"])
     assert callee.identity.qualified_name == "builtins.dict.setdefault"
     assert callee.signature.return_representation is Representation.STORAGE
-    # MIR reads the receiver stamp only where the result is returned by reference (BUGS.md#dict-setdefault-value-result-taken-fresh).
-    assert callee.result_origins == frozenset({0})
+    # The result is taken by value at `str`, so nothing lends (the C++ `V&` is
+    # BUGS.md#dict-setdefault-value-result-taken-fresh).
+    assert callee.result_origins == frozenset()
     summary = stub_summary(callee)
     assert isinstance(summary, MIRCallSummary) and summary.returns == frozenset()
 

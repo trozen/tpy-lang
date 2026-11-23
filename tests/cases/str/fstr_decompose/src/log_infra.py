@@ -1,6 +1,7 @@
 __tpy__ = {"mod": "native"}
 # Logging infrastructure: native types, wrappers, and dispatch.
 from tpy.extern import native
+from tpy import Own
 
 
 @native("mylog::LogHandle")
@@ -17,10 +18,10 @@ class StaticStr:
     pass
 
 @native("mylog::defer_str")
-def defer_str(s: str) -> DeferredStr: ...
+def defer_str(s: str) -> Own[DeferredStr]: ...
 
 @native("mylog::static_str")
-def static_str(s: str) -> StaticStr: ...
+def static_str(s: str) -> Own[StaticStr]: ...
 
 @native("mylog::log_dispatch")
 def log_dispatch[T](handle: LogHandle, fmt: str, args: T) -> None: ...

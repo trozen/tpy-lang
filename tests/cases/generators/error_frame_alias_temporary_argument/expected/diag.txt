@@ -1,0 +1,2 @@
+main.py:23: warning: Result borrows from temporary argument 'o'; the temporary is destroyed at end-of-statement
+main.py:23: error: in function 'walk': this construct is not yet supported by C++ code generation (res.alias_bind)

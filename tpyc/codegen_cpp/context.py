@@ -615,7 +615,7 @@ def static_class_cpp(registry, implicit_stdlib_modules: 'set[str]',
     if record_info is None and owner is not None:
         record_info = owner
         class_name = owner.name
-    if record_info and record_info.is_native:
+    if record_info and record_info.is_native and record_info.native_name:
         return record_info.native_name, record_info
     if (record_info is not None
             and record_info.module is not None

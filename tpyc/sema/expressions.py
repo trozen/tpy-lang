@@ -13,7 +13,7 @@ from typing import Callable, Iterable, Iterator, Literal, NamedTuple, Sequence, 
 
 from ..holders import IterHolder
 from ..identity_map import IdentityMap, IdentitySet
-from ..typesys import canonical_readonly, inner_type_param_names, make_iterable, make_readonly
+from ..typesys import canonical_readonly, inner_type_param_names, make_iterable, make_readonly, ElementEffect
 from ..typesys import none_identity_of, pointer_repr_optional, readonly_access, repr_shape
 from ..typesys import own_tuple_target, strip_own_type_args
 from ..typesys import binds_runtime_symbol, body_function_info
@@ -132,7 +132,8 @@ from .registration import referent_type
 from . import own_copy
 from .own_copy import warn_value_call_binding
 from .scope_tracker import lend_places
-from .receiver_calls import (check_implicit_readonly_receiver,
+from .receiver_calls import (call_mutates_receiver,
+                             check_implicit_readonly_receiver,
                              credit_implicit_receiver_call, receiver_is_readonly,
                              record_member_instantiation,
                              record_protocol_arg_calls, record_truth_calls)
@@ -1621,10 +1622,12 @@ class ExpressionAnalyzer:
             # previous resolution's verdict on the node.
             expr.result_form = ResultForm.NOT_DECLARED
             typ = self._call_result(expr, self.calls.analyze_call(expr))
+            self._settle_unreceived_args(expr)
         elif isinstance(expr, TpyMethodCall):
             expr.result_form = ResultForm.NOT_DECLARED
             typ = self._method_call_result(
                 expr, self.methods.analyze_method_call(expr))
+            self._settle_unreceived_args(expr)
         elif isinstance(expr, TpyFieldAccess):
             typ = self._analyze_field_access(expr)
         elif isinstance(expr, TpyArrayLiteral):
@@ -1700,6 +1703,12 @@ class ExpressionAnalyzer:
         record_protocol_arg_calls(self.ctx, expr)
         self.narrowing.invalidate_for_code_run(expr)
         return typ
+
+    def _settle_unreceived_args(self, call: 'TpyCall | TpyMethodCall') -> None:
+        """A probed argument no winner's parameter received (a call sema
+        handles itself) takes the credit a non-readonly consumer gives."""
+        for arg in (*call.args, *(call.kwargs or {}).values()):
+            self.ctx.settle_operand(arg, False)
 
     def _method_call_result(self, expr: TpyMethodCall,
                             typ: TpyType) -> TpyType:
@@ -2879,6 +2888,10 @@ class ExpressionAnalyzer:
         a value that slot receives when the and/or is coerced to it (under
         `coercion_ctx`)."""
         with ExitStack() as operand_scope:
+            if expr.op in ("in", "not in"):
+                # The haystack is the receiver of `__contains__`, which
+                # decides once resolved (`_analyze_binop_in`).
+                operand_scope.enter_context(self.ctx.consuming(expr.right))
             return self._analyze_binop_in(expr, declared_slot, coercion_ctx,
                                           operand_scope)
 
@@ -3384,6 +3397,10 @@ class ExpressionAnalyzer:
                         credit_implicit_receiver_call(
                             self.ctx, expr.right, right_type, original_method,
                             "__contains__", expr)
+                        haystack = self.ctx.handle_consumer(expr.right)
+                        if haystack is not None:
+                            haystack.settle(
+                                not call_mutates_receiver(original_method))
                         expr.resolved_contains = original_method
                         passed = (self.pend.pass_at_leaf(
                             expr.left, left_type, leaf, "membership test")
@@ -3416,7 +3433,8 @@ class ExpressionAnalyzer:
                             expr.left = needle_args[0]
                             self.calls.commit_facts(
                                 expr, matched,
-                                CallOperands(matched, None, needle_args))
+                                CallOperands(matched, expr.right,
+                                             needle_args))
                         expr.contains_call = TpyMethodCall(
                             obj=expr.right, method="__contains__",
                             args=[expr.left], resolved_function_info=matched,
@@ -3746,7 +3764,7 @@ class ExpressionAnalyzer:
         # call's: the operand it passes, the receiver it runs on.
         self.calls.commit_facts(
             expr, result.method,
-            CallOperands(result.method, None, [received]),
+            CallOperands(result.method, receiver, [received]),
             receiver=receiver, receiver_type=result.receiver_type)
         return True
 
@@ -6588,7 +6606,8 @@ class ExpressionAnalyzer:
         """Analyze the iterable and extract its element type (shared by all
         comprehensions): the comprehension's body, analyzed once whatever
         slot its element meets, so never at an overload probe's."""
-        with self.ctx.probe_slot_scope(False):
+        with self.ctx.consuming(gen.iterable, loop=True), \
+                self.ctx.probe_slot_scope(False):
             iterable_type = self.analyze_expr(gen.iterable)
         self.ctx.consume_traversal(gen.iterable, gen.iterable)
         inner = unwrap_readonly(iterable_type)
@@ -6946,7 +6965,7 @@ class ExpressionAnalyzer:
                               arg: TpyExpr) -> None:
         """`warn_narrowed_lookup_key` for `arg`, received as the first
         argument of `fi` -- a lookup method call's or a subscript's."""
-        if (fi is None or fi.native_element_effect != "lookup"
+        if (fi is None or fi.native_element_effect is not ElementEffect.LOOKUP
                 or not fi.params):
             return
         if isinstance(arg, TpyCoerce):
@@ -7398,7 +7417,7 @@ class ExpressionAnalyzer:
             # the key's place, passing nothing a write could reach).
             self.calls.commit_facts(
                 expr, fi, CallOperands(
-                    fi, None, [expr.index, *(args or [])]
+                    fi, expr.obj, [expr.index, *(args or [])]
                     + (stored if stored is not None else [])))
             if kind is SubscriptDunder.GET:
                 credit_implicit_receiver_call(

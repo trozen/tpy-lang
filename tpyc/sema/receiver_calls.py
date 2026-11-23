@@ -39,7 +39,7 @@ from .context import (
 from .storage_walk import MarkRequest, StorageKey, mark_roots, receiver_leaves
 
 if TYPE_CHECKING:
-    from .context import SemanticContext
+    from .context import HandleConsumer, SemanticContext
 
 
 @dataclass(frozen=True)
@@ -177,6 +177,18 @@ def call_mutates_receiver(fi: FunctionInfo, *, handle_climbs: bool = False) -> b
                 or fi.is_auto_readonly_mutable_clone)
 
 
+def consumer_decides(consumer: 'HandleConsumer | None',
+                     fi: FunctionInfo) -> bool:
+    """Whether the receiver credit of a call of `fi` written as
+    `consumer`'s operand is the consumer's to decide (`HandleConsumer`): the
+    call writes its receiver only through the handle it lends, and the
+    consumer is a slot or a haystack (a loop's handle climbs to the
+    receiver through the loop variable instead)."""
+    return (consumer is not None and not consumer.loop
+            and receiver_lends_handle(fi)
+            and not call_mutates_receiver(fi, handle_climbs=True))
+
+
 def _overload_invalidates(m: FunctionInfo) -> bool:
     # A bodyless binding (a builtin's method) answers by its declaration;
     # a bodied method by the structural mutation inferred from its body --
@@ -187,7 +199,7 @@ def _overload_invalidates(m: FunctionInfo) -> bool:
     # (BUGS.md#transitive-receiver-growth-unchecked): Phase 2 propagation
     # runs after body analysis. The mutable clone of an @auto_readonly pair
     # hands out a borrow but does not mutate its receiver.
-    if (m.is_readonly or m.native_mutates == "elements"
+    if (m.is_readonly or m.native_mutates
             or m.is_auto_readonly_mutable_clone):
         return False
     if is_bodyless_binding(m):

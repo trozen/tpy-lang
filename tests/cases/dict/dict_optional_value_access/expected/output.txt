@@ -4,3 +4,5 @@
 -1
 30
 pop 31 1 False
+pop default True 1
+pop tuple default ['d'] 0

@@ -152,7 +152,8 @@ std::tuple<Box, Box*> mixed_param_box(std::tuple<Box, Box*>&& q) {
 //     r = relay((a, b))
 //     r[1].val = 9
 //     print("relay:", r[0].val, b.val)
-//     s1 = own_separate(Box(2), b)
+//     # the owned `q` moves into the result: nothing is lent from the temporary
+//     s1 = own_separate(Box(2), b)  # tpyc: ok
 //     b.val = 10
 //     print("own_separate:", s1[0].val, s1[1].val)
 //     s2 = mixed_param((Box(3), b))
@@ -161,6 +162,7 @@ std::tuple<Box, Box*> mixed_param_box(std::tuple<Box, Box*>&& q) {
 //     s3 = mixed_param_box((Box(4), b))
 //     b.val = 12
 //     print("mixed_param_box:", s3[0].val, s3[1].val)
+//     own_elem_main()
 void main() {
     Box b = Box(7);
     Box c = Box(8);
@@ -182,8 +184,11 @@ void main() {
     auto s3 = ::tpyapp::main::mixed_param_box(std::tuple<Box, Box*>{Box(4), &(b)});
     b.val = 12;
     std::cout << "mixed_param_box:" << " " << std::get<0>(s3).val << " " << std::get<1>(s3)->val << "\n" << ::tpy::check_signals;
+    ::tpyapp::part_own_elem::main();
 }
 
+// from part_own_elem import main as own_elem_main
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;

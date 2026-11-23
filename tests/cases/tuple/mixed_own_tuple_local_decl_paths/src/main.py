@@ -5,6 +5,7 @@
 # reads the original, so a copy at any of these decl paths shows up as a wrong
 # number rather than passing silently.
 from tpy import int32, Own
+from part_own_elem import main as own_elem_main
 
 
 class Box:
@@ -98,7 +99,8 @@ def main() -> None:
     r = relay((a, b))
     r[1].val = 9
     print("relay:", r[0].val, b.val)
-    s1 = own_separate(Box(2), b)
+    # the owned `q` moves into the result: nothing is lent from the temporary
+    s1 = own_separate(Box(2), b)  # tpyc: ok
     b.val = 10
     print("own_separate:", s1[0].val, s1[1].val)
     s2 = mixed_param((Box(3), b))
@@ -107,6 +109,7 @@ def main() -> None:
     s3 = mixed_param_box((Box(4), b))
     b.val = 12
     print("mixed_param_box:", s3[0].val, s3[1].val)
+    own_elem_main()
 
 
 main()

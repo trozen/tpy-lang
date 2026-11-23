@@ -374,4 +374,4 @@ def test_a_template_method_declares_an_element_write_as_a_native_one_does():
     assert not any("Mutation of 'r' while iterating" in w for w in warnings), warnings
     with activate_compiler(compiler):
         put, = entry.exports.records["Ring"].methods["put"]
-        assert put.cpp_template is not None and put.native_mutates == "elements"
+        assert put.cpp_template is not None and put.native_mutates

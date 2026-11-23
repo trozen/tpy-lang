@@ -3626,6 +3626,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                                              t: 'TpyType | None') -> bool:
                     if isinstance(side, (TpyArrayLiteral, TpySetLiteral)):
                         return True
+                    if t is not None:
+                        t = resolve_pending_container(t, analyzer) or t
                     tu = (unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(t))) if t is not None else None)
                     if not (is_list(tu) or is_set(tu)):

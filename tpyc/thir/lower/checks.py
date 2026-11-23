@@ -104,7 +104,8 @@ from ...typesys import (
 )
 from ...coercions import CoercionContext
 from ...modules.type_resolution import is_native_iterable, owning_element_slot
-from ...sema.call_lends import Retention, separate_iterator_record_temp
+from ...sema.call_lends import (
+    Retention, call_result_lenders, separate_iterator_record_temp)
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...sema.alias_rebind import bare_tuple
 from ...sema.source_records import Disposition, moves_place, verdict
@@ -3741,6 +3742,7 @@ def copy_construct_payload(t: 'TpyType | None',
     be an array of references)."""
     if t is None:
         return None
+    t = resolve_pending_container(t, analyzer) or t
     au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     return au if (_f1_record(au, analyzer) or _f1_container_ref(au)) else None
 
@@ -8860,11 +8862,12 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
             if fi.linkage != FunctionLinkage.DEFAULT:
                 return None
             return ("generic_static", "")
-        # A native static fi takes the receiver-threaded builtin
-        # arm (gen_method_from_function_info) -- not the `Class::m` render.
-        if fi.native_function or fi.native_name:
+        # A `function=True` static binds a free function: the
+        # receiver-threaded builtin arm. A renamed member of a native class
+        # is its `Class::name` static, the plain arm's own render.
+        if fi.native_function:
             return None
-        if fi.linkage != FunctionLinkage.DEFAULT:
+        if fi.linkage != FunctionLinkage.DEFAULT and not fi.native_name:
             return None
         compiler = get_current_compiler()
         implicit = (compiler._implicit_stdlib_set() if compiler is not None
@@ -10134,7 +10137,7 @@ class MethodCallFacts(NamedTuple):
 
 
 def _borrow_form_at_storage_slot(fi: 'FunctionInfo | None', index: int,
-                                 ptype: 'TpyType | None') -> bool:
+                                 ptype: 'TpyType | None', analyzer) -> bool:
     """Whether argument `index` of a bodyless binding lands in a slot whose
     C++ is the receiver's STORAGE type while every argument the rows admit
     there renders the BORROW form: the stub spells the slot as a bare type
@@ -10147,7 +10150,7 @@ def _borrow_form_at_storage_slot(fi: 'FunctionInfo | None', index: int,
     root = fi.root if fi is not None else None
     if (root is None or not is_bodyless_binding(root)
             or not 0 <= index < len(root.params)
-            or index in (root.return_borrows_from or ())):
+            or index in call_result_lenders(fi, analyzer.ctx.registry)):
         return False
     # The UNSUBSTITUTED slot: the instantiated fi carries `P | None` there.
     if not isinstance(unwrap_readonly(unwrap_ref_type(
@@ -10177,7 +10180,7 @@ def _method_call_arg_ok(
         # A marker call's arguments take the free call's path
         # (`_lower_marker_method_arg`); none reaches the receiver families.
         return False
-    if _borrow_form_at_storage_slot(call.fi, index, ptype):
+    if _borrow_form_at_storage_slot(call.fi, index, ptype, analyzer):
         return note_detail("method.arg_shape")
 
     recv_type = _receiver_type(call.recv, call.dispatch_type, locals_,
@@ -12831,7 +12834,7 @@ def _separate_iterator_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
                                 callee, index: int,
                                 analyzer) -> 'TpyType | None':
     """A `separate_iterator_record_temp` worth binding to a local at a
-    parameter that adopts its fresh argument (`adopts=`, `zip(Noisy(2),
+    parameter that adopts its fresh argument (`result=` "adopts", `zip(Noisy(2),
     xs)`): the record type to declare the local as, else None. Adopted, such
     a record pins the result (the iterator may point into it); bound first,
     the argument is an lvalue, the borrowing flavor is selected and the
