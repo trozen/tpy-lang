@@ -47,7 +47,7 @@ In all cases: never `--amend`, rebase, force-push, or commit changes you didn't 
 
 **Pitfalls.** `docs/PITFALLS.md` lists the language and generated-code rules that keep being broken past a green suite and a clean review (silent copies, tuple-vs-scalar drift, hidden allocations, C++ or internal names in diagnostics, rejections of valid Python). `/tpy-fix-bug` and `/tpy-add-feature` walk it at the scope step and fill a position-by-shape scope matrix; each reviewer definition names the entries it owns and runs their **Check** line rather than reading for them.
 
-**Branch/merge workflow skills.** `/tpy-merge-master` merges `master` into the current working branch and verifies the result (semantic-conflict check over the files/functionality both sides touched, not just a textual merge). `/tpy-review` runs the multi-agent defect review; `/tpy-ready` is the merge-readiness + retrospective gate; `/prep-merge` squashes the branch into a clean commit ready for master. Typical order on a finished branch: `/tpy-merge-master` (pull in master) -> `/tpy-review` -> `/tpy-ready` -> `/prep-merge`.
+**Branch/merge workflow skills.** `/tpy-merge-master` merges `master` into the current working branch and verifies the result (semantic-conflict check over the files/functionality both sides touched, not just a textual merge). `/tpy-review` runs the multi-agent defect review; `/tpy-ready` is the merge-readiness + retrospective gate; `/prep-merge` squashes the branch into a clean commit ready for master; `/tpy-walk` walks the user through a finished branch one change at a time. Typical order on a finished branch: `/tpy-merge-master` (pull in master) -> `/tpy-review` -> `/tpy-ready` -> `/tpy-walk` (optional) -> `/prep-merge`.
 
 ### Working with the user
 
