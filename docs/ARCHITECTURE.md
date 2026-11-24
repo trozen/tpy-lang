@@ -1178,7 +1178,13 @@ Top-level analyzers (one module each):
 `macros`, `builder_trace`, `function_macros`, `reach_analysis`,
 `frame_traits`, `frame_close`, `loop_frames`, `own_copy`, `slot_hint`,
 `storage_policy`, `pending_num`, `call_lends`, `dyn_erasure`,
-`source_records`, `context`.
+`source_records`, `landings`, `context`.
+`landings` records the union member a committing check lands a value in,
+keyed by the boundary that receives it (a declaration's `init`, an argument
+by its callee's parameter index, a default expression, ...) plus the
+element path: sema's per-body table rolls back with a trial and settles
+into `SemanticContext.union_landings`, which the THIR conversion and the
+codegen default readers read -- nothing after sema chooses a member.
 `dyn_erasure` decides how a source enters an `Own[@dynamic P]` slot (none,
 `make_unique`, the owning Adapter, the coroutine handle's unwrap) and, at a
 result, publishes it as one coercion per verdict (`into_dyn_*`).

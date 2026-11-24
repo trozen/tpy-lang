@@ -32,6 +32,6 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // def __init__(self) -> None:
 //     self.u = 5  # bare into the variant slot
-inline Holder::Holder() : u(5) {}
+inline Holder::Holder() : u(::tpy::BigInt(5)) {}
 void __tpy_init();
 } // namespace tpyapp::main

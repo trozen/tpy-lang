@@ -38,7 +38,7 @@ from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, is_base_init_call, is_init_trivia, init_leading_run_end, ParseError
 from ..parse.nodes import RecordLinkage, value_capture_lambdas
 from .registration import (
-    receiver_self_type, named_default_type, default_refusal, _vararg_span_type, skipped_base_ctor_error,
+    receiver_self_type, named_default_type, default_refusal, commit_default_landing, _vararg_span_type, skipped_base_ctor_error,
     skipped_base_init_warning, skipped_base_inits, readonly_reason,
 )
 from ..parse.nodes import (
@@ -106,6 +106,7 @@ from . import own_copy
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
 from .compatibility import TypeCompatibility
+from .landings import boundary_of
 from .capture_copies import CopyReason, closure_noun, warn_closure_captures
 from .def_reach import reach_at
 from .list_literals import IterableHelper
@@ -172,7 +173,7 @@ def _bare_name_source(expr: TpyExpr) -> 'TpyName | None':
 def _extract_proto_param_forwarding(
     locals_dict: dict[str, TpyType],
     func_node: TpyFunction,
-    write_history: dict[str, list[tuple[TpyType, TpyExpr]]],
+    write_history: dict[str, list[tuple[TpyType, TpyExpr, TpyStmt]]],
 ) -> None:
     """Pull hoisted locals that forward to a bare static-protocol param out of
     the frame layout, recording the local->param link on the function.
@@ -2276,7 +2277,9 @@ class SemanticAnalyzer:
                     or named_default_type(self.ctx, default) is None):
                 continue
             refusal = default_refusal(self.ctx, self.compat, default, ptype)
-            if refusal is not None:
+            if refusal is None:
+                commit_default_landing(self.ctx, self.compat, default, ptype)
+            else:
                 self.compat.check_type_compatible(
                     refusal.actual, refusal.target,
                     f"parameter '{func.params[i][0]}'", default.loc,
@@ -3229,7 +3232,8 @@ class SemanticAnalyzer:
                 )
                 cc_fld.default_expr = self.compat.coerce_expr(
                     cc_fld.default_expr, unwrap_readonly(init_type),
-                    cc_fld.type, label, CoercionContext.INIT)
+                    cc_fld.type, label, CoercionContext.INIT,
+                    boundary=boundary_of(cc_fld, "default"))
                 runtime = (record_info.is_final_class_constant(cc_name)
                            and self.stmts.final_is_runtime(
                                cc_fld.type, cc_fld.default_expr, class_scope))

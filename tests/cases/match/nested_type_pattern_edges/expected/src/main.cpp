@@ -309,10 +309,10 @@ void main() {
     std::cout << ::tpyapp::main::guard_combo(Wrapper(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Cat("Nala")))})) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::guard_combo(Wrapper(::tpy::Union<const Cat*, const Dog*>{&(::tpy::as_mut_lvalue(Dog("Rex")))})) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::check_float(FloatHolder(::tpy::Union<double, std::string>(3.14))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::check_float(FloatHolder(::tpy::Union<double, std::string>("pi"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_float(FloatHolder(::tpy::Union<double, std::string>(std::in_place_type<std::string>, "pi"))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::check_bool(BoolHolder(::tpy::Union<bool, std::string>(true))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::check_bool(BoolHolder(::tpy::Union<bool, std::string>(false))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::check_bool(BoolHolder(::tpy::Union<bool, std::string>("yes"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_bool(BoolHolder(::tpy::Union<bool, std::string>(std::in_place_type<std::string>, "yes"))) << "\n" << ::tpy::check_signals;
 }
 
 // from dataclasses import dataclass

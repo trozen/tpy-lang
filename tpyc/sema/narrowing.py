@@ -649,7 +649,7 @@ class NarrowingTracker:
         writes = self.ctx.func.write_history.get(name)
         if not writes or len(writes) != 1:
             return False
-        _, rhs = writes[0]
+        _, rhs, _stmt = writes[0]
         return nonempty_container_literal(peel_coerce(rhs)) is True
 
     def _operand_range(self, expr: TpyExpr) -> ValueRange | None:

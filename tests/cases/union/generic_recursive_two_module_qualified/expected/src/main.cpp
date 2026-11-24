@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(treea.leaf_count(a))
 //     print(treeb.leaf_count(b))
 void main() {
-    ::tpyapp::treea::Tree<::tpy::BigInt> a = std::vector<::tpyapp::treea::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treea::Tree<::tpy::BigInt>>{2, 3}};
-    ::tpyapp::treeb::Tree<::tpy::BigInt> b = std::vector<::tpyapp::treeb::Tree<::tpy::BigInt>>{4, std::vector<::tpyapp::treeb::Tree<::tpy::BigInt>>{5, std::vector<::tpyapp::treeb::Tree<::tpy::BigInt>>{6, 7}}};
+    ::tpyapp::treea::Tree<::tpy::BigInt> a = std::vector<::tpyapp::treea::Tree<::tpy::BigInt>>{::tpy::BigInt(1), std::vector<::tpyapp::treea::Tree<::tpy::BigInt>>{::tpy::BigInt(2), ::tpy::BigInt(3)}};
+    ::tpyapp::treeb::Tree<::tpy::BigInt> b = std::vector<::tpyapp::treeb::Tree<::tpy::BigInt>>{::tpy::BigInt(4), std::vector<::tpyapp::treeb::Tree<::tpy::BigInt>>{::tpy::BigInt(5), std::vector<::tpyapp::treeb::Tree<::tpy::BigInt>>{::tpy::BigInt(6), ::tpy::BigInt(7)}}};
     std::cout << ::tpyapp::treea::leaf_count<::tpy::BigInt>(a) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::treeb::leaf_count<::tpy::BigInt>(b) << "\n" << ::tpy::check_signals;
 }

@@ -25,7 +25,7 @@ int32_t use_inherited(const Child& c, int32_t k) {
 //     # A coerced literal needs no temp.
 //     return a.tag(5)
 int32_t use_lit(const A& a) {
-    return a.tag(5);
+    return a.tag(::tpy::Union<double, int32_t>(5));
 }
 
 // def main() -> None:

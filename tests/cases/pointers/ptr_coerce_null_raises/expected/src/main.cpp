@@ -113,7 +113,7 @@ void main() {
     }
     {
         try {
-            std::string s = ::tpyapp::main::take_union(::tpy::deref_check(b));
+            std::string s = ::tpyapp::main::take_union(::tpy::Union<bool, std::string>(::tpy::deref_check(b)));
             std::cout << "union" << " " << s << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::AttributeError& e) {
             std::cout << "union" << " " << e << "\n" << ::tpy::check_signals;

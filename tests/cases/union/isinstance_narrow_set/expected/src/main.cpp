@@ -34,7 +34,7 @@ void main() {
     ::tpy::ordered_set<::tpy::BigInt> s = ::tpy::ordered_set<::tpy::BigInt>({::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)});
     ::tpy::Union<::tpy::BigInt*, ::tpy::ordered_set<::tpy::BigInt>*> v{&(s)};
     ::tpyapp::main::f(v);
-    ::tpy::Union<::tpy::BigInt, ::tpy::ordered_set<::tpy::BigInt>> __slot_1 = 7;
+    ::tpy::Union<::tpy::BigInt, ::tpy::ordered_set<::tpy::BigInt>> __slot_1 = ::tpy::BigInt(7);
     ::tpy::Union<::tpy::BigInt*, ::tpy::ordered_set<::tpy::BigInt>*> w = ::tpy::to_ptr_variant(__slot_1);
     ::tpyapp::main::f(w);
 }

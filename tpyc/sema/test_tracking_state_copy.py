@@ -100,7 +100,7 @@ def _populated() -> FunctionTrackingState:
         super_del_call=N.TpyMethodCall(N.TpyName("super"), "__del__", []),
         pending_loop_vars={'i': PendingLocal(INT32, (stmt,), stmt2,
                                              head_first=True)},
-        write_history={'x': [(INT32, expr)]},
+        write_history={'x': [(INT32, expr, stmt)]},
         nested_def_nodes={'f': [nested]},
         nested_def_escapes=escapes,
         closure_captured_defs=captured_defs,
@@ -144,6 +144,8 @@ def _populated() -> FunctionTrackingState:
         owning_reads=[OwnIterMove("b", N.TpyName("b"), N.TpyName("c")),
                       _pending_copy(N.TpyName("e"))],
         tuple_sinks=[SinkRead(N.TpyName("t"), INT32)],
+        union_landings=IdentityMap([(N.TpyName("u"),
+                                     {("value", None): {(): INT32}})]),
         noted_places=[N.TpyFieldAccess(N.TpyName("np"), "f")],
         nonowning_sites={'a': NonOwningNotes([(N.TpyName("b"), None)])},
         comp_targets=[CompTarget("b", N.TpyName("comp"), 0, 1)],
@@ -194,7 +196,8 @@ _FIXTURE_FIELDS = {
     'pending_num_deferred', 'pending_num_splices', 'int_tparam_reads',
     'awaiting_container',
     'after_list_resolution',
-    'borrow_tracker', 'owning_reads', 'tuple_sinks', 'noted_places',
+    'borrow_tracker', 'owning_reads', 'tuple_sinks', 'union_landings',
+    'noted_places',
     'nonowning_sites',
     'comp_targets',
     'current_call_edges', 'current_awaited_subframes',
@@ -340,7 +343,7 @@ def test_snapshot_still_copies_the_containers() -> None:
     # The copy's tracker stamps its loans from the copy's own scope.
     assert copied.borrow_tracker.binder_of.__self__ is copied
     copied.compound_stack.append(N.TpyPassStmt())
-    copied.write_history['x'].append((INT32, N.TpyName("y")))
+    copied.write_history['x'].append((INT32, N.TpyName("y"), N.TpyPassStmt()))
     assert len(state.compound_stack) == 1
     assert len(state.write_history['x']) == 1
 

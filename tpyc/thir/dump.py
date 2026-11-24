@@ -538,8 +538,10 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
                     f"{_deferred_parts(stmt.tuple_parts)}"]
         kind = "opt-move" if stmt.optional_move else "move"
         cap = _expr(stmt.capture)
+        conv = (f" as {_expr(stmt.materialize)}"
+                if stmt.materialize is not None else "")
         return [f"{pad}return [finally-deferred {kind}] "
-                f"{'*' if stmt.indirect else ''}{cap}"]
+                f"{'*' if stmt.indirect else ''}{cap}{conv}"]
     if isinstance(stmt, THIRIf):
         lines = [f"{pad}if {_expr(stmt.condition)}:"]
         for s in stmt.then_body:

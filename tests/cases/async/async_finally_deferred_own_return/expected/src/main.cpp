@@ -57,7 +57,7 @@ __coro_step step() {
             __fin_ran_1 = true;
             this->__finally_0();
             __state = S_DONE;
-            return ::tpystd::tpy::Poll<Box>::ready(std::move(*__tpy_retp_0));
+            return ::tpystd::tpy::Poll<Box>::ready(std::move((*__tpy_retp_0)));
         } catch (...) {
             __sub_0.reset();
             if (!__fin_ran_1) {

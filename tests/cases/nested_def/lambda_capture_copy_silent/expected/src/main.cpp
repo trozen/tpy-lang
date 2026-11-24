@@ -310,9 +310,9 @@ std::function<bool()> tuple_cost(std::optional<::tpy::BigInt> k) {
 //     f: Callable[[], bool] = lambda: isinstance(k, str)  # tpyc: warning(/copies 'k' when it is created/)
 //     print("union_local:", f())
 void union_local(bool c) {
-    ::tpy::Union<::tpy::BigInt, std::string> k = 3;
+    ::tpy::Union<::tpy::BigInt, std::string> k = ::tpy::BigInt(3);
     if (c) {
-        k = "abc";
+        k = static_cast<std::string>("abc");
     }
     std::function<bool()> f = [k]() -> bool { return std::holds_alternative<std::string>(k); };
     std::cout << "union_local:" << " " << ::tpy::print_bool(f()) << "\n" << ::tpy::check_signals;
@@ -421,7 +421,7 @@ void main() {
     ::tpyapp::main::loop_optional();
     ::tpyapp::main::outer_slot();
     ::tpyapp::main::outer_slot_rec();
-    ::tpy::Union<int32_t, std::string> us = "x";
+    ::tpy::Union<int32_t, std::string> us = static_cast<std::string>("x");
     std::cout << "union_param:" << " " << ::tpy::print_bool((::tpyapp::main::union_param(us))()) << "\n" << ::tpy::check_signals;
     std::cout << "tuple_cost:" << " " << ::tpy::print_bool((::tpyapp::main::tuple_cost(::tpy::BigInt::from_str("1000000000000000000000000000000")))()) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::union_local(true);

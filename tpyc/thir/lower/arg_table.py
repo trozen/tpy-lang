@@ -95,6 +95,9 @@ class _ArgReq(NamedTuple):
     # capability: the position is a property of the call, not the family.
     index: int = -1
     overload: object = None
+    # The union member sema landed this argument in at its parameter
+    # (`Slot.union_member`); None for a slot that is no union.
+    member: 'TpyType | None' = None
     # Whether the callee is a generator/coro FACTORY, whose ref-slot args
     # are borrowed by the frame and so hoist a scope-local. Per-call
     # context: the enclosing call's resolved fi decides it.
@@ -268,7 +271,8 @@ def arg_ok(sink: _ArgSink, a: 'TpyExpr', ptype: 'TpyType | None',
            stub_slot: bool = False,
            ptr_tuple_locals: 'frozenset[str] | set[str]' = frozenset(),
            frame_taken: bool = False,
-           retains: 'Retention | None'
+           retains: 'Retention | None',
+           member: 'TpyType | None' = None,
            ) -> bool:
     """Walk `sink`'s rows in order; `note_detail(sink.note)` on no match."""
     req = _ArgReq(a, ptype, locals_, analyzer, param_names, narrowed,
@@ -276,7 +280,7 @@ def arg_ok(sink: _ArgSink, a: 'TpyExpr', ptype: 'TpyType | None',
                   retains=retains,
                   storage_tuple_locals=storage_tuple_locals,
                   self_capturable=self_capturable, open_ptype=open_ptype,
-                  index=index, overload=overload,
+                  index=index, overload=overload, member=member,
                   frame_capturing=frame_capturing,
                   mutation_unknown=mutation_unknown,
                   inline_narrowed=inline_narrowed,

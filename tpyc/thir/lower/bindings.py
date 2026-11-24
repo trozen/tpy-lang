@@ -81,6 +81,7 @@ from ...typesys import (ConcreteGenType, FloatLiteralType, IntLiteralType,
                         collapse_tuple_own_elements,
                         contains_pending_leaf, is_dyn_protocol,
                         is_own_pointer_repr_optional, open_type_param,
+                        param_holds_callee_copy,
                         pointer_repr_optional, resolve_int_literals,
                         unwrap_optional_own, unwrap_own, unwrap_readonly,
                         unwrap_ref_type, unwrap_send_sync, ValueForm,
@@ -823,10 +824,15 @@ def classify_binding(site: _Site, name: str, typ: TpyType | None,
                                                  "nested_param"),
                           move_exception=_no_move(typ))
     if (rec.move_exception is None and rec.move_forced is None
-            and _local_site(site) and rec.form in (F.VALUE, F.VALUE_OPT)
+            and ((_value_local(site, rec) and _local_site(site)
+                  and rec.form is not F.NONE)
+                 or _by_value_param_copy(site, name, typ, inp))
             and _value_typed(typ)):
-        # A local's value is no move source: liveness does not see an
-        # iterator or view of it (BUGS.md#owned-viewfam-local-last-use-copies).
+        # A local's or a by-value parameter's value is no move source:
+        # liveness does not see an iterator or view of it
+        # (BUGS.md#owned-viewfam-local-last-use-copies). A loop's copy is
+        # its row's: it moves where the copy allocates. A lambda's
+        # parameter already has its row (LAMBDA_PARAM).
         rec = replace(rec, move_exception=_value_exception(typ))
     owner = site.func if site.func is not None else inp.func
     # A resumable frame's local holds an open result in its frame slot
@@ -841,7 +847,10 @@ def classify_binding(site: _Site, name: str, typ: TpyType | None,
             and site.kind != "lambda"
             and (site.func is None or site.func is inp.func)):
         rec = replace(rec, frame_const=True)
-    return with_movable(rec, own)
+    rec = with_movable(rec, own)
+    if _owns_object(site, name, typ, rec, inp):
+        rec = replace(rec, owns=True)
+    return rec
 
 
 # The rows no read moves out of in place, which stand only where fact 1
@@ -865,6 +874,47 @@ def _value_typed(t: TpyType | None) -> bool:
     if isinstance(t, TupleType):
         return all(_value_typed(e) for e in t.element_types)
     return t.is_value_type()
+
+
+def _owns_object(site: _Site, name: str, typ: TpyType | None,
+                 rec: BindingRepr, inp: PlanInputs) -> bool:
+    """`BindingRepr.owns`: an `Own` parameter, a by-value parameter holding
+    the callee's own copy, or a local holding its value."""
+    if rec.owned:
+        return True
+    row = rec.move_exception
+    if row is not None and not row.record_moves:
+        return False
+    return (_value_local(site, rec)
+            or _by_value_param_copy(site, name, typ, inp))
+
+
+def _value_local(site: _Site, rec: BindingRepr) -> bool:
+    """A function local holding its value in its type's own C++, the
+    object or a value Optional, or a loop variable's or loop-head unpack
+    target's copy of its element: no pointer or reference alias."""
+    if rec.pointer or rec.ref_alias:
+        return False
+    if site.kind == "loop":
+        return rec.loop_binding is LoopBinding.VALUE and rec.form is F.VALUE
+    if site.kind == "unpack" and site.node.is_loop_head:
+        # A head target's copy is `_unpack_target_shape`'s `copies` shape:
+        # the VALUE form no loop binding refers through.
+        return rec.loop_binding is None and rec.form is F.VALUE
+    return _local_site(site) and rec.form in (F.NONE, F.VALUE, F.VALUE_OPT)
+
+
+def _by_value_param_copy(site: _Site, name: str, typ: TpyType | None,
+                         inp: PlanInputs) -> bool:
+    """A parameter (a nested def's or a lambda's included) the callee
+    receives as a copy of its own (`param_holds_callee_copy`: `VSub v`,
+    not a `str` view or a reference), never a capture."""
+    if site.kind not in ("param", "nested_param", "lambda") or not isinstance(
+            typ, TpyType) or isinstance(typ, ReadonlyType):
+        return False
+    func = inp.func if site.kind == "param" else site.func
+    return ((func is None or not func.is_capture(name))
+            and typ.is_value_type() and param_holds_callee_copy(typ))
 
 
 def _local_site(site: _Site) -> bool:

@@ -33,6 +33,7 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import expr_to_narrowing_key
 from .compatibility import InferredSlot, inferred_receiver
+from .landings import param_boundary
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
 from ..type_def_registry import is_list, is_set, is_borrowing_view_type, protocol_info_of
 from .bound_check import builtin_owned, raise_if_class_param_bound_violated
@@ -886,7 +887,7 @@ class MethodAnalyzer:
                 )
                 result = self._analyze_module_method_call(flat_expr, module_name=dotted_name)
                 if result is not None:
-                    adopt_temp_call(expr, flat_expr)
+                    adopt_temp_call(self.ctx, expr, flat_expr)
                     expr.builtin_module_call = flat_expr.builtin_module_call
                     expr.user_module_call = flat_expr.user_module_call
                     self.ctx.record_builtin_callee(
@@ -1210,7 +1211,7 @@ class MethodAnalyzer:
         record_protocol_arg_calls(self.ctx, call)
         # The call is its expansion; its arguments are the expansion's,
         # keywords resolved to positions.
-        adopt_temp_call(expr, call, resolution=False, type_args=False)
+        adopt_temp_call(self.ctx, expr, call, resolution=False, type_args=False)
         expr.macro_expansion = call
         return result
 
@@ -1505,7 +1506,7 @@ class MethodAnalyzer:
         # Codegen emits Parent::method(args) with args matching
         # resolved_function_info.params shape; the written `self` stays the
         # call's receiver.
-        adopt_temp_call(expr, fake_expr, receiver=self_arg)
+        adopt_temp_call(self.ctx, expr, fake_expr, receiver=self_arg)
         expr.unbound_self_parent_type = parent_type
         if method_name == "__init__":
             self._check_message_base_init(expr, current_rec)
@@ -1583,7 +1584,7 @@ class MethodAnalyzer:
                             type_args_parse_error=expr.type_args_parse_error,
                             loc=expr.loc)
         result = self.calls._analyze_user_function_call(temp_call, [virtual_func])
-        adopt_temp_call(expr, temp_call)
+        adopt_temp_call(self.ctx, expr, temp_call)
         expr.is_static_call = True
         expr.static_call_owner = record_info
         return result
@@ -1619,7 +1620,7 @@ class MethodAnalyzer:
                                     type_args_parse_error=expr.type_args_parse_error,
                                     loc=expr.loc)
                 result = self.calls._analyze_asyncio_spawn_call(temp_call, _qname, overloads)
-                adopt_temp_call(expr, temp_call)
+                adopt_temp_call(self.ctx, expr, temp_call)
                 return result
             # Route through builtin path if the function is from a builtin module
             # or has a cpp_template (inline expansion, no C++ function body).
@@ -1637,7 +1638,7 @@ class MethodAnalyzer:
                     result = self.calls._analyze_special_builtin(temp_call, overloads)
                 else:
                     result = self.calls._analyze_builtin_function_overloads(temp_call, overloads)
-                adopt_temp_call(expr, temp_call)
+                adopt_temp_call(self.ctx, expr, temp_call)
                 return result
             else:
                 expr.user_module_call = module_name
@@ -1647,7 +1648,7 @@ class MethodAnalyzer:
                                     type_args_parse_error=expr.type_args_parse_error,
                                     loc=expr.loc)
                 result = self.calls._analyze_user_function_call(temp_call, overloads)
-                adopt_temp_call(expr, temp_call)
+                adopt_temp_call(self.ctx, expr, temp_call)
                 return result
 
         qname = f"{module_name}.{expr.method}"
@@ -1656,7 +1657,7 @@ class MethodAnalyzer:
                 expr.builtin_module_call = module_name
                 temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), **temp_call_args(expr), loc=expr.loc)
                 result = self.calls._analyze_record_constructor(temp_call, record_info)
-                adopt_temp_call(expr, temp_call, type_args=False)
+                adopt_temp_call(self.ctx, expr, temp_call, type_args=False)
                 return result
 
         # User record constructor invoked via qualified access (e.g.
@@ -1670,7 +1671,7 @@ class MethodAnalyzer:
             expr.user_module_call = module_name
             temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), **temp_call_args(expr), loc=expr.loc)
             result = self.calls._analyze_record_constructor(temp_call, record_info)
-            adopt_temp_call(expr, temp_call, type_args=False)
+            adopt_temp_call(self.ctx, expr, temp_call, type_args=False)
             return result
 
         # Check for call-site macro (e.g. dataclasses.asdict(...)).
@@ -2062,7 +2063,8 @@ class MethodAnalyzer:
                     self.compat.check_type_compatible(
                         default_type, inner_type,
                         f"default value for TypedDict.get()", loc=expr.args[1].loc,
-                        source_expr=expr.args[1])
+                        source_expr=expr.args[1],
+                        boundary=param_boundary(expr, 1))
                     return inner_type
                 else:
                     # Don't double-wrap: total=True Optional[T] field is already Optional

@@ -46,13 +46,13 @@ int32_t sum_leaves(const Tree<::tpy::BigInt>& t) {
 //     b: Tree[int] = [1, 2]
 //     print(a == b)
 void main() {
-    Tree<::tpy::BigInt> t = std::vector<Tree<::tpy::BigInt>>{1, std::vector<Tree<::tpy::BigInt>>{2, 3}, 4};
+    Tree<::tpy::BigInt> t = std::vector<Tree<::tpy::BigInt>>{::tpy::BigInt(1), std::vector<Tree<::tpy::BigInt>>{::tpy::BigInt(2), ::tpy::BigInt(3)}, ::tpy::BigInt(4)};
     std::cout << ::tpyapp::main::leaf_count<::tpy::BigInt>(t) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::sum_leaves(t) << "\n" << ::tpy::check_signals;
-    Tree<::tpy::BigInt> leaf = 9;
+    Tree<::tpy::BigInt> leaf = ::tpy::BigInt(9);
     std::cout << ::tpyapp::main::leaf_count<::tpy::BigInt>(leaf) << "\n" << ::tpy::check_signals;
-    Tree<::tpy::BigInt> a = std::vector<Tree<::tpy::BigInt>>{1, 2};
-    Tree<::tpy::BigInt> b = std::vector<Tree<::tpy::BigInt>>{1, 2};
+    Tree<::tpy::BigInt> a = std::vector<Tree<::tpy::BigInt>>{::tpy::BigInt(1), ::tpy::BigInt(2)};
+    Tree<::tpy::BigInt> b = std::vector<Tree<::tpy::BigInt>>{::tpy::BigInt(1), ::tpy::BigInt(2)};
     std::cout << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
 }
 

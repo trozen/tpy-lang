@@ -230,6 +230,11 @@ from ...storage_trace import StepKind
 from ...sema.alias_rebind import alias_sources, bare_tuple, reference_paths
 from ...sema.binding_ownership import read_ownership
 from ...sema.storage_walk import Unkeyed, loan_key, path_key
+from ...sema.landings import (Boundary, arg_boundary, boundary_of,
+                              lookup as lookup_landing, member_at,
+                              param_boundary, peek as peek_landing,
+                              peek_member, subscript_boundary,
+                              union_members)
 from ...sema.source_records import (Disposition, LeafPermission, NO_RECORD,
                                     handover, moves_place, read_record,
                                     verdict)
@@ -653,9 +658,10 @@ from .predicates import (
     _unrouted_binding_read,
     _value_opt_view_name,
 )
-from .convert import (converted, layout_tuple,
+from .convert import (converted, land_paths, land_value, layout_tuple,
                       param_tuple_slot, store_slot, to_local)
-from .context import (ParamSlotClass, Slot, SlotHolds, deduced_slot,
+from .context import (ParamSlotClass, Slot, SlotHolds, at_boundary,
+                      deduced_slot,
                       param_slot, param_slot_class)
 from .context import (FrameLocalClass, _call_arg_forms,
                       _ExprResultUse, _ExprUse, _LowerCtx, _LowerScope,
@@ -674,6 +680,7 @@ from .context import (FrameLocalClass, _call_arg_forms,
                       _POS_FORMS, storage_type)
 from .generics import expand_fi_template
 from .convert import (Effect, Refuse, StorageRequest, _existing_object, _lendable, as_base,
+                      _member_value, member_int_literal,
                       open_param_convert, open_trait_lift,
                       is_open_t_binding,
                       convert, held_object_type, landing, spelled)
@@ -1587,7 +1594,8 @@ def _r_ru_wrapper_name_no_alias(req: _ArgReq) -> bool:
     # alias-placeholder resolution inside the predicate no-ops without it, so
     # this cell admits strictly less. Transcribed as found -- widening it is
     # a change of its own.
-    return _ru_wrapper_name_arg(req.a, req.ptype, req.locals_, req.narrowed)
+    return _ru_wrapper_name_arg(req.a, req.ptype, req.locals_, req.narrowed,
+                                member=req.member)
 
 
 def _r_ru_wrapper_own_literal(req: _ArgReq) -> bool:
@@ -1806,7 +1814,7 @@ _CTOR_NESTED_ARG_SINK = register_sink(_ArgSink(
 def _record_ctor_arg_supported(
         arg: TpyExpr, param_type: TpyType, index: int, fi,
         lc: '_LowerCtx', declared: dict[str, TpyType], use: _ExprUse, *,
-        retains: 'Retention | None') -> bool:
+        retains: 'Retention | None', member: 'TpyType | None' = None) -> bool:
     """Rows: `_CTOR_ARG_SINK` / `_CTOR_NESTED_ARG_SINK`. `retains` is the
     argument's retention verdict, the one its render takes.
 
@@ -1839,7 +1847,8 @@ def _record_ctor_arg_supported(
         inline_narrowed=lc.inline_narrowed,
         movable_locals=lc.names_with("movable"),
         pointers=lc.names_with("pointer"),
-        func_name=getattr(lc.func, "name", None), retains=retains)
+        func_name=getattr(lc.func, "name", None), retains=retains,
+        member=member)
 
 
 def _lower_method_arg(call: MethodCallFacts, a: TpyExpr,
@@ -1880,6 +1889,7 @@ def _lower_method_arg(call: MethodCallFacts, a: TpyExpr,
     routed = converted_arg(a, ptype, lc, declared, callee_fi=fi,
                            arg_index=index, recv=call.recv,
                            signature=signature,
+                           boundary=call.boundary_at(index),
                            temps=temp_args,
                            lifetime_checked=True,
                            declared_ptype=(
@@ -1917,13 +1927,18 @@ def _lower_method_arg(call: MethodCallFacts, a: TpyExpr,
                       # own `__tmp_N` before the `pv{&__tmp_N}` wrap,
                       # exactly like the ctor loop's flush_slot.
                       or (not stub_recv
-                          and _union_ctor_temp_arg(a, ptype,
-                                                   lc.analyzer))
+                          and _union_ctor_temp_arg(
+                              a, ptype, lc.analyzer,
+                              peek_member(lc.analyzer.ctx.union_landings,
+                                        call.boundary_at(index))))
                       # ... and the bytes-literal sibling
                       # (`s.post(url, b"payload")`).
                       or (not stub_recv
                           and _union_bytes_literal_temp_arg(
-                              a, ptype, lc.analyzer) is not None)))
+                              a, ptype, lc.analyzer,
+                              peek_member(lc.analyzer.ctx.union_landings,
+                                        call.boundary_at(index)))
+                          is not None)))
     # The deep-const verdict rides into the union const-wrap arm
     # (`z.names(other)` -> `other.as_const()`), like
     # the free-call loop. Read it off the RAW method fi: the
@@ -1961,11 +1976,12 @@ def _lower_method_arg(call: MethodCallFacts, a: TpyExpr,
             readonly_target=ro_slot,
             frame_capturing=frame_factory,
             callee_fi=fi, arg_index=index, signature=signature,
-            retention=keep, lifetime_checked=True),
+            retention=keep, lifetime_checked=True,
+            boundary=call.boundary_at(index)),
         lower_owned=lambda owned: _lower_call_arg(
             _peel_coerce(a), owned, lc, declared, temp_args=True,
             callee_fi=fi, arg_index=index, signature=signature,
-            retention=keep))
+            retention=keep, boundary=call.boundary_at(index)))
 
 
 def _require_method_call_arg(
@@ -4262,6 +4278,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 needle = _spell_brace(
                     needle, resolve_pending_container(elem_t, analyzer)
                     or elem_t, lc)
+                needle = _landed_needle(
+                    needle, elem_t, param_boundary(e.contains_call, 0)
+                    if e.contains_call is not None
+                    else boundary_of(e, "left"), lc)
         receiver = _lower_expr(e.right, lc, declared, use=_MEMBERSHIP_RECV,
                                field_prechecked=recv_prechecked)
         hay_t = analyzer.get_expr_type(e.right)
@@ -4291,8 +4311,12 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # The gate admits by-value needles only (`_by_value_needle`), whose
         # local is the value itself.
         needle = _lower_expr(e.left, lc, declared, use=_ExprUse())
-        # A literal needle binds at the type its target-less literal is.
-        needle_t = _literal_render_type(needle, lc)
+        # A literal needle binds at the type its target-less literal is; a
+        # needle compared with union elements binds as the member sema
+        # landed it in, which the elements' comparison takes.
+        needle_t = (member_at(analyzer.ctx.union_landings,
+                              boundary_of(e, "left"))
+                    or _literal_render_type(needle, lc))
         needle = to_local(needle, needle_t, BindingForm.VALUE, analyzer)
         return THIRMembership(
             result_type=rtype,
@@ -4692,9 +4716,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             use=_cmp_operand_use(e.right),
             field_owned_str_ok=isinstance(e.right, TpyFieldAccess))
         left_pin, right_pin = _operator_literal_pins(
-            e.resolved_binop, e.left, e.right, lc, declared)
-        left = left_pin or left
-        right = right_pin or right
+            e.resolved_binop, e.left, e.right, lc, declared, holder=e)
+        left, right = _landed_operands(
+            e.resolved_binop, left_pin or left, right_pin or right, e, lc,
+            pinned=left_pin is not None or right_pin is not None)
     else:
         lslot, rslot = _rb_operand_slots(e.resolved_binop)
         l_view, r_view = _rb_operand_view_slots(e.resolved_binop)
@@ -4737,7 +4762,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 _comp_shadow_pointers(lc.names_with("pointer"), declared, analyzer))
 
         left_pin, right_pin = _operator_literal_pins(
-            e.resolved_binop, e.left, e.right, lc, declared)
+            e.resolved_binop, e.left, e.right, lc, declared, holder=e)
         left = left_pin or _comp_operand(e.left) or _lower_none_operand(
             e.left, e.none_left, lc, declared,
             operand_use=_operand_use_of(e, e.left, analyzer))
@@ -4760,6 +4785,9 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 rslot, lc)
         left, right = _operator_receiver_pinned(e.resolved_binop, left,
                                                 right, lc)
+        left, right = _landed_operands(
+            e.resolved_binop, left, right, e, lc,
+            pinned=left_pin is not None or right_pin is not None)
         if e.resolved_binop is not None:
             # `_convert_to_fixed_int_arg` at the resolved binop's PARAM slot:
             # a BigInt operand against a declared fixed-int param takes the
@@ -6026,6 +6054,14 @@ def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
     return held
 
 
+# The nodes literal construction and comprehensions build their value in:
+# a value no name refers to. Not a `*args` pack, whose sole `*xs` passes
+# the caller's container through.
+_BUILT_IN_PLACE = (
+    THIRContainerLiteral, THIRTupleLiteral, THIRBorrowTupleLiteral,
+    THIRListRepeat, THIRArrayComprehension, THIRComprehensionBlock,
+    THIRGenExpr)
+
 # Node kinds whose `held` is the kind's own answer, whatever the node
 # holds. Every THIR expression kind is classified in `_held_from_facts`;
 # a new kind fails there until it is.
@@ -6045,11 +6081,7 @@ _HELD_BY_KIND: dict[type, Held] = {
     # Built in place (literal construction, the compiler-support
     # exception): read as the value it builds; its elements carry their
     # own facts.
-    **dict.fromkeys((
-        THIRContainerLiteral, THIRTupleLiteral, THIRBorrowTupleLiteral,
-        THIRListRepeat, THIRArrayComprehension, THIRComprehensionBlock,
-        THIRGenExpr, THIRVarargPack),
-        Held.VALUE),
+    **dict.fromkeys((*_BUILT_IN_PLACE, THIRVarargPack), Held.VALUE),
     # A checked unwrap of an Optional: the value it hands back.
     THIRNoneCheck: Held.VALUE,
     # An owned value a conversion built.
@@ -6362,8 +6394,9 @@ def _temporary(e: 'TpyExpr | None', node: THIRExpr,
                lc: '_LowerCtx') -> 'bool | None':
     """`Source.temporary`. A select's is its lowering's decision; with a
     parse node it is the value-category answer; without one, a binding
-    read is durable, a member / element / coerce is what it reads, and any
-    other node is unknown (None)."""
+    read is durable, a value built in place (a literal, a comprehension)
+    dies with its statement, a member / element / coerce is what it reads,
+    and any other node is unknown (None)."""
     select = node.select_result
     if select is not None:
         return select.temporary
@@ -6387,6 +6420,8 @@ def _temporary(e: 'TpyExpr | None', node: THIRExpr,
         # A temp read with no source of its creator's is a loop's step, an
         # element of the source the loop holds.
         return False
+    if isinstance(node, _BUILT_IN_PLACE):
+        return True
     if isinstance(node, (THIRFieldAccess, THIRSubscript)):
         return stamped(node.receiver, lc).source.temporary
     if isinstance(node, THIRCoerce):
@@ -6474,8 +6509,9 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
     node's, not the enclosing expression's."""
     if (e is not None and lowered.as_read is not lowered
             and lowered.as_read.source is not None):
-        # A rebinding walrus's value is the read of its name: its facts.
-        return lowered.as_read.source
+        # A rebinding walrus's value is the read of its name: its facts,
+        # but no id-expression (no `return` moves the assignment's result).
+        return replace(lowered.as_read.source, id_read=lowered.reads_binding)
     prior = lowered.source
     binding = binding_of(e, lc, declared) if e is not None else None
     if binding is None and prior is not None:
@@ -9400,6 +9436,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 p_type = trip[1]
                 routed = converted_arg(
                     a, p_type, lc, declared, callee_fi=None, arg_index=-1,
+                    boundary=param_boundary(e, i),
                     temps=False,
                     family_note=("call.ctor_arg."
                                  + _type_family_tag(p_type, analyzer)))
@@ -9408,7 +9445,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     continue
                 if not _record_ctor_arg_supported(
                         a, p_type, i, None, lc, declared,
-                        _ExprUse(allow_temps=False), retains=td_keep):
+                        _ExprUse(allow_temps=False), retains=td_keep,
+                        member=peek_member(analyzer.ctx.union_landings,
+                                         param_boundary(e, i))):
                     note_detail("call.ctor_arg."
                                 + _type_family_tag(p_type, analyzer))
                     raise ThirUnsupported(call_reject_reason("expr.call"))
@@ -9514,6 +9553,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 routed = converted_arg(
                     a, p.type, lc, declared, callee_fi=fi,
                     arg_index=i if own_params else -1, call=e,
+                    boundary=param_boundary(e, i),
                     temps=temp_args,
                     declared_ptype=(raw_ctor_fi.params[i].type
                                     if own_params and raw_ctor_fi is not None
@@ -9525,7 +9565,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     args.append(routed)
                     continue
                 if not _record_ctor_arg_supported(
-                        a, p.type, i, fi, lc, declared, use, retains=keep):
+                        a, p.type, i, fi, lc, declared, use, retains=keep,
+                        member=peek_member(analyzer.ctx.union_landings,
+                                         param_boundary(e, i))):
                     note_detail(
                         "call.ctor_arg." + _type_family_tag(p.type, analyzer))
                     raise ThirUnsupported(call_reject_reason("expr.call"))
@@ -9607,7 +9649,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         protocol_slots=True,
                         readonly_target=param_const(fi, i),
                         callee_fi=fi, arg_index=i if own_params else -1,
-                        retention=keep))
+                        retention=keep, boundary=arg_boundary(e, i)))
             return THIRCtorCall(
                 result_type=rtype, type_cpp=type_cpp,
                 args=tuple(args), brace_init=brace_ctor,
@@ -9945,6 +9987,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     lowered_args.append(
                         _lower_call_arg(arg, param.type, lc, declared,
                                         callee_fi=inst_fi, arg_index=_inst_i,
+                                        boundary=arg_boundary(e, _inst_i),
                                         retention=arg_retention(
                                             inst_fi, _inst_i, e, analyzer,
                                             arg)))
@@ -9975,6 +10018,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     lowered_args.append(
                         _lower_call_arg(arg, param.type, lc, declared,
                                         callee_fi=inst_fi, arg_index=_inst_i,
+                                        boundary=arg_boundary(e, _inst_i),
                                         retention=arg_retention(
                                             inst_fi, _inst_i, e, analyzer,
                                             arg)))
@@ -10179,7 +10223,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     union_divergent_ok=_sctor_union,
                     callee_fi=template_fi, arg_index=_ctor_i,
                     signature=call_signature(stub=tmpl_stub),
-                    retention=_ctor_keep))
+                    retention=_ctor_keep,
+                    boundary=arg_boundary(e, _ctor_i)))
             return THIRCall(
                 result_type=rtype,
                 callee=e.func_name,
@@ -10445,6 +10490,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         elements = tuple(
             _lower_checked_container_elem(
                 x, slot, lc, declared,
+                member=_elem_member(e, "elements", i, lc),
                 allow_temps=use.allow_temps,
                 threaded=(True if isinstance(e, TpySetLiteral)
                           else container_threaded),
@@ -10464,7 +10510,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # all -- but "probably unreachable" is what made the
                 # previous keying look safe, so it keeps the wrap.
                 frame_bare_tuple=not isinstance(e, TpySetLiteral))
-            for x in e.elements)
+            for i, x in enumerate(e.elements))
         make = copy_lift = False
         elem_cpp = None
         if e.elements and not is_array(container_type):
@@ -10502,7 +10548,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             raise ThirUnsupported("expr.container_literal")
         return THIRContainerLiteral(
             result_type=container_type,
-            elements=elements,
+            elements=_landed_elements(elements, slot, e, "elements", lc),
             make_container=make,
             elem_cpp=elem_cpp,
             # An IMMEDIATE container element (`elem_storage`, which does not
@@ -10525,14 +10571,17 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             _witness_container_elem_fam(vslot, lc.analyzer)
         # make_ordered_map for a non-copyable or last-use-movable key/value
         # (the nocopy check reads the VALUE type only).
-        keys = tuple(_lower_container_elem(k, kslot, lc, declared)
-                     for k in e.keys)
+        keys = tuple(_lower_container_elem(
+                         k, kslot, lc, declared,
+                         member=_elem_member(e, "keys", i, lc))
+                     for i, k in enumerate(e.keys))
         values = tuple(
             _lower_checked_container_elem(
                 v, vslot, lc, declared, threaded=True, forced=True,
                 allow_record=True, allow_nested=True,
-                allow_optional=True)
-            for v in e.values)
+                allow_optional=True,
+                member=_elem_member(e, "values", i, lc))
+            for i, v in enumerate(e.values))
         make = bool(e.keys) and (
             any(_elem_needs_emplace(kl, k, kslot, lc)
                 for kl, k in zip(keys, e.keys))
@@ -10546,8 +10595,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             _witness("containerlit.make")
         return THIRContainerLiteral(
             result_type=container_type,
-            elements=keys,
-            values=values,
+            elements=_landed_elements(keys, kslot, e, "keys", lc),
+            values=_landed_elements(values, vslot, e, "values", lc),
             make_container=make or copy_lift,
             loc=loc,
         )
@@ -12393,9 +12442,10 @@ def _lower_lambda_impl(e: TpyLambda, lc: '_LowerCtx',
             closure_rt = RefType(ReadonlyType(closure_rt.wrapped))
         signature = callable_signature(tuple(e.inferred_param_types),
                                        closure_rt, None, None, analyzer)
-        slot = slot_for(None, SlotPosition.RETURN, analyzer,
-                        placement=lc.placement, implicit_move=True,
-                        signature=signature)
+        slot = at_boundary(slot_for(None, SlotPosition.RETURN, analyzer,
+                                    placement=lc.placement,
+                                    implicit_move=True, signature=signature),
+                           analyzer, boundary_of(e, "body"))
         body = lower_result(e.body, slot, lc, body_declared,
                             lambda: "lambda.result")
     _witness("expr.lambda")
@@ -12685,6 +12735,31 @@ def _member_read_form(t: 'TpyType | None', viewfam: 'TpyType | None') -> Form:
     return Form.STORAGE if _is_borrow_form_name(t) else Form.VALUE
 
 
+def _elem_member(literal: TpyExpr, field: str, i: int,
+                 lc: '_LowerCtx') -> 'TpyType | None':
+    """The union member sema landed element `i` of a container literal
+    in."""
+    return peek_member(lc.analyzer.ctx.union_landings,
+                     boundary_of(literal, field, i))
+
+
+def _landed_elements(elements: 'tuple[THIRExpr, ...]',
+                     slot: 'TpyType | None', literal: TpyExpr, field: str,
+                     lc: '_LowerCtx') -> 'tuple[THIRExpr, ...]':
+    """A container literal's elements, each in the union member sema
+    landed it in at its own boundary -- a tuple element's elements at
+    their element paths (`land_paths`)."""
+    st = storage_type(slot)
+    if st is None:
+        return elements
+    table = lc.analyzer.ctx.union_landings
+    return tuple(
+        land_paths(el, st, lookup_landing(table, boundary_of(literal, field,
+                                                             i)) or {},
+                   lc.analyzer)
+        for i, el in enumerate(elements))
+
+
 def _lower_checked_container_elem(
         e: TpyExpr, slot: TpyType | None, lc: '_LowerCtx',
         declared: dict[str, TpyType], *, threaded: bool, forced: bool,
@@ -12694,16 +12769,19 @@ def _lower_checked_container_elem(
         suppress_move: bool = False,
         tuple_elem: bool = False,
         frame_bare_tuple: bool = False,
-        allow_temps: bool = False) -> THIRExpr:
+        allow_temps: bool = False,
+        member: 'TpyType | None' = None) -> THIRExpr:
     if not _container_lit_elem_ok(
             e, slot, declared, lc.analyzer, threaded=threaded, forced=forced,
             allow_record=allow_record, allow_nested=allow_nested,
-            allow_optional=allow_optional, pointers=lc.names_with("pointer")):
+            allow_optional=allow_optional, pointers=lc.names_with("pointer"),
+            member=member):
         raise ThirUnsupported("expr.container_literal")
     return _lower_container_elem(
         e, slot, lc, declared, retype_scalars=retype_scalars,
         suppress_move=suppress_move, tuple_elem=tuple_elem,
-        frame_bare_tuple=frame_bare_tuple, allow_temps=allow_temps)
+        frame_bare_tuple=frame_bare_tuple, allow_temps=allow_temps,
+        member=member)
 
 
 def _lower_ru_literal(e: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
@@ -12730,10 +12808,20 @@ def _lower_ru_literal(e: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
     instance = (isinstance(at, RecursiveAliasInstanceType)
                 or (isinstance(at, (UnionType, AliasRef))
                     and _wrapper_union_like(at, lc.analyzer) is not None))
+    registry = lc.analyzer.registry
+
+    def elem_slot(ct: TpyType, k: int) -> 'TpyType | None':
+        # The wrapper each element lands in: the container's own element
+        # type, a self-reference resolved to its union.
+        args = getattr(ct, "type_args", ())
+        return (registry.resolve_recursive_refs(args[k])
+                if len(args) > k and isinstance(args[k], TpyType) else None)
+
     if isinstance(e, TpyArrayLiteral):
-        elems = tuple(_lower_ru_elem(x, ut, lc, declared)
-                      for x in e.elements)
         ct = make_list(at) if instance else at
+        elems = _landed_elements(
+            tuple(_lower_ru_elem(x, ut, lc, declared) for x in e.elements),
+            elem_slot(ct, 0), e, "elements", lc)
         return THIRContainerLiteral(
             result_type=ct, elements=elems,
             typed_brace_cpp=lc.render_type(ct) if e.elements else None,
@@ -12741,9 +12829,11 @@ def _lower_ru_literal(e: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
     assert isinstance(e, TpyDictLiteral)
     keys = tuple(_lower_expr(k, lc, declared, use=_NESTED_ARG_USE)
                  for k in e.keys)
-    vals = tuple(_lower_ru_elem(v, ut, lc, declared) for v in e.values)
     ct = (make_dict(lc.analyzer.get_expr_type(e.keys[0]), at)
           if instance and e.keys else at)
+    vals = _landed_elements(
+        tuple(_lower_ru_elem(v, ut, lc, declared) for v in e.values),
+        elem_slot(ct, 1), e, "values", lc)
     return THIRContainerLiteral(result_type=ct, elements=keys, values=vals,
                                 loc=loc)
 
@@ -12839,7 +12929,8 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
                                suppress_move: bool = False,
                                tuple_elem: bool = False,
                                frame_bare_tuple: bool = False,
-                               allow_temps: bool = False) -> THIRExpr:
+                               allow_temps: bool = False,
+                               member: 'TpyType | None' = None) -> THIRExpr:
     """Lower one container-literal element / dict key / dict value into its
     slot. A view-form str source (BORROW -- a string_view param/local, a slice,
     a StrView-returning call) into an owned `std::string` slot copies
@@ -13030,21 +13121,12 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
         if isinstance(su, UnionType) and not su.needs_wrapper():
             # The list-member union slot (the elem gate's comp sibling
-            # row): the comp lowers against the MEMBER; the variant's
-            # converting ctor absorbs the stmt-expr result. A
-            # multi-list-member union picks the member matching the
-            # comp's OWN sema type (the gate's disambiguation).
-            _cml = [m for m in su.members if is_list(unwrap_readonly(m))]
-            if len(_cml) != 1:
-                _cet = lc.analyzer.get_expr_type(e)
-                _cetu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    _cet))) if _cet is not None else None)
-                _cml = [m for m in _cml
-                        if unwrap_readonly(m) == _cetu]
-            if len(_cml) != 1:
+            # row): the comp lowers against the member sema landed it in;
+            # the variant's converting ctor absorbs the stmt-expr result.
+            if member is None or not is_list(unwrap_readonly(member)):
                 raise ThirUnsupported("expr.container_literal")
             _witness("comp.union_member_source")
-            su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_cml[0])))
+            su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(member)))
         pointers = _comp_shadow_pointers(lc.names_with("pointer"), declared,
                                          lc.analyzer)
         comp = _lower_comprehension(e, su, lc, declared, pointers)
@@ -13130,14 +13212,14 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         # lowers against the member and spells the typed ctor
         # (`std::vector<::tpy::BigInt>{1, 2}`).
         if isinstance(su_elem, OptionalType):
-            _cms = [su_elem.inner]
+            _member_t = su_elem.inner
+        elif member is not None and (is_list(unwrap_readonly(member))
+                                     or is_array(unwrap_readonly(member))):
+            # The list / array member sema landed the literal in.
+            _member_t = member
         else:
-            _cms = [m for m in su_elem.members
-                    if is_list(unwrap_readonly(m))
-                    or is_array(unwrap_readonly(m))]
-        if len(_cms) != 1:
             raise ThirUnsupported("expr.container_literal")
-        _member = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_cms[0])))
+        _member = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_member_t)))
         _lit = _lower_expr(e, lc, declared,
                            use=_ExprUse(slot_target=_member))
         if isinstance(_lit, THIRContainerLiteral):
@@ -13147,12 +13229,11 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
     if (isinstance(e, TpyDictLiteral) and isinstance(su_elem, UnionType)
             and not su_elem.needs_wrapper()):
         # The DICT sibling of the union member-prefix row: the literal
-        # lowers against the unique dict member; its self-describing
+        # lowers against the dict member sema landed it in; its self-describing
         # ordered_map render lands in the variant via the converting ctor.
-        _dms = [m for m in su_elem.members if is_dict(unwrap_readonly(m))]
-        if len(_dms) != 1:
+        if member is None or not is_dict(unwrap_readonly(member)):
             raise ThirUnsupported("expr.container_literal")
-        _dmember = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_dms[0])))
+        _dmember = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(member)))
         _witness("containerlit.union_member_prefix")
         return _lower_expr(e, lc, declared,
                            use=_ExprUse(slot_target=_dmember))
@@ -14402,9 +14483,27 @@ def _lower_chained_compare_stmtexpr(e, rtype, lc: '_LowerCtx',
         if init is None:
             init = _lower_expr(operands[i], lc, declared, use=_pair_use,
                                cond_eager=temps_ok and i >= 2)
+        # Each pair converts the shared temp to its own member. The temp is
+        # bound as a pair's member only where that member is the operand's
+        # own type: a fixed-width constructor renders its literal bare
+        # (`int64(5)` -> `5`), and a temp bound from it would be a C++ int.
+        for j, s in readers[i]:
+            rb = e.pairs[j].resolved_binop
+            if pin_sides[j] == s or _dunder_param_side(rb) != s:
+                continue
+            member = peek_member(lc.analyzer.ctx.union_landings,
+                               boundary_of(e.pairs[j], _SIDES[s]))
+            if (member is not None and init.result_type is not None
+                    and repr_shape(member) == repr_shape(init.result_type)):
+                init = land_value(init, rb.method.params[0].type, member,
+                                  lc.analyzer)
+                break
         inits.append(init)
-        temps.append(THIRName(result_type=init.result_type, name=f"_cmp{i}",
-                              cpp=f"_cmp{i}", form=init.form, loc=loc))
+        # A pair's operand converts at its dunder's parameter
+        # (`_landed_operands`), which reads the bound temp's facts.
+        temps.append(stamped(THIRName(result_type=init.result_type,
+                                      name=f"_cmp{i}", cpp=f"_cmp{i}",
+                                      form=init.form, loc=loc), lc))
     rendered = []
     for j, (src, low) in enumerate(zip(e.pairs, pairs)):
         sides = [low.left, low.right]
@@ -14416,10 +14515,15 @@ def _lower_chained_compare_stmtexpr(e, rtype, lc: '_LowerCtx',
                 rb = src.resolved_binop
                 sides[s] = _pinned_literal_arg(
                     (src.left, src.right)[s], rb.method.params[0].type,
-                    rb.method, lc, declared, evaluated=temp)
+                    rb.method, lc, declared, evaluated=temp,
+                    boundary=boundary_of(src, _SIDES[s]))
             else:
                 sides[s] = _over_written(sides[s],
                                          written[j][operands[i]], temp)
+        if src.resolved_binop is not None:
+            sides[0], sides[1] = _landed_operands(
+                src.resolved_binop, sides[0], sides[1], src, lc, defer=False,
+                pinned=pin_sides[j] is not None)
         rendered.append(replace(low, left=sides[0], right=sides[1]))
     return THIRChainedCompareStmtExpr(
         result_type=rtype,
@@ -14532,7 +14636,9 @@ def _pair_pin_side(pair: TpyBinOp, lc: '_LowerCtx') -> int | None:
         return None
     operand = (pair.left, pair.right)[side]
     if _literal_pin_slot(operand, rb.method.params[0].type, rb.method,
-                         lc.analyzer) is None:
+                         lc.analyzer,
+                         peek_member(lc.analyzer.ctx.union_landings,
+                                   boundary_of(pair, _SIDES[side]))) is None:
         return None
     return side
 
@@ -14619,7 +14725,9 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
                 param_names=lc.prescan.param_names,
                 storage_tuple_locals=lc.names_with("storage_tuple"),
                 overload=root, retains=keep,
-                frame_taken=_frame_taken(a, lc)):
+                frame_taken=_frame_taken(a, lc),
+                member=peek_member(lc.analyzer.ctx.union_landings,
+                                   arg_boundary(e, i))):
             raise ThirUnsupported(call_reject_reason("expr.call"))
         peeled = _peel_coerce(a)
         if (isinstance(ptype, TypeParamRef)
@@ -14638,7 +14746,8 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
                 a, resolved, lc, declared, temp_args=temp_args,
                 protocol_slots=True, kind=CallArgKind.GENERIC,
                 readonly_target=param_const(root, i),
-                callee_fi=root, arg_index=i, retention=keep))
+                callee_fi=root, arg_index=i, retention=keep,
+                boundary=arg_boundary(e, i)))
     return THIRCall(
         result_type=lc.analyzer.get_expr_type(e),
         callee=e.func_name,
@@ -15016,10 +15125,11 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
     if not len_call and not _awaited_operand(a, lc):
         body_facts = _free_arg_body_facts(lc, declared)
         if kind is not None and kind[0] in ("native", "native_c", "template"):
-            ok = _native_call_arg_ok(a, ptype, declared, analyzer,
-                                     retains=_keep,
-                                     frame_taken=_frame_taken(a, lc),
-                                     **body_facts)
+            ok = _native_call_arg_ok(
+                a, ptype, declared, analyzer, retains=_keep,
+                frame_taken=_frame_taken(a, lc),
+                member=peek_member(analyzer.ctx.union_landings,
+                                   arg_boundary(e, arg_index)), **body_facts)
             _sit = (_separate_iterator_temp_arg(a, ptype, _callee_fi,
                                                 arg_index, analyzer)
                     if ok and temp_args and lc.may_hoist else None)
@@ -15046,6 +15156,8 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                 index=arg_index,
                 overload=_callee_fi if arg_index >= 0 else None,
                 retains=_keep,
+                member=peek_member(analyzer.ctx.union_landings,
+                                 arg_boundary(e, arg_index)),
                 frame_capturing=frame_capturing,
                 readonly_target=readonly_target,
                 frame_taken=_frame_taken(a, lc), **body_facts)
@@ -15252,11 +15364,12 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             inline_template=kind is not None
             and kind[0] in ("native", "native_c", "template"),
             callee_fi=_callee_fi, arg_index=arg_index, signature=signature,
-            retention=_keep, lifetime_checked=True),
+            retention=_keep, lifetime_checked=True,
+            boundary=arg_boundary(e, arg_index)),
         lower_owned=lambda owned: _lower_call_arg(
             _peel_coerce(a), owned, lc, declared, temp_args=True,
             callee_fi=_callee_fi, arg_index=arg_index, signature=signature,
-            retention=_keep))
+            retention=_keep, boundary=arg_boundary(e, arg_index)))
 
 
 class _MarkerCallee(NamedTuple):
@@ -15581,7 +15694,7 @@ def _lower_vararg_pack(pack: TpyVarargPack, ptype: 'TpyType | None',
 
     lowered: list[THIRExpr] = []
     ref_lvalue: list[bool] = []
-    for a in pack.args:
+    for k, a in enumerate(pack.args):
         if isinstance(a, TpyStarUnpack):
             # Sema forbids mixing *expr with other varargs; defense in depth.
             raise ThirUnsupported("call.vararg_star_mixed")
@@ -15598,7 +15711,8 @@ def _lower_vararg_pack(pack: TpyVarargPack, ptype: 'TpyType | None',
             routed = converted_arg(a, elem_type, lc, declared,
                                    callee_fi=None, arg_index=-1, temps=True,
                                    lifetime_checked=True,
-                                   contract=pack_element_contract(keep))
+                                   contract=pack_element_contract(keep),
+                                   boundary=boundary_of(pack, "elements", k))
             if routed is not None:
                 lowered.append(routed)
                 continue
@@ -15962,6 +16076,24 @@ def _tuple_param(t: TpyType) -> bool:
 def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                   declared: dict[str, TpyType], *,
                   callee_fi: 'FunctionInfo | None', arg_index: int,
+                  call: 'TpyExpr | None' = None,
+                  boundary: 'Boundary | None' = None,
+                  **kw) -> 'THIRExpr | None':
+    """`_converted_arg_rows`, the argument landing in the value-union
+    member sema recorded at its boundary whichever row rendered it."""
+    lowered = _converted_arg_rows(a, ptype, lc, declared, callee_fi=callee_fi,
+                                  arg_index=arg_index, call=call,
+                                  boundary=boundary, **kw)
+    if lowered is None:
+        return None
+    return landed_value_at(
+        lowered, ptype, boundary if boundary is not None
+        else arg_boundary(call, arg_index), lc)
+
+
+def _converted_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
+                  declared: dict[str, TpyType], *,
+                  callee_fi: 'FunctionInfo | None', arg_index: int,
                   temps: bool,
                   call: 'TpyExpr | None' = None,
                   recv: 'TpyExpr | None' = None,
@@ -15974,6 +16106,7 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                   contract: 'ParamContract | None' = None,
                   reference_note: 'str | None' = None,
                   signature: 'CallSignature | None' = None,
+                  boundary: 'Boundary | None' = None,
                   free_call: bool = False
                   ) -> 'THIRExpr | None':
     """THE argument at a parameter holding its own value, a view or an open
@@ -16104,8 +16237,11 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     frame_kept = (frame_held
                   and frame_temp_arg_slot(a, hoist_t, lc.analyzer) is None)
 
+    at = boundary if boundary is not None else arg_boundary(call, arg_index)
+
     def lower() -> THIRExpr:
-        pinned = _pinned_literal_arg(a, inst, callee_fi, lc, declared)
+        pinned = _pinned_literal_arg(
+            a, inst, callee_fi, lc, declared, boundary=at)
         if pinned is not None:
             return pinned
         # A callee frame that keeps the argument holds it already
@@ -16122,6 +16258,7 @@ def converted_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             slot = deduced_slot(contract, structural, twin,
                                 lc.analyzer, placement=lc.placement,
                                 retained=retained)
+        slot = at_boundary(slot, lc.analyzer, at)
         if same_t is not None:
             slot = replace(slot, open_same_t=same_t)
         return _arg_at_slot(a, slot, ptype, inst, contract, lc, declared,
@@ -16986,6 +17123,16 @@ def _arg_converted(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
             move=True,
             movable=t.is_movable(),
             form=Form.VALUE if plain else Form.STORAGE, loc=loc), lc, a)
+    if request.held is not None and isinstance(expr, THIRUnionArgLift):
+        # A pointer variant points at a fresh object as the member sema
+        # landed it in: the object, held at its own type, is the lvalue a
+        # fresh argument is lent as for its full expression (or its
+        # compound statement), lent as that member -- in the held node's
+        # own form, which the lift's coercions above it pass through.
+        lent = replaced_node(expr, request.held, _mut_lvalue(
+            request.held, t, lc, loc, form=request.held.form, kept=a))
+        assert lent is not expr, "the held object is no node of its lift"
+        return lent
     if request.held is not None:
         return _with_held(expr, request, lc, loc, a)
     return _lent_inline(expr, t, slot, cls, lc, loc, a)
@@ -17019,15 +17166,6 @@ def _lent_inline(expr: THIRExpr, t: TpyType, slot: Slot,
     `retained`."""
     _witness("arg.inline_lend")
     pointer = cls is ParamSlotClass.POINTER
-    if pointer and isinstance(slot.type, UnionType) and t != slot.type:
-        # A pointer variant points at the member's object.
-        return THIRUnionArgLift(
-            result_type=slot.type,
-            variant_cpp=(slot.type.to_cpp_const_ptr_variant() if slot.const
-                         else slot.type.to_cpp_ptr_variant()),
-            value=_mut_lvalue(expr, t, lc, loc, form=Form.BORROW,
-                              kept=arg),
-            form=Form.BORROW, loc=loc)
     if pointer and isinstance(t, (OptionalType, UnionType)):
         # An optional or a union built for the call lends its borrow form
         # (a union's const one at a const slot; an optional's follows its
@@ -17225,6 +17363,11 @@ def _literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
     if not isinstance(_peel_coerce(a), (TpyIntLiteral, TpyFloatLiteral,
                                         TpyUnaryOp, TpyBinOp)):
         return None
+    if (slot.holds is SlotHolds.POINTER and isinstance(slot.type, UnionType)
+            and not slot.type.needs_wrapper()):
+        # A pointer variant lends an object, which a number is not: the
+        # conversion refuses it.
+        return None
     lowered = _lower_expr(a, lc, declared,
                           use=replace(_NESTED_ARG_USE, pos=SinkPos.CALL_ARG,
                                       allow_temps=temps,
@@ -17301,6 +17444,42 @@ def _bound_entry(e: TpyExpr, lc: '_LowerCtx') -> Iterator[None]:
 
 
 def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
+                    declared: dict[str, TpyType], **kw) -> THIRExpr:
+    """One call argument against its param slot (`_lower_call_arg_at`)."""
+    return _lower_call_arg_at(a, ptype, lc, declared, **kw)
+
+
+def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
+                       declared: dict[str, TpyType], *,
+                       boundary: 'Boundary | None' = None,
+                       **kw) -> THIRExpr:
+    """`_lower_call_arg_rows`, the argument landing in the value-union
+    member sema recorded at its `boundary` whichever row rendered it."""
+    lowered = _lower_call_arg_rows(a, ptype, lc, declared, boundary=boundary,
+                                   **kw)
+    return landed_value_at(lowered, ptype, boundary, lc)
+
+
+def landed_value_at(value: THIRExpr, t: 'TpyType | None',
+                    boundary: 'Boundary | None',
+                    lc: '_LowerCtx') -> THIRExpr:
+    """`value` at a slot of type `t` as the member sema landed it in at
+    `boundary` (`land_paths`), whatever the union's members."""
+    st = storage_type(t) if isinstance(t, TpyType) else None
+    if st is None or boundary is None:
+        return value
+    table = lc.analyzer.ctx.union_landings
+    if (not (st.is_value_type()
+             or _wrapper_union_like(st, lc.analyzer) is not None)
+            and table.applied(boundary.holder, boundary.role)):
+        # A pointer variant's own conversion lent the object as its member
+        # already.
+        return value
+    members = lookup_landing(table, boundary)
+    return land_paths(value, st, members or {}, lc.analyzer)
+
+
+def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     declared: dict[str, TpyType], *, temp_args: bool = False,
                     nested_temps: bool = False,
                     readonly_target: bool = False,
@@ -17337,7 +17516,10 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     lifetime_checked: bool = False,
                     # The signature the call's callee publishes, resolved
                     # where its node is built (`converted_arg`).
-                    signature: 'CallSignature | None' = None) -> THIRExpr:
+                    signature: 'CallSignature | None' = None,
+                    # The place sema received the argument at
+                    # (`sema.landings`), where the site knows it.
+                    boundary: 'Boundary | None' = None) -> THIRExpr:
     """Lower one call argument against its param slot. A str literal into a
     char slot renders as a target-typed char literal (via
     `_lower_char_targeted`); a bytes literal into a bytes/BytesView slot
@@ -17370,6 +17552,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         _refuse_dying_arg(a, ptype, _keep, lc.analyzer)
     routed = converted_arg(a, ptype, lc, declared, callee_fi=callee_fi,
                            arg_index=arg_index, signature=signature,
+                           boundary=boundary,
                            temps=temp_args or nested_temps, site_retention=(_keep,),
                            lifetime_checked=True,
                            reason=("expr.method_call" if method_arg
@@ -17378,7 +17561,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                         else None))
     if routed is not None:
         return routed
-    pinned = _pinned_literal_arg(a, ptype, callee_fi, lc, declared)
+    pinned = _pinned_literal_arg(
+        a, ptype, callee_fi, lc, declared, boundary=boundary)
     if pinned is not None:
         return pinned
     if (method_arg and not method_arg_stub and not temp_args
@@ -17711,7 +17895,10 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     if not _container_lit_elem_ok(
                             sub, mslot, declared, lc.analyzer, threaded=True,
                             forced=True, allow_record=True, allow_nested=True,
-                            allow_optional=True, pointers=lc.names_with("pointer")):
+                            allow_optional=True, pointers=lc.names_with("pointer"),
+                            member=(peek_landing(
+                                lc.analyzer.ctx.union_landings, boundary)
+                                or {}).get((i,))):
                         own_elems_ok = False
                         break
                 if own_elems_ok:
@@ -18264,7 +18451,9 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             mutable=ru_mutable)
     # The member-CTOR-rvalue sibling: `eval_expr(Expr(Lit(42)))` -- the
     # prvalue needs no move.
-    ru_c = _ru_wrapper_member_rvalue_arg(a, ptype, lc.analyzer)
+    ru_c = _ru_wrapper_member_rvalue_arg(
+        a, ptype, lc.analyzer,
+        peek_member(lc.analyzer.ctx.union_landings, boundary))
     if ru_c is not None:
         _witness("argtemp.ru_wrapper_ctor")
         return _ru_wrapper_inline(
@@ -18861,7 +19050,8 @@ def _dunder_arg(recv: TpyExpr, args: list[TpyExpr], index: int,
                 declared: dict[str, TpyType], *,
                 temp_args: bool,
                 keep: 'Retention | None',
-                signature: 'CallSignature | None') -> THIRExpr:
+                signature: 'CallSignature | None',
+                boundary: 'Boundary | None') -> THIRExpr:
     """`args[index]` as the explicit `recv.<dunder>(*args)` call's argument:
     through the one per-argument body (`_lower_method_arg`) with the facts
     the explicit call states, the receiver facts it reads, the site's
@@ -18869,7 +19059,8 @@ def _dunder_arg(recv: TpyExpr, args: list[TpyExpr], index: int,
     # The call the source spells as an operator or a subscript carries
     # none of an explicit call's special-emit markers.
     return _plain_method_call_arg(
-        MethodCallFacts(recv, fi.name, fi, plain=True), args[index], index,
+        MethodCallFacts(recv, fi.name, fi, plain=True, boundary=boundary),
+        args[index], index,
         lc, declared, temp_args=temp_args,
         proto_recv=_protocol_recv(recv, lc), keep=keep, signature=signature)
 
@@ -18886,7 +19077,7 @@ def _deref_chain_method_arg(e: TpyMethodCall, index: int, lc: '_LowerCtx',
     a = e.args[index]
     return _plain_method_call_arg(
         MethodCallFacts(e.obj, e.method, fi, plain=True,
-                        dispatch_type=call_dispatch_type(e)),
+                        dispatch_type=call_dispatch_type(e), call=e),
         a, index, lc, declared, temp_args=temp_args, proto_recv=False,
         keep=arg_retention(fi, index, e, lc.analyzer, a), signature=None)
 
@@ -18945,7 +19136,8 @@ def _record_key(sub: TpySubscript, key: TpyExpr, fi: 'FunctionInfo',
     try:
         # The key is the explicit `recv.__getitem__(k)` call's argument.
         return _dunder_arg(sub.obj, [key], 0, fi, lc, declared,
-                           temp_args=False, keep=keep, signature=signature)
+                           temp_args=False, keep=keep, signature=signature,
+                           boundary=subscript_boundary(sub, fi.name, 0))
     except _NoTempHostRefusal as exc:
         # The subscript form cannot hold the argument temp the sink asks
         # for: a value key keeps the bare render, which C++'s by-value
@@ -18958,10 +19150,13 @@ def _record_key(sub: TpySubscript, key: TpyExpr, fi: 'FunctionInfo',
         if compiler is not None and detail is not None:
             (compiler._thir_reject_detail,
              compiler._thir_reject_detail_loc) = detail
-    return (_pinned_literal_arg(key, fi.params[0].type, fi, lc, declared)
-            or _lower_expr(key, lc, declared, use=_ExprUse(
+    at = subscript_boundary(sub, fi.name, 0)
+    return (_pinned_literal_arg(
+                key, fi.params[0].type, fi, lc, declared, boundary=at)
+            or landed_value_at(_lower_expr(key, lc, declared, use=_ExprUse(
                 slot_target=bytes_literal_view_slot(fi, instantiated_param(
-                    fi.params[0].type, key, lc.analyzer)))))
+                    fi.params[0].type, key, lc.analyzer)))),
+                fi.params[0].type, at, lc))
 
 def _narrowed_opt_char_vs_str_literal(
         subj: TpyExpr, other: TpyExpr, lc: '_LowerCtx',
@@ -20961,6 +21156,7 @@ def _pinned_literal_arg(a: TpyExpr, ptype: 'TpyType | None', fi,
                         lc: '_LowerCtx',
                         declared: dict[str, TpyType], *,
                         evaluated: 'THIRExpr | None' = None,
+                        boundary: 'Boundary | None' = None,
                         ) -> 'THIRExpr | None':
     """ONE literal argument of an overloaded TPy callee rendered as a value
     of its parameter's own type (`_literal_pin_slot`), or None when it takes
@@ -20986,21 +21182,29 @@ def _pinned_literal_arg(a: TpyExpr, ptype: 'TpyType | None', fi,
     type (`_pinned_literal_conversion`), so it is evaluated once.
     `evaluated` is `a` already lowered where it is evaluated once elsewhere
     (a chained comparison's temp): it is converted as such an argument is,
-    never re-lowered."""
-    pin = _literal_pin_slot(a, ptype, fi, lc.analyzer)
+    never re-lowered. The member sema landed the literal in at its
+    `boundary` is applied only where the literal takes the pin."""
+    table = lc.analyzer.ctx.union_landings
+    pin = _literal_pin_slot(a, ptype, fi, lc.analyzer,
+                            peek_member(table, boundary))
     if pin is None:
         return None
+    member = member_at(table, boundary)
     slot, payload = pin
     _witness("call.literal_overload_pin")
     loc = getattr(a, "loc", None)
     lit_t = _numeric_literal_type(a, lc.analyzer)
     if lit_t is None:
         pinned = evaluated or _lower_expr(a, lc, declared)
-        return THIRCoerce(
-            result_type=ptype, expr=pinned,
-            coercion_name=_LITERAL_OVERLOAD_PIN,
-            wrap=f"{slot.to_cpp_param_type()}({{0}})",
-            loc=loc)
+        if member is None:
+            return THIRCoerce(
+                result_type=ptype, expr=pinned,
+                coercion_name=_LITERAL_OVERLOAD_PIN,
+                wrap=f"{slot.to_cpp_param_type()}({{0}})",
+                loc=loc)
+        # A str literal at a value union is the member sema landed it in,
+        # built as that alternative.
+        return _member_pin(pinned, member, slot, ptype, lc)
     value = (None if evaluated is not None
              else _numeric_literal_value(a, lc.analyzer))
     if evaluated is not None:
@@ -21011,20 +21215,50 @@ def _pinned_literal_arg(a: TpyExpr, ptype: 'TpyType | None', fi,
         pinned = _lower_int_literal(value, lit_t, lc, loc)
     else:
         pinned = THIRLiteral(result_type=lit_t, value=value, loc=loc)
+    if member is not None:
+        # A numeric literal at a value union: the member's own value, an
+        # int literal the union step respells at an int member's width,
+        # any other value through its conversion row first (a checked
+        # narrowing stays checked), built into the union.
+        if member_int_literal(pinned, member, lc.analyzer) is None:
+            pinned = _pinned_literal_conversion(pinned, payload, lc, loc)
+        return _member_pin(pinned, member, slot, ptype, lc)
     if (value is not None and isinstance(pinned, THIRLiteral)
             and isinstance(lit_t, IntLiteralType)
             and (is_fixed_int_type(payload) or is_big_int_type(payload))):
         pinned = _retarget_int_literal(pinned, payload, lc, exact_type=True)
     else:
         pinned = _pinned_literal_conversion(pinned, payload, lc, loc)
+    return _whole_slot_pin(pinned, slot, ptype, payload, lc, loc)
+
+
+def _member_pin(pinned: 'THIRExpr', member: TpyType, slot: TpyType,
+                ptype: TpyType, lc: '_LowerCtx') -> 'THIRExpr':
+    """A pinned literal at a value union: the member sema landed it in,
+    built into the whole union spelled here (the union step,
+    `_member_value`), the variant C++ picks among a set's variants by an
+    exact match."""
     whole = repr_shape(slot)
-    if payload != whole:
-        pinned = THIRCoerce(
-            result_type=ptype, expr=pinned,
-            coercion_name=_LITERAL_OVERLOAD_PIN,
-            wrap=f"{lc.render_type(whole)}({{0}})",
-            loc=loc)
-    return pinned
+    if whole == repr_shape(unwrap_readonly(member)):
+        # The slot the pin names is the member itself: nothing to spell.
+        return _member_value(pinned, member, lc.analyzer)
+    return _member_value(pinned, member, lc.analyzer, result_type=ptype,
+                         whole=lc.render_type(whole),
+                         whole_name=_LITERAL_OVERLOAD_PIN)
+
+
+def _whole_slot_pin(pinned: 'THIRExpr', slot: TpyType, ptype: TpyType,
+                    payload: TpyType, lc: '_LowerCtx', loc) -> 'THIRExpr':
+    """A pinned literal rendered as its payload (an Optional's inner) built
+    into the whole slot type, the variant C++ picks among a set's variants
+    by an exact match."""
+    whole = repr_shape(slot)
+    if payload == whole:
+        return pinned
+    return THIRCoerce(
+        result_type=ptype, expr=pinned,
+        coercion_name=_LITERAL_OVERLOAD_PIN,
+        wrap=f"{lc.render_type(whole)}({{0}})", loc=loc)
 
 
 def _literal_render_type(v: 'THIRExpr', lc: '_LowerCtx') -> TpyType:
@@ -21134,10 +21368,15 @@ def _rb_operand_slots(rb) -> 'tuple[TpyType | None, TpyType | None]':
     recv = rb.receiver_type
     return (param, recv) if rb.is_reverse else (recv, param)
 
+# The operand fields of a binary operator, by side.
+_SIDES = ("left", "right")
+
+
 def _operator_literal_pins(rb: 'ResolvedBinop | None', left: 'TpyExpr | None',
                            right: TpyExpr, lc: '_LowerCtx',
                            declared: dict[str, TpyType], *,
                            evaluated: 'THIRExpr | None' = None,
+                           holder: object = None,
                            ) -> 'tuple[THIRExpr | None, THIRExpr | None]':
     """The (left, right) operands of a resolved operator dunder `rb` that
     take the literal pin (`_pinned_literal_arg`): the operand at the
@@ -21152,9 +21391,73 @@ def _operator_literal_pins(rb: 'ResolvedBinop | None', left: 'TpyExpr | None',
     operand = None if side is None else (left, right)[side]
     if operand is None:
         return (None, None)
-    pinned = _pinned_literal_arg(operand, rb.method.params[0].type,
-                                 rb.method, lc, declared, evaluated=evaluated)
+    # An in-place operator's value sits at its statement's `value`.
+    role = "value" if left is None else _SIDES[side]
+    pinned = _pinned_literal_arg(
+        operand, rb.method.params[0].type, rb.method, lc, declared,
+        evaluated=evaluated,
+        boundary=(boundary_of(holder, role) if holder is not None
+                  else None))
     return (pinned, None) if side == 0 else (None, pinned)
+
+
+def _landed_needle(needle: 'THIRExpr', elem_t: TpyType,
+                   boundary: 'Boundary', lc: '_LowerCtx') -> 'THIRExpr':
+    """A membership needle compared with union elements as the member
+    sema landed it in at `boundary`. A needle no member takes has no entry
+    (`_needle_landing` records none): every element compares unequal to it
+    as it renders."""
+    if peek_landing(lc.analyzer.ctx.union_landings, boundary) is None:
+        return needle
+    return landed_value_at(needle, elem_t, boundary, lc)
+
+
+def _landed_operands(rb: 'ResolvedBinop | None', left: 'THIRExpr',
+                     right: 'THIRExpr', holder: object, lc: '_LowerCtx', *,
+                     role: 'str | None' = None, defer: bool = True,
+                     pinned: bool = False
+                     ) -> 'tuple[THIRExpr, THIRExpr]':
+    """The (left, right) operands of a resolved operator dunder `rb` with
+    the one at its parameter converted at the parameter's slot, in the
+    union member sema recorded at its boundary (`holder`'s side, or
+    `role`): the argument the explicit call to the dunder converts.
+    `pinned`: that operand is a literal pinned at the member already
+    (`_operator_literal_pins`)."""
+    side = _dunder_param_side(rb)
+    if side is None or pinned:
+        return left, right
+    capture = lc.lowered_capture
+    if (defer and capture is not None and isinstance(holder, TpyBinOp)
+            and (holder.left in capture or holder.right in capture)):
+        # A chained comparison's pair: its operands land once their temps
+        # are bound (`_lower_chained_compare_stmtexpr`).
+        return left, right
+    ops = [left, right]
+    param_t = rb.method.params[0].type
+    st = storage_type(param_t)
+    if st is None or union_members(st) is None:
+        return left, right
+    # The operand converts as the explicit dunder call's argument does: at
+    # the parameter's slot, planned at the member sema landed it in.
+    slot = at_boundary(param_slot(param_t, param_contract(
+        rb.method, 0, param_t, analyzer=lc.analyzer), lc.analyzer,
+        placement=lc.placement), lc.analyzer,
+        boundary_of(holder, role or _SIDES[side]))
+    # A chained comparison's pair reads its bound temp, built beside
+    # `_lower_expr`.
+    plan = convert(stamped(ops[side], lc), slot, lc.analyzer)
+    if isinstance(plan, Refuse):
+        raise ThirUnsupported(f"operator.operand.{plan.key}", detail=True)
+    request = plan.storage_request
+    if request is None or (slot.holds is SlotHolds.BORROWS and slot.const):
+        # A const reference binds the temporary itself.
+        ops[side] = spelled(plan, lc.render_type)
+    else:
+        # Storage held for the operand would be bound before the statement:
+        # ahead of the other operand and of any guard the operator sits
+        # behind (BUGS.md#ptr-union-fresh-operator-operand-refused).
+        raise ThirUnsupported("operator.operand.materialize", detail=True)
+    return ops[0], ops[1]
 
 
 def _dunder_param_side(rb: 'ResolvedBinop | None') -> int | None:

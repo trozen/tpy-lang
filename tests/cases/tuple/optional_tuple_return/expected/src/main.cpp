@@ -163,7 +163,7 @@ std::optional<std::tuple<Box, int32_t>> guarded_owned(bool k) {
             if ((r.has_value())) {
                 std::get<0>((*r)).n = ::tpy::add_check<int32_t>(std::get<0>((*r)).n, 10);
             }
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_2) {
                 if ((r.has_value())) {

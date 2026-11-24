@@ -515,7 +515,7 @@ int32_t uni_bump(::tpy::Union<A*, UB*> u) {
     if (f) {
         return 1;
     }
-    return "a";
+    return static_cast<std::string>("a");
 }
 
 // def is_str_vu(v: int32 | str) -> bool:
@@ -924,7 +924,7 @@ int32_t str_or_int(const ::tpy::Union<int32_t, std::string>& u) {
 void workarounds() {
     std::vector<int32_t> bs = {1, 2};
     std::cout << "array_local_annotated" << " " << ::tpyapp::main::total_list(bs) << " " << ::tpyapp::main::total_list({1, 2}) << "\n" << ::tpy::check_signals;
-    std::cout << "literal_at_value_union" << " " << ::tpyapp::main::str_or_int(::tpy::Union<int32_t, std::string>("x")) << "\n" << ::tpy::check_signals;
+    std::cout << "literal_at_value_union" << " " << ::tpyapp::main::str_or_int(::tpy::Union<int32_t, std::string>(std::in_place_type<std::string>, "x")) << "\n" << ::tpy::check_signals;
 }
 
 // def positions() -> None:
@@ -966,7 +966,7 @@ void positions() {
     std::cout << "own_union_result" << " " << ::tpyapp::main::use_ab(::tpy::to_ptr_variant(::tpy::as_mut_lvalue(::tpyapp::main::make_ab(true)))) << " " << ::tpyapp::main::use_ab(::tpy::to_ptr_variant(::tpy::as_mut_lvalue(::tpyapp::main::make_ab(false)))) << "\n" << ::tpy::check_signals;
     std::cout << "open_optional" << " " << ::tpy::print_bool(::tpyapp::main::wrap<A>(::tpy::as_mut_lvalue(std::vector<A>{A(1)}))) << " " << ::tpy::print_bool(::tpyapp::main::wrap<int32_t>(::tpy::as_mut_lvalue(std::vector<int32_t>{7}))) << " " << ::tpy::print_bool(::tpyapp::main::wrap<std::string>(::tpy::as_mut_lvalue(std::vector<std::string>{"s"}))) << " " << ::tpy::print_bool(::tpyapp::main::wrap<::tpy::Bytes>(::tpy::as_mut_lvalue(std::vector<::tpy::Bytes>{::tpy::bytes_literal_owned("b", 1)}))) << " " << ::tpy::print_bool(::tpyapp::main::some<std::monostate>(std::nullopt)) << "\n" << ::tpy::check_signals;
     std::cout << "opt_view" << " " << ::tpy::print_bool(::tpyapp::main::opt_view("a")) << " " << ::tpy::print_bool(::tpyapp::main::opt_view(std::nullopt)) << " " << ::tpy::print_bool(::tpyapp::main::opt_view_b(::tpy::bytes_literal_owned("b", 1))) << " " << ::tpy::print_bool(::tpyapp::main::opt_view_b(std::nullopt)) << " " << ::tpy::print_bool(::tpyapp::main::opt_view_narrowed("n")) << " " << ::tpy::print_bool(::tpyapp::main::opt_view_narrowed(std::nullopt)) << "\n" << ::tpy::check_signals;
-    std::cout << "inline_narrowed" << " " << ::tpyapp::main::inline_narrowed(3) << " " << ::tpyapp::main::inline_narrowed(::tpy::Union<double, int32_t>(1.5)) << "\n" << ::tpy::check_signals;
+    std::cout << "inline_narrowed" << " " << ::tpyapp::main::inline_narrowed(::tpy::Union<double, int32_t>(3)) << " " << ::tpyapp::main::inline_narrowed(::tpy::Union<double, int32_t>(1.5)) << "\n" << ::tpy::check_signals;
     H h = ::tpyapp::main::mkh();
     std::vector<int32_t> gl = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_args(h, "x"));
     std::cout << "gen" << " " << ::tpy::ListPrinter(gl) << " " << h.a.v << "\n" << ::tpy::check_signals;
@@ -1100,7 +1100,7 @@ void method_slot_args() {
     A a = A(7);
     std::cout << "method_ru_member_name" << " " << ts.take(RTree(std::move(a))) << "\n" << ::tpy::check_signals;
     std::cout << "method_ru_member_rvalue" << " " << ts.take(RTree(A(8))) << "\n" << ::tpy::check_signals;
-    std::cout << "method_ru_literal" << " " << ts.take(RTree("hi")) << "\n" << ::tpy::check_signals;
+    std::cout << "method_ru_literal" << " " << ts.take(RTree(static_cast<std::string>("hi"))) << "\n" << ::tpy::check_signals;
 }
 
 // def aug_key() -> None:

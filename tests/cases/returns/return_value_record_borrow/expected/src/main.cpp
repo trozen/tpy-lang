@@ -27,7 +27,7 @@ D again(const std::vector<D>& xs) {
 //     # The same lvalue ternary at a value-VARIANT return slot.
 //     return a if a.n >= b.n else b  # tpyc: ok
 ::tpy::Union<D, E> widen(D a, D b) {
-    return (((a.n >= b.n)) ? (a) : (b));
+    return static_cast<const D&>((((a.n >= b.n)) ? (a) : (b)));
 }
 
 // def main() -> None:

@@ -34,8 +34,10 @@ from typing import TYPE_CHECKING, Callable, Sequence
 
 from ..parse.nodes import TpyCoerce, TpyVarargPack
 from ..typesys import ParamInfo, unwrap_ref_type
+from .landings import move_all_landings
 
 if TYPE_CHECKING:
+    from .context import SemanticContext
     from ..parse import TpyExpr
     from ..parse.nodes import TpyCallLike
     from ..typesys import FunctionInfo, TpyType
@@ -187,15 +189,22 @@ def temp_call_args(outer, *, drop_receiver: bool = False) -> dict:
                 double_star_unpack=src.double_star)
 
 
-def adopt_temp_call(outer, temp, *, resolution: bool = True,
+def adopt_temp_call(ctx: 'SemanticContext', outer, temp, *,
+                    resolution: bool = True,
                     type_args: bool = True,
-                    receiver: 'TpyExpr | None' = None) -> None:
+                    receiver: 'TpyExpr | None' = None,
+                    converts_here: bool = True) -> None:
     """`outer` takes the arguments the temp call built by `temp_call_args`
     analyzed -- its argument list and binding (`relayout`) -- and, with
     `resolution`, the callee it resolved to, with `type_args` the type
-    arguments that callee was instantiated at. `receiver`: the explicit receiver
+    arguments that callee was instantiated at. With `converts_here` (the
+    lowering converts the arguments at `outer`) the union members they
+    landed in move to `outer`; without it they stay at `temp`, the node
+    the lowering converts them at. `receiver`: the explicit receiver
     `temp_call_args` dropped, which stays `outer`'s first written
     positional."""
+    if converts_here:
+        move_all_landings(ctx, temp, outer)
     binding = temp.binding
     if receiver is not None:
         assert binding is not None and binding.at is not None

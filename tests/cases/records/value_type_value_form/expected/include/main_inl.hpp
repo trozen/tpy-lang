@@ -200,7 +200,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_tagged_gen::__next__()
         return t.n;
     }
     case S_RESUME_0: {  // after: yield t.n
-        __for_src_0.emplace(std::array<Tagged, 2>{Tagged(2, 2), Tagged(3, 3)});
+        __for_src_0.emplace(std::array<Tagged, 2>{Tagged(::tpy::Union<int32_t, std::string>(2), 2), Tagged(::tpy::Union<int32_t, std::string>(3), 3)});
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
         __state = S_JOIN_0;
@@ -234,7 +234,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_tagged_pairs::__next__
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        q = Pair<Tagged>(Tagged(::tpy::Union<int32_t, std::string>(n), 4), Tagged(5, 5));
+        q = Pair<Tagged>(Tagged(::tpy::Union<int32_t, std::string>(n), 4), Tagged(::tpy::Union<int32_t, std::string>(5), 5));
         __state = S_RESUME_0;
         return n;
     }

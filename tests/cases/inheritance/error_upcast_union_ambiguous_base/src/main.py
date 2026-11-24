@@ -1,5 +1,6 @@
 # A subclass of TWO union members bound into the pointer-variant union is
-# rejected: the address could land in either member.
+# rejected in sema: the address could land in either member
+# (BUGS.md#union-unrelated-bases-refused).
 class Pet:
     name: str
 
@@ -22,7 +23,7 @@ class Dog(Pet, Animal):
 
 def main() -> None:
     d = Dog("rex")
-    p: Pet | Animal = d  # tpyc: warning(/upcast narrows/) error(/not yet supported/)
+    p: Pet | Animal = d  # tpyc: error(/'Dog' derives from both 'Animal' and 'Pet'/)
     if isinstance(p, Pet):
         print(p.name)
 

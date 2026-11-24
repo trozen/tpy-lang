@@ -18,6 +18,8 @@ from ...parse.nodes import (TpyAssign, TpyExpr, TpyMatch,
                             TpyWith,
                             iter_capture_bindings)
 from ...identity_map import IdentityMap
+from ...sema.landings import Boundary, lookup as lookup_landing
+from ...value_category import ElemPath
 from ...prescan import scan_reassigned_vars
 from ...typesys import (contains_type_param, pointer_repr_optional,
                         yield_uses_borrow_slot)
@@ -751,6 +753,61 @@ class Slot:
     # (`SemanticContext.open_same_t_args`), the body's own open `T` the
     # callee parameter is at: borrowed at `T = P`, owned at `T = Own[P]`.
     open_same_t: 'TpyType | None' = None
+    # The slot is a union's member, whose storage the union holds: a borrow
+    # converts into it, as into any part of a union or Optional.
+    union_part: bool = False
+    # The place receiving the value (`landings.Boundary`), whose recorded
+    # union members (`landing`, by element path) say which member a
+    # non-union value lands in; `path` is this slot's element path in the
+    # value the boundary receives. Not part of the slot's identity: two
+    # slots of one shape compare equal wherever they sit.
+    boundary: 'Boundary | None' = field(default=None, compare=False)
+    landing: 'Mapping[ElemPath, TpyType] | None' = field(default=None,
+                                                         compare=False)
+    path: 'ElemPath' = field(default=(), compare=False)
+
+    def union_member(self, path: 'ElemPath' = ()) -> 'TpyType | None':
+        """The member sema landed the value (its element at `path`) in,
+        None where no committing check recorded one."""
+        if self.landing is None:
+            return None
+        return self.landing.get(self.path + path)
+
+    def carries_landing(self) -> bool:
+        """Whether sema recorded a member for the value at this slot's own
+        path -- a route fact, so the member itself is not read here."""
+        return self.landing is not None and any(
+            p == self.path for p in self.landing)
+
+
+def at_boundary(slot: 'Slot | None', analyzer,
+                boundary: 'Boundary | None') -> 'Slot | None':
+    """`slot` as the slot of `boundary`, its recorded landing attached --
+    to its element slots too, each at its element path."""
+    if slot is None or boundary is None:
+        return slot
+    landing = lookup_landing(analyzer.ctx.union_landings, boundary)
+    return _with_landing(slot, boundary, landing, ())
+
+
+def at_landing_of(slot: Slot, outer: Slot) -> Slot:
+    """`slot` -- a part of `outer`'s value, a union member's -- at
+    `outer`'s boundary and element path: its element slots read the
+    members recorded for their own paths."""
+    if outer.boundary is None:
+        return slot
+    return _with_landing(slot, outer.boundary, outer.landing, outer.path)
+
+
+def _with_landing(slot: Slot, boundary: 'Boundary',
+                  landing: 'Mapping[ElemPath, TpyType] | None',
+                  path: 'ElemPath') -> Slot:
+    elems = slot.elems
+    if elems is not None:
+        elems = tuple(_with_landing(e, boundary, landing, path + (i,))
+                      for i, e in enumerate(elems))
+    return replace(slot, boundary=boundary, landing=landing, path=path,
+                   elems=elems)
 
 
 def lends_elements(slot: Slot) -> bool:

@@ -1,0 +1,1 @@
+main.py:30: error: Type mismatch in '+=' to 'v': expected Mid, got int32

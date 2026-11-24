@@ -95,7 +95,7 @@ void free() {
     std::cout << "free view name" << " " << ident("ab") << " " << ::tpy::__len__(ident_b(::tpy::bytes_literal("xyz", 3))) << "\n" << ::tpy::check_signals;
     std::function<std::optional<int32_t>()> opt = []() -> std::optional<int32_t> { return 3; };
     std::function<std::optional<Pt>()> opt_rec = []() -> std::optional<Pt> { return Pt(); };
-    std::function<::tpy::Union<int32_t, std::string>()> uni = []() -> ::tpy::Union<int32_t, std::string> { return "u"; };
+    std::function<::tpy::Union<int32_t, std::string>()> uni = []() -> ::tpy::Union<int32_t, std::string> { return static_cast<std::string>("u"); };
     ::tpy::Union<int32_t, std::string> u = uni();
     std::cout << "free optional" << " " << ::tpy::print_optional_val(opt()) << " " << ::tpy::__str__(u) << "\n" << ::tpy::check_signals;
     std::function<std::string(std::string_view, std::string_view)> pick = [](std::string_view s, std::string_view t) -> std::string { return std::string((((::tpy::__len__(s) > 1)) ? (s) : (t))); };

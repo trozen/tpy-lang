@@ -152,13 +152,13 @@ void main() {
     co.n = 8;
     ku();
     (::tpyapp::part_slots::mkb(::tpy::BigInt::from_str("1000000000000000000000000000000")))();
-    (::tpyapp::part_slots::mkis(3))();
+    (::tpyapp::part_slots::mkis(::tpy::Union<int32_t, std::string>(3)))();
     (::tpyapp::part_slots::mkoc(::tpyapp::fixtures::C(1)))();
-    Tree t = std::vector<Tree>{1, 2, 3};
+    Tree t = std::vector<Tree>{::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)};
     std::function<void()> ft = ::tpyapp::part_slots::mkt(t);
     if (std::holds_alternative<std::vector<Tree>>(t.value)) {
         auto& __t = std::get<std::vector<Tree>>(t.value);
-        __t.push_back(3);
+        __t.push_back(Tree(::tpy::BigInt(3)));
     }
     ft();
     A a = A(1);

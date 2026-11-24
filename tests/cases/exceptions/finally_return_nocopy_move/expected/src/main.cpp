@@ -18,7 +18,7 @@ Handle f() {
             auto* __tpy_retp_0 = &(h);
             __fin_ran_1 = true;
             h.n = ::tpy::add_check<int32_t>(h.n, 1);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_1) {
                 h.n = ::tpy::add_check<int32_t>(h.n, 1);
@@ -46,7 +46,7 @@ Handle f_alias() {
             auto* __tpy_retp_0 = &(h);
             __fin_ran_2 = true;
             a.n = ::tpy::add_check<int32_t>(a.n, 1);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_2) {
                 a.n = ::tpy::add_check<int32_t>(a.n, 1);

@@ -39,7 +39,7 @@ bool started_none() {
 //     print(widened())
 //     print(started_none())
 void main() {
-    std::cout << ::tpy::print_bool(::tpyapp::main::same(1, 1)) << " " << ::tpy::print_bool(::tpyapp::main::same(1, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::same(::tpy::Union<double, int32_t>(1), ::tpy::Union<double, int32_t>(1))) << " " << ::tpy::print_bool(::tpyapp::main::same(::tpy::Union<double, int32_t>(1), ::tpy::Union<double, int32_t>(2))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpyapp::main::widened()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpyapp::main::started_none()) << "\n" << ::tpy::check_signals;
 }

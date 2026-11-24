@@ -75,7 +75,7 @@ __gen_checked checked(::tpy::Union<::tpy::BigInt, std::string> a) {
 //         print(s)
 void main() {
     {
-        auto __src_0 = ::tpyapp::main::loop(::tpy::Union<::tpy::BigInt, std::string>(5));
+        auto __src_0 = ::tpyapp::main::loop(::tpy::Union<::tpy::BigInt, std::string>(::tpy::BigInt(5)));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -85,7 +85,7 @@ void main() {
         }
     }
     {
-        auto __src_2 = ::tpyapp::main::checked(::tpy::Union<::tpy::BigInt, std::string>(7));
+        auto __src_2 = ::tpyapp::main::checked(::tpy::Union<::tpy::BigInt, std::string>(::tpy::BigInt(7)));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

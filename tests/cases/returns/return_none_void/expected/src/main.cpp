@@ -329,7 +329,7 @@ std::optional<std::string> opt_str_none(int32_t k) {
         return k;
     }
     if ((k < 0)) {
-        return "neg";
+        return static_cast<std::string>("neg");
     }
     return std::monostate{};
 }

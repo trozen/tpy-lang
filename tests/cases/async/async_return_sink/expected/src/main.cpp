@@ -397,7 +397,7 @@ __coro_tup_finally_await tup_finally_await() {
                 __fin_ran_4 = true;
                 std::cout << "own_finally fin" << " " << (*b).v << "\n" << ::tpy::check_signals;
                 __state = S_DONE;
-                return ::tpystd::tpy::Poll<Box>::ready(std::move(*__tpy_retp_0));
+                return ::tpystd::tpy::Poll<Box>::ready(std::move((*__tpy_retp_0)));
             } catch (...) {
                 if (!__fin_ran_4) {
                     std::cout << "own_finally fin" << " " << (*b).v << "\n" << ::tpy::check_signals;
@@ -505,7 +505,7 @@ __coro_own_finally_await own_finally_await() {
                 __fin_ran_5 = true;
                 b.v = ::tpy::add_check<int32_t>(b.v, 100);
                 __state = S_DONE;
-                return ::tpystd::tpy::Poll<std::optional<Box>>::ready(std::move(*__tpy_retp_0));
+                return ::tpystd::tpy::Poll<std::optional<Box>>::ready(std::move((*__tpy_retp_0)));
             } catch (...) {
                 if (!__fin_ran_5) {
                     b.v = ::tpy::add_check<int32_t>(b.v, 100);
@@ -539,7 +539,7 @@ std::optional<Box> sync_param_finally(Box&& b) {
             auto* __tpy_retp_0 = &(b);
             __fin_ran_6 = true;
             b.v = ::tpy::add_check<int32_t>(b.v, 100);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_6) {
                 b.v = ::tpy::add_check<int32_t>(b.v, 100);
@@ -577,7 +577,7 @@ void show_sync_param_finally() {
                 __fin_ran_7 = true;
                 (*b).v = ::tpy::add_check<int32_t>((*b).v, 100);
                 __state = S_DONE;
-                return ::tpystd::tpy::Poll<std::optional<Box>>::ready(std::move(*__tpy_retp_0));
+                return ::tpystd::tpy::Poll<std::optional<Box>>::ready(std::move((*__tpy_retp_0)));
             } catch (...) {
                 if (!__fin_ran_7) {
                     (*b).v = ::tpy::add_check<int32_t>((*b).v, 100);
@@ -612,7 +612,7 @@ std::optional<Box> sync_local_opt_finally() {
             auto* __tpy_retp_0 = &(b);
             __fin_ran_8 = true;
             b.v = ::tpy::add_check<int32_t>(b.v, 100);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_8) {
                 b.v = ::tpy::add_check<int32_t>(b.v, 100);
@@ -638,7 +638,7 @@ std::optional<Box> sync_local_opt_finally() {
             auto* __tpy_retp_0 = &(b);
             __fin_ran_9 = true;
             b.v = ::tpy::add_check<int32_t>(b.v, 100);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_9) {
                 b.v = ::tpy::add_check<int32_t>(b.v, 100);
@@ -664,7 +664,7 @@ std::optional<Box> sync_local_opt_finally() {
             auto* __tpy_retp_0 = &(s);
             __fin_ran_10 = true;
             s.v = ::tpy::add_check<int32_t>(s.v, 100);
-            return std::move(*__tpy_retp_0);
+            return static_cast<Box&&>(std::move((*__tpy_retp_0)));
         } catch (...) {
             if (!__fin_ran_10) {
                 s.v = ::tpy::add_check<int32_t>(s.v, 100);
@@ -687,7 +687,7 @@ std::optional<Box> sync_local_opt_finally() {
             auto* __tpy_retp_0 = &(s);
             __fin_ran_11 = true;
             std::cout << "str_param_union fin" << " " << s << "\n" << ::tpy::check_signals;
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_11) {
                 std::cout << "str_param_union fin" << " " << s << "\n" << ::tpy::check_signals;
@@ -735,7 +735,7 @@ std::optional<Box> sync_local_opt_finally() {
     {
         bool __fin_ran_13 = false;
         try {
-            ::tpy::Union<int32_t, std::string> __tpy_ret_0 = s;
+            ::tpy::Union<int32_t, std::string> __tpy_ret_0 = static_cast<std::string>(s);
             __fin_ran_13 = true;
             std::cout << "string_union_finally fin" << " " << s << "\n" << ::tpy::check_signals;
             return __tpy_ret_0;
@@ -757,7 +757,7 @@ std::optional<Box> sync_local_opt_finally() {
 //     finally:
 //         print("declared_union_finally fin", u)
 ::tpy::Union<int32_t, std::string> declared_union_finally() {
-    ::tpy::Union<int32_t, std::string> u = "du";
+    ::tpy::Union<int32_t, std::string> u = static_cast<std::string>("du");
     {
         bool __fin_ran_14 = false;
         try {
@@ -1654,7 +1654,7 @@ __coro_main main() {
                 __fin_ran_17 = true;
                 __self.b.v = ::tpy::add_check<int32_t>(__self.b.v, 100);
                 __state = S_DONE;
-                return ::tpystd::tpy::Poll<std::optional<Holder>>::ready(std::move(*__tpy_retp_0));
+                return ::tpystd::tpy::Poll<std::optional<Holder>>::ready(std::move((*__tpy_retp_0)));
             } catch (...) {
                 if (!__fin_ran_17) {
                     __self.b.v = ::tpy::add_check<int32_t>(__self.b.v, 100);

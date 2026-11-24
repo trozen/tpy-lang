@@ -12,7 +12,7 @@ namespace tpyapp::main {
     if (flag) {
         return Bag();
     }
-    return 0;
+    return ::tpy::BigInt(0);
 }
 
 // def main() -> None:

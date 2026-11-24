@@ -12,7 +12,7 @@ namespace tpyapp::main {
     if ((s == "42")) {
         return 42;
     }
-    return "bad input";
+    return static_cast<std::string>("bad input");
 }
 
 // def main() -> None:

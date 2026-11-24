@@ -1,0 +1,161 @@
+main::__tpy_init: uncovered (module initialization)
+main::box_union@44:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::box_twin@49:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::narrowed_union@59:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::tuple_union@69:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::scalar_union@74:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::show@78:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::str_union@83:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::string_union@89:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::string_twin@94:0: covered (storage: no_proof_required), summary: known
+main::absent@100:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+main::main@127:0: uncovered (missing alias binding), summary: opaque (recursive or recursion-dependent call)
+main::Label.mark@122:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::Base.__init__@19:4: covered (storage: no_proof_required), summary: known
+main::Leaf.__init__@24:4: covered (storage: no_proof_required), summary: known
+main::A.__init__@31:4: covered (storage: no_proof_required), summary: known
+main::B.__init__@38:4: covered (storage: no_proof_required), summary: known
+main::Label.__init__@118:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+part_ctor::__tpy_init: uncovered (module initialization)
+part_ctor::peek@21:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_ctor::peek_twin@27:0: covered (storage: no_proof_required), summary: known
+part_ctor::own_union@33:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_ctor::main@38:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_ctor::Base.__init__@11:4: covered (storage: no_proof_required), summary: known
+part_ctor::Sub.__init__@17:4: uncovered (base constructor not called), summary: opaque (base constructor not called)
+part_faces::__tpy_init: uncovered (module initialization)
+part_faces::fin_union@19:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_faces::fin_twin@27:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_faces::mixed_union@37:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_faces::mixed_twin@45:0: certified, summary: known
+part_faces::closure_union@54:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_faces::closure_twin@63:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_faces::walrus_union@83:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_faces::walrus_twin@89:0: uncovered (owned record return needs fixed owned local), summary: opaque (owned record return needs fixed owned local)
+part_faces::pick_union@99:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_faces::pick_twin@106:0: uncovered (reference type mismatch), summary: opaque (reference type mismatch)
+part_faces::size@111:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_faces::main@117:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+part_faces::Holder.get@78:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_faces::RBase.__init__@13:4: covered (storage: no_proof_required), summary: known
+part_faces::Holder.__init__@75:4: covered (storage: no_proof_required), summary: known
+part_kinds::__tpy_init: uncovered (module initialization)
+part_kinds::leaf_tree@21:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_kinds::leaf_twin@26:0: covered (storage: no_proof_required), summary: known
+part_kinds::count@31:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
+part_kinds::v2_len@60:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_kinds::v2_narrowed@66:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_kinds::proto_union@99:0: uncovered (unsupported parameter type)
+part_kinds::proto_twin@105:0: uncovered (unsupported parameter type)
+part_kinds::ro_union@110:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_kinds::ro_twin@116:0: covered (storage: no_proof_required), summary: known
+part_kinds::opt_union@123:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_kinds::opt_arg@130:0: covered (storage: no_proof_required), summary: known
+part_kinds::mk_u@150:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_kinds::mk_opt@154:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_kinds::wrap_u@163:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_kinds::wrap_opt@167:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_kinds::main@171:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
+part_kinds::Acc.__iadd__@55:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_kinds::A.get_n@87:4: covered (storage: no_proof_required), summary: known
+part_kinds::Slot.put@143:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+part_kinds::Leaf.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_kinds::Acc.__init__@49:4: covered (storage: no_proof_required), summary: known
+part_kinds::A.__init__@84:4: covered (storage: no_proof_required), summary: known
+part_kinds::B.__init__@94:4: covered (storage: no_proof_required), summary: known
+part_kinds::Slot.__init__@140:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_moves::__tpy_init: uncovered (module initialization)
+part_moves::ptr_union@39:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_moves::lend_narrowed@45:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_moves::captured_narrowed@61:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_moves::captured_narrowed_rec@76:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
+part_moves::narrowed_finally@93:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_moves::narrowed_finally_rec@106:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_moves::nc_first@127:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_moves::str_mixed@139:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_moves::str_mixed_twin@144:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_moves::rec_mixed_twin@149:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_moves::rec_closure@156:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_moves::rec_closure_twin@165:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_moves::str_closure@174:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_moves::str_finally@185:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_moves::str_finally_twin@193:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_moves::rec_copied@202:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_moves::rec_copied_twin@207:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_moves::show@252:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_moves::main@257:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_moves::Relocate.put@241:4: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+part_moves::Relocate.put_twin@246:4: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+part_moves::Base.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_moves::A.__init__@19:4: covered (storage: no_proof_required), summary: known
+part_moves::B.__init__@26:4: covered (storage: no_proof_required), summary: known
+part_moves::V.__init__@33:4: uncovered (missing record layout)
+part_moves::NC.__init__@121:4: covered (storage: no_proof_required), summary: known
+part_moves::CBase.__init__@215:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
+part_moves::CSub.__init__@222:4: uncovered (base constructor not called), summary: opaque (base constructor not called)
+part_moves::Relocate.__init__@234:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_params::__tpy_init: uncovered (module initialization)
+part_params::bump@20:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_params::peek@27:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_params::heads@33:0: uncovered (unsupported parameter type)
+part_params::bump_twin@38:0: covered (storage: no_proof_required), summary: known
+part_params::peek_twin@43:0: covered (storage: no_proof_required), summary: known
+part_params::heads_twin@47:0: covered (storage: no_facts: storage facts have not been published)
+part_params::gs@64:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_params::vo@70:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_params::widen@78:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_params::gs_twin@82:0: covered (storage: no_proof_required), summary: known
+part_params::vo_twin@86:0: covered (storage: no_proof_required), summary: known
+part_params::widen_twin@90:0: covered (storage: no_proof_required), summary: known
+part_params::fl@94:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_params::bl@100:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_params::main@106:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_params::CM.__enter__@57:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_params::CM.__exit__@60:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_params::Base.__init__@11:4: covered (storage: no_proof_required), summary: known
+part_params::Sub.__init__@16:4: covered (storage: no_proof_required), summary: known
+part_params::CM.__init__@54:4: covered (storage: no_proof_required), summary: known
+part_stores::__tpy_init: uncovered (module initialization)
+part_stores::with_union@76:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_stores::with_twin@81:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_stores::main@86:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_stores::Holder.set@33:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+part_stores::HolderTwin.set@53:4: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)
+part_stores::RBase.__enter__@66:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_stores::RBase.__exit__@69:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_stores::Base.__init__@11:4: covered (storage: no_proof_required), summary: known
+part_stores::Sub.__init__@16:4: covered (storage: no_proof_required), summary: known
+part_stores::Holder.__init__@26:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_stores::HolderTwin.__init__@47:4: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)
+part_stores::RBase.__init__@63:4: covered (storage: no_proof_required), summary: known
+part_tuples::__tpy_init: uncovered (module initialization)
+part_tuples::rec_union@22:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_tuples::rec_twin@27:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_tuples::str_union@35:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_tuples::str_nested@40:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_tuples::str_twin@45:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_tuples::lit_union@51:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_tuples::main@55:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_tuples::A.__init__@16:4: covered (storage: no_proof_required), summary: known
+part_values::__tpy_init: uncovered (module initialization)
+part_values::ret_global@67:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_values::ret_capture@71:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_values::ret_narrowed@82:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_values::ret_own_narrowed@94:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_values::ret_walrus@100:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_values::ret_walrus_twin@105:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_values::ret_owned@112:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_values::ret_owned_twin@117:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_values::ret_twin@122:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_values::n_of@131:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_values::arg_union@137:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_values::arg_twin@143:0: uncovered (unsupported reference parameter passing), summary: opaque (unsupported reference parameter passing)
+part_values::main@147:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+part_values::VBase.get_n@19:4: uncovered (missing receiver fact)
+part_values::Plain.get_n@34:4: covered (storage: no_proof_required), summary: known
+part_values::H.held@47:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_values::H.take@56:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_values::VBase.__init__@16:4: uncovered (missing record layout)
+part_values::VSub.__init__@24:4: uncovered (missing record layout)
+part_values::Plain.__init__@31:4: covered (storage: no_proof_required), summary: known
+part_values::H.__init__@42:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

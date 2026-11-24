@@ -27,7 +27,7 @@ std::string get_field__lit_name(std::string_view name) {
     if ((name == "age")) {
         return 42;
     }
-    return "hello";
+    return static_cast<std::string>("hello");
 }
 
 // def main() -> None:

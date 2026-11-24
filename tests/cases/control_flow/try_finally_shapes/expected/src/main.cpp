@@ -212,7 +212,7 @@ void nested() {
                     std::cout << "try-cleanup" << " " << x << "\n" << ::tpy::check_signals;
                     __fin_ran_8 = true;
                     __ctx_1.__exit__({}, nullptr, {});
-                    return std::move(*__tpy_retp_0);
+                    return std::move((*__tpy_retp_0));
                 }
                 std::cout << "small" << " " << x << "\n" << ::tpy::check_signals;
             } catch (...) {

@@ -47,7 +47,7 @@ void reseat(Dog& d, Cat& c) {
 //         p.rename("union-base")
 //     print("union", d.name)
 void union_(Dog& d) {
-    ::tpy::Union<Cat*, Pet*> p{&(d)};
+    ::tpy::Union<Cat*, Pet*> p{&(static_cast<Pet&>(d))};
     if (std::holds_alternative<Pet*>(p)) {
         auto& __p = *std::get<Pet*>(p);
         __p.rename("union-base");
@@ -62,7 +62,7 @@ void union_(Dog& d) {
 //         p.rename("union-opt-base")
 //     print("union_opt", d.name)
 void union_opt(Dog& d) {
-    ::tpy::Union<std::monostate, Cat*, Pet*> p{&(d)};
+    ::tpy::Union<std::monostate, Cat*, Pet*> p{&(static_cast<Pet&>(d))};
     if (std::holds_alternative<Pet*>(p)) {
         auto& __p = *std::get<Pet*>(p);
         __p.rename("union-opt-base");
@@ -115,9 +115,9 @@ void take_union_opt(::tpy::Union<std::monostate, Cat*, Pet*> p) {
 //     take_union_opt(e)  # tpyc: ok
 //     print("arg_union", e.name)
 void arg_union(Dog& d, Dog& e) {
-    ::tpyapp::main::take_union(::tpy::Union<Cat*, Pet*>{&(d)});
+    ::tpyapp::main::take_union(::tpy::Union<Cat*, Pet*>{&(static_cast<Pet&>(d))});
     std::cout << "arg_union" << " " << d.name << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::take_union_opt(::tpy::Union<std::monostate, Cat*, Pet*>{&(e)});
+    ::tpyapp::main::take_union_opt(::tpy::Union<std::monostate, Cat*, Pet*>{&(static_cast<Pet&>(e))});
     std::cout << "arg_union" << " " << e.name << "\n" << ::tpy::check_signals;
 }
 
@@ -144,13 +144,13 @@ void ret(Dog& d) {
 // def give_union(d: Dog) -> Pet | Cat:
 //     return d  # tpyc: warning(/upcast narrows/)
 ::tpy::Union<Cat*, Pet*> give_union(Dog& d) {
-    return &(d);
+    return &(static_cast<Pet&>(d));
 }
 
 // def give_union_opt(d: Dog) -> Pet | Cat | None:
 //     return d  # tpyc: warning(/upcast narrows/)
 ::tpy::Union<std::monostate, Cat*, Pet*> give_union_opt(Dog& d) {
-    return &(d);
+    return &(static_cast<Pet&>(d));
 }
 
 // # return union: the subclass address binds the unique base member of the

@@ -341,7 +341,7 @@ void comprehension(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
 //     return 1
 ::tpy::Union<int32_t, std::string> union_text(bool choose_text) {
     if (choose_text) {
-        return "abc";
+        return static_cast<std::string>("abc");
     }
     return 1;
 }
@@ -606,7 +606,7 @@ void record_read(::tpy::Union<const Indexed*, const int32_t*> x) {
 //     dict_read({0: 30})
 //     record_read(indexed)
 void main() {
-    ::tpy::Union<int32_t, std::string> text = "abc";
+    ::tpy::Union<int32_t, std::string> text = static_cast<std::string>("abc");
     ::tpy::Union<::tpy::ByteArray, int32_t> __slot_1 = ::tpyapp::main::make_buffer();
     ::tpy::Union<::tpy::ByteArray*, int32_t*> buffer = ::tpy::to_ptr_variant(__slot_1);
     ::tpy::BigInt index = ::tpy::BigInt::from_str("1");

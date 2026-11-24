@@ -17,7 +17,7 @@ void accept(const ::tpy::Union<std::monostate, int32_t, std::string>& x) {
 //     print("ok")
 void test() {
     ::tpy::Union<std::monostate, int32_t, std::string> a = 42;
-    ::tpy::Union<std::monostate, int32_t, std::string> b = "hello";
+    ::tpy::Union<std::monostate, int32_t, std::string> b = static_cast<std::string>("hello");
     ::tpyapp::main::accept(a);
     ::tpyapp::main::accept(b);
     std::cout << "ok" << "\n" << ::tpy::check_signals;

@@ -169,14 +169,14 @@ bool optptr_container_literal(Sink& s, bool flag) {
 //     # `or` RHS, a list literal at a recursive-union wrapper slot.
 //     return int32(0) if flag else show("rulit", [1, 2, 3])
 int32_t recursive_union_literal(bool flag) {
-    return ((flag) ? (0) : (::tpyapp::main::show("rulit", Value(std::vector<Value>{1, 2, 3}))));
+    return ((flag) ? (0) : (::tpyapp::main::show("rulit", Value(std::vector<Value>{::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)}))));
 }
 
 // def ru_wrapper_literal(flag: bool) -> int32:
 //     # Ternary arm, a scalar literal at the same wrapper slot.
 //     return int32(0) if flag else show("ruscalar", 9)
 int32_t ru_wrapper_literal(bool flag) {
-    return ((flag) ? (0) : (::tpyapp::main::show("ruscalar", Value(9))));
+    return ((flag) ? (0) : (::tpyapp::main::show("ruscalar", Value(::tpy::BigInt(9)))));
 }
 
 // def ru_wrapper_ctor(flag: bool) -> int32:

@@ -18,7 +18,7 @@ Box ret_record() {
             auto* __tpy_retp_0 = &(b);
             __fin_ran_1 = true;
             b.n = ::tpy::add_check<int32_t>(b.n, 1);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_1) {
                 b.n = ::tpy::add_check<int32_t>(b.n, 1);
@@ -42,7 +42,7 @@ std::vector<int32_t> ret_list() {
             auto* __tpy_retp_0 = &(xs);
             __fin_ran_2 = true;
             xs.push_back(2);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_2) {
                 xs.push_back(2);
@@ -176,7 +176,7 @@ Box ret_own_param(Box&& b) {
             auto* __tpy_retp_0 = &(b);
             __fin_ran_7 = true;
             b.n = ::tpy::add_check<int32_t>(b.n, 1);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_7) {
                 b.n = ::tpy::add_check<int32_t>(b.n, 1);
@@ -205,7 +205,7 @@ Box ret_from_handler() {
                 auto* __tpy_retp_0 = &(b);
                 __fin_ran_8 = true;
                 b.n = ::tpy::add_check<int32_t>(b.n, 1);
-                return std::move(*__tpy_retp_0);
+                return std::move((*__tpy_retp_0));
             }
         } catch (...) {
             if (!__fin_ran_8) {

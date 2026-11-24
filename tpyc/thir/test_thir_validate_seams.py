@@ -15,10 +15,11 @@ import pytest
 
 from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
-from ..typesys import (BOOL, CHAR, INT32, NominalType, TupleType, UnionType,
-                       VoidType, unwrap_readonly, unwrap_ref_type)
+from ..typesys import (BOOL, CHAR, INT32, INT64, AliasRef, NominalType,
+                       TupleType, UnionType, VoidType, make_list,
+                       unwrap_readonly, unwrap_ref_type)
 from .nodes import (Form, HoistDecl, SeatLifetime, THIRArgTemp, THIRInlineTemp, THIRBaseInit, THIRBinOp,
-    THIRCall, THIRCoerce, THIRComprehensionBlock, THIRCompInsert, THIRCtorCall,
+    THIRCall, THIRCoerce, THIRComprehensionBlock, THIRContainerLiteral, THIRCompInsert, THIRCtorCall,
     THIRConstructor, THIRExpr, THIRExprStmt, THIRForEach, THIRForRange,
     THIRMilInit, THIRFieldAccess, THIRFieldIdentity, THIRFormConvert,
     THIRFunction, THIRFunctionLayout, THIRIf, THIRIfExpr, THIRLiteral,
@@ -902,6 +903,22 @@ class TestDecidedBranch:
     def test_match_guard_decided_false_keeping_its_arm_raises(self):
         with pytest.raises(THIRValidationError, match="ruled-out arm"):
             validate_stmts("f", (self._match((self._stmt(),)),))
+
+
+def test_wrapper_element_needs_its_landed_member() -> None:
+    # An element built into a recursive alias's wrapper carries the member
+    # sema landed it in; a bare scalar element with none fails, the same
+    # element converted to its member passes.
+    alias = AliasRef("U")
+    bare = THIRLiteral(result_type=INT32, value=5, form=Form.VALUE)
+    lit = THIRContainerLiteral(result_type=make_list(alias), elements=(bare,))
+    with pytest.raises(THIRValidationError, match="carries no landed member"):
+        _validate._check_landed_elements("f", lit)
+    landed = THIRCoerce(result_type=alias, expr=bare,
+                        coercion_name="union_member", member=INT64,
+                        form=Form.VALUE)
+    _validate._check_landed_elements(
+        "f", dataclasses.replace(lit, elements=(landed,)))
 
 
 class TestHeldArgumentKeepPlan:

@@ -34,6 +34,7 @@ from ... import qnames
 from ...namespace import BindingKind
 from ...prescan import scope_bound_names
 from ...sema.registration import receiver_self_type, skipped_base_inits
+from ...sema.landings import arg_boundary
 from ..param_contract import arg_retention
 from ...typesys import (
     RecordInfo,
@@ -1147,7 +1148,7 @@ def _lower_stub_base_init(expr: TpyMethodCall, ri: RecordInfo, base_type: TpyTyp
     _, stub = call_callees(fi, analyzer, arity=len(expr.args),
                            result_type=base_type, binds_body=False)
     args = tuple(_lower_call_arg(a, p.type, lc, declared, callee_fi=fi,
-                                 arg_index=i,
+                                 arg_index=i, boundary=arg_boundary(expr, i),
                                  signature=call_signature(stub=stub),
                                  retention=arg_retention(fi, i, expr, analyzer, a))
                  for i, (a, p) in enumerate(zip(expr.args, fi.params)))

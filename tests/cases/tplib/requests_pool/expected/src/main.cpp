@@ -76,7 +76,7 @@ void pooled_reuse() {
 void pool_key_shapes() {
     std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", ::tpy::Union<bool, std::string>(true)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test:8443/x", ::tpy::Union<bool, std::string>(false)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", ::tpy::Union<bool, std::string>("/etc/ca.pem")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", ::tpy::Union<bool, std::string>(std::in_place_type<std::string>, "/etc/ca.pem")) << "\n" << ::tpy::check_signals;
 }
 
 // def failed_request_drops_entry() -> None:

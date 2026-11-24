@@ -750,7 +750,7 @@ void union_field_slots(int32_t n) {
     __ctx_2.__exit__({}, nullptr, {});
     std::cout << "union with" << " " << w.n << "\n" << ::tpy::check_signals;
     Tagged x{};
-    auto __obj_0 = {Tagged(1, 5), Tagged(6, 6)};
+    auto __obj_0 = {Tagged(::tpy::Union<int32_t, std::string>(1), 5), Tagged(::tpy::Union<int32_t, std::string>(6), 6)};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -765,7 +765,7 @@ void union_field_slots(int32_t n) {
         break;
     }
     default: {
-        m = Tagged(8, 8);
+        m = Tagged(::tpy::Union<int32_t, std::string>(8), 8);
         break;
     }
     }

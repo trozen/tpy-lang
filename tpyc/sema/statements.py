@@ -165,6 +165,8 @@ from .alias_rebind import (binding_roots, decide_rebind_storage,
                            UnpackTarget, target_indices,
                            unpack_target_records)
 from .storage_policy import first_binding_storage
+from .landings import (binding_boundary, boundary_of, landing_exempt,
+                       member_at, move_holder)
 from .numeric_lattice import same_width_family
 from .type_join import (expression_spelling, operand_spelling,
                         python_type_name, user_type_name,
@@ -1559,7 +1561,8 @@ class StatementAnalyzer:
                                 lambda ts: setattr(stmt, "value_type", ts[0]))
             written = stmt.value
             stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
-                                                  coercion_ctx=CoercionContext.RETURN, is_return=True)
+                                                  coercion_ctx=CoercionContext.RETURN, is_return=True,
+                                                  boundary=boundary_of(stmt, "value"))
             # A rebinding walrus is returned as the read of its name: the
             # value side below classifies that read.
             value = as_name_read(stmt.value)
@@ -6212,7 +6215,8 @@ class StatementAnalyzer:
                     stmt.value, elem_type, CoercionContext.RETURN)
         stmt.value = self.compat.coerce_expr(
             stmt.value, yield_type, elem_type, "yield value",
-            coercion_ctx=CoercionContext.RETURN)
+            coercion_ctx=CoercionContext.RETURN,
+            boundary=boundary_of(stmt, "value"))
         # The coercion compares the literal against the declared tuple as a
         # whole, so an `Own` element's scalar `T -> Own[T]` copy rule never
         # runs per member -- apply it here.
@@ -6298,7 +6302,8 @@ class StatementAnalyzer:
             value_expr = self.compat.coerce_expr(
                 value_expr, strip_int(value_type), var_type,
                 f"variable '{cell.name}'",
-                coercion_ctx=CoercionContext.ASSIGN)
+                coercion_ctx=CoercionContext.ASSIGN,
+                boundary=binding_boundary(site))
         return var_type, value_expr
 
     def _indexed_list(self, target: TpyExpr) -> TpyType | None:
@@ -6909,7 +6914,8 @@ class StatementAnalyzer:
                     inner_init = unwrap_readonly(init_type)
                     stmt.init = self.compat.coerce_expr(stmt.init, inner_init, stmt.type,
                                                          f"variable '{stmt.name}'",
-                                                         coercion_ctx=CoercionContext.INIT)
+                                                         coercion_ctx=CoercionContext.INIT,
+                                                         boundary=boundary_of(stmt, "init"))
                 var_type = stmt.type
                 # Inherit ReadonlyType from init expression
                 if isinstance(init_type, ReadonlyType):
@@ -7174,7 +7180,7 @@ class StatementAnalyzer:
                     var_type = collapsed
                     self.ctx.var_types[stmt] = var_type
             # Track inferred writes for potential future retro-validation.
-            self.deduction.record_write(stmt.name, stmt.init, init_type)
+            self.deduction.record_write(stmt.name, stmt.init, init_type, stmt)
             # Annotate tuple literal element capture modes (local context)
             if isinstance(stmt.init, TpyTupleLiteral) and isinstance(var_type, TupleType):
                 self._annotate_tuple_elem_capture(stmt.init, var_type)
@@ -7336,10 +7342,21 @@ class StatementAnalyzer:
         # Union assignment narrowing: narrow to concrete member on initial declaration
         if existing_type is None:
             inner_var = unwrap_readonly(var_type)
-            if (isinstance(inner_var, UnionType) and init_type is not None
-                    and init_type in inner_var.members):
-                self.ctx.func.narrowed_types[stmt.name] = init_type
-                facts = NarrowFacts({stmt.name: init_type},
+            # The member the declaration's check landed the value in (the
+            # body's own table: nothing is published before it settles). A
+            # value converted into its member (a widened width, a literal, a
+            # subclass) is not narrowed: its reads stay the union's. A union
+            # whose member is decided per instantiation records none
+            # (`landing_exempt`): the value's own type, a member, narrows it.
+            landed = None
+            if isinstance(inner_var, UnionType) and stmt.init:
+                landed = (init_type if init_type in inner_var.members
+                          and landing_exempt(inner_var, init_type)
+                          else member_at(self.ctx.func.union_landings,
+                                         boundary_of(stmt, "init")))
+            if landed is not None and landed == init_type:
+                self.ctx.func.narrowed_types[stmt.name] = landed
+                facts = NarrowFacts({stmt.name: landed},
                                     members=frozenset((stmt.name,)))
                 stmt.then_type_facts = self._filter_union_codegen_facts(facts)
         if self.ctx.func.current_ns:
@@ -7402,7 +7419,8 @@ class StatementAnalyzer:
             name, existing, elem_type, elem_expr, site=stmt)
         target = existing
         coercion = self.compat.check_type_compatible(
-            elem_type, target, "tuple unpacking", source_expr=stmt)
+            elem_type, target, "tuple unpacking", source_expr=stmt,
+            boundary=boundary_of(stmt, "unpack", index))
         if coercion is not None and coercion.narrows_checked:
             raise self.ctx.error(
                 f"Type mismatch in tuple unpacking: element {index} is "
@@ -8358,7 +8376,8 @@ class StatementAnalyzer:
             if self.ctx.func.current_ns:
                 self.ctx.func.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
-            self.deduction.record_write(stmt.target.name, stmt.value, inner_value)
+            self.deduction.record_write(stmt.target.name, stmt.value,
+                                        inner_value, stmt)
             if (pending_cell is None and not isinstance(
                     inner_target, (*PENDING_CONTAINER_TYPES, PendingViewType))):
                 resolved = unwrap_readonly(target_type)
@@ -8460,11 +8479,14 @@ class StatementAnalyzer:
                 stmt.value, value_type, target_type, "assignment",
                 coercion_ctx=CoercionContext.ASSIGN,
                 target_is_storage_form=target_is_storage,
-                inferred_slot=inferred_field_slot(self.ctx, stmt.target))
+                inferred_slot=inferred_field_slot(self.ctx, stmt.target),
+                boundary=boundary_of(stmt, "value"))
         if (isinstance(stmt.target, TpyFieldAccess)
                 and stmt.target.property_setter_call is not None):
             # The setter receives the converted value, as any argument does.
             stmt.target.property_setter_call.args[0] = stmt.value
+            move_holder(self.ctx, stmt, ("value", None),
+                        stmt.target.property_setter_call, ("param", 0))
         # Annotate tuple literal element capture modes. A cell container's
         # store coerced the literal to its part, which reads as a reference;
         # its members land in the container as a declared one's do.
@@ -8820,6 +8842,8 @@ class StatementAnalyzer:
             # (e.g. annotated variable, or mixed-sign fixed-int pair).
             coercion = self.compat.check_type_compatible(
                 result_type, effective_type, f"'{op}=' to '{name}'", loc=stmt.loc,
+                coercion_ctx=CoercionContext.ASSIGN,
+                boundary=boundary_of(stmt, "stored_value"),
             )
             self._narrow_aug_result(stmt, result_type, effective_type,
                                     coercion, f"'{op}=' to '{name}'")
@@ -8833,7 +8857,9 @@ class StatementAnalyzer:
             what = f"'{op}=' to {_format_aug_target(target)}"
             coercion = self.compat.check_type_compatible(
                 result_type, target_type, what, loc=stmt.loc,
+                coercion_ctx=CoercionContext.ASSIGN,
                 target_is_storage_form=True,
+                boundary=boundary_of(stmt, "stored_value"),
             )
             self._narrow_aug_result(stmt, result_type, target_type,
                                     coercion, what)
@@ -8851,7 +8877,8 @@ class StatementAnalyzer:
         stmt.stored_value = self.compat.coerce_expr(
             self._aug_result_stand_in(stmt, result_type), result_type,
             target_type, what, CoercionContext.ASSIGN,
-            target_is_storage_form=not isinstance(stmt.target, TpyName))
+            target_is_storage_form=not isinstance(stmt.target, TpyName),
+            boundary=boundary_of(stmt, "stored_value"))
 
     def _aug_result_stand_in(self, stmt: TpyAugAssign,
                              result_type: TpyType) -> TpyBinOp:
@@ -8954,14 +8981,28 @@ class StatementAnalyzer:
         self.pend.when_elem_known(stmt, cell, record)
 
     def _receive_aug_operand(self, stmt: TpyAugAssign,
-                             result: ResolvedBinop,
+                             result: ResolvedBinop, target_type: TpyType,
                              value_type: TpyType) -> bool:
         """`receive_dunder_operand` at `target op= value`: the value,
-        converted in place. Whether it was received; a reflected dunder's
-        operand is the target, which keeps its own render."""
-        received = (None if result.is_reverse
-                    else self.expr.receive_dunder_operand(
-                        stmt.value, value_type, result))
+        converted in place, or a reflected dunder's target, received as the
+        binary operator's left operand is and recorded as the call's
+        argument. Whether it was received."""
+        if result.is_reverse:
+            received = self.expr.receive_dunder_operand(
+                stmt.target, target_type, result,
+                boundary=boundary_of(stmt, "target"))
+            if received is None:
+                return False
+            # Not written back: the target is also the store's lvalue; its
+            # conversion is the lowering's, at the member received here.
+            self.expr.calls.commit_facts(
+                stmt, result.method,
+                CallOperands(result.method, stmt.value, [received]),
+                receiver=stmt.value, receiver_type=result.receiver_type)
+            return True
+        received = self.expr.receive_dunder_operand(
+            stmt.value, value_type, result,
+            boundary=boundary_of(stmt, "value"))
         if received is None:
             return False
         stmt.value = received
@@ -9054,6 +9095,13 @@ class StatementAnalyzer:
             self._resolve_aug_store(stmt)
         stmt.hold_parts = aug_hold_parts(self.ctx, self.compat, stmt)
 
+    def _aug_store_calls_setter(self, target: TpyExpr) -> bool:
+        """Whether `target op= v` stores through a `__setitem__` call
+        (`_resolve_aug_store`): a subscript of a dunder receiver."""
+        return (isinstance(target, TpySubscript)
+                and target.written_index is not None
+                and self._subscript_receiver(target) is not None)
+
     def _resolve_aug_store(self, stmt: TpyAugAssign) -> None:
         """The `__setitem__` of a subscript `t[k] op= v`: ranked on the key
         as written and the operation's result (the getter's type where the
@@ -9062,9 +9110,10 @@ class StatementAnalyzer:
         (`TpySubscript.written_index`), and credited on the receiver."""
         target = stmt.target
         assert isinstance(target, TpySubscript)
-        recv = self._subscript_receiver(target)
-        if recv is None or target.written_index is None:
+        if not self._aug_store_calls_setter(target):
             return
+        recv = self._subscript_receiver(target)
+        assert recv is not None
         rb = stmt.resolved_binop
         result = (rb.method.return_type if rb is not None
                   else self.ctx.get_expr_type(target))
@@ -9288,12 +9337,14 @@ class StatementAnalyzer:
                         self.pend.tree_type(inplace_cell)):
                     self._resolve_inplace_later(stmt, target_type,
                                                 value_type, inplace_cell)
-                if self._receive_aug_operand(stmt, result, value_type):
+                if self._receive_aug_operand(stmt, result, target_type,
+                                            value_type):
                     return
                 if result.method.params:
                     _, param_type = result.method.params[0]
                     self.compat.check_type_compatible(
                         value_type, param_type, f"'{op_spelling(stmt.op)}=' operand", source_expr=stmt.value,
+                        boundary=boundary_of(stmt, "value"),
                     )
                 return
             # Method exists but arg type mismatches -- produce a specific type error.
@@ -9302,6 +9353,7 @@ class StatementAnalyzer:
                 self.compat.check_type_compatible(
                     value_type, expected_params[0], f"'{op_spelling(stmt.op)}=' operand",
                     loc=stmt.loc, source_expr=stmt.value,
+                    boundary=boundary_of(stmt, "value"),
                 )
             elif expected_params and not any(
                     self.compat.is_type_compatible(value_type, p)
@@ -9333,7 +9385,15 @@ class StatementAnalyzer:
                         stmt,
                     )
                 stmt.resolved_binop = result
-                self._receive_aug_operand(stmt, result, value_type)
+                # `x += v` through `__add__` / `__radd__` stores the result
+                # into the target as `x = x + v` does; a subscript's setter
+                # receives it (`_resolve_aug_store`).
+                if not self._aug_store_calls_setter(stmt.target):
+                    self._apply_aug_assign_writeback(
+                        stmt.target, target_type, result.method.return_type,
+                        stmt.op, stmt)
+                self._receive_aug_operand(stmt, result, target_type,
+                                            value_type)
                 if isinstance(stmt.target, TpyName):
                     # `x += v` through `__add__` is `x = x + v`: the
                     # reassignment rules of a parameter, a loop variable

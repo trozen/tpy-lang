@@ -40,7 +40,7 @@ int32_t count(const Expr& e) {
 //     print(count(tree))
 //     print(count(passthru(tree)))
 void main() {
-    Expr tree = std::vector<Expr>{1, std::vector<Expr>{2, 3}, 4};
+    Expr tree = std::vector<Expr>{::tpy::BigInt(1), std::vector<Expr>{::tpy::BigInt(2), ::tpy::BigInt(3)}, ::tpy::BigInt(4)};
     std::cout << ::tpyapp::main::count(tree) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::count(::tpyapp::main::passthru(tree)) << "\n" << ::tpy::check_signals;
 }

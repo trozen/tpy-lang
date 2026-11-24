@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_int() -> Own[V]:
 //     return 42
 V make_int() {
-    return 42;
+    return ::tpy::BigInt(42);
 }
 
 // def make_float() -> Own[V]:
@@ -27,13 +27,13 @@ V make_null() {
 // def make_mixed_list() -> Own[V]:
 //     return [1, 2.5, 3, 4.5]
 V make_mixed_list() {
-    return std::vector<V>{1, 2.5, 3, 4.5};
+    return std::vector<V>{::tpy::BigInt(1), 2.5, ::tpy::BigInt(3), 4.5};
 }
 
 // def make_mixed_dict() -> Own[V]:
 //     return {"i": 7, "f": 0.25, "s": "hi", "n": None}
 V make_mixed_dict() {
-    return ::tpy::ordered_map<std::string, V>({{"i", 7}, {"f", 0.25}, {"s", "hi"}, {"n", std::monostate{}}});
+    return ::tpy::ordered_map<std::string, V>({{"i", ::tpy::BigInt(7)}, {"f", 0.25}, {"s", static_cast<std::string>("hi")}, {"n", std::monostate{}}});
 }
 
 // def kind(v: V) -> str:

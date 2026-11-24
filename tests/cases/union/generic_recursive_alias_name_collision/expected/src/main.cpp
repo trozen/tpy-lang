@@ -14,8 +14,8 @@ namespace tpyapp::main {
 //     print(local_count(mine))
 //     print(treelib.leaf_count(theirs))
 void main() {
-    Tree<::tpy::BigInt> mine = std::vector<Tree<::tpy::BigInt>>{1, std::vector<Tree<::tpy::BigInt>>{2, 3}, 4, std::vector<Tree<::tpy::BigInt>>{5, std::vector<Tree<::tpy::BigInt>>{6, 7}}};
-    ::tpyapp::treelib::Tree<::tpy::BigInt> theirs = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{10, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{20, 30}};
+    Tree<::tpy::BigInt> mine = std::vector<Tree<::tpy::BigInt>>{::tpy::BigInt(1), std::vector<Tree<::tpy::BigInt>>{::tpy::BigInt(2), ::tpy::BigInt(3)}, ::tpy::BigInt(4), std::vector<Tree<::tpy::BigInt>>{::tpy::BigInt(5), std::vector<Tree<::tpy::BigInt>>{::tpy::BigInt(6), ::tpy::BigInt(7)}}};
+    ::tpyapp::treelib::Tree<::tpy::BigInt> theirs = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{::tpy::BigInt(10), std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{::tpy::BigInt(20), ::tpy::BigInt(30)}};
     std::cout << ::tpyapp::main::local_count<::tpy::BigInt>(mine) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(theirs) << "\n" << ::tpy::check_signals;
 }

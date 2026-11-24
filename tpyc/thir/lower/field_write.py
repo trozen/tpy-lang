@@ -65,13 +65,15 @@ from ..nodes import (
     THIRFormConvert,
     THIRLiteral,
 )
+from ...sema.landings import boundary_of
 from .context import (
-    _NO_FORMS, _ONLY_BTUPLE_SLOT, _ONLY_PTR_OPT_PASSTHROUGH, _ExprResultUse, _ExprUse, _LowerCtx, Slot,
+    _NO_FORMS, _ONLY_BTUPLE_SLOT, _ONLY_PTR_OPT_PASSTHROUGH, _ExprResultUse, _ExprUse, _LowerCtx, Slot, at_boundary,
                       _slot_lift_forms, SinkForm, SinkPos,
                       SlotConstruct, SlotHolds, SlotLifetime,
                       SlotPlacement, SlotClass, field_slot_use, lends_elements,
                       opt_callable_slot)
-from .convert import Refuse, convert, landing, spelled, storage_type
+from .convert import (Refuse, convert, land_paths, landing, spelled,
+                      storage_type)
 from .checks import (
     _borrow_tuple_local_type,
     _bytes_field_write_ok,
@@ -724,16 +726,16 @@ def read_stored(v: TpyExpr, dest: Slot, lc: _LowerCtx,
     b = binding_of(src, lc, declared)
     land = landing(b, named_type_of(src, lc, declared),
                    analyzer.get_expr_type(src), st, analyzer)
-    use = stored_use(dest, land.member, analyzer, allow_temps=allow_temps)
+    use = stored_use(dest, land.read_as, analyzer, allow_temps=allow_temps)
     # A pointer-slot GLOBAL is read as the pointer it is: the lift takes
     # the `T*` (`h->v = ptr_to_optional(g);`), so the value-position deref
     # every other read applies to it must not fire.
     if (b is not None and b.global_slot
-            and (pointer_repr_optional(land.member) is not None
-                 or _eligible_ptr_union(land.member, analyzer) is not None)):
+            and (pointer_repr_optional(land.read_as) is not None
+                 or _eligible_ptr_union(land.read_as, analyzer) is not None)):
         use = replace(use, result=_ExprResultUse.RECEIVER, forms=None,
                       pos=SinkPos.UNSPECIFIED)
-    whole = land.member == st
+    whole = land.read_as == st
     return StoredRead(_lower_expr(
         src, lc, declared, use=use,
         # An owned name's read IS its routed read -- the conversion reads
@@ -873,7 +875,9 @@ def _field_slot(stmt: TpyAssign, lc: _LowerCtx, declared: dict[str, TpyType],
         t = lc.analyzer.get_expr_type(stmt.target)
         decl_slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
                      if t is not None else None)
-    return field_slot_use(decl_slot, construct, lc.analyzer, lc.placement)
+    use = field_slot_use(decl_slot, construct, lc.analyzer, lc.placement)
+    return replace(use, dest=at_boundary(use.dest, lc.analyzer,
+                                         boundary_of(stmt, "value")))
 
 
 def _slot_class(slot: _ExprUse) -> SlotClass:
@@ -885,6 +889,17 @@ def _slot_class(slot: _ExprUse) -> SlotClass:
 def _slot_type(slot: _ExprUse) -> 'TpyType | None':
     """The declared slot every family classifies off (`_field_slot`)."""
     return slot.dest.type if slot.dest is not None else None
+
+
+def _landed_store(value: THIRExpr, slot: _ExprUse,
+                  lc: _LowerCtx) -> THIRExpr:
+    """A stored value in the union member sema landed it in at the
+    statement (`land_paths`); a family that converted it already left the
+    member on its conversion."""
+    dest = slot.dest
+    if dest is None or dest.holds is SlotHolds.POINTER:
+        return value
+    return land_paths(value, dest.type, dest.landing or {}, lc.analyzer)
 
 
 def lower_field_write(stmt: TpyAssign, lc: _LowerCtx,
@@ -911,7 +926,8 @@ def lower_field_write(stmt: TpyAssign, lc: _LowerCtx,
         else:
             value = lower(stmt, plan, slot, lc, declared, loc)
             target = _lower_field_write_target(stmt, lc, declared)
-        return THIRAssign(target=target, value=value, loc=loc)
+        return THIRAssign(target=target, value=_landed_store(value, slot, lc),
+                          loc=loc)
     note_detail("assign.field_write_shape")
     raise ThirUnsupported(stmt_reject_reason(stmt))
 
@@ -939,7 +955,8 @@ def lower_member_init_value(stmt: TpyAssign, lc: _LowerCtx,
         for classify, lower, _target_first in _FAMILIES:
             plan = classify(stmt, slot, lc, declared, lc.names_with("pointer"))
             if plan is not None:
-                return lower(stmt, plan, slot, lc, declared, loc)
+                return _landed_store(lower(stmt, plan, slot, lc, declared,
+                                           loc), slot, lc)
         note_detail("assign.field_write_shape")
         raise ThirUnsupported(stmt_reject_reason(stmt))
 

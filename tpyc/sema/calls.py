@@ -111,6 +111,7 @@ from .match import peel_match_qualifiers
 from .scope_tracker import lend_places
 from .elem_paths import owned_slot_paths
 from .compatibility import InferredSlot, TupleSink
+from .landings import Boundary, boundary_of, param_boundary
 from .protocols import (
     dynamic_dispatch_type_conforms, handle_payload_may_be, is_runtime_checkable,
     protocol_methods,
@@ -1164,7 +1165,7 @@ class CallAnalyzer:
             received = [call.args[at[i]] for i in filled]
             self.receive_winner_args(None, received, None,
                                      [params[i] for i in filled], callee,
-                                     call=call)
+                                     call=call, param_indices=filled)
             for i, arg in zip(filled, received):
                 call.args[at[i]] = arg
         return ArgLayout(call.args, call.binding, filled)
@@ -1317,7 +1318,8 @@ class CallAnalyzer:
                 arg = self.expr.live_part(arg)
             td_call.args[k] = self.compat.coerce_expr(
                 arg, arg_type, fld.type, f"argument '{fld.name}'",
-                coercion_ctx=CoercionContext.ARG, param=f"'{fld.name}'")
+                coercion_ctx=CoercionContext.ARG, param=f"'{fld.name}'",
+                boundary=param_boundary(td_call, i))
         self.ctx.set_expr_type(td_call, td_type)
         # Built analyzed: the receive meets it through its record.
         self.expr.note_analysis(td_call, td_type, None)
@@ -2265,6 +2267,7 @@ class CallAnalyzer:
                     default_arg, default_type, ret_type,
                     "getattr() default argument",
                     coercion_ctx=CoercionContext.ARG,
+                    boundary=param_boundary(expr, 2),
                 )
             else:
                 self.expr.analyze_expr(default_arg)
@@ -4142,7 +4145,7 @@ class CallAnalyzer:
             source = self.expr.live_part(written.at(at))
             self.compat.check_type_compatible(
                 typed.at(at), param_type, f"{expr.func_name}() argument",
-                source_expr=source,
+                source_expr=source, boundary=param_boundary(expr, i),
             )
             self.consume_at_iterating_slot(source, param_type, expr)
 
@@ -6327,6 +6330,7 @@ class CallAnalyzer:
                             contexts: 'list[str] | None' = None,
                             inferred_slots: 'Mapping[int, InferredSlot] | None' = None,
                             param_indices: 'Sequence[int] | None' = None,
+                            boundaries: 'Sequence[Boundary | None] | None' = None,
                             ) -> list[TpyType]:
         """The one receive step every winner and commit runs: each argument
         of `args` re-enters through the analysis entry rule at its
@@ -6375,6 +6379,8 @@ class CallAnalyzer:
         `inferred_slot`). `param_indices[i]`: the parameter of `declared`
         argument `i` binds (its binding's), which says whether the call
         resolves it -- given wherever `scope` scored the call.
+        `boundaries[i]`: the place receiving argument `i` (`landings`); by
+        default the call's parameter `param_indices[i]`.
         Returns the argument types received."""
         probing = not self.step_commits(call)
         # A callee Phase 2 inferred const may still write its argument
@@ -6408,7 +6414,11 @@ class CallAnalyzer:
                         own_checks=own_checks, contexts=contexts,
                         inferred_slot=(inferred_slots.get(i)
                                        if inferred_slots is not None
-                                       else None)))
+                                       else None),
+                        boundary=(boundaries[i] if boundaries is not None
+                                  else param_boundary(call, param_indices[i])
+                                  if param_indices is not None
+                                  and call is not None else None)))
             finally:
                 if at_declared:
                     scope.receiving = saved
@@ -6546,7 +6556,8 @@ class CallAnalyzer:
                      fresh_own: str,
                      value_ptr: bool, builtin_form: bool, own_checks: bool,
                      contexts: 'list[str] | None',
-                     inferred_slot: 'InferredSlot | None' = None) -> TpyType:
+                     inferred_slot: 'InferredSlot | None' = None,
+                     boundary: 'Boundary | None' = None) -> TpyType:
         """`receive_winner_args` for argument `args[i]` at `param`, under
         the receive's slot: its duties write only where it commits."""
         arg = args[i]
@@ -6602,7 +6613,8 @@ class CallAnalyzer:
                 arg, arg_type, check_ptype, context,
                 coercion_ctx=CoercionContext.ARG,
                 inferred_slot=inferred_slot,
-                param=self.param_label(declared, pname))
+                param=self.param_label(declared, pname),
+                boundary=boundary)
         # After the coercion: a handle's deref reads the place it points at.
         self.compat.note_open_same_t_arg(args[i], check_ptype)
         if vpc:
@@ -7246,7 +7258,7 @@ class CallAnalyzer:
 
     def _typecheck_and_coerce_arg(
         self, arg: TpyExpr, pname: str, ptype: TpyType,
-        func: FunctionInfo | None,
+        func: FunctionInfo | None, boundary: 'Boundary | None',
     ) -> TpyExpr:
         """One argument received at parameter `pname` of `func`
         (`receive_winner_args`) for the fixed and keyword-only parameters of
@@ -7255,7 +7267,8 @@ class CallAnalyzer:
         into the args list."""
         args = [arg]
         self.receive_winner_args(None, args, None, [(pname, ptype)], func,
-                                 fresh_own="reject_coro")
+                                 fresh_own="reject_coro",
+                                 boundaries=[boundary])
         return args[0]
 
     def _analyze_and_pack_varargs(self, expr: TpyCall | TpyMethodCall,
@@ -7303,8 +7316,8 @@ class CallAnalyzer:
         # Type-check fixed positional args
         for k in range(pack_at):
             p = func.params[order[k]]
-            args[k] = self._typecheck_and_coerce_arg(args[k], p.name, p.type,
-                                                     func)
+            args[k] = self._typecheck_and_coerce_arg(
+                args[k], p.name, p.type, func, param_boundary(expr, order[k]))
 
         # Type-check each variadic arg against element type T
         packed: list[int] = []
@@ -7346,7 +7359,8 @@ class CallAnalyzer:
                 coercion = self.compat.check_type_compatible(
                     unpacked_elem, elem_type, "*args (unpacked element)",
                     loc=getattr(arg, "loc", None),
-                    coercion_ctx=CoercionContext.ARG)
+                    coercion_ctx=CoercionContext.ARG,
+                    boundary=boundary_of(arg, "expr"))
                 if coercion is not None:
                     raise self.ctx.error(
                         f"Cannot unpack into *args: element type "
@@ -7359,15 +7373,16 @@ class CallAnalyzer:
         self.receive_winner_args(
             None, elements, None, [(va_param.name, elem_type)] * len(packed),
             func, call=expr, own_checks=False,
-            contexts=[f"*args element {i}" for i in packed])
+            contexts=[f"*args element {i}" for i in packed],
+            boundaries=[boundary_of(pack, "elements", i) for i in packed])
         for i, element in zip(packed, elements):
             vararg_exprs[i] = element
 
         # Type-check the keyword-only args the call spells
         for k in range(pack_at + 1, len(args)):
             p = func.params[order[k]]
-            args[k] = self._typecheck_and_coerce_arg(args[k], p.name, p.type,
-                                                     func)
+            args[k] = self._typecheck_and_coerce_arg(
+                args[k], p.name, p.type, func, param_boundary(expr, order[k]))
         pack.element_type = elem_type
 
     def commit_facts(self, site: 'TpyExpr | TpyStmt',
@@ -7596,7 +7611,8 @@ class CallAnalyzer:
         arg_type = self.expr.analyze_expr(arg)
         # The argument must be compatible with one of the union members
         # (check_type_compatible raises SemanticError on incompatibility)
-        self.compat.check_type_compatible(arg_type, union_type, "argument 'value'", expr)
+        self.compat.check_type_compatible(arg_type, union_type, "argument 'value'", expr,
+                                          boundary=param_boundary(expr, 0))
         expr.resolved_function_info = FunctionInfo(
             name=name,
             params=[("value", union_type)],
@@ -8279,7 +8295,9 @@ class CallAnalyzer:
         # via get_resolved_type's fi fallback, but a raw expr-type lookup needs
         # the cache entry.
         self.ctx.set_expr_type(synthetic, ret_type)
-        adopt_temp_call(expr, synthetic, type_args=False)
+        # The lowering converts the arguments at the synthetic call.
+        adopt_temp_call(self.ctx, expr, synthetic, type_args=False,
+                        converts_here=False)
         expr.dunder_call = synthetic
         return ret_type
 
@@ -8324,7 +8342,8 @@ class CallAnalyzer:
             )
         for i, ptype in enumerate(param_types):
             expr.args[i] = self._typecheck_and_coerce_arg(
-                expr.args[i], f"arg{i + 1}", ptype, None)
+                expr.args[i], f"arg{i + 1}", ptype, None,
+                param_boundary(expr, i))
         expr.resolved_function_info = FunctionInfo(
             name=label,
             params=[ParamInfo(f"arg{i + 1}", t) for i, t in enumerate(param_types)],

@@ -14,7 +14,7 @@ the form-carrying nodes slot in without reshaping the hierarchy.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, fields as dc_fields, replace
 from enum import Enum, auto
 from typing import TYPE_CHECKING, NamedTuple
@@ -24,9 +24,12 @@ from ..temp_schedule import banks_in_region
 from ..parse import ResultForm, RebindStorage, SourceLocation, TryTier
 from ..parse.nodes import NoneUse
 from ..coercions import coercion_rule
-from ..type_def_registry import ParamPassing
+from ..type_def_registry import ParamPassing, is_float32_type
+from ..sema.landings import literal_token_type
+from ..sema.int_narrowing import renders_its_argument
 from ..typesys import (
-    FloatLiteralType, IntLiteralType, NominalType, OwnType, Representation, ResolvedBinop, ResolvedUnaryop, TpyType,
+    FloatLiteralType, IntLiteralType, NominalType, OptionalType, OwnType,
+    RecursiveAliasInstanceType, UnionType, Representation, ResolvedBinop, ResolvedUnaryop, TpyType,
     TupleType, unwrap_qualifiers,
     certified_primitive_comparison, certified_primitive_conversion, certified_primitive_op,
     certified_primitive_promotion, certified_primitive_subscript, is_inert_leaf, is_owned_leaf,
@@ -239,6 +242,63 @@ class THIRExpr(THIRNode):
         return self.moved()
 
     @property
+    def unmoved(self) -> 'THIRExpr':
+        """The value a `std::move` hands over (this value where it moves
+        nothing): a view's move is the view itself."""
+        return self
+
+    @property
+    def rendered_type(self) -> 'TpyType | None':
+        """The TPy type whose C++ this node's render has (`landings.
+        renders_as`); None for a render no TPy type names (a string
+        literal's array) or an int literal, respelled at its slot."""
+        return self.result_type
+
+    @property
+    def spells_literal(self) -> bool:
+        """The node is a literal value (not `None`)."""
+        return False
+
+    def as_member_literal(self, member: TpyType,
+                          spell: 'Callable[[int], str]') -> 'THIRExpr | None':
+        """This value as an int literal spelled in union member `member`'s
+        own type (`spell` renders the value), None for any other value."""
+        return None
+
+    def into_member(self, member: TpyType,
+                    convert: 'Callable[[THIRExpr], THIRExpr]'
+                    ) -> 'THIRExpr | None':
+        """A sema coercion of a non-union value into a union, landed in
+        `member` (its passthrough inner converted by `convert`); None for
+        any other node."""
+        return None
+
+    def with_elements(self, convert: 'Callable[[int, THIRExpr], THIRExpr]'
+                      ) -> 'THIRExpr | None':
+        """A tuple literal with element `i` replaced by `convert(i, el)`;
+        None for any other node."""
+        return None
+
+    def with_held(self, convert: 'Callable[[THIRExpr], THIRExpr]'
+                  ) -> 'THIRExpr | None':
+        """Storage held for a full expression with the value it is
+        initialized from replaced by `convert(value)`; None for any other
+        node."""
+        return None
+
+    def with_construction_spelled(self, render: 'Callable[[TpyType], str]'
+                                  ) -> 'THIRExpr':
+        """This value with the type a temporary of the full expression is
+        built at from it spelled by `render`; itself for any other node."""
+        return self
+
+    def with_copy_spelled(self, cpp: str) -> 'THIRExpr':
+        """This copy (`THIRCopy`) with the type it constructs spelled
+        `cpp` -- under the union-member conversion it lands in, where it
+        sits under one."""
+        return replace(self, cpp_type=cpp)
+
+    @property
     def reads_raw_pointer(self) -> bool:
         """The C++ value is a raw pointer (`T*`) -- read off the node as it
         is now, so `source.pointer_held` can be kept equal to it."""
@@ -332,6 +392,23 @@ class THIRLiteral(THIRExpr):
     # `nullptr` from the base param slot). None keeps the positional arms.
     none_cpp: str | None = None
 
+    @property
+    def rendered_type(self) -> 'TpyType | None':
+        # A float32-typed float literal takes the `f` suffix (`emit`).
+        return literal_token_type(
+            self.value, float32=self.result_type is not None
+            and is_float32_type(self.result_type))
+
+    @property
+    def spells_literal(self) -> bool:
+        return self.value is not None
+
+    def as_member_literal(self, member: TpyType,
+                          spell: 'Callable[[int], str]') -> 'THIRExpr | None':
+        if not isinstance(self.value, int) or isinstance(self.value, bool):
+            return None
+        return replace(self, result_type=member, int_cpp=spell(self.value))
+
 
 @dataclass(frozen=True)
 class THIRDefaultConstruct(THIRExpr):
@@ -355,6 +432,14 @@ class THIRStrLiteral(THIRExpr):
     copy."""
     value: str
     form: Form = field(default=Form.VALUE, kw_only=True)
+
+    @property
+    def rendered_type(self) -> 'TpyType | None':
+        return None
+
+    @property
+    def spells_literal(self) -> bool:
+        return True
 
     @property
     def static_view(self) -> bool:
@@ -1242,6 +1327,25 @@ class THIRCall(THIRExpr):
     # receiver, a discarded statement); as on THIRCtorCall.
     full_expression_storage: THIROwnedRecord | None = None
 
+    @property
+    def _spells_its_argument(self) -> bool:
+        """A constructor whose template renders its argument unchanged
+        (`renders_its_argument`: `float32(1.5)` is `1.5f`): its render has
+        the argument's type."""
+        return renders_its_argument(self.cpp_template) and len(self.args) == 1
+
+    @property
+    def rendered_type(self) -> 'TpyType | None':
+        if self._spells_its_argument:
+            return self.args[0].rendered_type
+        return self.result_type
+
+    def as_member_literal(self, member: TpyType,
+                          spell: 'Callable[[int], str]') -> 'THIRExpr | None':
+        if self._spells_its_argument:
+            return self.args[0].as_member_literal(member, spell)
+        return None
+
 
 @dataclass(frozen=True)
 class THIRUnionArgLift(THIRExpr):
@@ -1270,6 +1374,9 @@ class THIRUnionArgLift(THIRExpr):
     value: THIRExpr | None = None  # None -> the monostate member
     deref: bool = False
     const_wrap: 'str | None' = None
+    # The member a record object is lent as, sema's landing (None for the
+    # monostate and for a union value passed on).
+    member: 'TpyType | None' = None
 
 
 @dataclass(frozen=True)
@@ -1433,6 +1540,10 @@ class THIRArgTemp(THIRExpr):
     # (`::tpy::detail::elided_slot<T>`, `fill([&]() -> T { return init; })`).
     fills_in_place: bool = False
 
+    def with_held(self, convert: 'Callable[[THIRExpr], THIRExpr]'
+                  ) -> 'THIRExpr | None':
+        return replace(self, init=convert(self.init))
+
     def would_bank(self) -> bool:
         """Will the conditional-operand machinery BANK this temp into the
         region (an uninit `std::optional<T>` slot plus a deferred
@@ -1476,6 +1587,14 @@ class THIRInlineTemp(THIRExpr):
     # The keep plan's lifetime for it; only a full-expression temporary is
     # realized inline (a kept one is seated instead).
     lifetime: 'SeatLifetime | None' = None
+
+    def with_held(self, convert: 'Callable[[THIRExpr], THIRExpr]'
+                  ) -> 'THIRExpr | None':
+        return replace(self, value=convert(self.value))
+
+    def with_construction_spelled(self, render: 'Callable[[TpyType], str]'
+                                  ) -> THIRExpr:
+        return replace(self, cpp_type=render(self.result_type))
 
 
 # The read id of a tuple's lambda-bound source (`THIRTupleLiteral.bound`):
@@ -1530,6 +1649,10 @@ class THIRMove(THIRExpr):
     (the working movable set + sema's `is_last_use`); the
     non-movable lvalue shape hoists a `THIRArgTemp` copy instead."""
     value: THIRExpr
+
+    @property
+    def unmoved(self) -> THIRExpr:
+        return self.value
 
 
 @dataclass(frozen=True)
@@ -1857,6 +1980,11 @@ class THIRTupleLiteral(THIRExpr):
     spelled_const: bool = field(default=False, kw_only=True)
     bound: 'THIRExpr | None' = field(default=None, kw_only=True)
 
+    def with_elements(self, convert: 'Callable[[int, THIRExpr], THIRExpr]'
+                      ) -> 'THIRExpr | None':
+        return replace(self, elements=tuple(
+            convert(i, el) for i, el in enumerate(self.elements)))
+
 
 @dataclass(frozen=True)
 class THIRBorrowTupleLiteral(THIRExpr):
@@ -1885,6 +2013,11 @@ class THIRBorrowTupleLiteral(THIRExpr):
     def __post_init__(self) -> None:
         assert not any(w is not None and a
                        for w, a in zip(self.elem_wraps, self.addr_of))
+
+    def with_elements(self, convert: 'Callable[[int, THIRExpr], THIRExpr]'
+                      ) -> 'THIRExpr | None':
+        return replace(self, elements=tuple(
+            convert(i, el) for i, el in enumerate(self.elements)))
 
 
 @dataclass(frozen=True)
@@ -2007,6 +2140,15 @@ class THIRGenExpr(THIRExpr):
     frame_captures: tuple = ()
 
 
+# The conversion of a value into the union member sema landed it in, where
+# the value's own render is not that alternative's C++ type: a prvalue of
+# the member (`static_cast<int64_t>(c)`).
+UNION_MEMBER_COERCION = "union_member"
+# A subclass object lent as the base member sema landed it in: a reference
+# to the object as that base (`static_cast<const Mid&>(leaf)`).
+UNION_MEMBER_OBJECT_COERCION = "union_member_object"
+
+
 @dataclass(frozen=True)
 class THIRCoerce(THIRExpr):
     """A sema-inserted coercion made explicit on the IR. Two emit shapes:
@@ -2029,13 +2171,46 @@ class THIRCoerce(THIRExpr):
     expr: THIRExpr
     coercion_name: str
     wrap: 'str | None' = None
+    # A non-union value converted into a union (or into an Optional whose
+    # payload is one): the member sema landed it in, read from the
+    # receiving boundary's record (`sema.landings`).
+    member: 'TpyType | None' = None
 
     @property
     def uncoerced(self) -> THIRExpr:
         return self.expr.uncoerced
 
+    @property
+    def rendered_type(self) -> 'TpyType | None':
+        if self.wrap is None:
+            return self.expr.rendered_type
+        return self.member if self.member is not None else self.result_type
+
+    def into_member(self, member: TpyType,
+                    convert: 'Callable[[THIRExpr], THIRExpr]'
+                    ) -> 'THIRExpr | None':
+        if (self.member is not None
+                and unwrap_readonly(self.member) == unwrap_readonly(member)):
+            # Landed already in this member (a value reaching two readers of
+            # one boundary).
+            return self
+        target = unwrap_readonly(self.result_type)
+        if isinstance(target, OptionalType):
+            target = unwrap_readonly(target.inner)
+        if not isinstance(target, (UnionType, RecursiveAliasInstanceType)):
+            return None
+        if self.wrap is not None:
+            # Sema's coercion renders into the member already.
+            return replace(self, member=member)
+        inner = convert(self.expr)
+        # A passthrough carries its inner's form.
+        return replace(self, expr=inner, member=member, form=inner.form)
+
     def moved_under_coercions(self) -> THIRExpr:
         return replace(self, expr=self.expr.moved_under_coercions())
+
+    def with_copy_spelled(self, cpp: str) -> THIRExpr:
+        return replace(self, expr=self.expr.with_copy_spelled(cpp))
 
     def _conversion(self) -> str:
         """One classification of the coercion for a loan model: "certified",
@@ -3239,8 +3414,10 @@ class THIRFinallyDeferredReturn(THIRStmt):
     a C++-local shadow of the frame field suppress the peel. `indirect` adds
     the `(*p)` lvalue wrap a pointer-bound local
     needs before the address-of; `optional_move` picks the materialize arm
-    (`::tpy::ptr_to_optional_move(p)` vs `std::move(*p)`). The `__tpy_retp_N`
-    name draws from the emit-side iter counter.
+    (`::tpy::ptr_to_optional_move(p)` vs `std::move(*p)`). A union result
+    converts the moved object at the member sema landed it in: `materialize`
+    is that conversion of the temp read `read_id`, which names `(*p)`. The
+    `__tpy_retp_N` name draws from the emit-side iter counter.
 
     A resumable frame carries the same node through its leaf seam rather than
     emitting it: the Poll wrap and done-state transition around the capture
@@ -3248,6 +3425,8 @@ class THIRFinallyDeferredReturn(THIRStmt):
     capture: 'THIRExpr | None' = None
     indirect: bool = False
     optional_move: bool = False
+    materialize: 'THIRExpr | None' = None
+    read_id: int | None = None
     # A bare `x: T` parameter's capture: the `T` spelling its materialize
     # is decided by per instantiation (`::tpy::param_to_return_last<T>`,
     # moved at `T = Own[X]`, lent at `T = P`). None otherwise.

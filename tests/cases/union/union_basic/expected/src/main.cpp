@@ -24,7 +24,7 @@ void accept_three(const ::tpy::Union<bool, int32_t, std::string>& x) {
 //     print("ok")
 void test() {
     ::tpy::Union<int32_t, std::string> a = 10;
-    ::tpy::Union<int32_t, std::string> b = "hello";
+    ::tpy::Union<int32_t, std::string> b = static_cast<std::string>("hello");
     ::tpyapp::main::accept_two(a);
     ::tpyapp::main::accept_two(b);
     ::tpy::Union<bool, int32_t, std::string> c = true;

@@ -268,7 +268,7 @@ inline Base::Base(int32_t n) : n(n) {}
 
 // def __init__(self, d: Own[Der]) -> None:  # tpyc: ok
 //     self.u = d  # tpyc: warning(/upcast narrows/)
-inline HU::HU(Der&& d) : u(std::move(d)) {}
+inline HU::HU(Der&& d) : u(static_cast<Base&&>(std::move(d))) {}
 
 // def __init__(self, n: int32) -> None:
 //     super().__init__(n)

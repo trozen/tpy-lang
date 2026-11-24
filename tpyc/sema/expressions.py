@@ -96,6 +96,8 @@ from .binding_ownership import CompMove, step_handover_paths
 from .elem_paths import leaf_paths
 from .compatibility import (TupleSink, callable_slot_spelling,
                             fresh_at_borrow_slot)
+from .landings import (Boundary, boundary_of, move_holder,
+                       subscript_boundary, union_members)
 from .narrowing import NarrowingTracker
 from .flow_facts import Branch, FlowFacts
 from .dead_arms import (decided_truth, folded_truth, narrows_past_literal,
@@ -104,7 +106,8 @@ from .numeric_lattice import widen_numeric_types, join_numeric, smallest_common_
 from .list_elem import (Role, container_call, container_calls, iterated_step,
                         without_mutable_twins,
                         protocol_is_elem_blind)
-from .pending_num import (ContainerCells, PendingNumCell, PendingNums,
+from .pending_num import (ContainerCells, PENDING_NUM_COERCION,
+                          PendingNumCell, PendingNums,
                           int_tparam_conversion,
                           pairs_as,
                           receives_pending, value_leaves,
@@ -1127,11 +1130,22 @@ class ExpressionAnalyzer:
         for f in dc_fields(expr):
             value = getattr(expr, f.name)
             if isinstance(value, TpyCoerce):
+                self._cancel_peeled(value)
                 setattr(expr, f.name, peel_coercions(value))
             elif isinstance(value, list):
                 for i, item in enumerate(value):
                     if isinstance(item, TpyCoerce):
+                        self._cancel_peeled(item)
                         value[i] = peel_coercions(item)
+
+    def _cancel_peeled(self, coerce: TpyCoerce) -> None:
+        """A pending placeholder among the coercions a step peels resolves
+        to nothing: the step re-places its own."""
+        node: TpyExpr = coerce
+        while isinstance(node, TpyCoerce) and node.by_step:
+            if node.coercion is PENDING_NUM_COERCION:
+                self.pend.cancel(node)
+            node = node.expr
 
     def _run_analysis(self, expr: TpyExpr, slot: SlotHint | None,
                       coercion_ctx: CoercionContext | None,
@@ -2833,7 +2847,8 @@ class ExpressionAnalyzer:
             if unwrap_readonly(operand_type) != unwrap_readonly(result):
                 setattr(expr, attr, self.compat.coerce_expr(
                     getattr(expr, attr), operand_type, result,
-                    context, coercion_ctx=CoercionContext.INIT))
+                    context, coercion_ctx=CoercionContext.INIT,
+                    boundary=boundary_of(expr, attr)))
 
     def _logical_op_result_type(self, expr: TpyBinOp, left: TpyType,
                                 right: TpyType,
@@ -2871,11 +2886,13 @@ class ExpressionAnalyzer:
             return BOOL
         # The operands are not coerced, but a literal must still fit the
         # joined type: `u or 300` over a uint8 would otherwise wrap.
-        for operand, operand_type in ((expr.left, lt), (expr.right, rt)):
+        for attr, operand, operand_type in (("left", expr.left, lt),
+                                            ("right", expr.right, rt)):
             if isinstance(operand_type, IntLiteralType):
                 self.compat.check_type_compatible(
                     operand_type, result, "logical operand", operand.loc,
-                    source_expr=operand, coercion_ctx=CoercionContext.INIT)
+                    source_expr=operand, coercion_ctx=CoercionContext.INIT,
+                    boundary=boundary_of(expr, attr))
         self._commit_select(expr, result, (), "logical operand")
         return result
 
@@ -3295,10 +3312,15 @@ class ExpressionAnalyzer:
                         continue
                     if lt != rt:
                         try:
-                            self.compat.check_type_compatible(lt, rt, "tuple comparison", source_expr=expr)
+                            self.compat.check_type_compatible(
+                                lt, rt, "tuple comparison", source_expr=expr,
+                                boundary=boundary_of(expr, "operands", i))
                         except SemanticError:
                             try:
-                                self.compat.check_type_compatible(rt, lt, "tuple comparison", source_expr=expr)
+                                self.compat.check_type_compatible(
+                                    rt, lt, "tuple comparison",
+                                    source_expr=expr,
+                                    boundary=boundary_of(expr, "operands", i))
                             except SemanticError:
                                 raise self.ctx.error(
                                     f"Cannot compare tuple element {i}: "
@@ -3416,7 +3438,8 @@ class ExpressionAnalyzer:
                             # its keys must fit them once they settle.
                             self.compat.check_type_compatible(
                                 left_type, lookup, "membership test",
-                                loc=expr.loc, source_expr=expr.left)
+                                loc=expr.loc, source_expr=expr.left,
+                                boundary=boundary_of(expr, "left"))
                             return BOOL
                         runtime = binds_runtime_symbol(original_method)
                         if not runtime:
@@ -3429,12 +3452,15 @@ class ExpressionAnalyzer:
                             needle_args = [expr.left]
                             self.calls.receive_winner_args(
                                 None, needle_args, [left_type],
-                                matched.params[:1], original_method)
+                                matched.params[:1], original_method,
+                                boundaries=[boundary_of(expr, "left")])
                             expr.left = needle_args[0]
                             self.calls.commit_facts(
                                 expr, matched,
                                 CallOperands(matched, expr.right,
                                              needle_args))
+                        else:
+                            self._needle_landing(expr, left_type, right_type)
                         expr.contains_call = TpyMethodCall(
                             obj=expr.right, method="__contains__",
                             args=[expr.left], resolved_function_info=matched,
@@ -3443,6 +3469,10 @@ class ExpressionAnalyzer:
                             loc=expr.loc)
                         self.ctx.set_expr_type(expr.contains_call,
                                                matched.return_type)
+                        # The needle is converted as the synthesized call's
+                        # argument.
+                        move_holder(self.ctx, expr, ("left", None),
+                                    expr.contains_call, ("param", 0))
                         if not runtime:
                             # It runs TPy code: the kills of the explicit
                             # call.
@@ -3469,6 +3499,7 @@ class ExpressionAnalyzer:
                             left_type, param_type,
                             f"membership test (expected {param_type})",
                             loc=expr.loc,
+                            boundary=boundary_of(expr, "left"),
                         )
                     else:
                         expected_str = " or ".join(
@@ -3516,6 +3547,7 @@ class ExpressionAnalyzer:
                     # implicit `h.__iter__()` call, as a `for` over it is.
                     # A readonly haystack is not rejected here (the readonly
                     # rule for an implicit `__iter__` is an open decision).
+                    self._needle_landing(expr, left_type, right_type)
                     iter_recv = unwrap_readonly(right_type)
                     if (isinstance(iter_recv, NominalType)
                             and iter_recv.is_user_record):
@@ -3695,9 +3727,29 @@ class ExpressionAnalyzer:
                 return
         expr.resolved_binop = result
 
+    def _needle_landing(self, expr: TpyBinOp, left_type: TpyType,
+                        haystack: TpyType) -> None:
+        """A native membership test compares the needle with each element
+        by value: with union elements, as the member the needle lands in,
+        which the check records at the needle's boundary."""
+        elem = IterableHelper(self.ctx).get_iterable_element_type_or_none(
+            haystack)
+        if (elem is None or union_members(elem) is None
+                or union_members(left_type) is not None
+                or not self.ctx.slot_step_commits()
+                # A needle no member takes is simply absent.
+                or not self.compat.is_type_compatible(
+                    left_type, unwrap_readonly(elem))):
+            return
+        self.compat.check_type_compatible(
+            left_type, unwrap_readonly(elem), "membership test",
+            loc=expr.loc, source_expr=expr.left,
+            boundary=boundary_of(expr, "left"))
+
     def receive_dunder_operand(self, operand: TpyExpr, operand_type: TpyType,
                                result: ResolvedBinop,
-                               scope: 'OpenCallArgs | None' = None,
+                               scope: 'OpenCallArgs | None' = None, *,
+                               boundary: 'Boundary | None' = None,
                                ) -> TpyExpr | None:
         """A record's operator dunder answers as the explicit call to it
         (`answers_as_call`): `operand`, the one at its parameter, is
@@ -3735,7 +3787,8 @@ class ExpressionAnalyzer:
         args = [operand]
         self.calls.receive_winner_args(
             scope, args, [operand_type],
-            self.operators.received_params(result), method.root)
+            self.operators.received_params(result), method.root,
+            boundaries=[boundary])
         return args[0]
 
     def _receive_dunder_operand(self, expr: TpyBinOp, result: ResolvedBinop,
@@ -3749,13 +3802,15 @@ class ExpressionAnalyzer:
             return False
         receiver = result.receiver_of(expr.left, expr.right)
         if receiver is expr.left:
-            received = self.receive_dunder_operand(expr.right, right_type,
-                                                   result, scope)
+            received = self.receive_dunder_operand(
+                expr.right, right_type, result, scope,
+                boundary=boundary_of(expr, "right"))
             if received is not None:
                 expr.right = received
         else:
-            received = self.receive_dunder_operand(expr.left, left_type,
-                                                   result, scope)
+            received = self.receive_dunder_operand(
+                expr.left, left_type, result, scope,
+                boundary=boundary_of(expr, "left"))
             if received is not None:
                 expr.left = received
         if received is None:
@@ -4715,6 +4770,7 @@ class ExpressionAnalyzer:
                         source_expr=expr.elements[i - 1],
                         coercion_ctx=CoercionContext.INIT,
                         target_is_storage_form=True,
+                        boundary=boundary_of(expr, "elements", i - 1),
                     )
                 except SemanticError:
                     if self.pend.list_cells(elem_type) is not None:
@@ -4729,7 +4785,8 @@ class ExpressionAnalyzer:
                 expr.elements[i - 1] = self.compat.materialize_fresh_value(
                     expr.elements[i - 1], elem_type, expected_elem,
                     f"array literal element {i}", coercion,
-                    CoercionContext.INIT, target_is_storage_form=True)
+                    CoercionContext.INIT, target_is_storage_form=True,
+                    boundary=boundary_of(expr, "elements", i - 1))
         else:
             # Inferred mode: check all elements against first element's type
             first_type = elem_types[0]
@@ -5138,7 +5195,8 @@ class ExpressionAnalyzer:
                               (IntLiteralType, FloatLiteralType)):
                 expr.value = self.compat.coerce_expr(
                     expr.value, strip_int(value_type), var_type,
-                    f"variable '{name}'", coercion_ctx=CoercionContext.ASSIGN)
+                    f"variable '{name}'", coercion_ctx=CoercionContext.ASSIGN,
+                    boundary=boundary_of(expr, "value"))
             resolved = existing
             result_type = existing
         elif existing is not None:
@@ -5522,7 +5580,8 @@ class ExpressionAnalyzer:
                     self.compat.check_type_compatible(
                         kt, expected_key, f"dict literal key {i}", expr.loc,
                         source_expr=expr.keys[i - 1],
-                        target_is_storage_form=True)
+                        target_is_storage_form=True,
+                        boundary=boundary_of(expr, "keys", i - 1))
                 except SemanticError:
                     exp_s, act_s = self.ctx.type_pair(expected_key, kt)
                     raise self.ctx.error(
@@ -5571,7 +5630,8 @@ class ExpressionAnalyzer:
                     self.compat.check_type_compatible(
                         vt, expected_value, f"dict literal value {i}", expr.loc,
                         source_expr=expr.values[i - 1],
-                        target_is_storage_form=True)
+                        target_is_storage_form=True,
+                        boundary=boundary_of(expr, "values", i - 1))
                 except SemanticError:
                     exp_s, act_s = self.ctx.type_pair(expected_value, vt)
                     raise self.ctx.error(
@@ -5680,7 +5740,8 @@ class ExpressionAnalyzer:
                     self.compat.check_type_compatible(
                         et, expected_elem, f"set literal element {i}", expr.loc,
                         source_expr=expr.elements[i - 1],
-                        target_is_storage_form=True)
+                        target_is_storage_form=True,
+                        boundary=boundary_of(expr, "elements", i - 1))
                 except SemanticError:
                     exp_s, act_s = self.ctx.type_pair(expected_elem, et)
                     raise self.ctx.error(
@@ -6427,7 +6488,8 @@ class ExpressionAnalyzer:
             expr.element_expr = self.compat.coerce_expr(
                 expr.element_expr, result_elem_type, expected_elem,
                 f"{kind} comprehension element", coercion_ctx=CoercionContext.INIT,
-                target_is_storage_form=True)
+                target_is_storage_form=True,
+                boundary=boundary_of(expr, "element_expr"))
             result_elem_type = expected_elem
 
         if kind == "set":
@@ -6577,13 +6639,15 @@ class ExpressionAnalyzer:
             expr.key_expr = self.compat.coerce_expr(
                 expr.key_expr, key_type, expected_key,
                 "dict comprehension key", coercion_ctx=CoercionContext.INIT,
-                target_is_storage_form=True)
+                target_is_storage_form=True,
+                boundary=boundary_of(expr, "key_expr"))
             key_type = expected_key
         if expected_value is not None and value_type != expected_value:
             expr.value_expr = self.compat.coerce_expr(
                 expr.value_expr, value_type, expected_value,
                 "dict comprehension value", coercion_ctx=CoercionContext.INIT,
-                target_is_storage_form=True)
+                target_is_storage_form=True,
+                boundary=boundary_of(expr, "value_expr"))
             value_type = expected_value
 
         self.type_ops.validate_hashable_container_elem(key_type, "dict key", expr.loc)
@@ -7248,7 +7312,8 @@ class ExpressionAnalyzer:
         expr.written_index = expr.index
         expr.index = self.compat.coerce_expr(
             expr.index, key_type, index, f"argument '{name}'",
-            coercion_ctx=CoercionContext.ARG, param=f"'{name}'")
+            coercion_ctx=CoercionContext.ARG, param=f"'{name}'",
+            boundary=subscript_boundary(expr, SubscriptDunder.GET.value, 0))
 
     def _protocol_getitem_index(
             self, protocol: NominalType) -> tuple[str, TpyType] | None:
@@ -7392,13 +7457,19 @@ class ExpressionAnalyzer:
         labels: list[str | None] = [
             self.subscript_arg_context(expr, receiver, i, [fi])
             for i in range(len(received))]
+        boundaries = [subscript_boundary(expr, kind.value, p,
+                                         value=value_received
+                                         and p == len(received) - 1)
+                      for p in range(len(received))]
         if isinstance(expr.index, TpySlice):
             # The slice is built at the variant's slice type as written.
             received, types, params = received[1:], types[1:], params[1:]
             labels = labels[1:]
+            boundaries = boundaries[1:]
         self.calls.receive_winner_args(None, received, types, params,
                                        method.root, call=expr,
-                                       contexts=labels)
+                                       contexts=labels,
+                                       boundaries=boundaries)
         if not isinstance(expr.index, TpySlice):
             expr.index = received.pop(0)
             if self.ctx.slot_step_commits():
@@ -7804,7 +7875,8 @@ class ExpressionAnalyzer:
             try:
                 self.compat.check_type_compatible(
                     body_type, fn_type.return_type,
-                    "lambda return", loc=expr.loc)
+                    "lambda return", loc=expr.loc,
+                    boundary=boundary_of(expr, "body"))
             except SemanticError:
                 if self.pend.list_cells(body_type) is not None:
                     # The refusal names the list and its annotation.
@@ -7826,7 +7898,8 @@ class ExpressionAnalyzer:
         if not isinstance(fn_type.return_type, VoidType):
             expr.body = self.compat.coerce_expr(
                 expr.body, body_type, fn_type.return_type, "lambda return",
-                coercion_ctx=CoercionContext.RETURN, is_return=True)
+                coercion_ctx=CoercionContext.RETURN, is_return=True,
+                boundary=boundary_of(expr, "body"))
 
         expr.inferred_return_type = contract
         return fn_type

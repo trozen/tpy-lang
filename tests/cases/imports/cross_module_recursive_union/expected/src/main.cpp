@@ -53,7 +53,7 @@ void main() {
     std::cout << ::tpy::print_bool(::tpyapp::main::is_null(a)) << "\n" << ::tpy::check_signals;
     ::tpyapp::pkg_v::V nl = std::monostate{};
     std::cout << ::tpy::print_bool(::tpyapp::main::is_null(nl)) << "\n" << ::tpy::check_signals;
-    Holder h = Holder(7);
+    Holder h = Holder(::tpyapp::pkg_v::V(::tpy::BigInt(7)));
     std::cout << ::tpyapp::pkg_v::kind(h.value) << "\n" << ::tpy::check_signals;
     ::tpyapp::pkg_v::V tmp = ::tpyapp::pkg_v::make_int();
     ::tpyapp::pkg_v::V& w = ::tpyapp::main::wrap(tmp);

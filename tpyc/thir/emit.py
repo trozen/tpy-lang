@@ -2940,6 +2940,11 @@ def _deferred_return_capture(stmt: THIRFinallyDeferredReturn,
         return ([f"auto* {ptr} = {base};"],
                 f"::tpy::ptr_to_optional_move({ptr})")
     lvalue = f"(*{base})" if stmt.indirect else base
+    if stmt.materialize is not None:
+        assert stmt.read_id is not None
+        state.temps.name_read(stmt.read_id, f"(*{ptr})")
+        return ([f"auto* {ptr} = &({lvalue});"],
+                _emit_expr(stmt.materialize, state))
     if stmt.open_t is not None:
         return ([f"auto* {ptr} = &({lvalue});"],
                 f"::tpy::param_to_return_last<{stmt.open_t}>(*{ptr})")

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(int_leaves([1, "a", [2, 3], 4]))
 void main() {
-    std::cout << ::tpyapp::shapes::int_leaves(::tpyapp::shapes::Shape(std::vector<::tpyapp::shapes::Shape>{1, "a", std::vector<::tpyapp::shapes::Shape>{2, 3}, 4})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::shapes::int_leaves(::tpyapp::shapes::Shape(std::vector<::tpyapp::shapes::Shape>{1, static_cast<std::string>("a"), std::vector<::tpyapp::shapes::Shape>{2, 3}, 4})) << "\n" << ::tpy::check_signals;
 }
 
 // # A non-generic recursive union (Shape) defined in another module, consumed via

@@ -52,7 +52,7 @@ const Expr& first_view(const Expr& e) {
 // def build() -> Own[Expr]:
 //     return [5, 6]
 Expr build() {
-    return std::vector<Expr>{5, 6};
+    return std::vector<Expr>{::tpy::BigInt(5), ::tpy::BigInt(6)};
 }
 
 // def main() -> None:
@@ -62,7 +62,7 @@ Expr build() {
 //     print(leaf_count(build()))
 void main() {
     std::cout << ::tpyapp::main::leaf_count(::tpyapp::main::get_global()) << "\n" << ::tpy::check_signals;
-    Expr seed = std::vector<Expr>{7, std::vector<Expr>{8, 9}};
+    Expr seed = std::vector<Expr>{::tpy::BigInt(7), std::vector<Expr>{::tpy::BigInt(8), ::tpy::BigInt(9)}};
     std::cout << ::tpyapp::main::leaf_count(::tpyapp::main::first_view(seed)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::leaf_count(::tpyapp::main::build()) << "\n" << ::tpy::check_signals;
 }
@@ -75,7 +75,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    g = std::vector<Expr>{1, std::vector<Expr>{2, 3}, 4};
+    g = std::vector<Expr>{::tpy::BigInt(1), std::vector<Expr>{::tpy::BigInt(2), ::tpy::BigInt(3)}, ::tpy::BigInt(4)};
     ::tpyapp::main::main();
 }
 

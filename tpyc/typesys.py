@@ -5733,6 +5733,30 @@ def recursive_union_alternatives(typ: 'TpyType') -> 'tuple[TpyType, ...] | None'
     return None
 
 
+def cpp_alternative(t: 'TpyType') -> 'TpyType | None':
+    """The type naming the C++ alternative a union member of type `t` is:
+    the member under its access and ownership wrappers, a `Literal` -- at
+    any depth -- as its base type. None for a class, which is spelled
+    qualified by its module where it is emitted, so two never share one."""
+    t = repr_shape(t)
+    if getattr(t, "is_user_record", False):
+        return None
+    return _literal_erased(t)
+
+
+def _literal_erased(t: 'TpyType') -> 'TpyType':
+    while isinstance(t, LiteralType):
+        t = t.base_type
+    return t.map_inner_types(_literal_erased)
+
+
+def members_share_alternative(members: tuple['TpyType', ...]) -> bool:
+    """Whether two of a union's `members` are one C++ alternative
+    (`cpp_alternative`)."""
+    alts = [a for a in map(cpp_alternative, members) if a is not None]
+    return len(set(alts)) < len(alts)
+
+
 @dataclass(frozen=True)
 class UnionType(TpyType):
     """Union of multiple types: A | B | C -> std::variant<A, B, C>.
@@ -5791,6 +5815,11 @@ class UnionType(TpyType):
 
     def has_none_member(self) -> bool:
         return any(is_void_like_type(m) for m in self.members)
+
+    def shares_alternative(self) -> bool:
+        """Two members are one C++ alternative (`Literal["a"] |
+        Literal["b"]`, `str | Literal["x"]`)."""
+        return members_share_alternative(self.members)
 
     def is_value_type(self) -> bool:
         # Note: recursive union aliases (type Tree = int | list[Tree]) have

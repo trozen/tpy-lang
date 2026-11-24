@@ -206,7 +206,7 @@ std::string fin_str(std::string x) {
             auto* __tpy_retp_0 = &(x);
             __fin_ran_3 = true;
             std::cout << "fin_str" << " " << x << "\n" << ::tpy::check_signals;
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_3) {
                 std::cout << "fin_str" << " " << x << "\n" << ::tpy::check_signals;
@@ -255,7 +255,7 @@ int32_t fin_int(int32_t x) {
             auto* __tpy_retp_0 = &(v);
             __fin_ran_5 = true;
             std::cout << "fin_string" << " " << v << "\n" << ::tpy::check_signals;
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_5) {
                 std::cout << "fin_string" << " " << v << "\n" << ::tpy::check_signals;
@@ -281,7 +281,7 @@ std::string fin_string_own(std::string_view s) {
             auto* __tpy_retp_0 = &(v);
             __fin_ran_6 = true;
             std::cout << "fin_string_own" << " " << v << "\n" << ::tpy::check_signals;
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_6) {
                 std::cout << "fin_string_own" << " " << v << "\n" << ::tpy::check_signals;
@@ -306,7 +306,7 @@ std::string fin_plain_str(std::string_view s) {
             auto* __tpy_retp_0 = &(v);
             __fin_ran_7 = true;
             std::cout << "fin_plain_str" << " " << v << "\n" << ::tpy::check_signals;
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_7) {
                 std::cout << "fin_plain_str" << " " << v << "\n" << ::tpy::check_signals;

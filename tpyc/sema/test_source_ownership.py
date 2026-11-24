@@ -5000,8 +5000,10 @@ def test_the_render_gate_fails_on_a_move_the_lowering_copies(
     # where the lowering would copy.
     monkeypatch.setattr(_lower_expressions, "_moves_here",
                         lambda name, lc: False)
-    monkeypatch.setattr(_lower_convert, "tuple_moves",
+    monkeypatch.setattr(_lower_convert, "read_moves",
                         lambda s, movable=None: False)
+    monkeypatch.setattr(_lower_convert, "tuple_moves",
+                        lambda *args, **kwargs: False)
     with pytest.raises(AssertionError, match=_MOVE_NOT_RENDERED):
         _assert_move_leaves_render_moves(compiler, _entry(modules), source)
 

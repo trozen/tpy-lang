@@ -27,7 +27,7 @@ namespace tpyapp::main {
                 (*b).v = ::tpy::add_check<int32_t>((*b).v, 10);
                 std::cout << (*b).v << "\n" << ::tpy::check_signals;
                 __state = S_DONE;
-                return ::tpystd::tpy::Poll<Box>::ready(std::move(*__tpy_retp_0));
+                return ::tpystd::tpy::Poll<Box>::ready(std::move((*__tpy_retp_0)));
             } catch (...) {
                 if (!__fin_ran_1) {
                     (*b).v = ::tpy::add_check<int32_t>((*b).v, 10);

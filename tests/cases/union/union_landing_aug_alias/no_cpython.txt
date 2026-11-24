@@ -1,0 +1,4 @@
+The in-place update is the warned divergence under test
+(BUGS.md#borrow-unpack-target-rebind-writes-through): TPy updates the
+target's object, which the alias `w` sees, where CPython rebinds `v` to the
+reflected dunder's result and `w` keeps the old object.

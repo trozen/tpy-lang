@@ -1310,7 +1310,7 @@ struct __gen_tagged_gen : public ::tpy::next_iter_mixin<__gen_tagged_gen, int32_
     int32_t n;
     Tagged t{};
     Tagged x{};
-    using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<Tagged, 2>{Tagged(2, 2), Tagged(3, 3)}))>;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<Tagged, 2>{Tagged(::tpy::Union<int32_t, std::string>(2), 2), Tagged(::tpy::Union<int32_t, std::string>(3), 3)}))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;

@@ -409,6 +409,9 @@ class BindingRepr:
     movable: bool = False
     move_exception: 'MoveRow | None' = None
     move_forced: 'MoveRow | None' = None
+    # The body's own object, which a returned id-expression moves
+    # implicitly, whatever row keeps its other reads from moving.
+    owns: bool = False
     # What a resumable frame member is (`frame_local_class`; a frame's
     # parameter is PLAIN): None for a binding the frame does not hold.
     frame_class: 'FrameLocalClass | None' = None
@@ -709,6 +712,13 @@ class Source:
     def param_type(self) -> TpyType | None:
         """The declared type of the parameter a NAME read reads."""
         return self.binding.param_type if self.binding is not None else None
+
+    @property
+    def owns_object(self) -> bool:
+        """A NAME read of its binding's own object (`BindingRepr.owns`);
+        whether the read's body is that binding's is the implicit move's
+        (`captured`, decided with it in `_convert`)."""
+        return self.binding is not None and self.binding.owns
 
     @property
     def open_t_form(self) -> bool:

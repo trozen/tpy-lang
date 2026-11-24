@@ -48,7 +48,7 @@ int32_t pick(const ::tpy::Union<double, int32_t>& v) {
 void main() {
     std::cout << ::tpyapp::main::consume(A(7)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::consume(B(20)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::pick(3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(::tpy::Union<double, int32_t>(3)) << "\n" << ::tpy::check_signals;
     int32_t t = 0;
     while ((::tpyapp::main::consume(A(2)) > t)) {
         t = (::tpy::add_check<int32_t>(t, 1));

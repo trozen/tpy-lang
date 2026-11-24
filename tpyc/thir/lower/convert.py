@@ -26,9 +26,13 @@ from ...sema.alias_rebind import (bare_tuple, is_reference_leaf, leaves_at,
                                   reference_paths)
 from ...sema.context import ElemPath, paths_overlap
 from ...sema.dyn_erasure import dyn_forward_ok
+from ...sema.landings import landing_exempt, renders_as, union_members
+from ...codegen_cpp.int_literals import render_int_literal_value
+from ...type_def_registry import is_big_int_type, is_fixed_int_type
 from ...sema.own_copy import contains_reference_type
 from ...type_def_registry import has_view_param_form, owned_from_view_explicit
 from ...typesys import (
+    AliasRef,
     open_type_param,
     by_value_optional_payload,
     contains_type_param,
@@ -40,6 +44,7 @@ from ...typesys import (
     holds_borrowing_view,
     IntLiteralType,
     is_dyn_protocol,
+    is_protocol_type,
     lands_in_indirection,
     lands_in_view_member,
     LiteralType,
@@ -69,6 +74,7 @@ from ..nodes import (
     THIRInlineTemp,
     THIRExpr,
     THIRFormConvert, OpenTSink,
+    THIRCoerce, UNION_MEMBER_COERCION, UNION_MEMBER_OBJECT_COERCION,
     THIRLiteral,
     THIRMove,
     THIROptionalPtrArg,
@@ -84,7 +90,8 @@ from ..source import (BindingForm, BindingRepr, Held, MoveRow, Source,
                       TraitAbi, copy_permitted, path_permitted,
                       tuple_elems)
 from .context import (Slot, SlotConstruct, SlotHolds, SlotLifetime,
-                      SlotPosition, lends_elements, slot_for, storage_type)
+                      SlotPosition, at_landing_of, lends_elements, slot_for,
+                      storage_type)
 from .checks import _covariant_record_upcast_ok, _record_slice_upcast_ok
 from .predicates import (
     tuple_stores_into,
@@ -130,9 +137,6 @@ class Plan:
     # A COPY that constructs this type (`Source.copy_type`): `expr` is the
     # `THIRCopy`, whose C++ spelling the sink supplies (`spelled`).
     copy_type: TpyType | None = None
-    # The slot's type a temporary of the full expression is built at from
-    # the value (`expr` is the `THIRInlineTemp`), spelled by the sink.
-    built_type: TpyType | None = None
     # The leaves the plan copies out of existing storage -- none a moved
     # leaf authorizes -- each as its path in the converted read and the
     # type it lands in (`_copy_permitted` checks them).
@@ -151,14 +155,15 @@ def held_object_type(expr: THIRExpr, slot_t: TpyType, types) -> TpyType:
 
 
 def spelled(plan: Plan, render) -> THIRExpr:
-    """The plan's expression with its copy's type spelled by the sink's
-    type renderer: the conversion decides the copy, the sink knows how its
-    module spells a type."""
-    if plan.built_type is not None:
-        return replace(plan.expr, cpp_type=render(plan.built_type))
+    """The plan's expression with the type it constructs spelled by the
+    sink's type renderer: the conversion decides the construction, the sink
+    knows how its module spells a type. A copy (`Plan.copy_type`) is spelled
+    where it sits, under the union member it lands in; a union a parameter
+    binds as a temporary of the full expression (`THIRInlineTemp`) is
+    spelled whole, the one spelling of that union."""
     if plan.copy_type is None:
-        return plan.expr
-    return replace(plan.expr, cpp_type=render(plan.copy_type))
+        return plan.expr.with_construction_spelled(render)
+    return plan.expr.with_copy_spelled(render(plan.copy_type))
 
 
 @dataclass(frozen=True)
@@ -276,16 +281,17 @@ def _slot_members(slot_t: TpyType) -> tuple[TpyType, ...]:
 
 def absorbed_member(slot_t: TpyType, src_t: 'TpyType | None',
                     types) -> TpyType:
-    """The part of the slot a source of type `src_t` lands in: the slot
-    itself, or -- for a source typed as an Optional's inner or one union
-    member -- that inner / member, which `optional::operator=` and the
-    variant's converting assignment absorb. A str / bytes view lands in
-    its owned twin (the view->owned copy is the member's)."""
+    """The part of a slot a source of type `src_t` lands in: the slot
+    itself, or -- for a source typed as an Optional's inner -- that inner,
+    which `optional::operator=` absorbs; a record lands in the record slot
+    it upcasts to, a str / bytes view in its owned twin (the view->owned
+    copy is the member's). A union's member is never chosen here: sema
+    records it at the value's boundary (`Slot.union_member`)."""
     if src_t is None or src_t == slot_t:
         return slot_t
-    members = _slot_members(slot_t)
-    if not members:
+    if not isinstance(slot_t, OptionalType):
         return slot_t
+    members = _slot_members(slot_t)
     for m in members:
         if _same_type(src_t, m, types):
             return m
@@ -297,14 +303,14 @@ def absorbed_member(slot_t: TpyType, src_t: 'TpyType | None',
 
 def _absorbs(member_t: TpyType, rt: 'TpyType | None', types) -> bool:
     """Whether the slot's own assignment takes a value of type `rt` as it
-    is: the same type, an Optional's inner or a union's member (the
-    converting assignment), a str / bytes value into its owned twin, a
-    record into its base (the assign slices -- sema warns), or a tuple
-    whose still-pending literal elements take the slot's element types."""
+    is: the same type, an Optional's inner, a str / bytes value into its
+    owned twin, a record into its base (the assign slices -- sema warns),
+    or a tuple whose still-pending literal elements take the slot's element
+    types. No union takes a member value here: it is converted at the
+    member's own slot (`_member_plan`)."""
     if rt is None or _same_type(rt, member_t, types):
         return True
-    if isinstance(member_t, (OptionalType, UnionType,
-                             RecursiveAliasInstanceType)):
+    if isinstance(member_t, OptionalType):
         return absorbed_member(member_t, rt, types) != member_t
     if _same_viewfam(rt, member_t, types):
         return True
@@ -321,27 +327,25 @@ def _absorbs(member_t: TpyType, rt: 'TpyType | None', types) -> bool:
         return all(isinstance(e, (IntLiteralType, FloatLiteralType,
                                   LiteralType))
                    or _absorbs(unwrap_readonly(m), unwrap_readonly(e), types)
-                   for e, m in zip(rt.element_types,
-                                   member_t.element_types))
+                   for e, m in zip(rt.element_types, member_t.element_types))
     return False
 
 
 def _builds_one_member(union_t: TpyType, rt: 'TpyType | None', s: Source,
-                       types) -> bool:
+                       types, member: 'TpyType | None') -> bool:
     """Whether a value union is copy-initialized from a str / bytes source
-    of type `rt` through one member's implicit construction: never from a
+    of type `rt` through its member's implicit construction: never from a
     view (a view parameter's read) into an owned buffer member, whose view
     constructor is explicit and whose copy would allocate unseen, nor from
-    a literal two members of its family both take."""
+    a value sema decided no `member` for (`Literal["a"] | Literal["b"]`,
+    `landing_exempt`)."""
     if rt is None:
         return True
-    family = [m for m in _slot_members(union_t)
-              if _same_viewfam(rt, m, types)]
-    if not family:
-        return True
     if s.held is Held.BORROWED:
+        family = [m for m in _slot_members(union_t)
+                  if _same_viewfam(rt, m, types)]
         return not any(has_view_param_form(m) for m in family)
-    return not (s.held is Held.VALUE and len(family) > 1)
+    return not (member is None and landing_exempt(union_t, rt))
 
 
 def _ptr_opt(t: TpyType) -> bool:
@@ -362,7 +366,8 @@ def _binds(slot_t: TpyType, rt: 'TpyType | None', types) -> bool:
 
 def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
                 rt: 'TpyType | None', types, *,
-                const: bool = False, call: bool = False) -> Plan | Refuse:
+                const: bool = False, call: bool = False,
+                member: 'TpyType | None' = None) -> Plan | Refuse:
     """A pointer slot (`T*`): a pointer-repr Optional's, or a plain
     record's. A pointer-repr Optional read in storage form (the
     `std::optional<T>` a field holds) lifts to the borrow form; already in
@@ -371,7 +376,7 @@ def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
     pointer; an explicit `Ptr[T]` is the pointer itself."""
     if isinstance(st, UnionType):
         return _to_pointer_variant(expr, s, st, rt, types, const=const,
-                                   call=call)
+                                   call=call, member=member)
     record_slot = not isinstance(st, OptionalType)
     if record_slot:
         # A plain record's pointer is its Optional's borrow form (`T*`).
@@ -432,7 +437,8 @@ def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
 def _to_pointer_variant(expr: THIRExpr, s: Source, st: UnionType,
                         rt: 'TpyType | None', types, *,
                         const: bool = False,
-                        call: bool = False) -> Plan | Refuse:
+                        call: bool = False,
+                        member: 'TpyType | None' = None) -> Plan | Refuse:
     """A pointer-variant union slot (`Union<A*, B*>`). The union's own
     value read in storage form (a `Union<A, B>` field) lifts to the
     pointer variant; already in pointer form it passes, through its const
@@ -440,6 +446,16 @@ def _to_pointer_variant(expr: THIRExpr, s: Source, st: UnionType,
     implicitly). A member's object is borrowed by address, as the
     pointer-repr Optional's pointee is; a parameter spells the variant it
     builds, since an overloaded or template callee deduces from it."""
+    under = expr.uncoerced
+    under_t = _bare(under.result_type)
+    if under is not expr and (under.spells_literal or (
+            member is not None and under_t is not None
+            and under_t.is_value_type()
+            and not _same_type(under_t, unwrap_readonly(member), types))):
+        # A literal, or a value converted into the member sema landed it in
+        # (a widened scalar), is no object a member's pointer can point at
+        # (BUGS.md#ptr-union-literal-arg-as-const).
+        return Refuse("borrow_source")
     if rt == st:
         if s.held is Held.FRESH and call:
             # A union built for the call (an owning result): held for it,
@@ -473,8 +489,10 @@ def _to_pointer_variant(expr: THIRExpr, s: Source, st: UnionType,
                 value=expr, const_wrap="as_const", form=Form.BORROW,
                 loc=expr.loc), Effect.LIFT)
         return Plan(expr, Effect.PASS)
-    member = absorbed_member(st, rt, types)
-    if member == st or not _binds(member, rt, types):
+    if member is None:
+        check_unlanded(st, rt, expr.loc, "lent to")
+        return Refuse("borrow_source")
+    if not _binds(member, rt, types):
         # No member is the object the source is (a `str` view at an owned
         # `str` member): its address is no member's pointer.
         return Refuse("borrow_source")
@@ -484,9 +502,11 @@ def _to_pointer_variant(expr: THIRExpr, s: Source, st: UnionType,
     named = s.id_read and s.temporary is False and not s.captured
     if not (_lendable(s) or named):
         if call and rt is not None:
-            # A parameter points into storage held for the call.
-            return Plan(expr, Effect.MATERIALIZE,
-                        storage_request=StorageRequest(rt))
+            # A parameter points into storage held for the call, the object
+            # held at its own type and lent as the member's.
+            return Plan(member_lift(expr, st, member, rt, const, types),
+                        Effect.MATERIALIZE,
+                        storage_request=StorageRequest(rt, held=expr))
         if s.held in (Held.VALUE, Held.FRESH):
             # A value (`1.5 * 2.0`) is no storage at all: the pointer
             # needs a slot to hold it, which no row builds here
@@ -494,14 +514,56 @@ def _to_pointer_variant(expr: THIRExpr, s: Source, st: UnionType,
             return Refuse("needs_slot")
         return Refuse("borrow_source")
     if call:
-        return Plan(THIRUnionArgLift(
-            result_type=st,
-            variant_cpp=(st.to_cpp_const_ptr_variant() if const
-                         else st.to_cpp_ptr_variant()),
-            value=expr, form=Form.BORROW, loc=expr.loc), Effect.LIFT)
-    return Plan(THIROptionalPtrArg(result_type=st, form=Form.BORROW,
-                                   value=expr, addr_of=True, loc=expr.loc),
-                Effect.LIFT)
+        return Plan(member_lift(expr, st, member, rt, const, types),
+                    Effect.LIFT)
+    # The address taken is of the object as the member's base.
+    return Plan(THIROptionalPtrArg(
+        result_type=st, form=Form.BORROW,
+        value=as_member_object(expr, member, rt, const, types),
+        addr_of=True, loc=expr.loc), Effect.LIFT)
+
+
+def member_lift(expr: THIRExpr, st: UnionType, member: TpyType,
+                rt: 'TpyType | None', const: bool,
+                types) -> THIRUnionArgLift:
+    """The pointer variant a parameter spells, pointing at object `expr` as
+    the member sema landed it in -- the address taken of the object as that
+    member's base."""
+    return THIRUnionArgLift(
+        result_type=st,
+        variant_cpp=(st.to_cpp_const_ptr_variant() if const
+                     else st.to_cpp_ptr_variant()),
+        value=as_member_object(expr, member, rt, const, types),
+        member=unwrap_readonly(member), form=Form.BORROW, loc=expr.loc)
+
+
+def member_ref_cpp(member: 'TpyType | None', rt: 'TpyType | None',
+                   const: bool, types) -> 'str | None':
+    """The reference type an object of record `rt` is lent as at a pointer
+    variant: the base `member` sema landed it in (`const Mid&`); None for
+    an object of the member's own class or one a covariant wrapper
+    converts."""
+    if member is None or rt is None:
+        return None
+    base = unwrap_readonly(member)
+    if not _record_slice_upcast_ok(unwrap_readonly(rt), base, types):
+        return None
+    return f"const {base.to_cpp()}&" if const else f"{base.to_cpp()}&"
+
+
+def as_member_object(expr: THIRExpr, member: 'TpyType | None',
+                     rt: 'TpyType | None', const: bool,
+                     types) -> THIRExpr:
+    """A subclass object lent as the base `member` sema landed it in: its
+    address converts to that alternative's pointer alone."""
+    ref = member_ref_cpp(member, rt, const, types)
+    if ref is None:
+        return expr
+    base = unwrap_readonly(member)
+    return THIRCoerce(result_type=base, expr=expr,
+                      coercion_name=UNION_MEMBER_OBJECT_COERCION,
+                      wrap=f"static_cast<{ref}>({{0}})", member=base,
+                      form=expr.form, source=expr.source, loc=expr.loc)
 
 
 def _pointees_const(s: Source) -> bool:
@@ -545,10 +607,14 @@ def _owned_elem_by_pointer(s: Source, src_t: 'TpyType | None',
     return bool(_owned_by_pointer(s, src_t, slot))
 
 
-def _existing_object(s: Source) -> bool:
+def _existing_object(s: 'Source | None', *, moved: bool = False) -> bool:
     """Whether a slot's own construction from `s` copies an existing
-    object: a fresh value or one dying with its statement is none."""
-    return s.temporary is not True and s.held in (Held.STORAGE, Held.BORROWED)
+    object, which it must leave as it is: only a fresh value, one dying
+    with its statement (`temporary`) or one the caller moves out (`moved`:
+    its last use, an implicit-move `return`) hands its object over. A read
+    whose provenance nothing states is an existing object."""
+    return not moved and (s is None or (s.temporary is not True
+                                        and s.held is not Held.FRESH))
 
 
 # --- tuples, element by element ----------------------------------------------
@@ -615,6 +681,10 @@ def _forms_differ(elems: 'tuple[Source, ...]', layout: TupleType,
     """Whether any element of a source holding `elems` is held in another
     form than the slot holds it (nested tuples compared element-wise)."""
     for el, et, es in zip(elems, layout.element_types, slot.elems):
+        if es.carries_landing():
+            # A value element sema landed in a union member is converted
+            # into it, as the scalar at that slot is.
+            return True
         kind = _elem_kind(et)
         if kind == "value":
             continue
@@ -803,7 +873,7 @@ def as_base(expr: THIRExpr, member: TpyType, types, *,
     base = upcast_base(expr, member, types)
     if base is None:
         return None
-    rvalue = moved or not _existing_object(expr.source)
+    rvalue = not _existing_object(expr.source, moved=moved)
     return THIRFormConvert(result_type=base,
                            value=expr.moved() if moved else expr,
                            form=Form.STORAGE, materialize=False,
@@ -921,8 +991,8 @@ def _to_borrow_tuple(expr: THIRExpr, s: Source, slot: Slot, types, *,
                   if e.holds is SlotHolds.OWNS and is_reference_leaf(e.type)
                   for leaf in leaves_at(e.type, (i,)))
     owns_object = bool(owned)
-    mv = (owns_object and not explicit_copy and s.held is not Held.FRESH
-          and tuple_moves(s, movable=movable))
+    mv = owns_object and tuple_moves(expr, explicit_copy=explicit_copy,
+                                     movable=movable)
     if lift and own:
         return Refuse("borrow_source")
     if own:
@@ -953,8 +1023,8 @@ def _to_borrow_tuple(expr: THIRExpr, s: Source, slot: Slot, types, *,
                                  form=expr.form, loc=expr.loc), Effect.MOVE)
         # The result's own construction copies each element it owns.
         return Plan(expr, Effect.PASS,
-                    copied=(() if mv or not _existing_object(s)
-                            else owned))
+                    copied=(owned if _existing_object(s, moved=mv)
+                            else ()))
     if s.temporary is False and s.held not in _DURABLE_HELD:
         # Nothing outlives a source held in no storage; a temporary's lend
         # is refused per element (`_lendable` at each element's slot).
@@ -1113,6 +1183,18 @@ def moves_implicitly(slot: Slot, s: Source, *,
             and not s.captured)
 
 
+def return_moves(slot: Slot, expr: THIRExpr) -> bool:
+    """The result's own `return` moves the object `expr` names: an
+    id-expression naming an object the returning body owns -- a binding
+    owning what it holds, even where a row keeps its other reads from
+    moving (a value type's) -- that sema declared no copy of. A narrowed
+    read names the member's alias, a reference no `return` moves."""
+    s, under = expr.source, expr.uncoerced.source
+    return (s is not None and under is not None and moves_implicitly(slot, s)
+            and not under.must_copy and not under.narrowed
+            and (under.movable or under.owns_object))
+
+
 def _direct_return_handoff(node: 'THIRFormConvert | None', expr: THIRExpr,
                            slot: Slot) -> 'THIRFormConvert | None':
     """A parameter's or an open-result local's last use at the C++
@@ -1158,6 +1240,277 @@ def open_param_result(expr: THIRExpr, slot: Slot,
     return None
 
 
+# --- the union member a value lands in ----------------------------------------
+
+
+
+def check_unlanded(union: TpyType, src: 'TpyType | None', loc,
+                   verb: str = "converted into") -> None:
+    """A `src` value reaching `union` with no member recorded at its
+    boundary: none is recorded only where the union is decided per
+    instantiation (`landing_exempt`); anywhere else its absence is an
+    internal error -- no code after sema chooses a member."""
+    if not landing_exempt(union, src):
+        raise internal_error(
+            "union.no_landing",
+            f"a {src} value {verb} {union} with no union member recorded "
+            f"at its boundary", loc)
+
+
+def _storage_union(t: 'TpyType | None') -> 'TpyType | None':
+    """The union a storage slot of type `t` builds a non-union value into:
+    the slot's own, or an Optional's payload union. A recursive alias's
+    wrapper builds its variant from the alternative it is handed, so the
+    value lands in a member there too."""
+    t = unwrap_readonly(t) if t is not None else None
+    if isinstance(t, OptionalType):
+        t = unwrap_readonly(t.inner)
+    return t if t is not None and union_members(t) is not None else None
+
+
+def _union_like(t: 'TpyType | None') -> bool:
+    t = unwrap_readonly(t) if t is not None else None
+    # A recursive alias's placeholder names its union.
+    return isinstance(t, (UnionType, OptionalType, NoneType,
+                          RecursiveAliasInstanceType, AliasRef))
+
+
+def _bare(t: 'TpyType | None') -> 'TpyType | None':
+    return storage_type(t) if t is not None else None
+
+
+def _member_value(v: THIRExpr, member: TpyType, types,
+                  result_type: 'TpyType | None' = None, *,
+                  in_place: bool = False, whole: 'str | None' = None,
+                  whole_name: str = UNION_MEMBER_COERCION,
+                  implicit_move: bool = False) -> THIRExpr:
+    """THE union step: `v`, a value of union member `member`, as the
+    union's construction takes it, the result carrying the member.
+
+    It passes through where it renders as the member already or converts to
+    it the way the alternative's own construction would (a subclass's base
+    part, a covariant wrapper, a structural protocol's conforming value); an
+    int literal is respelled at the member's exact width. A value-type
+    object a mutable lvalue names is handed over as the const lvalue its
+    copy takes: the alternative is direct-initialized from it, which would
+    prefer a forwarding constructor template (a protocol parameter's) over
+    the copy. Any other value -- a view of an owned buffer member included,
+    whose construction is explicit -- is converted to the alternative
+    explicitly (typed `result_type`, the member by default).
+
+    `implicit_move`: `v` is the name a `return` moves implicitly, handed
+    over as it is, or moved explicitly where the construction makes it an
+    operand.
+
+    Where the union is spelled around the value (`in_place`: a parameter's
+    temporary of the full expression, an overload pin), that explicit
+    construction is the union's own in-place one, handed the member's
+    constructor arguments (`std::in_place_type<M>, v`), so no member
+    temporary is built and moved. `whole` spells the union here (the pin),
+    as a conversion named `whole_name`."""
+    value = _member_part(v, unwrap_readonly(member), types, result_type,
+                         in_place=((in_place or whole is not None)
+                                   and _builds_in_place(result_type)),
+                         implicit_move=implicit_move)
+    if whole is None:
+        return value
+    return THIRCoerce(result_type=result_type or value.result_type,
+                      expr=value, coercion_name=whole_name,
+                      wrap=f"{whole}({{0}})", member=unwrap_readonly(member),
+                      loc=v.loc)
+
+
+def _builds_in_place(t: 'TpyType | None') -> bool:
+    """A union of type `t` spelled around a member value takes the
+    member's constructor arguments in place (`std::in_place_type<M>`): a
+    recursive alias's wrapper has one forwarding constructor and an
+    Optional's payload union is built by the Optional, so both take the
+    member value as their one argument."""
+    t = unwrap_readonly(t) if t is not None else None
+    if t is None or isinstance(t, OptionalType):
+        return False
+    union = _storage_union(t)
+    return union is not None and not union.needs_wrapper()
+
+
+def member_int_literal(v: THIRExpr, member: TpyType,
+                       types) -> 'THIRExpr | None':
+    """Int literal `v` respelled at int member `member`'s exact width, as
+    the union step builds it; None for any other value or member."""
+    member = unwrap_readonly(member)
+    if not (is_fixed_int_type(member) or is_big_int_type(member)):
+        return None
+    spelled = v.as_member_literal(
+        member, lambda value: render_int_literal_value(
+            value, member, default_int_type=types.ctx.default_int_type,
+            type_to_cpp=lambda t: t.to_cpp(), exact_type=True))
+    return _as_member(spelled, member) if spelled is not None else None
+
+
+def _member_part(v: THIRExpr, member: TpyType, types,
+                 result_type: 'TpyType | None', *, in_place: bool,
+                 implicit_move: bool) -> THIRExpr:
+    """`_member_value`'s value of `member` (bare), unspelled."""
+    spelled_literal = member_int_literal(v, member, types)
+    if spelled_literal is not None:
+        return spelled_literal
+    rendered = v.rendered_type
+    view = v.unmoved
+    if (view.source is not None and view.source.held is Held.BORROWED
+            and rendered is not None and has_view_param_form(member)
+            and _same_viewfam(rendered, member, types)):
+        # A view of an owned buffer member: the buffer's construction from
+        # its view is explicit (a view's move hands over the view itself).
+        if in_place:
+            return _in_place(view, member, result_type)
+        return _as_member(THIRFormConvert(
+            result_type=member, value=view, form=Form.STORAGE,
+            move=False, loc=v.loc), member)
+    if (renders_as(rendered, member, types.registry)
+            or (is_protocol_type(member) and not is_dyn_protocol(member))
+            or (rendered is not None and _covariant_record_upcast_ok(
+                unwrap_readonly(rendered), member, types))):
+        # A structural protocol member is the conforming value itself: the
+        # parameter's type is deduced from it. A covariant wrapper converts
+        # as the member's own construction does.
+        if (not implicit_move and v.unmoved is v
+                and member.is_value_type() and record_like(member, types)
+                and _mutable_lvalue(v.source)):
+            return THIRCoerce(
+                result_type=v.result_type, expr=v,
+                coercion_name=UNION_MEMBER_OBJECT_COERCION,
+                wrap=f"static_cast<const {member.to_cpp()}&>({{0}})",
+                member=member, form=v.form, source=v.source, loc=v.loc)
+        return _as_member(v, member)
+    # A subclass object hands over its base part, no slice of it built.
+    based = as_base(v, member, types)
+    if based is not None:
+        return _as_member(based, member)
+    if implicit_move and v.unmoved is v:
+        # The id-expression a `return` would move is an operand now.
+        v = v.moved()
+    if in_place:
+        return _in_place(v, member, result_type)
+    return THIRCoerce(result_type=result_type or member, expr=v,
+                      coercion_name=UNION_MEMBER_COERCION,
+                      wrap=f"static_cast<{member.to_cpp()}>({{0}})",
+                      member=member, form=Form.VALUE, loc=v.loc)
+
+
+def _in_place(v: THIRExpr, member: TpyType,
+              result_type: 'TpyType | None') -> THIRExpr:
+    """The arguments of a spelled union's in-place construction of
+    `member` from `v`: the alternative is built from `v` in place."""
+    return THIRCoerce(result_type=result_type or member, expr=v,
+                      coercion_name=UNION_MEMBER_COERCION,
+                      wrap=f"std::in_place_type<{member.to_cpp()}>, {{0}}",
+                      member=member, form=Form.VALUE, loc=v.loc)
+
+
+def _mutable_lvalue(s: 'Source | None') -> bool:
+    """A read naming existing storage the program may still write: no
+    value its statement creates, nothing const."""
+    return (s is not None and not s.prvalue and s.held is not Held.FRESH
+            and s.temporary is not True and not s.const
+            and not s.deep_const)
+
+
+def _as_member(v: THIRExpr, member: TpyType) -> THIRExpr:
+    """`v`, already rendered as union member `member`'s own C++ type, under
+    an identity conversion carrying the member: the C++ is `v`'s own, and
+    what reads the union's construction (MIR) reads the member sema landed
+    it in rather than re-finding one from the value's type."""
+    return THIRCoerce(result_type=v.result_type, expr=v,
+                      coercion_name=UNION_MEMBER_COERCION, member=member,
+                      form=v.form, loc=v.loc)
+
+
+def _coerced_into_member(expr: THIRExpr, union: TpyType) -> bool:
+    """`expr` is sema's coercion of a member value (a literal, whatever
+    slot type it was lowered against) into `union`: what `land_value`
+    lands in the member recorded at its boundary."""
+    under = expr.uncoerced
+    return under is not expr and not whole_union_value(
+        under.result_type, union, spells_literal=under.spells_literal)
+
+
+def land_paths(expr: THIRExpr, target: 'TpyType | None',
+               members: 'Mapping[ElemPath, TpyType]', types,
+               path: ElemPath = ()) -> THIRExpr:
+    """`land_value` at every element path of a value a boundary receives:
+    a tuple literal's elements each at their own path, at any depth."""
+    st = storage_type(target)
+    if isinstance(st, TupleType):
+        built = expr.with_elements(
+            lambda i, el: land_paths(el, st.element_types[i]
+                                     if i < len(st.element_types) else None,
+                                     members, types, path + (i,)))
+        return built if built is not None else expr
+    if st is None:
+        return expr
+    return land_value(expr, st, members.get(path), types)
+
+
+def whole_union_value(t: 'TpyType | None', union: 'TpyType | None', *,
+                      spells_literal: bool = False) -> bool:
+    """A value of type `t` reaching a slot of union `union` is a whole
+    union, not a value of one of its members: absence, or a union value
+    (a fresh union a call hands back) that is no alternative of the slot's
+    union -- an alternative that is a union of its own (`Tree[int32 |
+    str]`'s `int32 | str`) is a member value. A literal is the value it
+    spells, whatever slot type it was lowered against."""
+    t = _bare(t)
+    if t is None:
+        return True
+    if spells_literal or not _union_like(t):
+        return False
+    return (isinstance(unwrap_readonly(t), NoneType) or union is None
+            or unwrap_readonly(t) not in _slot_members(union))
+
+
+def _whole_union_source(expr: THIRExpr, union: TpyType) -> bool:
+    """A source that is a whole union rather than a member value: a union
+    value itself (a fresh union a call hands back, absence), or a narrowed
+    read of storage declared as the whole union, which is copied as it is,
+    holding the member it holds. A literal is the value it spells, whatever
+    slot type it was lowered against; a narrowed Optional's payload is a
+    member value like any other."""
+    under = expr.uncoerced
+    if whole_union_value(under.result_type, union,
+                         spells_literal=under.spells_literal):
+        return True
+    named = under.source.named_type if under.source is not None else None
+    return named is not None and _bare(named) == union
+
+
+def land_value(expr: THIRExpr, target: TpyType,
+               member: 'TpyType | None', types) -> THIRExpr:
+    """A non-union value at a union `target` reached outside `convert`, in
+    the member recorded for the value's boundary (the union step,
+    `_member_value`; `check_unlanded` where none is)."""
+    union = _storage_union(target)
+    if union is None:
+        return expr
+    held = expr.with_held(lambda v: land_value(v, target, member, types))
+    if held is not None:
+        return held
+    if _whole_union_source(expr, union):
+        return expr
+    if member is None:
+        check_unlanded(union, _bare(expr.uncoerced.result_type), expr.loc)
+        return expr
+    if _union_like(member):
+        # A recursive alias's alternative that is a union of its own
+        # (`Tree[int32 | float]`): the wrapper's variant builds it from the
+        # value, as the alternative's own converting constructor does.
+        return _as_member(expr, unwrap_readonly(member))
+    coerced = expr.into_member(
+        member, lambda inner: _member_value(inner, member, types))
+    if coerced is not None:
+        return coerced
+    return _member_value(expr, member, types, result_type=target)
+
+
 # --- the slot side of a read --------------------------------------------------
 
 @dataclass(frozen=True)
@@ -1170,6 +1523,10 @@ class Landing:
     # Optional / union: it is read whole and lifts whole, flow narrowing
     # notwithstanding.
     whole_binding: bool
+    # The type the source is read as before its conversion: the part it
+    # lands in, except a member value at a union slot, read as itself --
+    # the member it lands in is `convert`'s to apply.
+    read_as: TpyType
 
 
 def landing(binding: BindingRepr | None, named_t: 'TpyType | None',
@@ -1177,7 +1534,9 @@ def landing(binding: BindingRepr | None, named_t: 'TpyType | None',
             types, *, unwrapped: bool = False) -> Landing:
     """`named_t`: the declared type of the storage the source names
     (`Source.named_type`). `unwrapped`: the read takes a narrowed
-    Optional's payload, not the storage it names."""
+    Optional's payload, not the storage it names. A union slot's member is
+    no part decided here: sema recorded it, and `convert` converts the
+    value at that member's slot (`_member_plan`)."""
     if unwrapped:
         named_t = None
     member = absorbed_member(slot_t, storage_type(analyzed_t), types)
@@ -1191,7 +1550,14 @@ def landing(binding: BindingRepr | None, named_t: 'TpyType | None',
         # A POINTER-bound source is already the borrow form of the
         # pointer-repr Optional slot: it lifts whole, never dereffed.
         member = slot_t
-    return Landing(member, whole)
+    own = storage_type(analyzed_t)
+    # A literal is lowered at the member it lands in.
+    read_as = (own if not whole and _storage_union(slot_t) is not None
+               and not whole_union_value(own, _storage_union(slot_t))
+               and not isinstance(own, (IntLiteralType, FloatLiteralType,
+                                        LiteralType))
+               else member)
+    return Landing(member, whole, read_as)
 
 
 # --- the conversion -----------------------------------------------------------
@@ -1252,14 +1618,44 @@ def elementwise_plan(expr: THIRExpr, slot: Slot, types) -> Plan | None:
     return Plan(built.expr, Effect.MOVE, copied=built.copied)
 
 
-def tuple_moves(s: Source, *, movable: 'bool | None' = None) -> bool:
-    """Whether a tuple read moves out of its source: a movable read
-    (`movable`, when given, for the read under its coercions), and of a
-    pointer tuple only one whose element verdicts move an object."""
+def read_moves(s: Source, *, movable: 'bool | None' = None) -> bool:
+    """Whether a read moves out of its source: a movable read (`movable`,
+    when given, for the read under its coercions), and of a pointer tuple
+    only one whose element verdicts move an object."""
     return ((s.movable if movable is None else movable)
             and (s.elems is None
                  or not any(el.pointer_held for el in s.elems)
                  or moves_an_object(s.elems)))
+
+
+def staged_own_return(slot: Slot, expr: THIRExpr, *,
+                      explicit_copy: bool = False) -> bool:
+    """An `Own` parameter its own `return` would move implicitly, returned
+    where the result is staged first: the move is spelled. A capture
+    reads the enclosing body's parameter: it moves only one whose binding
+    is the result's storage itself (`std::optional<P>&&`, its payload
+    maybe `@nocopy`); any other is copied
+    (BUGS.md#nested-def-captured-own-return-copies). A narrowed read names
+    the member's alias, which no `std::move` takes the parameter out of."""
+    s, under = expr.source, expr.uncoerced.source
+    return (not explicit_copy and slot.construct is SlotConstruct.RETURN
+            and s is not None and under is not None and under.id_read
+            and not under.narrowed and not moves_implicitly(slot, s)
+            and (under.owned_param or under.owned_result_storage))
+
+
+def tuple_moves(expr: THIRExpr, *, explicit_copy: bool = False,
+                movable: 'bool | None' = None) -> bool:
+    """Whether a conversion moves what its source holds inline -- a
+    tuple's elements, a stored object: a read that moves (`read_moves`);
+    never a fresh value, an rvalue already, nor an explicit copy. A
+    `return` of a tuple's own name moves only the whole tuple C++'s
+    `return` names: an element taken out of it is copied
+    (BUGS.md#dying-owned-value-staged-result-copies)."""
+    s = expr.source
+    if explicit_copy or s is None or s.held is Held.FRESH:
+        return False
+    return read_moves(s, movable=movable)
 
 
 def param_tuple_slot(t: TpyType, types, *, const: bool = False,
@@ -1438,8 +1834,87 @@ def _check_records(expr: THIRExpr, slot: Slot, s: Source,
 
 
 
+# The slots whose union the member-first core converts a member value
+# into: an open `T` instantiation and a type-erased box decide their own.
+_MEMBER_FIRST = frozenset({SlotHolds.OWNS, SlotHolds.VALUE, SlotHolds.BORROWS,
+                           SlotHolds.POINTER, SlotHolds.RELOCATE})
+# The slots whose own arms take the member (`m`) as a parameter: a
+# reference or pointer binds the union a member value builds, and a slot no
+# family admitted the source at (RELOCATE) keeps its refusal first.
+_MEMBER_ARMS = frozenset({SlotHolds.BORROWS, SlotHolds.POINTER,
+                          SlotHolds.RELOCATE})
+
+
+def _landed_member(expr: THIRExpr, slot: Slot, st: TpyType, land: Landing,
+                   types) -> 'TpyType | None':
+    """The member sema landed a member value in at a union slot -- read
+    once, here, and applied by the conversion -- or None for a value that
+    is no member's (a whole union, a narrowed read of whole-union storage,
+    absence, a union decided per instantiation) and for a slot that is no
+    union."""
+    union = _storage_union(st)
+    if (union is None or slot.holds not in _MEMBER_FIRST
+            or land.whole_binding or _whole_union_source(expr, union)):
+        return None
+    m = slot.union_member()
+    if m is None:
+        check_unlanded(union, _bare(expr.uncoerced.result_type), expr.loc)
+        return None
+    return unwrap_readonly(m)
+
+
+def _member_slot(slot: Slot, m: TpyType, types) -> Slot:
+    """The slot a member value is converted at -- the member's own storage,
+    constructed as the union slot is (a result keeps its implicit move and
+    its copies), retained where the union is. A parameter that owns nothing
+    binds its union for the call only, so nothing it is handed moves in.
+    Its element slots read their own recorded members."""
+    msl = store_slot(m, types)
+    lifetime = msl.lifetime
+    if (slot.construct is SlotConstruct.PASS
+            and not param_takes_ownership(slot.declared)):
+        lifetime = slot.lifetime
+    return at_landing_of(replace(
+        msl, construct=slot.construct, implicit_move=slot.implicit_move,
+        retained=slot.retained, lifetime=lifetime, union_part=True), slot)
+
+
+def _member_plan(expr: THIRExpr, slot: Slot, st: TpyType, m: TpyType,
+                 types, *, explicit_copy: bool,
+                 in_place: bool = False) -> Plan | Refuse:
+    """Member value `expr` converted at union member `m`'s own slot, as its
+    scalar twin is there (the twin's copies, moves, checks and refusals),
+    then built into the union (the union step, `_member_value`). Sema's
+    coercion with C++ of its own (a checked narrowing, a widening) is the
+    member's value already; a passthrough one is peeled and its value
+    routed. `in_place`: the union is spelled around the value
+    (`_member_value`)."""
+    if _union_like(m):
+        # A recursive alias's alternative that is a union of its own: the
+        # wrapper's variant builds it from the value.
+        return Plan(_as_member(expr, m), Effect.PASS)
+    peeled: list[THIRExpr] = []
+
+    def route(inner: THIRExpr) -> THIRExpr:
+        peeled.append(inner)
+        return inner
+
+    stamped = expr.into_member(m, route)
+    if stamped is not None and not peeled:
+        return Plan(stamped, Effect.PASS)
+    value = peeled[0] if peeled else expr
+    plan = _convert(value, _member_slot(slot, m, types), types,
+                    explicit_copy=explicit_copy, member_route=True)
+    if isinstance(plan, Refuse):
+        return plan
+    return replace(plan, expr=_member_value(
+        plan.expr, m, types, result_type=st, in_place=in_place,
+        implicit_move=return_moves(slot, value)))
+
+
 def _convert(expr: THIRExpr, slot: Slot, types, *,
-             explicit_copy: bool = False) -> Plan | Refuse:
+             explicit_copy: bool = False,
+             member_route: bool = False) -> Plan | Refuse:
     s = expr.source
     under = expr.uncoerced.source
     # A recursive alias the slot names by its placeholder is its union.
@@ -1472,8 +1947,8 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         building `lands` from it: a copy of an existing object unless the
         construction moves it (an id-expression naming the result body's
         own object, moved by its `return`)."""
-        moves = implicit and under.movable
-        copies = not moves and _existing_object(s)
+        moves = return_moves(slot, expr)
+        copies = _existing_object(s, moved=moves)
         # The implicit move takes no subclass object: its base part is
         # moved out explicitly.
         return Plan(as_base(expr, lands, types, moved=moves) or expr,
@@ -1486,25 +1961,12 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
     lifts_pointees = _owned_elem_by_pointer(
         s, storage_type(expr.result_type), slot)
 
-    def lift_pointees() -> Plan | Refuse:
-        built = per_element(expr, slot, types, take=TupleTake.COPY)
+    def lift_pointees(take: TupleTake = TupleTake.COPY) -> Plan | Refuse:
+        built = per_element(expr, slot, types, take=take)
         if isinstance(built, Refuse):
             return built
-        return Plan(built.expr, Effect.COPY, copied=built.copied)
-
-    if (under.must_copy and under.copy_type is not None
-            and slot.construct is SlotConstruct.RETURN
-            and holds in (SlotHolds.OWNS, SlotHolds.VALUE)
-            and not lends_elements(slot)):
-        # Sema declared a copy of this read (a name a closure still reads):
-        # the result spells it, since its own construction would move. A
-        # borrow-form result's copy is its element rows'; a tuple's
-        # pointees copy in through the lift, as the value slot's do.
-        if lifts_pointees:
-            return lift_pointees()
-        return Plan(THIRCopy(result_type=storage_type(expr.result_type),
-                             value=expr, form=Form.STORAGE, loc=expr.loc),
-                    Effect.COPY, copy_type=under.copy_type)
+        return Plan(built.expr, Effect.MOVE if take is TupleTake.MOVE_WHOLE
+                    else Effect.COPY, copied=built.copied)
 
     value_t = expr.uncoerced.result_type
     if (slot.lifetime is SlotLifetime.OUTLIVES_FRAME
@@ -1521,6 +1983,32 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             return Refuse("union_view_insert")
         if under.held in (Held.STORAGE, Held.FRESH):
             return Refuse("borrow_source")
+    rt_lowered = storage_type(expr.result_type)
+    narrowed = s.held_by_deref is not None
+    land = landing(s.binding, s.named_type, s.analyzed_type, st, types,
+                   unwrapped=narrowed and expr.reads_unwrapped)
+    m = (None if member_route
+         else _landed_member(expr, slot, st, land, types))
+    if m is not None and holds not in _MEMBER_ARMS:
+        # The member-first core: a value of one member converts at that
+        # member's slot, as its scalar twin does.
+        return _member_plan(expr, slot, st, m, types,
+                            explicit_copy=explicit_copy)
+    if (under.must_copy and under.copy_type is not None
+            and slot.construct is SlotConstruct.RETURN
+            and holds in (SlotHolds.OWNS, SlotHolds.VALUE)
+            and not lends_elements(slot)):
+        # Sema declared a copy of this read (a name a closure still reads):
+        # the result spells it, since its own construction would move. A
+        # borrow-form result's copy is its element rows'; a tuple's
+        # pointees copy in through the lift, as the value slot's do, and so
+        # does an element held in another form (a union's member).
+        if lifts_pointees or tuple_forms_differ(expr, slot, types):
+            return lift_pointees()
+        return Plan(THIRCopy(result_type=storage_type(expr.result_type),
+                             value=expr, form=Form.STORAGE, loc=expr.loc),
+                    Effect.COPY, copy_type=under.copy_type)
+
     declared = _copy_declared(s, under)
     if lends_elements(slot):
         return _to_borrow_tuple(expr, s, slot, types,
@@ -1533,7 +2021,8 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             # element of converts element by element, each as its leaf
             # says. (A union, open `T` or nested element held in its borrow
             # form converts the same way, element by element.)
-            if not explicit_copy and tuple_moves(s):
+            tmv = tuple_moves(expr, explicit_copy=explicit_copy)
+            if tmv:
                 per_elem = elementwise_plan(expr, slot, types)
                 if per_elem is not None:
                     return per_elem
@@ -1541,7 +2030,10 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                 # A store's copy is its store check's; a result's is the
                 # one check in `convert`.
                 return Refuse("tuple_source")
-            return lift_pointees()
+            # A tuple the read moves out of hands each inline element on,
+            # as its whole would.
+            return lift_pointees(TupleTake.MOVE_WHOLE if tmv
+                                 else TupleTake.COPY)
         owner = expr.uncoerced
         if (slot.retained and _statement_fresh(owner.source)
                 and (slot.representation is Representation.VIEW
@@ -1619,13 +2111,9 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             return Plan(expr.moved_under_coercions(), Effect.MOVE)
         return Plan(expr, Effect.PASS)
 
-    rt_lowered = storage_type(expr.result_type)
     borrow_tuple = (s.held is Held.BORROWED
                     and isinstance(rt_lowered, TupleType))
     b = s.binding
-    narrowed = s.held_by_deref is not None
-    land = landing(b, s.named_type, s.analyzed_type, st, types,
-                   unwrapped=narrowed and expr.reads_unwrapped)
     # A source read whole as the slot's own Optional / union is that type,
     # whatever its narrowed read would be; a narrowed Optional read whole
     # is the Optional its storage holds.
@@ -1755,7 +2243,7 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         # of the slot's type, read as it is.
         if (slot.lifetime is SlotLifetime.FULL_EXPRESSION
                 and isinstance(unwrap_readonly(st), UnionType)
-                and not _same_type(rt_whole, st, types)
+                and (m is not None or not _same_type(rt_whole, st, types))
                 # A narrowed name binds bare: the member alias it reads
                 # converts into the union.
                 and not s.narrowed):
@@ -1764,14 +2252,35 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             # callee's overload set to C++'s own ranking. A const reference
             # binds it as a temporary of the full expression; a mutable one
             # binds no rvalue and is lent storage.
-            if not _builds_one_member(st, rt_whole, s, types):
+            if not _builds_one_member(st, rt_whole, s, types, m):
                 return Refuse("union_member", by_slot=True)
+            value, copied = expr, ()
+            if m is not None:
+                # The union is spelled around the member value only where
+                # the parameter binds it as a temporary of the full
+                # expression.
+                built = _member_plan(
+                    expr, slot, st, m, types, explicit_copy=explicit_copy,
+                    in_place=slot.const and not slot.retained)
+                if isinstance(built, Refuse):
+                    return built
+                value, copied = built.expr, built.copied
             if slot.const and not slot.retained:
                 return Plan(THIRInlineTemp(
-                    result_type=st, value=expr, form=Form.STORAGE,
+                    result_type=st, value=value, form=Form.STORAGE,
                     lifetime=SeatLifetime.FULL_EXPRESSION, loc=expr.loc),
-                            Effect.LIFT, built_type=st)
-            return Plan(expr, Effect.MATERIALIZE,
+                            Effect.LIFT, copied=copied)
+            return Plan(value, Effect.MATERIALIZE, copied=copied,
+                        storage_request=StorageRequest(st))
+        if m is not None:
+            # A narrowed member value binds the union its own conversion
+            # builds from it: a mutable reference binds no rvalue and is
+            # lent storage.
+            built = _member_plan(expr, slot, st, m, types,
+                                 explicit_copy=explicit_copy)
+            if isinstance(built, Refuse) or slot.const:
+                return built
+            return Plan(built.expr, Effect.MATERIALIZE, copied=built.copied,
                         storage_request=StorageRequest(st))
         if slot.lifetime is SlotLifetime.FULL_EXPRESSION and not _lendable(s):
             # A parameter holds its argument for the call only, and a
@@ -1795,7 +2304,8 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
 
     if holds is SlotHolds.POINTER:
         return _to_pointer(expr, s, st, rt_whole, types, const=slot.const,
-                           call=slot.lifetime is SlotLifetime.FULL_EXPRESSION)
+                           call=slot.lifetime is SlotLifetime.FULL_EXPRESSION,
+                           member=m)
 
     if holds is SlotHolds.RELOCATE:
         # No conversion is known for this slot: only an owned value moves
@@ -1803,6 +2313,11 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         # deref, and a borrow tuple's borrowed element must materialize.
         if not under.movable or s.pointer_held or borrow_tuple:
             return _refuse_lift(s.held)
+        if m is not None:
+            # A member value moves into the member sema landed it in,
+            # converted there as its scalar twin is.
+            return _member_plan(expr, slot, st, m, types,
+                                explicit_copy=explicit_copy)
         return Plan(THIRMove(value=expr, result_type=st, form=Form.STORAGE,
                              loc=expr.loc), Effect.MOVE)
 
@@ -1811,21 +2326,12 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
     if (member == st and not land.whole_binding
             and not (b is not None and b.reads_as_pointer)):
         # A source whose analyzed type is still pending (a literal-seeded
-        # local) lands in the member its LOWERED type names.
+        # local) lands in the part its LOWERED type names.
         member = absorbed_member(st, rt_lowered, types)
     # A value the conversion of the source built is an rvalue already.
-    mv = (not explicit_copy and s.held is not Held.FRESH
-          and tuple_moves(s, movable=under.movable))
-    if (not explicit_copy and slot.construct is SlotConstruct.RETURN
-            and under.id_read and not implicit
-            and (under.owned_param or under.owned_result_storage)):
-        # An `Own` parameter its own `return` would move implicitly: a
-        # result staged first spells the move. A capture reads the
-        # enclosing body's parameter: it moves only one whose binding is
-        # the result's storage itself (`std::optional<P>&&`, its payload
-        # maybe `@nocopy`); any other is copied
-        # (BUGS.md#nested-def-captured-own-return-copies).
-        mv = True
+    mv = (tuple_moves(expr, explicit_copy=explicit_copy,
+                      movable=under.movable)
+          or staged_own_return(slot, expr, explicit_copy=explicit_copy))
     # A raw pointer read at a pointer-repr Optional slot is that Optional's
     # borrow form, lifted whole.
     rt = (member if land.whole_binding or (
@@ -1858,16 +2364,6 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                             Effect.COPY, copy_type=s.copy_type,
                             copied=tuple(leaves_at(member, ())))
 
-    if (isinstance(unwrap_readonly(st), UnionType)
-            and lands_in_view_member(st, expr.uncoerced.result_type)):
-        # The view member of a union: a member-init or a result
-        # initializes it from the source; a body write from a NAME is
-        # refused (BUGS.md#record-view-field-escapes-local-buffer).
-        initializes = direct or slot.construct is SlotConstruct.RETURN
-        if initializes and _absorbs(member, rt, types):
-            return passes(member)
-        if not initializes and under.binding is not None:
-            return _refuse_lift(s.held)
     if (slot.materializer is Materializer.CALLEE and not s.pointer_held
             and (_same_type(rt, member, types)
                  or (record_like(member, types)
@@ -1919,10 +2415,13 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         # assignment takes it, whatever the outer types say.
         return stored_tuple()
     # A record or container read as the object is the storage a slot of
-    # its own type takes.
+    # its own type takes -- not a union's reference member, into which a
+    # borrow converts (a value object is its own storage).
+    own_slot = member == st and not (slot.union_part
+                                     and not member.is_value_type())
     stored = (s.held in (Held.STORAGE, Held.FRESH)
               or isinstance(rt, NoneType)
-              or (s.held in (Held.VALUE, Held.BORROWED) and member == st
+              or (s.held in (Held.VALUE, Held.BORROWED) and own_slot
                   and record_like(member, types) and not s.pointer_held))
     if _same_type(rt, member, types) and stored:
         if mv and not implicit:
@@ -1931,7 +2430,10 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                         Effect.MOVE)
         return passes(member)
     ptr_union = _eligible_ptr_union(member, types) is not None
-    ptr_lift = rt == member and (_ptr_opt(member) or ptr_union)
+    # A non-union value sema coerced into the union is no borrow form: it
+    # lands in its member, which the union's storage takes.
+    ptr_lift = (rt == member and (_ptr_opt(member) or ptr_union)
+                and not _coerced_into_member(expr, member))
     if (mv and not ptr_lift and not borrow_tuple
             and not (s.held is Held.BORROWED
                      and _same_viewfam(rt, member, types))
@@ -1952,7 +2454,7 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             and not s.pointer_held
             and _absorbs(member, rt, types)
             and (s.held is not Held.BORROWED
-                 or (member == st and record_like(member, types)))):
+                 or (own_slot and record_like(member, types)))):
         # A value / owned rvalue, or a REFERENCE borrow of a record or
         # container at its own slot: the slot's copy or converting
         # assignment takes it as it is. (Inside an Optional / union the

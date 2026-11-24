@@ -242,7 +242,8 @@ and two constrained templates over unrelated protocols are unordered).
   optional type itself (`std::optional<double>(0.1)`, since a payload value
   would lose to a plain variant's standard conversion). A value-union
   parameter does the same at the member sema landed the argument in
-  (`TpyCoerce.union_member`): `v.b(1)` at `b(x: int64 | str)` beside
+  (the record at the argument's boundary, `sema/landings.py`, read by the
+  lowering's `Slot.union_member`): `v.b(1)` at `b(x: int64 | str)` beside
   `b(x: float)` renders
   `v.b(::tpy::Union<int64_t, std::string>(static_cast<int64_t>(1)))`, so
   C++ binds the union variant, not the `double` one. The pin fires
@@ -261,7 +262,7 @@ and two constrained templates over unrelated protocols are unordered).
   pin is one step of the argument sink (`_lower_call_arg`), so every
   argument position takes it: a free or method call, a constructor, each
   `*args` element, an awaited coroutine call's frame. A parameter
-  DEFAULT does not (BUGS.md#union-int-literal-narrow-member-ill-formed). `@native` / `@cpp_template` stubs (builtin `float`,
+  DEFAULT takes the member sema recorded for it in its own width. `@native` / `@cpp_template` stubs (builtin `float`,
   `float32`, ...) take no pin. At an operator the literal operand at the
   dunder's parameter is pinned wherever sema resolves the dunder: `v * 3` at
   `__mul__(float)` / `__mul__(int)` renders `((v).__mul____int(::tpy::BigInt(3)))`,

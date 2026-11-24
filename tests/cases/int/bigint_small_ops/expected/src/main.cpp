@@ -337,7 +337,7 @@ void main() {
     std::cout << "method" << " " << ::tpy::print_bool(number.check(::tpy::BigInt(-5))) << "\n" << ::tpy::check_signals;
     std::cout << "generic twin" << " " << ::tpy::print_bool(::tpyapp::main::compare(low, high)) << " " << ::tpy::print_bool(::tpyapp::main::generic_compare<::tpy::BigInt>(low, high)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::wrappers(-17, ::tpy::Union<::tpy::BigInt, std::string>(high), std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(-17), ::tpy::BigInt(3)});
-    ::tpyapp::main::wrappers(std::nullopt, ::tpy::Union<::tpy::BigInt, std::string>("inverse"), std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(17), ::tpy::BigInt(3)});
+    ::tpyapp::main::wrappers(std::nullopt, ::tpy::Union<::tpy::BigInt, std::string>(std::in_place_type<std::string>, "inverse"), std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(17), ::tpy::BigInt(3)});
     {
         auto __src_3 = ::tpyapp::main::generated(::tpy::BigInt(-17), ::tpy::BigInt(3));
         auto&& __itr_3 = ::tpy::__iter__(__src_3);

@@ -49,7 +49,7 @@ std::string ref_tuple(::tpy::Union<std::monostate, const A*, const B*> v) {
 //     y: A | B | None = None
 //     print(ref_tuple(y))
 void main() {
-    ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> a = 5;
+    ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> a = ::tpy::BigInt(5);
     std::cout << ::tpyapp::main::scalar_tuple(a) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::scalar_inline(a) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> n = std::monostate{};

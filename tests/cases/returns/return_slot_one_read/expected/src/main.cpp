@@ -132,7 +132,7 @@ A& param_named_self(A& self) {
 //     return j  # tpyc: ok
 Json wrapper_local(int32_t n) {
     if ((n == 0)) {
-        return "s";
+        return static_cast<std::string>("s");
     }
     Json j = std::vector<Json>{1, 2};
     return j;

@@ -106,7 +106,7 @@ void borrowed_sink(::tpyapp::fixtures::H& h) {
             __fin_ran_1 = true;
             b->n = ::tpy::add_check<int32_t>(b->n, 90);
             keep.n = ::tpy::add_check<int32_t>(keep.n, 1000);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_1) {
                 b->n = ::tpy::add_check<int32_t>(b->n, 90);
@@ -134,7 +134,7 @@ void borrowed_sink(::tpyapp::fixtures::H& h) {
             auto* __tpy_retp_0 = &((*(b = &*(__slot_2 = ::tpyapp::fixtures::N(2)), b)));
             __fin_ran_2 = true;
             b->n = 99;
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_2) {
                 b->n = 99;

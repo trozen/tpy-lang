@@ -588,7 +588,7 @@ P deferred_return_finally() {
                 auto* __tpy_retp_0 = &(p);
                 __fin_ran_12 = true;
                 std::cout << "deferred_return_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
-                return std::move(*__tpy_retp_0);
+                return std::move((*__tpy_retp_0));
             }
         } catch (...) {
             if (!__fin_ran_12) {

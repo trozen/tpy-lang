@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def remake() -> tuple[int | str, int]:
 //     return ("hello", 9)
 std::tuple<::tpy::Union<::tpy::BigInt, std::string>, ::tpy::BigInt> remake() {
-    return std::tuple<::tpy::Union<::tpy::BigInt, std::string>, ::tpy::BigInt>{"hello", ::tpy::BigInt(9)};
+    return std::tuple<::tpy::Union<::tpy::BigInt, std::string>, ::tpy::BigInt>{static_cast<std::string>("hello"), ::tpy::BigInt(9)};
 }
 
 // def gen(a: int | str) -> Iterator[str]:
@@ -76,7 +76,7 @@ __gen_gen gen(::tpy::Union<::tpy::BigInt, std::string> a) {
 //         print(s)
 void main() {
     {
-        auto __src_0 = ::tpyapp::main::gen(::tpy::Union<::tpy::BigInt, std::string>(5));
+        auto __src_0 = ::tpyapp::main::gen(::tpy::Union<::tpy::BigInt, std::string>(::tpy::BigInt(5)));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

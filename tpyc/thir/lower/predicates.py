@@ -930,7 +930,8 @@ def _wrapper_member_literal_slot(init, t: 'TpyType | None',
     return _wrapper_union_like(t) is not None
 
 
-def _union_member_ctor_slot(init, t: 'TpyType | None', analyzer) -> bool:
+def _union_member_ctor_slot(init, t: 'TpyType | None', analyzer,
+                            member: 'TpyType | None') -> bool:
     """A value-variant union ELEMENT slot over record members, initialized
     with a member-record ctor rvalue (`[Dog("Rex"), Cat("W")]` into
     `std::vector<std::variant<Cat, Dog>>`): the variant's converting ctor
@@ -947,11 +948,11 @@ def _union_member_ctor_slot(init, t: 'TpyType | None', analyzer) -> bool:
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if not isinstance(t, UnionType) or t.needs_wrapper():
         return False
-    members = [unwrap_readonly(m) for m in t.members]
     it = unwrap_readonly(analyzer.get_expr_type(init))
     if not (isinstance(it, NominalType) and it.is_user_record):
         return False
-    return any(m == it for m in members)
+    # The member sema landed the element in is the record's own type.
+    return member is not None and unwrap_readonly(member) == it
 
 
 def _ptr_union_member_wide(m: TpyType, analyzer) -> bool:
@@ -7305,19 +7306,6 @@ def _alias_field_source_ok(init: TpyExpr, declared: dict[str, TpyType],
     return (_field_receiver_ok(init, declared, analyzer)
             and record_like(analyzer.get_expr_type(init), analyzer))
 
-def _union_base_member_match(st: 'TpyType | None', members, analyzer) -> bool:
-    """A record source type deriving from exactly ONE member of a
-    pointer-variant union: its address binds that member through the
-    variant's converting ctor (`pv{&(dog)}` at `Pet | Cat`), so the render
-    spells no member. Exactly one -- a source deriving from two members is
-    ambiguous to the ctor and rejects. Strict subclass only; an exact member
-    is the caller's own test. Address binds only: a subclass RVALUE would
-    slice into the base's value slot, so callers admit NAME sources alone."""
-    if st is None or not _f1_record(st, analyzer):
-        return False
-    return sum(1 for m in members
-               if analyzer.registry.is_subclass_of(st, m)) == 1
-
 def _is_borrow_ptr_local(e: TpyExpr, declared: dict[str, TpyType],
                          pointers: set[str]) -> bool:
     """`e` is a bare borrow `T*` local that lifts to a storage `optional<T>` at a
@@ -9204,14 +9192,6 @@ def _record_call_rvalue_operand(a: TpyExpr, analyzer) -> bool:
     return (isinstance(stu, NominalType) and stu.is_user_record
             and is_rvalue_source(analyzer, a))
 
-def _single_member_of_family(members, pred) -> bool:
-    """Exactly one union member satisfies `pred` -- the shared rule behind
-    the bare-literal admissions: a literal lands in the variant's SINGLE
-    matching member; two candidates would make the converting-ctor pick
-    ambiguous, so both the decl and arg-temp literal arms reject."""
-    return sum(1 for m in members if pred(unwrap_readonly(m))) == 1
-
-
 def _ru_wrapper_arg_slot(ptype: TpyType | None) -> 'TpyType | None':
     """A recursive-union WRAPPER arg slot (`v: JsonValue` -- the expanded
     non-generic UnionType whose C++ form is the alias's wrapper struct --
@@ -9253,7 +9233,8 @@ def _wrapper_like_members(t: 'TpyType') -> tuple:
 def _ru_wrapper_name_arg(a: TpyExpr, ptype: 'TpyType | None',
                          locals_: dict[str, TpyType],
                          narrowed: 'AbstractSet[str]',
-                         analyzer=None) -> bool:
+                         analyzer=None, *,
+                         member: 'TpyType | None' = None) -> bool:
     """A wrapper-union NAME at a same-wrapper arg slot (`json.dumps(v)` on
     `v: JsonValue`): the binding is already the wrapper struct, so both
     paths render the bare name (no lift, no temp). A binding that carries
@@ -9270,8 +9251,8 @@ def _ru_wrapper_name_arg(a: TpyExpr, ptype: 'TpyType | None',
         unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name]))),
         analyzer)
     if a.name in narrowed:
-        return (any(dt == m for m in _wrapper_like_members(ut)
-                    if not is_void_like_type(m))
+        # A narrowed name lands in the member sema recorded: its own.
+        return (member is not None and dt == unwrap_readonly(member)
                 and _witness("arg.ru_wrapper_narrowed"))
     if dt == ut:
         return True
@@ -9429,7 +9410,8 @@ def _ru_wrapper_own_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
 
 
 def _ru_wrapper_member_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                  analyzer) -> 'UnionType | None':
+                                  analyzer, member: 'TpyType | None'
+                                  ) -> 'UnionType | None':
     """A member-typed record-CTOR rvalue into a wrapper-union slot
     (`eval_expr(Lit(42))` -> `Expr __tmp_N = Lit(::tpy::BigInt(42));` + the
     bare temp name) -- the ctor sibling of the literal / NAME rows.
@@ -9447,8 +9429,7 @@ def _ru_wrapper_member_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
                                      RecursiveAliasInstanceType)):
         return None
     atu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-    if not any(atu == m for m in _wrapper_like_members(ut)
-               if not is_void_like_type(m)):
+    if member is None or atu != unwrap_readonly(member):
         return None
     return ut
 
@@ -10339,7 +10320,8 @@ def _optional_ptr_dyn_face(inner: TpyType, at: 'TpyType | None', analyzer,
     return entry
 
 def _union_literal_temp_arg(a: TpyExpr, ptype: TpyType | None, analyzer,
-                            *, literal_type) -> 'UnionType | None':
+                            *, literal_type,
+                            member: 'TpyType | None') -> 'UnionType | None':
     """The shared body of the union literal-temp ARG rows (the
     `_borrow_tuple_arg` factoring): a LITERAL of `literal_type` at a
     pointer-variant union slot with a matching member. the union-arg render's
@@ -10355,17 +10337,19 @@ def _union_literal_temp_arg(a: TpyExpr, ptype: TpyType | None, analyzer,
     if not (isinstance(ut, UnionType) and is_ptr_variant_union(ut)):
         return None
     at = analyzer.get_expr_type(a)
-    if not any(at == m for m in ut.members if not is_void_like_type(m)):
+    if member is None or at != unwrap_readonly(member):
         return None
     return ut
 
 def _union_bytes_literal_temp_arg(a: TpyExpr, ptype: TpyType | None,
-                                  analyzer) -> 'UnionType | None':
+                                  analyzer, member: 'TpyType | None'
+                                  ) -> 'UnionType | None':
     """The bytes flavor (`s.post(url, b"payload")` at `bytes | dict |
     None` -> `std::vector<uint8_t> __tmp_N =
     ::tpy::bytes_literal_owned(..);` + `pv{&__tmp_N}`)."""
     return _union_literal_temp_arg(a, ptype, analyzer,
-                                   literal_type=TpyBytesLiteral)
+                                   literal_type=TpyBytesLiteral,
+                                   member=member)
 
 
 def _arg_ptr_union_slot(ptype: TpyType | None, analyzer,

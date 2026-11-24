@@ -1,0 +1,2 @@
+main.py:33: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:35: error: Type mismatch in '+=' to 'o': expected Other, got int32

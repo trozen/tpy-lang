@@ -384,10 +384,10 @@ void main() {
     ::tpyapp::main::match_arm(Color::RED);
     ::tpyapp::main::match_arm(Color::GREEN);
     ::tpyapp::main::default_text();
-    ::tpyapp::main::alias(J("hi"));
-    ::tpyapp::main::alias(J(std::vector<J>{"a", std::vector<J>{"b"}}));
+    ::tpyapp::main::alias(J(static_cast<std::string>("hi")));
+    ::tpyapp::main::alias(J(std::vector<J>{static_cast<std::string>("a"), std::vector<J>{static_cast<std::string>("b")}}));
     ::tpyapp::main::union_member(::tpy::Union<Num, std::string>(Num::ONE), ::tpy::Union<Color, int32_t>(Color::RED));
-    ::tpyapp::main::union_member(::tpy::Union<Num, std::string>("s"), 7);
+    ::tpyapp::main::union_member(::tpy::Union<Num, std::string>(std::in_place_type<std::string>, "s"), ::tpy::Union<Color, int32_t>(7));
     ::tpyapp::main::nested();
     ::tpyapp::main::imported();
     ::tpyapp::main::small_value();

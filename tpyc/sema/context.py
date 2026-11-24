@@ -22,6 +22,7 @@ from .. import qnames
 from . import own_copy
 from .value_range import ValueRange
 from .elem_paths import ElemPath
+from .landings import PublishedLandings, publish as publish_landings
 from .def_reach import Reach, def_reach, reach_at
 
 if TYPE_CHECKING:
@@ -2161,6 +2162,10 @@ class FunctionTrackingState:
     # per-leaf records are built from the settled verdicts once
     # `settle_owning_reads` ran.
     tuple_sinks: IdentityMap = field(default_factory=IdentityMap)
+    # The union member each committing check landed a value in, by the
+    # boundary that receives it (`landings`); published into
+    # `SemanticContext.union_landings` when the body settles.
+    union_landings: IdentityMap = field(default_factory=IdentityMap)
     move_through_vars: set[str] = field(default_factory=set)
 
     # --- Prescan / last-use ---
@@ -2295,7 +2300,7 @@ class FunctionTrackingState:
 
     # --- Reassignment inference tracking ---
     unresolved_none_vars: set[str] = field(default_factory=set)
-    write_history: dict[str, list[tuple[TpyType, TpyExpr]]] = field(default_factory=dict)
+    write_history: dict[str, list[tuple[TpyType, TpyExpr, TpyStmt]]] = field(default_factory=dict)
     authoritative_types: dict[str, TpyType] = field(default_factory=dict)
     authoritative_type_lines: dict[str, int] = field(default_factory=dict)
 
@@ -3321,6 +3326,13 @@ class SemanticContext:
     # (`source_records.SourceRecord`), keyed by the peeled source node and
     # read through `source_records.read_record` / `verdict`.
     source_records: IdentityMap = field(default_factory=IdentityMap)
+    # The union member a value landed in, by its receiving boundary
+    # (`landings`: holder -> {role: {path: member}}), published by each
+    # settled body and by the defaults' commit; the lowering reads it.
+    union_landings: PublishedLandings = field(default_factory=PublishedLandings)
+    # Whether a default's commit publishes its landing
+    # (`default_landings_published`).
+    publish_default_landings: bool = True
     # Each member of a literal source with a record, by its peeled node:
     # the record's key and the member's path in it
     # (`source_records.read_record`).
@@ -4692,6 +4704,45 @@ class SemanticContext:
             raise AssertionError(
                 f"Internal error: {what} written at a slot that does not "
                 f"commit ({self.probe_slot.name.lower()})")
+
+    @contextmanager
+    def default_check_scope(self) -> Iterator[None]:
+        """The commit of a default's check (`commit_default_landing`): a
+        function state of its own, committed, whose landings are published
+        at exit and whose other writes are dropped -- a default commits
+        nothing else, and belongs to no body that would settle it."""
+        saved_func, saved_probe = self.func, self.probe_slot
+        before = len(self.diagnostics)
+        self.func = FunctionTrackingState()
+        self.probe_slot = ProbeSlot.COMMITTED
+        try:
+            yield
+        finally:
+            landings = self.func.union_landings
+            self.func, self.probe_slot = saved_func, saved_probe
+            del self.diagnostics[before:]
+            if self.publish_default_landings:
+                publish_landings(landings, self.union_landings)
+
+    @contextmanager
+    def default_landings_published(self, published: bool) -> Iterator[None]:
+        """Defaults checked in this scope publish their landings only when
+        `published`: a default no C++ renders records none."""
+        saved = self.publish_default_landings
+        self.publish_default_landings = published
+        try:
+            yield
+        finally:
+            self.publish_default_landings = saved
+
+    def assert_union_boundary(self) -> None:
+        """Under the test harness, a committing check that lands a value
+        in a union member with no receiving boundary is an internal error:
+        the conversion would find no member to read."""
+        if _ASSERT_SLOT_EFFECTS:
+            raise AssertionError(
+                "Internal error: a union member landed by a committing "
+                "check with no receiving boundary")
 
     def def_reach(self, name: str, enclosing: bool = False) -> 'Reach':
         """What a read of nested-def name `name` reaches here, from the

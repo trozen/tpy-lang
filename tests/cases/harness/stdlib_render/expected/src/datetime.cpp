@@ -514,11 +514,11 @@ std::optional<std::string> datetime::tzname() const {
         tz = this->tzinfo();
     } else if (std::holds_alternative<::tpystd::datetime::timezone>(tzinfo)) {
         const auto& __tzinfo = std::get<::tpystd::datetime::timezone>(tzinfo);
-        tz = __tzinfo;
+        tz = static_cast<const ::tpystd::datetime::timezone&>(__tzinfo);
     } else {
         if (std::holds_alternative<::tpystd::datetime::ZoneInfo>(tzinfo)) {
             const auto& __tzinfo = std::get<::tpystd::datetime::ZoneInfo>(tzinfo);
-            tz = __tzinfo;
+            tz = static_cast<const ::tpystd::datetime::ZoneInfo&>(__tzinfo);
         }
     }
     return ::tpystd::datetime::datetime(y, mo, d, hh, mm, ss, us, tz, f);

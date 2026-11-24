@@ -8,7 +8,7 @@ main::take@71:0: covered (storage: no_proof_required), summary: known
 main::arg@77:0: uncovered (payload copy type or access mismatch), summary: opaque (payload copy type or access mismatch)
 main::take_union@82:0: covered (storage: no_proof_required), summary: known
 main::take_union_opt@87:0: covered (storage: no_proof_required), summary: known
-main::arg_union@93:0: uncovered (union has no matching record alternative), summary: opaque (union has no matching record alternative)
+main::arg_union@93:0: uncovered (payload copy type or access mismatch), summary: opaque (payload copy type or access mismatch)
 main::give@100:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::ret@105:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
 main::give_union@112:0: uncovered (unsupported return type), summary: opaque (unsupported return type)

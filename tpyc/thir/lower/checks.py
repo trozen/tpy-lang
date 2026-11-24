@@ -109,6 +109,8 @@ from ...sema.call_lends import (
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...sema.alias_rebind import bare_tuple
 from ...sema.source_records import Disposition, moves_place, verdict
+from ...sema.landings import (Boundary, arg_boundary, param_boundary,
+                              peek_member)
 from ..param_contract import arg_retention, param_const, protocol_slot
 from ...storage_trace import MEMBER_PATH, path_root
 from ...type_def_registry import (
@@ -780,8 +782,10 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                            allow_nested: bool = False,
                            allow_optional: bool = False,
                            note: bool = False,
-                           pointers: 'AbstractSet[str]' = frozenset()) -> bool:
+                           pointers: 'AbstractSet[str]' = frozenset(),
+                           member: 'TpyType | None' = None) -> bool:
     """One container-literal element / dict value against its RESOLVED slot.
+    `member`: the union member sema landed the element in at its boundary.
 
     `threaded` = the parent literal itself was rendered with a target;
     `forced` = the parent position threads every element target regardless of
@@ -936,8 +940,8 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                          unwrap_send_sync(_clfe)))) is not None
                          and (is_list(_clfu) or is_dict(_clfu)
                               or is_set(_clfu))
-                         and any(unwrap_readonly(m) == _clfu
-                                 for m in su.members)))
+                         and member is not None
+                         and unwrap_readonly(member) == _clfu))
                 and _witness("containerlit.union_field_elem")):
             return True
         # A MIXED (non-value) union stores a value variant at element
@@ -959,36 +963,26 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                         for m in su.members)):
             return True
         if (isinstance(su, UnionType) and not su.needs_wrapper()
-                and isinstance(e, TpyArrayLiteral)
-                and len([m for m in su.members
-                         if is_list(unwrap_readonly(m))
-                         or is_array(unwrap_readonly(m))]) == 1):
+                and isinstance(e, TpyArrayLiteral) and member is not None
+                and (is_list(unwrap_readonly(member))
+                     or is_array(unwrap_readonly(member)))):
             return True
         # The DICT sibling: a nested dict literal at a union slot with a
         # UNIQUE dict member (`{"pos": {"x": p.x, ...}}` -- the asdict
         # nesting) lowers against the member; its self-describing
         # ordered_map render lands in the variant via the converting ctor.
         if (isinstance(su, UnionType) and not su.needs_wrapper()
-                and isinstance(e, TpyDictLiteral)
-                and len([m for m in su.members
-                         if is_dict(unwrap_readonly(m))]) == 1):
+                and isinstance(e, TpyDictLiteral) and member is not None
+                and is_dict(unwrap_readonly(member))):
             return True
         # The COMP sibling: a list comprehension at a list-member slot
-        # lowers against the member (the `({...})` stmt-expr renders
-        # inline; the variant converts) -- the asdict list recursion. A
-        # multi-list-member union disambiguates by the comp's OWN sema
-        # type -- the comp resolves against it, member-blind.
+        # lowers against the member sema landed it in (the `({...})`
+        # stmt-expr renders inline; the variant converts) -- the asdict
+        # list recursion.
         if (isinstance(su, UnionType) and not su.needs_wrapper()
-                and isinstance(e, TpyListComprehension)):
-            _clms = [m for m in su.members if is_list(unwrap_readonly(m))]
-            if len(_clms) == 1:
-                return True
-            _clet = analyzer.get_expr_type(e)
-            _cletu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                _clet))) if _clet is not None else None)
-            if _cletu is not None and any(
-                    unwrap_readonly(m) == _cletu for m in _clms):
-                return True
+                and isinstance(e, TpyListComprehension)
+                and member is not None and is_list(unwrap_readonly(member))):
+            return True
         # M4c: a wrapper element slot absorbs a member-record ctor rvalue
         # via the wrapper's template converting ctor -- bare render on both
         # paths (`{Leaf(1), Leaf(2)}` into `std::vector<Tree>`).
@@ -1050,7 +1044,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                 return True
         # The plain-union twin: a member-record ctor rvalue into an
         # all-record value-variant element slot (`{Dog("Rex"), Cat("W")}`).
-        if _union_member_ctor_slot(e, su, analyzer):
+        if _union_member_ctor_slot(e, su, analyzer, member):
             return True
         # A member-record NAME into the same all-record value-variant slot
         # (`[r, Circle()]` -> `make_vector<variant<..>>(std::move(r),
@@ -1071,7 +1065,8 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                           and all(isinstance(m, NominalType)
                                   and m.is_user_record for m in members))
             if (all_record and isinstance(bu, NominalType)
-                    and bu.is_user_record and any(m == bu for m in members)):
+                    and bu.is_user_record and member is not None
+                    and unwrap_readonly(member) == bu):
                 return True
             if all_record and isinstance(bu, UnionType) and bu == su:
                 return True
@@ -2561,9 +2556,11 @@ def _user_deref_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
             or _eligible_enum(ftype, analyzer) is not None
             or _eligible_ptr_value(ftype, analyzer))
 
-def _union_member_ctor_rvalue(value: TpyExpr, u: UnionType, analyzer) -> bool:
-    """A constructor-call rvalue whose type is EXACTLY a member of `u` --
-    the bare variant-absorbing store (`field = Cat(9);`)."""
+def _union_member_ctor_rvalue(value: TpyExpr, u: UnionType, analyzer,
+                              member: 'TpyType | None') -> bool:
+    """A constructor-call rvalue whose type is EXACTLY the member of `u`
+    sema landed it in -- the bare variant-absorbing store
+    (`field = Cat(9);`)."""
     if not isinstance(value, TpyCall):
         return False
     fi = value.resolved_function_info
@@ -2573,7 +2570,7 @@ def _union_member_ctor_rvalue(value: TpyExpr, u: UnionType, analyzer) -> bool:
     if vt is None:
         return False
     vt = unwrap_readonly(vt)
-    return any(m == vt for m in u.members)
+    return member is not None and unwrap_readonly(member) == vt
 
 def _nondef_ctor_field(ftype: 'TpyType | None', analyzer) -> bool:
     """The field's type has no C++ default constructor: a DEMOTED init of
@@ -4135,16 +4132,20 @@ def _literal_overload_pin_fires(e: 'TpyCall', fi, analyzer) -> bool:
         return False
     params = fi.params
     return any(i < len(params)
-               and _literal_pin_slot(a, params[i].type, fi, analyzer) is not None
+               and _literal_pin_slot(
+                   a, params[i].type, fi, analyzer,
+                   peek_member(analyzer.ctx.union_landings,
+                             param_boundary(e, i))) is not None
                for i, a in enumerate(e.args))
 
 
 def _literal_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
-                      fi, analyzer) -> 'tuple[TpyType, TpyType] | None':
+                      fi, analyzer, member: 'TpyType | None' = None
+                      ) -> 'tuple[TpyType, TpyType] | None':
     """The param slot ONE literal arg must be pinned to -- rendered as a
     value of the slot's own type, so C++ binds the variant sema picked --
     with the scalar it renders as there (the slot, an Optional's payload,
-    or the value-union member sema landed it in, `TpyCoerce.union_member`),
+    or the value-union `member` sema landed it in at its boundary),
     or None when this arg takes no pin. The pin applies where the callee is
     a variant C++ picks among its set again
     (`FunctionInfo.reresolved_by_cpp`: variants sharing one C++ name), at a
@@ -4165,7 +4166,6 @@ def _literal_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
     lit_t = _numeric_literal_type(a, analyzer)
     if not is_str and lit_t is None:
         return None
-    member = a.union_member if isinstance(a, TpyCoerce) else None
     # A method or operator variant of a set renders its numeric literal at
     # the parameter's type even where its own name picks it: a method's
     # literal argument is otherwise rendered target-less
@@ -4181,7 +4181,8 @@ def _literal_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
         return None
     slot = (unwrap_readonly(unwrap_ref_type(ptype))
             if isinstance(ptype, TpyType) else None)
-    if slot is None:
+    if slot is None or pointer_variant_union(slot) is not None:
+        # A pointer variant lends an object: no literal pins its member.
         return None
     if member is not None:
         payload = repr_shape(unwrap_readonly(member))
@@ -4420,13 +4421,14 @@ def _native_protocol_field_arg(a: TpyExpr, ptype: 'TpyType | None',
 def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                         locals_: dict[str, TpyType], analyzer, *,
                         retains: 'Retention | None',
+        member: 'TpyType | None' = None,
                         **body_facts) -> bool:
     """The native / native_c / @cpp_template free-callee family's arg rows.
     Rows: `_NATIVE_ARG_SINK`. `body_facts` are the enclosing body's name
     sets (`_ArgReq`), which only the shared free-call tail reads here; the
     family threads no flush position."""
     return arg_ok(_NATIVE_ARG_SINK, a, ptype, locals_, analyzer,
-                  temps_ok=False, retains=retains, **body_facts)
+                  temps_ok=False, retains=retains, member=member, **body_facts)
 
 
 def _readonly_container_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -4737,6 +4739,7 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                        frame_capturing: bool = False,
                        readonly_target: bool = False,
                        retains: 'Retention | None',
+        member: 'TpyType | None' = None,
                        **body_facts) -> bool:
     """The plain (non-native) free-callee family's arg rows -- the reference
     ladder the other families were copied from. Rows: `_PLAIN_ARG_SINK`;
@@ -4748,7 +4751,7 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                   temps_ok=temps_ok, self_capturable=self_capturable,
                   index=index, overload=overload,
                   frame_capturing=frame_capturing,
-                  readonly_target=readonly_target, retains=retains,
+                  readonly_target=readonly_target, retains=retains, member=member,
                   **body_facts)
 
 
@@ -5196,7 +5199,8 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
                           = frozenset(),
                           overload=None,
                           retains: 'Retention | None',
-                          frame_taken: bool = False) -> bool:
+                          frame_taken: bool = False,
+        member: 'TpyType | None' = None) -> bool:
     """The generic free-callee family's arg rows, decided against the
     SUBSTITUTED slot -- which is why the sink is handed `resolved` as its
     slot and keeps the unsubstituted one as `open_ptype`.
@@ -5211,7 +5215,7 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
                   temps_ok=temps_ok,
                   storage_tuple_locals=storage_tuple_locals,
                   open_ptype=ptype, overload=overload, retains=retains,
-                  frame_taken=frame_taken)
+                  frame_taken=frame_taken, member=member)
 
 
 def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -7113,13 +7117,14 @@ def _union_coerced_literal_arg(a: TpyExpr, ptype: TpyType | None,
     return at == ut
 
 def _own_union_ctor_arg(a: TpyExpr, ptype: TpyType | None,
-                        locals_: dict[str, TpyType], analyzer) -> bool:
+                        locals_: dict[str, TpyType], analyzer,
+                        member: 'TpyType | None') -> bool:
     """A same-module record-ctor rvalue into an `Own[union]` value-variant slot
     (`take_own(A(7))` -> `take_own(A(7))`): the Own cascade is inert
     for the shape -- the ctor is an rvalue (no `_maybe_move`, no copy temp) and
     no `to_value_variant` lift fires (a ctor is not a ptr-variant source) -- so
-    the render is the bare ctor expansion. The arg record must be a member
-    of the union (slice guard; sema enforces). An Own[union] slot with a NAME
+    the render is the bare ctor expansion. The arg record must be the
+    member sema landed it in (slice guard). An Own[union] slot with a NAME
     arg is the auto-move cascade (`std::move(u)`) -> reject."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
@@ -7135,7 +7140,7 @@ def _own_union_ctor_arg(a: TpyExpr, ptype: TpyType | None,
     if not isinstance(a, TpyCall):
         return False
     rt = analyzer.get_expr_type(a)
-    if not any(rt == m for m in ut.members if not is_void_like_type(m)):
+    if member is None or rt != unwrap_readonly(member):
         return False
     return (_ctor_shape_ok(a, analyzer)
             and _witness("own.union_ctor"))
@@ -9769,7 +9774,7 @@ def _callable_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
 
 
 def _union_member_ctor_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                analyzer) -> bool:
+                                analyzer, member: 'TpyType | None') -> bool:
     """A union-member ctor rvalue into a union element slot
     (`xs.append(Circle(int32(1)))` on `list[Shape]` -> the bare
     `push_back(::tpyapp::shapes::Circle(1))`): the variant's converting
@@ -9778,7 +9783,7 @@ def _union_member_ctor_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
     pt = _elem_slot_type(ptype)
     if not isinstance(pt, UnionType) or pt.needs_wrapper():
         return False
-    return _union_member_ctor_rvalue(a, pt, analyzer)
+    return _union_member_ctor_rvalue(a, pt, analyzer, member)
 
 
 def _stub_method_arg_ok(
@@ -9791,7 +9796,8 @@ def _stub_method_arg_ok(
         movable_locals: 'set[str] | frozenset[str]' = frozenset(),
         func_name: 'str | None' = None,
         retains: 'Retention | None',
-        frame_taken: bool = False) -> bool:
+        frame_taken: bool = False,
+        member: 'TpyType | None' = None) -> bool:
     """The builtin-stub receivers' call into the one method-arg sink --
     container, bytearray, str/bytes view, scalar, and the ptr-template arm,
     which all render their args through the builtin-stub loop. No resolved
@@ -9809,7 +9815,7 @@ def _stub_method_arg_ok(
     return arg_ok(_METHOD_ARG_SINK, a, ptype, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed, temps_ok=False,
                   movable_locals=movable_locals, func_name=func_name,
-                  stub_slot=True, retains=retains)
+                  stub_slot=True, retains=retains, member=member)
 
 
 def _opt_view_own_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -10125,12 +10131,24 @@ class MethodCallFacts(NamedTuple):
     # The type the call runs on where it is not the written receiver's
     # (`call_dispatch_type`). An operator or subscript spelling has none.
     dispatch_type: 'TpyType | None' = None
+    # The explicit call node, whose parameter `k` is argument `k`'s
+    # receiving boundary (`sema.landings`).
+    call: 'TpyExpr | None' = None
+    # An operator or subscript spelling's one argument: the boundary sema
+    # received it at (the operand, the key, the stored value).
+    boundary: 'Boundary | None' = None
 
     @classmethod
     def of(cls, e: TpyMethodCall) -> 'MethodCallFacts':
         return cls(e.obj, e.method, e.resolved_function_info,
                    _plain_member_call_markers_ok(e, targs_ok=True),
-                   call_dispatch_type(e))
+                   call_dispatch_type(e), call=e)
+
+    def boundary_at(self, index: int) -> 'Boundary | None':
+        """The receiving boundary of argument `index`."""
+        if self.boundary is not None:
+            return self.boundary
+        return arg_boundary(self.call, index)
 
 
 def _borrow_form_at_storage_slot(fi: 'FunctionInfo | None', index: int,
@@ -10155,6 +10173,12 @@ def _borrow_form_at_storage_slot(fi: 'FunctionInfo | None', index: int,
         return False
     return (pointer_repr_optional(ptype) is not None
             or pointer_variant_union(ptype) is not None)
+
+
+def _landed_member(call: 'MethodCallFacts', index: int,
+                   analyzer) -> 'TpyType | None':
+    """The union member sema landed argument `index` of `call` in."""
+    return peek_member(analyzer.ctx.union_landings, call.boundary_at(index))
 
 
 def _method_call_arg_ok(
@@ -10189,7 +10213,8 @@ def _method_call_arg_ok(
                           temps_ok=temps_ok, index=index,
                           overload=call.fi,
                           movable_locals=movable_locals, func_name=func_name,
-                          retains=retains, frame_taken=frame_taken)
+                          retains=retains, frame_taken=frame_taken,
+                          member=_landed_member(call, index, analyzer))
 
     if recv_type is not None and recv_type.is_pointer():
         # The ptr-template arm's args (`p.span(n)`): scalar positional
@@ -10198,7 +10223,8 @@ def _method_call_arg_ok(
                                    param_names=param_names,
                                    narrowed=narrowed,
                                    movable_locals=movable_locals,
-                                   func_name=func_name, retains=retains)
+                                   func_name=func_name, retains=retains,
+                          member=_landed_member(call, index, analyzer))
     recv = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_type)))
     if isinstance(recv, OwnType):
         recv = unwrap_readonly(recv.wrapped)
@@ -10258,7 +10284,8 @@ def _method_call_arg_ok(
         frame_capturing=(mfi is not None
                          and (mfi.is_generator or mfi.is_async)),
         movable_locals=movable_locals, func_name=func_name, retains=retains,
-        frame_taken=frame_taken)
+        frame_taken=frame_taken,
+        member=_landed_member(call, index, analyzer))
 
 def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
                                    analyzer, *, stmt_position: bool,
@@ -10522,7 +10549,7 @@ def _r_shared_pass_through(req: _ArgReq) -> bool:
 
 def _r_ru_wrapper_name(req: _ArgReq) -> bool:
     return _ru_wrapper_name_arg(req.a, req.ptype, req.locals_, req.narrowed,
-                                req.analyzer)
+                                req.analyzer, member=req.member)
 
 
 def _r_optional_ptr(req: _ArgReq) -> bool:
@@ -10829,7 +10856,8 @@ def _r_ru_wrapper_field(req: _ArgReq) -> bool:
 
 
 def _r_own_union_ctor(req: _ArgReq) -> bool:
-    return _own_union_ctor_arg(req.a, req.ptype, req.locals_, req.analyzer)
+    return _own_union_ctor_arg(req.a, req.ptype, req.locals_, req.analyzer,
+                               req.member)
 
 
 def _r_dyn_own_coro_factory(req: _ArgReq) -> bool:
@@ -10913,8 +10941,8 @@ def _r_ru_wrapper_scalar_literal(req: _ArgReq) -> bool:
 
 
 def _r_ru_wrapper_member_rvalue(req: _ArgReq) -> bool:
-    return _ru_wrapper_member_rvalue_arg(req.a, req.ptype,
-                                         req.analyzer) is not None
+    return _ru_wrapper_member_rvalue_arg(req.a, req.ptype, req.analyzer,
+                                         req.member) is not None
 
 
 def _r_ru_wrapper_own_call(req: _ArgReq) -> bool:
@@ -11137,7 +11165,7 @@ def _pre_container_slot_family(req: _ArgReq) -> 'bool | None':
                 _at = unwrap_readonly(_at.wrapped)
             if _at == _es:
                 return True  # witnessed at the arg arm / copy machinery
-        return (_union_member_ctor_slot_arg(a, ptype, analyzer)
+        return (_union_member_ctor_slot_arg(a, ptype, analyzer, req.member)
                 or note_detail("method.arg_shape"))
     return None
 
@@ -11920,7 +11948,8 @@ def _protocol_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                             movable_locals: 'set[str] | frozenset[str]' = frozenset(),
                             func_name: 'str | None' = None,
                             retains: 'Retention | None',
-                            frame_taken: bool = False) -> bool:
+                            frame_taken: bool = False,
+        member: 'TpyType | None' = None) -> bool:
     """The bare-protocol / Own[@dynamic P] receiver family's arg rows.
     Rows: `_PROTOCOL_ARG_SINK`. `overload` is the protocol method's resolved
     fi, passed as the record entry passes its own; no protocol row reads it
@@ -11930,7 +11959,7 @@ def _protocol_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                   param_names=param_names, narrowed=narrowed, temps_ok=temps_ok,
                   index=index, overload=overload,
                   movable_locals=movable_locals, func_name=func_name,
-                  retains=retains, frame_taken=frame_taken)
+                  retains=retains, member=member, frame_taken=frame_taken)
 
 
 def method_literal_mangled_cpp(e: TpyMethodCall, analyzer) -> 'str | None':
@@ -12408,7 +12437,8 @@ def _struct_proto_union_arg(a: TpyExpr, ptype: 'TpyType | None',
     return bool(_witness("method.struct_proto_union_arg"))
 
 
-def _union_ctor_temp_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer) -> bool:
+def _union_ctor_temp_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer,
+                         member: 'TpyType | None') -> bool:
     """A member-typed record-ctor rvalue into a (non-Own) pointer-variant
     union slot -- the union-arg rvalue branch: the ctor hoists a named
     temp and the variant lifts its address (`pv{&__tmp_N}`). A SCALAR
@@ -12424,7 +12454,8 @@ def _union_ctor_temp_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer) -> bool:
     if not isinstance(a, TpyCall) or not is_rvalue_source(analyzer, a):
         return False
     at = analyzer.get_expr_type(a)
-    if not any(at == m for m in ut.members if not is_void_like_type(m)):
+    # The member sema landed the rvalue in is its own type.
+    if member is None or at != unwrap_readonly(member):
         return False
     if _eligible_scalar(at):
         return True
@@ -12444,7 +12475,8 @@ def _record_method_arg_ok(
         movable_locals: 'set[str] | frozenset[str]' = frozenset(),
         func_name: 'str | None' = None,
         retains: 'Retention | None',
-        frame_taken: bool = False) -> bool:
+        frame_taken: bool = False,
+        member: 'TpyType | None' = None) -> bool:
     """A user record's method call into the one method-arg sink: the position,
     the resolved overload and the flush slot the signature-reading rows want.
     Prologue + rows: `_METHOD_ARG_SINK`."""
@@ -12453,7 +12485,7 @@ def _record_method_arg_ok(
                   temps_ok=temps_ok, index=index, overload=overload,
                   frame_capturing=frame_capturing,
                   movable_locals=movable_locals, func_name=func_name,
-                  retains=retains, frame_taken=frame_taken)
+                  retains=retains, member=member, frame_taken=frame_taken)
 
 
 def _view_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],

@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::take_vu@8:0: covered (storage: no_proof_required), summary: known
 main::eat@14:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::head@21:0: covered (storage: no_proof_required), summary: known
-main::countdown@25:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+main::countdown@25:0: covered (storage: no_proof_required), summary: known
 main::fresh_literal@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::literal_reads_loop_var@47:0: covered (storage: no_proof_required), summary: known
 main::else_break_continue@60:0: covered (storage: no_proof_required), summary: known

@@ -155,7 +155,7 @@ void main() {
     ::tpyapp::main::sdt("2021-03-05T25:30");
     ::tpyapp::main::sdt("2021-03-05T14:30+99:00");
     ::tpystd::datetime::timezone ist = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)), "IST");
-    ::tpystd::datetime::datetime a = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(ist));
+    ::tpystd::datetime::datetime a = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(static_cast<const ::tpystd::datetime::timezone&>(ist)));
     std::cout << ::tpy::print_bool(((datetime::fromisoformat(a.isoformat())) == (a))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime b = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30));
     std::cout << ::tpy::print_bool(((datetime::fromisoformat(b.isoformat())) == (b))) << "\n" << ::tpy::check_signals;

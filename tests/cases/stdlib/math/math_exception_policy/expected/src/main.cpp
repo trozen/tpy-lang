@@ -1024,7 +1024,7 @@ void positions() {
     if (!((((std::get<0>(one) == 2.0) && (std::get<0>(two) == 3.0)) && (std::get<1>(two) == 1)))) ::tpy::raise_assertion_error();
     if (!(((::tpyapp::main::optional_root(4.0) == 2.0) && (::tpyapp::main::optional_root(std::nullopt) == 0.0)))) ::tpy::raise_assertion_error();
     ::tpy::Union<double, std::string> positive_union = 9.0;
-    ::tpy::Union<double, std::string> skipped_union = "skip";
+    ::tpy::Union<double, std::string> skipped_union = static_cast<std::string>("skip");
     if (!((::tpyapp::main::union_root(positive_union) == 3.0))) ::tpy::raise_assertion_error();
     if (!((::tpyapp::main::union_root(skipped_union) == 0.0))) ::tpy::raise_assertion_error();
     auto __obj_4 = {4.0, -(1.0)};

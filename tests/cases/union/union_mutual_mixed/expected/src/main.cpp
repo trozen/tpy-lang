@@ -28,8 +28,8 @@ std::string show(const Value& v) {
 //     print(show(42))
 //     print(show("hello"))
 void main() {
-    std::cout << ::tpyapp::main::show(Value(42)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::show(Value("hello")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show(Value(::tpy::BigInt(42))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show(Value(static_cast<std::string>("hello"))) << "\n" << ::tpy::check_signals;
 }
 
 // # Mutual recursion with mix of primitives and records

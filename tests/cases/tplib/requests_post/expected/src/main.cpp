@@ -47,7 +47,7 @@ void send(std::string_view method, std::string_view url, ::tpy::Union<std::monos
 //     # data=b"" is falsy, so a json= body still fires (json Content-Type + body)
 //     send("POST", "http://api.test/empty-data", b"", payload, None)
 void main() {
-    ::tpystd::json::JsonValue payload = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"name", "x"}, {"count", 5}});
+    ::tpystd::json::JsonValue payload = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"name", static_cast<std::string>("x")}, {"count", ::tpy::BigInt(5)}});
     ::tpyapp::main::send("POST", "http://api.test/v1/items", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, &(payload), std::nullopt);
     ::tpyapp::main::send("PUT", "http://api.test/v1/items/1", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&(::tpy::as_mut_lvalue(::tpy::bytes_literal_owned("raw-bytes", 9)))}, nullptr, std::nullopt);
     ::tpyapp::main::send("POST", "http://api.test/secure", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, std::tuple<std::string, std::string>{"user", "pw"});

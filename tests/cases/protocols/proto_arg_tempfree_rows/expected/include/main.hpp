@@ -124,7 +124,7 @@ void drive(T_pp&& pp) {
     std::string_view s0 = "hello";
     std::cout << "str_local" << " " << pp.take_str(std::string(s0)) << "\n" << ::tpy::check_signals;
     std::cout << "str_literal" << " " << pp.take_str("xy") << "\n" << ::tpy::check_signals;
-    std::cout << "union_member" << " " << pp.take_union(7) << "\n" << ::tpy::check_signals;
+    std::cout << "union_member" << " " << pp.take_union(::tpy::Union<int32_t, std::string>(7)) << "\n" << ::tpy::check_signals;
     std::cout << "ro_list_literal" << " " << pp.take_ro_list({3, 4}) << "\n" << ::tpy::check_signals;
     std::cout << "ro_list_field" << " " << pp.take_ro_list(w.items) << "\n" << ::tpy::check_signals;
     std::cout << "opt_none" << " " << pp.take_opt(std::nullopt) << "\n" << ::tpy::check_signals;

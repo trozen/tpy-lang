@@ -37812,162 +37812,162 @@
  "uni_vals__ro__closure_capture__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) print(%k0.tag [raw]) call(inner, [])"
+  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) print(%k0.tag [raw]) call(inner, [])"
  ],
  "uni_vals__ro__closure_capture__fn": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) call(inner, [])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) call(inner, [])"
  ],
  "uni_vals__ro__closure_capture__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) call(inner, [])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) call(inner, [])"
  ],
  "uni_vals__ro__closure_capture__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) call(inner, [])"
+  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) call(inner, [])"
  ],
  "uni_vals__ro__closure_capture__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) call(inner, [])"
+  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) call(inner, [])"
  ],
  "uni_vals__ro__closure_capture__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) -> Own[DynP])])]) print("
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) -> Own["
  ],
  "uni_vals__ro__closure_capture__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) call(inner, [])"
+  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) call(inner, [])"
  ],
  "uni_vals__ro__closure_capture__static": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) call(inner, [])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) call(inner, [])"
  ],
  "uni_vals__ro__copy_call__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(call(copy [template 'int32_t({0})'], [%s0]))]) print(%k0.tag [raw]) print(lit(1) [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(call(copy [template 'int32_t({0})'], [%s0]) -> int32))]) print(%k0.tag [raw]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__copy_call__fn": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(call(copy [template 'int32_t({0})'], [%s0]))]) print(lit(1) [raw])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(call(copy [template 'int32_t({0})'], [%s0]) -> int32))]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__copy_call__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(call(copy [template 'int32_t({0})'], [%s0]))]) print(lit(1) [raw])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(call(copy [template 'int32_t({0})'], [%s0]) -> int32))]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__copy_call__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(call(copy [template 'int32_t({0})'], [%s0]))]) print(lit(1) [raw])"
+  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(call(copy [template 'int32_t({0})'], [%s0]) -> int32))]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__copy_call__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(call(copy [template 'int32_t({0})'], [%s0]))]) print(lit(1) [raw])"
+  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(call(copy [template 'int32_t({0})'], [%s0]) -> int32))]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__copy_call__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(call(copy [template 'int32_t({0"
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(call(copy [template 'int"
  ],
  "uni_vals__ro__copy_call__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(call(copy [template 'int32_t({0})'], [%s0]))]) print(lit(1) [raw])"
+  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(call(copy [template 'int32_t({0})'], [%s0]) -> int32))]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__copy_call__static": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(call(copy [template 'int32_t({0})'], [%s0]))]) print(lit(1) [raw])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(call(copy [template 'int32_t({0})'], [%s0]) -> int32))]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__dict_items_value__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) print(%k0.tag [raw])"
  ],
  "uni_vals__ro__dict_items_value__fn": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__dict_items_value__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__dict_items_value__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__dict_items_value__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__dict_items_value__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) -> Own[DynP])])]) print("
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) -> Own["
  ],
  "uni_vals__ro__dict_items_value__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__dict_items_value__static": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__dict_subscript__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%d[str('k')])]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%d[str('k')] -> int32))]) print(%k0.tag [raw])"
  ],
  "uni_vals__ro__dict_subscript__fn": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%d[str('k')])])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%d[str('k')] -> int32))])"
  ],
  "uni_vals__ro__dict_subscript__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(%d[str('k')])])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%d[str('k')] -> int32))])"
  ],
  "uni_vals__ro__dict_subscript__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%d[str('k')])])"
+  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%d[str('k')] -> int32))])"
  ],
  "uni_vals__ro__dict_subscript__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%d[str('k')])])"
+  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%d[str('k')] -> int32))])"
  ],
  "uni_vals__ro__dict_subscript__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%d[str('k')])]) -> Own[DynP])])"
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%d[str('k')] -> int32))]"
  ],
  "uni_vals__ro__dict_subscript__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%d[str('k')])])"
+  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%d[str('k')] -> int32))])"
  ],
  "uni_vals__ro__dict_subscript__static": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%d[str('k')])])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%d[str('k')] -> int32))])"
  ],
  "uni_vals__ro__global_name__ctor": [
   "reject:expr.call:call.ctor_arg.union",
@@ -38012,162 +38012,162 @@
  "uni_vals__ro__literal__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [coerce(lit(5) -> int32 | str)]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(lit(5) -> int32))]) print(%k0.tag [raw])"
  ],
  "uni_vals__ro__literal__fn": [
   "ok",
   "",
-  "call(CALLEE, [coerce(lit(5) -> int32 | str)])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(lit(5) -> int32))])"
  ],
  "uni_vals__ro__literal__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), coerce(lit(5) -> int32 | str)])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(lit(5) -> int32))])"
  ],
  "uni_vals__ro__literal__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [coerce(lit(5) -> int32 | str)])"
+  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(lit(5) -> int32))])"
  ],
  "uni_vals__ro__literal__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [coerce(lit(5) -> int32 | str)])"
+  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(lit(5) -> int32))])"
  ],
  "uni_vals__ro__literal__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(lit(5) -> int32 | str)]) -> Own[DynP])])]) print(method_call(method_call(method"
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(lit(5) -> int32))]) -> O"
  ],
  "uni_vals__ro__literal__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [coerce(lit(5) -> int32 | str)])"
+  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(lit(5) -> int32))])"
  ],
  "uni_vals__ro__literal__static": [
   "ok",
   "",
-  "call(CALLEE, [coerce(lit(5) -> int32 | str)])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(lit(5) -> int32))])"
  ],
  "uni_vals__ro__local__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) print(%k0.tag [raw]) print(lit(1) [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) print(%k0.tag [raw]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__local__fn": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) print(lit(1) [raw])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__local__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) print(lit(1) [raw])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__local__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) print(lit(1) [raw])"
+  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__local__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) print(lit(1) [raw])"
+  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__local__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) -> Own[DynP])])]) print("
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) -> Own["
  ],
  "uni_vals__ro__local__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) print(lit(1) [raw])"
+  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__local__static": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) print(lit(1) [raw])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__local_last__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) print(%k0.tag [raw])"
  ],
  "uni_vals__ro__local_last__fn": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__local_last__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__local_last__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__local_last__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__local_last__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) -> Own[DynP])])]) print("
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) -> Own["
  ],
  "uni_vals__ro__local_last__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__local_last__static": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__loop_var__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) print(%k0.tag [raw])"
  ],
  "uni_vals__ro__loop_var__fn": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__loop_var__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__loop_var__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__loop_var__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__loop_var__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)]) -> Own[DynP])])]) print("
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))]) -> Own["
  ],
  "uni_vals__ro__loop_var__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__loop_var__static": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%s0)])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%s0 -> int32))])"
  ],
  "uni_vals__ro__narrowed_opt__ctor": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -38492,42 +38492,42 @@
  "uni_vals__ro__subscript__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%xs[coerce(lit(0) -> int32)])]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%xs[coerce(lit(0) -> int32)] -> int32))]) print(%k0.tag [raw])"
  ],
  "uni_vals__ro__subscript__fn": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%xs[coerce(lit(0) -> int32)])])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%xs[coerce(lit(0) -> int32)] -> int32))])"
  ],
  "uni_vals__ro__subscript__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(%xs[coerce(lit(0) -> int32)])])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%xs[coerce(lit(0) -> int32)] -> int32))])"
  ],
  "uni_vals__ro__subscript__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%xs[coerce(lit(0) -> int32)])])"
+  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%xs[coerce(lit(0) -> int32)] -> int32))])"
  ],
  "uni_vals__ro__subscript__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%xs[coerce(lit(0) -> int32)])])"
+  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%xs[coerce(lit(0) -> int32)] -> int32))])"
  ],
  "uni_vals__ro__subscript__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%xs[coerce(lit(0) -> int32)])])"
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%xs[coerce(lit(0) -> int"
  ],
  "uni_vals__ro__subscript__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%xs[coerce(lit(0) -> int32)])])"
+  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%xs[coerce(lit(0) -> int32)] -> int32))])"
  ],
  "uni_vals__ro__subscript__static": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(%xs[coerce(lit(0) -> int32)])])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(%xs[coerce(lit(0) -> int32)] -> int32))])"
  ],
  "uni_vals__ro__temp_accessor__ctor": [
   "ok",
@@ -38652,41 +38652,41 @@
  "uni_vals__ro__ternary_names__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(ifexpr(call(cond, []) ? %s0 : %s1))]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(ifexpr(call(cond, []) ? %s0 : %s1) -> int32))]) print(%k0.tag [raw])"
  ],
  "uni_vals__ro__ternary_names__fn": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(ifexpr(call(cond, []) ? %s0 : %s1))])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(ifexpr(call(cond, []) ? %s0 : %s1) -> int32))])"
  ],
  "uni_vals__ro__ternary_names__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(ifexpr(call(cond, []) ? %s0 : %s1))])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(ifexpr(call(cond, []) ? %s0 : %s1) -> int32))])"
  ],
  "uni_vals__ro__ternary_names__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(ifexpr(call(cond, []) ? %s0 : %s1))])"
+  "method_call(%g, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(ifexpr(call(cond, []) ? %s0 : %s1) -> int32))])"
  ],
  "uni_vals__ro__ternary_names__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(ifexpr(call(cond, []) ? %s0 : %s1))])"
+  "method_call(%t, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(ifexpr(call(cond, []) ? %s0 : %s1) -> int32))])"
  ],
  "uni_vals__ro__ternary_names__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(ifexpr(call(cond, []) ? %s0 : %"
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(ifexpr(call(cond, []) ? "
  ],
  "uni_vals__ro__ternary_names__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(ifexpr(call(cond, []) ? %s0 : %s1))])"
+  "method_call(%pp, CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(ifexpr(call(cond, []) ? %s0 : %s1) -> int32))])"
  ],
  "uni_vals__ro__ternary_names__static": [
   "ok",
   "",
-  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(ifexpr(call(cond, []) ? %s0 : %s1))])"
+  "call(CALLEE, [inline_temp[::tpy::Union<int32_t, std::string>]<const>(coerce(ifexpr(call(cond, []) ? %s0 : %s1) -> int32))])"
  ]
 }

@@ -76,12 +76,12 @@ void main() {
     }
     std::cout << ::tpy::print_bool(all_ok) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::ZoneInfo waw = ::tpystd::datetime::ZoneInfo("Europe/Warsaw");
-    ::tpystd::datetime::datetime r0 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw)));
-    ::tpystd::datetime::datetime r1 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(1), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw)));
+    ::tpystd::datetime::datetime r0 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(static_cast<const ::tpystd::datetime::ZoneInfo&>(waw))));
+    ::tpystd::datetime::datetime r1 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(1), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(static_cast<const ::tpystd::datetime::ZoneInfo&>(waw))));
     std::cout << r0 << " " << r0.fold() << "\n" << ::tpy::check_signals;
     std::cout << r1 << " " << r1.fold() << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(((r1.timestamp()) - (r0.timestamp()))) << "\n" << ::tpy::check_signals;
-    ::tpystd::datetime::datetime plain = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(10), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw)));
+    ::tpystd::datetime::datetime plain = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(10), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(static_cast<const ::tpystd::datetime::ZoneInfo&>(waw))));
     std::cout << plain << " " << plain.fold() << "\n" << ::tpy::check_signals;
     {
         try {

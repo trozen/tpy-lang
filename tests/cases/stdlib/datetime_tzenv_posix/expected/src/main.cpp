@@ -30,7 +30,7 @@ void main() {
     std::cout << datetime::fromtimestamp(1626364800.0) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).strftime("%Z %z") << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone().strftime("%Z %z") << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(16), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(::tpystd::datetime::UTC)).astimezone()) == (::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone()))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(16), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(static_cast<const ::tpystd::datetime::timezone&>(::tpystd::datetime::UTC))).astimezone()) == (::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone()))) << "\n" << ::tpy::check_signals;
 }
 
 // # datetime v3 TZ backend, POSIX-rule-string arm: TZ="EST5EDT,M3.2.0,M11.1.0"

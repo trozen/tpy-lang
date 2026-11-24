@@ -31,8 +31,8 @@ int32_t with_basic_slice(std::vector<int32_t>& items, const ::tpy::Union<::tpy::
 //     print(with_basic_slice(items, 3))
 void main() {
     std::vector<int32_t> items = {10, 20, 30, 40, 50};
-    std::cout << ::tpyapp::main::with_basic_slice(items, 0) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::with_basic_slice(items, 3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_basic_slice(items, ::tpy::Union<::tpy::BasicSlice, int32_t>(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_basic_slice(items, ::tpy::Union<::tpy::BasicSlice, int32_t>(3)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

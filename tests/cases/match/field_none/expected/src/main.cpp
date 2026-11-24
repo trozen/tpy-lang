@@ -29,9 +29,9 @@ std::string describe(const W& w) {
 //     print(describe(W("x", None)))
 //     print(describe(W("x", 1)))
 void main() {
-    std::cout << ::tpyapp::main::describe(W(std::nullopt, ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(W(std::nullopt, ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>(::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::describe(W("x", ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>(std::monostate{}))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::describe(W("x", ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(W("x", ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>(::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

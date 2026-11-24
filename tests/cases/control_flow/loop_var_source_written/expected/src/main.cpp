@@ -1713,7 +1713,7 @@ void main() {
     ::tpyapp::main::for_str(::tpy::as_mut_lvalue(std::vector<std::string>{LONG_A, "two"}));
     ::tpyapp::main::for_bytes(::tpy::as_mut_lvalue(std::vector<::tpy::Bytes>{::tpy::bytes_literal_owned("one-and-longer-than-the-small-buffer", 36), ::tpy::bytes_literal_owned("two", 3)}));
     ::tpyapp::main::for_tuple(::tpy::as_mut_lvalue(std::vector<std::tuple<::tpy::BigInt, std::string>>{std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), LONG_A}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "b"}}));
-    ::tpyapp::main::for_union(::tpy::as_mut_lvalue(std::vector<::tpy::Union<::tpy::BigInt, std::string>>{1, "two-and-longer-than-the-small-string-buffer"}));
+    ::tpyapp::main::for_union(::tpy::as_mut_lvalue(std::vector<::tpy::Union<::tpy::BigInt, std::string>>{::tpy::BigInt(1), static_cast<std::string>("two-and-longer-than-the-small-string-buffer")}));
     ::tpyapp::main::for_unpack(::tpy::as_mut_lvalue(std::vector<std::tuple<::tpy::BigInt, std::string>>{std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), LONG_A}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "b"}}));
     ::tpyapp::main::dict_items(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::BigInt(2)}})));
     ::tpyapp::main::dict_values(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, std::string>({{"a", LONG_A}, {"b", "two"}})));
@@ -1785,7 +1785,7 @@ void main() {
     std::vector<std::vector<::tpy::BigInt>> rows = {{1}, {2}};
     ::tpyapp::main::generic_touch<std::vector<::tpy::BigInt>>(rows, add_nine);
     std::cout << "generic_touch:" << " " << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
-    std::cout << "keep_isinstance:" << " " << ::tpyapp::main::keep_isinstance({1, "q"}) << "\n" << ::tpy::check_signals;
+    std::cout << "keep_isinstance:" << " " << ::tpyapp::main::keep_isinstance({::tpy::BigInt(1), static_cast<std::string>("q")}) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::keep_pure({1, 2});
     auto __tmp_4 = std::array<int32_t, 2>{2, 3};
     std::cout << "keep_generic_prod:" << " " << ::tpyapp::main::keep_generic_prod(__tmp_4, ::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;

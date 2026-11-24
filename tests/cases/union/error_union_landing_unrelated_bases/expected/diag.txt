@@ -1,0 +1,1 @@
+main.py:31: error: Type mismatch in argument 'x': 'Dog' derives from both 'Animal' and 'Pet'; bind it to a `Animal`-typed (or `Pet`-typed) name first

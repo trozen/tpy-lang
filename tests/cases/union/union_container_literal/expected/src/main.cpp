@@ -60,13 +60,13 @@ void consume_list(std::vector<::tpy::Union<int32_t, std::string>>&& items) {
 // def make_dict() -> Own[dict[str, int32 | str]]:
 //     return {"a": 1, "b": "hello"}
 ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> make_dict() {
-    return ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", 1}, {"b", "hello"}});
+    return ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", 1}, {"b", static_cast<std::string>("hello")}});
 }
 
 // def make_list() -> Own[list[int32 | str]]:
 //     return [1, "hello", 2]
 std::vector<::tpy::Union<int32_t, std::string>> make_list() {
-    return std::vector<::tpy::Union<int32_t, std::string>>{1, "hello", 2};
+    return std::vector<::tpy::Union<int32_t, std::string>>{1, static_cast<std::string>("hello"), 2};
 }
 
 // def main() -> None:
@@ -162,14 +162,14 @@ std::vector<::tpy::Union<int32_t, std::string>> make_list() {
 //     d6: dict[str, int32 | None] = {"x": 42, "y": None}
 //     print(d6)
 void main() {
-    ::tpy::ordered_map<std::string, ::tpy::Union<::tpy::BigInt, std::string>> d = ::tpy::ordered_map<std::string, ::tpy::Union<::tpy::BigInt, std::string>>({{"a", 1}, {"b", "hello"}});
+    ::tpy::ordered_map<std::string, ::tpy::Union<::tpy::BigInt, std::string>> d = ::tpy::ordered_map<std::string, ::tpy::Union<::tpy::BigInt, std::string>>({{"a", ::tpy::BigInt(1)}, {"b", static_cast<std::string>("hello")}});
     ::tpy::Union<::tpy::BigInt, std::string> v = ::tpy::__getitem__(d, "a");
     if (std::holds_alternative<::tpy::BigInt>(v)) {
         auto& __v = std::get<::tpy::BigInt>(v);
         std::cout << ((__v) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, std::optional<::tpy::BigInt>> d2 = ::tpy::ordered_map<std::string, std::optional<::tpy::BigInt>>({{"x", 42}, {"y", std::nullopt}});
-    std::vector<::tpy::Union<::tpy::BigInt, std::string>> lst = {1, "hello", 2, "world"};
+    std::vector<::tpy::Union<::tpy::BigInt, std::string>> lst = {::tpy::BigInt(1), static_cast<std::string>("hello"), ::tpy::BigInt(2), static_cast<std::string>("world")};
     ::tpy::ordered_map<std::string, ::tpy::Union<Cat, Dog>> pets = ::tpy::ordered_map<std::string, ::tpy::Union<Cat, Dog>>({{"rex", Dog("Rex")}, {"whiskers", Cat("Whiskers")}});
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(::tpy::__getitem__(pets, "rex"));
     if (std::holds_alternative<Dog*>(pet)) {
@@ -192,14 +192,14 @@ void main() {
             }
         }
     }
-    ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d3 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", 1}, {"b", "world"}});
+    ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d3 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", 1}, {"b", static_cast<std::string>("world")}});
     ::tpyapp::main::process_dict(d3);
-    ::tpyapp::main::process_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", "direct"}}));
-    std::vector<::tpy::Union<int32_t, std::string>> items = {"hello", 1, "world"};
+    ::tpyapp::main::process_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", static_cast<std::string>("direct")}}));
+    std::vector<::tpy::Union<int32_t, std::string>> items = {static_cast<std::string>("hello"), 1, static_cast<std::string>("world")};
     ::tpyapp::main::process_list(items);
-    ::tpyapp::main::process_list({"direct", 99});
-    ::tpyapp::main::consume_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", "owned"}, {"b", 1}}));
-    ::tpyapp::main::consume_list(std::vector<::tpy::Union<int32_t, std::string>>{"own-hello", 1});
+    ::tpyapp::main::process_list({static_cast<std::string>("direct"), 99});
+    ::tpyapp::main::consume_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", static_cast<std::string>("owned")}, {"b", 1}}));
+    ::tpyapp::main::consume_list(std::vector<::tpy::Union<int32_t, std::string>>{static_cast<std::string>("own-hello"), 1});
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d4 = ::tpyapp::main::make_dict();
     ::tpy::Union<int32_t, std::string> v2 = ::tpy::__getitem__(d4, "b");
     if (std::holds_alternative<std::string>(v2)) {
@@ -217,25 +217,25 @@ void main() {
             std::cout << ::tpy::__str__(__item) << "\n" << ::tpy::check_signals;
         }
     }
-    ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>> d5 = ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>>({{"nums", std::vector<::tpy::BigInt>{1, 2, 3}}, {"label", "test"}});
+    ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>> d5 = ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>>({{"nums", std::vector<::tpy::BigInt>{1, 2, 3}}, {"label", static_cast<std::string>("test")}});
     ::tpy::Union<std::vector<::tpy::BigInt>*, std::string*> v3 = ::tpy::to_ptr_variant(::tpy::__getitem__(d5, "label"));
     if (std::holds_alternative<std::string*>(v3)) {
         auto& __v3 = *std::get<std::string*>(v3);
         std::cout << ::tpy::__str__(__v3) << "\n" << ::tpy::check_signals;
     }
-    std::vector<::tpy::Union<std::vector<int32_t>, std::string>> mixed = {std::vector<int32_t>{10, 20}, "hi"};
+    std::vector<::tpy::Union<std::vector<int32_t>, std::string>> mixed = {std::vector<int32_t>{10, 20}, static_cast<std::string>("hi")};
     ::tpy::Union<std::vector<int32_t>*, std::string*> v4 = ::tpy::to_ptr_variant(::tpy::__getitem__(mixed, 1));
     if (std::holds_alternative<std::string*>(v4)) {
         auto& __v4 = *std::get<std::string*>(v4);
         std::cout << ::tpy::__str__(__v4) << "\n" << ::tpy::check_signals;
     }
-    ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d7 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"x", "hello"}, std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"y", 1}});
+    ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d7 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"x", static_cast<std::string>("hello")}, std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"y", 1}});
     ::tpy::Union<int32_t, std::string> v5 = ::tpy::__getitem__(d7, "x");
     if (std::holds_alternative<std::string>(v5)) {
         auto& __v5 = std::get<std::string>(v5);
         std::cout << ::tpy::__str__(__v5) << "\n" << ::tpy::check_signals;
     }
-    ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d8 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"p", "hi"}, {"q", 99}}));
+    ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d8 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"p", static_cast<std::string>("hi")}, {"q", 99}}));
     ::tpy::Union<int32_t, std::string> v6 = ::tpy::__getitem__(d8, "p");
     if (std::holds_alternative<std::string>(v6)) {
         auto& __v6 = std::get<std::string>(v6);

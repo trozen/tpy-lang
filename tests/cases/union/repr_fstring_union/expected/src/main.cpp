@@ -13,7 +13,7 @@ namespace tpyapp::main {
 // def make_su() -> int32 | str:
 //     return "hello"
 ::tpy::Union<int32_t, std::string> make_su() {
-    return "hello";
+    return static_cast<std::string>("hello");
 }
 
 // def make_3u() -> Own[int32 | str | Point]:

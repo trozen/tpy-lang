@@ -620,7 +620,7 @@ template<::tpy::ValueType T>
             auto* __tpy_retp_0 = &(x);
             __fin_ran_1 = true;
             std::cout << "fin_vt" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_1) {
                 std::cout << "fin_vt" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
@@ -643,7 +643,7 @@ template<typename T>
             auto* __tpy_retp_0 = &(x);
             __fin_ran_2 = true;
             std::cout << "fin_open" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_2) {
                 std::cout << "fin_open" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;

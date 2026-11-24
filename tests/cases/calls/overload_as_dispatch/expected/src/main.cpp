@@ -1155,7 +1155,7 @@ void main() {
         std::cout << "error_return raised" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
-    std::cout << "sub-union" << " " << ::tpyapp::main::sub__int32_str(1) << " " << ::tpyapp::main::sub__int32_str(::tpy::Union<int32_t, std::string>("a")) << " " << ::tpyapp::main::sub__float(1.5) << "\n" << ::tpy::check_signals;
+    std::cout << "sub-union" << " " << ::tpyapp::main::sub__int32_str(::tpy::Union<int32_t, std::string>(1)) << " " << ::tpyapp::main::sub__int32_str(::tpy::Union<int32_t, std::string>(std::in_place_type<std::string>, "a")) << " " << ::tpyapp::main::sub__float(1.5) << "\n" << ::tpy::check_signals;
     Cat c = Cat(3);
     Owner o = Owner(Cat(3));
     std::cout << "match" << " " << ::tpyapp::main::describe__Cat__int32(c, 1) << " " << ::tpyapp::main::describe__Cat__int32(c, 0) << " " << ::tpyapp::main::describe__Owner__int32(o, 0) << " " << o.pet.lives << "\n" << ::tpy::check_signals;

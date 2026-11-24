@@ -463,7 +463,7 @@ void inverse() {
 //     print("union_member:", v.um(p, 1), um(p, 1))  # tpyc: ok
 void union_member(int32_t p) {
     V v = V();
-    std::cout << "union_member:" << " " << v.um__int64_str__int32(static_cast<::tpy::Union<int64_t, std::string>>(p), 1) << " " << ::tpyapp::main::um__int64_str__int32(static_cast<::tpy::Union<int64_t, std::string>>(p), 1) << "\n" << ::tpy::check_signals;
+    std::cout << "union_member:" << " " << v.um__int64_str__int32(::tpy::Union<int64_t, std::string>(static_cast<int64_t>(p)), 1) << " " << ::tpyapp::main::um__int64_str__int32(::tpy::Union<int64_t, std::string>(static_cast<int64_t>(p)), 1) << "\n" << ::tpy::check_signals;
 }
 
 // def union_literal(k: int32, code: int32 | str | None) -> None:
@@ -479,8 +479,8 @@ void union_member(int32_t p) {
 //     print("union_literal:", code_of(code))  # tpyc: ok
 void union_literal(int32_t k, const ::tpy::Union<std::monostate, int32_t, std::string>& code) {
     V v = V();
-    std::cout << "union_literal:" << " " << ::tpyapp::main::u__int_str(::tpy::Union<::tpy::BigInt, std::string>(3)) << " " << ::tpyapp::main::u__int_str(::tpy::BigInt(k)) << " " << v.u__int_str(::tpy::Union<::tpy::BigInt, std::string>(3)) << " " << v.u__int_str(::tpy::BigInt(k)) << "\n" << ::tpy::check_signals;
-    std::cout << "union_literal:" << " " << ::tpyapp::main::code_of__None_int32_str(3) << " " << ::tpyapp::main::code_of__noargs() << "\n" << ::tpy::check_signals;
+    std::cout << "union_literal:" << " " << ::tpyapp::main::u__int_str(::tpy::Union<::tpy::BigInt, std::string>(::tpy::BigInt(3))) << " " << ::tpyapp::main::u__int_str(::tpy::Union<::tpy::BigInt, std::string>(::tpy::BigInt(k))) << " " << v.u__int_str(::tpy::Union<::tpy::BigInt, std::string>(::tpy::BigInt(3))) << " " << v.u__int_str(::tpy::Union<::tpy::BigInt, std::string>(::tpy::BigInt(k))) << "\n" << ::tpy::check_signals;
+    std::cout << "union_literal:" << " " << ::tpyapp::main::code_of__None_int32_str(::tpy::Union<std::monostate, int32_t, std::string>(3)) << " " << ::tpyapp::main::code_of__noargs() << "\n" << ::tpy::check_signals;
     if ((std::holds_alternative<std::monostate>(code))) {
         return;
     }
@@ -621,7 +621,7 @@ void main() {
     ::tpyapp::main::method();
     ::tpyapp::main::inverse();
     ::tpyapp::main::union_member(7);
-    ::tpyapp::main::union_literal(3, 5);
+    ::tpyapp::main::union_literal(3, ::tpy::Union<std::monostate, int32_t, std::string>(5));
     ::tpyapp::main::union_render();
     ::tpyapp::main::arg_positions();
     ::tpyapp::main::generator();

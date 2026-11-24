@@ -369,7 +369,7 @@ A hoisted_finally(int32_t k) {
             auto* __tpy_retp_0 = &((*a));
             __fin_ran_1 = true;
             a->items.push_back(9);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_1) {
                 a->items.push_back(9);
@@ -416,7 +416,7 @@ A hoisted_finally(int32_t k) {
             __fin_ran_2 = true;
             this->__finally_0();
             __state = S_DONE;
-            return ::tpystd::tpy::Poll<A>::ready(std::move(*__tpy_retp_0));
+            return ::tpystd::tpy::Poll<A>::ready(std::move((*__tpy_retp_0)));
         } catch (...) {
             __sub_0.reset();
             if (!__fin_ran_2) {

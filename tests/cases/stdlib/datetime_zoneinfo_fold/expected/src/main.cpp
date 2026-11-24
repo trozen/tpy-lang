@@ -62,13 +62,13 @@ namespace tpyapp::main {
 //         print("ValueError-replace-fold")
 void main() {
     ::tpystd::datetime::ZoneInfo waw = ::tpystd::datetime::ZoneInfo("Europe/Warsaw");
-    ::tpystd::datetime::datetime fold_wall = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw));
+    ::tpystd::datetime::datetime fold_wall = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(static_cast<const ::tpystd::datetime::ZoneInfo&>(waw)));
     ::tpystd::datetime::datetime fold_wall1 = fold_wall.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(true), 1);
     std::cout << fold_wall.fold() << " " << fold_wall1.fold() << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val(fold_wall.utcoffset()) << " " << ::tpy::print_optional_val(fold_wall.dst()) << " " << ::tpy::print_optional_val(fold_wall.tzname()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val(fold_wall1.utcoffset()) << " " << ::tpy::print_optional_val(fold_wall1.dst()) << " " << ::tpy::print_optional_val(fold_wall1.tzname()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(fold_wall.timestamp()) << " " << ::tpy::print_float(fold_wall1.timestamp()) << "\n" << ::tpy::check_signals;
-    ::tpystd::datetime::datetime gap_wall = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(3), ::tpy::BigInt(26), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(waw));
+    ::tpystd::datetime::datetime gap_wall = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(3), ::tpy::BigInt(26), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>(static_cast<const ::tpystd::datetime::ZoneInfo&>(waw)));
     ::tpystd::datetime::datetime gap_wall1 = gap_wall.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(true), 1);
     std::cout << ::tpy::print_optional_val(gap_wall.utcoffset()) << " " << ::tpy::print_optional_val(gap_wall.dst()) << " " << ::tpy::print_optional_val(gap_wall.tzname()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val(gap_wall1.utcoffset()) << " " << ::tpy::print_optional_val(gap_wall1.dst()) << " " << ::tpy::print_optional_val(gap_wall1.tzname()) << "\n" << ::tpy::check_signals;
@@ -84,7 +84,7 @@ void main() {
     ::tpystd::datetime::datetime fixed1 = fixed.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(true), 1);
     std::cout << ::tpy::print_bool(((fixed.utcoffset()) == (fixed1.utcoffset()))) << " " << ::tpy::print_bool(((!fixed.dst().has_value()) && (!fixed1.dst().has_value()))) << " " << ::tpy::print_bool((fixed.tzname() == fixed1.tzname())) << " " << ::tpy::print_bool((fixed.timestamp() == fixed1.timestamp())) << "\n" << ::tpy::check_signals;
     std::cout << std::string(::tpy::repr_of(fixed1)) << "\n" << ::tpy::check_signals;
-    ::tpystd::datetime::datetime rezoned = fixed1.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(waw));
+    ::tpystd::datetime::datetime rezoned = fixed1.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(static_cast<const ::tpystd::datetime::ZoneInfo&>(waw)));
     std::cout << rezoned << " " << rezoned.fold() << "\n" << ::tpy::check_signals;
     {
         try {

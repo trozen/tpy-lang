@@ -116,9 +116,9 @@ void main() {
     std::cout << ::tpyapp::main::get_name(w2) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::is_cat(w1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::is_cat(w2) << "\n" << ::tpy::check_signals;
-    Tagged t1 = Tagged("s", ::tpy::Union<int32_t, std::string>("hello"));
+    Tagged t1 = Tagged("s", ::tpy::Union<int32_t, std::string>(std::in_place_type<std::string>, "hello"));
     Tagged t2 = Tagged("n", ::tpy::Union<int32_t, std::string>(42));
-    Tagged t3 = Tagged("x", ::tpy::Union<int32_t, std::string>("other"));
+    Tagged t3 = Tagged("x", ::tpy::Union<int32_t, std::string>(std::in_place_type<std::string>, "other"));
     std::cout << ::tpyapp::main::show_tagged(t1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::show_tagged(t2) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::show_tagged(t3) << "\n" << ::tpy::check_signals;

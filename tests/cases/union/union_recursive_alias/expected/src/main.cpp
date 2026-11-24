@@ -45,10 +45,10 @@ namespace tpyapp::main {
 //     print(depth(branch))
 //     print(depth(nested))
 void main() {
-    Tree leaf = 1;
-    Tree branch = std::vector<Tree>{1, 2};
-    std::vector<Tree> inner = {3, 4};
-    std::vector<Tree> nested = ::tpy::make_vector<Tree>(1, std::move(inner));
+    Tree leaf = ::tpy::BigInt(1);
+    Tree branch = std::vector<Tree>{::tpy::BigInt(1), ::tpy::BigInt(2)};
+    std::vector<Tree> inner = {::tpy::BigInt(3), ::tpy::BigInt(4)};
+    std::vector<Tree> nested = ::tpy::make_vector<Tree>(::tpy::BigInt(1), std::move(inner));
     std::cout << ::tpyapp::main::depth(leaf) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::depth(branch) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::depth(Tree(std::move(nested))) << "\n" << ::tpy::check_signals;

@@ -33,7 +33,7 @@ namespace tpyapp::shapes {
 //     nested: JsonValue = [1, [2, 3]]  # tpyc: ok
 //     return total(nested)
 ::tpy::BigInt total_of_nested() {
-    JsonValue nested = std::vector<JsonValue>{1, std::vector<JsonValue>{2, 3}};
+    JsonValue nested = std::vector<JsonValue>{::tpy::BigInt(1), std::vector<JsonValue>{::tpy::BigInt(2), ::tpy::BigInt(3)}};
     return ::tpyapp::shapes::total(nested);
 }
 

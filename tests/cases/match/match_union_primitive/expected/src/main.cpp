@@ -127,7 +127,7 @@ std::string unbox(::tpy::Union<const Box<std::string>*, const int32_t*> x) {
 void main() {
     ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_1 = 42;
     ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> a = ::tpy::to_ptr_variant(__slot_1);
-    ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_2 = "hello";
+    ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_2 = static_cast<std::string>("hello");
     ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> b = ::tpy::to_ptr_variant(__slot_2);
     ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_3 = Cat("Whiskers");
     ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> c = ::tpy::to_ptr_variant(__slot_3);

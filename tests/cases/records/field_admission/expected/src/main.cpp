@@ -28,7 +28,7 @@ int32_t g_limit{};
 //     k.flat = Flat([bytes([i]) for i in range(4)])  # tpyc: ok
 //     print("holder.ctor_arg_temp", k.flat.n)
 void holder_writes(std::optional<std::string_view> s, std::string_view text, int32_t n, const std::vector<std::tuple<::tpy::BigInt, std::string>>& pairs) {
-    Box h = Box(0);
+    Box h = Box(::tpy::Union<int32_t, std::string>(0));
     h.tag = s ? std::make_optional(std::string(*s)) : std::nullopt;
     h.either = std::string(text);
     h.pair = ::tpy::__getitem__(pairs, 0);
@@ -295,7 +295,7 @@ __coro_main_coro main_coro(Box& b) {
 //     lambda_reads()
 //     ctor_writes()
 void main() {
-    Box b = Box(::tpy::Union<int32_t, std::string>("init"));
+    Box b = Box(::tpy::Union<int32_t, std::string>(std::in_place_type<std::string>, "init"));
     b.show("start");
     b.method_writes("s", ::tpy::bytes_literal_owned("b", 1), "text", 42, static_cast<int64_t>(5000000000), {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "one"}}, ::tpy::as_mut_lvalue(std::vector<P>{P(5)}), Inner("in"), true);
     b.method_writes(std::nullopt, std::nullopt, "abc", 7, 1, {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "two"}}, ::tpy::as_mut_lvalue(std::vector<P>{P(6)}), Inner(std::nullopt), false);

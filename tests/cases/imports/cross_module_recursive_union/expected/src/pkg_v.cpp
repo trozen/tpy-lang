@@ -7,14 +7,14 @@ namespace tpyapp::pkg_v {
 // def make_int() -> Own[V]:
 //     return 7
 V make_int() {
-    return 7;
+    return ::tpy::BigInt(7);
 }
 
 // def make_dict() -> Own[V]:
 //     d: dict[str, V] = {"k": 1, "n": None, "items": [1, None, "x"]}
 //     return d
 V make_dict() {
-    ::tpy::ordered_map<std::string, V> d = ::tpy::ordered_map<std::string, V>({{"k", 1}, {"n", std::monostate{}}, {"items", std::vector<V>{1, std::monostate{}, "x"}}});
+    ::tpy::ordered_map<std::string, V> d = ::tpy::ordered_map<std::string, V>({{"k", ::tpy::BigInt(1)}, {"n", std::monostate{}}, {"items", std::vector<V>{::tpy::BigInt(1), std::monostate{}, static_cast<std::string>("x")}}});
     return d;
 }
 

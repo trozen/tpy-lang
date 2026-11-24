@@ -10,9 +10,9 @@ namespace tpyapp::main {
 //     leaf: Tree[str] = "x"
 //     print(depth(leaf))
 void main() {
-    Tree<std::string> t = std::vector<Tree<std::string>>{"a", std::vector<Tree<std::string>>{"b", std::vector<Tree<std::string>>{"c", "d"}}, "e"};
+    Tree<std::string> t = std::vector<Tree<std::string>>{static_cast<std::string>("a"), std::vector<Tree<std::string>>{static_cast<std::string>("b"), std::vector<Tree<std::string>>{static_cast<std::string>("c"), static_cast<std::string>("d")}}, static_cast<std::string>("e")};
     std::cout << ::tpyapp::main::depth<std::string>(t) << "\n" << ::tpy::check_signals;
-    Tree<std::string> leaf = "x";
+    Tree<std::string> leaf = static_cast<std::string>("x");
     std::cout << ::tpyapp::main::depth<std::string>(leaf) << "\n" << ::tpy::check_signals;
 }
 

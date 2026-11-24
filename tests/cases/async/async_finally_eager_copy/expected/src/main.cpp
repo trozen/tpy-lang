@@ -31,7 +31,7 @@ namespace tpyapp::main {
                 __fin_ran_1 = true;
                 std::cout << "done" << "\n" << ::tpy::check_signals;
                 __state = S_DONE;
-                return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(*__tpy_retp_1));
+                return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move((*__tpy_retp_1)));
             } catch (...) {
                 if (!__fin_ran_1) {
                     std::cout << "done" << "\n" << ::tpy::check_signals;

@@ -1,0 +1,25 @@
+part_finally.py:25: warning: 'FSub.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'FBase' part instead
+part_finally.py:38: warning: upcast narrows 'FSub' to 'FBase' -- only 'FBase' fields and methods will be accessible; keep the concrete type or make 'FBase' a @dynamic protocol
+part_finally.py:57: warning: upcast narrows 'FSub' to 'FBase' -- only 'FBase' fields and methods will be accessible; keep the concrete type or make 'FBase' a @dynamic protocol
+part_finally.py:76: warning: upcast narrows 'FSub' to 'FBase' -- only 'FBase' fields and methods will be accessible; keep the concrete type or make 'FBase' a @dynamic protocol
+part_finally.py:88: warning: upcast narrows 'FSub' to 'FBase' -- only 'FBase' fields and methods will be accessible; keep the concrete type or make 'FBase' a @dynamic protocol
+part_finally.py:108: warning: upcast narrows 'FSub' to 'FBase' -- only 'FBase' fields and methods will be accessible; keep the concrete type or make 'FBase' a @dynamic protocol
+part_finally.py:118: warning: upcast narrows 'FSub' to 'FBase' -- only 'FBase' fields and methods will be accessible; keep the concrete type or make 'FBase' a @dynamic protocol
+part_finally.py:133: warning: upcast narrows 'FSub' to 'FBase' -- only 'FBase' fields and methods will be accessible; keep the concrete type or make 'FBase' a @dynamic protocol
+part_finally.py:143: warning: upcast narrows 'FSub' to 'FBase' -- only 'FBase' fields and methods will be accessible; keep the concrete type or make 'FBase' a @dynamic protocol
+part_finally.py:162: warning: Own[FSub | None] param 's' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_finally.py:188: warning: copies FSub | None into owned storage; use copy() to make this explicit
+part_finally.py:199: warning: upcast narrows 'FSub' to 'FBase' -- only 'FBase' fields and methods will be accessible; keep the concrete type or make 'FBase' a @dynamic protocol
+part_finally.py:207: warning: upcast narrows 'FSub' to 'FBase' -- only 'FBase' fields and methods will be accessible; keep the concrete type or make 'FBase' a @dynamic protocol
+part_records.py:38: warning: upcast narrows 'Leaf' to 'Mid' -- only 'Mid' fields and methods will be accessible; keep the concrete type or make 'Mid' a @dynamic protocol
+part_records.py:138: warning: copies Cat into field; use copy() to make this explicit
+part_records.py:142: warning: copies Cat into field; use copy() to make this explicit
+part_frames.py:50: warning: upcast narrows 'FSub' to 'FBase' -- only 'FBase' fields and methods will be accessible; keep the concrete type or make 'FBase' a @dynamic protocol
+part_operands.py:82: warning: 'VSub.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'VBase' part instead
+part_operands.py:112: warning: '+=' on 'a' falls back to '__add__' (Acc has no '__iadd__'): the object is updated in place, where Python rebinds 'a' -- define '__iadd__', or write 'a = a + leaf'
+part_operands.py:113: warning: '+=' on 'a' falls back to '__add__' (Acc has no '__iadd__'): the object is updated in place, where Python rebinds 'a' -- define '__iadd__', or write 'a = a + u'
+part_operands.py:154: warning: '+=' on 'v' falls back to '__radd__' (Mid has no '__iadd__'): the object is updated in place, where Python rebinds 'v' -- define '__iadd__', or write 'v = v + ...'
+part_operands.py:176: warning: '+=' on 'v' falls back to '__radd__' (Leaf has no '__iadd__'): the object is updated in place, where Python rebinds 'v' -- define '__iadd__', or write 'v = v + ...'
+part_operators.py:169: warning: '+=' on 'a' falls back to '__add__' (Acc has no '__iadd__'): the object is updated in place, where Python rebinds 'a' -- define '__iadd__', or write 'a = a + c'
+part_operators.py:170: warning: '+=' on 'a' falls back to '__add__' (Acc has no '__iadd__'): the object is updated in place, where Python rebinds 'a' -- define '__iadd__', or write 'a = a + ...'
+main.py:93: warning: upcast narrows 'FSub' to 'FBase' -- only 'FBase' fields and methods will be accessible; keep the concrete type or make 'FBase' a @dynamic protocol

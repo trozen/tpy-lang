@@ -31,7 +31,7 @@ int32_t store(::tpy::ordered_map<std::string, JV>& d, std::vector<JV>& src) {
 //     print(store({}, s), len(s))
 void main() {
     std::vector<JV> a = std::vector<JV>{};
-    std::vector<JV> s = {1, 2};
+    std::vector<JV> s = {::tpy::BigInt(1), ::tpy::BigInt(2)};
     std::cout << ::tpyapp::main::push(a, s) << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::store(::tpy::as_mut_lvalue(::tpy::ordered_map<std::string, JV>()), s) << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }

@@ -82,7 +82,7 @@ __gen_guarded guarded(::tpy::Union<::tpy::BigInt, std::string> a, bool allow) {
 // def remake() -> int | str:
 //     return "z"
 ::tpy::Union<::tpy::BigInt, std::string> remake() {
-    return "z";
+    return static_cast<std::string>("z");
 }
 
 // def kill(a: int | str) -> Iterator[str]:
@@ -210,7 +210,7 @@ void main() {
         }
     }
     {
-        auto __src_6 = ::tpyapp::main::guarded(::tpy::Union<::tpy::BigInt, std::string>(42), true);
+        auto __src_6 = ::tpyapp::main::guarded(::tpy::Union<::tpy::BigInt, std::string>(::tpy::BigInt(42)), true);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -220,7 +220,7 @@ void main() {
         }
     }
     {
-        auto __src_8 = ::tpyapp::main::guarded(::tpy::Union<::tpy::BigInt, std::string>(3), false);
+        auto __src_8 = ::tpyapp::main::guarded(::tpy::Union<::tpy::BigInt, std::string>(::tpy::BigInt(3)), false);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -230,7 +230,7 @@ void main() {
         }
     }
     {
-        auto __src_10 = ::tpyapp::main::kill(::tpy::Union<::tpy::BigInt, std::string>(5));
+        auto __src_10 = ::tpyapp::main::kill(::tpy::Union<::tpy::BigInt, std::string>(::tpy::BigInt(5)));
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();

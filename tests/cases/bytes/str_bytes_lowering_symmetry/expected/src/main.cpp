@@ -98,8 +98,8 @@ void union_elem() {
     Tagged t = Tagged("n", ::tpy::bytes_literal("t", 1), ::tpy::BigInt(1));
     ::tpy::ordered_map<std::string, ::tpy::Union<::tpy::BigInt, std::string>> ds = ::tpy::ordered_map<std::string, ::tpy::Union<::tpy::BigInt, std::string>>({{"name", t.name}, {"age", t.age}});
     ::tpy::ordered_map<std::string, ::tpy::Union<::tpy::Bytes, ::tpy::BigInt>> db = ::tpy::ordered_map<std::string, ::tpy::Union<::tpy::Bytes, ::tpy::BigInt>>({{"tag", t.tag}, {"age", t.age}});
-    std::vector<::tpy::Union<::tpy::BigInt, std::string>> ls = {"two", 1};
-    std::vector<::tpy::Union<::tpy::Bytes, ::tpy::BigInt>> lb = {::tpy::bytes_literal_owned("two", 3), 1};
+    std::vector<::tpy::Union<::tpy::BigInt, std::string>> ls = {static_cast<std::string>("two"), ::tpy::BigInt(1)};
+    std::vector<::tpy::Union<::tpy::Bytes, ::tpy::BigInt>> lb = {::tpy::bytes_literal_owned("two", 3), ::tpy::BigInt(1)};
     std::cout << "union_elem:" << " " << ::tpy::DictPrinter(ds) << " " << ::tpy::DictPrinter(db) << " " << ::tpy::__len__(ls) << " " << ::tpy::__len__(lb) << "\n" << ::tpy::check_signals;
 }
 

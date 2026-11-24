@@ -360,8 +360,8 @@ void main() {
     ::tpyapp::main::write_through(&a);
     std::cout << std::format("write: {}", ::tpy::__str__(a)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::unions(::tpy::Union<double, std::string>(3.14159), ::tpy::Union<const A*, const B*>{&(::tpy::as_mut_lvalue(B(2)))}, ::tpy::Union<std::monostate, int32_t, std::string>(std::monostate{}));
-    ::tpyapp::main::unions(::tpy::Union<double, std::string>("abc"), ::tpy::Union<const A*, const B*>{&(a)}, 5);
-    ::tpyapp::main::spec_text(::tpy::Union<double, std::string>("abc"));
+    ::tpyapp::main::unions(::tpy::Union<double, std::string>(std::in_place_type<std::string>, "abc"), ::tpy::Union<const A*, const B*>{&(a)}, ::tpy::Union<std::monostate, int32_t, std::string>(5));
+    ::tpyapp::main::spec_text(::tpy::Union<double, std::string>(std::in_place_type<std::string>, "abc"));
     std::vector<int32_t> nums = {4, 5};
     ::tpyapp::main::spans(::tpy::as_mut_span(nums));
     ::tpyapp::main::readonly_ptr(&a);
@@ -441,7 +441,7 @@ void main() {
     ::tpyapp::main::empty_spec(7, ::tpy::BigInt::from_str("1180591620717411303424"));
     ::tpyapp::main::payloads(::tpy::String("str"), ::tpy::Union<A*, int32_t>(&a));
     ::tpyapp::main::payloads(std::nullopt, ::tpy::Union<A*, int32_t>(static_cast<A*>(nullptr)));
-    ::tpyapp::main::payloads(std::nullopt, 6);
+    ::tpyapp::main::payloads(std::nullopt, ::tpy::Union<A*, int32_t>(6));
     F fmt = F();
     ::tpyapp::main::held_format(&(fmt), &fmt, ::tpy::Union<const F*, const int32_t*>{&(fmt)});
     ::tpyapp::main::generic_print<double>(&f, f);

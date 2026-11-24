@@ -57,7 +57,7 @@ inline ::tpy::Union<int32_t, std::string> Factory::un(int32_t k) {
     if ((k > 0)) {
         return k;
     }
-    return "s";
+    return static_cast<std::string>("s");
 }
 
 // def make(self) -> Own[Tree]:

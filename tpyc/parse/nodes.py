@@ -1233,9 +1233,6 @@ class TpyCoerce(TpyExpr):
     # decides it anew whenever it runs; one that is part of what a call is
     # written with (a value passed at a container's leaf) is not.
     by_step: bool = field(default=False, compare=False)
-    # The member of a value-union argument slot the value lands in, as the
-    # compatibility check chose it; lowering renders the value at it.
-    union_member: "TpyType | None" = None
 
     def children(self) -> list[TpyExpr]:
         return [self.expr]

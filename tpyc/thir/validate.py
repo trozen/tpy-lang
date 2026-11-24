@@ -58,9 +58,11 @@ from ..type_def_registry import (
     is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
     type_def_of, zero_value_of,
 )
+from ..sema.landings import landing_exempt, union_members
 from ..typesys import pointer_repr_optional, property_getter_returns_storage_ref
 from ..typesys import (
-    AnyType, NominalType, OptionalType, OwnType, PtrType, ReadonlyType, Representation,
+    AliasRef, NoneType, AnyType, NominalType, OptionalType, OwnType, PtrType, ReadonlyType,
+    RecursiveAliasInstanceType, Representation,
     TupleType, receiver_neutral_return,
     UnionType, TpyType,
     TypeParamRef,
@@ -70,7 +72,8 @@ from .scalar_leaves import (
     holds_elements, leaf_constant, leaf_global, modeled_ancestors, native_container_subject, native_container_type,
     optional_record_field, owned_leaf, storage_leaf,
 )
-from .nodes import (FLUSHING_REBIND_KINDS, Form, OpenTSink, SeatLifetime,
+from .nodes import (UNION_MEMBER_COERCION,
+    FLUSHING_REBIND_KINDS, Form, OpenTSink, SeatLifetime,
     THIRArgTemp, THIRAssign, THIRInlineTemp, THIRVarargPack,
     THIRCall, THIRChainedCompareStmtExpr, THIRCoerce, THIRConstructor,
     THIRMove, THIRCtorCall, THIRDelItem, THIRErrorReturnBind,
@@ -89,6 +92,7 @@ from .nodes import (FLUSHING_REBIND_KINDS, Form, OpenTSink, SeatLifetime,
     THIRResumableReturn, THIRResumeExtraction, THIRStmt, THIRLent, THIRSelf,
     PtrSlotKind, THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
     THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral,
+    THIRContainerLiteral,
     THIRTupleLayout, THIROwnedRecord, THIRStoragePlacement,
     THIRTupleStorageAlias,
     THIRForEach, THIRForRange, THIROptionalLayout, THIROptionalPtrArg,
@@ -587,6 +591,7 @@ def _check_binding_contracts(owner: str, node: object) -> None:
 
 def _check_node(owner: str, node: THIRNode) -> None:
     _check_binding_contracts(owner, node)
+    _check_landed_elements(owner, node)
     if (isinstance(node, (THIRIfExpr, THIRValueSelect))
             and node.form is Form.VALUE):
         # A prvalue `?:` of a reference type initializes its storage by
@@ -687,7 +692,8 @@ def _check_node(owner: str, node: THIRNode) -> None:
                     or not 0 <= fact.alternative < len(fact.layout.elements)):
                 _fail(owner, node, "invalid union literal fact")
             value = node.init if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)) else node.value
-            if isinstance(value, THIRCoerce) and value.coercion_name == "int_literal_to_fixed_int" and value.wrap is None:
+            while (isinstance(value, THIRCoerce) and value.wrap is None
+                   and value.coercion_name in ("int_literal_to_fixed_int", UNION_MEMBER_COERCION)):
                 value = value.expr
             member = fact.layout.elements[fact.alternative]
             if (not isinstance(value, THIRLiteral) or type(value.value) is not type(fact.value)
@@ -969,13 +975,101 @@ def _check_node(owner: str, node: THIRNode) -> None:
         # materializes a STORAGE optional out of the borrow tuple -- form-
         # producing like the ptr/span families.
         opt_btuple_target = node.coercion_name == "opt_btuple_wrap"
+        # A value converted to its union member's own type is a prvalue of
+        # that type, whatever the source's form.
+        member_cast = node.coercion_name == UNION_MEMBER_COERCION
+        _check_union_member(owner, node)
         if node.form is not node.expr.form and not (
                 (view_target and node.form is Form.BORROW)
                 or (value_target and node.form is Form.VALUE)
+                or (member_cast and node.form is Form.VALUE)
                 or (opt_btuple_target and node.form is Form.STORAGE)):
             _fail(owner, node,
                   f"coerce form {node.form.name} != inner "
                   f"{node.expr.form.name} (non-view-target passthrough)")
+
+
+def _check_union_member(owner: str, node: THIRCoerce) -> None:
+    """A conversion of a non-union value into a union carries the member
+    sema landed it in, one of the union's own -- except where the member is
+    decided per instantiation (`landing_exempt`)."""
+    members = union_members(node.result_type) if node.result_type is not None else None
+    target = unwrap_readonly(node.result_type) if members is not None else None
+    if isinstance(target, OptionalType):
+        target = unwrap_readonly(target.inner)
+    if members is None or not isinstance(target, UnionType) or target.needs_wrapper():
+        # A recursive alias's wrapper converts the value itself.
+        return
+    under = node.uncoerced
+    src = under.result_type
+    bare_src = unwrap_readonly(src) if src is not None else None
+    if bare_src is None or isinstance(bare_src, NoneType) or (
+            union_members(bare_src) is not None
+            and not under.spells_literal):
+        return
+    if node.member is None:
+        if landing_exempt(node.result_type, src):
+            return
+        _fail(owner, node, "union conversion carries no landed member")
+    if unwrap_readonly(node.member) not in {unwrap_readonly(m) for m in members}:
+        _fail(owner, node, f"landed member {node.member} is not a member of "
+                           f"{node.result_type}")
+
+
+def _element_slots(node: THIRNode) -> 'list[tuple[THIRExpr, TpyType]]':
+    """The (element, element type) pairs a container or tuple
+    construction builds, read off its result type."""
+    rt = node.result_type
+    if rt is None:
+        return []
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+    if isinstance(node, THIRTupleLiteral):
+        if not isinstance(rt, TupleType):
+            return []
+        return list(zip(node.elements, rt.element_types))
+    args = getattr(rt, "type_args", ())
+    if not args or not isinstance(args[0], TpyType):
+        return []
+    pairs = [(el, args[0]) for el in node.elements]
+    if node.values and len(args) > 1 and isinstance(args[1], TpyType):
+        pairs += [(v, args[1]) for v in node.values]
+    return pairs
+
+
+def _check_landed_elements(owner: str, node: THIRNode) -> None:
+    """Each element a container or tuple construction builds into a value
+    union is the member sema landed it in: a conversion carrying it, or a
+    value whose own type is a member."""
+    if not isinstance(node, (THIRContainerLiteral, THIRTupleLiteral)):
+        return
+    for el, slot_t in _element_slots(node):
+        members = union_members(slot_t)
+        target = unwrap_readonly(slot_t)
+        if isinstance(target, OptionalType):
+            target = unwrap_readonly(target.inner)
+        # A recursive alias's wrapper builds each element from the member
+        # sema landed it in too; its self-reference names the alias only.
+        wrapper = isinstance(target, (AliasRef, RecursiveAliasInstanceType)) or (
+            isinstance(target, UnionType) and target.needs_wrapper())
+        if not wrapper and (members is None or not isinstance(target, UnionType)
+                            or not target.is_value_type()):
+            continue
+        if isinstance(el, THIRCoerce) and el.member is not None:
+            continue
+        under = el.uncoerced
+        src = under.result_type
+        bare_src = unwrap_readonly(src) if src is not None else None
+        if bare_src is None or isinstance(bare_src, (NoneType, AliasRef)) or (
+                union_members(bare_src) is not None
+                and not under.spells_literal):
+            continue
+        if wrapper and members is None:
+            _fail(owner, el, f"element built into {slot_t} carries no landed "
+                             f"member")
+        if landing_exempt(slot_t, src):
+            continue
+        _fail(owner, el, f"element built into {slot_t} carries no landed "
+                         f"member")
 
 
 def _borrow_legal_return(rt) -> bool:
@@ -1414,6 +1508,8 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # line, which the sync emit flushes its temps ahead of.
         if node.capture is not None:
             _walk(owner, node.capture, return_type)
+        if node.materialize is not None:
+            _walk(owner, node.materialize, return_type)
         for part in _deferred_leaf_parts(node.tuple_parts):
             _walk(owner, part.expr, return_type,
                   argtemp_ok=part.kind is DeferredPartKind.TEMP)
@@ -1543,6 +1639,8 @@ def _walk_resumable_return(owner: str, ret: THIRResumableReturn) -> None:
     if ret.deferred is not None:
         if ret.deferred.capture is not None:
             _walk(owner, ret.deferred.capture)
+        if ret.deferred.materialize is not None:
+            _walk(owner, ret.deferred.materialize)
         for part in _deferred_leaf_parts(ret.deferred.tuple_parts):
             _walk(owner, part.expr,
                   argtemp_ok=(ret.hosts_temps
@@ -1672,6 +1770,9 @@ def _check_lambda_bound(owner: str, node: THIRTupleLiteral) -> None:
             body(e.receiver)
         elif isinstance(e, (THIRFormConvert, THIRMove)):
             body(e.value)
+        elif isinstance(e, THIRCoerce):
+            # An element built into its union member.
+            body(e.expr)
         elif isinstance(e, THIROptionalPtrArg) and e.value is not None:
             # An element addressed into its pointer slot.
             body(e.value)

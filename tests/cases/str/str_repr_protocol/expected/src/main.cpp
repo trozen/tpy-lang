@@ -596,11 +596,11 @@ void scalars_generic() {
 void main() {
     A a = A(1);
     Holder h = Holder();
-    ::tpyapp::main::free_fn(2, &::tpy::as_mut_lvalue(A(1)), &a, 3, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(4), 5}), {1, 2}, h, J(std::vector<J>{"a", std::vector<J>{"b"}}), "sv", ::tpy::String("st"), 'c');
-    ::tpyapp::main::free_fn(std::nullopt, nullptr, &a, ::tpy::Union<int32_t, std::string>("u"), [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(4), 5}), std::vector<int32_t>{}, h, J("j"), "", ::tpy::String(""), 'd');
+    ::tpyapp::main::free_fn(2, &::tpy::as_mut_lvalue(A(1)), &a, ::tpy::Union<int32_t, std::string>(3), [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(4), 5}), {1, 2}, h, J(std::vector<J>{static_cast<std::string>("a"), std::vector<J>{static_cast<std::string>("b")}}), "sv", ::tpy::String("st"), 'c');
+    ::tpyapp::main::free_fn(std::nullopt, nullptr, &a, ::tpy::Union<int32_t, std::string>(std::in_place_type<std::string>, "u"), [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(4), 5}), std::vector<int32_t>{}, h, J(static_cast<std::string>("j")), "", ::tpy::String(""), 'd');
     std::cout << "holder" << " " << std::string(::tpy::repr_of(h)) << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::positions(&::tpy::as_mut_lvalue(A(1)), 2, 3);
-    ::tpyapp::main::positions(nullptr, std::nullopt, ::tpy::Union<int32_t, std::string>("s"));
+    ::tpyapp::main::positions(&::tpy::as_mut_lvalue(A(1)), 2, ::tpy::Union<int32_t, std::string>(3));
+    ::tpyapp::main::positions(nullptr, std::nullopt, ::tpy::Union<int32_t, std::string>(std::in_place_type<std::string>, "s"));
     ::tpyapp::main::mutation();
     ::tpyapp::main::pointer_form();
     ::tpyapp::main::overload_pick();

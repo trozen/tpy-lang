@@ -25,7 +25,7 @@ void show_num(const Num& x) {
 //     show_num(a)
 //     show_num(b)
 void main() {
-    Num a = 42;
+    Num a = ::tpy::BigInt(42);
     Num b = true;
     ::tpyapp::main::show_num(a);
     ::tpyapp::main::show_num(b);

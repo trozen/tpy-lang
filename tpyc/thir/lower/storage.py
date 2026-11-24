@@ -16,7 +16,7 @@ from ..scalar_leaves import holds_elements, leaf_constant, leaf_global, modeled_
 from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
-    THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral, THIRGlobalBinding, THIRHoistedBinding,
+    THIRCoerce, THIRLiteral, UNION_MEMBER_COERCION, THIRSelf, THIRUnionLiteral, THIRGlobalBinding, THIRHoistedBinding,
     THIRWrapperDefault, THIROwnedRecord,
     THIRCall, THIRCtorCall, THIRMethodCall, record_rvalue_storage,
 )
@@ -265,20 +265,26 @@ def union_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
 
 
 def union_literal(expr: THIRExpr | None, layout: THIRUnionLayout) -> THIRUnionLiteral | None:
-    if isinstance(expr, THIRCoerce):
-        if expr.coercion_name != "int_literal_to_fixed_int" or expr.wrap is not None:
+    """The alternative a literal value engages: the member its conversion
+    carries (sema's landing), the absence for `None`."""
+    member = None
+    while isinstance(expr, THIRCoerce):
+        if (expr.coercion_name not in ("int_literal_to_fixed_int",
+                                       UNION_MEMBER_COERCION)
+                or expr.wrap is not None):
             return None
+        member = expr.member if expr.member is not None else member
         expr = expr.expr
     if not isinstance(expr, THIRLiteral):
         return None
     if expr.value is None:
         return THIRUnionLiteral(layout, layout.elements.index(None), None) if None in layout.elements else None
-    # The literal's own type names its alternative when it is one; otherwise
-    # exactly one alternative may hold the value.
-    if expr.result_type in layout.elements and leaf_constant(expr.result_type, expr.value):
-        return THIRUnionLiteral(layout, layout.elements.index(expr.result_type), expr.value)
-    holders = [i for i, m in enumerate(layout.elements) if m is not None and leaf_constant(m, expr.value)]
-    return THIRUnionLiteral(layout, holders[0], expr.value) if len(holders) == 1 else None
+    # A literal lowered as its member's own render names it by its type.
+    if member is None and expr.result_type in layout.elements:
+        member = expr.result_type
+    if member in layout.elements and leaf_constant(member, expr.value):
+        return THIRUnionLiteral(layout, layout.elements.index(member), expr.value)
+    return None
 
 
 def full_expression_record(expr: THIRExpr, analyzer: 'SemanticAnalyzer') -> THIRExpr:

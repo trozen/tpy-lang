@@ -1,0 +1,1 @@
+main.py:36: warning: '+=' on 'v' falls back to '__radd__' (Mid has no '__iadd__'): the object is updated in place, where Python rebinds 'v' -- define '__iadd__', or write 'v = v + ...'

@@ -80,7 +80,7 @@ inline Ticket Ticket::stamped() && {
             auto* __tpy_retp_0 = &((*this));
             __fin_ran_1 = true;
             this->id = ::tpy::add_check<int32_t>(this->id, 100);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_1) {
                 this->id = ::tpy::add_check<int32_t>(this->id, 100);
@@ -103,7 +103,7 @@ inline Ticket Ticket::logged() && {
             auto* __tpy_retp_0 = &((*this));
             __fin_ran_2 = true;
             std::cout << "logged" << "\n" << ::tpy::check_signals;
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_2) {
                 std::cout << "logged" << "\n" << ::tpy::check_signals;
@@ -130,7 +130,7 @@ inline Badge Badge::bumped() && {
             auto* __tpy_retp_0 = &((*this));
             __fin_ran_3 = true;
             this->n = ::tpy::add_check<int32_t>(this->n, 1);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_3) {
                 this->n = ::tpy::add_check<int32_t>(this->n, 1);

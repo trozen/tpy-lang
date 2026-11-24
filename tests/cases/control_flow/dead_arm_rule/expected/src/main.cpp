@@ -281,7 +281,7 @@ std::string loop_rebind() {
             auto& __a = std::get<double>(a);
             out += "F";
         }
-        a = "s";
+        a = static_cast<std::string>("s");
     }
     return out;
 }
@@ -3237,7 +3237,7 @@ void main() {
     calls->clear();
     std::cout << "guard_dead_chain" << " " << ::tpyapp::main::guard_dead_chain(::tpy::BigInt(1)) << " " << ::tpyapp::main::guard_dead_chain(::tpy::BigInt(2)) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
-    std::cout << "guard_dead_union" << " " << ::tpyapp::main::guard_dead_union(::tpy::Union<::tpy::BigInt, std::string>(3)) << " " << ::tpyapp::main::guard_dead_union(::tpy::Union<::tpy::BigInt, std::string>("s")) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
+    std::cout << "guard_dead_union" << " " << ::tpyapp::main::guard_dead_union(::tpy::Union<::tpy::BigInt, std::string>(::tpy::BigInt(3))) << " " << ::tpyapp::main::guard_dead_union(::tpy::Union<::tpy::BigInt, std::string>(std::in_place_type<std::string>, "s")) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();
     std::cout << "guard_dead_switch" << " " << ::tpyapp::main::guard_dead_switch(1, true) << " " << ::tpyapp::main::guard_dead_switch(1, false) << " " << ::tpyapp::main::guard_dead_switch(2, false) << " " << ::tpy::ListPrinter((*calls)) << "\n" << ::tpy::check_signals;
     calls->clear();

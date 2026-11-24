@@ -803,7 +803,7 @@ int32_t pt_total(const ::tpy::Union<Pt, double>& u) {
 int32_t value_union_record(const ::tpy::Union<Pt, double>& v) {
     if (std::holds_alternative<Pt>(v)) {
         const auto& __v = std::get<Pt>(v);
-        return ::tpyapp::main::pt_total(__v);
+        return ::tpyapp::main::pt_total(static_cast<const Pt&>(__v));
     }
     const auto& __v = std::get<double>(v);
     return -1;
@@ -1100,7 +1100,7 @@ void main() {
     ::tpy::BigInt bb = ::tpy::BigInt(190);
     std::cout << "value-union-big" << " " << ::tpyapp::main::value_union_big(::tpy::Union<double, ::tpy::BigInt>(bb)) << " " << ::tpyapp::main::big_total(::tpy::Union<double, ::tpy::BigInt>(bb)) << "\n" << ::tpy::check_signals;
     Pt pp = Pt(3);
-    std::cout << "value-union-record" << " " << ::tpyapp::main::value_union_record(::tpy::Union<Pt, double>(pp)) << " " << ::tpyapp::main::pt_total(::tpy::Union<Pt, double>(pp)) << "\n" << ::tpy::check_signals;
+    std::cout << "value-union-record" << " " << ::tpyapp::main::value_union_record(::tpy::Union<Pt, double>(static_cast<const Pt&>(pp))) << " " << ::tpyapp::main::pt_total(::tpy::Union<Pt, double>(static_cast<const Pt&>(pp))) << "\n" << ::tpy::check_signals;
     std::cout << "assign-narrowed" << " " << ::tpyapp::main::assign_narrowed() << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_main()));
 }

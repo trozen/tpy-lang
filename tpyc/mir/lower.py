@@ -3076,11 +3076,17 @@ class _Lowering:
         hoisted constructor temporary has no placement THIR plans."""
         expr: th.THIRExpr | None = arg
         if isinstance(arg, th.THIRUnionArgLift):
-            _plain(arg, {"variant_cpp", "value", "deref", "const_wrap"})
+            _plain(arg, {"variant_cpp", "value", "deref", "const_wrap", "member"})
+            expr = arg.value
+        elif isinstance(arg, th.THIRInlineTemp):
+            # A union built from one member's value for the full expression:
+            # the member value the union is constructed from.
+            _plain(arg, {"value", "cpp_type", "lifetime"})
             expr = arg.value
         f = self.fragment()
         if shape.cls is MIRClass.UNION:
-            value = self.union_source(expr, shape, at=arg)
+            value = self.union_source(expr, shape, at=arg,
+                                      member=arg.member if isinstance(arg, th.THIRUnionArgLift) else None)
         else:
             value = self.tuple_expr(expr)
         self.writes[arg] = False
@@ -3661,11 +3667,14 @@ class _Lowering:
         return fact
 
     def union_source(self, expr: th.THIRExpr | None, shape: MIRShape, literal: th.THIRUnionLiteral | None = None,
-                     layout: th.THIRUnionLayout | None = None, *, at: th.THIRExpr | None = None) -> Fragment:
+                     layout: th.THIRUnionLayout | None = None, *, at: th.THIRExpr | None = None,
+                     member: TpyType | None = None) -> Fragment:
         """What a union of `shape` takes -- a declaration's, an assignment's
         (its layout fact `layout` beside a literal fact), a parameter's --
-        engaging the alternative it chooses; no expression (a `None` lift
-        `at` an argument) is the absence."""
+        engaging the alternative THIR carries: the literal fact's, the
+        member a value's conversion carries, or `member`, the one a record
+        lift carries; no expression (a `None` lift `at` an argument) is the
+        absence."""
         node = expr if expr is not None else at
         f = self.fragment()
         members = shape.members
@@ -3673,9 +3682,14 @@ class _Lowering:
             _require(expr, isinstance(literal, th.THIRUnionLiteral) and literal.layout == layout
                      and type(literal.alternative) is int and 0 <= literal.alternative < len(members),
                      "invalid union literal fact")
-            if isinstance(expr, th.THIRCoerce):
-                _plain(expr, {"expr", "coercion_name"})
-                _require(expr, expr.coercion_name in _LITERAL_COERCIONS, "unsupported union literal coercion")
+            while isinstance(expr, th.THIRCoerce):
+                _plain(expr, {"expr", "coercion_name", "member"})
+                _require(expr, expr.coercion_name in _LITERAL_COERCIONS
+                         or expr.coercion_name == th.UNION_MEMBER_COERCION,
+                         "unsupported union literal coercion")
+                _require(expr, expr.member is None or members[literal.alternative] is not None
+                         and members[literal.alternative].type == expr.member,
+                         "union literal fact disagrees with its member")
                 expr = expr.expr
             _require(expr, isinstance(expr, th.THIRLiteral), "union literal fact needs literal source")
             _plain(expr, {"value", "int_cpp", "none_cpp"})
@@ -3704,20 +3718,40 @@ class _Lowering:
             _require(node, None in members, "union has no absence alternative")
             f.value = MIRValue(MIRWrap(members.index(None)), shape, node.loc)
             return f
+        if (isinstance(expr, th.THIRCoerce) and expr.member is not None
+                and (expr.wrap is None or expr.coercion_name == th.UNION_MEMBER_OBJECT_COERCION)
+                and self.named_aggregate(expr.expr) is MIRClass.RECORD):
+            # A record named in place under the identity conversion carrying its member, or lent as
+            # that member's object (`static_cast<const M&>(x)`, the copy's const lvalue).
+            _plain(expr, {"expr", "coercion_name", "member", "wrap"})
+            _require(expr, expr.coercion_name in (th.UNION_MEMBER_COERCION, th.UNION_MEMBER_OBJECT_COERCION),
+                     "unsupported union record conversion")
+            member, expr = expr.member, expr.expr
         if self.named_aggregate(expr) is MIRClass.RECORD:
-            # A record source named in place, lent as an Optional argument's payload is (`aggregate_source`).
+            # A record source named in place, lent as an Optional argument's payload is (`aggregate_source`),
+            # as the member its lift carries.
             place = self.aggregate_source(expr, MIRClass.RECORD)
             source = place.holder_shape_of()
-            matches = [i for i, m in enumerate(members) if m is not None and m.borrowed_record and m.type == source.type]
-            _require(expr, len(matches) == 1, "union has no matching record alternative")
+            matches = [i for i, m in enumerate(members)
+                       if m is not None and m.borrowed_record and member is not None and m.type == member]
+            _require(expr, len(matches) == 1, "union record lift carries no member alternative")
             self.payload_compatible(expr, source, members[matches[0]])
             f.value = MIRValue(MIRWrap(matches[0], MIRPlace(f.lend(place))), shape, node.loc)
             return f
-        plan = self.expr(expr)
-        typ = plan.shape_of().type
         scalars = [m.type if m is not None and m.is_scalar else None for m in members]
-        _require(expr, typ in scalars and not self.writes[expr], "unsupported union member construction")
-        f.value = MIRValue(MIRWrap(scalars.index(typ), MIRPlace(f.splice(plan))), shape, node.loc)
+        # The member sema landed the value in, carried by its conversion (an
+        # identity one where the value already renders as it): the value
+        # itself must already be that member.
+        if not (isinstance(expr, th.THIRCoerce) and expr.member is not None):
+            self.expr(expr)
+            _require(expr, False, "union member construction carries no member")
+        _plain(expr, {"expr", "coercion_name", "member", "wrap"})
+        _require(expr, expr.member in scalars, "union member is not a scalar alternative")
+        _require(expr, not isinstance(expr.uncoerced, th.THIRLiteral), "union literal needs its literal fact")
+        plan = self.expr(expr.expr)
+        _require(expr, plan.shape_of().type == expr.member and not self.writes[expr.expr],
+                 "unsupported union member conversion")
+        f.value = MIRValue(MIRWrap(scalars.index(expr.member), MIRPlace(f.splice(plan))), shape, node.loc)
         return f
 
     def union_extraction(self, node: object, fact: th.THIRUnionExtraction | None) -> TpyType | th.THIRBorrowedRecord:

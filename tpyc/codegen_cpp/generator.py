@@ -16,7 +16,11 @@ from ..identity_map import IdentityMap
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage, TpyFieldAccess, TpyEnum
-from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith
+from ..parse.nodes import (TpyArrayLiteral, TpyAssign, TpyAugAssign,
+                           TpyBinOp, TpyCall, TpyDictLiteral, TpyIfExpr,
+                           TpyMethodCall, TpyReturn, TpySetLiteral,
+                           TpySubscript, TpyTupleUnpack, TpyVarargPack,
+                           TpyYield, ModuleDirectives, TpyTry, TpyWith)
 from ..toolchain import PLATFORMS
 from ..resumable_shape import ResumableShape
 from .frame_names import recursive_delegation_error
@@ -34,6 +38,8 @@ from .string_dispatch import (
     STRING_SWITCH_THRESHOLD,
 )
 from ..symbol_binding import SymbolKind
+from ..sema.landings import Boundary, PublishedLandings
+from ..thir.reject import internal_error
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
@@ -864,6 +870,7 @@ class CodeGenerator:
                 f"module '{module_name}' emitted inline generator bodies "
                 f"but was not told to emit {module_name}_inl.hpp")
 
+        _check_landings_read(self.analyzer.ctx.union_landings)
         return hpp.getvalue(), cpp.getvalue()
 
     def _init_callee_headers(self) -> list[str]:
@@ -3002,3 +3009,41 @@ class CodeGenerator:
     def _write_header_epilogue(self, out: TextIO) -> None:
         ns = module_to_cpp_namespace(self.ctx.module_name)
         out.write(f"}} // namespace {ns}\n")
+
+
+def _check_landings_read(table: 'PublishedLandings') -> None:
+    """Every union member sema published for the module was applied by the
+    conversion that builds the union there: any other is a position whose
+    C++ picks the member some other way. An internal error, as the THIR
+    validator's."""
+    unread = table.unread()
+    if not unread:
+        return
+    raise internal_error(
+        "union.unread_landing",
+        "the union member sema landed was never applied by the conversion "
+        "at: " + "; ".join(_landing_position(b, path) for b, path in unread),
+        getattr(unread[0][0].holder, "loc", None))
+
+
+_HOLDER_KINDS: dict[type, str] = {
+    TpyVarDecl: "declaration", TpyAssign: "assignment",
+    TpyAugAssign: "augmented assignment", TpyReturn: "return",
+    TpyYield: "yield", TpyCall: "call", TpyMethodCall: "method call",
+    TpyBinOp: "operator", TpySubscript: "subscript",
+    TpyArrayLiteral: "list literal", TpySetLiteral: "set literal",
+    TpyDictLiteral: "dict literal", TpyIfExpr: "conditional expression",
+    TpyVarargPack: "*args pack",
+}
+
+
+def _landing_position(b: 'Boundary', path: tuple) -> str:
+    """A boundary in source terms: the statement or expression kind, the
+    position in it, the element path and the line."""
+    kind = _HOLDER_KINDS.get(type(b.holder), "expression")
+    field, index = b.role
+    where = field if index is None else f"{field} {index}"
+    elem = (" element " + ".".join(map(str, path))) if path else ""
+    loc = getattr(b.holder, "loc", None)
+    line = f" (line {loc.line})" if loc is not None else ""
+    return f"{kind} {where}{elem}{line}"

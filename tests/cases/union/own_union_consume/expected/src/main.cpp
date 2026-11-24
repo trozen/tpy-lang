@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     d: dict[str, Json] = {"a": 1, "b": 2}
 //     return d
 Json build_obj() {
-    ::tpy::ordered_map<std::string, Json> d = ::tpy::ordered_map<std::string, Json>({{"a", 1}, {"b", 2}});
+    ::tpy::ordered_map<std::string, Json> d = ::tpy::ordered_map<std::string, Json>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::BigInt(2)}});
     return d;
 }
 
@@ -16,7 +16,7 @@ Json build_obj() {
 //     xs: list[Json] = [1, 2, 3]
 //     return xs
 Json build_arr() {
-    std::vector<Json> xs = {1, 2, 3};
+    std::vector<Json> xs = {::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)};
     return xs;
 }
 
@@ -40,7 +40,7 @@ void main() {
     Json arr = ::tpyapp::main::build_arr();
     if (std::holds_alternative<std::vector<Json>>(arr.value)) {
         auto& __arr = std::get<std::vector<Json>>(arr.value);
-        __arr.push_back(4);
+        __arr.push_back(Json(::tpy::BigInt(4)));
         std::cout << ::tpy::__len__(__arr) << "\n" << ::tpy::check_signals;
     }
 }

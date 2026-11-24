@@ -24,7 +24,7 @@ void main() {
     ::tpy::Union<int32_t, std::string> a = 5;
     std::cout << ::tpy::__str__(a) << "\n" << ::tpy::check_signals;
     std::cout << std::string(::tpy::__str__(a)) << "\n" << ::tpy::check_signals;
-    a = "hi";
+    a = static_cast<std::string>("hi");
     std::cout << ::tpy::__str__(a) << "\n" << ::tpy::check_signals;
     std::cout << std::string(::tpy::__str__(a)) << "\n" << ::tpy::check_signals;
     ::tpy::Union<Counter, std::string> __slot_1 = Counter(1);

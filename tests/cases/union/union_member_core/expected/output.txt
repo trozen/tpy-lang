@@ -1,0 +1,72 @@
+box 1 2
+narrowed 3
+scalar 6 False
+str True
+string abc1 abc2
+absent False True
+label view view
+ptr-fresh 5
+ptr-select 99
+ptr-select 1
+ptr-head 6
+ptr-frame 7
+ptr-with 8
+ptr-twin 5 1
+ptr-twin-head 6
+ptr-twin-frame 7
+ptr-alias 11 11
+ptr-alias-twin 11 11
+value-str x3 x3
+value-str-twin x3
+value-lit 3 3 -1
+value-fresh 2
+value-lit-twin 3
+value-widen False
+value-widen-twin 7
+value-lit-kinds float 1.5 bool True
+init True
+set 3
+set-twin 3 5 bb
+with 2 1
+rec 3 4 5
+proto 3 3
+ro 3 3
+opt 1
+opt-arg 4 4
+opt-field True
+wrapper 12 0
+value-arg 5 5
+value-field 5
+value-result 5
+value-ret 5 5 5 5 5 5 5
+value-owned 6 6
+fin 2 2
+mixed 3 3
+closure-peek 3
+closure-peek 3
+closure 3 3
+walrus 3 3
+pick 4 4
+ctor-ptr 5 5
+ctor-own 6 6
+tuple-twin 2 2 s
+moves-narrowed v
+moves-captured c3 c3 c3
+moves-narrowed-finally f4
+moves-narrowed-finally f4
+moves-captured-rec 1
+moves-captured-rec 1
+moves-narrowed-finally-rec 1
+moves-narrowed-finally-rec 5
+moves-nocopy 2
+moves-mixed m 2
+moves-mixed-rec 1 7
+moves-closure 1
+moves-closure 1 3
+moves-closure 1
+moves-closure 1 3
+moves-finally f6
+moves-finally f6 6
+moves-copy 1 8
+moves-copy 1 8
+moves-relocate 5

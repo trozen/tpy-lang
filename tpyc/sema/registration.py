@@ -73,6 +73,7 @@ from ..parse import (
 )
 from .call_lends import NO_CALLS, lends_by_signature, stub_result_lenders
 from .storage_walk import holder_root
+from .landings import default_boundary, union_members
 from ..parse.nodes import (COPY_HOOK, INIT_METHOD, DefaultReferent,
                           NON_CONSTANT_DEFAULT_MSG, OverloadForm,
                           SourceLocation,
@@ -415,6 +416,7 @@ def _check_member_default(
                     f"Default '{spelled}.{expr.field}' has enum type "
                     f"'{spelled}', which does not match the declared "
                     f"{target_noun} type '{refusal.target}'", loc)
+            commit_default_landing(ctx, compat, expr, target_type)
             return True
         raise SemanticError(
             f"'{expr.field}' is not a member of enum '{spelled}'", loc)
@@ -422,9 +424,12 @@ def _check_member_default(
     if holder is None or holder.type_params:
         return False
     expr.class_constant_owner = holder
-    if (compat is not None and target_type is not None
-            and (refusal := default_refusal(ctx, compat, expr,
-                                            target_type)) is not None):
+    if compat is None or target_type is None:
+        return True
+    refusal = default_refusal(ctx, compat, expr, target_type)
+    if refusal is None:
+        commit_default_landing(ctx, compat, expr, target_type)
+    else:
         compat.check_type_compatible(
             refusal.actual, refusal.target, f"{target_noun} default", loc,
             source_expr=refusal.source_expr)
@@ -455,6 +460,9 @@ class _DefaultSite:
     scope_record: str | None
     members_typed: bool
     overload_copy: 'FunctionInfo | None' = None
+    # A `typing.overload` stub's or implementation's own defaults are
+    # checked where written, but only the copies' render.
+    rendered: bool = True
 
 
 def resolve_default(ctx: 'SemanticContext', expr: TpyExpr,
@@ -823,17 +831,44 @@ def default_refusal(ctx: 'SemanticContext',
         inner = const_expr_type(default.args[0])
         if inner is not None and not compat.is_type_compatible(inner, actual):
             return DefaultRefusal(inner, actual, None)
-    # At a `Literal` slot a str / bool literal is its value, as the
-    # assignment check reads its source; an int literal keeps its open
-    # width, which a fixed-int slot range-checks and a `Literal` one admits.
-    value = literal_value_from_expr(default)
-    ranked = actual
-    if (value is not None and holds_literal(target)
-            and not isinstance(actual, IntLiteralType)):
-        ranked = proven_literal((value,), actual) or actual
-    if compat.is_type_compatible(ranked, target):
+    if compat.is_type_compatible(_ranked_default(default, actual, target),
+                                 target):
         return None
     return DefaultRefusal(actual, target, default)
+
+
+def _ranked_default(default: TpyExpr, actual: TpyType,
+                    target: TpyType) -> TpyType:
+    """The type a default meets its slot as: at a `Literal` slot a str /
+    bool literal is its value, as the assignment check reads its source;
+    an int literal keeps its open width, which a fixed-int slot
+    range-checks and a `Literal` one admits."""
+    value = literal_value_from_expr(default)
+    if (value is not None and holds_literal(target)
+            and not isinstance(actual, IntLiteralType)):
+        return proven_literal((value,), actual) or actual
+    return actual
+
+
+def commit_default_landing(ctx: 'SemanticContext',
+                           compat: 'TypeCompatibility | None',
+                           default: TpyExpr,
+                           target: 'TpyType | None') -> None:
+    """The union member a default the slot takes lands in, recorded at the
+    default's own boundary (`landings.default_boundary`): the one commit of
+    a default, in a function state of its own that publishes only the
+    landing. A slot that is no union, a generic one and a default not typed
+    yet record nothing."""
+    if (compat is None or target is None or union_members(target) is None
+            or contains_type_param(target)):
+        return
+    actual = default_written_type(ctx, default)
+    if actual is None:
+        return
+    with ctx.default_check_scope():
+        compat.check_type_compatible(
+            _ranked_default(default, actual, target), target, "default",
+            source_expr=default, boundary=default_boundary(default))
 
 
 def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
@@ -860,6 +895,7 @@ def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
         return
     refusal = default_refusal(compat.ctx, compat, expr, target_type)
     if refusal is None:
+        commit_default_landing(compat.ctx, compat, expr, target_type)
         return
     compat.check_type_compatible(refusal.actual, refusal.target,
                                  f"{target_noun} '{target_name}'", loc,
@@ -4858,8 +4894,9 @@ class TypeRegistrar:
                 if site.overload_copy is not None:
                     modules = self._resolve_copy_default(site, ptype, default)
                 else:
-                    modules = self._resolve_slot_default(site, pname, ptype,
-                                                         default)
+                    with self.ctx.default_landings_published(site.rendered):
+                        modules = self._resolve_slot_default(site, pname,
+                                                             ptype, default)
                 if modules & cycle_peers:
                     require_current_compiler().cycle_peer_defaults.add(default)
 
@@ -4889,6 +4926,7 @@ class TypeRegistrar:
         if default_refusal(self.ctx, self.compat, default, ptype) is None:
             param.omitted_arg = (enriched_literal(self.ctx, arg, default)
                                  if ranks_literals(overloads) else arg)
+            commit_default_landing(self.ctx, self.compat, default, ptype)
         else:
             param.default_expr = None
             assert copy.body is not None
@@ -5360,12 +5398,14 @@ class TypeRegistrar:
                      if (x := slot(stub, i)) is not None]
             if slots:
                 self._queue_default_site(_DefaultSite(slots, scope,
-                                                      members_typed=True))
+                                                      members_typed=True,
+                                                      rendered=False))
         slots = [x for i in range(len(impl.params))
                  if (x := slot(impl, i)) is not None]
         if slots:
             self._queue_default_site(_DefaultSite(slots, scope,
-                                                  members_typed=False))
+                                                  members_typed=False,
+                                                  rendered=False))
 
     def _refuse_constructor_set(self, record: TpyRecord) -> None:
         """A construction names what it builds, so a class takes one

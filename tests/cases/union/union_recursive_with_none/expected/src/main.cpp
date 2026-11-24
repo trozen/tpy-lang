@@ -57,7 +57,7 @@ std::string kind(const V& v) {
 //     d: dict[str, V] = {"k": 1, "n": None, "items": [1, None, "x"]}
 //     return d
 V make_dict() {
-    ::tpy::ordered_map<std::string, V> d = ::tpy::ordered_map<std::string, V>({{"k", 1}, {"n", std::monostate{}}, {"items", std::vector<V>{1, std::monostate{}, "x"}}});
+    ::tpy::ordered_map<std::string, V> d = ::tpy::ordered_map<std::string, V>({{"k", ::tpy::BigInt(1)}, {"n", std::monostate{}}, {"items", std::vector<V>{::tpy::BigInt(1), std::monostate{}, static_cast<std::string>("x")}}});
     return d;
 }
 
@@ -251,7 +251,7 @@ std::string kind_guarded(const V& v) {
 //     for w in flat_items:
 //         print(flat_kind(w))
 void main() {
-    std::vector<V> items = {std::monostate{}, true, 42, "hi", std::vector<V>{1, std::monostate{}, 2}, ::tpy::ordered_map<std::string, V>({{"k", 1}, {"n", std::monostate{}}})};
+    std::vector<V> items = {std::monostate{}, true, ::tpy::BigInt(42), static_cast<std::string>("hi"), std::vector<V>{::tpy::BigInt(1), std::monostate{}, ::tpy::BigInt(2)}, ::tpy::ordered_map<std::string, V>({{"k", ::tpy::BigInt(1)}, {"n", std::monostate{}}})};
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -262,7 +262,7 @@ void main() {
     V d = ::tpyapp::main::make_dict();
     std::cout << ::tpyapp::main::kind(d) << "\n" << ::tpy::check_signals;
     V a = std::monostate{};
-    V b = 7;
+    V b = ::tpy::BigInt(7);
     std::cout << ::tpy::print_bool(::tpyapp::main::is_null(a)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpyapp::main::is_null(b)) << "\n" << ::tpy::check_signals;
     auto& __obj_1 = items;
@@ -272,7 +272,7 @@ void main() {
         const auto& y = *__beg_1;
         std::cout << ::tpyapp::main::kind_after_null_guard(y) << "\n" << ::tpy::check_signals;
     }
-    std::vector<V> guarded_items = {std::monostate{}, true, false, 5, -3, "hi", std::vector<V>{1, 2}, ::tpy::ordered_map<std::string, V>({{"k", 1}})};
+    std::vector<V> guarded_items = {std::monostate{}, true, false, ::tpy::BigInt(5), ::tpy::BigInt(-3), static_cast<std::string>("hi"), std::vector<V>{::tpy::BigInt(1), ::tpy::BigInt(2)}, ::tpy::ordered_map<std::string, V>({{"k", ::tpy::BigInt(1)}})};
     auto& __obj_2 = guarded_items;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
@@ -280,7 +280,7 @@ void main() {
         const auto& z = *__beg_2;
         std::cout << ::tpyapp::main::kind_guarded(z) << "\n" << ::tpy::check_signals;
     }
-    std::vector<W> flat_items = {std::monostate{}, 7, "hi"};
+    std::vector<W> flat_items = {std::monostate{}, ::tpy::BigInt(7), static_cast<std::string>("hi")};
     auto& __obj_3 = flat_items;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();

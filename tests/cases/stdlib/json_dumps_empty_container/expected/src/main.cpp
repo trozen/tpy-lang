@@ -15,7 +15,7 @@ void main() {
     std::cout << ::tpystd::json::dumps(::tpystd::json::JsonValue(::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>()), 0, false) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::json::dumps(::tpystd::json::JsonValue(std::vector<::tpystd::json::JsonValue>{std::vector<::tpystd::json::JsonValue>{}, ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>()}), 0, false) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::json::dumps(::tpystd::json::JsonValue(::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"a", std::vector<::tpystd::json::JsonValue>{}}, {"b", ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>()}})), 0, false) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpystd::json::dumps(::tpystd::json::JsonValue(std::vector<::tpystd::json::JsonValue>{1, std::vector<::tpystd::json::JsonValue>{}, 3}), 0, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::json::dumps(::tpystd::json::JsonValue(std::vector<::tpystd::json::JsonValue>{::tpy::BigInt(1), std::vector<::tpystd::json::JsonValue>{}, ::tpy::BigInt(3)}), 0, false) << "\n" << ::tpy::check_signals;
 }
 
 // # An empty list/dict literal coerced into the recursive-union JsonValue

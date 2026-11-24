@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     return Rec(3)
 ::tpy::Union<Rec, std::tuple<std::string, ::tpy::BigInt>> pick(bool flag) {
     if (flag) {
-        return std::tuple<std::string, int32_t>{"hi", 7};
+        return static_cast<std::tuple<std::string, ::tpy::BigInt>>(std::tuple<std::string, int32_t>{"hi", 7});
     }
     return Rec(::tpy::BigInt(3));
 }

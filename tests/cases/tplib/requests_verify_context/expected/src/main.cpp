@@ -40,7 +40,7 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    ::tpystd::ssl::SSLContext custom = ::tpystd::tplib::requests::_ssl_context_for(::tpy::String(CA_PATH));
+    ::tpystd::ssl::SSLContext custom = ::tpystd::tplib::requests::_ssl_context_for(::tpy::Union<bool, std::string>(std::in_place_type<std::string>, ::tpy::String(CA_PATH)));
     std::cout << ::tpy::print_bool((custom.verify_mode == ::tpystd::ssl::CERT_REQUIRED)) << " " << ::tpy::print_bool(custom.check_hostname) << "\n" << ::tpy::check_signals;
 }
 

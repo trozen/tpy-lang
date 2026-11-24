@@ -529,7 +529,7 @@ class float32(Comparable, Equatable, Stringable, Representable):
 @native("int8_t")
 class int8(Comparable, Equatable, AnyFixedInt, AnyFixedSigned, Stringable, Representable):
     @dispatch
-    @cpp_template("0")
+    @cpp_template("static_cast<int8_t>(0)")
     @pure
     def __init__(self) -> None: ...
     @dispatch
@@ -662,7 +662,7 @@ class int8(Comparable, Equatable, AnyFixedInt, AnyFixedSigned, Stringable, Repre
 @native("int16_t")
 class int16(Comparable, Equatable, AnyFixedInt, AnyFixedSigned, Stringable, Representable):
     @dispatch
-    @cpp_template("0")
+    @cpp_template("static_cast<int16_t>(0)")
     @pure
     def __init__(self) -> None: ...
     @dispatch
@@ -928,7 +928,7 @@ class int32(Comparable, Equatable, AnyFixedInt, AnyFixedSigned, Stringable, Repr
 @native("int64_t")
 class int64(Comparable, Equatable, AnyFixedInt, AnyFixedSigned, Stringable, Representable):
     @dispatch
-    @cpp_template("0")
+    @cpp_template("static_cast<int64_t>(0)")
     @pure
     def __init__(self) -> None: ...
     @dispatch
@@ -1061,7 +1061,7 @@ class int64(Comparable, Equatable, AnyFixedInt, AnyFixedSigned, Stringable, Repr
 @native("uint8_t")
 class uint8(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned, Stringable, Representable):
     @dispatch
-    @cpp_template("0")
+    @cpp_template("static_cast<uint8_t>(0)")
     @pure
     def __init__(self) -> None: ...
     @dispatch
@@ -1194,7 +1194,7 @@ class uint8(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned, Stringable, Re
 @native("uint16_t")
 class uint16(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned, Stringable, Representable):
     @dispatch
-    @cpp_template("0")
+    @cpp_template("static_cast<uint16_t>(0)")
     @pure
     def __init__(self) -> None: ...
     @dispatch
@@ -1327,7 +1327,7 @@ class uint16(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned, Stringable, R
 @native("uint32_t")
 class uint32(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned, Stringable, Representable):
     @dispatch
-    @cpp_template("0")
+    @cpp_template("static_cast<uint32_t>(0)")
     @pure
     def __init__(self) -> None: ...
     @dispatch
@@ -1458,7 +1458,7 @@ class uint32(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned, Stringable, R
 @native("uint64_t")
 class uint64(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned, Stringable, Representable):
     @dispatch
-    @cpp_template("0")
+    @cpp_template("static_cast<uint64_t>(0)")
     @pure
     def __init__(self) -> None: ...
     @dispatch

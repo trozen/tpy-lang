@@ -180,8 +180,8 @@ bool ro_eq(const std::vector<int32_t>& a, const std::vector<int32_t>& b) {
 //     os: list[int32 | None] = [1, None]
 //     print("union-count", xs.count(u), xs.index(u), os.count(None))  # tpyc: ok
 void union_count() {
-    std::vector<::tpy::Union<int32_t, std::string>> xs = {1, "a"};
-    ::tpy::Union<int32_t, std::string> u = "a";
+    std::vector<::tpy::Union<int32_t, std::string>> xs = {1, static_cast<std::string>("a")};
+    ::tpy::Union<int32_t, std::string> u = static_cast<std::string>("a");
     std::vector<std::optional<int32_t>> os = {1, std::nullopt};
     std::cout << "union-count" << " " << ::tpy::list_count(xs, u) << " " << ::tpy::list_index(xs, u) << " " << ::tpy::list_count(os, std::nullopt) << "\n" << ::tpy::check_signals;
 }

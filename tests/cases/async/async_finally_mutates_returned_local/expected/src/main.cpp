@@ -25,7 +25,7 @@ namespace tpyapp::main {
                 __fin_ran_1 = true;
                 (*b).n = ::tpy::add_check<int32_t>((*b).n, 1);
                 __state = S_DONE;
-                return ::tpystd::tpy::Poll<Box>::ready(std::move(*__tpy_retp_0));
+                return ::tpystd::tpy::Poll<Box>::ready(std::move((*__tpy_retp_0)));
             } catch (...) {
                 if (!__fin_ran_1) {
                     (*b).n = ::tpy::add_check<int32_t>((*b).n, 1);
@@ -121,7 +121,7 @@ __coro_f_opt f_opt(bool flag) {
                 __fin_ran_3 = true;
                 a->n = ::tpy::add_check<int32_t>(a->n, 1);
                 __state = S_DONE;
-                return ::tpystd::tpy::Poll<Box>::ready(std::move(*__tpy_retp_0));
+                return ::tpystd::tpy::Poll<Box>::ready(std::move((*__tpy_retp_0)));
             } catch (...) {
                 if (!__fin_ran_3) {
                     a->n = ::tpy::add_check<int32_t>(a->n, 1);

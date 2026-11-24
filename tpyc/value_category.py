@@ -1228,14 +1228,29 @@ def place_dies(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
         expr = expr.obj
 
 
+def _select_is_rvalue(analyzer: ValueCategoryAnalyzer, expr: TpyExpr,
+                      a: TpyExpr, b: TpyExpr, *,
+                      held_first: bool = False) -> bool:
+    """A select of arms `a` and `b`. `held_first`: an and/or, whose `?:`
+    reads its left operand as itself or through the temp holding it -- an
+    lvalue either way."""
+    first = is_rvalue_source(analyzer, a)
+    second = is_rvalue_source(analyzer, b)
+    result_type = analyzer.get_expr_type(expr)
+    if result_type is not None and result_type.is_value_type():
+        return second or (first and not held_first)
+    return first and second
+
+
 def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     """Check if an expression produces an rvalue (a fresh value / temporary).
 
     Rvalues: constructor calls, Own[T] returns, literals, binop/unop results,
     field access on rvalue objects (member of temporary).
     Lvalues (borrow-aliases): variable names, field access on lvalues,
-    subscript, function/method returning T&, and a non-value ternary or
-    and/or select with at least one lvalue operand.
+    subscript, function/method returning T&, a non-value ternary or and/or
+    select with at least one lvalue operand, and a value one with no
+    rvalue operand.
     """
     # Names are lvalues (either pointer-locals, params, or globals)
     if isinstance(expr, TpyName):
@@ -1270,22 +1285,19 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
         if getitem is not None:
             return not call_returns_cpp_ref(analyzer, getitem)
         return False
-    # A non-value ternary is the and/or rule below: a fresh arm beside an
-    # lvalue arm is emplaced into a hoisted slot, so the result stays an
-    # lvalue unless BOTH arms are fresh.
+    # A select. A non-value one is an lvalue unless BOTH arms are fresh: a
+    # fresh arm beside an lvalue arm is emplaced into a hoisted slot. A
+    # value one is the C++ `?:` of one class type: a prvalue as soon as
+    # either arm is one (the lvalue arm is copied into it), else an lvalue
+    # naming one of the arms' objects.
     if isinstance(expr, TpyIfExpr):
-        result_type = analyzer.get_expr_type(expr)
-        if result_type and not result_type.is_value_type():
-            return (is_rvalue_source(analyzer, expr.then_expr)
-                    and is_rvalue_source(analyzer, expr.else_expr))
-    # Logical and/or with operand-return semantics: rvalue temps are
-    # materialized into named variables by _gen_logical_value, so the
-    # result is only an rvalue when both operands are rvalues.
+        return _select_is_rvalue(analyzer, expr, expr.then_expr,
+                                 expr.else_expr)
     if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
         result_type = analyzer.get_expr_type(expr)
         if not is_bool_type(result_type):
-            return (is_rvalue_source(analyzer, expr.left)
-                    and is_rvalue_source(analyzer, expr.right))
+            return _select_is_rvalue(analyzer, expr, expr.left, expr.right,
+                                     held_first=True)
     # An awaited borrow-returning coroutine hands back a pointer into
     # caller-durable storage -- an lvalue alias, like the sync
     # borrow-returning call arm below. Owned results stay rvalues. The

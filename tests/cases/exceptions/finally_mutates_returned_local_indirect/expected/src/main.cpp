@@ -20,7 +20,7 @@ Box via_alias() {
             auto* __tpy_retp_0 = &(b);
             __fin_ran_1 = true;
             a.n = ::tpy::add_check<int32_t>(a.n, 1);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_1) {
                 a.n = ::tpy::add_check<int32_t>(a.n, 1);
@@ -52,7 +52,7 @@ Box via_closure() {
             auto* __tpy_retp_0 = &(b);
             __fin_ran_2 = true;
             bump();
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_2) {
                 bump();
@@ -130,7 +130,7 @@ Box closure_dels_other() {
             __fin_ran_4 = true;
             b.n = ::tpy::add_check<int32_t>(b.n, 1);
             drop_c();
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_4) {
                 b.n = ::tpy::add_check<int32_t>(b.n, 1);
@@ -155,7 +155,7 @@ Box untouched() {
             auto* __tpy_retp_0 = &(b);
             __fin_ran_5 = true;
             std::cout << "cleanup" << "\n" << ::tpy::check_signals;
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_5) {
                 std::cout << "cleanup" << "\n" << ::tpy::check_signals;
@@ -183,7 +183,7 @@ Box del_other_local() {
             __fin_ran_6 = true;
             b.n = ::tpy::add_check<int32_t>(b.n, 1);
             { auto __del_sink = std::move(c); }
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_6) {
                 b.n = ::tpy::add_check<int32_t>(b.n, 1);

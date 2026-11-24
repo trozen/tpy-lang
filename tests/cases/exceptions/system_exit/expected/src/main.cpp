@@ -209,21 +209,21 @@ void codes() {
     }
     {
         try {
-            ::tpyapp::main::leave_with(::tpy::Union<std::monostate, int32_t, std::string>("u"));
+            ::tpyapp::main::leave_with(::tpy::Union<std::monostate, int32_t, std::string>(std::in_place_type<std::string>, "u"));
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes union str", e);
         }
     }
     {
         try {
-            ::tpyapp::main::leave_with(2);
+            ::tpyapp::main::leave_with(::tpy::Union<std::monostate, int32_t, std::string>(2));
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes union int", e);
         }
     }
     {
         try {
-            ::tpyapp::main::raise_code(::tpy::Union<std::monostate, int32_t, std::string>("w"));
+            ::tpyapp::main::raise_code(::tpy::Union<std::monostate, int32_t, std::string>(std::in_place_type<std::string>, "w"));
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes SystemExit(union)", e);
         }

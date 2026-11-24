@@ -57,6 +57,13 @@ copying, ownership, storage form, view-ness), and an N-tuple has, element-wise, 
 each element would have alone. Changing a return type from `Obj` to `(Obj, int)` must not
 change how `Obj` behaves.
 
+The same rule holds for a union: each member of `A | B` at position P behaves exactly as `A`
+(resp. `B`) would alone at P, so a union member takes the form a tuple element of its type takes
+there -- a reference member the `T*` stand-in, a value member held as its scalar is (`int32 | Node`
+at a local or parameter is `::tpy::Union<Node*, int32_t>`, never a pointer to an `int32`). A union
+of one member is that member (`Node | Node` is `Node`). Changing `x: Node` to `x: Node | int32`
+must not change how the `Node` behaves, nor `x: int32` to `x: int32 | Node` how the int does.
+
 **Example.** `def mk() -> tuple[Own[Box], int32]`, then `t = mk()` / `x, k = t` / `x.n = 9` /
 `print(t[0].n)`. Wrong: `auto __tup_1 = t;`, a whole-tuple copy the elements then move out of,
 so TPy printed 1 where CPython prints 9, with no warning -- the target was tagged owned off the
@@ -71,10 +78,16 @@ unsupported-construct reject and only the call result `xs.append(make(v))` warne
 `a: str = v` is `std::string_view a = v` while `t: tuple[str] = (v,)` is
 `std::tuple<std::string>(std::string(v))`.
 (open: `BUGS.md#consume-own-element-of-mixed-tuple`, `BUGS.md#str-tuple-element-local-owned`)
+Union: `def get_u(h: Holder) -> Node | int32: return h.u` (a `Node | int32` field holding 5) renders
+`return ::tpy::to_ptr_variant(h.u);`, a pointer to the field's int, so `r = get_u(h); h.set_u(9)`
+leaves `r` reading 9 where CPython keeps 5 -- and after `h.set_node(42)` it reads the `Node` through
+an `int32_t*`; the scalar twin `-> int32` returns `h.n` by value
+(open: `BUGS.md#union-value-member-borrowed-from-field`).
 
-**Check.** Wrap the subject in `(x,)` and `(x, 1)` and diff the three variants' emitted C++ for
-the element at the same position: a different storage form, deref, view or move verdict is the
-defect.
+**Check.** Wrap the subject in `(x,)` and `(x, 1)` -- and, for a union, give it a second member
+of the other kind (`x | Node` for a value, `x | int32` for a reference) -- and diff the variants'
+emitted C++ for the subject at the same position: a different storage form, deref, view or move
+verdict is the defect.
 
 ### `same-construct-every-position`
 

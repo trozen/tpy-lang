@@ -203,7 +203,8 @@ def enum_less(a: Level, b: Level) -> bool:
     return a < b
 
 def ambiguous() -> bool:
-    # Both int alternatives hold 1: no alternative is named, so no union literal.
+    # Both int alternatives hold 1: sema's landing names int32, the literal's
+    # own width, and the union literal fact follows it.
     x: int64 | int32 = 1
     return isinstance(x, int32)
 """
@@ -507,13 +508,11 @@ def test_thir_validator_rejects_a_none_default_for_an_enum_first_union(compiled,
                 validate_thir(replace(fn, body=body))
 
 
-def test_ambiguous_union_literal_is_not_covered(excluded) -> None:
+def test_union_literal_follows_the_recorded_member(excluded) -> None:
     decl = next(stmt for stmt in excluded[0]["ambiguous"].body if isinstance(stmt, th.THIRVarDecl))
-    assert decl.union_layout is not None and decl.union_literal is None
-    body = excluded[1]["ambiguous"]
-    # Without a union literal the initializer is a union-typed coercion, not a leaf value.
-    assert isinstance(body, MIRNotCovered)
-    assert (body.reason, body.node_kind) == ("unsupported expression type", "THIRCoerce")
+    assert decl.union_layout is not None and decl.union_literal is not None
+    assert decl.union_layout.elements[decl.union_literal.alternative] == INT32
+    assert not isinstance(excluded[1]["ambiguous"], MIRNotCovered)
 
 
 def test_native_container_of_float_records(artifacts) -> None:

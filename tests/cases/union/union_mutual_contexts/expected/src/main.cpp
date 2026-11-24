@@ -63,11 +63,11 @@ void main() {
     std::cout << ::tpyapp::main::describe_expr(Expr(Lit(::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
     BinOp e = BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(2))), ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))));
     std::cout << ::tpyapp::main::describe_expr(Expr(std::move(e))) << "\n" << ::tpy::check_signals;
-    Tree t = std::vector<Tree>{1, std::vector<Tree>{2, 3}};
+    Tree t = std::vector<Tree>{::tpy::BigInt(1), std::vector<Tree>{::tpy::BigInt(2), ::tpy::BigInt(3)}};
     std::cout << ::tpy::__str__(t) << "\n" << ::tpy::check_signals;
     Neg n = Neg(::tpystd::tplib::box::Box<Value>(42));
     std::cout << ::tpyapp::main::show_value(Value(std::move(n))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::show_value(Value(7)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show_value(Value(::tpy::BigInt(7))) << "\n" << ::tpy::check_signals;
 }
 
 // # Mutual + self-referencing recursive unions in the same module,

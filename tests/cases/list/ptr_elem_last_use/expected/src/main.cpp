@@ -177,7 +177,7 @@ void views(int32_t k) {
 //     print("union_view", u)
 void union_view(int32_t k) {
     ::tpy::String s = (::tpy::str_concat("ab", ::tpy::fixed_to_str<int32_t>(k)));
-    ::tpy::Union<std::string_view, int32_t> u = s;
+    ::tpy::Union<std::string_view, int32_t> u = static_cast<std::string_view>(s);
     std::cout << "union_view" << " " << ::tpy::__str__(u) << "\n" << ::tpy::check_signals;
 }
 

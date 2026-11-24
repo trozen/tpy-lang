@@ -634,7 +634,7 @@ void main() {
     std::cout << "call_holder" << " " << ::tpyapp::main::call_holder(::tpy::as_mut_lvalue(Q(3)), ::tpy::as_mut_lvalue(H(nullptr))) << "\n" << ::tpy::check_signals;
     std::cout << "call_scalar" << " " << ::tpyapp::main::call_scalar(4, 5) << " " << ::tpyapp::main::call_scalar(std::nullopt, 5) << "\n" << ::tpy::check_signals;
     std::cout << "scalar_loops" << " " << ::tpyapp::main::scalar_loops(3) << " " << ::tpyapp::main::scalar_loops(std::nullopt) << "\n" << ::tpy::check_signals;
-    std::cout << "via_scalar" << " " << ::tpyapp::main::via_scalar(3) << " " << ::tpyapp::main::via_scalar(::tpy::Union<bool, int32_t>(true)) << "\n" << ::tpy::check_signals;
+    std::cout << "via_scalar" << " " << ::tpyapp::main::via_scalar(::tpy::Union<bool, int32_t>(3)) << " " << ::tpyapp::main::via_scalar(::tpy::Union<bool, int32_t>(true)) << "\n" << ::tpy::check_signals;
     std::cout << "narrowed_plain" << " " << ::tpyapp::main::narrowed_plain(&::tpy::as_mut_lvalue(Q(4))) << " " << ::tpyapp::main::narrowed_plain(nullptr) << "\n" << ::tpy::check_signals;
     std::cout << "call_scalar_ctor" << " " << ::tpyapp::main::call_scalar_ctor() << "\n" << ::tpy::check_signals;
     std::cout << "call_scalar_ctor_arg" << " " << ::tpyapp::main::call_scalar_ctor_arg(7) << "\n" << ::tpy::check_signals;

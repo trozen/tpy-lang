@@ -1,0 +1,162 @@
+global-mixed-int64
+global-mixed-int16
+global-mixed-uint32
+global-twin-int64
+global-record
+global-subclass 6
+local 3 False
+checked 7 False
+literal 5 False
+exact-arg 5 True
+exact-local 5 True
+zero-arg 0 True
+zero-local 0 True
+zero-narrow 0 False
+rebind 4 False
+return 9 False
+yield 8 False
+pending 3 False
+positions-narrowed-member 6 False
+positions-narrowed-record-member 7 False
+positions-narrowed-decl 3 False
+positions-narrowed-reassign 4 False
+positions-narrowed-return 5 False
+positions-aug 5
+positions-property 3 False
+positions-for 4 False
+positions-ctor True
+positions-method True
+positions-inherited-ctor True
+shapes-wrapper-store-arg True
+shapes-wrapper-store True
+shapes-wrapper-store-narrow False
+shapes-wrapper-store-list False
+shapes-pending-str-decl True
+shapes-pending-str-arg True
+shapes-ptr-tuple-decl (1, Ref(2))
+shapes-ptr-tuple-rebind (1, Ref(3))
+shapes-shared-arg True
+shapes-tuple (1, 'b')
+shapes-optional 2 False
+shapes-ternary 3
+shapes-overload picked
+shapes-wrapper-arg False
+shapes-wrapper-decl False
+shapes-wrapper-ret False
+shapes-narrow-arg False
+shapes-narrow-ret False
+shapes-narrow-alias False
+shapes-pack False
+shapes-pack True
+shapes-float32 True
+frames-error-return 5 False
+frames-decided 3
+frames-await-arg 4
+frames-await-arg 4
+frames-await 1 1
+frames-async-finally 15
+frames-temp 106
+containers-list 2 True
+containers-dict 1
+containers-append True
+containers-in True
+containers-iter-in True
+containers-tuple-elem True
+containers-comp-elem True
+containers-tuple-widen False
+containers-alias-nested 1
+containers-alias-dict 3
+records-needle True True False
+records-local 104
+records-arg 105
+records-dominant True
+records-store-global True
+records-store-select True
+records-store-local True
+records-operand 17
+records-operand-alias 17
+records-operand-object 9
+records-operand-object-after 12
+records-iadd True
+default-exact True
+default-zero True
+default-narrow False
+default-bytes True
+default-empty-bytes True
+default-enum Color.RED
+default-constant True
+default-field 5 6 5 5
+default-auto-readonly True
+default-overload True
+operators-chain-silent False
+operators-chain-width-gt True
+operators-chain-width True
+operators-chain-precision 9007199254740993
+operators-chain-precision-result True
+operators-aug-fallback False
+operators-aug-fallback True
+operators-aug-radd True
+operators-aug-radd-result 2
+operators-store-key True
+operators-store-key False
+operators-add True
+operators-add-int32 False
+operators-sub False
+operators-sub-int32 False
+operators-eq True
+operators-chain True
+operators-iadd True
+operators-pin False
+operators-pin-str True
+operators-call True
+operators-call-int32 False
+operators-setitem False
+operands-chain-fresh True
+operands-mid 102
+operands-aug 223
+operands-chain True
+operands-chain-union False
+operands-radd 15
+operands-radd-aug 15
+operands-radd-ptr 15
+operands-radd-ptr-aug 16
+operands-radd-subclass 15
+mixed-ret-zero 0
+mixed-ret-narrow False
+mixed-ret-wide False
+mixed-ret-int32-last False
+mixed-ret-int16-int32 False
+mixed-ret-float-int64 False
+mixed-ret-int64 False
+mixed-ret-opt False
+mixed-ret-big-twin False
+mixed-ret-big False
+mixed-ret-float False
+mixed-ret-record A 7
+mixed-needle False
+mixed-field-ctor True
+mixed-field-lit False
+mixed-field-16 False
+mixed-field-64 True
+mixed-field-record True
+mixed-field-zero 0
+finally-pointer 42
+finally-pointer-same 1042
+finally-narrowed-optional 15
+finally-owned-param 15
+finally-loop-optional 15
+finally-loop-optional-result 25
+finally-loop-optional-same 35
+finally-param-optional-same 36
+finally-param-optional-whole-none True
+finally-param-optional-whole 37
+finally-loop-optional-whole-fin 5
+finally-loop-optional-whole 5
+finally-optional 15
+finally-scalar 15
+finally-subclass 15
+finally-same 1011
+finally-nested 106
+finally-str-fin ab
+finally-str ab
+finally-rebind 5

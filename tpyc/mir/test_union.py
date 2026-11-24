@@ -195,8 +195,12 @@ def test_internal_record_member_assembly(artifacts: Artifacts) -> None:
     # THIR coverage and MIR lowering without claiming frontend admission.
     other = replace(other, passing=ParamPassing.MUT_REF,
                     borrowed_record=replace(other.borrowed_record, readonly=False))
+    # The member the record lands in rides its identity conversion.
+    landed = th.THIRCoerce(result_type=member.result_type, expr=member,
+                           coercion_name=th.UNION_MEMBER_COERCION,
+                           member=member.result_type, form=member.form)
     ir = lower(replace(fn, params=(fn.params[0], other),
-                       body=(replace(decl, init=member), *fn.body[1:])))
+                       body=(replace(decl, init=landed), *fn.body[1:])))
     field = cell_field(ir)
     heap = {1: {field: 2}}
     assert execute(ir, union_arg(ir, 0, "Other", Reference(2)), Reference(1), heap=heap) == 9

@@ -1266,7 +1266,7 @@ inline std::optional<Holder> Holder::take() && {
             auto* __tpy_retp_0 = &((*this));
             __fin_ran_1 = true;
             this->b.v = ::tpy::add_check<int32_t>(this->b.v, 100);
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_1) {
                 this->b.v = ::tpy::add_check<int32_t>(this->b.v, 100);
@@ -1323,7 +1323,7 @@ inline std::optional<::tpy::storage_t<T>> V<T>::f(::tpy::storage_t<T> x) const {
             auto* __tpy_retp_0 = &(x);
             __fin_ran_2 = true;
             std::cout << "V.f finally" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_2) {
                 std::cout << "V.f finally" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;

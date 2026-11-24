@@ -1,0 +1,29 @@
+part_ctor.py:17: warning: 'Sub.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'Base' part instead
+part_ctor.py:35: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+part_ctor.py:42: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+part_faces.py:42: warning: copies RBase into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 39)
+part_faces.py:50: warning: copies RBase into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 47)
+part_faces.py:60: warning: copies RBase into owned storage; use copy() to make this explicit
+part_faces.py:69: warning: copies RBase into owned storage; use copy() to make this explicit
+part_faces.py:85: warning: copies RBase into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 84)
+part_faces.py:91: warning: copies RBase into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 90)
+part_faces.py:102: warning: upcast narrows 'RSub' to 'RBase' -- only 'RBase' fields and methods will be accessible; keep the concrete type or make 'RBase' a @dynamic protocol
+part_faces.py:108: warning: upcast narrows 'RSub' to 'RBase' -- only 'RBase' fields and methods will be accessible; keep the concrete type or make 'RBase' a @dynamic protocol
+part_moves.py:222: warning: 'CSub.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'CBase' part instead
+part_moves.py:238: warning: upcast narrows 'CSub' to 'CBase' -- only 'CBase' fields and methods will be accessible; keep the concrete type or make 'CBase' a @dynamic protocol
+part_moves.py:239: warning: upcast narrows 'CSub' to 'CBase' -- only 'CBase' fields and methods will be accessible; keep the concrete type or make 'CBase' a @dynamic protocol
+part_moves.py:244: warning: upcast narrows 'CSub' to 'CBase' -- only 'CBase' fields and methods will be accessible; keep the concrete type or make 'CBase' a @dynamic protocol
+part_moves.py:249: warning: upcast narrows 'CSub' to 'CBase' -- only 'CBase' fields and methods will be accessible; keep the concrete type or make 'CBase' a @dynamic protocol
+part_moves.py:82: warning: copies A into owned storage; use copy() to make this explicit
+part_moves.py:111: warning: copies A into owned storage; use copy() to make this explicit
+part_moves.py:162: warning: copies tuple[A, int32] into owned storage; use copy() to make this explicit
+part_moves.py:171: warning: copies tuple[A, int32] into owned storage; use copy() to make this explicit
+part_stores.py:28: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+part_stores.py:35: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+part_stores.py:49: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+part_stores.py:55: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+part_stores.py:78: warning: copies RBase into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 77)
+part_stores.py:83: warning: copies RBase into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 82)
+part_values.py:45: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_values.py:149: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+main.py:61: warning: copies A into owned storage; use copy() to make this explicit

@@ -152,14 +152,14 @@ void main() {
     std::cout << ::tpyapp::main::depth(::tpy::__getitem__(zs, 1)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::depth(Tree(std::vector<Tree>{Leaf(10), std::vector<Tree>{Leaf(20), Leaf(30)}})) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::depth(Tree(std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3), Leaf(4)}}})) << "\n" << ::tpy::check_signals;
-    IntTree a = std::vector<IntTree>{1, std::vector<IntTree>{2, 3}};
+    IntTree a = std::vector<IntTree>{::tpy::BigInt(1), std::vector<IntTree>{::tpy::BigInt(2), ::tpy::BigInt(3)}};
     std::cout << ::tpyapp::main::int_depth(a) << "\n" << ::tpy::check_signals;
-    IntTree b = std::vector<IntTree>{1, std::vector<IntTree>{2, std::vector<IntTree>{3}}};
+    IntTree b = std::vector<IntTree>{::tpy::BigInt(1), std::vector<IntTree>{::tpy::BigInt(2), std::vector<IntTree>{::tpy::BigInt(3)}}};
     std::cout << ::tpyapp::main::int_depth(b) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::int_depth(IntTree(std::vector<IntTree>{10, std::vector<IntTree>{20, 30}})) << "\n" << ::tpy::check_signals;
-    JsonValue d = ::tpy::ordered_map<std::string, JsonValue>({{"a", 1}, {"b", ::tpy::ordered_map<std::string, JsonValue>({{"c", 2}, {"d", 3}})}});
+    std::cout << ::tpyapp::main::int_depth(IntTree(std::vector<IntTree>{::tpy::BigInt(10), std::vector<IntTree>{::tpy::BigInt(20), ::tpy::BigInt(30)}})) << "\n" << ::tpy::check_signals;
+    JsonValue d = ::tpy::ordered_map<std::string, JsonValue>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::ordered_map<std::string, JsonValue>({{"c", ::tpy::BigInt(2)}, {"d", ::tpy::BigInt(3)}})}});
     std::cout << ::tpyapp::main::json_keys(d) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::json_keys(JsonValue(::tpy::ordered_map<std::string, JsonValue>({{"x", 1}, {"y", ::tpy::ordered_map<std::string, JsonValue>({{"z", 2}})}}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::json_keys(JsonValue(::tpy::ordered_map<std::string, JsonValue>({{"x", ::tpy::BigInt(1)}, {"y", ::tpy::ordered_map<std::string, JsonValue>({{"z", ::tpy::BigInt(2)}})}}))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__str__(x) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__str__(a) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__str__(d) << "\n" << ::tpy::check_signals;
@@ -184,8 +184,8 @@ void __tpy_init() {
     initialized = true;
 
     g = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3)}}};
-    g_int = std::vector<IntTree>{1, std::vector<IntTree>{2, std::vector<IntTree>{3}}};
-    g_dict = ::tpy::ordered_map<std::string, JsonValue>({{"a", 1}, {"b", ::tpy::ordered_map<std::string, JsonValue>({{"c", 2}})}});
+    g_int = std::vector<IntTree>{::tpy::BigInt(1), std::vector<IntTree>{::tpy::BigInt(2), std::vector<IntTree>{::tpy::BigInt(3)}}};
+    g_dict = ::tpy::ordered_map<std::string, JsonValue>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::ordered_map<std::string, JsonValue>({{"c", ::tpy::BigInt(2)}})}});
     ::tpyapp::main::main();
 }
 

@@ -138,6 +138,9 @@ from ...codegen_cpp.frame_names import sub_struct_qualname
 from ..frame import (THIRFrameHolder, frame_ptr_slot_field,
                      frame_ptr_slot_name)
 from ...sema.source_records import moves_place, read_record
+from ...sema.landings import (Boundary, binding_boundary, boundary_of,
+                              lookup as lookup_landing, union_members,
+                              subscript_boundary)
 from ...sema.call_lends import Retention, expr_lends_storage
 from ..param_contract import HandleUse, arg_retention
 from .frame_seat import (
@@ -245,9 +248,9 @@ from .predicates import (for_consuming_shape, resolved_loop_elem_type,
     _select_node, _native_iter_value_slot, _own_record_tuple,
     _open_t_tuple_storage_decl, _union_elem_value_tuple, _protocol_auto_slot,
     _value_record_slot, _value_opt_record,
-    _f1_record, record_like, _union_base_member_match, _f1_container_ref,
+    _f1_record, record_like, _f1_container_ref,
     _nested_container_elem_type, record_like, _method_rvalue_record_like,
-    _single_member_of_family, _f1_tuple, _mixed_own_btuple_call,
+    _f1_tuple, _mixed_own_btuple_call,
     _renders_own_borrow_tuple, _nested_storage_tuple, _optional_borrow_tuple,
     _nullable_borrow_tuple_call, _alias_field_source_ok,
     _facts_have_concrete, _field_decl_type,
@@ -288,6 +291,7 @@ from .predicates import (for_consuming_shape, resolved_loop_elem_type,
 from .context import (
     CompoundEntry,
     FrameLocalClass,
+    at_boundary,
     StmtEntry,
     lends_elements,
     async_payload_slot,
@@ -358,11 +362,12 @@ from .checks import (_dunder_call_receiver_ok, owned_literal_layout,
 from ..source import (BindingConstruct, BindingForm, BindingRepr, Held,
                       NameFacts, Source, tuple_elems)
 from .bindings import rebind_ptr_frame_field, rebind_ptr_frame_value
-from .convert import (
+from .convert import (as_member_object, land_paths, land_value,
     ElemRead, Plan, Refuse, borrowed_path_element_message, convert,
     converted, layout_tuple, open_param_convert, spelled, store_slot,
     to_local)
 from .expressions import (
+    landed_value_at,
     _lower_into_dyn, forwarded, as_base_of_read,
     _dunder_arg, _spell_brace, stamped, slot_payload_lent, lent_holder, _hoisted,
     receiver_kept,
@@ -393,6 +398,7 @@ from .expressions import (
     _value_opt_binding_kind, _value_opt_view_binding,
     _record_key, _lower_call_receiver,
     _record_receiver, _operator_receiver_pinned, _const_receiver,
+    _landed_operands,
     _owning_slot_arg, owning_param_read, consuming_iter,
 )
 from . import bindings as _bindings
@@ -3838,38 +3844,37 @@ def _opt_proto_slot_cpp(init: TpyExpr, pointee: TpyType, vtype: TpyType,
 
 def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
                          declared: dict[str, TpyType], lc: '_LowerCtx',
-                         analyzer) -> 'PtrSlotKind | None':
+                         analyzer, member: 'TpyType | None' = None
+                         ) -> 'PtrSlotKind | None':
     """Classify a ptr-variant union init/reseat source outside the bare-copy /
     field-lift slice: a concrete-MEMBER F1-record rvalue (UNION_RVALUE -- the
     value-variant `__slot_N` + `to_ptr_variant` lift) or a concrete-member
-    lvalue NAME (UNION_ADDR -- `v{&(name)}`; a record NAME deriving from
-    exactly one member counts, the variant's converting ctor binding the
-    base pointer). None for everything else (const-rooted sources,
-    pointer-form names, non-member types, a subclass rvalue or a source
-    deriving from two members)."""
+    lvalue NAME (UNION_ADDR -- `v{&(name)}`; a record NAME of a subclass of
+    the base `member` sema landed it in counts, bound as that base). None
+    for everything else (const-rooted sources, pointer-form names,
+    non-member types, a subclass rvalue)."""
     it = analyzer.get_expr_type(init)
     if it is None:
         return None
     it_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(it)))
     if isinstance(it_u, OwnType):
         it_u = unwrap_readonly(it_u.wrapped)
-    # A scalar/str LITERAL init takes the bare-literal slot render whatever
-    # type sema stamped on it (the member or the coerced whole union --
-    # `a: int32 | str | Cat | Dog = 42` -> `std::variant<...> __slot_N =
-    # 42;`, the converting ctor picking the SINGLE matching member; the
-    # single-member-of-family key is what keeps an ambiguous variant out).
+    # A scalar/str LITERAL init takes the value-variant slot built from the
+    # member sema landed it in (`a: int32 | str | Cat | Dog = 42` ->
+    # `std::variant<...> __slot_N = 42;`).
     lit = init
     while isinstance(lit, TpyCoerce):
         lit = lit.expr
+    bare_member = unwrap_readonly(member) if member is not None else None
     if isinstance(lit, TpyIntLiteral):
         return (PtrSlotKind.UNION_RVALUE
-                if _single_member_of_family(
-                    ptr_u.members, lambda m: is_fixed_int_type(m)
-                    or is_big_int_type(m))
+                if bare_member is not None
+                and (is_fixed_int_type(bare_member)
+                     or is_big_int_type(bare_member))
                 else None)
     if isinstance(lit, TpyStrLiteral):
         return (PtrSlotKind.UNION_RVALUE
-                if _single_member_of_family(ptr_u.members, is_str_type)
+                if bare_member is not None and is_str_type(bare_member)
                 else None)
     # A whole-union rvalue (an `Own[A | B]`-returning call) takes the same
     # value-variant slot + lift as a member rvalue -- the rvalue branch
@@ -3878,15 +3883,15 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
     whole_union = it_u == ptr_u
     scalar_member = False
     if not whole_union:
-        if not any(m == it_u for m in ptr_u.members):
+        if bare_member != it_u:
             # A subclass-record lvalue NAME reaches the UNION_ADDR arm
             # only: `v{&(dog)}` at `Pet | Cat` converts `Dog*` to the
             # base member implicitly. NAME only -- a subclass rvalue would
             # slice into the base's value slot -- and a source deriving
             # from two members would be ambiguous to the converting ctor.
-            if not (isinstance(init, TpyName)
-                    and _union_base_member_match(it_u, ptr_u.members,
-                                                 analyzer)):
+            if not (isinstance(init, TpyName) and member is not None
+                    and _f1_record(it_u, analyzer)
+                    and analyzer.registry.is_subclass_of(it_u, member)):
                 return None
         elif not record_like(it_u, analyzer):
             # A scalar MEMBER of a mixed union (`a: int32 | Dog | None =
@@ -4428,12 +4433,12 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
             _u_kind = (is_dict if isinstance(stmt.init, TpyDictLiteral)
                        else is_set if isinstance(stmt.init, TpySetLiteral)
                        else is_list)
-            _u_cands = [m for m in slot_t.members
-                        if _u_kind(unwrap_readonly(m))]
-            if len(_u_cands) != 1:
+            # The literal renders as the member sema landed it in.
+            _u_member = _recorded_member(stmt, lc)
+            if _u_member is None or not _u_kind(unwrap_readonly(_u_member)):
                 note_detail("top_level.global_slot_shape")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-            _u_target = unwrap_readonly(_u_cands[0])
+            _u_target = unwrap_readonly(_u_member)
         _witness("top_level.global_slot_union")
         init = _lower_expr(stmt.init, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.STORAGE,
@@ -4443,6 +4448,13 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
             # A bare brace-init cannot pick the variant alternative, so the
             # literal self-describes (`std::vector<int32_t>{1, 2}`).
             init = replace(init, typed_brace_cpp=lc.render_type(_u_target))
+        plan = convert(stamped(init, lc), at_boundary(
+            store_slot(slot_t, analyzer), analyzer, binding_boundary(stmt)),
+            analyzer)
+        if isinstance(plan, Refuse):
+            note_detail(f"top_level.global_slot_union.{plan.key}")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        init = plan.expr
     elif isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,
                                 TpySetLiteral, TpyListRepeat)):
         if not (is_list(slot_t) or is_dict(slot_t) or is_set(slot_t)
@@ -5125,7 +5137,7 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
             lc.slot_hoist_ok = slot_hoist_ok
         # The finishing reads ask about the name the statement binds,
         # so they run at the statement's own scope node.
-        result = _finish_stmt(result, lc, declared)
+        result = _finish_stmt(result, lc, declared, stmt)
         stamp_bindings(result, stmt, lc)
         lc.storage_slots.stamp(result, stmt)
         return result
@@ -5235,8 +5247,24 @@ def stamp_case_bindings(entry: object, case: object, lc: _LowerCtx) -> None:
             _set_binding(mb, "binding", _declared_record(mb.name, case, lc))
 
 
+def _landed_binding(result: THIRStmt, typ: TpyType, stmt: TpyStmt,
+                    lc: _LowerCtx) -> THIRStmt:
+    """A binding's value lands in the value-union member sema recorded at
+    the statement (`landed_value_at`)."""
+    if not isinstance(result, (THIRVarDecl, THIRAssign)):
+        return result
+    attr = "init" if isinstance(result, THIRVarDecl) else "value"
+    value = getattr(result, attr)
+    if value is None:
+        return result
+    landed_value = landed_value_at(value, typ, binding_boundary(stmt), lc)
+    if landed_value is value:
+        return result
+    return replace(result, **{attr: landed_value})
+
+
 def _finish_stmt(result: THIRStmt, lc: _LowerCtx,
-                 declared: dict[str, TpyType]) -> THIRStmt:
+                 declared: dict[str, TpyType], stmt: TpyStmt) -> THIRStmt:
     if isinstance(result, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind)):
         name = result.name
     elif isinstance(result, THIRAssign) and isinstance(result.target, THIRName):
@@ -5245,6 +5273,7 @@ def _finish_stmt(result: THIRStmt, lc: _LowerCtx,
         return result
     typ = declared.get(name)
     if typ is not None:
+        result = _landed_binding(result, typ, stmt, lc)
         # The statement's own write: its record, declared here or reassigned.
         rec = lc.declaring(name)
         union = _union_source_layout(name, typ, lc, rec)
@@ -6566,7 +6595,8 @@ def _return_tuple_literal(v: TpyTupleLiteral, stmt: TpyStmt, ret_slot: 'Slot',
                 elif not _container_lit_elem_ok(
                         sub, ret_wrt.element_types[i], declared, analyzer,
                         threaded=True, forced=True,
-                        pointers=scope.admission_pointers()):
+                        pointers=scope.admission_pointers(),
+                        member=ret_slot.union_member((i,))):
                     ok = False
                     break
         if not ok:
@@ -6622,7 +6652,8 @@ def _return_tuple_literal(v: TpyTupleLiteral, stmt: TpyStmt, ret_slot: 'Slot',
                         sub, mslot, declared, analyzer, threaded=True,
                         forced=True, allow_record=True, allow_nested=True,
                         allow_optional=True,
-                        pointers=scope.admission_pointers()):
+                        pointers=scope.admission_pointers(),
+                        member=ret_slot.union_member((i,))):
                     ok = False
                     break
         if not ok:
@@ -6674,12 +6705,23 @@ _RETURN_LITERALS = (TpyNoneLiteral, TpyIntLiteral, TpyFloatLiteral,
 def result_value(v: TpyExpr, slot: 'Slot', lc: '_LowerCtx',
                  declared: dict[str, TpyType], scope: '_LowerScope',
                  stmt: TpyStmt) -> THIRExpr:
+    """`_result_value_rows`, the result landing in the value-union member
+    sema recorded at the statement whichever row rendered it."""
+    return landed_value_at(
+        _result_value_rows(v, slot, lc, declared, scope, stmt), slot.type,
+        boundary_of(stmt, "value"), lc)
+
+
+def _result_value_rows(v: TpyExpr, slot: 'Slot', lc: '_LowerCtx',
+                       declared: dict[str, TpyType], scope: '_LowerScope',
+                       stmt: TpyStmt) -> THIRExpr:
     """THE value a body hands out of a result slot -- a `return`'s or a
     generator `yield`'s (`stmt`, which rejects name): a literal built
     against the slot (None, a tuple, a container, a closure), else the
     stored read of the source taken to the slot (`lower_result`)."""
     analyzer = lc.analyzer
     loc = getattr(stmt, "loc", None)
+    slot = at_boundary(slot, analyzer, boundary_of(stmt, "value"))
     rh, rst, rdecl = slot.holds, slot.type, slot.declared
     if rh is SlotHolds.RELOCATE:
         # A result slot no conversion is known for.
@@ -6940,13 +6982,22 @@ def _unpack_convert(r: ElemRead, slot: Slot, lc: '_LowerCtx', loc, *,
 
 
 def _local_slot(tt: TpyType, form: BindingForm, construct: SlotConstruct,
-                lc: '_LowerCtx', *, const: bool = False) -> Slot:
+                lc: '_LowerCtx', *, const: bool = False,
+                boundary: 'Boundary | None' = None) -> Slot:
     # A str / bytes local is the view or the owned buffer its usage decided.
     tt = _resolve_pending_view(tt, lc.analyzer) or tt
     slot = slot_for(tt, SlotPosition.LOCAL, lc.analyzer, construct=construct,
                     form=form, result_const=const)
     assert slot is not None
-    return slot
+    return at_boundary(slot, lc.analyzer, boundary)
+
+
+def _unpack_local_slot(stmt: TpyTupleUnpack, i: int, tt: TpyType,
+                       form: BindingForm, construct: SlotConstruct,
+                       lc: '_LowerCtx', *, const: bool = False) -> Slot:
+    """`_local_slot` of unpack target `i`, at the element's boundary."""
+    return _local_slot(tt, form, construct, lc, const=const,
+                       boundary=boundary_of(stmt, "unpack", i))
 
 
 def _owned_elem_movable(stmt: TpyTupleUnpack, i: int, el: Source,
@@ -7009,7 +7060,7 @@ def _fresh_unpack_write(stmt: TpyTupleUnpack, i: int, rec: BindingRepr,
         if not src.owns:
             note_detail("tuple_unpack.owned_target_holder")
             raise ThirUnsupported("stmt.tuple_unpack", loc=loc)
-        value = _unpack_convert(r, _local_slot(tt, BindingForm.VALUE,
+        value = _unpack_convert(r, _unpack_local_slot(stmt, i, tt, BindingForm.VALUE,
                                                SlotConstruct.DIRECT_INIT, lc),
                                 lc, loc)
         declared[name] = tt
@@ -7022,7 +7073,7 @@ def _fresh_unpack_write(stmt: TpyTupleUnpack, i: int, rec: BindingRepr,
         # holder or the loop's step (which lives as long as the target's
         # block) points at the element in place; a rebind re-points it. A
         # module's names are module storage, which no init temporary is.
-        value = _unpack_convert(r, _local_slot(tt, BindingForm.POINTER,
+        value = _unpack_convert(r, _unpack_local_slot(stmt, i, tt, BindingForm.POINTER,
                                                SlotConstruct.DIRECT_INIT, lc,
                                                const=rec.const), lc, loc)
         declared[name] = tt
@@ -7034,7 +7085,7 @@ def _fresh_unpack_write(stmt: TpyTupleUnpack, i: int, rec: BindingRepr,
     if owned and rec.rebind_slot:
         # A rebound target keeps the object it takes over in a slot of its
         # own, which its pointer re-points away from at a rebind.
-        value = _unpack_convert(r, _local_slot(tt, BindingForm.VALUE,
+        value = _unpack_convert(r, _unpack_local_slot(stmt, i, tt, BindingForm.VALUE,
                                                SlotConstruct.DIRECT_INIT, lc),
                                 lc, loc)
         declared[name] = tt
@@ -7048,7 +7099,7 @@ def _fresh_unpack_write(stmt: TpyTupleUnpack, i: int, rec: BindingRepr,
                            cpp_local_representation=LocalBinding.REBIND_SLOT,
                            binding=rec, loc=loc)
     if rec.form is BindingForm.POINTER_UNION:
-        value = _unpack_convert(r, _local_slot(tt, rec.form,
+        value = _unpack_convert(r, _unpack_local_slot(stmt, i, tt, rec.form,
                                                SlotConstruct.DIRECT_INIT, lc,
                                                const=rec.const), lc, loc)
         declared[name] = tt
@@ -7058,7 +7109,7 @@ def _fresh_unpack_write(stmt: TpyTupleUnpack, i: int, rec: BindingRepr,
                            binding=rec, loc=loc)
     if rec.form is BindingForm.POINTER:
         opt = _optional_ptr_borrow(tt, an)
-        value = _unpack_convert(r, _local_slot(opt or tt, rec.form,
+        value = _unpack_convert(r, _unpack_local_slot(stmt, i, opt or tt, rec.form,
                                                SlotConstruct.DIRECT_INIT, lc,
                                                const=rec.const), lc, loc)
         if opt is not None:
@@ -7085,7 +7136,7 @@ def _fresh_unpack_write(stmt: TpyTupleUnpack, i: int, rec: BindingRepr,
         # reference element as const as the source is.
         const = (rec.const or isinstance(tt, ReadonlyType)
                  or unwrap_readonly(tt).is_value_type())
-        value = _unpack_convert(r, _local_slot(tt, rec.form,
+        value = _unpack_convert(r, _unpack_local_slot(stmt, i, tt, rec.form,
                                                SlotConstruct.DIRECT_INIT, lc,
                                                const=const), lc, loc)
         declared[name] = tt
@@ -7098,7 +7149,7 @@ def _fresh_unpack_write(stmt: TpyTupleUnpack, i: int, rec: BindingRepr,
         # A comprehension clause's pointer-repr Optional element binds the
         # storage optional by reference, as the clause's scalar variable
         # over such elements does.
-        value = _unpack_convert(r, _local_slot(tt, rec.form,
+        value = _unpack_convert(r, _unpack_local_slot(stmt, i, tt, rec.form,
                                                SlotConstruct.DIRECT_INIT, lc,
                                                const=rec.const), lc, loc)
         declared[name] = tt
@@ -7110,7 +7161,7 @@ def _fresh_unpack_write(stmt: TpyTupleUnpack, i: int, rec: BindingRepr,
     if rec.form is not BindingForm.VALUE:
         note_detail("tuple_unpack.target_form")
         raise ThirUnsupported("stmt.tuple_unpack", loc=loc)
-    value = _unpack_convert(r, _local_slot(tt, rec.form,
+    value = _unpack_convert(r, _unpack_local_slot(stmt, i, tt, rec.form,
                                            SlotConstruct.DIRECT_INIT, lc),
                             lc, loc)
     declared[name] = tt
@@ -7140,7 +7191,7 @@ def _scope_unpack_write(stmt: TpyTupleUnpack, i: int, src: _UnpackElems,
         rec = lc.binding(name)
     if name in fresh_global_slots and record_like(tt, an):
         if owned:
-            value = _unpack_convert(r, _local_slot(
+            value = _unpack_convert(r, _unpack_local_slot(stmt, i,
                 tt, BindingForm.VALUE, SlotConstruct.DIRECT_INIT, lc),
                 lc, loc)
             lc.global_slot_assigned.add(name)
@@ -7151,7 +7202,7 @@ def _scope_unpack_write(stmt: TpyTupleUnpack, i: int, src: _UnpackElems,
                                     binding=rec, loc=loc)
         if is_ref and isinstance(stmt.value, TpyName) and src.refers_into(i):
             # A NAME is the only module-level source with static storage.
-            value = _unpack_convert(r, _local_slot(
+            value = _unpack_convert(r, _unpack_local_slot(stmt, i,
                 tt, BindingForm.POINTER, SlotConstruct.ASSIGN, lc), lc, loc)
             _witness("stmt.tuple_unpack.global_ptr_target")
             return THIRAssign(target=THIRName(name=name, result_type=tt),
@@ -7162,7 +7213,7 @@ def _scope_unpack_write(stmt: TpyTupleUnpack, i: int, src: _UnpackElems,
         # A pointer binding in scope (a predeclared or reassigned record
         # local) is re-pointed at the element, as `x = t[i]` re-points it,
         # as const as its slot.
-        slot = _local_slot(_optional_ptr_borrow(tt, an) or tt,
+        slot = _unpack_local_slot(stmt, i, _optional_ptr_borrow(tt, an) or tt,
                            BindingForm.POINTER, SlotConstruct.ASSIGN, lc,
                            const=rec.const)
         if r.at(slot).source.const and not rec.const:
@@ -7185,7 +7236,7 @@ def _scope_unpack_write(stmt: TpyTupleUnpack, i: int, src: _UnpackElems,
         # target read after it takes the view only where sema's hoist rule
         # proved the step's storage outlives it.
         raise ThirUnsupported("stmt.for_each:tuple.reused_target", loc=loc)
-    value = _unpack_convert(r, _local_slot(dt, BindingForm.VALUE,
+    value = _unpack_convert(r, _unpack_local_slot(stmt, i, dt, BindingForm.VALUE,
                                            SlotConstruct.ASSIGN, lc), lc, loc)
     _witness("stmt.tuple_unpack.assign_target")
     return THIRAssign(target=THIRName(name=name, result_type=dt),
@@ -7204,14 +7255,14 @@ def _reseat_unpack_write(stmt: TpyTupleUnpack, i: int, rec: BindingRepr,
     r = src.read(i)
     if rec.form is BindingForm.VALUE and rec.loop_binding is None and not (
             rec.rebind_slot):
-        slot = _local_slot(declared[name], BindingForm.VALUE,
+        slot = _unpack_local_slot(stmt, i, declared[name], BindingForm.VALUE,
                            SlotConstruct.ASSIGN, lc)
     elif rec.form is BindingForm.POINTER and not (
             stmt.owns_target(i)):
         if not src.refers_into(i):
             note_detail("tuple_unpack.ref_source_form")
             raise ThirUnsupported("stmt.tuple_unpack", loc=loc)
-        slot = _local_slot(_optional_ptr_borrow(tt, an) or tt,
+        slot = _unpack_local_slot(stmt, i, _optional_ptr_borrow(tt, an) or tt,
                            BindingForm.POINTER, SlotConstruct.ASSIGN, lc,
                            const=rec.const)
     else:
@@ -7356,7 +7407,7 @@ def _frame_unpack_write(stmt: TpyTupleUnpack, i: int, src: _UnpackElems,
         # statement's own value holder or the loop's step only.
         if not src.owns:
             raise _frame_unpack_reject("rebind_ptr_source", loc)
-        value = _unpack_convert(r, _local_slot(tt, BindingForm.VALUE,
+        value = _unpack_convert(r, _unpack_local_slot(stmt, i, tt, BindingForm.VALUE,
                                                SlotConstruct.DIRECT_INIT, lc),
                                 lc, loc, reason="res.unpack")
         _witness("res.unpack_rebind_ptr")
@@ -7369,7 +7420,7 @@ def _frame_unpack_write(stmt: TpyTupleUnpack, i: int, src: _UnpackElems,
         # A loop head's pointer field points into the loop's step, which
         # the frame holds until the next advance: at an element it refers
         # to or one the step hands over, as const as the field.
-        slot = _local_slot(_optional_ptr_borrow(tt, an) or tt,
+        slot = _unpack_local_slot(stmt, i, _optional_ptr_borrow(tt, an) or tt,
                            BindingForm.POINTER, SlotConstruct.ASSIGN, lc,
                            const=rec.frame_const)
         if r.at(slot).source.const and not rec.frame_const:
@@ -7386,11 +7437,11 @@ def _frame_unpack_write(stmt: TpyTupleUnpack, i: int, src: _UnpackElems,
         if not is_ref or not src.refers_into(i) or not (
                 r.source.pointer_held or lvalue_root is not None):
             raise _frame_unpack_reject("alias_source_form", loc)
-        read = r.at(_local_slot(tt, BindingForm.POINTER,
+        read = r.at(_unpack_local_slot(stmt, i, tt, BindingForm.POINTER,
                                 SlotConstruct.ASSIGN, lc))
         if read.source.const and not rec.frame_const:
             raise _frame_unpack_reject("alias_const_verdict", loc)
-        value = _unpack_convert(r, _local_slot(
+        value = _unpack_convert(r, _unpack_local_slot(stmt, i,
             _optional_ptr_borrow(tt, an) or tt, BindingForm.POINTER,
             SlotConstruct.ASSIGN, lc, const=rec.frame_const), lc, loc,
             reason="res.unpack")
@@ -7407,13 +7458,13 @@ def _frame_unpack_write(stmt: TpyTupleUnpack, i: int, src: _UnpackElems,
         lc.frame_local_types.get(name, declared[name])))
     if rec.frame_slot:
         # The emplace direct-initializes the payload.
-        value = _unpack_convert(r, _local_slot(slot_t, BindingForm.VALUE,
+        value = _unpack_convert(r, _unpack_local_slot(stmt, i, slot_t, BindingForm.VALUE,
                                                SlotConstruct.DIRECT_INIT, lc),
                                 lc, loc, reason="res.unpack")
         return THIRFrameSlotWrite(name=name, value=value,
                                   cpp_type=lc.render_type(slot_t),
                                   binding=rec, loc=loc)
-    value = _unpack_convert(r, _local_slot(slot_t, BindingForm.VALUE,
+    value = _unpack_convert(r, _unpack_local_slot(stmt, i, slot_t, BindingForm.VALUE,
                                            SlotConstruct.ASSIGN, lc), lc, loc,
                             reason="res.unpack")
     return THIRAssign(target=THIRName(name=name, result_type=declared[name]),
@@ -7900,6 +7951,13 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     # slot itself is the merged list.
     slot_t = unwrap_readonly(unwrap_ref_type(
         lc.frame_local_types.get(stmt.name, declared[stmt.name])))
+    # The frame slot's value lands in the union member sema recorded at
+    # the declaration, as a body local's does.
+    st = storage_type(slot_t)
+    if st is not None:
+        landing = lookup_landing(lc.analyzer.ctx.union_landings,
+                                 binding_boundary(stmt))
+        value = land_paths(value, st, landing or {}, lc.analyzer)
     return THIRFrameSlotWrite(
         name=stmt.name, value=value, cpp_type=lc.render_type(slot_t),
         loc=stmt.loc)
@@ -8251,25 +8309,57 @@ def _finally_deferred_recipe(
     captured = _deferred_capture_base(value, lc, declared)
     if captured is None:
         return None
-    base, indirect = captured
+    base, indirect, obj_t = captured
     src = _peel_tpy_coerce(ret.value) if ret.value is not None else None
     if src is not None and as_name_read(src) is not src:
         # A rebinding walrus's write runs before the capture takes the name
         # it reads.
         base = _lower_expr(src, lc, declared).with_read(base)
-    if shape is DeferredCapture.POINTER_OPTIONAL:
+    rec = lc.binding(value.name)
+    if shape is DeferredCapture.POINTER_OPTIONAL and rec.reads_as_pointer:
         # The capture is the local's pointer itself.
-        if not indirect:
-            return None
         return THIRFinallyDeferredReturn(capture=base, optional_move=True,
                                          loc=loc)
-    open_t = (unwrap_readonly(unwrap_ref_type(lc.binding(value.name).param_type))
-              if lc.binding(value.name).param_type is not None else None)
-    return THIRFinallyDeferredReturn(
-        capture=base, indirect=indirect, optional_move=False,
-        open_t=(type_arg_cpp(open_t, lc.render_type)
-                if type(open_t) is TypeParamRef else None),
-        loc=loc)
+    if (shape is DeferredCapture.POINTER_OPTIONAL and not indirect
+            and not rec.nullable_storage):
+        return None
+    open_t = (unwrap_readonly(unwrap_ref_type(rec.param_type))
+              if rec.param_type is not None else None)
+    if type(open_t) is TypeParamRef:
+        return THIRFinallyDeferredReturn(
+            capture=base, indirect=indirect, optional_move=False,
+            open_t=type_arg_cpp(open_t, lc.render_type), loc=loc)
+    materialize, read_id = _deferred_materialize(base, obj_t, lc, ret)
+    return THIRFinallyDeferredReturn(capture=base, indirect=indirect,
+                                     optional_move=False,
+                                     materialize=materialize, read_id=read_id,
+                                     loc=loc)
+
+
+def _deferred_materialize(base: THIRExpr, obj_t: TpyType, lc: _LowerCtx,
+                          ret: TpyReturn
+                          ) -> 'tuple[THIRExpr | None, int | None]':
+    """The object the capture points at, read through it after the chain
+    and converted into the result as the eager return converts its value
+    (`convert`): owned storage being moved, of the captured OBJECT's type
+    `obj_t` (`_deferred_capture_base`). (None, None) where the body has no
+    return slot."""
+    rslot = return_slot(lc)
+    if rslot is None:
+        return None, None
+    read_id = next(lc.temp_read_ids)
+    read = stamped(THIRTempRead(result_type=obj_t, form=Form.STORAGE,
+                                read_id=read_id, loc=base.loc), lc)
+    moved = stamped(THIRMove(result_type=obj_t, value=read,
+                             form=Form.STORAGE, loc=base.loc), lc,
+                    record_of=ret.finally_deferred_name)
+    plan = convert(moved, at_boundary(rslot, lc.analyzer,
+                                     boundary_of(ret, "value")),
+                   lc.analyzer)
+    if isinstance(plan, Refuse):
+        note_detail(f"return.finally_deferred.{plan.key}")
+        raise ThirUnsupported(stmt_reject_reason(ret))
+    return plan.expr, read_id
 
 
 def _deferred_self_base(value: TpyName, lc: _LowerCtx,
@@ -8299,14 +8389,25 @@ def _deferred_name_renamed(name: str, lc: _LowerCtx, declared: dict) -> bool:
 
 
 def _deferred_capture_base(value: TpyName, lc: _LowerCtx, declared: dict
-                           ) -> 'tuple[THIRName, bool] | None':
-    """The deferred local's own render and whether it is pointer-bound (the
-    capture then takes the address of `(*name)`); None when the name carries
-    a spelling the capture cannot take the address of."""
+                           ) -> 'tuple[THIRName, bool, TpyType] | None':
+    """The deferred local's own render, whether the capture takes the
+    address of `(*name)` -- a pointer-bound local's pointee, a storage
+    Optional's narrowed payload -- and the type of the object it captures;
+    None when the name carries a spelling the capture cannot take the
+    address of."""
     name = value.name
     if name == lc.self_receiver and name in declared:
-        return _deferred_self_base(value, lc, declared), False
-    indirect = lc.binding(name).pointer
+        base = _deferred_self_base(value, lc, declared)
+        return base, False, base.result_type
+    rec = lc.binding(name)
+    # A storage Optional that may be empty read under its `is not None`
+    # narrowing is the payload it holds; read whole, it is the Optional
+    # itself, captured and moved whole.
+    read_t = lc.analyzer.get_expr_type(value)
+    payload = (rec.nullable_storage and read_t is not None
+               and not isinstance(unwrap_readonly(unwrap_own(
+                   unwrap_ref_type(read_t))), OptionalType))
+    indirect = (rec.pointer and not rec.nullable_storage) or payload
     # A resumable frame slot reads `(*name)`, which is the local's own
     # spelling rather than a pointer wrap -- so it rides the capture
     # expression and a C++-local shadow of the field can still suppress it at
@@ -8317,9 +8418,12 @@ def _deferred_capture_base(value: TpyName, lc: _LowerCtx, declared: dict
         return None
     if name not in declared:
         return None
+    obj_t = unwrap_readonly(unwrap_own(unwrap_ref_type(declared[name])))
+    if indirect and isinstance(obj_t, OptionalType):
+        obj_t = obj_t.inner
     return (THIRName(result_type=declared[name], name=name,
                      deref=frame_slot, loc=getattr(value, "loc", None)),
-            indirect)
+            indirect, obj_t)
 
 
 def _peel_tpy_coerce(e: TpyExpr) -> TpyExpr:
@@ -8415,7 +8519,7 @@ def _finally_deferred_tuple_recipe(
                                                   declared)
                 if captured is None:
                     return None
-                base, indirect = captured
+                base, indirect, _ = captured
                 # A walrus member's write runs before the capture takes the
                 # name it reads, as the scalar's does.
                 base = inner.with_read(base)
@@ -8752,7 +8856,8 @@ def _store_item(stmt: TpyStmt, target: THIRExpr, value: THIRExpr,
 
 def _ptr_union_value(init: TpyExpr, ptr_u: 'UnionType', is_const: bool,
                      lc: _LowerCtx, declared: dict[str, TpyType],
-                     loc, reason: Callable[[], str]) -> THIRExpr:
+                     loc, reason: Callable[[], str], *,
+                     boundary: 'Boundary | None' = None) -> THIRExpr:
     """The value a pointer-variant binding (`::tpy::Union<A*, B*>`) takes
     off a slotless source `init`, declared or reseated: None stores the
     monostate member bare; any other source is its read converted at the
@@ -8765,7 +8870,7 @@ def _ptr_union_value(init: TpyExpr, ptr_u: 'UnionType', is_const: bool,
     src, _ = ptr_union_source(init, ptr_u, lc, declared)
     return _convert_at(stamped(src, lc), _local_slot(
         ptr_u, BindingForm.POINTER_UNION, SlotConstruct.ASSIGN, lc,
-        const=is_const), lc, "ptr_union.", reason)
+        const=is_const, boundary=boundary), lc, "ptr_union.", reason)
 
 
 def ptr_union_source(init: TpyExpr, ptr_u: 'UnionType', lc: _LowerCtx,
@@ -9180,13 +9285,21 @@ def _decl_ptr_variant(stmt, vtype, rec, scope, loc):
     facts = _record_facts(rec)
     u_init = _ptr_union_value(stmt.init, ptr_u, facts["is_const"], lc,
                               declared, loc,
-                              lambda: stmt_reject_reason(stmt))
+                              lambda: stmt_reject_reason(stmt),
+                              boundary=binding_boundary(stmt))
     declared[stmt.name] = vtype
     return THIRVarDecl(
         name=stmt.name, resolved_type=ptr_u, init=u_init,
         cpp_type=(ptr_u.to_cpp_const_ptr_variant() if facts["is_const"]
                   else ptr_u.to_cpp_ptr_variant()),
         form=Form.BORROW, loc=loc, **facts)
+
+
+def _recorded_member(stmt: TpyStmt, lc: _LowerCtx) -> 'TpyType | None':
+    """The union member sema landed a binding statement's value in."""
+    landing = lookup_landing(lc.analyzer.ctx.union_landings,
+                             binding_boundary(stmt))
+    return landing.get(()) if landing is not None else None
 
 
 def _decl_ptr_variant_slot(stmt, vtype, rec, scope, loc):
@@ -9200,8 +9313,9 @@ def _decl_ptr_variant_slot(stmt, vtype, rec, scope, loc):
         note_detail("decl.branch_ptr_union")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     ptr_u = _eligible_ptr_union_wide(vtype, lc.analyzer)
+    member = _recorded_member(stmt, lc)
     slot_kind = _ptr_union_slot_kind(stmt.init, ptr_u, declared, lc,
-                                     lc.analyzer)
+                                     lc.analyzer, member)
     if slot_kind is None:
         note_detail("decl.ptr_union_source")
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -9212,9 +9326,15 @@ def _decl_ptr_variant_slot(stmt, vtype, rec, scope, loc):
             stmt.init, lc, declared,
             use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                          allow_temps=True))
+        # The value-variant slot is the union's storage, built from the
+        # member sema landed the value in.
+        u_slot_init = land_value(u_slot_init, ptr_u, member, lc.analyzer)
         _witness("decl.union_slot_rvalue")
     else:
         u_slot_init = _lower_expr(stmt.init, lc, declared)
+        u_slot_init = as_member_object(u_slot_init, member,
+                                       u_slot_init.result_type, rec.const,
+                                       lc.analyzer)
         _witness("decl.union_addr")
     declared[stmt.name] = vtype
     return THIRPtrLocalDecl(
@@ -9528,7 +9648,8 @@ def _reseat_convert(stmt: 'TpyVarDecl | BindingSource',
             target=THIRName(result_type=ptr_u, name=stmt.name,
                             form=Form.BORROW, loc=loc),
             value=_ptr_union_value(stmt.init, ptr_u, const, lc, declared,
-                                   loc, reason),
+                                   loc, reason,
+                                   boundary=binding_boundary(stmt)),
             loc=loc)
     held = (lc.binding(stmt.init.name) if isinstance(stmt.init, TpyName)
             else None)
@@ -9540,7 +9661,7 @@ def _reseat_convert(stmt: 'TpyVarDecl | BindingSource',
         note_detail("reseat.frame_opt_storage_alias")
         raise ThirUnsupported(reason())
     slot = _local_slot(t, BindingForm.POINTER, SlotConstruct.ASSIGN, lc,
-                       const=const)
+                       const=const, boundary=binding_boundary(stmt))
     src = _reseat_source(stmt.init, lc, declared)
     value = _convert_at(src, slot, lc, "reseat.", reason)
     _witness("reseat.convert")
@@ -10239,7 +10360,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             if (_nr_ptr is None or stmt.init is None
                     or not lc.declaring(stmt.name).ptr_variant
                     or _ptr_union_slot_kind(stmt.init, _nr_ptr, declared, lc,
-                                            analyzer)
+                                            analyzer,
+                                            _recorded_member(stmt, lc))
                     is not PtrSlotKind.UNION_RVALUE):
                 note_detail("decl.narrowed_rebind")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -10550,8 +10672,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                          or _ptr_union_source_ok(stmt.init, declared,
                                                  analyzer, ptr_u,
                                                  allow_field=True)
-                         else _ptr_union_slot_kind(stmt.init, ptr_u,
-                                                   declared, lc, analyzer))
+                         else _ptr_union_slot_kind(
+                             stmt.init, ptr_u, declared, lc, analyzer,
+                             _recorded_member(stmt, lc)))
             if slot_kind is PtrSlotKind.UNION_RVALUE:
                 # The rvalue kind through the rebind slot pre-declared at
                 # the decl (`.emplace` + re-lift), or -- when the decl had
@@ -10566,9 +10689,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     _rk = PtrSlotKind.UNION_INLINE_SLOT
                 return THIRPtrLocalRebind(
                     name=stmt.name, kind=_rk,
-                    value=_lower_expr(stmt.init, lc, declared,
-                                      use=_ExprUse(
-                                          result=_ExprResultUse.BORROW_BIND)),
+                    value=land_value(
+                        _lower_expr(stmt.init, lc, declared,
+                                    use=_ExprUse(
+                                        result=_ExprResultUse.BORROW_BIND)),
+                        ptr_u, _recorded_member(stmt, lc), analyzer),
                     val_cpp=_union_storage_val_cpp(ptr_u), loc=loc)
             return _reseat_convert(stmt, vtype, lc, declared, loc)
         decl_tgt = declared.get(stmt.name, vtype)
@@ -11439,7 +11564,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 _set_i, setitem, lc, declared, temp_args=True,
                 keep=arg_retention(setitem, _set_i, None, analyzer,
                                    stmt.value, recv=stmt.target.obj),
-                signature=store.signature)
+                signature=store.signature,
+                boundary=subscript_boundary(stmt.target, setitem.name,
+                                            _set_i, value=True))
             _witness("setitem.user_record")
             return _store_item(stmt, target, value, lc, loc, store=store)
         if isinstance(stmt.target, TpySubscript):
@@ -11649,7 +11776,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         or not _ru_elem_ok(v, analyzer)):
                     note_detail("setitem.ru_value_shape")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-                value = _lower_expr(v, lc, declared)
+                value = landed_value_at(_lower_expr(v, lc, declared), eu,
+                                        boundary_of(stmt, "value"), lc)
                 if _node_moves(value):
                     # A movable wrapper NAME is an insert position like any
                     # other container element: its last use moves, so a
@@ -11671,6 +11799,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # per element.
                 slot_use = field_slot_use(eu, SlotConstruct.ASSIGN,
                                           analyzer, lc.placement)
+                slot_use = replace(slot_use, dest=at_boundary(
+                    slot_use.dest, analyzer, boundary_of(stmt, "value")))
                 if isinstance(stmt.value, TpyTupleLiteral):
                     value = _field_write._storage_tuple_literal(
                         stmt.value, eu, lc, declared,
@@ -11711,7 +11841,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     note_detail("setitem.union_value_shape")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 if v.name in lc.narrow.narrowed or v.name in lc.inline_narrowed:
-                    value = lowered
+                    value = landed_value_at(lowered, eu,
+                                            boundary_of(stmt, "value"), lc)
                 else:
                     bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                         declared[v.name])))
@@ -12000,7 +12131,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                   keep=arg_retention(_inp_fi, 0, None,
                                                      lc.analyzer, stmt.value,
                                                      recv=stmt.target),
-                                  signature=method_signature(call))
+                                  signature=method_signature(call),
+                                  boundary=boundary_of(stmt, "value"))
                 return THIRExprStmt(expr=replace(call, args=(val,)),
                                     loc=loc)
         if not aug_ok:
@@ -12099,7 +12231,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                               and stmt.target.typed_dict_field is None)
                              or isinstance(stmt.target, TpyName)))
             _, aug_pin = _operator_literal_pins(
-                stmt.resolved_binop, None, stmt.value, lc, declared)
+                stmt.resolved_binop, None, stmt.value, lc, declared,
+                holder=stmt)
             _, aug_rview = _rb_operand_view_slots(stmt.resolved_binop)
             aug_right = aug_pin or _slot_literal_retype(
                 _lower_expr(stmt.value, lc, declared,
@@ -12107,6 +12240,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 aug_rslot, lc)
             left, aug_right = _operator_receiver_pinned(stmt.resolved_binop,
                                                         left, aug_right, lc)
+            left, aug_right = _landed_operands(
+                stmt.resolved_binop, left, aug_right, stmt, lc,
+                role=("target" if stmt.resolved_binop is not None
+                      and stmt.resolved_binop.is_reverse else "value"),
+                pinned=aug_pin is not None)
             binop = THIRBinOp(
                 result_type=tgt_type,
                 left=left,
@@ -12130,7 +12268,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     _witness("setitem.field_recv")
                 if stmt.target.setitem_index is not None:
                     store_key = aug_sub.store_index
-                    received = stored
+                    setitem = _call_arm_variant(stmt.target,
+                                                SubscriptDunder.SET, analyzer)
+                    # The setter receives the result as its value argument,
+                    # in the member sema landed it in there.
+                    received = stored if setitem is None else landed_value_at(
+                        stored, setitem.params[-1].type,
+                        subscript_boundary(stmt.target, setitem.name,
+                                           len(setitem.params) - 1), lc)
                     if _setter_consumes_held_key(stmt, store_key):
                         # Moving the key inside the call that also reads it
                         # for the getter would leave the getter an empty key
@@ -12219,14 +12364,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     note_detail("error_return.ret_slot")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 _witness("er.return_passthrough")
+                # The `std::expected` passes through whole, so the callee's
+                # result is the member sema landed it in as it is.
                 return THIRReturn(
                     value=_flush_witness(
                         "flush.return",
-                        _lower_expr(stmt.value, lc, declared,
-                                    use=_ExprUse(
-                                        result=_ExprResultUse.STORAGE,
-                                        allow_temps=True),
-                                    error_return_raw=True)),
+                        landed_value_at(
+                            _lower_expr(stmt.value, lc, declared,
+                                        use=_ExprUse(
+                                            result=_ExprResultUse.STORAGE,
+                                            allow_temps=True),
+                                        error_return_raw=True),
+                            rtb, boundary_of(stmt, "value"), lc)),
                     staged=staged, loc=loc)
         return THIRReturn(
             staged=staged,

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     t: Tree[int] = [1, [2, 3], 4]
 //     return c.count(t)
 int32_t run(Counter& c) {
-    ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};
+    ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{::tpy::BigInt(1), std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{::tpy::BigInt(2), ::tpy::BigInt(3)}, ::tpy::BigInt(4)};
     return c.count(t);
 }
 

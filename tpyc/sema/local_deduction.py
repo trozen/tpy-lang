@@ -88,6 +88,7 @@ from .pending_num import (Entry, bare_slot, container_parts, is_pending_num,
                           pending_list_of)
 from ..parse.nodes import is_parse_node
 from .alias_rebind import BindKind
+from .landings import binding_boundary
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_list, is_fixed_int_type, is_big_int_type,
     is_str_type, is_str_view_type, is_bytes_type, is_bytes_view_type,
@@ -378,9 +379,12 @@ class LocalTypeDeduction:
             return typ.wrapped
         return typ
 
-    def record_write(self, name: str, rhs_expr: TpyExpr, rhs_type: TpyType) -> None:
-        """Record assignment history for potential later retro-validation."""
-        self.ctx.func.write_history.setdefault(name, []).append((rhs_type, rhs_expr))
+    def record_write(self, name: str, rhs_expr: TpyExpr, rhs_type: TpyType,
+                     stmt: TpyStmt) -> None:
+        """Record assignment history for potential later retro-validation:
+        the value, its type and the statement receiving it."""
+        self.ctx.func.write_history.setdefault(name, []).append(
+            (rhs_type, rhs_expr, stmt))
 
     def retro_validate_against_annotation(
         self,
@@ -389,7 +393,8 @@ class LocalTypeDeduction:
         annotation_line: int | None = None,
     ) -> None:
         """Validate earlier writes against a newly provided explicit annotation."""
-        for prev_type, prev_expr in self.ctx.func.write_history.get(name, []):
+        for prev_type, prev_expr, prev_stmt in self.ctx.func.write_history.get(
+                name, []):
             try:
                 self.compat.check_type_compatible(
                     prev_type,
@@ -398,6 +403,7 @@ class LocalTypeDeduction:
                     loc=getattr(prev_expr, "loc", None),
                     source_expr=prev_expr,
                     coercion_ctx=CoercionContext.ASSIGN,
+                    boundary=binding_boundary(prev_stmt),
                 )
             except SemanticError as e:
                 detail = e.message
@@ -668,7 +674,7 @@ class LocalTypeDeduction:
             return
         func = self.ctx.func
         earlier = []
-        for t, e in func.write_history.get(name, []):
+        for t, e, _stmt in func.write_history.get(name, []):
             m = self.int_float_mix(t, init_type)
             if e is not None and m is not None and m.int_first == mix.int_first:
                 earlier.append(e)
@@ -2381,7 +2387,7 @@ class LocalTypeDeduction:
             return
         name = sorted(self.ctx.func.unresolved_none_vars)[0]
         # Emit at the first None write location.
-        for typ, expr in self.ctx.func.write_history.get(name, []):
+        for typ, expr, _stmt in self.ctx.func.write_history.get(name, []):
             if isinstance(typ, NoneType):
                 raise self.ctx.error(
                     f"Cannot infer type for '{name}': assigned None but never assigned a concrete value; "

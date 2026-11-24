@@ -127,7 +127,7 @@ inline ::tpy::Union<std::string_view, int32_t> Either::__enter__() const {
     if ((this->n > 0)) {
         return this->n;
     }
-    return "zero";
+    return static_cast<std::string_view>("zero");
 }
 
 // def __exit__(self, et, ev, tb) -> None:

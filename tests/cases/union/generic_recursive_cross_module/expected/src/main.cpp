@@ -10,9 +10,9 @@ namespace tpyapp::main {
 //     leaf: Tree[int] = 7
 //     print(leaf_count(leaf))
 void main() {
-    ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};
+    ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{::tpy::BigInt(1), std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{::tpy::BigInt(2), ::tpy::BigInt(3)}, ::tpy::BigInt(4)};
     std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(t) << "\n" << ::tpy::check_signals;
-    ::tpyapp::treelib::Tree<::tpy::BigInt> leaf = 7;
+    ::tpyapp::treelib::Tree<::tpy::BigInt> leaf = ::tpy::BigInt(7);
     std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(leaf) << "\n" << ::tpy::check_signals;
 }
 

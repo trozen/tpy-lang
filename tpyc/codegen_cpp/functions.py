@@ -40,7 +40,7 @@ from ..typesys import (
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..modules.type_resolution import owning_element_slot
-from ..type_def_registry import ParamPassing, is_varargs, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
+from ..type_def_registry import ParamPassing, is_varargs, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of, is_fixed_int_type, is_big_int_type
 from ..parse.nodes import (
     TpyExpr, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
     TpyBytesLiteral, TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct,
@@ -53,7 +53,12 @@ from ..typesys import declared_param_consts
 from .type_resolution import (resolve_global_binding_type,
                               resolve_stmt_type_cascade)
 from .int_literals import render_int_literal_value
-from ..sema.literal_utils import literal_value_from_expr
+from ..sema.literal_utils import (fixed_int_literal_value_from_expr,
+                                  literal_value_from_expr)
+from ..sema.landings import (default_boundary, landing_exempt,
+                             literal_token_type, member_at, renders_as,
+                             union_members)
+from ..sema.registration import default_written_type
 from ..emitted_members import (
     EmittedMember, RefQualifier, signature_is_template,
 )
@@ -166,7 +171,73 @@ def _module_var_default_cpp(analyzer: SemanticAnalyzer, module: str,
 
 def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
     """Convert a constant default expression to its C++ representation."""
-    return default_to_cpp_from_analyzer(ctx.analyzer, expr, ptype)
+    return union_default_cpp(ctx.analyzer, expr, ptype) or \
+        default_to_cpp_from_analyzer(ctx.analyzer, expr, ptype)
+
+
+def union_default_cpp(analyzer, expr: TpyExpr,
+                      ptype: TpyType) -> 'str | None':
+    """A default at a union slot in the member sema landed it in
+    (`commit_default_landing`): spelled as that member's own C++ value --
+    an int literal in the member's own width, a bytes literal owned, a
+    zero-argument constructor of the member its value-initialization, any
+    other value converted to the alternative where its render has another
+    type (`landings.renders_as`). None where the slot is no union, the
+    default is `None`, or the member is decided per instantiation
+    (`landing_exempt`). A union default with no recorded member is an
+    internal error: no code after sema chooses one."""
+    union = union_members(ptype)
+    if union is None or isinstance(expr, TpyNoneLiteral):
+        return None
+    member = member_at(analyzer.ctx.union_landings, default_boundary(expr))
+    if member is None:
+        if landing_exempt(ptype, default_written_type(analyzer.ctx, expr)):
+            return None
+        raise CodeGenError(
+            f"internal error: a default at '{ptype}' with no union member "
+            f"recorded", expr.loc)
+    member = unwrap_readonly(member)
+    value = fixed_int_literal_value_from_expr(expr)
+    if value is None:
+        lit = literal_value_from_expr(expr)
+        value = lit.value if lit is not None and lit.tag is LiteralTag.INT \
+            else None
+    if value is not None and (is_fixed_int_type(member)
+                              or is_big_int_type(member)):
+        return render_int_literal_value(
+            value, member, default_int_type=analyzer.ctx.default_int_type,
+            type_to_cpp=lambda t: t.to_cpp(), exact_type=True)
+    if isinstance(expr, TpyBytesLiteral) and is_bytes_type(member):
+        # The union holds the owned buffer, never a view of the literal.
+        return cpp_bytes_literal_owned(expr.value)
+    if (isinstance(expr, TpyCall) and not expr.args
+            and renders_as(default_written_type(analyzer.ctx, expr),
+                           member, analyzer.registry)):
+        return f"{member.to_cpp()}{{}}"
+    rendered = default_to_cpp_from_analyzer(analyzer, expr, member)
+    if renders_as(_default_render_type(analyzer, expr), member,
+                  analyzer.registry):
+        return rendered
+    return f"static_cast<{member.to_cpp()}>({rendered})"
+
+
+def _default_render_type(analyzer, expr: TpyExpr) -> 'TpyType | None':
+    """The TPy type whose C++ `default_to_cpp_from_analyzer` renders a
+    non-int default as: a literal's own token (`literal_token_type`), a
+    scalar constructor's argument, a named constant's or member's own
+    type; None for a render no TPy type names (a string literal, a braced
+    list)."""
+    if isinstance(expr, (TpyFloatLiteral, TpyBoolLiteral)):
+        return literal_token_type(expr.value)
+    if isinstance(expr, TpyUnaryOp) and expr.op == "-":
+        return _default_render_type(analyzer, expr.operand)
+    if isinstance(expr, TpyCall):
+        # `float32(1.5)` renders its argument.
+        return (_default_render_type(analyzer, expr.args[0])
+                if expr.args else None)
+    if isinstance(expr, (TpyName, TpyFieldAccess)):
+        return default_written_type(analyzer.ctx, expr)
+    return None
 
 
 def default_to_cpp_from_analyzer(analyzer, expr: TpyExpr,

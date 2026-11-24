@@ -20,6 +20,7 @@ from ...parse.nodes import (
     collect_name_refs,
 )
 from ...sema.alias_rebind import leaf_paths
+from ...sema.landings import boundary_of, lookup as lookup_landing
 from ...sema.binding_ownership import CompMove, owned_head_targets
 from ...typesys import (
     IntLiteralType, body_function_info,
@@ -84,7 +85,8 @@ from .predicates import (
     _resolved_viewfam_value,
     _value_tuple,
 )
-from .context import (
+from .convert import land_paths
+from .context import (storage_type, 
     _LowerScope,
     BindingTableError,
     _ExprResultUse,
@@ -1296,6 +1298,19 @@ def _build_comprehension_body(init, result_type, lc, declared,
             element = _lower_comp_container_elem(
                 init.element_expr, elem_t, lc, body_declared,
                 allow_temps=True)
+        table = analyzer.ctx.union_landings
+
+        def landed(v: THIRExpr, t: 'TpyType | None', field: str) -> THIRExpr:
+            # A tuple element's elements land at their element paths.
+            return land_paths(v, storage_type(t),
+                              lookup_landing(table, boundary_of(init, field))
+                              or {}, analyzer)
+
+        if element is not None:
+            element = landed(element, elem_t, "element_expr")
+        if key is not None:
+            key = landed(key, kt, "key_expr")
+            value = landed(value, vt, "value_expr")
         return THIRCompInsert(kind=kind, element=element, key=key,
                               value=value, key_first=value_moved, loc=loc)
 

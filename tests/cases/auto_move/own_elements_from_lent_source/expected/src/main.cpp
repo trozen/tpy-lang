@@ -199,7 +199,7 @@ void main() {
     std::cout << "capture" << " " << ::tpyapp::main::capture(ll) << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<int32_t, std::vector<int32_t>>> pairs = ::tpy::make_vector<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{0, {1, 2}});
     std::cout << "tuple" << " " << ::tpyapp::main::unpack_pairs(pairs) << " " << ::tpy::ListPrinter(pairs) << "\n" << ::tpy::check_signals;
-    std::vector<::tpy::Union<std::vector<int32_t>, std::string>> us = {std::vector<int32_t>{1, 2}, "a"};
+    std::vector<::tpy::Union<std::vector<int32_t>, std::string>> us = {std::vector<int32_t>{1, 2}, static_cast<std::string>("a")};
     std::cout << "union" << " " << ::tpyapp::main::collect_union(us) << " " << ::tpy::ListPrinter(us) << "\n" << ::tpy::check_signals;
     std::cout << "read-only" << " " << ::tpyapp::main::total(ll) << " " << ::tpy::ListPrinter(ll) << "\n" << ::tpy::check_signals;
     std::cout << "extend" << " " << ::tpy::ListPrinter(::tpyapp::main::flatten(ll)) << " " << ::tpy::ListPrinter(ll) << "\n" << ::tpy::check_signals;

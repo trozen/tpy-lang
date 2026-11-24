@@ -71,6 +71,7 @@ from .type_join import (annotate_first_binding, operand_spelling,
 if TYPE_CHECKING:
     from .context import SemanticContext
     from .compatibility import InferredSlot, TypeCompatibility
+    from .landings import Boundary
 
 
 # The conversion a placeholder carries until its function settles.
@@ -371,6 +372,9 @@ class DeferredIntOp:
     node: TpyExpr | TpyStmt | None
     types: tuple[TpyType, ...]
     resolve: Callable[[tuple[TpyType, ...]], None]
+    # A placeholder its step peeled off to decide anew: its resolve writes
+    # nothing, so the stale check records no landing and no coercion.
+    cancelled: bool = False
 
 
 def strip_int(t: TpyType | None) -> TpyType | None:
@@ -3219,6 +3223,13 @@ class PendingNums:
         self.ctx.func.pending_num_deferred.append(
             DeferredIntOp(node, tuple(strip_int(t) for t in types), resolve))
 
+    def cancel(self, node: TpyExpr) -> None:
+        """The deferred conversion placed as `node` is void: the step that
+        placed it peeled it off to decide anew."""
+        for op in self.ctx.func.pending_num_deferred:
+            if op.node is node:
+                op.cancelled = True
+
     def _ready(self, op: DeferredIntOp) -> bool:
         return all(self.settled_all(leaf) for t in op.types
                    for leaf in pending_leaves(t))
@@ -3238,6 +3249,8 @@ class PendingNums:
             func.pending_num_deferred = [
                 op for op in func.pending_num_deferred if not self._ready(op)]
             for op in ready:
+                if op.cancelled:
+                    continue
                 op.resolve(tuple(self.finalize(t) if pending_leaves(t)
                                  else t for t in op.types))
 
@@ -3260,7 +3273,8 @@ class PendingNums:
                context: str, coercion_ctx: CoercionContext | None,
                rebind_of: str | None = None,
                inferred_slot: 'InferredSlot | None' = None,
-               by_step: bool = True) -> TpyExpr:
+               by_step: bool = True,
+               boundary: 'Boundary | None' = None) -> TpyExpr:
         """A conversion of `expr` whose two ends are known when the function
         settles: a placeholder filled then, or spliced out if it is none.
         `rebind_of` names the typed local a store rebinds, which a wider
@@ -3286,7 +3300,7 @@ class PendingNums:
             self.ctx.expr_types[node] = e
             coercion = (None if a == e else self.compat.check_type_compatible(
                 a, e, context, getattr(expr, "loc", None), source_expr=expr,
-                coercion_ctx=coercion_ctx))
+                coercion_ctx=coercion_ctx, boundary=boundary))
             if coercion is None:
                 self.ctx.func.pending_num_splices.append(node)
             else:
@@ -3377,7 +3391,8 @@ class PendingNums:
 
     def check(self, actual: TpyType, expected: TpyType, context: str,
               coercion_ctx: CoercionContext | None,
-              source_expr: TpyExpr | None) -> None:
+              source_expr: TpyExpr | None,
+              boundary: 'Boundary | None' = None) -> None:
         """A compatibility check whose ends are known when the function
         settles."""
         def resolve(types: tuple[TpyType, ...]) -> None:
@@ -3385,7 +3400,8 @@ class PendingNums:
             if a != e:
                 self.compat.check_type_compatible(
                     a, e, context, getattr(source_expr, "loc", None),
-                    source_expr=source_expr, coercion_ctx=coercion_ctx)
+                    source_expr=source_expr, coercion_ctx=coercion_ctx,
+                    boundary=boundary)
         self.defer(source_expr, (actual, expected), resolve)
 
     # ------------------------------------------------------------------

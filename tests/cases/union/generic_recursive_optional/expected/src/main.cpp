@@ -20,7 +20,7 @@ namespace tpyapp::main {
 //     print(maybe_count(t))
 //     print(maybe_count(None))
 void main() {
-    ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};
+    ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{::tpy::BigInt(1), std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{::tpy::BigInt(2), ::tpy::BigInt(3)}, ::tpy::BigInt(4)};
     std::cout << ::tpyapp::main::maybe_count(&(t)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::maybe_count(nullptr) << "\n" << ::tpy::check_signals;
 }

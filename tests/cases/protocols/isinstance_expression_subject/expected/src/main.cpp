@@ -200,7 +200,7 @@ void free_function() {
     bool boxed = ({ (void)(::tpyapp::main::make_box("free:")); false; });
     std::cout << "free: handle" << " " << ::tpy::print_bool(boxed) << "\n" << ::tpy::check_signals;
     std::cout << "free: any" << " " << ::tpy::print_bool(((::tpyapp::main::anything(::tpy::BigInt(4))).value.type() == typeid(::tpy::BigInt))) << " " << ::tpy::print_bool(((::tpyapp::main::anything(::tpy::BigInt(4))).value.type() == typeid(std::string))) << "\n" << ::tpy::check_signals;
-    std::vector<Tree> trees = {3, std::vector<Tree>{4}};
+    std::vector<Tree> trees = {::tpy::BigInt(3), std::vector<Tree>{::tpy::BigInt(4)}};
     std::cout << "free: tree" << " " << ::tpy::print_bool(std::holds_alternative<::tpy::BigInt>((::tpy::__getitem__(trees, 0)).value)) << " " << ::tpy::print_bool(std::holds_alternative<::tpy::BigInt>((::tpy::__getitem__(trees, 1)).value)) << "\n" << ::tpy::check_signals;
     bool v = std::holds_alternative<A>(::tpyapp::main::pick("free:", ::tpy::BigInt(1)));
     std::cout << "free: value" << " " << ::tpy::print_bool(v) << "\n" << ::tpy::check_signals;

@@ -69,6 +69,10 @@ from .binding_ownership import (CompMove, bound_name,
                                 read_ownership, record_body_ownership,
                                 site_ownership)
 from .read_binding import ReadKind, resolve_read
+from .landings import (Boundary, UnionLanding, binding_boundary,
+                       landing_exempt,
+                       publish as publish_landings,
+                       register as register_landing_entry)
 from .source_records import (Leaf as TupleLeaf, LeafPermission,
                              SinkRead, SourceRecord, read_record, verdict,
                              publish_source_record)
@@ -347,8 +351,19 @@ def _is_natural_union_member(actual: TpyType, a_info, member: TpyType) -> bool:
     return False
 
 
+class UnrelatedBases(Exception):
+    """A record value upcasts to two union members neither derives from
+    the other (`_union_member_order`): no one member is its landing."""
+
+    def __init__(self, bases: 'list[TpyType]') -> None:
+        super().__init__(bases)
+        self.bases = bases
+
+
 def _union_member_order(actual: TpyType,
-                    members: 'tuple[TpyType, ...]') -> list[TpyType]:
+                    members: 'tuple[TpyType, ...]',
+                    upcasts: 'Callable[[TpyType, TpyType], bool] | None' = None,
+                    ) -> list[TpyType]:
     """The members a value is tried against, most specific first.
 
     Canonical member order is a spelling artifact (make_union sorts on
@@ -361,7 +376,17 @@ def _union_member_order(actual: TpyType,
     literal converts without narrowing only to a signed width of at
     least 32 bits that holds it (int32, then int64), everything else
     loses to BigInt; a float literal is a double, so `float` wins.
+
+    A record no member is the type of lands in the most derived member it
+    `upcasts` to (a record or covariant-wrapper upcast): of those, the one
+    no other candidate derives from, as CPython's object keeps its whole
+    class. Two such members raise `UnrelatedBases`.
     """
+    if upcasts is not None:
+        base = _record_member(actual, members, upcasts)
+        if base is not None:
+            return [base] + [m for m in _union_member_order(actual, members)
+                             if m is not base]
     a_info = numeric_info(actual)
     natural: list[TpyType] = []
     widening: list[TpyType] = []
@@ -393,6 +418,35 @@ def _union_member_order(actual: TpyType,
 
     natural.sort(key=rank)
     return natural + widening
+
+
+def _rendered_into(coercion: Coercion, member: TpyType) -> Coercion:
+    """`coercion` rendering its target as union member `member`."""
+    render = coercion.codegen
+    if render is None:
+        return coercion
+    return dc_replace(coercion,
+                      codegen=lambda e, a, _b, c: render(e, a, member, c))
+
+
+def _record_member(actual: TpyType, members: 'tuple[TpyType, ...]',
+                   upcasts: 'Callable[[TpyType, TpyType], bool]'
+                   ) -> 'TpyType | None':
+    """The member a record `actual` lands in by upcast (see
+    `_union_member_order`); None where a member is its own type or it
+    upcasts to none."""
+    bare = unwrap_readonly(actual)
+    if not isinstance(bare, NominalType) or any(
+            unwrap_readonly(m) == bare for m in members):
+        return None
+    cands = [m for m in members if upcasts(bare, unwrap_readonly(m))]
+    left = [m for m in cands
+            if not any(c is not m and upcasts(unwrap_readonly(c),
+                                              unwrap_readonly(m))
+                       for c in cands)]
+    if len(left) > 1:
+        raise UnrelatedBases(left)
+    return left[0] if left else None
 
 
 def result_owns_storage(slot: TpyType) -> bool:
@@ -672,16 +726,6 @@ class CompatError:
 
 # Result type for _check_compat: Coercion | None (compatible) or CompatError (incompatible)
 CompatResult = Coercion | CompatError | None
-
-
-class UnionLanding:
-    """The union member a committing check landed its value in, written by
-    the check's union arm so the fact a caller stamps is the check's own
-    decision."""
-    __slots__ = ('member',)
-
-    def __init__(self) -> None:
-        self.member: 'TpyType | None' = None
 
 
 if TYPE_CHECKING:
@@ -1426,13 +1470,17 @@ class TypeCompatibility:
         landing: 'UnionLanding | None' = None,
         *,
         param: str | None = None,
+        boundary: 'Boundary | None' = None,
     ) -> Optional[Coercion]:
         """Check if actual type is compatible with expected type.
 
         Raises SemanticError on incompatible types.
         Returns a Coercion if a conversion should be applied at codegen time,
         or None if compatible with no coercion needed. `landing` receives
-        the union member the check landed the value in.
+        the union members the check landed the value in. `boundary`: the
+        place receiving the value (`landings`); a committing check records
+        its landing there, replacing what an earlier check of the same
+        boundary recorded (an empty landing clears it).
 
         A slot step that does not commit (`SemanticContext.slot_step_commits`)
         asks it as a query, as does a caller that opens a `ProbeSlot.QUERY`
@@ -1442,14 +1490,54 @@ class TypeCompatibility:
         leaving a trace. The query runs the check the committed slot runs,
         its refusals included; only its writes wait.
         """
+        if landing is None:
+            landing = UnionLanding(boundary)
+        elif boundary is not None:
+            landing.boundary = boundary
         if self.ctx.slot_step_commits():
-            return self._check_type_compatible(
+            result = self._check_type_compatible(
                 actual, expected, context, loc, source_expr, is_return,
-                coercion_ctx, target_is_storage_form, landing, param=param)
+                coercion_ctx, target_is_storage_form, landing, param=param,
+                boundary=boundary)
+            if boundary is not None:
+                self.register_landing(boundary, landing.members)
+            return result
         with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
             return self._check_type_compatible(
                 actual, expected, context, loc, source_expr, is_return,
                 coercion_ctx, target_is_storage_form, landing, param=param)
+
+    def _upcasts_to(self, actual: TpyType, member: TpyType) -> bool:
+        """`actual` converts to record `member` by a record upcast (a
+        subclass) or a covariant-wrapper upcast (`Box[Leaf]` to
+        `Box[Base]`)."""
+        member = unwrap_readonly(member)
+        return (self.ctx.registry.is_subclass_of(actual, member)
+                or self.is_covariant_generic_upcast(actual, member))
+
+    def _unrelated_bases_error(self, actual: TpyType,
+                               bases: 'list[TpyType]', context: str,
+                               loc: 'SourceLocation | None') -> CompatError:
+        """A record deriving from two unrelated union members is refused:
+        C++ would have to pick one of them."""
+        names = [f"'{self.diag_type(m)}'" for m in bases]
+        others = ", ".join(f"`{self.diag_type(m)}`" for m in bases[1:])
+        return CompatError(
+            f"Type mismatch in {context}: "
+            f"'{self.diag_type(unwrap_readonly(actual))}' derives from both "
+            f"{' and '.join(names)}; bind it to a "
+            f"`{self.diag_type(bases[0])}`-typed (or {others}-typed) name "
+            f"first", loc)
+
+    def register_landing(self, boundary: Boundary,
+                         members: 'dict[tuple[int, ...], TpyType]') -> None:
+        """A committed check's landing at `boundary`, into the body's table
+        -- or, after the body settled (a parked re-check), straight into the
+        published one."""
+        fs = self.ctx.func
+        table = (self.ctx.union_landings if fs is None or fs.settled
+                 else fs.union_landings)
+        register_landing_entry(table, boundary, members)
 
     def _check_type_compatible(
         self, actual: TpyType, expected: TpyType, context: str,
@@ -1459,6 +1547,7 @@ class TypeCompatibility:
         landing: 'UnionLanding | None' = None,
         *,
         param: str | None = None,
+        boundary: 'Boundary | None' = None,
     ) -> Optional[Coercion]:
         """`check_type_compatible`, its writes made only where the slot
         step commits (`SemanticContext.slot_step_commits`)."""
@@ -1475,7 +1564,7 @@ class TypeCompatibility:
         if pending is not None:
             if pending and self.ctx.slot_step_commits():
                 self.pend.check(strip_int(actual), strip_int(expected), context,
-                                coercion_ctx, source_expr)
+                                coercion_ctx, source_expr, boundary=boundary)
             return None
         actual = self.pend.current(actual)
         # A dict or set slot of a call resolved against a container whose
@@ -1829,7 +1918,8 @@ class TypeCompatibility:
                     self.ctx.set_expr_type(source_expr, resolved)
                 return self._check_compat(
                     resolved, expected, context, loc, source_expr,
-                    is_return, coercion_ctx, target_is_storage_form, sink_owns, param=param)
+                    is_return, coercion_ctx, target_is_storage_form, sink_owns,
+                    landing=landing, param=param)
             return CompatError(
                 f"Type mismatch in {context}: '{actual.record_name}' has unresolved type "
                 f"arguments; call a constraining method first or add explicit type arguments",
@@ -2021,7 +2111,13 @@ class TypeCompatibility:
                     actual_unwrapped, expected, context, loc, source_expr,
                     is_return, coercion_ctx, target_is_storage_form, sink_owns,
                     landing=landing, param=param)
-            for member in _union_member_order(actual_unwrapped, union_members):
+            try:
+                order = _union_member_order(actual_unwrapped, union_members,
+                                            self._upcasts_to)
+            except UnrelatedBases as unrelated:
+                return self._unrelated_bases_error(
+                    actual_unwrapped, unrelated.bases, context, loc)
+            for member in order:
                 with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
                     result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly, param=param)
                 if (isinstance(result, Coercion) and result.narrows_checked
@@ -2036,9 +2132,12 @@ class TypeCompatibility:
                         # goes to: what the check writes about the value is
                         # written against that member, not against one
                         # tried and refused.
-                        result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly, param=param)
-                        if landing is not None:
-                            landing.member = member
+                        result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly, landing=landing, param=param)
+                        if landing is not None and not landing_exempt(
+                                expected, actual_unwrapped, member):
+                            if landing.boundary is None:
+                                self.ctx.assert_union_boundary()
+                            landing.record(member)
                     return result
             # A concrete container variable whose elements would each fit a union
             # member is NOT implicitly converted: an element-wise rebuild into the
@@ -2111,10 +2210,11 @@ class TypeCompatibility:
                     and not isinstance(actual_inner.inner, OwnType)):
                 inner_result = self._check_compat(
                     actual_inner.inner, expected.inner, context, loc,
-                    source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, param=param)
+                    source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns,
+                    landing=landing, param=param)
                 if inner_result is None:
                     return None
-            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly, param=param)
+            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly, landing=landing, param=param)
             # Rewrap inner-mismatch errors with the declared Optional types so
             # the diagnostic reads `expected str | None, got StrView | None`
             # rather than the truncated `expected str, got StrView | None`.
@@ -2621,7 +2721,9 @@ class TypeCompatibility:
                     source_expr=None if i in decided else sub,
                     is_return=is_return,
                     coercion_ctx=coercion_ctx, target_is_storage_form=True,
-                    sink_owns=True, param=param)
+                    sink_owns=True,
+                    landing=landing.at(i) if landing is not None else None,
+                    param=param)
                 if isinstance(result, CompatError):
                     return result
             return None
@@ -3100,6 +3202,7 @@ class TypeCompatibility:
         self, expr: TpyExpr, actual: TpyType, expected: TpyType, context: str,
         coercion: Optional[Coercion], coercion_ctx: CoercionContext,
         target_is_storage_form: bool = False,
+        boundary: 'Boundary | None' = None,
     ) -> TpyExpr:
         """The node to store back for a sink that emits its operand against the
         expected C++ type WITHOUT applying the coercion -- an aggregate literal
@@ -3113,7 +3216,8 @@ class TypeCompatibility:
             return expr
         return self.coerce_expr(expr, actual, expected, context,
                                 coercion_ctx=coercion_ctx,
-                                target_is_storage_form=target_is_storage_form)
+                                target_is_storage_form=target_is_storage_form,
+                                boundary=boundary)
 
     def coerce_expr(
         self, expr: TpyExpr, actual: TpyType, expected: TpyType, context: str,
@@ -3122,6 +3226,7 @@ class TypeCompatibility:
         inferred_slot: 'InferredSlot | None' = None,
         *,
         param: str | None = None,
+        boundary: 'Boundary | None' = None,
     ) -> TpyExpr:
         """Wrap expr in a coercion node if a conversion is needed.
 
@@ -3148,7 +3253,8 @@ class TypeCompatibility:
                 return expr if commits else source
             return self.pend.coerce(expr, strip_int(actual),
                                     strip_int(expected), context,
-                                    coercion_ctx, inferred_slot=inferred_slot)
+                                    coercion_ctx, inferred_slot=inferred_slot,
+                                    boundary=boundary)
         actual = self.pend.current(actual)
         expected = self.pend.current(expected)
         # A bound coroutine handle (owned-erased Own[Cancellable[T]]) is
@@ -3204,7 +3310,7 @@ class TypeCompatibility:
                     f"return an owned value (tpy.copy(...) a borrowed "
                     f"source such as 'self')",
                     expr if getattr(expr, "loc", None) else None)
-        landing = UnionLanding()
+        landing = UnionLanding(boundary)
         coercion = self.check_type_compatible(
             actual, expected, context,
             getattr(expr, "loc", None),
@@ -3214,6 +3320,7 @@ class TypeCompatibility:
             target_is_storage_form=target_is_storage_form,
             landing=landing,
             param=param,
+            boundary=boundary,
         )
         if not commits:
             return source
@@ -3248,15 +3355,18 @@ class TypeCompatibility:
             actual = self._resolve_pending_for_any_storage(actual)
         bare_expected = unwrap_own(unwrap_readonly(unwrap_ref_type(
             unwrap_send_sync(expected))))
-        union_member = (landing.member
-                        if (coercion_ctx == CoercionContext.ARG
-                            and isinstance(bare_expected, UnionType)
-                            and bare_expected.is_value_type())
-                        else None)
         actual = literal_conversion_source(actual, expected)
         self.ctx.assert_slot_effect("a coercion node")
-        coercion = self.site_coercion(coercion, actual, expected, expr,
-                                      inferred_slot=inferred_slot)
+        # A value landing in a union member converts as its scalar twin
+        # `x: M = value` does: the row renders (and range-checks) against
+        # the member, never the whole union.
+        member = (landing.members.get(())
+                  if isinstance(bare_expected, UnionType) else None)
+        coercion = self.site_coercion(
+            coercion, actual, member if member is not None else expected,
+            expr, inferred_slot=inferred_slot)
+        if member is not None:
+            coercion = _rendered_into(coercion, member)
         coerced = TpyCoerce(
             expr=expr,
             actual_type=actual,
@@ -3266,7 +3376,6 @@ class TypeCompatibility:
             context_msg=context,
             runtime_bigint=runtime_bigint,
             by_step=True,
-            union_member=union_member,
             loc=expr.loc
         )
         self.ctx.set_expr_type(coerced, expected)
@@ -3334,7 +3443,8 @@ class TypeCompatibility:
             try:
                 rebind.stmt.init = self.coerce_expr(
                     rebind.value_expr, rebind.value_type, rebind.var_type,
-                    rebind.context, coercion_ctx=CoercionContext.ASSIGN)
+                    rebind.context, coercion_ctx=CoercionContext.ASSIGN,
+                    boundary=binding_boundary(rebind.stmt))
             finally:
                 self.init.restore(end)
             self.drain_deferred_escape_checks()
@@ -3391,6 +3501,7 @@ class TypeCompatibility:
     ) -> tuple[TpyType, TpyExpr]:
         """Single entry point for local-reassignment compatibility, so the
         per-shape rules can't drift between the var-decl and walrus paths.
+        `err_node` is the declaration or walrus, whose value it receives.
 
         Returns (resolved_target_type, coerced_value_expr); raises on an
         incompatible RHS. Callers keep their own var_types / declared-type
@@ -3399,6 +3510,7 @@ class TypeCompatibility:
         inner_existing = unwrap_readonly(existing_type)
         inner_value = unwrap_readonly(value_type)
         ctx = f"reassignment to '{name}'"
+        boundary = binding_boundary(err_node)
 
         if isinstance(inner_existing, PendingGenericInstanceType):
             raise self.ctx.error(
@@ -3464,7 +3576,7 @@ class TypeCompatibility:
                     self.deduction.note_view_rebind(name, value_expr, vf)
             coerced = self.coerce_expr(
                 value_expr, inner_value_owned, inner_existing, ctx,
-                coercion_ctx=CoercionContext.ASSIGN)
+                coercion_ctx=CoercionContext.ASSIGN, boundary=boundary)
             return existing_type, coerced
 
         # Non-pending: resolve the target type, then either upgrade an
@@ -3491,7 +3603,7 @@ class TypeCompatibility:
                 name, var_type, value_expr)
             coerced = self.coerce_expr(
                 value_expr, inner_value, slot, ctx,
-                coercion_ctx=CoercionContext.ASSIGN)
+                coercion_ctx=CoercionContext.ASSIGN, boundary=boundary)
             if undecided:
                 self.park_repointed_tuple_check(
                     name, err_node, value_expr, inner_value, var_type, ctx)
@@ -4372,6 +4484,8 @@ class TypeCompatibility:
             if isinstance(r, OwnIterMove) and not isinstance(r.node, TpyName):
                 self._settle_own_iter(r)
         self.build_source_records()
+        publish_landings(fs.union_landings, self.ctx.union_landings)
+        fs.union_landings = IdentityMap()
         self._publish_body_copy_arguments(body)
         for r in reads:
             if isinstance(r, UnpackClaim):

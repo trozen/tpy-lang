@@ -727,7 +727,7 @@ Point finally_return_defers(Point&& x) {
             auto* __tpy_retp_0 = &(x);
             __fin_ran_4 = true;
             std::cout << "finally_return_defers sees" << " " << grow() << "\n" << ::tpy::check_signals;
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_4) {
                 std::cout << "finally_return_defers sees" << " " << grow() << "\n" << ::tpy::check_signals;

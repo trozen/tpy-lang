@@ -406,7 +406,7 @@ void main() {
     std::cout << "pass_tup" << " " << ::tpyapp::main::pass_tup(p, Cell(9), d) << " " << p.v << " " << d.v << "\n" << ::tpy::check_signals;
     p.bump();
     std::cout << "bump" << " " << p.v << "\n" << ::tpy::check_signals;
-    std::cout << "scalar_uni" << " " << ::tpyapp::main::scalar_uni(3) << " " << ::tpyapp::main::scalar_uni(::tpy::Union<bool, int32_t>(true)) << "\n" << ::tpy::check_signals;
+    std::cout << "scalar_uni" << " " << ::tpyapp::main::scalar_uni(::tpy::Union<bool, int32_t>(3)) << " " << ::tpyapp::main::scalar_uni(::tpy::Union<bool, int32_t>(true)) << "\n" << ::tpy::check_signals;
     std::cout << "apart_scal" << " " << ::tpyapp::main::apart_scal(::tpy::as_mut_lvalue(H(Q(7))), Q(8)) << "\n" << ::tpy::check_signals;
     std::cout << "apart_tup" << " " << ::tpyapp::main::apart_tup(::tpy::as_mut_lvalue(H(Q(7))), Q(9)) << "\n" << ::tpy::check_signals;
     std::cout << "apart_named_tup" << " " << ::tpyapp::main::apart_named_tup(::tpy::as_mut_lvalue(H(Q(7))), ::tpy::as_mut_lvalue(Q(10))) << "\n" << ::tpy::check_signals;

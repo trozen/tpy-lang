@@ -1,0 +1,44 @@
+part_subclass.py:16: warning: 'VSub.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'VBase' part instead
+part_subclass.py:35: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_subclass.py:67: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_subclass.py:72: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_values.py:85: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_values.py:89: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_values.py:94: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_values.py:98: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_values.py:123: warning: upcast narrows 'RSub' to 'RBase' -- only 'RBase' fields and methods will be accessible; keep the concrete type or make 'RBase' a @dynamic protocol
+part_values.py:123: warning: copies RSub into owned storage; use copy() to make this explicit
+part_values.py:142: warning: upcast narrows 'RSub' to 'RBase' -- only 'RBase' fields and methods will be accessible; keep the concrete type or make 'RBase' a @dynamic protocol
+part_values.py:142: warning: copies RSub into owned storage; use copy() to make this explicit
+part_values.py:143: warning: upcast narrows 'RSub' to 'RBase' -- only 'RBase' fields and methods will be accessible; keep the concrete type or make 'RBase' a @dynamic protocol
+part_values.py:143: warning: copies RSub into owned storage; use copy() to make this explicit
+part_values.py:152: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_values.py:198: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_values.py:199: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:26: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:31: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:38: warning: upcast narrows 'RSub' to 'RBase' -- only 'RBase' fields and methods will be accessible; keep the concrete type or make 'RBase' a @dynamic protocol
+part_handover.py:38: warning: copies RSub into owned storage; use copy() to make this explicit
+part_handover.py:46: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:55: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:63: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:70: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:76: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:100: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:108: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:114: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:132: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:140: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:152: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:159: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_handover.py:167: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_targets.py:54: warning: 'EBase.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'Exception' part instead
+part_targets.py:59: warning: 'ESub.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'EBase' part instead
+part_targets.py:73: warning: 'VItSub.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'VIt' part instead
+part_targets.py:17: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_targets.py:23: warning: upcast narrows 'VSub' to 'VBase' -- only 'VBase' fields and methods will be accessible; keep the concrete type or make 'VBase' a @dynamic protocol
+part_targets.py:31: warning: upcast narrows 'RSub' to 'RBase' -- only 'RBase' fields and methods will be accessible; keep the concrete type or make 'RBase' a @dynamic protocol
+part_targets.py:31: warning: copies RSub into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 30)
+part_targets.py:68: warning: upcast narrows 'ESub' to 'EBase' -- only 'EBase' fields and methods will be accessible; keep the concrete type or make 'EBase' a @dynamic protocol
+part_targets.py:68: warning: copies ESub into owned storage; use copy() to make this explicit
+part_targets.py:81: warning: upcast narrows 'VItSub' to 'VIt' -- only 'VIt' fields and methods will be accessible; keep the concrete type or make 'VIt' a @dynamic protocol

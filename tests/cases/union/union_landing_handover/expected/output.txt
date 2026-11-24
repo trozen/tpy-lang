@@ -1,0 +1,105 @@
+global-vsub a-global-string-long-enough-to-own-a-heap-buffer
+global-vsub-kept a-global-string-long-enough-to-own-a-heap-buffer
+positions-vsub-take a-string-long-enough-to-own-a-heap-buffer
+positions-vsub-twin a-string-long-enough-to-own-a-heap-buffer
+positions-vsub-kept a-string-long-enough-to-own-a-heap-buffer False
+positions-vsub-elem an-element-string-long-enough-to-own-a-buffer
+positions-vsub-elem-twin an-element-string-long-enough-to-own-a-buffer
+positions-vsub-dict a-dict-value-string-long-enough-to-own-one
+positions-vsub-dict-twin a-dict-value-string-long-enough-to-own-one
+positions-vsub-select a-left-arm-string-long-enough-to-own-a-buffer
+positions-vsub-select-twin a-left-arm-string-long-enough-to-own-a-buffer
+positions-vsub-reads-kept an-element-string-long-enough-to-own-a-buffer a-dict-value-string-long-enough-to-own-one a-left-arm-string-long-enough-to-own-a-buffer a-right-arm-string-long-enough-to-own-buffer
+positions-vsub-elem an-element-string-long-enough-to-own-a-buffer
+positions-vsub-elem-twin an-element-string-long-enough-to-own-a-buffer
+positions-vsub-dict a-dict-value-string-long-enough-to-own-one
+positions-vsub-dict-twin a-dict-value-string-long-enough-to-own-one
+positions-vsub-select a-right-arm-string-long-enough-to-own-buffer
+positions-vsub-select-twin a-right-arm-string-long-enough-to-own-buffer
+positions-vsub-reads-kept an-element-string-long-enough-to-own-a-buffer a-dict-value-string-long-enough-to-own-one a-left-arm-string-long-enough-to-own-a-buffer a-right-arm-string-long-enough-to-own-buffer
+positions-vsub-last-use a-returned-string-long-enough-to-own-a-buffer
+positions-vsub-last-use-twin a-returned-twin-string-long-enough-to-own-one
+values-nested-then a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-nested-then-twin a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-nested-else a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-nested-else-twin a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-elem-arm a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-elem-arm-twin a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-or a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-or-twin a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-mixed a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-mixed-twin a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-selects-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx a-string-long-enough-to-own-a-heap-buffer-xxxxx a-string-long-enough-to-own-a-heap-buffer-xxxxx a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-nested-then a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-nested-then-twin a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-nested-else a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-nested-else-twin a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-elem-arm a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-elem-arm-twin a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-or a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-or-twin a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-mixed a-fresh-string-long-enough-to-own-a-buffer-x
+values-mixed-twin a-fresh-string-long-enough-to-own-a-buffer-x
+values-selects-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx a-string-long-enough-to-own-a-heap-buffer-xxxxx a-string-long-enough-to-own-a-heap-buffer-xxxxx a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-gen a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-gen-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-co a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-co-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-gen a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-gen-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-co a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-co-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-fresh a-temporary-string-long-enough-to-own-one
+values-fresh-twin a-temporary-twin-string-long-enough-x
+values-ret-param a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-ret-param-twin a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-ret-owned a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-ret-owned-twin a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-params-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-ret-ref False 3
+values-lambda-union False 3
+values-lambda-optional False 3
+values-references-kept 4
+values-tuple a-string-long-enough-to-own-a-heap-buffer-xxxxx
+values-make-val
+values-mul 6
+values-make-val
+values-mul-guard
+values-aug-result a-string-long-enough-to-own-a-heap-buffer-xxxxx-radd
+handover-lambda-ref True 4
+handover-own-param a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-value-local a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-nested a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-captured-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-captured a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-loop a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-loop-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-match a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-match-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-global a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-global-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-lambda-value a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-co a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-narrowed-local a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-narrowed-param a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-with-exit
+handover-with a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-last-use-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-fin-local-reads a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-fin-local a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-fin-param-reads a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-fin-param a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-fin-co-reads a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-fin-co a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-gen-param a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-gen-param-borrower a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-gen-local a-string-long-enough-to-own-a-heap-buffer-xxxxx
+handover-gen-local-borrower a-string-long-enough-to-own-a-heap-buffer-xxxxx
+targets-loop-unpack a-string-long-enough-to-own-a-heap-buffer-xxxxx
+targets-loop-unpack-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx
+targets-loop-unpack-zip a-string-long-enough-to-own-a-heap-buffer-xxxxx
+targets-loop-unpack-zip-kept a-string-long-enough-to-own-a-heap-buffer-xxxxx
+targets-loop-unpack-ref True 4
+targets-except a-string-long-enough-to-own-a-heap-buffer-xxxxx
+targets-gen-union a-string-long-enough-to-own-a-heap-buffer-xxxxx
+targets-gen-union-borrower a-string-long-enough-to-own-a-heap-buffer-xxxxx

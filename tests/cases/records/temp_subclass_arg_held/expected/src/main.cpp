@@ -207,7 +207,7 @@ void main() {
     std::cout << "free" << " " << ::tpyapp::main::use(::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
     std::cout << "static" << " " << Tracer::st(::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
     std::cout << "optional" << " " << ::tpyapp::main::opt_free(&::tpy::as_mut_lvalue(Chrome())) << "\n" << ::tpy::check_signals;
-    std::cout << "union" << " " << ::tpyapp::main::union_free(::tpy::Union<Mat*, Other*>{&(::tpy::as_mut_lvalue(Chrome()))}) << "\n" << ::tpy::check_signals;
+    std::cout << "union" << " " << ::tpyapp::main::union_free(::tpy::Union<Mat*, Other*>{&(static_cast<Mat&>(::tpy::as_mut_lvalue(Chrome())))}) << "\n" << ::tpy::check_signals;
     std::cout << "protocol" << " " << ::tpyapp::main::proto_free(Chrome{Chrome()}) << "\n" << ::tpy::check_signals;
     std::cout << "readonly" << " " << t.ro(Chrome()) << "\n" << ::tpy::check_signals;
     std::cout << "const_method" << " " << t.peek(Chrome()) << "\n" << ::tpy::check_signals;

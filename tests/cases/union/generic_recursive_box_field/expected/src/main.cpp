@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     h = Holder(Box(tree))
 //     print(leaf_count(h.data.get()))
 void main() {
-    Tree<::tpy::BigInt> tree = std::vector<Tree<::tpy::BigInt>>{1, std::vector<Tree<::tpy::BigInt>>{2, 3}, 4};
+    Tree<::tpy::BigInt> tree = std::vector<Tree<::tpy::BigInt>>{::tpy::BigInt(1), std::vector<Tree<::tpy::BigInt>>{::tpy::BigInt(2), ::tpy::BigInt(3)}, ::tpy::BigInt(4)};
     Holder<::tpy::BigInt> h = Holder<::tpy::BigInt>(::tpystd::tplib::box::Box<Tree<::tpy::BigInt>>(std::move(tree)));
     std::cout << ::tpyapp::main::leaf_count<::tpy::BigInt>(h.data.get()) << "\n" << ::tpy::check_signals;
 }

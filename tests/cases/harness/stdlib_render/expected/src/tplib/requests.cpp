@@ -54,7 +54,7 @@ std::tuple<bool, double> _parse_http_date(std::string_view raw) {
                 continue;
             }
         }
-        return std::tuple<bool, double>{true, dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(::tpystd::datetime::UTC)).timestamp()};
+        return std::tuple<bool, double>{true, dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>(static_cast<const ::tpystd::datetime::timezone&>(::tpystd::datetime::UTC))).timestamp()};
     }
     return std::tuple<bool, double>{false, 0.0};
 }

@@ -39,7 +39,7 @@ from . import emit_prims
 from .context import (
     INDENT, CodeGenError, escape_cpp_name, enum_member_cpp, forward_param)
 from ..parse import TpyNoneLiteral
-from .functions import NULL_PROTOCOL_ARG_CPP, factory_default_to_cpp, type_member_default_cpp
+from .functions import NULL_PROTOCOL_ARG_CPP, factory_default_to_cpp, type_member_default_cpp, union_default_cpp
 from .protocols import (
     MemberDef, Shim, ShimKind, has_method_or_field, member_def,
     record_emission,
@@ -508,7 +508,13 @@ class RecordGenerator:
             self.ctx.emit_declaration_echo(out, fld.loc, INDENT)
             cpp_type = self.types.type_to_cpp(fld.type)
             default = ""
-            if fld.default_value is not None:
+            in_union = (union_default_cpp(self.ctx.analyzer,
+                                          fld.default_expr, fld.type)
+                        if fld.default_expr is not None
+                        and not fld.is_factory_default else None)
+            if in_union is not None:
+                default = f" = {in_union}"
+            elif fld.default_value is not None:
                 # An int-literal default is pre-rendered bare by the parser
                 # (no type context); re-render it here through the shared
                 # chokepoint with the resolved field type so a >int32 value

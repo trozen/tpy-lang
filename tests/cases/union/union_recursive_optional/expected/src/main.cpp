@@ -123,8 +123,8 @@ std::string describe(const Tree* t) {
 //     print(maybe_depth(r))
 //     print(maybe_depth(first_or_none([])))
 void main() {
-    Tree leaf = 42;
-    Tree branch = std::vector<Tree>{1, std::vector<Tree>{2, 3}};
+    Tree leaf = ::tpy::BigInt(42);
+    Tree branch = std::vector<Tree>{::tpy::BigInt(1), std::vector<Tree>{::tpy::BigInt(2), ::tpy::BigInt(3)}};
     std::cout << ::tpyapp::main::maybe_depth(&(leaf)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::maybe_depth(&(branch)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::maybe_depth(nullptr) << "\n" << ::tpy::check_signals;

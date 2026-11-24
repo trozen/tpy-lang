@@ -24,9 +24,9 @@ std::string kind(const ::tpy::Union<double, ::tpy::BigInt, std::string>& v) {
 //     b: int | float | str = "hi"
 //     print(kind(b))
 void main() {
-    ::tpy::Union<double, ::tpy::BigInt, std::string> a = 5;
+    ::tpy::Union<double, ::tpy::BigInt, std::string> a = ::tpy::BigInt(5);
     std::cout << ::tpyapp::main::kind(a) << "\n" << ::tpy::check_signals;
-    ::tpy::Union<double, ::tpy::BigInt, std::string> b = "hi";
+    ::tpy::Union<double, ::tpy::BigInt, std::string> b = static_cast<std::string>("hi");
     std::cout << ::tpyapp::main::kind(b) << "\n" << ::tpy::check_signals;
 }
 

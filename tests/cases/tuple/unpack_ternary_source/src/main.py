@@ -7,8 +7,8 @@
 # bytes target is a VIEW into the holder, so its tuple keeps the owning holder
 # too -- a const-ref holder would make the target alias the selected SOURCE and
 # a reseat of that source before the read would show the new value where
-# CPython keeps the old (`reseat_view`, and `nested_view` for a view element
-# under a NESTED tuple). That is a property of the TARGET, not of the element:
+# CPython keeps the old (`reseat_view`; `nested_view`'s tuple target copies
+# out of the source instead). That is a property of the TARGET, not of the element:
 # a frame field and a module-level global are owning slots the element COPIES
 # into, so those positions keep the const-ref holder even with a str element
 # (`gen_view` and the module-level section) -- a by-value holder there would
@@ -97,7 +97,7 @@ def reseat_value(c: bool) -> None:
 def nested_view(c: bool) -> None:
     t1 = (("aa", 1), 2)
     t2 = (("zz", 9), 3)
-    # a view element under a NESTED tuple: the holder is still by value
+    # a view element under a NESTED tuple: the target copies it out
     p, n = t1 if c else t2  # tpyc: ok
     t1 = (("qq", 5), 4)
     print("nested_view", p[0], p[1], n)

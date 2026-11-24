@@ -430,7 +430,7 @@ P handler_return_finally() {
                 __fin_ran_13 = true;
                 P __tmp_1 = p;
                 ::tpyapp::main::take(std::move(__tmp_1));
-                return std::move(*__tpy_retp_0);
+                return std::move((*__tpy_retp_0));
             }
         } catch (...) {
             if (!__fin_ran_13) {
@@ -498,7 +498,7 @@ P finally_consumes_return() {
             __fin_ran_15 = true;
             P __tmp_1 = p;
             ::tpyapp::main::take(std::move(__tmp_1));
-            return std::move(*__tpy_retp_0);
+            return std::move((*__tpy_retp_0));
         } catch (...) {
             if (!__fin_ran_15) {
                 P __tmp_2 = p;
@@ -555,7 +555,7 @@ P return_or_consume_finally(bool early) {
                 auto* __tpy_retp_0 = &(p);
                 __fin_ran_16 = true;
                 std::cout << "return_or_consume_finally fin" << "\n" << ::tpy::check_signals;
-                return std::move(*__tpy_retp_0);
+                return std::move((*__tpy_retp_0));
             }
             ::tpyapp::main::take(std::move(p));
         } catch (...) {

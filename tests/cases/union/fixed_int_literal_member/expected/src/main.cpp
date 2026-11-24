@@ -38,7 +38,7 @@ void fits() {
 //         case int():
 //             print("overflows int")
 void overflows() {
-    ::tpy::Union<::tpy::BigInt, uint8_t> u = -1;
+    ::tpy::Union<::tpy::BigInt, uint8_t> u = ::tpy::BigInt(-1);
     auto& __match_subject_1 = u;
     switch (__match_subject_1.index()) {
     case 1: {
@@ -64,7 +64,7 @@ void overflows() {
 //         case int():
 //             print("narrow-fits int")
 void narrow_fits() {
-    ::tpy::Union<::tpy::BigInt, uint8_t> u = 5;
+    ::tpy::Union<::tpy::BigInt, uint8_t> u = ::tpy::BigInt(5);
     auto& __match_subject_1 = u;
     switch (__match_subject_1.index()) {
     case 1: {
@@ -89,7 +89,7 @@ void narrow_fits() {
 //         case int():
 //             print("narrow-signed int")
 void narrow_signed() {
-    ::tpy::Union<::tpy::BigInt, int16_t> u = 5;
+    ::tpy::Union<::tpy::BigInt, int16_t> u = ::tpy::BigInt(5);
     auto& __match_subject_1 = u;
     switch (__match_subject_1.index()) {
     case 1: {
@@ -114,7 +114,7 @@ void narrow_signed() {
 //         case int():
 //             print("wide-unsigned int")
 void wide_unsigned() {
-    ::tpy::Union<::tpy::BigInt, uint32_t> u = 5;
+    ::tpy::Union<::tpy::BigInt, uint32_t> u = ::tpy::BigInt(5);
     auto& __match_subject_1 = u;
     switch (__match_subject_1.index()) {
     case 1: {
@@ -139,7 +139,7 @@ void wide_unsigned() {
 //         case int():
 //             print("wide-fits int")
 void wide_fits() {
-    ::tpy::Union<::tpy::BigInt, int64_t> u = 5;
+    ::tpy::Union<::tpy::BigInt, int64_t> u = static_cast<int64_t>(5);
     auto& __match_subject_1 = u;
     switch (__match_subject_1.index()) {
     case 1: {
@@ -275,7 +275,7 @@ void main() {
     ::tpyapp::main::wide_fits();
     int32_t x = 7;
     ::tpyapp::main::exact_param(::tpy::Union<::tpy::BigInt, int32_t>(x));
-    ::tpyapp::main::widen_param(static_cast<::tpy::Union<::tpy::BigInt, int64_t>>(x));
+    ::tpyapp::main::widen_param(::tpy::Union<::tpy::BigInt, int64_t>(static_cast<int64_t>(x)));
     ::tpyapp::main::check_return();
     ::tpyapp::main::field_slot();
 }
