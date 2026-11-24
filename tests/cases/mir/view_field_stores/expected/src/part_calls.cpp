@@ -211,7 +211,7 @@ void call_fill_control(int32_t k) {
 //     r = anchor
 //     for i in range(n):
 //         r = anchor
-//         r = R(mk(12), v)  # tpyc: warning(/this statement frees the old value of 'r', and 'r.s' may still view it/)
+//         r = R(mk(12), v)  # tpyc: warning(/this assignment frees the old value of 'r', and 'r.s' may still view it/)
 //         print("reused_construct", r.s)
 //         v = r.buf
 //         r.s = "static"

@@ -34,9 +34,9 @@ from .mir.nodes import (
     MIRCall, MIREdge, MIRFunction, MIRGoto, MIRPlace, MIRPoint, call_place,
     source_order, statement_call, statement_target, view_member,
 )
-from .mir.witness import MIREffect, MIRHazardKind, MIRMayCause, MIRVerdict, MIRWitness, holder_views
+from .mir.witness import MIRHazardKind, MIRMayCause, MIRVerdict, MIRWitness, holder_views
 from .typesys import contains_reference_type, unwrap_readonly, view_owned_leaf
-from .mir.value import MIRValidationError
+from .mir.value import MIREffect, MIRValidationError, effect_rank
 from .mir.definitions import MIRDefinitions, body_calls, constructor_record_qname
 from .mir_workspace import MIRProgram
 
@@ -510,11 +510,13 @@ def _replacement_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLo
     fn, hazard = words.fn, witness.hazard
     assert isinstance(hazard.site, MIRPoint)
     stmt = next(b for b in fn.blocks if b.id == hazard.site.block).statements[hazard.site.index]
-    target = words.place(hazard.target)
+    # A sum's payload decided the effect: the text names that sum, under the written place.
+    target = words.place(witness.sum or hazard.target)
     holder, verb = words.holder(hazard.holder)
     line = _first_read(fn, witness.reads)
     overwrites = witness.effect is MIREffect.OVERWRITES
-    action = "assignment" if statement_target(stmt) == hazard.target else (
+    # A local sum's whole write replaces its ended payload, below the written sum (`MIRReplacement.anchor`).
+    action = "assignment" if statement_target(stmt) == hazard.replacement.anchor else (
         "call" if statement_call(stmt) is not None else "statement")
     use = "continues" if verb == "walks" else "is read" if verb == "views" else "is used"
     if (owned := _owned_view_fix(words, hazard.holder)) is not None:
@@ -539,6 +541,11 @@ def _replacement_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLo
         # A shape write under an element: the spoken place stops at the outer region.
         what = f"this {action} may move the elements of an element of {target.quoted}"
         kept = "them"
+    elif witness.effect is MIREffect.UNKNOWN:
+        # A sum's payload the write may or may not store again.
+        old = "an element of" if target.region == "elements" else "the old value of"
+        what = f"this {action} may free {old} {target.quoted} or overwrite it in place"
+        kept = "it"
     elif target.region == "elements":
         what = f"this {action} frees an element of {target.quoted}"
         kept = "it"
@@ -568,9 +575,9 @@ def _replacement_text(witness: MIRWitness, words: _Words) -> tuple[str, SourceLo
     else:
         fix = f"copy what {holder} {verb} first, or use {holder} before this {action}"
     if may and witness.cause is not MIRMayCause.PARTIAL:
-        moves = witness.effect is MIREffect.MOVES
+        does = {MIREffect.MOVES: "move", MIREffect.UNKNOWN: "free or overwrite"}.get(witness.effect, "free")
         later = "the loop continues" if verb == "walks" else f"{holder} {use}"
-        return (f"this {action} may {'move' if moves else 'free'} the element {holder} still {verb}, and {later} "
+        return (f"this {action} may {does} the element {holder} still {verb}, and {later} "
                 f"on line {line}; {fix}{owned}", stmt.loc)
     return (f"{what}, {_still(witness, holder, verb)} {kept} and {use} on line {line}; {fix}{owned}",
             stmt.loc)
@@ -671,11 +678,12 @@ def warned_hazards(analyses: MIRAnalyses) -> tuple[MIRWitness, ...]:
     """The body's hazards that warn (`MIRAnalyses.witnesses`, a DEFINITE or
     MAY verdict), one per collapse key -- the kill, the affected storage's
     root, the holder -- in body order. A key keeps its most severe hazard:
-    the strongest verdict, then a free or move over an in-place overwrite
-    (`MIRWitness.effect`) -- one call may write an element and the shape of
-    one list, and the shape write is what the warning says."""
-    def severity(w: MIRWitness) -> tuple[int, bool]:
-        return w.verdict.strength, w.effect is not MIREffect.OVERWRITES
+    the strongest verdict, then a free or move over a free-or-overwrite
+    over an in-place overwrite (`MIRWitness.effect`) -- one call may write
+    an element and the shape of one list, and the shape write is what the
+    warning says."""
+    def severity(w: MIRWitness) -> tuple[int, int]:
+        return w.verdict.strength, effect_rank(w.effect)
 
     found: dict[tuple[object, ...], MIRWitness] = {}
     for witness in analyses.witnesses:

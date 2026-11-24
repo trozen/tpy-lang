@@ -8,14 +8,18 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from .dependencies import MIRDependencies, MIRUnseededLoan, _dependencies, resolve_referents, strong_write
+from .dependencies import (
+    MIRDependencies, MIRReferents, MIRUnseededLoan, _dependencies, resolve_referents, strong_write,
+)
 from .liveness import MIRLiveness, _liveness
 from .nodes import MIRAssign, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRSlot, MIRSlotId, MIRStatement
 from .presence import MIRPresence, MIRPresenceIssueKind, Resolve, _analyze_presence
-from .reach import MIRReferent, replacement_events, storage_events, sum_payload_ends
+from .reach import (
+    MIRReferent, MIRStored, replacement_events, statement_stored, storage_events, sum_payload_ends, union_stored,
+)
 from .region_flow import MIRRegionFlow
 from .validate import MIRPresenceError, _validate_structure
-from .value import MIRRecords, MIRValidationError
+from .value import MIRRecords, MIRStoredOutcome, MIRValidationError
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,17 @@ class MIRReplacement:
     place: MIRPlace
     rebinds: MIRSlotId | None
     storage: frozenset[MIRReferent]
+    # The place the statement's sums are stated below (`reach.Replacement`).
+    anchor: MIRPlace
+    # What the statement may store in each sum it writes, keyed by the
+    # storage the sum is (`_stored_by_referent`); a sum not listed is unknown.
+    stored: tuple[tuple[MIRReferent, MIRStoredOutcome | None], ...] = ()
+
+    @property
+    def anchored(self) -> tuple[tuple[MIRReferent, MIRReferent | None], ...]:
+        """Each replaced storage with the storage standing at the anchor for
+        it (`anchor_storage`), the root its sums' storage is keyed below."""
+        return anchor_storage(self.place, self.anchor, self.storage)
 
     @property
     def strong(self) -> bool:
@@ -104,6 +119,46 @@ def _nothing_selected(place: MIRPlace) -> frozenset[int]:
     return frozenset()
 
 
+def _stored_by_referent(stored: MIRStored, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
+                        records: MIRRecords) -> tuple[tuple[MIRReferent, MIRStoredOutcome | None], ...]:
+    """`stored` keyed by the storage each sum place reaches: the writes of
+    one storage through aliasing places union, and a place that may reach
+    several storages states its outcome on each of them alone -- never on
+    another place's storage through the one they share. A sum place whose
+    storage is unresolved or empty leaves the statement stating nothing,
+    so every sum it writes is unknown."""
+    found: dict[MIRReferent, MIRStoredOutcome | None] = {}
+    for place, outcome in stored.items():
+        try:
+            origins = resolve_referents(place, state, slots, records)
+        except (MIRUnseededLoan, MIRValidationError):
+            return ()
+        if not origins:
+            return ()
+        for origin in origins:
+            union_stored(found, origin, outcome)
+    return tuple(found.items())
+
+
+def anchor_storage(place: MIRPlace, anchor: MIRPlace, storage: frozenset[MIRReferent]
+                   ) -> tuple[tuple[MIRReferent, MIRReferent | None], ...]:
+    """Each storage `place` reaches with the storage standing at `anchor`
+    for it: the storage less the steps `place` lies below `anchor`. None
+    when the storage does not end in those steps -- there is no anchor
+    storage to key the sums below by, so every one of them is unknown."""
+    lead = place.projections[len(anchor.projections):]
+    found: list[tuple[MIRReferent, MIRReferent | None]] = []
+    for origin in sorted(storage, key=repr):
+        projections = origin.place.projections
+        start = len(projections) - len(lead)
+        if start < 0 or projections[start:] != lead:
+            found.append((origin, None))
+        else:
+            found.append((origin, MIRReferent(MIRPlace(origin.place.root, projections[:start]),
+                                              external=origin.external)))
+    return tuple(found)
+
+
 def _statement_kills(fn: MIRFunction, presence: MIRPresence,
                      dependencies: MIRDependencies | MIRNotCovered) -> MIRStatementKills:
     slots = {s.id: s for s in fn.slots}
@@ -124,9 +179,15 @@ def _statement_kills(fn: MIRFunction, presence: MIRPresence,
                 missing = missing or stmt
             elif found and facts is not None and not isinstance(dependencies, MIRNotCovered):
                 state = dependencies.referents[point]
-                replaced = replacements[point] = tuple(
-                    MIRReplacement(place, owner, resolve_referents(place, state, slots, fn.record_layouts))
-                    for place, owner in found)
+                stored = _stored_by_referent(
+                    statement_stored(stmt, called.writes if called is not None else (),
+                                     called.stored if called is not None else (), slots, fn.record_layouts,
+                                     selected), state, slots, fn.record_layouts)
+                replaced = []
+                for place, owner, anchor in found:
+                    storage = resolve_referents(place, state, slots, fn.record_layouts)
+                    replaced.append(MIRReplacement(place, owner, storage, anchor, stored))
+                replacements[point] = tuple(replaced)
                 certain = {r for replacement in replaced if replacement.strong for r in replacement.storage}
                 if left := frozenset(r for replacement in replaced if not replacement.strong
                                      for r in replacement.storage if r.external and r not in certain):

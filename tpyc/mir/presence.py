@@ -14,12 +14,12 @@ from .nodes import (
     statement_call, statement_target, MIRSlot, MIRNot, MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIREdge, MIRReturn,
     MIRAssign, MIRIsAlternative, initialized_places,
     MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, place_shape, MIRWrap,
-    MIRCall, MIRPresentCall, present_effects,
+    MIRCall, MIRPresentCall, call_place, present_effects,
 )
 from .value import MIRHolding, MIRRecords, SUM_CLASSES
 from .shapes import MIRUnionPayload
 from .region_flow import MIRRegionFlow
-from .reach import MIRReferent, declared_containment, reaches, replacement_events
+from .reach import MIRReferent, declared_containment, reaches, replacement_events, written_selection
 
 # Keyed by the wrapper's place (an iterator's by its slot's place).
 Facts = frozenset[tuple[MIRPlace, frozenset[int]]]
@@ -55,7 +55,9 @@ def present_call(call: MIRCall, present: 'Facts', slots: Mapping[MIRSlotId, MIRS
         if slots[arg].shape.cls in SUM_CLASSES and possible:
             excluded[i] = frozenset(range(len(slots[arg].shape.members))) - possible
     effects = present_effects(call.summary, excluded)
-    return MIRPresentCall(call, effects, call_write_places(call, effects, slots), initializes)
+    stored = frozenset((call_place(call, entry.parameter, entry.path, slots), entry.outcome)
+                       for entry in effects.stored)
+    return MIRPresentCall(call, effects, call_write_places(call, effects, slots), initializes, stored)
 
 
 @dataclass(frozen=True)
@@ -154,7 +156,7 @@ def _kill_field_facts(state: _State, stmt: MIRStatement, point: MIRPoint, slots:
     selection = dict(state.present)
     events = replacement_events(
         stmt, present_call(call, state.present, slots).writes if call is not None else (), selection.get, slots)
-    written = None if events is None else [(place, resolve(point, place)) for place, _owner in events]
+    written = None if events is None else [(event.place, resolve(point, event.place)) for event in events]
 
     def dead(fact_place: MIRPlace) -> bool:
         # A root fact (an Optional slot, an iterator) is the slot's own and
@@ -196,6 +198,9 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
     """One statement's effect on the selections. Without `fields`, no
     selection on a projected place is recorded (a whole field write, a
     tested field); `kill` ends the field selections a write may reach."""
+    # A copy reads its source before the write lands: the source's
+    # selection is the incoming one, never what the write's kill leaves.
+    incoming = dict(state.present).get
     if kill is not None:
         state = kill(state, stmt)
     place = statement_target(stmt)
@@ -208,8 +213,7 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
         if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRWrap, MIRCopy))
                 and slots is not None
                 and place_shape(place, slots, layouts).cls in SUM_CLASSES):
-            known = (frozenset({stmt.value.alternative}) if isinstance(stmt.value, MIRWrap)
-                     else dict(state.present).get(stmt.value.source))
+            known = written_selection(stmt.value, incoming)
             if known is not None:
                 return _State(state.present | {(place, known)}, state.conditions, state.valid_aliases)
         return state
@@ -220,15 +224,9 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
     sum_copy = isinstance(value, MIRCopy) and slots is not None and slots[target].shape.cls in SUM_CLASSES
     if isinstance(stmt, MIRStorageInit) or sum_copy or isinstance(
             value, (MIRWrap, MIRIteratorInit, MIRIteratorAdvance)):
-        match stmt if isinstance(stmt, MIRStorageInit) else value:
-            case MIRStorageInit(alternative=alternative):
-                known = frozenset({alternative})
-            case MIRWrap():
-                known = frozenset({value.alternative})
-            case MIRIteratorInit() | MIRIteratorAdvance():
-                known = None
-            case _:
-                known = dict(present).get(value.source)
+        # A cursor's availability is decided by its test, not by its write.
+        known = (None if isinstance(value, (MIRIteratorInit, MIRIteratorAdvance)) else
+                 written_selection(stmt if isinstance(stmt, MIRStorageInit) else value, incoming))
         # The write replaces every selection made at or under the written place.
         present = frozenset(f for f in present if not f[0].lies_under(written))
         valid -= (aliases or {}).get(written, frozenset())

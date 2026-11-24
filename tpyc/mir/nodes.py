@@ -16,7 +16,8 @@ from .shapes import (
     MIRUnionPayload, MIRWalk, Projection, lent_prefix, walk, walk_to,
 )
 from .value import (
-    NO_FIELDS, MIRField, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError, RecordFields, loan_field,
+    NO_FIELDS, MIRField, MIRRecordLayout, MIRRecords, MIRShape, MIRStoredOutcome, MIRValidationError, RecordFields,
+    loan_field,
 )
 
 
@@ -222,6 +223,9 @@ class MIRPresentCall:
     # The places the call initializes (`initialized_places`), apart from
     # the places it may replace: an initialization replaces nothing.
     initializes: tuple['MIRPlace', ...] = ()
+    # What the callee may store in each sum it writes, at the caller's
+    # place (`MIRCallSummary.stored` of the present effects).
+    stored: frozenset[tuple['MIRPlace', MIRStoredOutcome | None]] = frozenset()
 
 
 def initialized_places(stmt: 'MIRStatement', records: MIRRecords) -> tuple['MIRPlace', ...]:
@@ -267,7 +271,8 @@ def present_effects(summary: MIRCallSummary, excluded: Mapping[int, frozenset[in
         transfers=frozenset(t for t in summary.transfers
                             if live(t.holder, t.path) and live(t.source, t.source_path)),
         obligations=frozenset(o for o in summary.obligations
-                              if live(o.parameter, o.path) and live(o.written.parameter, o.written.path)))
+                              if live(o.parameter, o.path) and live(o.written.parameter, o.written.path)),
+        stored=frozenset(s for s in summary.stored if live(s.parameter, s.path)))
 
 
 def call_place(call: MIRCall, parameter: int, path: tuple[object, ...],

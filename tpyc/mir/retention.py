@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from .call_contract import MIRAliasObligation, MIRParameterWrite, summary_path
-from .dependencies import MIRDependencies, MIRReferent, _leaves, _referent, resolve_referents, whole_wrapper_field
+from .dependencies import MIRDependencies, MIRReferent, _leaves, _referent, resolve_referents
 from .place_text import _location, _place, _write_step, obligation_text
 from .liveness import MIRPoint
 from .nodes import MIRFunction, MIRNotCovered, MIRPlace, MIRPresentCall, MIRSlot, MIRSlotId, MIRSlotKind, call_place
@@ -12,7 +12,7 @@ from .value import MIRRecords, MIRValidationError
 from .prepare import MIRPrepared, validated_presence
 from .reach import DistinctExternal, _origin, parameter_object, reaches, storage_exclusions
 from .shapes import distinct_lent_objects
-from .witness import MIRHazard, MIRHazardKind
+from .witness import MIRHazard
 
 
 @dataclass(frozen=True)
@@ -97,9 +97,9 @@ def analyze_retention(prepared: MIRPrepared) -> MIRRetention | MIRNotCovered:
                      for retained in sorted(refs, key=_referent_key) if reaches(written, retained, exclusions)]
             conflicts.extend(found)
             if found:
-                hazards.append(MIRHazard(MIRHazardKind.REPLACEMENT, point, target, affected, holder,
-                                         (live_in.get(holder, frozenset()), live_out.get(holder, frozenset())),
-                                         conflicts=tuple(found)))
+                hazards.append(MIRHazard.replacing(point, replacement, holder,
+                                                   (live_in.get(holder, frozenset()), live_out.get(holder, frozenset())),
+                                                   tuple(found)))
     conflicts.extend(_call_obligation_conflicts(fn, dependencies, slots, presence.calls, exclusions))
     # Stable: the replacement events keep their order within a statement.
     conflicts.sort(key=lambda c: (c.point.block.index, c.point.index))
@@ -182,9 +182,8 @@ def alias_obligation(conflict: MIRRetentionConflict, parameters: Mapping[MIRSlot
     if i == j and not (write_object and retained_object and distinct_lent_objects(
             slots[written.place.root].shape, write_object, retained_object)):
         return None
-    retained_path = whole_wrapper_field(retained.place, slots, records).projections
-    written_path = whole_wrapper_field(written.place, slots, records).projections
-    return MIRAliasObligation(i, summary_path(retained_path), MIRParameterWrite(j, summary_path(written_path)))
+    return MIRAliasObligation(i, summary_path(retained.place.projections),
+                              MIRParameterWrite(j, summary_path(written.place.projections)))
 
 
 def _one_object(conflict: MIRRetentionConflict) -> bool:

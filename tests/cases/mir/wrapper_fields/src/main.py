@@ -329,23 +329,23 @@ def store_found(h: H) -> None:  # tpyc: mir(uncovered /record initializer type m
     h.p = find(11)  # tpyc: ok
 
 
-# the payload lent to a callee that writes it: published as a write of the whole field
+# the payload lent to a callee that writes it: published at the payload's own path
 def bump_payload(h: H) -> None:  # tpyc: mir(covered) mir_summary(known)
     if h.p is not None:
         h.p.bump()
 
 
-# kept refusal: MIR keeps the Optional field whole, so the narrowed payload alone is not bound
-def payload_borrow(h: H) -> int32:  # tpyc: mir(uncovered /borrow of an Optional field's payload/)
+# the narrowed payload bound alone: a holder of the place h.p[payload]
+def payload_borrow(h: H) -> int32:  # tpyc: mir(covered)
     if h.p is not None:
         q = h.p
         return q.x
     return 0
 
 
-# kept refusal: a return of an Optional field's payload is never published
-# (a caller's write through it would replace the whole field); the body lowers
-def payload_return(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
+# a return of an Optional field's payload is published at the payload's path,
+# as a borrowed record parameter's field is
+def payload_return(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(known)
     if h.p is not None:
         return h.p
     return fallback
@@ -355,8 +355,8 @@ def id_p(p: P) -> P:  # tpyc: mir(covered) mir_summary(known)
     return p
 
 
-# kept refusal: the payload returned through a call that lends it back
-def payload_return_call(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
+# the payload returned through a call that lends it back
+def payload_return_call(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(known)
     if h.p is not None:
         return id_p(h.p)
     return fallback
@@ -392,8 +392,8 @@ def keep_payload(h: SH, flag: bool) -> int32:  # tpyc: mir(covered)
     return 0
 
 
-# kept refusal: a field under the payload is returned (a view of its str)
-def payload_sub_return(h: SH, fallback: S) -> StrView:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
+# a field under the payload is returned (a view of its str)
+def payload_sub_return(h: SH, fallback: S) -> StrView:  # tpyc: mir(covered) mir_summary(known)
     if h.o is not None:
         return h.o.s
     return fallback.s
@@ -404,16 +404,16 @@ def set_field(t: S, value: str) -> int32:  # tpyc: mir(conflict /alias_obligatio
     return len(value)
 
 
-# witness, never run: a body returning the payload keeps its unrelated warning (the refusal is the summary's, not the body's)
-def payload_return_warning(h: H, fallback: P, t: S) -> P:  # tpyc: mir(conflict /argument_alias/) mir_summary(opaque /unsupported return origin/)
+# witness, never run: a body returning the payload keeps its unrelated warning
+def payload_return_warning(h: H, fallback: P, t: S) -> P:  # tpyc: mir(conflict /argument_alias/) mir_summary(known)
     set_field(t, t.s)  # tpyc: warning(/argument 't.s' is what 'set_field' modifies through parameter 't' while it still uses 'value'/)
     if h.p is not None:
         return h.p
     return fallback
 
 
-# kept refusal: a write under the payload
-def payload_write(h: H) -> None:  # tpyc: mir(uncovered /optional field payload write/)
+# a write under the payload: a field of the payload's place
+def payload_write(h: H) -> None:  # tpyc: mir(covered) mir_summary(known)
     if h.p is not None:
         h.p.x = 5
 

@@ -24,7 +24,8 @@ from .shapes import MIRContainerElements, MIRContainerStructure
 from .test_payload_inspection import ALIAS, EXTRACT, READ, alias_function
 from .test_payload_lifetime import CURRENT, ENTRY, SAVED, payload, write as payload_write
 from .testutil import prepared
-from .witness import MIREffect, MIRHazard, MIRHazardKind, MIRMayCause, MIRVerdict, decide
+from .value import MIREffect
+from .witness import MIRHazard, MIRHazardKind, MIRMayCause, MIRVerdict, decide
 
 SOURCE = '''\
 from tpy import StrView, copy, int32
@@ -263,7 +264,9 @@ def test_an_overwrite_is_shown_never_the_fallback(bodies) -> None:
 
     def effect(written, retained):
         return witness_module.replacement_effect(
-            replace(hazard, written=frozenset(written), retained=(frozenset(retained),)), slots, fn.record_layouts)
+            replace(hazard, retained=(frozenset(retained),),
+                    replacement=replace(hazard.replacement, storage=frozenset(written))),
+            slots, fn.record_layouts)[0]
 
     structure = MIRReferent(MIRPlace(xs, (MIRContainerStructure(),)))
     # A shape write whose kept referent shows no in-place overwrite: another root, or a caller's loan.

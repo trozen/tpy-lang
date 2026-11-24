@@ -907,7 +907,9 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
                     tuple_member = False
                     optional_member = False
                 case MIRField():
+                    # A field of a member is a place of its own, written as any field is.
                     tuple_member = False
+                    optional_member = False
                     _require(shape.cls is not MIRClass.CONTAINER or bool(shape.members), "unsupported container field")
                     _require(field_types.setdefault(projection.id, projection.type) == projection.type,
                              "inconsistent field type")

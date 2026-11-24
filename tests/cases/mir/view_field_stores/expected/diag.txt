@@ -20,7 +20,7 @@ part_calls.py:77: warning: Mutation of 't' while borrowed (field assignment may 
 part_calls.py:79: warning: this assignment frees the old value of 'buf', and 'v' may still view it and is read on line 80; give the new value its own name
 part_calls.py:117: warning: this assignment frees the old value of 'buf', and 't.s' may still view it and is read on line 118; give the new value its own name, or make 'Tok.s' an owned 'str'
 part_calls.py:127: warning: this assignment frees the old value of 'b.text', and 't.s' may still view it and is read on line 128; copy what 't.s' views first, or use 't.s' before this assignment, or make 'Tok.s' an owned 'str'
-part_calls.py:147: warning: this statement frees the old value of 'r', and 'r.s' may still view it and is read on line 148; copy what 'r.s' views first, or use 'r.s' before this statement, or make 'R.s' an owned 'str'
+part_calls.py:147: warning: this assignment frees the old value of 'r', and 'r.s' may still view it and is read on line 148; copy what 'r.s' views first, or use 'r.s' before this assignment, or make 'R.s' an owned 'str'
 part_loops.py:23: warning: 'buf' is freed when 'cond_store' returns, but 't.s' keeps a view of it; make 'Tok.s' an owned 'str'
 part_loops.py:29: warning: 'buf' is freed when 'store_then_spin' returns, and 't.s' may keep a view of it; make 'Tok.s' an owned 'str'
 part_loops.py:60: warning: 'buf' is freed when 'fill_same' returns, but 't.s' keeps a view of it; make 'Tok.s' an owned 'str'

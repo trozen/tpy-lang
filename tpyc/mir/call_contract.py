@@ -12,7 +12,7 @@ from ..thir.nodes import (
 from ..thir.param_contract import bound_passing
 from ..thir.scalar_leaves import (
     MIRClass, binds_cursor, container_element, container_view, holds_loan, members_problem, modeled_members, native_container_subject,
-    native_container_type, optional_record_field, owned_leaf, owned_value_type,
+    native_container_type, owned_leaf, owned_value_type,
     record_type, storage_leaf, value_class, view_compatible, view_endpoint, view_leaf,
 )
 from ..type_def_registry import ParamPassing, type_def_of
@@ -28,8 +28,8 @@ from .shapes import (
     store_problem, walk,
 )
 from .value import (
-    AGGREGATE_CLASSES, WRAPPER_CLASSES, Declared, MIRField, element_result, MIRFieldId, MIRHolding,
-    MIRRecordLayout, MIRRole, MIRShape, MIRValidationError, MIRRecords, Passing, admission_problem, lent_shape_problem,
+    AGGREGATE_CLASSES, SUM_CLASSES, WRAPPER_CLASSES, Declared, MIRField, element_result, MIRFieldId, MIRHolding,
+    MIRRecordLayout, MIRRole, MIRShape, MIRStoredOutcome, MIRValidationError, MIRRecords, Passing, admission_problem, lent_shape_problem,
     handed_type, holding_of, laid_value, layout_fact, lent_record, loan_access, shape_problem,
     subject_class, value_shape,
 )
@@ -83,6 +83,19 @@ class MIRParameterWrite:
     scalar of the record member `a`, `(L::a,)` replaces that member)."""
     parameter: int
     path: MIRParameterPath
+
+
+@dataclass(frozen=True)
+class MIRStoredAlternatives:
+    """What the callee may store in the sum `path` names under parameter
+    `parameter`: the union of the outcomes (`MIRStoredOutcome`) over every
+    write the body makes to it, None when one is unknown. A fact beside
+    the writes, never part of a write's identity: the caller states per
+    sum whether the payload it held survives the call
+    (`statement_stored`)."""
+    parameter: int
+    path: MIRParameterPath
+    outcome: MIRStoredOutcome | None
 
 
 @dataclass(frozen=True)
@@ -437,6 +450,9 @@ class MIRCallSummary:
     normal_return_only: bool
     global_reads: frozenset[MIRGlobalId] = frozenset()
     obligations: frozenset[MIRAliasObligation] = frozenset()
+    # One entry per sum path the body writes (`MIRStoredAlternatives`); a
+    # sum under a write with no entry is unknown to the caller.
+    stored: frozenset[MIRStoredAlternatives] = frozenset()
 
     @property
     def borrowed_result(self) -> THIRBorrowedRecord | None:
@@ -872,13 +888,6 @@ def resolve_path(parameter: object, path: object, parameters: tuple[MIRParameter
     return _path_walk(parameter, path, binding.value, layouts, walks, returned=returned)
 
 
-def _under_optional_field_payload(path: tuple[object, ...]) -> bool:
-    """Whether a summary path steps into an Optional record field's payload."""
-    return any(isinstance(item, MIRUnionPayload) and isinstance(previous, THIRFieldIdentity)
-               and optional_record_field(previous.type) is not None
-               for previous, item in zip(path, path[1:]))
-
-
 def return_endpoint_problem(path: tuple[object, ...], end: Callable[[], MIRWalk],
                             result: TpyType) -> str | None:
     """The one rule for where a published borrowed return ends, read by the
@@ -888,9 +897,7 @@ def return_endpoint_problem(path: tuple[object, ...], end: Callable[[], MIRWalk]
     return's: a trailing elements region steps to its member), asked only
     for a path the rule does not refuse by its steps.
 
-    A return never ends at a container's structure, nor at or under an
-    Optional record field's payload: a caller's write through it would
-    replace the whole field (`whole_wrapper_field`). A path ending at a
+    A return never ends at a container's structure. A path ending at a
     container's elements region has two meanings: a container view result
     views that region (the region endpoint), any other result is that
     region's member (the element endpoint). A view result views an owned
@@ -900,8 +907,6 @@ def return_endpoint_problem(path: tuple[object, ...], end: Callable[[], MIRWalk]
     or argument."""
     if path and isinstance(path[-1], MIRContainerStructure):
         return "call result of a container region"
-    if _under_optional_field_payload(path):
-        return "call result under an Optional field's payload"
     if not path:
         return None
     walked = end()
@@ -1108,6 +1113,34 @@ def obligation_problem(obligation: MIRAliasObligation, summary: MIRCallSummary, 
     return resolved if isinstance(resolved, str) else None
 
 
+def stored_problem(entry: MIRStoredAlternatives, summary: MIRCallSummary, layouts: MIRRecords,
+                   walks: MIRPathWalks | None = None) -> str | None:
+    """Check one published stored-alternatives entry: a path of the grammar
+    (`resolve_path`) at or under one of the summary's writes, ending at an
+    inline sum, whose outcome is unknown or stores some of that sum's
+    alternatives or vacates it -- an outcome that does neither states no
+    write. One entry per sum: `summary_problem` refuses a second entry for
+    one (parameter, path)."""
+    if not isinstance(entry, MIRStoredAlternatives) or not isinstance(entry.path, tuple) or not any(
+            w.parameter == entry.parameter and entry.path[:len(w.path)] == w.path for w in summary.writes):
+        return "invalid stored alternatives"
+    resolved = resolve_path(entry.parameter, entry.path, summary.parameters, layouts, walks)
+    if not isinstance(resolved, MIRWalk):
+        return resolved or "invalid stored alternatives"
+    end = resolved.end
+    if end is None or end.cls not in SUM_CLASSES or end.holding is not MIRHolding.VALUE:
+        return "stored alternatives of no sum"
+    outcome = entry.outcome
+    if outcome is None:
+        return None
+    if (not isinstance(outcome, MIRStoredOutcome) or not isinstance(outcome.alternatives, frozenset)
+            or type(outcome.vacates) is not bool
+            or any(type(k) is not int or not 0 <= k < len(end.members) for k in outcome.alternatives)
+            or not (outcome.alternatives or outcome.vacates)):
+        return "invalid stored alternatives"
+    return None
+
+
 def summary_problem(summary: MIRCallSummary, layouts: MIRRecords,
                     walks: MIRPathWalks | None = None) -> str | None:
     """Validate the bounded contract without re-proving its supplying body;
@@ -1134,6 +1167,7 @@ def summary_problem(summary: MIRCallSummary, layouts: MIRRecords,
                    for indices in (summary.reads, summary.invalidates))
             or not isinstance(summary.transfers, frozenset)
             or not isinstance(summary.obligations, frozenset)
+            or not isinstance(summary.stored, frozenset)
             or not isinstance(summary.returns, frozenset)
             or any(not isinstance(origin, MIRReturnOrigin) for origin in summary.returns)
             or not isinstance(summary.global_reads, frozenset)
@@ -1185,6 +1219,14 @@ def summary_problem(summary: MIRCallSummary, layouts: MIRRecords,
         problem = obligation_problem(obligation, summary, layouts, walks)
         if problem is not None:
             return problem
+    stated: set[tuple[object, object]] = set()
+    for entry in summary.stored:
+        problem = stored_problem(entry, summary, layouts, walks)
+        if problem is not None:
+            return problem
+        if (entry.parameter, entry.path) in stated:
+            return "duplicate stored alternatives"
+        stated.add((entry.parameter, entry.path))
     # The callee's published passings and its body's bindings are one fact.
     if signature.passings is None:
         return "signature passings unpublished"

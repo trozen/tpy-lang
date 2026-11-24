@@ -10,7 +10,7 @@ from ..typesys import TpyType, receiver_neutral_return
 from .call_contract import (
     BORROWING_PASSINGS, MIR_RESULT, MIR_STATIC, OWNING_PASSINGS, MIRAliasObligation, MIRCallSummary, MIRGlobalId,
     MIRLoanTransfer, MIRParameterWrite, MIRPathWalks, MIRResultHolder, MIRReturnOrigin, MIRSummaryResult,
-    MIRSummaryState, body_result, bound_params, call_result, parameter_binding,
+    MIRStoredAlternatives, MIRSummaryState, body_result, bound_params, call_result, parameter_binding,
     return_origin_problem, summary_problem, write_problem, summary_path,
 )
 from .call_effects import resolve_call_writes
@@ -21,11 +21,11 @@ from .shapes import (
 from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions
 from .dependencies import (
-    MIRDependencies, MIRReferent, resolve_referents, seeded_loan, whole_wrapper_field,
+    MIRDependencies, MIRReferent, resolve_referents, seeded_loan,
 )
 from .prepare import MIRPrepared, validated_presence
 from .retention import alias_obligation, analyze_retention, parameter_indices
-from .reach import parameter_objects
+from .reach import MIRStored, parameter_objects, union_covered
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRConstruct, MIRCopy,
     MIRFunction, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot,
@@ -403,6 +403,23 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
     parameters = parameter_indices(body)
     writes: set[MIRParameterWrite] = set()
     returns: set[MIRReturnOrigin] = set()
+    # What the body's replacements store in each parameter-rooted sum, by
+    # storage: each replaced parameter storage covers the sums under the
+    # storage standing at its anchor, by what its statement states
+    # (`MIRReplacement.stored`), the caller's rule for a call write.
+    stored: MIRStored = {}
+    assert isinstance(prepared, MIRPrepared)
+    kills = prepared.kills
+
+    def include_stored(point: MIRPoint) -> None:
+        for replacement in kills.replacements.get(point, ()):
+            outcomes = {ref.place: outcome for ref, outcome in replacement.stored
+                        if ref.external and ref.place.root in parameters}
+            for origin, at in replacement.anchored:
+                if origin.external and origin.place.root in parameters:
+                    # No anchor storage to state the sums below: it states none.
+                    union_covered(stored, origin.place if at is None else at.place,
+                                  {} if at is None else outcomes, slots, record_layouts, referent=True)
 
     def include_writes(origins: frozenset[MIRReferent] | None) -> str | None:
         if origins is None:
@@ -417,8 +434,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
             # rule a caller checks it by; each field must be a member of the
             # layout of the storage its hop reads.
             index = parameters[origin.place.root]
-            place = whole_wrapper_field(origin.place, slots, record_layouts)
-            write = MIRParameterWrite(index, summary_path(place.projections))
+            write = MIRParameterWrite(index, summary_path(origin.place.projections))
             problem = write_problem(write, tuple(bindings), definitions.layouts)
             if problem is not None:
                 return f"summary unsupported write origin: {problem}"
@@ -452,6 +468,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                     returns.add(returned)
         for index, stmt in enumerate(block.statements):
             state = dependencies.referents.get(MIRPoint(block.id, index), {})
+            include_stored(MIRPoint(block.id, index))
             if (call := present.get(MIRPoint(block.id, index))) is not None:
                 problem = include_writes(resolve_call_writes(call, state, slots, record_layouts))
                 if problem is not None:
@@ -611,7 +628,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
     obligations = _obligations(prepared)
     if isinstance(obligations, str):
         return MIRSummaryResult.opaque(obligations)
-    summary = replace(summary, obligations=obligations)
+    summary = replace(summary, obligations=obligations, stored=frozenset(
+        MIRStoredAlternatives(parameters[place.root], summary_path(place.projections), outcome)
+        for place, outcome in stored.items()))
     walks: MIRPathWalks = {}
     problem = summary_problem(summary, definitions.layouts, walks)
     if problem is not None:

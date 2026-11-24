@@ -1,0 +1,80 @@
+fixtures::__tpy_init: uncovered (module initialization)
+fixtures::clear@33:0: covered (storage: no_proof_required), summary: known
+fixtures::refill@37:0: covered (storage: no_proof_required), summary: known
+fixtures::empty_above@41:0: covered (storage: no_proof_required), summary: known
+fixtures::P.reset@11:4: covered (storage: no_proof_required), summary: known
+fixtures::P.__init__@8:4: covered (storage: no_proof_required), summary: known
+fixtures::H.__init__@19:4: covered (storage: no_proof_required), summary: known
+fixtures::W.__init__@29:4: covered (storage: no_proof_required), summary: known
+main::__tpy_init: uncovered (module initialization)
+main::setv@13:0: covered (storage: no_proof_required), summary: known
+main::write@20:0: covered (storage: no_proof_required), summary: known
+main::setv_m@25:0: covered (storage: no_proof_required), summary: known
+main::caller_scalar@31:0: covered (storage: no_proof_required), summary: known
+main::caller_method@39:0: covered (storage: no_proof_required), summary: known
+main::local_two@48:0: covered (storage: no_proof_required), summary: known
+main::pick@58:0: certified, summary: known
+main::main@66:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_holders::__tpy_init: uncovered (module initialization)
+part_holders::payload_of@8:0: certified, summary: known
+part_holders::ret_then_clear@17:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_holders::ret_then_call@23:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_holders::view_refill@46:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_holders::read_ro@55:0: covered (storage: no_proof_required), summary: known
+part_holders::local_rec@63:0: covered (storage: no_proof_required), summary: known
+part_holders::local_clear@72:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_holders::empty_then_fill@81:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_holders::aliased@88:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_holders::not_aliased@99:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_holders::empty_then_fill_two@118:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_holders::either_field@125:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_holders::local_refill_held@141:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_holders::main@155:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_holders::S.__init__@32:4: covered (storage: no_proof_required), summary: known
+part_holders::SH.__init__@39:4: covered (storage: no_proof_required), summary: known
+part_holders::W2.__init__@113:4: covered (storage: no_proof_required), summary: known
+part_local_holder::__tpy_init: uncovered (module initialization)
+part_local_holder::held_clear@8:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
+part_local_holder::held_refill@17:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
+part_local_holder::held_none@27:0: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
+part_local_holder::held_assign@36:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
+part_local_holder::main@44:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_positions::__tpy_init: uncovered (module initialization)
+part_positions::loop_body@33:0: covered (storage: no_proof_required), summary: known
+part_positions::while_arm@44:0: covered (storage: no_proof_required), summary: known
+part_positions::match_arm@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_positions::element@66:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_positions::gen_payload@77:0: uncovered (unsupported hoisted value)
+part_positions::main@83:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_positions::Node.bump@19:4: covered (storage: no_proof_required), summary: known
+part_positions::Node.put@27:4: covered (storage: no_proof_required), summary: known
+part_positions::Node.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_refused::__tpy_init: uncovered (module initialization)
+part_refused::str_payload@14:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+part_refused::str_append@21:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+part_refused::main@26:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_refused::SH.__init__@9:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_writes::__tpy_init: uncovered (module initialization)
+part_writes::w_call@8:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_writes::w_call_refill@17:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_writes::reseat_direct@26:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_writes::refill_direct@35:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_writes::copy_in@44:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_writes::copy_known@54:0: covered (storage: no_proof_required), conflicts: replacement, alias_obligation, summary: known
+part_writes::copy_known_twice@64:0: covered (storage: no_proof_required), conflicts: replacement, alias_obligation, summary: known
+part_writes::self_copy@79:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_writes::self_copy_only@91:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_writes::above_alias@100:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_writes::above_call@110:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_writes::empty_refill@119:0: covered (storage: no_proof_required), summary: known
+part_writes::w_empty_refill@125:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_writes::narrowed_then_loop@135:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_writes::holding@147:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_writes::holding_same@155:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+part_writes::element_copy@163:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_writes::element_view@170:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_writes::explicit_self_copy@184:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_writes::explicit_self_copy_record@191:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_writes::explicit_self_copy_optional@199:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_writes::main@207:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_writes::Ps.__init__@179:4: covered (storage: no_proof_required), summary: known

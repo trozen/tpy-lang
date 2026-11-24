@@ -64,15 +64,13 @@ from .nodes import (
     MIRMove, MIRPlace, MIRPoint, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionExtract, MIRWrap,
     statement_call, statement_target, transfer_member, view_member,
 )
-from .prepare import MIRPrepared
+from .prepare import MIRPrepared, MIRReplacement
 from ..thir.scalar_leaves import MIRClass
-from .reach import (
-    MIRReferent, reaches_definitely, referent_walk, replaced_below, storage_events,
-)
+from .reach import MIRReferent, reaches_definitely, referent_walk, replaced_below, storage_events
 from .region_flow import outgoing_edges
-from .shapes import REGION_STEPS, MIRContainerStructure, MIRDeref, MIRUnionPayload
+from .shapes import REGION_STEPS, MIRContainerStructure, MIRDeref, MIRUnionPayload, Projection
 from .validate import reaches_element, statement_read_places
-from .value import MIRRecords, MIRValidationError
+from .value import MIREffect, MIRRecords, MIRValidationError, payload_fate
 from ..scc import strongly_connected_components
 
 
@@ -96,17 +94,6 @@ class MIRMayCause(Enum):
     PARTIAL = auto()
 
 
-class MIREffect(Enum):
-    """What a warned replacement does to what its holder keeps: frees it
-    (an element's or a whole value's storage), moves it (a container's shape
-    write), or overwrites it where it lies (a record field, a record
-    payload, a whole container field object), so the holder sees the new
-    value."""
-    FREES = auto()
-    MOVES = auto()
-    OVERWRITES = auto()
-
-
 class MIRHazardKind(Enum):
     REPLACEMENT = auto()
     SCOPE_END = auto()
@@ -125,15 +112,48 @@ class MIRHazard:
     holder in the state before the statement and in the one it leaves).
     `target` is the replaced place, the ended storage or payload, or the
     escaping origin. A store escape lists the caller stores holding the
-    origin (`stores`); a replacement the conflicts it groups."""
+    origin (`stores`); a replacement the conflicts it groups and the
+    replacement it is (`MIRReplacement`: its place, its storage, where its
+    sums are stated, what the statement stores in them), which alone
+    states its target and written storage (`replacing`)."""
     kind: MIRHazardKind
     site: MIRPoint | MIREdge
-    target: MIRPlace
-    written: frozenset[MIRReferent]
+    # Any other hazard's target and written storage; a replacement's are its
+    # replacement's, so none is stated twice.
+    ended: MIRPlace | None
+    storage: frozenset[MIRReferent] | None
     holder: MIRPlace
     retained: tuple[frozenset[MIRReferent], ...] = ()
     stores: tuple[MIRCallerStore, ...] = ()
     conflicts: tuple[object, ...] = ()
+    replacement: MIRReplacement | None = None
+
+    def __post_init__(self) -> None:
+        if (self.kind is MIRHazardKind.REPLACEMENT) != (self.replacement is not None):
+            raise MIRValidationError("a replacement hazard carries its replacement, and no other hazard does")
+        stated = (self.ended is not None, self.storage is not None)
+        if stated != ((False, False) if self.replacement is not None else (True, True)):
+            raise MIRValidationError("a hazard states its target and written storage once")
+
+    @classmethod
+    def replacing(cls, site: MIRPoint, replacement: MIRReplacement, holder: MIRPlace,
+                  retained: tuple[frozenset[MIRReferent], ...], conflicts: tuple[object, ...]) -> 'MIRHazard':
+        return cls(MIRHazardKind.REPLACEMENT, site, None, None, holder, retained, conflicts=conflicts,
+                   replacement=replacement)
+
+    @property
+    def target(self) -> MIRPlace:
+        if self.replacement is not None:
+            return self.replacement.place
+        assert self.ended is not None
+        return self.ended
+
+    @property
+    def written(self) -> frozenset[MIRReferent]:
+        if self.replacement is not None:
+            return self.replacement.storage
+        assert self.storage is not None
+        return self.storage
 
 
 @dataclass(frozen=True)
@@ -149,6 +169,9 @@ class MIRWitness:
     capped: bool = False
     # A warned replacement's effect (`replacement_effect`); None otherwise.
     effect: MIREffect | None = None
+    # The sum whose payload's fate decided `effect`, a place at or under
+    # the hazard's target; None when no payload decided it.
+    sum: MIRPlace | None = None
     # Why a MAY verdict is MAY; None for any other verdict.
     cause: MIRMayCause | None = None
     # The kill lies on a feasible cycle of the body, so it recurs each pass.
@@ -900,11 +923,16 @@ def decide(prepared: MIRPrepared, hazards: Iterable[MIRHazard]) -> tuple[MIRWitn
             if answered:
                 verdict, cause = MIRVerdict.MAY, MIRMayCause.PARTIAL
         warns = verdict is not MIRVerdict.EVIDENCE
-        effect = (replacement_effect(hazard, body.slots, body.fn.record_layouts)
-                  if warns and hazard.kind is MIRHazardKind.REPLACEMENT else None)
+        effect = named = None
+        if warns and (replaced := hazard.replacement) is not None:
+            effect, steps = replacement_effect(hazard, body.slots, body.fn.record_layouts)
+            # Steps are found below the replacement's anchor (`replacement_effect`).
+            if steps is not None:
+                named = MIRPlace(replaced.anchor.root, (*replaced.anchor.projections, *steps))
         site = hazard.site.block if isinstance(hazard.site, MIRPoint) else hazard.site.source
         found.append(MIRWitness(hazard, verdict, reads if warns else (), capped=answered is None, effect=effect,
-                                cause=cause if verdict is MIRVerdict.MAY else None, looped=site in body.cyclic))
+                                sum=named, cause=cause if verdict is MIRVerdict.MAY else None,
+                                looped=site in body.cyclic))
     return tuple(_escape_decides(found))
 
 
@@ -923,18 +951,29 @@ def _shape_write(place: MIRPlace) -> bool:
     return bool(steps) and isinstance(steps[-1], MIRContainerStructure)
 
 
-def replacement_effect(hazard: MIRHazard, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIREffect:
-    """A replacement overwrites what the holder keeps where it lies only when
-    that is shown: a referent the holder keeps lies under the path the write
-    replaces (`reach.replaced_below`) with no container region step below
-    it, and is no owned buffer (a `str` / `bytes`) a view holder views -- a
-    record field, an Optional record payload, a whole container field
-    object. Otherwise it frees what the holder keeps, or moves it when
-    every write is a container's shape write; a free or move shown for any
-    referent wins over an overwrite shown for another."""
+def replacement_effect(hazard: MIRHazard, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords
+                       ) -> tuple[MIREffect, tuple[Projection, ...] | None]:
+    """What a replacement does to what the holder keeps, and the steps below
+    the replacement's anchor (`MIRReplacement.anchor`) to the sum whose payload
+    decided it (None for none).
+    Geometry decides first: a referent the holder keeps that lies under the
+    path the write replaces (`reach.replaced_below`) behind a container
+    region step, or an owned buffer (a `str` / `bytes`) a view holder
+    views, is freed (moved when every write is a container's shape write).
+    Any other kept referent under it lies where it is -- a record field, a
+    whole container field object -- unless its path below the anchor
+    storage (`MIRReplacement.anchored`) crosses a sum's payload: there
+    what the statement stores in that sum's storage
+    (`MIRReplacement.stored`) decides (`payload_fate`); with no
+    anchor storage the effect is UNKNOWN. The gravest effect shown for any
+    referent is the one said (`MIREffect.rank`); with none shown the write
+    frees (or moves) what the holder keeps."""
     views = holder_views(hazard.holder, slots)
     moves = all(_shape_write(x.place) for x in hazard.written)
-    overwrites = False
+    # A replacement hazard carries its replacement (`MIRHazard`).
+    stored = dict(hazard.replacement.stored)
+    anchored = dict(hazard.replacement.anchored)
+    found: tuple[MIREffect, tuple[Projection, ...] | None] | None = None
     for retained in hazard.retained:
         for r in retained:
             for w in hazard.written:
@@ -949,11 +988,30 @@ def replacement_effect(hazard: MIRHazard, slots: Mapping[MIRSlotId, MIRSlot], re
                     except MIRValidationError:
                         frees = True
                 if frees:
-                    return MIREffect.MOVES if moves else MIREffect.FREES
-                overwrites = True
-    if overwrites:
-        return MIREffect.OVERWRITES
-    return MIREffect.MOVES if moves else MIREffect.FREES
+                    return MIREffect.MOVES if moves else MIREffect.FREES, None
+                path = (*w.place.projections, *below)
+                if (at := anchored.get(w)) is None:
+                    effect, crossed = MIREffect.UNKNOWN, ()
+                else:
+                    start = len(at.place.projections)
+                    effect, crossed = MIREffect.OVERWRITES, None
+                    for index in range(start, len(path)):
+                        step = path[index]
+                        if not isinstance(step, MIRUnionPayload):
+                            continue
+                        sum_storage = MIRReferent(MIRPlace(w.place.root, path[:index]), external=w.external)
+                        fate = payload_fate(stored.get(sum_storage), step.alternative)
+                        if fate is MIREffect.FREES:
+                            return fate, path[start:index]
+                        if fate.rank > effect.rank:
+                            effect, crossed = fate, path[start:index]
+                        elif crossed is None:
+                            crossed = path[start:index]
+                if found is None or effect.rank > found[0].rank:
+                    found = effect, crossed
+    if found is not None:
+        return found
+    return MIREffect.MOVES if moves else MIREffect.FREES, None
 
 
 def _escape_decides(found: list[MIRWitness]) -> list[MIRWitness]:

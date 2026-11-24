@@ -82,25 +82,25 @@ std::optional<P> find(int32_t x);
 void store_found(H& h);
 // def bump_payload(h: H) -> None:  # tpyc: mir(covered) mir_summary(known)
 void bump_payload(H& h);
-// def payload_borrow(h: H) -> int32:  # tpyc: mir(uncovered /borrow of an Optional field's payload/)
+// def payload_borrow(h: H) -> int32:  # tpyc: mir(covered)
 int32_t payload_borrow(const H& h);
-// def payload_return(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
+// def payload_return(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(known)
 P& payload_return(H& h, P& fallback);
 // def id_p(p: P) -> P:  # tpyc: mir(covered) mir_summary(known)
 P& id_p(P& p);
-// def payload_return_call(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
+// def payload_return_call(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(known)
 P& payload_return_call(H& h, P& fallback);
 // def set_s(o: S | None, v: str) -> None:  # tpyc: mir(covered) mir_summary(known)
 void set_s(S* o, std::string_view v);
 // def keep_payload(h: SH, flag: bool) -> int32:  # tpyc: mir(covered)
 int32_t keep_payload(SH& h, bool flag);
-// def payload_sub_return(h: SH, fallback: S) -> StrView:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
+// def payload_sub_return(h: SH, fallback: S) -> StrView:  # tpyc: mir(covered) mir_summary(known)
 std::string_view payload_sub_return(const SH& h, const S& fallback);
 // def set_field(t: S, value: str) -> int32:  # tpyc: mir(conflict /alias_obligation/)
 int32_t set_field(S& t, std::string_view value);
-// def payload_return_warning(h: H, fallback: P, t: S) -> P:  # tpyc: mir(conflict /argument_alias/) mir_summary(opaque /unsupported return origin/)
+// def payload_return_warning(h: H, fallback: P, t: S) -> P:  # tpyc: mir(conflict /argument_alias/) mir_summary(known)
 P& payload_return_warning(H& h, P& fallback, S& t);
-// def payload_write(h: H) -> None:  # tpyc: mir(uncovered /optional field payload write/)
+// def payload_write(h: H) -> None:  # tpyc: mir(covered) mir_summary(known)
 void payload_write(H& h);
 // def ro_read(r: Ro) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t ro_read(const Ro& r);

@@ -30,16 +30,16 @@ main::copied_then_read@316:0: uncovered (unsupported field type or form), summar
 main::find@323:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::store_found@328:0: uncovered (record initializer type mismatch), summary: opaque (record initializer type mismatch)
 main::bump_payload@333:0: covered (storage: no_proof_required), summary: known
-main::payload_borrow@339:0: uncovered (borrow of an Optional field's payload), summary: opaque (borrow of an Optional field's payload)
-main::payload_return@348:0: certified, summary: opaque (summary unsupported return origin: unsupported return origin type or access)
+main::payload_borrow@339:0: covered (storage: no_proof_required), summary: known
+main::payload_return@348:0: certified, summary: known
 main::id_p@354:0: certified, summary: known
-main::payload_return_call@359:0: certified, summary: opaque (summary unsupported return origin: unsupported return origin type or access)
+main::payload_return_call@359:0: certified, summary: known
 main::set_s@379:0: covered (storage: no_proof_required), summary: known
 main::keep_payload@385:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
-main::payload_sub_return@396:0: covered (storage: no_proof_required), summary: opaque (summary unsupported return origin: unsupported return origin type or access)
+main::payload_sub_return@396:0: covered (storage: no_proof_required), summary: known
 main::set_field@402:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-main::payload_return_warning@408:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: argument_alias, summary: opaque (summary unsupported return origin: unsupported return origin type or access)
-main::payload_write@416:0: uncovered (optional field payload write), summary: opaque (optional field payload write)
+main::payload_return_warning@408:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: argument_alias, summary: known
+main::payload_write@416:0: covered (storage: no_proof_required), summary: known
 main::ro_read@422:0: covered (storage: no_proof_required), summary: known
 main::local@429:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::local_forms@437:0: covered (storage: no_proof_required), summary: known

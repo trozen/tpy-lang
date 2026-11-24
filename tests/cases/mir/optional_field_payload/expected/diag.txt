@@ -1,0 +1,58 @@
+part_holders.py:19: warning: Mutation of 'h' while borrowed (field assignment may invalidate references)
+part_holders.py:19: warning: this assignment frees the old value of 'h.o', and 'r' may still refer to it and is used on line 20; copy what 'r' refers to first, or use 'r' before this assignment
+part_holders.py:25: warning: this call frees the old value of 'h.o', and 'r' may still refer to it and is used on line 26; copy what 'r' refers to first, or use 'r' before this call
+part_holders.py:50: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_holders.py:50: warning: this assignment frees the old value of 'h.o', but 'v' still views it and is read on line 51; copy what 'v' views first, or use 'v' before this assignment
+part_holders.py:76: warning: this call frees the old value of 'h.o', but 'r' still refers to it and is used on line 77; copy what 'r' refers to first, or use 'r' before this call
+part_holders.py:92: warning: this call may free the old value of 'w.h.o' or overwrite it in place, but 'r' still refers to it and is used on line 93; copy what 'r' refers to first, or use 'r' before this call
+part_holders.py:92: warning: this call may free the old value of 'h.o' or overwrite it in place, but 'r' still refers to it and is used on line 93; copy what 'r' refers to first, or use 'r' before this call
+part_holders.py:104: warning: this call frees the old value of 'w.h.o', but 'r' still refers to it and is used on line 105; copy what 'r' refers to first, or use 'r' before this call
+part_holders.py:132: warning: this call may overwrite what 'r' refers to in place, and 'r' would see the new value on line 133; copy what 'r' refers to first, or use 'r' before this call
+part_holders.py:147: warning: 'r' will not keep the object it was given -- 'o' is rebound here and both names share its storage; bind the new value to a name of its own
+part_holders.py:147: warning: this assignment may free the old value of 'o.o' or overwrite it in place, and 'r' may still refer to it and is used on line 148; copy what 'r' refers to first, or use 'r' before this assignment
+part_local_holder.py:12: warning: this call frees the old value of 'h.o', but 'o' still refers to it and is used on line 13; copy what 'o' refers to first, or use 'o' before this call
+part_local_holder.py:21: warning: this call overwrites 'h.o' in place, but 'o' still refers to it and sees the new value on line 22; copy what 'o' refers to first, or use 'o' before this call
+part_local_holder.py:31: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_local_holder.py:32: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+part_local_holder.py:40: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_local_holder.py:40: warning: this assignment overwrites 'h.o' in place, but 'o' still refers to it and sees the new value on line 41; copy what 'o' refers to first, or use 'o' before this assignment
+part_writes.py:11: warning: this call frees the old value of 'h.o', but 'r' still refers to it and is used on line 12; copy what 'r' refers to first, or use 'r' before this call
+part_writes.py:20: warning: this call overwrites 'h.o' in place, but 'r' still refers to it and sees the new value on line 21; copy what 'r' refers to first, or use 'r' before this call
+part_writes.py:30: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_writes.py:30: warning: this assignment frees the old value of 'h.o', but 'y' still refers to it and is used on line 31; copy what 'y' refers to first, or use 'y' before this assignment
+part_writes.py:38: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_writes.py:38: warning: this assignment overwrites 'h.o' in place, but 'r' still refers to it and sees the new value on line 39; copy what 'r' refers to first, or use 'r' before this assignment
+part_writes.py:47: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_writes.py:47: warning: copies P | None into field; use copy() to make this explicit
+part_writes.py:47: warning: this assignment may free the old value of 'h.o' or overwrite it in place, but 'r' still refers to it and is used on line 48; copy what 'r' refers to first, or use 'r' before this assignment
+part_writes.py:58: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_writes.py:58: warning: copies P | None into field; use copy() to make this explicit
+part_writes.py:58: warning: this assignment overwrites 'h.o' in place, but 'r' still refers to it and sees the new value on line 59; copy what 'r' refers to first, or use 'r' before this assignment
+part_writes.py:68: warning: copies P | None into field; use copy() to make this explicit
+part_writes.py:69: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_writes.py:69: warning: copies P | None into field; use copy() to make this explicit
+part_writes.py:69: warning: this assignment overwrites 'h.o' in place, but 'r' still refers to it and sees the new value on line 70; copy what 'r' refers to first, or use 'r' before this assignment
+part_writes.py:83: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_writes.py:83: warning: this assignment may overwrite what 'r' refers to in place, and 'r' would see the new value on line 86; copy what 'r' refers to first, or use 'r' before this assignment
+part_writes.py:84: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_writes.py:84: warning: copies P | None into field; use copy() to make this explicit
+part_writes.py:84: warning: this assignment may overwrite what 'r' refers to in place, and 'r' would see the new value on line 86; copy what 'r' refers to first, or use 'r' before this assignment
+part_writes.py:85: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_writes.py:85: warning: copies P | None into field; use copy() to make this explicit
+part_writes.py:85: warning: this assignment may overwrite what 'r' refers to in place, and 'r' would see the new value on line 86; copy what 'r' refers to first, or use 'r' before this assignment
+part_writes.py:95: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_writes.py:95: warning: copies P | None into field; use copy() to make this explicit
+part_writes.py:95: warning: this assignment may free the old value of 'h.o' or overwrite it in place, and 'r' may still refer to it and is used on line 96; copy what 'r' refers to first, or use 'r' before this assignment
+part_writes.py:104: warning: Mutation of 'w.h' while borrowed (field assignment may invalidate references)
+part_writes.py:104: warning: this assignment may free the old value of 'w.h.o' or overwrite it in place, but 'r' still refers to it and is used on line 105; copy what 'r' refers to first, or use 'r' before this assignment
+part_writes.py:114: warning: this call may free the old value of 'w.h.o' or overwrite it in place, but 'r' still refers to it and is used on line 115; copy what 'r' refers to first, or use 'r' before this call
+part_writes.py:128: warning: this call may free the old value of 'h.o' or overwrite it in place, but 'r' still refers to it and is used on line 129; copy what 'r' refers to first, or use 'r' before this call
+part_writes.py:156: warning: argument 'h' contains 'h.o', which 'holding' modifies through parameter 'b' while it still uses 'a'; pass a copy ('copy(h)') or restructure so the call does not hand over both
+part_writes.py:165: warning: this assignment may overwrite what 'p' refers to in place, and 'p' would see the new value on line 166; copy what 'p' refers to first, or use 'p' before this assignment
+part_writes.py:172: warning: this assignment may free the element 'v' still views, and 'v' is read on line 173; copy what 'v' views first, or use 'v' before this assignment
+part_writes.py:186: warning: Mutation of 'h.ps' while borrowed (field assignment may invalidate references)
+part_writes.py:186: warning: this assignment frees the old value of 'h.ps', but 'p' still refers to it and is used on line 187; copy what 'p' refers to first, or use 'p' before this assignment
+part_writes.py:193: warning: Mutation of 'h.p' while borrowed (field assignment may invalidate references)
+part_writes.py:193: warning: this assignment overwrites 'h.p' in place, but 'r' still refers to it and sees the new value on line 194; copy what 'r' refers to first, or use 'r' before this assignment
+part_writes.py:203: warning: Mutation of 'h.o' while borrowed (field assignment may invalidate references)
+part_writes.py:203: warning: this assignment may free the old value of 'h.o' or overwrite it in place, and 'r' may still refer to it and is used on line 204; copy what 'r' refers to first, or use 'r' before this assignment

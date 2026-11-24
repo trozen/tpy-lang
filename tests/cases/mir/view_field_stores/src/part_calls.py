@@ -144,7 +144,7 @@ def reused_construct(n: int32) -> None:  # tpyc: mir(conflict /replacement/)
     r = anchor
     for i in range(n):
         r = anchor
-        r = R(mk(12), v)  # tpyc: warning(/this statement frees the old value of 'r', and 'r.s' may still view it/)
+        r = R(mk(12), v)  # tpyc: warning(/this assignment frees the old value of 'r', and 'r.s' may still view it/)
         print("reused_construct", r.s)
         v = r.buf
         r.s = "static"

@@ -2171,8 +2171,9 @@ class _Lowering:
                 return self.declare(stmt.loc, bound, self.tuple_copy(value, stmt.name))
             return self.put_declare(stmt.loc, bound.slot, value, False)
         _require(stmt, isinstance(stmt, th.THIRVarDecl), "missing alias binding")
-        # A narrowed Optional field's payload lives inline in the field,
-        # which MIR keeps whole: a binding of the payload alone is not modeled.
+        # A narrowed Optional field's non-aggregate payload (a `str`, a
+        # list) binds by a declaration MIR does not model; a record payload
+        # binds as an alias of its place (`alias_local`).
         _require(stmt, not (isinstance(stmt.init, th.THIRFieldAccess) and stmt.init.narrowed_deref),
                  "borrow of an Optional field's payload")
         # A VALUE-form leaf is held by value whichever way its C++
@@ -2305,8 +2306,6 @@ class _Lowering:
             # pointer local holds the member's pointer itself.
             _require(source, source.deref == (source.elem_pointer and isinstance(stmt, th.THIRVarDecl)),
                      "tuple element deref disagreement")
-        elif isinstance(source, th.THIRFieldAccess):
-            _require(source, not source.narrowed_deref, "borrow of an Optional field's payload")
         value = self.full_expression(source, check=lambda: self.borrowed_source(source, holder).view(holder))
         return self.put_borrow_binding(stmt.loc, bound_slot(), declaration, value, stmt)
 
@@ -3997,13 +3996,9 @@ class _Lowering:
             kind = place_kind(receiver)
             kind = kind if kind in _RECEIVER_PLACES else None
             optional = kind is _Place.NAME and self.wraps(receiver.name, MIRClass.OPTIONAL)
-            if kind is _Place.FIELD:
-                # A store under a narrowed payload would replace part of it while
-                # MIR keeps the payload whole (`place_info` forbids it).
-                _require(expr, not (write and receiver.narrowed_deref), "optional field payload write")
-            elif optional:
+            if optional:
                 self.optional_name(receiver, extract=True)
-            elif kind not in (_Place.UNION_PAYLOAD, _Place.ELEMENT, _Place.TUPLE_MEMBER):
+            elif kind not in (_Place.FIELD, _Place.UNION_PAYLOAD, _Place.ELEMENT, _Place.TUPLE_MEMBER):
                 # Any other receiver refuses here: a field is read through a record place.
                 self.reference_name(receiver, qualified=True)
             base = self.place(receiver)

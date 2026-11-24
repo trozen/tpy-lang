@@ -527,28 +527,32 @@ def test_a_composed_payload_needs_a_movable_record(program: _Program) -> None:
 
 # --- writes ---------------------------------------------------------------------------------
 
-def test_a_payload_field_write_through_a_readonly_holder_is_refused(program: _Program) -> None:
+def test_a_payload_field_write_is_a_field_write_never_a_payload_replacement(program: _Program) -> None:
     # `h.p.x = n` under the presence proof `read` already holds: a store
-    # into the inline payload. Through `read`'s own readonly holder it is
-    # refused for the holder's access; through a mutable one by the payload
-    # rule (lowering builds no such write: "optional field payload write").
+    # into a field of the inline payload, a place like any field. Through
+    # `read`'s own readonly holder it is refused for the holder's access;
+    # through a mutable one it validates. The payload itself is never
+    # replaced in place (`h.p[payload] = ...`): a field write replaces it.
     fn = program.verdicts["read"].function
     holder = next(s for s in fn.slots if s.name == "h")
-    payload_x = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.p"), MIRUnionPayload(1), _member(program, "P.x")))
+    payload = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.p"), MIRUnionPayload(1)))
+    payload_x = MIRPlace(payload.root, (*payload.projections, _member(program, "P.x")))
     blocks = list(fn.blocks)
     index, block = next((i, b) for i, b in enumerate(blocks)
                         if any(isinstance(s, MIRAssign) and s.value == MIRRead(payload_x) for s in b.statements))
     read = next(s for s in block.statements if isinstance(s, MIRAssign) and s.value == MIRRead(payload_x))
-    store = MIRAssign(payload_x, MIRRead(read.target))
-    blocks[index] = replace(block, statements=(*block.statements, store))
-    written = replace(fn, blocks=tuple(blocks))
+
+    def storing(store: MIRAssign, readonly: bool) -> MIRFunction:
+        blocks[index] = replace(block, statements=(*block.statements, store))
+        written = replace(fn, blocks=tuple(blocks))
+        return written if readonly else bind_parameters(replace(written, slots=tuple(
+            reslot(s, readonly=False) if s.id == holder.id else s for s in written.slots)))
     assert holder.readonly
-    mutable = bind_parameters(replace(written, slots=tuple(
-        reslot(s, readonly=False) if s.id == holder.id else s for s in written.slots)))
-    with pytest.raises(MIRValidationError, match="optional payload replacement is forbidden"):
-        validate_function(mutable)
+    validate_function(storing(MIRAssign(payload_x, MIRRead(read.target)), readonly=False))
     with pytest.raises(MIRValidationError, match="^store through readonly reference$"):
-        validate_function(written)
+        validate_function(storing(MIRAssign(payload_x, MIRRead(read.target)), readonly=True))
+    with pytest.raises(MIRValidationError, match="optional payload replacement is forbidden"):
+        validate_function(storing(MIRAssign(payload, MIRCopy(payload)), readonly=False))
 
 
 # --- copies of an Optional field ------------------------------------------------------------

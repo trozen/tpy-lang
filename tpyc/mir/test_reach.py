@@ -182,18 +182,19 @@ def test_the_classifier_keeps_every_kind_and_replacements_select_from_it() -> No
         MIRStorageEvent(MIRStorageEventKind.MOVE, MIRPlace(OWN)))
     # Replacements: no initialization; an owned sum's fill only of a payload
     # its old selection may hold -- the same alternative included, none on
-    # a first fill.
+    # a first fill. A call write's sums are stated below the written place;
+    # a fill's below the sum it writes, above the payload it replaces.
     init = _write(MIRPlace(OWN), MIRStorageWriteMode.INITIALIZE)
-    assert replacement_events(init, (field,), _any_selection, SLOTS) == ((field, None),)
+    assert replacement_events(init, (field,), _any_selection, SLOTS) == ((field, None, field),)
     fill = _write(MIRPlace(SUM), MIRStorageWriteMode.IN_PLACE, MIRWrap(1, MIRPlace(BUILT)))
     payload = MIRPlace(SUM, (MIRUnionPayload(1),))
     assert storage_events(fill, (), SLOTS) == (MIRStorageEvent(MIRStorageEventKind.REPLACE, MIRPlace(SUM),
                                                                payloads=((1, True),)),)
     assert replacement_events(fill, (), lambda place: frozenset({0}), SLOTS) == ()
     for old in (frozenset({1}), frozenset({0, 1}), None):
-        assert replacement_events(fill, (), lambda place: old, SLOTS) == ((payload, None),)
+        assert replacement_events(fill, (), lambda place: old, SLOTS) == ((payload, None, MIRPlace(SUM)),)
     empty = _write(MIRPlace(SUM), MIRStorageWriteMode.IN_PLACE, MIRWrap(0))
-    assert replacement_events(empty, (), lambda place: frozenset({1}), SLOTS) == ((payload, None),)
+    assert replacement_events(empty, (), lambda place: frozenset({1}), SLOTS) == ((payload, None, MIRPlace(SUM)),)
 
 
 def test_an_owned_tuple_is_initialized_by_its_construct_and_needs_its_fact() -> None:

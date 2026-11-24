@@ -610,10 +610,10 @@ def test_one_endpoint_table_serves_writes_and_returns(program: _Program, nested:
 def test_one_return_endpoint_rule_serves_the_summary_and_the_caller(program: _Program, nested: _Nested) -> None:
     # `return_endpoint_problem` is the rule the summary's endpoint and
     # every caller's type check read: a structure region, a mismatched
-    # place, a view of no leaf or of another region, and a place at or
-    # under an Optional record field's payload (whatever produced the
-    # referent) end no published return. An elements region is an element
-    # endpoint, or a region endpoint for a container view result.
+    # place and a view of no leaf or of another region end no published
+    # return; a place at or under an Optional record field's payload is a
+    # place like any other. An elements region is an element endpoint, or
+    # a region endpoint for a container view result.
     inner = unwrap_ref_type(_free(program, "inner_of").params[1].type)
     maybe = th.THIRFieldIdentity(nested.shelf, "maybe", OptionalType(inner))
     x = th.THIRFieldIdentity(inner, "x", INT32)
@@ -637,15 +637,15 @@ def test_one_return_endpoint_rule_serves_the_summary_and_the_caller(program: _Pr
             ((nested.bag_f, elements), ends_at(STR, strs), span, "view result of a mismatched region"),
             ((nested.bag_f, nested.n), ends_at(INT32), nested.bag, "call result of a mismatched place"),
             ((nested.bag_f, nested.items), ends_at(INTS), nested.view, "view result of a non-leaf place"),
-            ((maybe, payload), None, inner, "call result under an Optional field's payload"),
-            ((maybe, payload, x), None, nested.view, "call result under an Optional field's payload")):
+            ((maybe, payload, x), ends_at(INT32), nested.view, "view result of a non-leaf place")):
         assert return_endpoint_problem(path, lambda: end, result) == reason, path
-    # The summary refuses the same payload return, so no caller sees it.
+    # The payload record itself is a record endpoint, for the summary and the caller alike.
+    assert return_endpoint_problem((maybe, payload), lambda: ends_at(inner), inner) is None
     laid = _retyped(program.definitions.layouts, nested.shelf, "maybe", maybe.type)
     binding, = _record_summary(nested.shelf, False).parameters
     walked = resolve_path(0, (maybe, payload), (binding,), laid)
     assert walked.end.type == inner
-    assert not endpoint_admitted(binding, walked, th.THIRBorrowedRecord(inner, False))
+    assert endpoint_admitted(binding, walked, th.THIRBorrowedRecord(inner, False))
 
 
 def test_dump_spells_tuple_and_payload_steps() -> None:

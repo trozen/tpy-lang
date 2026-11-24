@@ -1,0 +1,17 @@
+core write 6
+core scalar 5 0 7
+core pick 19 9
+positions ctor 2
+positions method 3
+positions put 9
+positions loop 7
+positions while 3
+positions match 40 0
+positions element 50
+positions gen 3
+writes holding 1
+writes seen 3
+holders readonly 3
+holders local 4
+refused 2
+local_holder compiled

@@ -4,9 +4,10 @@ payload-selection fact asks, on referents (the storage a place resolves to
 at a point); the one classifier of the storage events a statement makes;
 and the two distinct-origin oracles the passes answer that question with."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from typing import NamedTuple, TypeVar
 
 from ..thir.scalar_leaves import UNEXPANDED, MIRClass, stored_types, value_class, walk_stored
 from ..typesys import TpyType
@@ -15,13 +16,15 @@ from .nodes import (
     MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode, MIRWrap, builds_base, place_shape,
 )
 from .shapes import (
-    REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRUnionPayload, MIRWalk, Projection,
+    REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload, MIRWalk,
+    Projection,
     lent_members, object_path, object_selector, replacement_reach, walk, walk_to,
 )
 from .value import (
-    AGGREGATE_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRShape, RecordFields, lent_record,
-    declared_record_fields,
+    AGGREGATE_CLASSES, SUM_CLASSES, MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape,
+    MIREffect, MIRStoredOutcome, MIRValidationError, RecordFields, lent_record, declared_record_fields, payload_fate,
 )
+from .validate import reaches_element
 
 
 @dataclass(frozen=True)
@@ -412,36 +415,176 @@ def storage_events(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...],
     return tuple(events)
 
 
+def stored_selection(value: object, suffix: tuple[Projection, ...],
+                     selected: Callable[[MIRPlace], frozenset[int] | None]) -> MIRStoredOutcome | None:
+    """What a direct write stores in the sum `suffix` names below the place
+    it writes -- `value` the assignment's value or a `MIRStorageInit` --
+    None when unknown: a construction selects its alternative (`wrap[k]`
+    -> {k}, a sum beneath it what its payload source selects there; a sum
+    under a payload it does not select is vacated); a copy what the source
+    selects at the same suffix (`selected`, the incoming facts); any other
+    value is unknown."""
+    match value:
+        case MIRStorageInit(alternative=alternative) if not suffix:
+            return MIRStoredOutcome(frozenset({alternative}))
+        case MIRWrap(alternative=alternative, source=source):
+            if not suffix:
+                return MIRStoredOutcome(frozenset({alternative}))
+            head = suffix[0]
+            if not isinstance(head, MIRUnionPayload):
+                return None
+            if head.alternative != alternative:
+                return MIRStoredOutcome(vacates=True)
+            return None if source is None else _selection_outcome(
+                selected(MIRPlace(source.root, (*source.projections, *suffix[1:]))))
+        case MIRCopy(source=source):
+            return _selection_outcome(selected(MIRPlace(source.root, (*source.projections, *suffix))))
+    return None
+
+
+def _selection_outcome(selection: frozenset[int] | None) -> MIRStoredOutcome | None:
+    return None if selection is None else MIRStoredOutcome(selection)
+
+
+def written_selection(value: object, selected: Callable[[MIRPlace], frozenset[int] | None]) -> frozenset[int] | None:
+    """The selection a direct write gives the sum it writes whole
+    (`stored_selection` at the sum itself, which a write never vacates),
+    None when unknown: the incoming selection presence reads
+    (`sum_payload_ends` weighs the outcome itself, by `payload_fate`)."""
+    outcome = stored_selection(value, (), selected)
+    return None if outcome is None else outcome.alternatives
+
+
 def sum_payload_ends(event: MIRStorageEvent, value: object,
                      selected: Callable[[MIRPlace], frozenset[int] | None]) -> tuple[tuple[MIRPlace, bool], ...]:
-    """The old payloads a whole write of an inline sum ends (`event`, of
-    `storage_events`), each with whether it owns storage, by what its member
-    holds: only an alternative the old selection (`selected`, None for
-    unknown: any) may hold ends; a storage payload ends whatever is written
-    (a record has identity, so a refill of the same alternative replaces
-    it), a scalar payload only when a sum construction or copy may select
-    another alternative (a same-tag write ends nothing)."""
+    """The old payloads a whole write of an inline sum reaches (`event`, of
+    `storage_events`, writing `value`), each with whether it owns storage:
+    an alternative the old selection (`selected`, None for unknown: any)
+    may hold. A storage payload is reached whatever is written -- what the
+    write does to it is its `payload_fate`, which the witness reads -- a
+    scalar payload only where that fate is not an overwrite in place (a
+    same-tag write ends nothing), so a value that states no selection (a
+    call's result, a move) ends it."""
     old = selected(event.place)
-    match value:
-        case MIRWrap(alternative=alternative):
-            new: frozenset[int] | None = frozenset({alternative})
-        case MIRCopy(source=source) if source != event.place:
-            new = selected(source)
-        case _:
-            new = frozenset()
+    # A copy of the sum onto itself selects the alternative it already holds;
+    # an element place is any element, so `xs[i] = xs[j]` is not one object.
+    keeps = isinstance(value, MIRCopy) and value.source == event.place and not reaches_element(event.place)
+    stored = stored_selection(value, (), selected)
     ends: list[tuple[MIRPlace, bool]] = []
     for alternative, owns in event.payloads:
         if old is not None and alternative not in old:
             continue
-        if not owns and new is not None and not new - {alternative}:
+        if not owns and (keeps or payload_fate(stored, alternative) is MIREffect.OVERWRITES):
             continue
         ends.append((MIRPlace(event.place.root, (*event.place.projections, MIRUnionPayload(alternative))), owns))
     return tuple(ends)
 
 
-# One replacement: the place whose storage the statement replaces, and the
-# holder a whole-record write rebinds to it (None for any other).
-Replacement = tuple[MIRPlace, MIRSlotId | None]
+def sum_places(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords,
+               referent: bool = False) -> tuple[MIRPlace, ...]:
+    """Every sum held by value at or under `place`, one per path: the place
+    itself, and below a record stored inline each of its fields, below an
+    owned tuple each member, below a sum each payload that is storage of
+    its own -- each stepped by `place_shape`. Inline storage cannot contain
+    itself, so the walk ends; a record whose layout is not here lists
+    nothing under it, so a reader takes a sum it does not list as
+    unknown. Per path, never per type: `w.a.o` and `w.b.o` are two sums.
+    `referent`: `place` is a referent's (`MIRReferent.place`, no
+    dereference steps), stepped as `referent_walk` steps one."""
+    found: list[MIRPlace] = []
+
+    def under(at: MIRPlace, step: Projection) -> MIRPlace:
+        return MIRPlace(at.root, (*at.projections, step))
+
+    def visit(at: MIRPlace) -> None:
+        try:
+            shape = referent_walk(at, slots, records).end if referent else place_shape(at, slots, records)
+        except MIRValidationError:
+            return
+        if shape is None or shape.holding is not MIRHolding.VALUE:
+            return
+        if shape.cls in SUM_CLASSES:
+            found.append(at)
+            for alternative, member in enumerate(shape.members):
+                if member is not None and member.is_storage:
+                    visit(under(at, MIRUnionPayload(alternative)))
+        elif shape.cls is MIRClass.TUPLE:
+            for index in range(len(shape.members)):
+                visit(under(at, MIRTupleIndex(index)))
+        elif shape.cls is MIRClass.RECORD:
+            layout = records.get(shape.type)
+            for member in layout.fields if layout is not None and not layout.opaque else ():
+                visit(under(at, member))
+    visit(place)
+    return tuple(found)
+
+
+_K = TypeVar("_K")
+
+# What a statement may store in each sum it writes (None: unknown).
+MIRStored = dict[MIRPlace, MIRStoredOutcome | None]
+
+
+def union_outcomes(a: MIRStoredOutcome | None, b: MIRStoredOutcome | None) -> MIRStoredOutcome | None:
+    return None if a is None or b is None else a | b
+
+
+def union_stored(found: dict[_K, MIRStoredOutcome | None], key: _K, outcome: MIRStoredOutcome | None) -> None:
+    found[key] = union_outcomes(found[key], outcome) if key in found else outcome
+
+
+def union_covered(found: MIRStored, written: MIRPlace, stated: Mapping[MIRPlace, MIRStoredOutcome | None],
+                  slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords, referent: bool = False) -> None:
+    """Union into `found` what a write of `written` stores in each sum at
+    or under it (`sum_places`, `referent` as there), by what it states
+    (`stated`): a sum the write covers but states nothing for is unknown,
+    never left out -- a known outcome another write states for it must not
+    stand alone."""
+    for place in sum_places(written, slots, records, referent):
+        union_stored(found, place, stated.get(place))
+
+
+def statement_stored(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...],
+                     call_stored: Iterable[tuple[MIRPlace, MIRStoredOutcome | None]],
+                     slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords,
+                     selected: Callable[[MIRPlace], frozenset[int] | None]) -> MIRStored:
+    """What a statement may store in each sum at or under a place it
+    writes (`sum_places`), None when unknown: an assignment's by the one
+    direct-write rule (`stored_selection`, over the incoming facts
+    `selected`), a call's by what its callee publishes for the sum
+    (`call_stored`, the caller's places, `MIRPresentCall.stored`) -- a sum
+    under a call write it publishes nothing for is unknown -- and a move
+    vacates what it empties. Several writes of one sum union. It states a
+    fact about each sum's payload beside the replacement, which stays the
+    whole written place."""
+    found: MIRStored = {}
+    if isinstance(stmt, MIRAssign) and not builds_base(stmt):
+        target = stmt.target
+        for place in sum_places(target, slots, records):
+            union_stored(found, place, stored_selection(stmt.value, place.projections[len(target.projections):], selected))
+    published: MIRStored = {}
+    for place, outcome in call_stored:
+        union_stored(published, place, outcome)
+    for written in call_writes:
+        union_covered(found, written, published, slots, records)
+    if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRMove) and slots[stmt.value.source].shape.owns_storage:
+        for place in sum_places(MIRPlace(stmt.value.source), slots, records):
+            union_stored(found, place, MIRStoredOutcome(vacates=True))
+    return found
+
+
+class Replacement(NamedTuple):
+    """One replacement: the place whose storage the statement replaces, the
+    holder a whole-record write rebinds to it (None for any other), and the
+    place the write's sums are stated below (`statement_stored`): the
+    replaced place, or for a whole write of a local sum -- which replaces
+    each payload it ends -- the sum written, so the payload's fate is read
+    as a field's is."""
+    place: MIRPlace
+    rebinds: MIRSlotId | None
+    anchor: MIRPlace
+
+
 _REPLACING = frozenset({MIRStorageEventKind.REPLACE, MIRStorageEventKind.CALL_WRITE, MIRStorageEventKind.MOVE})
 
 
@@ -474,9 +617,9 @@ def replacement_events(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...],
         if event.kind not in _REPLACING:
             continue
         if not event.payloads:
-            found.append((event.place, event.rebind_owner))
+            found.append(Replacement(event.place, event.rebind_owner, event.place))
             continue
         assert isinstance(stmt, MIRAssign)
-        found.extend((place, event.rebind_owner) for place, owns in sum_payload_ends(event, stmt.value, selected)
-                     if owns)
+        found.extend(Replacement(place, event.rebind_owner, event.place)
+                     for place, owns in sum_payload_ends(event, stmt.value, selected) if owns)
     return tuple(found)

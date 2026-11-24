@@ -328,26 +328,6 @@ def _backing(ref: MIRReferent) -> MIRReferent:
     return ref
 
 
-def whole_wrapper_field(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIRPlace:
-    """An external referent's place under an Optional record field's
-    payload, published as the whole field: a summary path selects no
-    inline field payload, and replacing the field reaches everything a
-    payload write does. A wrapper member's selector after the root is the
-    object the parameter lends, kept."""
-    if not any(isinstance(projection, MIRUnionPayload) for projection in place.projections):
-        return place
-    index = 0
-    previous: object = None
-    for hop in referent_walk(place, slots, records).hops:
-        if isinstance(hop.projection, MIRDeref):
-            continue
-        if isinstance(previous, MIRField) and optional_payload(hop.holder.cls, hop.projection):
-            return MIRPlace(place.root, place.projections[:index])
-        previous = hop.projection
-        index += 1
-    return place
-
-
 def resolve_referents(place: MIRPlace, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
                       records: Mapping[TpyType, MIRRecordLayout]) -> frozenset[MIRReferent]:
     """Resolve a validated place against the referents at its program point."""

@@ -4501,9 +4501,78 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   callee's published write, and through `self`. Replacement is never
   routed through payload_lifetime, which compares exact places and drops
   external referents. A whole-field write that copies a payload marks the
-  copy `MIRCopy.may_raise`. A callee's write under the payload is
-  published as a write of the whole field (summaries carry no payload
-  selectors).
+  copy `MIRCopy.may_raise`. A callee's write or return under the payload
+  is published at its real path (`param0.o.alternative[1].v`), as a
+  wrapper parameter's is; an alias obligation keeps the summary write it
+  came from.
+- **Payload fates** (step B2). A write's replacement stays the whole
+  written place (presence's field kill, retention and obligations read it
+  unchanged); beside it the write states, per sum at or under that place
+  (listed per path by `reach.sum_places`, which recurses `place_shape`
+  over inline members), what it may store there
+  (`reach.statement_stored`), a `value.MIRStoredOutcome`: the alternatives
+  whose payload it may store, and whether it may leave the sum no payload
+  at all (`vacates`: a move out, or a sum under an outer payload the write
+  does not select) -- a flag beside the alternatives, never an index among
+  them, so a union with a refill keeps it (vacated or {k} unioned with {k}
+  is either, never a survival); None is unknown. A direct write follows
+  the one incoming-selection rule presence and `sum_payload_ends` share
+  (`reach.stored_selection` / `written_selection`: `wrap[k]` -> {k}; a
+  copy -> the source's selection at the same suffix, a containing record's
+  write included, read before the write's own kill; anything else
+  unknown), a call its callee's side map (`MIRCallSummary.stored`, one
+  entry per written sum path, outside write identity; filtered by
+  `present_effects` and resolved on `MIRPresentCall.stored`; a sum under a
+  call write with no entry is unknown), a move vacates. Presence never
+  learns from a call: its stored alternatives are may-writes.
+  The ANCHOR -- the place a replacement's sums are stated below -- is
+  decided with the replacement (`reach.Replacement.anchor`, carried on
+  `MIRReplacement`, which a replacement hazard holds whole,
+  `MIRHazard.replacement`, and from which alone it takes its target and
+  written storage): the replaced place, or for a whole
+  write of a local sum, which replaces each payload it ends, the sum
+  written; the witness, the warning text ("this assignment") and the
+  summary all read it, none guesses it from a place's shape. The storage
+  standing at the anchor for each replaced storage is decided there too
+  (`prepare.anchor_storage`, computed from the replacement's place,
+  anchor and storage by `MIRReplacement.anchored`): the storage less the steps the replaced place
+  lies below the anchor, or none when it does not end in them -- then the
+  sums below it are unknown, in the witness and the summary alike. The
+  outcomes are keyed PER REFERENT (`prepare._stored_by_referent`): each sum place's
+  outcome goes to each storage it may resolve to, writes of one storage
+  through aliasing places union there, and a place that may be either of
+  two sums never spreads one's outcome to the other; a sum place with
+  unresolved or no referents leaves the statement stating nothing, so
+  every sum it writes is unknown. The witness (`replacement_effect`)
+  decides geometry first for a holder below the payload (an element
+  region step, a viewed owned leaf: frees); below the anchor's storage,
+  at a crossed payload the one fate rule decides (`value.payload_fate`,
+  which answers in `MIREffect`): a stored-again alternative overwrites in
+  place, one not stored frees, either is UNKNOWN ("may free ... or
+  overwrite it in place"); the warning names the sum (`'w.h.o'`). One
+  severity order (`MIREffect.rank`: an overwrite, then UNKNOWN, then a
+  free or move; a hazard with no effect ranks with a free) picks the
+  effect within a hazard and the hazard a collapsed warning keeps. A copy
+  of a place onto itself replaces what any write of that place does:
+  equal places need not be one object (`xs[i] = xs[j]`, both an element
+  of `xs`), and an explicit `copy(...)` is materialized before it is
+  assigned, so the old value is freed
+  (`BUGS.md#opt-field-self-copy-false-warnings`). A callee's write is
+  taken as made: one emptying the field on one path only is reported as
+  freeing it (must-write summaries are a TODO).
+  PUBLICATION (`summaries.summarize_function`): from the prepared
+  replacements, never recomputed -- each replaced parameter storage
+  covers the sums under the storage standing at its anchor, by the one
+  rule a caller applies to a call write (`reach.union_covered`): each sum
+  under a write takes what the write states for it, and a covered sum it
+  states nothing for is unknown rather than left out; the entries union
+  over the body's replacements. `summary_problem` validates each (`stored_problem`:
+  "invalid stored alternatives" -- a parameter, and a path of the grammar
+  at or under one of the summary's writes, an outcome of known
+  alternatives in the sum's range that stores some alternative or vacates;
+  "stored alternatives of no sum" -- the path must end at an inline sum --
+  and "duplicate stored alternatives" for a second entry of one
+  (parameter, path)).
 - **Presence kill rule** (`presence._kill_field_facts`). A presence fact on
   a field place dies, in the current state and on the outcomes stored on
   boolean temporaries (`if a.p is not None and empties(b)`), where the
@@ -4558,14 +4627,17 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   path (`fresh_alias`, `fresh_call`, `fresh_condition`) refuse. Safe
   siblings stay covered (`alias_read_first`, `alias_other_field`,
   `keep_other_field`, `refill`).
+- **Payload places** (step B2). A narrowed payload bound to a local
+  (`q = h.p`) is a holder of the place `h.p[payload]`, and a store under it
+  (`h.p.x = 5`) a field write of that place; the validator still forbids
+  replacing the payload itself in place (`optional_member`, cleared by a
+  following field step as `tuple_member` is).
 - **Kept refusals**, by reason.
-  - A narrowed payload bound to a local (`q = h.p`): "borrow of an
-    Optional field's payload" -- the local alias rule borrows a field in
-    place, never an Optional field's payload, which a replacement of the
-    field ends.
+  - A narrowed non-aggregate payload bound alone, or a write of the
+    narrowed field itself (`h.s += "a"`): "borrow of an Optional field's
+    payload" / "optional field payload write".
   - A constructor argument built in place (`H(P(1), 2)`): "named argument
     needs complete temporary plan" (THIR's temporary planner).
-  - A store under the payload (`h.p.x = 5`): "optional field payload write".
   - A payload copy into a field from a narrowed payload (`a.p = b.p` inside
     `if b.p is not None`): "optional field copy from a narrowed payload".
   - A whole-field store of a call's owned Optional result (`h.p =
@@ -4831,11 +4903,16 @@ sum's selected storage alternative, nothing for an owned sum built
 empty), a replacement, a scalar wrapper's payload write, a call write, a
 move). A whole write of an inline sum carries ONE per-alternative list of
 its payloads, each marked by whether it owns storage, and one rule weighs
-it against the old selection (`reach.sum_payload_ends`): a payload ends
-only where the old selection may hold it; a storage payload ends whatever
-is written (a record has identity, so a refill of the same alternative
-replaces it, and a first fill of an empty sum replaces nothing); a scalar
-payload only where the write may select another alternative. Replacement
+it against the old selection (`reach.sum_payload_ends`): a payload is
+reached only where the old selection may hold it; a storage payload is
+replaced whatever is written (a record has identity, and a first fill of
+an empty sum replaces nothing) -- whether it is freed or overwritten in
+place is its fate (`value.payload_fate`, over what the write stores); a
+scalar payload ends only where that fate is not an overwrite in place, or
+the write is a copy of the sum onto itself at a place naming one object
+(it selects what the sum holds; an element place is any element, so
+`xs[i] = xs[j]` is not one). A value that states no selection (a call's
+result, a move) has an unknown fate, so it ends the scalar payload. Replacement
 reads its storage entries, payload_lifetime its scalar ones; a point no
 feasible path reaches ends none. A field's Optional payload stays an
 unconditional replacement (two holders may alias the record around it).
@@ -5001,7 +5078,7 @@ answered once:
 |---|---|
 | a summary path (write, return, transfer end, obligation) | any walk from the value the parameter binds (`call_contract.resolve_path`); a trailing region is terminal, its container checked by type (`shapes.walk`'s `region_end`) |
 | may a published write end there | `endpoint_admitted`: the parameter lends, `store_problem` holds (a view never changes its container's shape), and the end is a replacement (`replacement_reach`) or a scalar leaf |
-| may a published return end there | `return_endpoint_problem`, read by the summary and by each caller (`dependencies.call_return_problem`): no region, never at or under an Optional record field's payload, a view of a leaf or a place of exactly the result's type |
+| may a published return end there | `return_endpoint_problem`, read by the summary and by each caller (`dependencies.call_return_problem`): no structure region, a view of a leaf or a place of exactly the result's type (an Optional field's payload is a place like any other) |
 | does a write at this end replace storage | `shapes.replacement_reach` (storage, retention, line facts, the write endpoint) |
 | what a call writes | `MIRPresentCall` per call point (`presence.present_call`): effects less what an argument proven absent reaches, and their places resolved once |
 | what a parameter lends | `reach.origin`: the place (a Span's elements region; a wrapper parameter's pointer member at its selector, one object each) and the shape its paths step from |
@@ -5166,8 +5243,8 @@ member that owns storage -- storage, or a wrapper storing some inline --
 is the holder's referent projected, else the holder leaf at the full
 path); admission (`members_problem`,
 `_plain_record_fields`, `optional_record_field`'s payload). Kept as they
-are: `written_record`'s step list, `whole_wrapper_field`,
-`_under_optional_field_payload`, `thir_member` (slots), the
+are: `written_record`'s step list (`whole_wrapper_field` and
+`_under_optional_field_payload` were deleted by step B2), `thir_member` (slots), the
 narrowed-Optional readers, `summaries._object_root`,
 `reach._referent_shape` / `fields_past_origin` and
 `storage_evidence.py`'s skip of a referent past a non-field step (TODO.md, the first [MIR] entry's

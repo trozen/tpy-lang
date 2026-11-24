@@ -315,6 +315,66 @@ SUM_CLASSES = frozenset({MIRClass.OPTIONAL, MIRClass.UNION})
 
 
 @dataclass(frozen=True)
+class MIRStoredOutcome:
+    """What a write may leave in one inline sum, a known outcome (None
+    stands for unknown): the alternatives whose payload it may store, and
+    whether it may leave the sum no payload at all (`vacates`: a move out,
+    or the sum lies under an outer payload the write does not select).
+    Vacating is a flag beside the alternatives, never an index among them,
+    so a union with a refill keeps it and no reader steps into it."""
+    alternatives: frozenset[int] = frozenset()
+    vacates: bool = False
+
+    def __or__(self, other: 'MIRStoredOutcome') -> 'MIRStoredOutcome':
+        return MIRStoredOutcome(self.alternatives | other.alternatives, self.vacates or other.vacates)
+
+
+class MIREffect(Enum):
+    """What a write does to what a holder keeps: frees it (an element's or
+    a whole value's storage, a sum's payload the write does not store
+    again), moves it (a container's shape write), or overwrites it where it
+    lies (a record field, a sum's payload the write stores again, a whole
+    container field object), so the holder sees the new value. UNKNOWN: a
+    sum's payload the write may or may not store again, so it frees it or
+    overwrites it in place."""
+    FREES = auto()
+    MOVES = auto()
+    OVERWRITES = auto()
+    UNKNOWN = auto()
+
+    @property
+    def rank(self) -> int:
+        """Severity: where several effects meet, the gravest is the one said."""
+        return effect_rank(self)
+
+
+# A hazard that replaces nothing has no effect (None): nothing it ends is
+# overwritten in place, so it ranks with a free and no overwrite displaces it.
+_EFFECT_RANK: dict[MIREffect | None, int] = {
+    MIREffect.OVERWRITES: 0, MIREffect.UNKNOWN: 1, MIREffect.FREES: 2, MIREffect.MOVES: 2, None: 2,
+}
+
+
+def effect_rank(effect: MIREffect | None) -> int:
+    """The severity of an effect (`MIREffect.rank`), or of none."""
+    return _EFFECT_RANK[effect]
+
+
+def payload_fate(stored: MIRStoredOutcome | None, alternative: int) -> MIREffect:
+    """What a write does to the payload of `alternative` of a sum it
+    reaches, by what it may store there (`reach.statement_stored`, None for
+    unknown): every stored alternative is that one, so the payload is
+    overwritten where it lies; none is, so it is freed; or either."""
+    if stored is None:
+        return MIREffect.UNKNOWN
+    if alternative not in stored.alternatives:
+        return MIREffect.FREES
+    if stored.alternatives == {alternative} and not stored.vacates:
+        return MIREffect.OVERWRITES
+    return MIREffect.UNKNOWN
+
+
+@dataclass(frozen=True)
 class MIRFieldId:
     owner: NominalType
     name: str

@@ -56,12 +56,6 @@ def optional_parameter(binding: MIRParameterBinding) -> MIRShape | None:
     return binding.value if binding.cls is MIRClass.OPTIONAL else None
 
 
-def optional_record_parameter(binding: MIRParameterBinding) -> NominalType | None:
-    """The payload record of an Optional record parameter, else None."""
-    value = optional_parameter(binding)
-    return value.payload.type if value is not None and value.record_payload else None
-
-
 def view_parameter(binding: MIRParameterBinding) -> bool:
     """A parameter holding a view of an owned leaf (`StrView`), passed by
     value: the caller's loan, which the callee holds."""

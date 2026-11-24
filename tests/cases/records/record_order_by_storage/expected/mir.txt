@@ -4,7 +4,7 @@ main::ded_number@365:0: covered (storage: no_proof_required), summary: known
 main::async_section@427:0: uncovered (async body)
 main::inl_number@529:0: covered (storage: no_proof_required), summary: known
 main::hb_number@566:0: covered (storage: no_proof_required), summary: known
-main::main@570:0: uncovered (optional field payload write), summary: opaque (optional field payload write)
+main::main@570:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::DcHolder.__eq__: uncovered (uncertified binary operation)
 main::DcHolder.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::DcB.__eq__: covered (storage: no_proof_required)

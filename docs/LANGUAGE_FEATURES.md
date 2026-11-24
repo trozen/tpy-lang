@@ -11533,6 +11533,13 @@ p = ln.a                   # a record field: replacing it rewrites the record wh
 ln.a = Point(9, "new")     # warning: this assignment overwrites 'ln.a' in place, but 'p' still refers to it
                            #   and sees the new value on line 3; copy what 'p' refers to first, or use 'p' before ...
 
+if h.o is not None:        # an Optional field's payload: freed when the write stores no payload,
+    r = h.o                #   overwritten in place when it stores one again
+    clear(h)               # warning: this call frees the old value of 'h.o', but 'r' still refers to it and
+                           #   is used on line 4; copy what 'r' refers to first, or use 'r' before this call
+    print(r.v)             # (a write that may store either -- `h.o = src.o`, `w.h = H(0)` -- warns "may free
+                           #   the old value of 'h.o' or overwrite it in place")
+
 p = xs[i]                  # an element against an element: indices carry no identity, so a "may" warning
 xs[j] = P(9)               # warning: this assignment may overwrite what 'p' refers to in place, and 'p' would
                            #   see the new value on line 3; copy what 'p' refers to first, or use 'p' before ...

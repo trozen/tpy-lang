@@ -12,8 +12,8 @@ from ..thir.scalar_leaves import value_class
 from ..typesys import TpyType, unwrap_readonly
 from .call_contract import MIRAliasObligation
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBorrow, MIRFunction, MIRIteratorAdvance, MIRIteratorInit, MIRPlace, MIRSlot, MIRSlotId,
-    MIRSlotKind,
+    MIRAlias, MIRAssign, MIRBorrow, MIRCopy, MIRFunction, MIRIteratorAdvance, MIRIteratorInit, MIRPlace, MIRSlot,
+    MIRSlotId, MIRSlotKind,
     source_order,
 )
 from .shapes import (
@@ -82,7 +82,8 @@ class MIRStorageNames:
     source name; storage with no name of its own (a constructed temporary)
     takes the name of the first named slot, in source order, that borrows it
     whole -- the binding that introduced it -- or the payload of an owned sum
-    (the record a fill moved in).
+    (the record a fill moved in), or holds a whole owned sum by a copy of its
+    pointer form (an Optional local filled through its hoisted backing).
 
     The annotation maps (`holders`, `storage`) spell a name whose slots sit
     under two selectors `param(s)` / `local(s)`, and a binding name that
@@ -113,10 +114,17 @@ class MIRStorageNames:
                 if not stmt.target.projections and not isinstance(stmt.value, MIRIteratorAdvance):
                     defined[stmt.target.root] = defined.get(stmt.target.root, 0) + 1
                     self.definitions[stmt.target.root] = stmt.value
-                if (isinstance(stmt.value, MIRBorrow) and not stmt.target.projections
-                        and stmt.target.root in self.named and (source := stmt.value.source).root not in self.named
-                        and (not source.projections
-                             or sole_payload(source.projections) and self.slots[source.root].shape.owned_sum)):
+                if not isinstance(stmt.value, (MIRBorrow, MIRCopy)) or stmt.target.projections:
+                    continue
+                source = stmt.value.source
+                owned_sum = self.slots[source.root].shape.owned_sum
+                if isinstance(stmt.value, MIRBorrow):
+                    whole = not source.projections or sole_payload(source.projections) and owned_sum
+                else:
+                    # A copy names the sum only into a holder of its pointer form, never into storage of its own.
+                    whole = (not source.projections and owned_sum
+                             and not self.slots[stmt.target.root].shape.owns_storage)
+                if whole and stmt.target.root in self.named and source.root not in self.named:
                     candidates.setdefault(source, []).append(
                         (source_order(stmt.loc), self.named[stmt.target.root], stmt.loc.line if stmt.loc else None,
                          stmt.target.root.index))

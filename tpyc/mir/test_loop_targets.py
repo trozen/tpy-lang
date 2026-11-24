@@ -14,9 +14,9 @@ from .collect import enumerate_body_sources, lower_and_analyze
 from .nodes import MIRAssign, MIRCopy, MIRIteratorInit, MIRIteratorRead, MIRPlace, MIRSlotKind
 from .prepare import validate_function
 from .value import (
-    MIRHolding, MIRRole, MIRValidationError, leaf_element, shape_problem, value_shape,
+    MIREffect, MIRHolding, MIRRole, MIRValidationError, leaf_element, shape_problem, value_shape,
 )
-from .witness import MIREffect, decide
+from .witness import decide
 
 SOURCE = '''\
 from tpy import BytesView, String, int32
