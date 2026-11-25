@@ -1,6 +1,6 @@
 ---
 name: tpy-review
-description: Run a parallel multi-agent review of TurboPython compiler changes. Dispatches specialist reviewers (codegen, architecture, tests, safety, runtime, docs, conventions) and the Codex and Gemini cross-check in parallel and aggregates findings into a unified report.
+description: Run a parallel multi-agent review of TurboPython compiler changes. Dispatches specialist reviewers (codegen, architecture, tests, safety, runtime, docs, conventions) and the Codex cross-check (plus Gemini in parallel on round 1 and the closing round, and after its findings on a round that triggers the convergence stop) and aggregates findings into a unified report.
 ---
 
 # /tpy-review
@@ -29,20 +29,24 @@ If `$ARGUMENTS` is non-empty, use it; otherwise use `master`. Resolve to a stabl
 
 If there are uncommitted changes, the review covers both committed and uncommitted state (`git diff <BASE>` without a second ref).
 
+**Two ranges.** `<BASE>` (step 1) stays the branch base for the whole review; each round also has its own range -- round 1 and the closing round review `git diff <BASE>` (working-tree edits included), a tail round reviews its tail (below). Classification (step 2), specialist dispatch and the cross-check prompt use the current round's range.
+
+**The closing round reviews the whole branch.** When a tail round has no "Handle now" items, the review ends with one closing round over `git diff <BASE>`, with every specialist the diff selects plus Codex and Gemini. A round 1 with no "Handle now" items is already the closing round. There is one closing round per review: its own fixes are judged by `/tpy-ready`'s unreviewed-tail rule, and a tail round that rule orders is dispatched as an ordinary tail round (convergence-stop rule included) but does not start another closing round.
+
 **Follow-up rounds review only the tail** since the HEAD the previous round reviewed (its report names it; if unknown, use the branch point) -- never since the previous round's fix commit, which a diff would exclude. The tail is the branch's own work: `git log --first-parent --no-merges <sha>..HEAD` plus each master merge's conflict resolution (`git show --remerge-diff <merge>`); master's commits brought in by a merge are not tail.
 
-**Convergence, not a fixed cap.** Rounds should converge: each finds fewer and smaller defects, and a round that finds nothing to fix ends the reviewing. Usually no more than three rounds are needed; a complex unit may need more, and that is a judgement call. When follow-up rounds keep finding NEW real defects instead of converging, stop before the next round: that points at the initial plan or analysis, not at the fixes. Re-examine the plan before doing anything else, and show the user that reasoning:
+**Convergence, not a fixed cap.** Rounds should converge: each finds fewer and smaller defects, and a tail round with no "Handle now" items ends the tail rounds (the closing round above follows). Usually no more than three rounds are needed; a complex unit may need more, and that is a judgement call. When follow-up rounds keep finding NEW real defects instead of converging, stop before the next round: that points at the initial plan or analysis, not at the fixes. Re-examine the plan before doing anything else, and show the user that reasoning:
 
 - **What the rounds found** -- the defects of each round, grouped into the recurring class(es).
 - **Why the plan produced them** -- which assumption, missed sibling, wrong invariant or wrong layer of the original analysis lets that class keep appearing.
 - **Was the plan right?** -- a verdict: the approach holds and only its coverage was incomplete, or the approach itself is wrong.
-- **What now** -- recommended next step (extend the plan and re-review, re-plan via `/tpy-fix-bug` / `/tpy-add-feature`, or back out), with the Python shapes and generated C++ that the corrected plan would change.
+- **What now** -- recommended next step (extend the plan and re-review, re-plan via `/tpy-fix-bug` / `/tpy-add-feature`, whose "Independent designs" step a re-plan runs, or back out), with the Python shapes and generated C++ that the corrected plan would change.
 
 Then wait for the user's decision.
 
 ### 2. Classify changed files
 
-Run `git diff <BASE> --name-only` and bucket each path:
+Run `--name-only` over the current round's range (round 1 and closing: `git diff <BASE>`; a tail round: its tail) and bucket each path:
 
 - **codegen-output**: `tests/cases/*/expected/{src,include}/main.{cpp,hpp}`
 - **codegen-logic**: `tpyc/thir/**/*.py` (lowering and `emit.py`, the body
@@ -69,28 +73,29 @@ Skip a specialist when its scope is empty:
 | `runtime-cpp-correctness` | `runtime-cpp` non-empty |
 | `convention-compliance` | always (cheap; checks the diff against CLAUDE.md's written rules across all changed files) |
 | `docs-sync` | always (cheap) |
-| cross-check: Codex and Gemini (CLAUDE.md "Orchestration") | always |
+| cross-check: Codex (CLAUDE.md "Orchestration") | always |
+| cross-check: Gemini | round 1 and the closing round, dispatched with the specialists; not the tail rounds between them. When a tail round's verified findings trigger the convergence stop, Gemini is run on that round's range with the same prompt before the stop is presented |
 
 **Re-derive the buckets from the CURRENT diff on every round.** A review's fix commit routinely moves code into a bucket that was empty at the previous classification (a runtime helper added to `runtime/cpp/`, a harness change to `tests/conftest.py`); the specialist for that bucket must run. Never drop a specialist because it came back clean last round.
 
 ### 4. Fan out specialists IN PARALLEL
 
-Send **one message with multiple Agent tool calls** -- one per dispatched specialist -- and, in the same message, Codex and Gemini, each in its own background shell. Do NOT serialize.
+Send **one message with multiple Agent tool calls** -- one per dispatched specialist -- and, in the same message, Codex -- and Gemini on round 1 and the closing round -- each in its own background shell (Gemini on a convergence-stop round runs later, per the table). Do NOT serialize.
 
 Each prompt should include:
-- The base SHA resolved in step 1
+- The current round's range (step 1 "Two ranges"), as the git command to run
 - The pre-classified file list relevant to that specialist (so the agent doesn't waste tokens re-discovering)
 - A reminder to output in the specialist's documented format
 
 Never pass the implementer's report, the branch summary or this conversation: reviewers judge the code at the sha, not claims about it. The approved design (its `design.md`) may go along.
 
-The cross-check's one prompt file, shared by Codex and Gemini (launch, directories and exit codes per CLAUDE.md "Orchestration") names the repo path, the base sha, `HEAD` and the approved design, asks for defects only (wrong C++, silent divergence from CPython, a missed sibling position, a parallel implementation of an existing decision, a missing test), each with `file:line`, in the same Critical / Warning / Suggestion sections. A reviewer still unavailable after that is named in the report header with its reason.
+The cross-check's one prompt file, shared by Codex and Gemini (launch, directories and exit codes per CLAUDE.md "Orchestration") names the repo path, the current round's range as the exact git command to run (`git diff <BASE>` for round 1 and closing, so the working tree is included; the tail range otherwise) and the approved design, asks for defects only (wrong C++, silent divergence from CPython, a missed sibling position, a parallel implementation of an existing decision, a missing test), each with `file:line`, in the same Critical / Warning / Suggestion sections. A reviewer still unavailable after that is named in the report header with its reason.
 
 Example prompt skeleton:
 
 ```
-You are reviewing changes from <SHA> to HEAD.
-Base ref: <SHA> (<original-name>)
+You are reviewing: <the current round's range, as the git command to run>.
+Branch base: <BASE> (<original-name>); this round: <round 1 | tail | closing>
 Files in your scope:
   <list of files from classification>
 
@@ -121,8 +126,8 @@ Severity carries the action. Make it explicit in the section headers so the user
 ```
 # /tpy-review report
 
-Base: <SHA> | <diff --stat one-liner>
-Dispatched: <list> | Clean: <list> | Cross-check: Codex ran / unavailable (<why>), Gemini ran / unavailable (<why>)
+Base: <BASE> | HEAD reviewed: <SHA> | round: <round 1 | tail | closing> | <diff --stat one-liner of the round's range>
+Dispatched: <list> | Clean: <list> | Cross-check: Codex ran / unavailable (<why>), Gemini ran / unavailable (<why>) / not this round (tail)
 
 ## Must fix (Critical, <N>)
 - short description [<specialist>] (file:line if specific)
@@ -143,7 +148,7 @@ After the report, add a short **Recommendation** section: a single flat bullet l
 Each bullet: one action + one short reason. No file:line refs here (they're in the report above), no per-specialist attribution, no severity tags. Order by what should happen first.
 
 Cover three buckets, but only as bullets -- do not use sub-headers:
-- **Handle now**: every Critical, plus any Warning cheap enough to fix before commit.
+- **Handle now**: every Critical, plus any Warning cheap enough to fix before commit -- each passing step 10's defect-or-scope test (the approved design promised it, or the branch broke it); one that fails it goes to File and defer, whatever its severity.
 - **File and defer**: Warnings worth tracking in `BUGS.md` / `TODO.md` but not blocking; Suggestions worth remembering.
 - **Skip**: Suggestions not worth tracking (say so explicitly so the user knows they were considered).
 
@@ -176,7 +181,7 @@ Trigger meta-review when ANY of these holds:
 
 State the trigger reason in one short line ("Meta-review: triggered (Critical present)" or "Meta-review: skipped (routine)"). Note: routine compiler work routinely touches `tpyc/sema/`, `tpyc/codegen_cpp/`, and dispatches several specialists, so don't gate on those alone -- gate on signal in the findings themselves.
 
-When triggered, dispatch ONE fresh-context `general-purpose` Agent with the *aggregated report (findings, with any `(low confidence)` tags) + drafted recommendation list + diffstat (`git diff <BASE> --stat`) + the file-bucket classification from step 2*. Do NOT pass the raw diff. The diffstat and file list let the agent spot-check severity claims and "hallucinated issue" suspicions without re-discovering scope.
+When triggered, dispatch ONE fresh-context `general-purpose` Agent with the *aggregated report (findings, with any `(low confidence)` tags) + drafted recommendation list + diffstat of the current round's range (`--stat`) + the file-bucket classification from step 2*. Do NOT pass the raw diff. The diffstat and file list let the agent spot-check severity claims and "hallucinated issue" suspicions without re-discovering scope.
 
 Prompt it to do two things:
 
@@ -210,11 +215,14 @@ Set aside only bullets that need the user -- those CLAUDE.md "Decide what the us
 - Apply each "Handle now" item in order. If an item turns out to need real design analysis or root-cause work (not a mechanical fix), STOP and surface to the user -- recommend invoking `/tpy-fix-bug` or `/tpy-add-feature` for that item rather than improvising.
 - The same stop applies when an item's fix would make a verdict depend on analysis or source order, or add an exception to a rule the user sees (the "Stop rule" in `/tpy-fix-bug` Phase 5): that fix is at the wrong layer. Present the missing fact and its home instead of applying the patch, even when the patch is small -- a review round's fixes are where symptom patches accumulate.
 - Each applied item is stated with its probe before it is handed to an implementer or applied: the shape the finding names, the generated C++ line or output the fix must produce (checked with `uv run tpy --dump-code` on the current tree, not predicted), and the nearest shape that must keep working. Both shapes become test sections in the round's commit (`docs/PITFALLS.md` `review-fix-probed`).
+- **A fix covers the finding's scope, not its line.** Before applying a fix, walk the finding's shape through the scope matrix (`/tpy-add-feature` Phase 3, `/tpy-fix-bug` Phase 5) -- the positions, the sibling forms (loop / comprehension / generator, a nested literal, a walrus), the generic and binding twins -- and decide each cell the same defect reaches by the defect-or-scope test below: fix the cells the design promised or the branch broke, each with a test section (an `error_` case keeps its one representative position), and file the rest. A finding fixed at the one line it names leaves its siblings for the next round.
+- **A fix that removes or replaces an existing mechanism is not a review fix.** Stop and surface it as a re-plan (`/tpy-fix-bug` / `/tpy-add-feature`): it changes the approved design, and its effects land far from the round that made it.
+- **Defect, or new scope?** A finding (or a scope cell) is fixed in the branch when the branch's approved design promised the shape it names, or the branch broke it -- a regression is always fixed. A shape the design did not cover and the branch did not break -- a new position, form or rule -- is new scope: file it as a followup unit (`TODO.md` / `BUGS.md`) instead of widening the branch. The branch keeps its approved size.
 - File each "File and defer" item into `BUGS.md` or `TODO.md` using the existing structure of each file (one-line summary, short context, `file:line` where relevant). Don't double-file.
 - Run targeted `uv run pytest -k <pattern>` for cases plausibly affected as you make changes. After all items are applied, run `uv run pytest` once to confirm nothing else regressed.
 - Snapshot churn on *existing* tests follows CLAUDE.md's snapshot policy: covered when the approved plan listed it; beyond it, neutral or improving churn is noted in the round's summary, a regression or behavior change stops for the user.
 
-Once all items in this round are applied and the suite is green, commit them as a SINGLE commit, following the branch-aware policy in CLAUDE.md (auto-commit on a temporary working branch; ask first on `master`/`main` or any branch tracking a remote). One commit for the whole review round -- never a separate tiny commit per finding/item. Do NOT push. (The single-commit rule is the point: this is an automated review pass, so batching its applied fixes into one commit is fine and expected -- what to avoid is the per-remark commit spam.) End with one line: what was applied, what was filed, and the HEAD this round reviewed -- the next round's base.
+Once all items in this round are applied and the suite is green, commit them as a SINGLE commit, following the branch-aware policy in CLAUDE.md (auto-commit on a temporary working branch; ask first on `master`/`main` or any branch tracking a remote). One commit for the whole review round -- never a separate tiny commit per finding/item. Do NOT push. (The single-commit rule is the point: this is an automated review pass, so batching its applied fixes into one commit is fine and expected -- what to avoid is the per-remark commit spam.) End with one line: what was applied, what was filed, and the HEAD this round reviewed -- where the next tail round's range starts (`<BASE>` itself does not move).
 
 ## Important
 

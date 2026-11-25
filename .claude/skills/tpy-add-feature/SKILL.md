@@ -56,7 +56,9 @@ Before anything else, classify the work and state the classification:
   `tpyc/thir/` that introduces a new kind of fact is usually
   here.
   -> Full procedure (Phases 1-6); the sibling survey and the probes go
-  to agents (CLAUDE.md "Orchestration").
+  to agents (CLAUDE.md "Orchestration"). After Phase 2 the orchestrator
+  writes the brief and the four designers do Phases 3-5 (Phase 6
+  "Independent designs"); the orchestrator does not sketch first.
 
 If unsure, default to architectural. The user may up- or downgrade the
 classification before you proceed.
@@ -112,6 +114,8 @@ pattern." A fresh-context survey catches patterns the main thread
 misses due to momentum.
 
 ## Phase 3: Sketch the design
+
+**Architectural scope and re-plans:** the four designers of Phase 6 "Independent designs" do Phases 3-5 from the brief, following these instructions; the orchestrator goes from Phase 2 straight to the brief.
 
 **Precedent check first -- ALL classifications, including localized.**
 The localized classification *claims* the feature "follows an existing
@@ -293,7 +297,9 @@ Stop and consider before presenting:
 Run this for any feature whose surface is valid Python (i.e. CPython
 also executes the Phase 1 example) -- which is most of them. The
 `cpython-parity` critic of the Phase 6 "Design critics" step answers
-it: given the Phase 1 minimal example and the designed semantics, it
+it (at architectural scope each independent designer states the verdict
+in its design with this checklist and its probes, and the critic
+verifies it): given the Phase 1 minimal example and the designed semantics, it
 states CPython's observable behavior on the same source and a verdict
 per divergence class:
 
@@ -345,6 +351,17 @@ Flag this as a design-level question rather than force-fitting.
 
 ## Phase 6: Present and wait
 
+### Independent designs (architectural and re-plans)
+
+An architectural design is not drafted by the orchestrator and then critiqued: four designers write it independently, and the orchestrator merges. Every critic anchored on one draft rarely finds the better direction nobody drafted.
+
+1. **Brief.** The orchestrator writes `/tmp/agents/<unit>/designers-<n>/brief.md` (`<n>` = 1 for the first design, 2, 3, ... for each re-plan, so every pass gets fresh directories) from the Phases 1-2 reports: the problem with its minimal example, the probes and what each shows, the sibling survey, the constraints (the THIR freeze, the user's earlier decisions on the unit quoted with their date, the principles that bear on it). No proposed solution.
+2. **Four designers, in parallel and independent.** One prompt file, `/tmp/agents/<unit>/designers-<n>/prompt.md`, points at the repo path, the base sha and `brief.md` and asks for a full design following the invoking skill's design phases (this skill: Phases 3-5; `/tpy-fix-bug`: Phases 5-6), in this template: invariant; the fact and its home; mechanism, naming the existing helpers it reuses; scope matrix (Phase 3); C++ before/after for the key shapes (probed on the base sha where it exists today); tests (Phase 4); risks and the CPython-parity verdict (Phase 5); a patch alternative if one is worth naming; confidence and what caps it. Launch in ONE turn: Codex and Gemini (`scripts/crosscheck_run.py <engine> start /tmp/agents/<unit>/designers-<n>/<engine> /tmp/agents/<unit>/designers-<n>/prompt.md`, CLAUDE.md "Orchestration"), the `fable-crosscheck` agent, and one `general-purpose` agent on the Opus model as the Opus designer -- each with its own work directory under `designers-<n>/` for probes. Nobody sees another's design or this conversation. The orchestrator saves each reply to `designers-<n>/<name>/design.md`. Availability follows CLAUDE.md's exit-code rules for Codex and Gemini (only exit 1 is rerun); an agent designer that errors is rerun once. A designer still unavailable is named in the merge with its reason. The prompt states for every designer: read `docs/PRINCIPLES.md` first; the repo is read-only; probes run from your own directory under `designers-<n>/`; no `pytest` or `update_snapshots.py`.
+3. **Merge.** The orchestrator saves the comparison to `designers-<n>/merge.md` -- one table -- direction, invariant, the fact's home, scope, C++ shape, risks -- marking agreement. Where they agree on direction, it merges them into one `design.md`, taking the strongest part of each and naming its source (`[codex]`, `[gemini]`, `[fable]`, `[opus]`). When the designers disagree on direction (another home, invariant or approach), that is a decision for the user -- even one designer's direction, unless a probe or the code refutes it (say which, in the merge table): each option's Python shapes, its C++ and which designers back it, recommendation first. The orchestrator does not write a design of its own.
+4. **Review.** A disagreement on direction is settled with the user first (it is a decision, cross-checked like any other before it reaches the user); then the merged design, in the chosen direction, goes through "Design critics" below, with its panel and rerun rules, including all three cross-check reviewers.
+
+A re-plan (the `/tpy-review` convergence stop, or a review fix that replaces a mechanism) runs this same flow; its brief adds what the review rounds found and why the plan let it through.
+
 ### Design critics (localized and architectural)
 
 Before the user sees the design, attack it. The user reviews three
@@ -353,8 +370,8 @@ and each gets a critic, plus the cross-check: Codex and Gemini as
 cross-family reads, and the Fable reviewer as a different-model read.
 `/tpy-fix-bug` runs this same step on its analysis.
 
-1. Write the draft exactly as it will be presented (the code-first
-   report below, plus the Phase 3 scope matrix and the test plan) to
+1. Write the draft exactly as it will be presented -- for architectural scope, the merged design from "Independent designs"; the code-first
+   report below, plus the Phase 3 scope matrix and the test plan -- to
    `/tmp/agents/<unit>/design.md`, next to the probes it cites.
 2. Pick the critics:
 
@@ -392,6 +409,8 @@ cross-family reads, and the Fable reviewer as a different-model read.
    itself, revise and run them once more on the new draft -- if they
    still disagree, present the disagreement as a decision.
 
+Save the merged findings to `/tmp/agents/<unit>/critics.md`, and update `design.md` in place with the critics' corrections -- the presented report and the full scope matrix and test plan it keeps for implementation and review -- so a later `/tpy-design-walk` reads what the user saw.
+
 The presented design carries one "Critics" bullet: who ran, what
 changed because of them, and any finding rejected with its reason.
 
@@ -426,6 +445,7 @@ readable in under a minute. Cover (each in one line or two):
 - Confidence (see the scale below)
 - CPython parity (one line: match / acknowledged divergence with its
   warning + escape hatch / TPy-only surface)
+- Designers (architectural and re-plans; one line: who designed, where they agreed, each disagreement and how it was settled, any designer unavailable)
 - Critics (one line: who ran, what changed, what was rejected and why)
 - Risks (architectural only; brief)
 - Adjacent issues uncovered (brief)
@@ -490,6 +510,8 @@ Add alternatives ONLY when they are genuinely present:
 
 For many features there is only one sensible design. In that case,
 propose it and ask for a yes -- not "pick (a), (b), or (c)."
+
+End a localized or architectural design with one line offering the walk: "`/tpy-design-walk` goes through it point by point with probes; or say yes to approve." (drop "or say yes to approve" while a decision is open). Do not start the walk unasked.
 
 When the user signals "just build it" or applies time pressure, push
 back once: a wrong design is much harder to unwind than a wrong fix.

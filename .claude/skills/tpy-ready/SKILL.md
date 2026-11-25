@@ -67,7 +67,7 @@ Compare the branch's *intent* (the conversation / commit messages) against what 
 
 ### 5. Outstanding reviewer items?
 
-- If `/tpy-review` has not been run on this branch, recommend running it before merge -- this gate assumes it has.
+- If `/tpy-review` has not been run on this branch, or it has not reached its closing whole-branch round (a round 1 with no "Handle now" items counts as one), recommend finishing it before merge -- this gate assumes it has.
 - For findings already triaged: confirm every "handle now" item was actually fixed, and every "file and defer" item actually landed in `BUGS.md` / `TODO.md`.
 - Any unresolved manual review comments.
 - **Unreviewed tail -- judged, not forced.** Take the HEAD the last review round reviewed (its report names it) and list the branch's own work since then: `git log --first-parent --no-merges <sha>..HEAD` plus each master merge's resolution (`git show --remerge-diff <merge>`); master's commits are not tail. A round never covers its own output, so its fixes are always in the tail. Report the range in one line and decide by content:
@@ -84,6 +84,26 @@ Honest self-critique. For each non-trivial design choice in the diff, ask: knowi
 - **Accept** -- you'd genuinely do it the same way.
 
 **Hybrid depth (mirrors `/tpy-review`'s meta-review trigger):** do this yourself by default. For large or design-heavy changes -- more than ~10 files, OR touching `docs/*_DESIGN.md` / `docs/ARCHITECTURE.md` / core sema-codegen structure -- ALSO dispatch ONE fresh-context `general-purpose` Agent with the diffstat + your branch summary + your draft retrospective (NOT the raw diff). Prompt it to challenge: which "accept" calls look like rationalizations, which "back out" calls are over-cautious. Fold its dissent in with a one-line reason next to any item it flips. State the trigger in one line ("Retrospective second-opinion: triggered (15 files)" / "skipped (routine)").
+
+### 6b. Process retrospective -- how was the unit run?
+
+Step 6 judges the code; this judges how the unit got there, so the next unit runs better.
+
+**Facts first**, taken from the session, `/tmp/agents/<unit>/` and git -- never estimated:
+
+- wall time from design start to READY;
+- design versions, spikes, re-plans;
+- decisions put to the user;
+- review rounds -- how many were whole-branch (round 1, closing) and how many tail rounds -- and per round the real findings: everyday branch-introduced, rare branch-introduced, pre-existing, and the false positives;
+- full suite runs.
+
+**Lessons** -- at most 3, each tied to a fact above; no fact, no lesson. What cost the most time and what would have saved it (a premise not probed before the design, a decision found late, rounds that found only rare shapes, a spike that could have been skipped); what worked and should be repeated.
+
+Each lesson goes one way:
+
+- **memory** -- a habit for the next session, saved as a feedback memory;
+- **proposal** -- a skill or CLAUDE.md change, presented to the user; this gate never applies it;
+- **none**.
 
 ### 7. Verdict
 
@@ -106,6 +126,11 @@ A crisp readiness call -- no manufactured issues. The first word is the verdict,
 
 ## Retrospective
 - <thing you'd change> -> back out & redo now | followup | accept
+
+## Process
+<wall time, or "pending" when NOT READY> | <N> design versions, <N> spikes, <N> re-plans | <N> decisions | <N> review rounds (<N> whole-branch) | <N> full suites
+r<k> <whole-branch | tail>, <panel that actually ran, e.g. "7 specialists + codex; gemini unavailable">: <everyday> / <rare> / <pre-existing> / <false positives>   (one compact row per round; "unknown" where the record is missing)
+- <lesson, citing its fact> -> memory | proposal | none
 ```
 
 **Followup work** is the forward-looking picture this branch leaves behind, in order of importance (most important first). Short points, one line each. Draw from what you found in steps 2-6 and the branch's intent:
@@ -116,14 +141,14 @@ A crisp readiness call -- no manufactured issues. The first word is the verdict,
 
 Distinct from "File as followup" above (which is the bookkeeping list of items to *write into* `BUGS.md`/`TODO.md`): this section is the prioritized *narrative* of where the work goes next. Omit it only if there genuinely is no followup.
 
-- **READY:** end with "Ready -- `/tpy-walk` walks you through the changes one at a time; run `/prep-merge` when you want to squash." Do NOT auto-run either -- the walk is the user's choice, and `/prep-merge` is a separate explicit step with its own suspicious-file gate.
+- **READY:** end with "Ready -- `/tpy-review-walk` walks you through the changes one at a time; run `/prep-merge` when you want to squash." Do NOT auto-run either -- the walk is the user's choice, and `/prep-merge` is a separate explicit step with its own suspicious-file gate.
 - After the verdict, record the unit's state in this worktree's `SESSION.md` (`SESSION_RULES.md`): READY keeps it at `reviewed` until `/prep-merge` squashes it (then `ready`); NOT READY notes the blockers beside the state.
 - **NOT READY:** list blockers. Offer to fix the "fix now" ones and file the followups (on approval). Any commits follow the branch-aware policy in CLAUDE.md (auto-commit on a temporary working branch; ask on master/main).
-- If the branch is clean, the report is the verdict line plus the what-now-works bullets: `# /tpy-ready: READY -- nothing outstanding.`
+- If the branch is clean, the report is the verdict line plus the what-now-works bullets: `# /tpy-ready: READY -- nothing outstanding.` The `## Process` section is never omitted -- a clean branch still reports its facts line.
 
 ## Important
 
 - This is a readiness gate, not a deep review. Do NOT re-run `/tpy-review`'s specialist fan-out -- reference its results instead.
 - Do NOT run `pytest` or regenerate snapshots unless the user asks.
 - Do NOT commit, squash, or push as part of the check -- squashing is `/prep-merge` and the user's call.
-- Be honest. A clean branch gets a one-line READY. Don't invent work to look thorough.
+- Be honest. A clean branch gets a one-line READY plus its `## Process` facts. Don't invent work to look thorough.

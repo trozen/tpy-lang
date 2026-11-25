@@ -1,9 +1,9 @@
 ---
-name: tpy-walk
+name: tpy-review-walk
 description: Walk the user through a branch for review, one change at a time -- what changes for a compiler user (language rules, what is newly supported, what is refused, how the generated C++ changes), taken from the branch's new and changed tests and every snapshot it churns. Opens with a summary and the numbered list of items, then one item per message on "next", each a self-contained probe file with CPython's result and the C++ before (base) and after (branch). Invoke when the user asks to "walk me through the branch", "go over the changes one by one", or "list the changes with examples".
 ---
 
-# /tpy-walk
+# /tpy-review-walk
 
 An interactive branch review. The user reviews what changes for someone
 **using** the compiler: which programs compile, what they do, what is

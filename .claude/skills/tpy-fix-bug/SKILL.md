@@ -67,7 +67,10 @@ Before anything else, classify the bug and state the classification:
   tension with others. Anything in `sema/`, `thir/`, or `typesys.py`
   that crosses multiple concepts is usually here.
   -> Full procedure (Phases 1-7); the cross-feature survey and the
-  probes go to agents (CLAUDE.md "Orchestration").
+  probes go to agents (CLAUDE.md "Orchestration"). After Phase 4 the
+  orchestrator writes the brief and the four designers do Phases 5-6
+  (`/tpy-add-feature` "Independent designs"); the orchestrator does not
+  sketch first.
 
 If unsure, default to architectural. The user may up- or downgrade the
 classification before you proceed.
@@ -149,6 +152,8 @@ fresh-context survey often catches patterns the main thread misses
 because of momentum.
 
 ## Phase 5: Sketch the architectural fix
+
+**Architectural scope and re-plans:** the four designers of `/tpy-add-feature` "Independent designs" do Phases 5-6 from the brief, following these instructions; the orchestrator goes from Phase 4 straight to the brief.
 
 **Precedent check first -- ALL classifications, including localized.**
 Before writing any new mechanism, grep for existing code that already
@@ -235,7 +240,9 @@ is cheap. If many snapshots will regenerate, mention it factually
 
 When the fix changes what *accepted* code does (not merely what is
 accepted or rejected), the `cpython-parity` critic of the Phase 7
-"Design critics" step answers it: given the Phase 1 reproducer and the
+"Design critics" step answers it (at architectural scope each independent
+designer states the verdict in its design with this checklist and its
+probes, and the critic verifies it): given the Phase 1 reproducer and the
 proposed post-fix semantics, it states CPython's observable behavior for
 the same source and a verdict per divergence class:
 
@@ -322,6 +329,8 @@ parallel code path the proper fix has to remove) is not.
 
 ## Phase 7: Present and wait
 
+**Independent designs (architectural and re-plans).** Run the "Independent designs" step of `/tpy-add-feature` Phase 6: the orchestrator writes the brief (reproducer, root cause, survey), four designers sketch the fix independently, and the orchestrator merges.
+
 **Design critics first (localized and architectural).** Run the
 "Design critics" step of `/tpy-add-feature` Phase 6 on this analysis:
 the draft (reproducer, post-fix shapes, C++ before/after, root cause,
@@ -363,6 +372,7 @@ readable in under a minute. Cover (each in one line or two):
 - Confidence (see the scale below)
 - CPython parity (one line: match / acknowledged divergence with its
   warning + escape hatch / skipped-because-rejects-valid)
+- Designers (architectural and re-plans; one line: who designed, where they agreed, each disagreement and how it was settled, any designer unavailable)
 - Critics (one line: who ran, what changed, what was rejected and why)
 - Patch alternative (only if Phase 6 produced one)
 - Adjacent issues surfaced during analysis (brief)
@@ -428,6 +438,8 @@ Add alternatives ONLY when they are genuinely present in the analysis:
 
 For many bugs there is only one sensible path. In that case, propose it
 and ask for a yes -- not "pick (a), (b), or (c)."
+
+End a localized or architectural analysis with one line offering the walk: "`/tpy-design-walk` goes through it point by point with probes; or say yes to approve." (drop "or say yes to approve" while a decision is open). Do not start the walk unasked.
 
 When the user signals "just fix it" or applies time pressure, push back
 once: ask whether they want the patch (with architectural fix tracked)
