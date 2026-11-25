@@ -36,8 +36,8 @@ main::addr_if@415:0: covered (storage: no_proof_required), summary: opaque (summ
 main::own_opt_elem@426:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::ret_opt@439:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::field_opt@454:0: uncovered (move needs fixed movable owned local), summary: opaque (move needs fixed movable owned local)
-main::field_opt_kept@466:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
-main::storage_opt_elem@477:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::field_opt_kept@466:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+main::storage_opt_elem@477:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::closure_bt_with@507:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::gen_addr@517:0: uncovered (unsupported hoisted value)
 main::dyn_try@554:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -52,8 +52,8 @@ main::Plant.grow@543:4: covered (storage: no_proof_required), summary: known
 main::Plant.size@547:4: covered (storage: no_proof_required), summary: known
 main::Box.__init__@16:4: covered (storage: no_proof_required), summary: known
 main::Pin.__init__@24:4: covered (storage: no_proof_required), summary: known
-main::Holder.__init__@32:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-main::BoxPair.__init__@40:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.__init__@32:4: covered (storage: no_proof_required), summary: known
+main::BoxPair.__init__@40:4: covered (storage: no_proof_required), summary: known
 main::OptHolder.__init__@450:4: covered (storage: no_proof_required), summary: known
-main::Walker.__init__@494:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Walker.__init__@494:4: covered (storage: no_proof_required), summary: known
 main::Plant.__init__@540:4: covered (storage: no_proof_required), summary: known

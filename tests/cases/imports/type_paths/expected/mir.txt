@@ -61,7 +61,7 @@ main::Outer.Inner.__init__@30:8: covered (storage: no_proof_required), summary: 
 main::Outer.Holds.__init__@34:8: covered (storage: no_proof_required), summary: known
 main::KErr.__init__@55:4: uncovered (missing record layout)
 main::Holder.__init__@91:4: covered (storage: no_proof_required), summary: known
-main::Holds2.__init__@209:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holds2.__init__@209:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
 main::Holds3.__init__@238:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::Holds4.__init__@273:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::Wrap.__init__@314:4: uncovered (generic constructor)

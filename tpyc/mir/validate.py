@@ -30,7 +30,7 @@ from .nodes import (
 from .value import (
     AGGREGATE_CLASSES, CONTAINER_CLASSES, MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape,
     MIRValidationError, member_compatible, no_fields, require_valid as _require, shape_problem, storage_shape,
-    with_access, SUM_CLASSES, WRAPPER_CLASSES, member_binds, wrapper_compatible, caller_storage,
+    with_access, SUM_CLASSES, WRAPPER_CLASSES, inline_members, member_binds, wrapper_compatible, caller_storage,
 )
 from .coverage import primitive_operand, read_leaf, slot_representation, view_compatible
 from .region_flow import MIRRegionFlow, outgoing_edges
@@ -40,7 +40,7 @@ from .call_contract import (
 )
 from .definitions import MIRAggregateFacts, aggregate_facts, copy_may_raise, owned_aggregate_parameter
 from .shapes import (
-    REGION_END, walk, MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPayload, construct_members,
+    REGION_END, SELECTORS, walk, MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPayload, construct_members,
     object_prefix, sole_object, sole_payload, store_problem,
 )
 
@@ -60,6 +60,8 @@ _FIELD_LAYOUT_PROBLEMS = {
     MIRClass.OWNED_LEAF: "owned-leaf field needs its opaque layout",
     MIRClass.RECORD: "record field needs its layout",
     MIRClass.OPTIONAL: "optional record field needs its payload layout",
+    MIRClass.TUPLE: "tuple field needs its members' layouts",
+    MIRClass.UNION: "union field needs its members' layouts",
 }
 
 
@@ -717,7 +719,8 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
             _require(isinstance(slot.alias_source, MIRPlace), "unsupported payload alias")
         elif shape.cls is MIRClass.TUPLE:
             if slot.shape.owned_tuple:
-                _require(slot.kind is MIRSlotKind.LOCAL and slot.storage_duration is not None,
+                # A local, or a temporary of the full expression a construct moves it into.
+                _require(slot.kind in (MIRSlotKind.LOCAL, MIRSlotKind.TEMPORARY) and slot.storage_duration is not None,
                          "owned tuple needs local backing placement")
             _require(all(not m.is_storage or m.type in records for m in shape.elements),
                      "invalid owned tuple record")
@@ -778,11 +781,16 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
                     return bool(type_def_of(member.type).copy_may_raise)
                 return False if (source.shape.leaf_storage and source.type == member.type
                                  and source.kind is MIRSlotKind.TEMPORARY) else None
-            case MIRClass.OPTIONAL:
+            case MIRClass.OPTIONAL if source.shape.record_payload:
                 # The definition decided copy or move; an empty payload copies nothing.
                 payload = member.payload.type
-                return (record_copy_may_raise(payload) if source.shape.record_payload
-                        and source.shape.payload.type == payload and records.get(payload) is not None else None)
+                return (record_copy_may_raise(payload) if source.shape.payload.type == payload
+                        and records.get(payload) is not None else None)
+            case cls if cls in WRAPPER_CLASSES:
+                # A stored wrapper built into a temporary of its own storage shape, moved in.
+                return False if (source.kind is MIRSlotKind.TEMPORARY and source.shape.holding is MIRHolding.VALUE
+                                 and source.type == member.type and source.shape.members == member.members
+                                 and not source.readonly) else None
             case cls if cls in AGGREGATE_CLASSES:
                 found = aggregate_facts(member.type, records.get) if defined(member.type) else None
                 if found is None or source.type != member.type:
@@ -833,19 +841,26 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
         the access of the place it lies in; storage takes a copyable copy,
         whatever access the source has; a scalar the same value."""
         source = place_info(value.source)
-        # A union copies between equal layouts; a tuple only from a whole slot.
+        # A union copies between equal layouts; a tuple from a whole slot or from storage.
         _require(source.cls is target.cls and (target.cls is not MIRClass.UNION or source.type == target.type)
-                 and (target.cls is not MIRClass.TUPLE or not value.source.projections), "wrapper copy source mismatch")
-        _require(not (source.owned_tuple or target.owned_tuple), "owning tuple copy is unsupported")
+                 and (target.cls is not MIRClass.TUPLE or not value.source.projections or source.stores_type_members),
+                 "wrapper copy source mismatch")
+        _require(not (source.record_tuple or target.record_tuple), "owning tuple copy is unsupported")
         mismatch = "wrapper copy member type or access mismatch"
         _require(len(source.members) == len(target.members), mismatch)
         for src, dst in zip(source.members, target.members):
             if src is None or dst is None:
                 _require(src is dst, mismatch)
             elif dst.is_storage:
+                # Storage takes a copy whatever access its source has: a copyable record, or
+                # an owned leaf's buffer.
                 layout = records.get(dst.type)
-                _require(dst.cls is MIRClass.RECORD and src.type == dst.type and src.cls is MIRClass.RECORD
-                         and layout is not None and layout.copyable, "wrapper copy storage member mismatch")
+                _require(src.type == dst.type and src.cls is dst.cls and (
+                    dst.cls is MIRClass.RECORD and layout is not None and layout.copyable
+                    or dst.cls is MIRClass.OWNED_LEAF and src.is_storage), "wrapper copy storage member mismatch")
+            elif dst.scalar_by_value and src.is_scalar:
+                # A scalar's value, whatever access its source has.
+                _require(src.type == dst.type, mismatch)
             else:
                 _require(member_binds(src, dst), mismatch)
         _require(value.may_raise is (copy_may_raise(target, facts) or reaches_element(value.source)),
@@ -861,7 +876,8 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
         root, projections = value.source.root, value.source.projections
         # The member a source lies in or points from: its place less that member's object prefix.
         member = projections[:-1] if projections and isinstance(projections[-1], MIRDeref) else projections
-        in_member = (bool(member) and isinstance(member[-1], (MIRField, MIRTupleIndex, MIRContainerElements))
+        in_member = (bool(member)
+                     and isinstance(member[-1], (MIRField, *SELECTORS, MIRContainerElements))
                      and projections[len(member):] == object_prefix(shape_at(MIRPlace(root, member))))
         return (facts(typ).copyable and source.type == typ and source.owned_place
                 and (projections in ((), object_prefix(slots[root].shape)) or in_member)
@@ -1087,6 +1103,8 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
                     raise MIRValidationError("element write type mismatch")
         elif cls is MIRClass.OWNED_LEAF:
             validate_owned_value(value, typ, stmt.target)
+        elif cls in WRAPPER_CLASSES:
+            validate_wrapper_value(stmt.value, place_info(stmt.target))
         else:
             _require(value_class(typ) in AGGREGATE_CLASSES and defined(typ), "element write type mismatch")
             _require(isinstance(value, (MIRConstruct, MIRCopy, MIRMove, MIRCall)), "element write type mismatch")
@@ -1158,36 +1176,56 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
     # The temporaries a sum construction moved into a payload: each once.
     wrapped_payloads: set[MIRSlotId] = set()
 
-    def validate_optional_field_write(stmt: MIRStatement, initializing: bool) -> None:
-        """`h.p = v` on an Optional record field, or a whole write of an
-        owned sum slot: the whole value written (`field_write`; the record
-        around a field keeps its identity). The value empties it, moves a
-        record built in temporary storage into its payload, or copies
-        another Optional's payload."""
+    def validate_wrapper_field_write(stmt: MIRStatement, initializing: bool) -> None:
+        """`h.w = v` on a tuple, Optional or union field, or a whole write of
+        an owned sum slot: the whole value written (`field_write`; the
+        record around a field keeps its identity), as stored wrapper values
+        are (`validate_wrapper_value`)."""
         target = field_write(stmt, initializing, owned=True)
-        _require(target.cls is MIRClass.OPTIONAL, "store through readonly storage")
-        payload = target.payload.type
-        # A record's or a container's storage payload, each defined as any aggregate is.
-        _require(target.payload.cls in AGGREGATE_CLASSES and defined(payload),
-                 "optional record field needs its payload layout")
-        for operand in operands(stmt.value):
+        _require(target.cls in WRAPPER_CLASSES, "store through readonly storage")
+        validate_wrapper_value(stmt.value, target)
+
+    def validate_wrapper_value(value: MIRRvalue, target: MIRShape) -> None:
+        """What a stored wrapper of shape `target` takes (a field's, an
+        element's, an owned sum slot's): a sum emptied, or engaged with one
+        member's operand (`member_operand`: a scalar read, or storage moved
+        out of a temporary of the statement, each once); a tuple built
+        member by member (`construct_ok`); a copy of another wrapper
+        (`validate_wrapper_copy`). Each storage member is defined as any
+        aggregate is."""
+        for member in inline_members(target.members):
+            if member.cls in AGGREGATE_CLASSES:
+                _require(defined(member.type), _FIELD_LAYOUT_PROBLEMS[target.cls])
+        for operand in operands(value):
             _require(operand in slots and slots[operand].kind is not MIRSlotKind.GLOBAL,
                      "global value needs explicit read")
-        match stmt.value:
-            case MIRWrap(alternative=0, source=None):
-                pass
-            case MIRWrap(alternative=1, source=source) if source is not None:
+        match value:
+            case MIRWrap(alternative=int() as alternative, source=None) if target.cls in SUM_CLASSES:
+                _require(0 <= alternative < len(target.members) and target.members[alternative] is None,
+                         "invalid wrapper absence")
+            case MIRWrap(alternative=int() as alternative, source=source) if (
+                    target.cls in SUM_CLASSES and source is not None):
+                _require(0 <= alternative < len(target.members) and target.members[alternative] is not None,
+                         "invalid wrapper alternative")
+                member = target.members[alternative]
                 operand = payload_operand(source)
-                _require(operand.type == payload and operand.is_storage and not operand.readonly
-                         and slots[source.root].kind is MIRSlotKind.TEMPORARY
-                         and facts(payload).movable
-                         and source.root not in wrapped_payloads,
-                         "optional field payload needs a moved temporary")
-                wrapped_payloads.add(source.root)
+                if member.cls in AGGREGATE_CLASSES:
+                    _require(operand.type == member.type and operand.is_storage and not operand.readonly
+                             and slots[source.root].kind is MIRSlotKind.TEMPORARY
+                             and facts(member.type).movable
+                             and source.root not in wrapped_payloads,
+                             "optional field payload needs a moved temporary")
+                else:
+                    _require(member_operand(source.root, member) is False
+                             and source.root not in wrapped_payloads, "wrapper payload operand mismatch")
+                if operand.is_storage:
+                    wrapped_payloads.add(source.root)
+            case MIRConstruct() if target.cls is MIRClass.TUPLE:
+                _require(construct_ok(value, target), "tuple construction mismatch")
             case MIRCopy():
-                validate_wrapper_copy(stmt.value, target)
+                validate_wrapper_copy(value, target)
             case _:
-                raise MIRValidationError("optional field write needs an optional construction or copy")
+                raise MIRValidationError("wrapper write needs a wrapper construction or copy")
 
     def validate_view_member_write(stmt: MIRAssign, typ: TpyType, initializing: bool) -> None:
         """`t.s = v`: a view member bound to the loan a view holder holds,
@@ -1338,9 +1376,9 @@ def _validate_structure(fn: MIRFunction) -> MIRRegionFlow:
                 validate_owned_field_write(stmt, target_type, initializing)
                 continue
             if (stmt.target.projections and isinstance(member := stmt.target.projections[-1], MIRField)
-                    and value_class(member.type) is MIRClass.OPTIONAL) or (
+                    and value_class(member.type) in WRAPPER_CLASSES) or (
                     not stmt.target.projections and target.shape.owned_sum):
-                validate_optional_field_write(stmt, initializing)
+                validate_wrapper_field_write(stmt, initializing)
                 continue
             if (stmt.target.projections and isinstance(member := stmt.target.projections[-1], MIRField)
                     and value_class(member.type) in AGGREGATE_CLASSES):

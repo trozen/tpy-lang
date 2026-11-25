@@ -11,8 +11,8 @@ from ..compilation_context import activate_compiler, get_current_compiler
 from ..thir import nodes as th
 from ..thir.validate import _iter_children
 from ..thir.scalar_leaves import (
-    MIRClass, chain_fields, holds_loan, loan_free, modeled_chain,
-    modeled_field, stored_types, value_class, view_compatible, walk_stored,
+    MIRClass, chain_fields, element_record_member, holds_loan, loan_free, modeled_chain,
+    modeled_field, value_class, view_compatible, walk_stored,
 )
 from ..type_def_registry import ParamPassing, type_def_of
 from ..typesys import (
@@ -645,24 +645,17 @@ def body_calls(fn: th.THIRFunction | th.THIRConstructor, definitions: MIRDefinit
 def _read_records(ctor: th.THIRConstructor) -> list[NominalType]:
     """The records whose definitions `ctor`'s definition reads, in the
     order it reads them: its struct bases, then each record reached from
-    its fields, once, the last field first -- a record field, an Optional
-    record field's payload (`optional_record_field`, the one Optional
-    `modeled_field` admits), and the records a container field's declared
-    members (`declared_members`) hold through nested containers, at any
-    depth. A member record's own definition reads what lies past it. No
+    its fields, once, the last field first -- a record field, a record a
+    wrapper field stores inline, and the records a container field's
+    declared members (`declared_members`) hold through nested containers
+    and wrappers, at any depth (`nested_members`, which steps into no
+    record: a member record's own definition reads what lies past it). No
     other member is read through: a field `modeled_field` refuses (a
-    tuple, a union, a pointer Optional, an `Own[...]`), nor a container
-    member that is a wrapper or an `Own[...]`, whose refusal is the
-    certificate's."""
+    pointer Optional, an `Own[...]`, a wrapper holding a loan), nor an
+    `Own[...]` container member, whose refusal is the certificate's."""
     reads = [bi.base for bi in ctor.base_inits if isinstance(bi.base, NominalType)]
-    roots: list[TpyType] = []
-    for f in ctor.record_layout.fields:
-        if modeled_field(f.type):
-            optional = value_class(f.type) is MIRClass.OPTIONAL
-            roots.extend(stored_types(f.type, no_fields) if optional else (f.type,))
-    reads.extend(step.type for step in walk_stored(roots, no_fields, lambda _, cls: cls is MIRClass.CONTAINER,
-                                                   last_first=True)
-                 if step.first and step.cls is MIRClass.RECORD)
+    roots = [f.type for f in ctor.record_layout.fields if modeled_field(f.type)]
+    reads.extend(t for t in nested_members(roots, lambda _: ()) if value_class(t) is MIRClass.RECORD)
     return reads
 
 
@@ -688,9 +681,8 @@ def container_definition(node: object, typ: NominalType,
             raise MIRUnsupported(node, definition)
         records[record] = definition
         layouts[record] = definition.layout
-        # An element record stores leaves and containers only (`_layouts_problem`, below): any
-        # other field refuses its layout, so no definition is read behind one.
-        return tuple(f for f in definition.layout.fields if value_class(f.type) is MIRClass.CONTAINER)
+        # Any other field refuses its layout, so no definition is read behind one.
+        return tuple(f for f in definition.layout.fields if element_record_member(f.type))
 
     for member in nested_members((m.type for m in stored.members), fields_of):
         cls = value_class(member)

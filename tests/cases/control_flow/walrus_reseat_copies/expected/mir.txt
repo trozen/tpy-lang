@@ -7,7 +7,7 @@ main::guard_alias@49:0: uncovered (unsupported statement), summary: opaque (unsu
 main::guard_list@65:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::tuple_borrowed@78:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::tuple_finally_borrowed@85:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::tuple_append_live@94:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::tuple_append_live@94:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
 main::main@103:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::H.__init__@16:4: covered (storage: no_proof_required), summary: known

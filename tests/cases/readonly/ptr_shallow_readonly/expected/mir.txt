@@ -94,7 +94,7 @@ main::G.__init__@451:4: covered (storage: no_proof_required), summary: known
 main::FrozenPair.__init__: covered (storage: no_proof_required), summary: known
 main::V.__init__@472:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 main::Leaf.__init__@488:4: covered (storage: no_proof_required), summary: known
-main::UPayload.__init__@495:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::UPayload.__init__@495:4: covered (storage: no_proof_required), summary: known
 main::UH.__init__@502:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 main::Stored.__init__@523:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::RBox.__init__@535:4: uncovered (generic constructor)

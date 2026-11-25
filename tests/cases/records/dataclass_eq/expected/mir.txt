@@ -8,4 +8,4 @@ main::Config.__eq__: uncovered (uncertified binary operation)
 main::Config.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::Id.__init__: covered (storage: no_proof_required), summary: known
 main::Point.__init__: covered (storage: no_proof_required), summary: known
-main::Config.__init__: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Config.__init__: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

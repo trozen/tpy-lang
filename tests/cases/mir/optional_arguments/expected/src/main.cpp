@@ -258,7 +258,7 @@ int32_t narrowed_plain(const Q* o) {
     return 0;
 }
 
-// def call_scalar_ctor() -> int32:  # tpyc: mir(uncovered /unsupported record fields/)
+// def call_scalar_ctor() -> int32:  # tpyc: mir(covered)
 //     a = S(5)  # a value and None at the scalar Optional parameter
 //     b = S(None)
 //     n = 0

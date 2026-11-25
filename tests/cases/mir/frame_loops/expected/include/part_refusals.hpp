@@ -23,7 +23,7 @@ struct __gen_Pile_drain;
 __gen_bumped_bytes bumped_bytes(::tpy::BytesView d);
 // def stepped(n: int32) -> Iterator[int32]:  # tpyc: mir(uncovered /range step across a suspension/)
 __gen_stepped stepped(int32_t n);
-// def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:  # tpyc: mir(uncovered /unsupported native container element/)
+// def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:  # tpyc: mir(uncovered /unsupported hoisted value/)
 __gen_sums sums(const std::vector<std::tuple<int32_t, int32_t>>& pairs);
 // def owned() -> Iterator[int32]:  # tpyc: mir(uncovered /unsupported hoisted value/)
 __gen_owned owned();
@@ -105,7 +105,7 @@ struct __gen_stepped : public ::tpy::next_iter_mixin<__gen_stepped, int32_t> {
     }
 };
 
-// def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:  # tpyc: mir(uncovered /unsupported native container element/)
+// def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:  # tpyc: mir(uncovered /unsupported hoisted value/)
 struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
     ::tpy::frame_state __state;
     const std::vector<std::tuple<int32_t, int32_t>>& pairs;

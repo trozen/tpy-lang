@@ -68,9 +68,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_stepped::__next__() {
 }
 
 // # tuple_head: a head unpack
-// def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:  # tpyc: mir(uncovered /unsupported native container element/)
+// def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:  # tpyc: mir(uncovered /unsupported hoisted value/)
 //     for a, b in pairs:
-//         yield a + b                                                                                                            # -> S_RESUME_0
+//         yield a + b                                                                                                 # -> S_RESUME_0
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry

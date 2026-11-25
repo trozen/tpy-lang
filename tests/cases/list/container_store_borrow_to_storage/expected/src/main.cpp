@@ -28,7 +28,7 @@ void store_dict(::tpy::ordered_map<std::string, std::optional<A>>& d, const A* p
     ::tpy::__setitem__(d, "k", ::tpy::ptr_to_optional(p));
 }
 
-// def store_narrowed(xs: list[A | B], p: A | B) -> None:
+// def store_narrowed(xs: list[A | B], p: A | B) -> None:  # tpyc: mir_summary(known)
 //     if isinstance(p, A):
 //         xs[0] = p        # p is narrowed to a concrete A, not a variant -- the
 void store_narrowed(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, const B*> p) {

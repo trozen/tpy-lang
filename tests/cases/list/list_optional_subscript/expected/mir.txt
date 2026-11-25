@@ -1,3 +1,3 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@14:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@14:0: uncovered (inline record sum needs local storage), summary: opaque (inline record sum needs local storage)
 main::P.__init__@10:4: covered (storage: no_proof_required), summary: known

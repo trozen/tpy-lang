@@ -8,16 +8,16 @@ main::is_square@156:0: uncovered (generic body)
 main::howls@161:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::chosen@166:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::ident@181:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::make_holder@185:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::make_holder@185:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::make_animal@190:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::anys@195:0: uncovered (unsupported native container element)
 main::keyless@200:0: uncovered (missing or invalid union test), summary: opaque (missing or invalid union test)
 main::is_odd@205:0: covered (storage: no_proof_required), summary: known
-main::first_of@209:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::first_of@209:0: uncovered (missing or invalid union test), summary: opaque (missing or invalid union test)
 main::free_function@214:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::temp_owner@278:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::walrus_forms@303:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::call_in_subject@333:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::call_in_subject@333:0: uncovered (unsupported union record holding), summary: opaque (unsupported union record holding)
 main::union_gen@343:0: uncovered (unsupported pointer capture)
 main::tparam_gen@352:0: uncovered (generic body)
 main::method_and_ctor@363:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
@@ -51,7 +51,7 @@ main::Shape.__init__@71:4: covered (storage: no_proof_required), summary: known
 main::Square.__init__@76:4: covered (storage: no_proof_required), summary: known
 main::A.__init__@83:4: covered (storage: no_proof_required), summary: known
 main::B.__init__@90:4: covered (storage: no_proof_required), summary: known
-main::Shelf.__init__@100:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Shelf.__init__@100:4: uncovered (unsupported union record holding), summary: opaque (unsupported union record holding)
 main::Probe.__init__@111:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Ctx.__init__@117:4: covered (storage: no_proof_required), summary: known
-main::Holder.__init__@173:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.__init__@173:4: covered (storage: no_proof_required), summary: known

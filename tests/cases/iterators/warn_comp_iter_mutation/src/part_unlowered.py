@@ -14,7 +14,7 @@ def key_first(ss: Own[list[str]], xs: list[int32], big: bool) -> int32:  # tpyc:
     return len({len(s): s for s in own_iter(ss) if big and grow(xs)})  # tpyc: ok
 
 
-def unpack_head(ps: list[tuple[int32, int32]], big: bool) -> int32:  # tpyc: mir(uncovered /unsupported native container element/)
+def unpack_head(ps: list[tuple[int32, int32]], big: bool) -> int32:  # tpyc: mir(uncovered /wrapper loop variable needs local payload/)
     # an unpack head over tuple elements
     return len([a + b for a, b in ps if big and grow_pairs(ps)])  # tpyc: warning(/Passing borrowed container 'ps' to non-readonly parameter/)
 

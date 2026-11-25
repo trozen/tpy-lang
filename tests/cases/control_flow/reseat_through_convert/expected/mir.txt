@@ -23,7 +23,7 @@ main::warned_tuple_temp@347:0: uncovered (reference needs local name), summary: 
 main::key_of@363:0: covered (storage: no_proof_required), summary: known
 main::warned_min_temp@373:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
 main::main@382:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::H.der@34:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: unsupported native container element)
+main::H.der@34:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::P.pa@77:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::P.pa@77:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::M.go@111:4: certified, summary: opaque (summary output effect)
@@ -35,12 +35,12 @@ main::NH.bump@280:4: certified, summary: opaque (summary output effect)
 main::K.ret@368:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: missing constructor definition)
 main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::Der.__init__@14:4: covered (storage: no_proof_required), summary: known
-main::H.__init__@26:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::H.__init__@26:4: uncovered (inline record sum needs local storage), summary: opaque (inline record sum needs local storage)
 main::P.__init__@73:4: covered (storage: no_proof_required), summary: known
-main::M.__init__@103:4: uncovered (member definition: unsupported native container element), summary: opaque (member definition: unsupported native container element)
+main::M.__init__@103:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::EH.__init__@166:4: covered (storage: no_proof_required), summary: known
 main::B.__init__@186:4: covered (storage: no_proof_required), summary: known
-main::U.__init__@195:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::U.__init__@195:4: uncovered (unsupported union record holding), summary: opaque (unsupported union record holding)
 main::S.__init__@226:4: covered (storage: no_proof_required), summary: known
 main::NH.__init__@276:4: covered (storage: no_proof_required), summary: known
 main::Leaf.__init__@332:4: covered (storage: no_proof_required), summary: known

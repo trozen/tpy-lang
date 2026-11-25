@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import NamedTuple, TypeVar
 
-from ..thir.scalar_leaves import UNEXPANDED, MIRClass, stored_types, value_class, walk_stored
+from ..thir.scalar_leaves import UNEXPANDED, MIRClass, stored_types, stores_record, value_class, walk_stored
 from ..typesys import TpyType
 from .nodes import (
     MIRAssign, MIRCall, MIRCopy, MIRMove, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRStatement,
@@ -21,7 +21,7 @@ from .shapes import (
     lent_members, object_path, object_selector, replacement_reach, walk, walk_to,
 )
 from .value import (
-    AGGREGATE_CLASSES, SUM_CLASSES, MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape,
+    AGGREGATE_CLASSES, SUM_CLASSES, WRAPPER_CLASSES, MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape,
     MIREffect, MIRStoredOutcome, MIRValidationError, RecordFields, lent_record, declared_record_fields, payload_fate,
 )
 from .validate import reaches_element
@@ -169,8 +169,13 @@ def reaches_definitely(written: MIRReferent, target: MIRReferent) -> bool:
 # --- the distinct-origin oracles ------------------------------------------------------
 
 def _replaced_leaf(place: MIRPlace) -> bool:
-    return (bool(place.projections) and isinstance(member := place.projections[-1], MIRField)
-            and value_class(member.type) is MIRClass.OWNED_LEAF)
+    """Whether `place` is a field whose storage stores no record or
+    container inline: an owned leaf's buffer, or a wrapper storing no
+    record (`stores_record`: its every member a scalar or an owned leaf)."""
+    if not (place.projections and isinstance(member := place.projections[-1], MIRField)):
+        return False
+    cls = value_class(member.type)
+    return cls is MIRClass.OWNED_LEAF or cls in WRAPPER_CLASSES and not stores_record(member.type)
 
 
 def _whole_container(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> TpyType | None:
@@ -489,6 +494,8 @@ def sum_places(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: MIR
     itself, so the walk ends; a record whose layout is not here lists
     nothing under it, so a reader takes a sum it does not list as
     unknown. Per path, never per type: `w.a.o` and `w.b.o` are two sums.
+    A path past a container's elements step names any element, no one
+    sum, so none is listed there (its outcome is unknown, `may`).
     `referent`: `place` is a referent's (`MIRReferent.place`, no
     dereference steps), stepped as `referent_walk` steps one."""
     found: list[MIRPlace] = []
@@ -515,7 +522,8 @@ def sum_places(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: MIR
             layout = records.get(shape.type)
             for member in layout.fields if layout is not None and not layout.opaque else ():
                 visit(under(at, member))
-    visit(place)
+    if not reaches_element(place):
+        visit(place)
     return tuple(found)
 
 

@@ -227,6 +227,9 @@ class Fragment:
         # where it reaches it (a declaration THIR placed no storage for): the
         # first one it reaches, the body's once it is spliced into it.
         self.refusal: tuple[object, str] | None = None
+        # Whether evaluating it writes storage outside its own temporaries:
+        # set where a writing statement is emitted, carried by `splice`.
+        self.writes = False
 
     def fragment(self) -> 'Fragment':
         return Fragment(self.root)
@@ -506,6 +509,7 @@ class Fragment:
             self.backings = _extend(self.backings, fragment.backings)
         if self.refusal is None:
             self.refusal = fragment.refusal
+        self.writes = self.writes or fragment.writes
         return fragment._value.value if fragment._value is not None else None
 
     # --- values ----------------------------------------------------------------
@@ -532,10 +536,11 @@ class Fragment:
 
     def materialize(self, v: MIRValue, node: object = None) -> MIRSlotId:
         """Storage of the full expression's region initialized from `v`, a
-        storage rvalue; the storage slot. `node`: the expression the full
+        storage rvalue (owned storage, or a wrapper storing some inline);
+        the storage slot. `node`: the expression the full
         expression owns it for; None for storage of an expression already
         registered (a composed member of the construct being built)."""
-        assert v.shape is not None and v.shape.is_storage, "materialize takes a storage rvalue"
+        assert v.shape is not None and v.shape.owns_storage, "materialize takes a storage rvalue"
         temporaries = self.root.active_temporaries
         assert temporaries is not None, "materialized storage needs a full expression"
         if node is not None:

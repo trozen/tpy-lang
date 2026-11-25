@@ -1,8 +1,8 @@
 main::__tpy_init: uncovered (module initialization)
-main::list_literal@15:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::list_literal@15:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
 main::dict_value@23:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::via_append@28:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::exempt_fresh@34:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::exempt_copy@39:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::main@44:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::via_append@28:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
+main::exempt_fresh@34:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::exempt_copy@39:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@44:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::P.__init__@11:4: covered (storage: no_proof_required), summary: known

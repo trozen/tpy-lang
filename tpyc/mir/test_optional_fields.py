@@ -14,7 +14,7 @@ from ..thir import nodes as th
 from ..thir.scalar_leaves import MIRClass, modeled_field, optional_record_field
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
-from ..typesys import INT32, NominalType, OptionalType, ReadonlyType, TupleType
+from ..typesys import INT32, STR, NominalType, OptionalType, ReadonlyType, TupleType
 from .definitions import declared_fields
 from .value import MIRRecords
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
@@ -238,9 +238,12 @@ def test_an_optional_of_a_plain_loan_free_record_is_a_modeled_field(program: _Pr
     assert modeled_field(typ)
 
 
+def test_an_optional_scalar_field_is_modeled_with_no_record_payload(program: _Program) -> None:
+    assert optional_record_field(program.fields["Shapes.k"]) is None
+    assert modeled_field(program.fields["Shapes.k"])
+
+
 @pytest.mark.parametrize("name", [
-    # An Optional of a scalar stores no record: a payload place MIR does not model yet.
-    "Shapes.k",
     # A payload holding a loan would key a stored loan under the payload.
     "Shapes.v",
     # A payload with a record field is no plain record: its places run deeper than one field.
@@ -249,6 +252,12 @@ def test_an_optional_of_a_plain_loan_free_record_is_a_modeled_field(program: _Pr
 def test_other_optional_fields_stay_unmodeled(program: _Program, name: str) -> None:
     assert optional_record_field(program.fields[name]) is None
     assert not modeled_field(program.fields[name])
+
+
+def test_a_pointer_represented_optional_field_stays_unmodeled(program: _Program) -> None:
+    # A pointer Optional stores no payload inline: the field's members are not its storage.
+    for payload in (INT32, STR, program.types["P"]):
+        assert not modeled_field(OptionalType(payload, force_pointer_repr=True)), payload
 
 
 def test_a_readonly_optional_field_keeps_its_payload(program: _Program) -> None:

@@ -8,11 +8,11 @@ main::yield_mixed@75:0: uncovered (reference yield)
 main::dup@81:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::adup@87:0: uncovered (async body)
 main::run_adup@92:0: uncovered (async body)
-main::walrus_member@98:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::walrus_member@98:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::walrus_return@109:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::takel@113:0: covered (storage: no_proof_required), summary: known
 main::container_ternary@118:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
-main::getter_member@125:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::getter_member@125:0: uncovered (owned result from a borrowed call), summary: opaque (owned result from a borrowed call)
 main::dict_setitem@134:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::list_setitem@143:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::match_arm@152:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
@@ -21,5 +21,5 @@ main::main@177:0: uncovered (unsupported statement), summary: opaque (unsupporte
 main::H.repack@28:4: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
 main::G.get@41:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::C.__init__@17:4: covered (storage: no_proof_required), summary: known
-main::H.__init__@24:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::H.__init__@24:4: covered (storage: no_proof_required), summary: known
 main::G.__init__@38:4: covered (storage: no_proof_required), summary: known

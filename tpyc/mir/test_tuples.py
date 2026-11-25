@@ -338,8 +338,8 @@ def test_tuple_elements_cannot_write_existing_locals() -> None:
                           th.THIRReturn(th.THIRName(INT32, "x"))), th.THIRFunctionLayout())
     result = lower_function(fn, MIRBodyId("tuples", fn.name))
     assert isinstance(result, MIRNotCovered)
-    assert result.reason == "effectful or mistyped tuple element"
-    assert result.node_kind == "THIRWalrus"
+    assert result.reason == "order-sensitive eager operands"
+    assert result.node_kind == "THIRTupleLiteral"
 
 
 def test_tuple_expression_temporary_projection() -> None:

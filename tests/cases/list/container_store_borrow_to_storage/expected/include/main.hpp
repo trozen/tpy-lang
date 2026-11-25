@@ -20,7 +20,7 @@ void store_union(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, con
 void append_union(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, const B*> p);
 // def store_dict(d: dict[str, A | None], p: A | None) -> None:
 void store_dict(::tpy::ordered_map<std::string, std::optional<A>>& d, const A* p);
-// def store_narrowed(xs: list[A | B], p: A | B) -> None:
+// def store_narrowed(xs: list[A | B], p: A | B) -> None:  # tpyc: mir_summary(known)
 void store_narrowed(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, const B*> p);
 // def main() -> None:
 void main();

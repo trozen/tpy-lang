@@ -52,4 +52,4 @@ main::Holder.rebind@247:4: uncovered (print argument needs a scalar leaf), summa
 main::PackUser.run@413:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
 main::Bag.__init__@27:4: uncovered (generic constructor)
 main::Rec.__init__@90:4: covered (storage: no_proof_required), summary: known
-main::PackUser.__init__@410:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::PackUser.__init__@410:4: covered (storage: no_proof_required), summary: known

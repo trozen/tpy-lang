@@ -10,7 +10,7 @@ main::curried@102:0: uncovered (unsupported return type), summary: opaque (unsup
 main::block@107:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::block_def@120:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::tuple_def@134:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::tuple_elem@147:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::tuple_elem@147:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
 main::mixed@161:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
 main::gen@171:0: uncovered (unsupported hoisted value)
 main::nested@179:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

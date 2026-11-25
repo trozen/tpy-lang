@@ -20,7 +20,7 @@ main::call_scalar@171:0: covered (storage: no_proof_required), summary: known
 main::scalar_loops@179:0: covered (storage: no_proof_required), summary: known
 main::via_scalar@189:0: covered (storage: no_proof_required), summary: known
 main::narrowed_plain@196:0: covered (storage: no_proof_required), summary: known
-main::call_scalar_ctor@210:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::call_scalar_ctor@210:0: covered (storage: no_proof_required), summary: known
 main::call_scalar_ctor_arg@229:0: covered (storage: no_proof_required), summary: known
 main::grow_both@237:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::grow_both_call@246:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
@@ -56,6 +56,6 @@ main::H.clear_read@45:4: covered (storage: no_proof_required), conflicts: alias_
 main::Q.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::P.__init__@20:4: covered (storage: no_proof_required), summary: known
 main::H.__init__@30:4: covered (storage: no_proof_required), summary: known
-main::S.__init__@206:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::S.__init__@206:4: covered (storage: no_proof_required), summary: known
 main::U.__init__@225:4: covered (storage: no_proof_required), summary: known
 main::T.__init__@379:4: covered (storage: no_proof_required), summary: known

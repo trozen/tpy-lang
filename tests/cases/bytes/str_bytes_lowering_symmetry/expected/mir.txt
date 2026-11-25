@@ -2,7 +2,7 @@ main::__tpy_init: uncovered (module initialization)
 main::concat_literal@44:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::aug_setitem@54:0: uncovered (element write needs a stub contract), summary: opaque (element write needs a stub contract)
 main::set_methods@67:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::union_elem@91:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::union_elem@91:0: uncovered (unsupported union scalar), summary: opaque (unsupported union scalar)
 main::owned_slot_arg@101:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
 main::tuple_decl@120:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
 main::second@127:0: uncovered (generic body)
@@ -11,7 +11,7 @@ main::open_sibling_tuple@135:0: uncovered (unsupported metadata: template_args_c
 main::first_s@140:0: covered (storage: no_proof_required), summary: known
 main::first_b@144:0: covered (storage: no_proof_required), summary: known
 main::span_elem@148:0: uncovered (call container argument needs a place), summary: opaque (call container argument needs a place)
-main::comprehensions@155:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::comprehensions@155:0: uncovered (unsupported tuple scalar), summary: opaque (unsupported tuple scalar)
 main::items_loop@170:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
 main::any_value_dict@180:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::tuple_elem_recv@193:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

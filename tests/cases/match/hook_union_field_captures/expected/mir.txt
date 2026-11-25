@@ -8,4 +8,4 @@ main::amain@80:0: uncovered (async body)
 main::main@85:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::Cat.__init__@12:4: covered (storage: no_proof_required), summary: known
 main::Dog.__init__@19:4: covered (storage: no_proof_required), summary: known
-main::Holder.__init__@26:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.__init__@26:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)

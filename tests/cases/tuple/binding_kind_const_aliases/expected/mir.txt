@@ -5,8 +5,8 @@ main::unpack_ref@68:0: uncovered (unsupported parameter type), summary: opaque (
 main::match_ref@76:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::with_alias@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::match_branch@95:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::head_branch@108:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::alias_head@121:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::head_branch@108:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
+main::alias_head@121:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::reseat@132:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::try_alias@144:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::subject_alias@155:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -25,6 +25,6 @@ main::RCtx.__exit__@42:4: uncovered (unsupported parameter type), summary: opaqu
 main::WithMethod.targets@284:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::Box.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::Holder.__init__@16:4: covered (storage: no_proof_required), summary: known
-main::Pairs.__init__@23:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Pairs.__init__@23:4: uncovered (unsupported tuple scalar), summary: opaque (unsupported tuple scalar)
 main::RCtx.__init__@34:4: covered (storage: no_proof_required), summary: known
 main::WithMethod.__init__@281:4: covered (storage: no_proof_required), summary: known

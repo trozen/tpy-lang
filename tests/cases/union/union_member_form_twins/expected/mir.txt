@@ -6,5 +6,5 @@ main::show_tree@40:0: uncovered (unsupported parameter type)
 main::tree_param@44:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::tree_len@49:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::tree_local@55:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::main@65:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@65:0: uncovered (unsupported union record holding), summary: opaque (unsupported union record holding)
 main::Pet.__init__@10:4: covered (storage: no_proof_required), summary: known

@@ -7,7 +7,7 @@ a_user::DC.__repr__: uncovered (unsupported owned-leaf expression), summary: opa
 a_user::DC.__init__: covered (storage: no_proof_required), summary: known
 a_user::PC.__init__@20:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
 a_user::VR.__init__@29:4: uncovered (missing record layout)
-a_user::OP.__init__@44:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+a_user::OP.__init__@44:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
 a_user::LV.__init__@52:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
 a_user::TN.__init__@60:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
 main::__tpy_init: uncovered (module initialization)

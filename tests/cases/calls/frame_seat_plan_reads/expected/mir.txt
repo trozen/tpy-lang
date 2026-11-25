@@ -36,7 +36,7 @@ part_plan_reads_fresh::mkh@41:0: covered (storage: no_proof_required), summary: 
 part_plan_reads_fresh::with_field_chain@45:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 part_plan_reads_fresh::gen_with_field_chain@55:0: uncovered (argument held across a suspension)
 part_plan_reads_fresh::prop_chain@92:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
-part_plan_reads_fresh::pick@117:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_plan_reads_fresh::pick@117:0: certified, summary: known
 part_plan_reads_fresh::wrap_tup@121:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 part_plan_reads_fresh::use_gen@125:0: covered (storage: no_facts: storage facts have not been published)
 part_plan_reads_fresh::walk_tup@130:0: uncovered (unsupported pointer capture)
@@ -59,7 +59,7 @@ part_plan_reads_fresh::Inner.__init__@66:4: covered (storage: no_proof_required)
 part_plan_reads_fresh::Mid.__init__@77:4: covered (storage: no_proof_required), summary: known
 part_plan_reads_fresh::Outer.__init__@88:4: covered (storage: no_proof_required), summary: known
 part_plan_reads_fresh::Cell.__init__@101:4: covered (storage: no_proof_required), summary: known
-part_plan_reads_fresh::Src.__init__@110:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_plan_reads_fresh::Src.__init__@110:4: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 part_plan_reads_generic::__tpy_init: uncovered (module initialization)
 part_plan_reads_generic::gen_t@22:0: uncovered (generic body)
 part_plan_reads_generic::id_t@27:0: uncovered (generic body)

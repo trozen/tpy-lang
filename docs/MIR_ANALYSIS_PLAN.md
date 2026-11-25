@@ -1977,10 +1977,10 @@ form facts, never on lists of accepted kinds.
   in-place reseat, a member replaced whole) fills the entries of every
   object the place reaches; every other way such a record moves or
   is written refuses. A wrapper's layout belongs to the representation at
-  a place, and an Optional field of a loan-free record is a place of its
-  holder with its payload stored inline
-  ([Optional record fields](#optional-record-fields)). Remaining, in this
-  order: Optional scalar and tuple fields; view fields slice 4
+  a place, and a loan-free tuple, Optional or union field is a place of
+  its holder with its members stored inline
+  ([Wrapper fields and elements](#wrapper-fields-and-elements)). Remaining, in this
+  order: wrapper members that hold a loan (step C+D2); view fields slice 4
   (wrapper and container members; TODO.md lists the items);
   record elements whose record has record
   fields (`list[Line]`); record-element literal member-init. From here
@@ -3581,8 +3581,8 @@ call on a call result.
   signature hands `R` over (`THIRCallableSignature.hands_over(R)`) at
   STORAGE form ("call record result mismatch"); `call()` compares the call's type against the unwrapped
   `Own[R]`. The lowering writes the `MIRCall` into the destination,
-  `may_raise` from the summary. The call's argument writes
-  (`call_writes`) are recorded for the operand-order rule where the
+  `may_raise` from the summary. The call's argument writes (its
+  fragment's `writes`) reach the operand-order rule where the
   constructor paths hardcoded none: a factory writing an argument beside
   another operand that reads it refuses "order-sensitive eager operands"
   (`stamped`: `[stamp(c), stamp(c)]`). The arm is reached at an owned
@@ -3693,12 +3693,12 @@ and setter and `getter_through_field`; `mir/method_calls`
   admitted by shape through one predicate, `scalar_leaves.modeled_field`,
   a class in the admitted set (`value_class`, `readonly` removed): a scalar
   leaf, an owned leaf or a view of one declared bare, a native container,
-  an Optional of a loan-free record ([Optional record fields](#optional-record-fields)),
+  a tuple, Optional or union the wrapper rule admits
+  (`wrapper_member_problem`, [Wrapper fields and elements](#wrapper-fields-and-elements)),
   or a record, which the definition, the validator's
-  layouts and `place_info` read; a layout holding any other field (a union,
-  tuple, scalar-Optional, `str | None`, `Ptr`, `Box` or `Rc` field, or an
-  Optional whose payload holds a loan or has a record field) refuses
-  "unsupported record fields".
+  layouts and `place_info` read; a layout holding any other field (a
+  wrapper holding a loan or nesting a wrapper or a container, a `Ptr`,
+  `Box` or `Rc` field) refuses "unsupported record fields".
   Each member record's definition must verify (`_member_definitions`,
   "member definition: <reason>": `HasHooked` "... custom record special
   member", a value-type or
@@ -3923,14 +3923,15 @@ and setter and `getter_through_field`; `mir/method_calls`
 - **Kept refusals**, by reason.
   - A record ELEMENT whose record has record fields (`[Built(x, "e")]`),
     "unsupported native container element" (`listed`): a container element
-    is a record of leaf fields and container fields whose members are
+    is a record of leaf fields, container fields whose members are
     elements themselves (`container_element`; container fields since
-    2026-10-31), never of record-typed fields.
-  - Union, tuple, scalar-Optional, `str | None`, `Ptr`, `Box` and `Rc`
-    fields, and Optional fields whose payload holds a loan or has a record
-    field, "unsupported record fields" at the definition (a tuple and an Optional
-    scalar field pinned in `test_owned.py`); Optional fields of loan-free
-    records are modeled since ([Optional record fields](#optional-record-fields)).
+    2026-10-31) and loan-free wrapper fields (`element_record_member`,
+    since the wrapper-fields unit), never of record-typed fields.
+  - `Ptr`, `Box` and `Rc` fields, and wrapper fields that hold a loan or
+    nest a wrapper or a container in a member, "unsupported record fields"
+    at the definition (a nested tuple and a tuple Optional field pinned in
+    `test_owned.py`); loan-free tuple, Optional and union fields are
+    modeled since ([Wrapper fields and elements](#wrapper-fields-and-elements)).
   - In a member initializer: one `Own[R]` parameter stored into two
     members (`self.a = copy(p); self.b = p`), "unsupported record
     initializer". Since unit 7 a call result (`self.a = mk(x)`), a record
@@ -4461,13 +4462,107 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   units split out of the list (TODO.md) and `Box`/`Rc` and `Ptr` members
   are where the corpus is.
 
-#### Optional record fields
+#### Wrapper fields and elements
 
-A record field `p: P | None` whose payload `P` is a plain record holding no
-loan is a place of its holder, with the payload stored inline (C++
-`std::optional<P> p;`). Analysis only: generated C++ and diagnostics do not
-change. Pinned by `tests/cases/mir/wrapper_fields` and
-`tpyc/mir/test_optional_fields.py`.
+A record field or container element of wrapper type -- a tuple, an
+Optional, a union -- is a place of its holder, its members stored inline
+(C++ `std::tuple<::tpy::BigInt, std::string> t;`, `std::optional<P> p;`,
+`::tpy::Union<int32_t, std::string> u;`), when each member it stores inline
+(`scalar_leaves.stored_members`, one level) is a scalar leaf, an owned
+leaf or a plain record (`plain_record_element`), its representation is
+storage, and nothing in it holds a loan (`loan_free`). One rule,
+`scalar_leaves.wrapper_member_problem`, for both holders: `modeled_field`
+admits such a field, `element_problem` such an element and such a field
+of a container's record element; `optional_record_field` names the
+Optionals among them whose payload is a record (THIR's validator reads
+it, MIR's narrowed reads take the field shape's payload). An Optional
+pinned to a pointer (`force_pointer_repr`) stays refused, the safe side.
+Analysis only: generated C++ does not change, and no existing case's
+diagnostics do; a body MIR newly covers can now warn (a view of
+`xs[0][1]` read after `xs.clear()` on `list[tuple[int32, str]]`). Pinned by `tests/cases/mir/wrapper_fields` (`part_tuple`,
+`part_sums`, `part_elements`, `part_refused`, beside the Optional record
+payload sections) and `tpyc/mir/test_optional_fields.py`.
+
+- **Shape.** A stored wrapper's member forms are its type's
+  (`value.storage_shape`, at the holder's access): the C++ storage form is
+  fixed by the type, as for owned sum slots. THIR's wrapper layout facts
+  describe lowered values and publish none for an owned-leaf member, so a
+  field's wrapper is composed from its type (`value_shape`) and held to
+  that composition (`_members_problem`). `MIRShape.owned_tuple` /
+  `owned_sum` keep meaning "a member owning storage", an owned leaf
+  included; the two guards that refuse a record member ask for one
+  (`validate_wrapper_copy`'s "owning tuple copy is unsupported",
+  `projection`'s "owned tuple projection needs existing local").
+- **Reads.** `projection` lowers a field or element receiver as a place,
+  so `h.t[1]` and `xs[0][1]` project `MIRTupleIndex` on the stored tuple
+  (an owned-leaf member is an owned-leaf place a view borrows); a record
+  member is lent by its loan's shape, as a record field is. A narrowed
+  read of a non-record Optional payload (`len(h.o)`) reads the payload
+  place.
+- **Writes.** A field write (`wrapper_field_write`), an element write and
+  a comprehension's insert take what the wrapper's storage takes, through
+  the one member-value rule: `element_value`'s wrapper arm calls the
+  class's builder in storage mode (`tuple_expr(stored=...)`,
+  `optional_source(stored=True)`, `union_source(stored=True)`). The
+  builders keep one set of arms; storage mode changes where members are
+  placed (each through `element_value` at storage, a sum's payload by
+  `engaged` / `payload_slot` in storage of the full expression the wrap
+  moves in) and adds one source, a copy of another stored wrapper
+  (`wrapper_source`, a whole wrapper field; a plain field such as
+  `h.o = h.s` is a payload built from it). A member layout THIR publishes
+  must agree with the stored shape. An Optional record field keeps its
+  holder-copy source (`h.p = o`, `o` an Optional record holder). The
+  validator shares the value half (`validate_wrapper_value`) between a
+  field write, an owned sum slot's root write and an element write; the
+  write halves stay their own. A wrapper as a construct's member (a
+  container literal's element) is built into a temporary of the full
+  expression (`construct_member`) only where a slot holds such a value:
+  a slot's wrapper stores no owned-leaf member (`_member_problem`), so an
+  owned-leaf member keeps that literal refused ("unsupported tuple
+  scalar"), as a local of it is. A copy out of a narrowed Optional
+  field's payload (`b.q = copy(a.p)`, `b.up = a.p`, `b.t = (copy(a.p), 1)`,
+  `r = copy(a.p)`) is a record copy of the payload place:
+  `validate.record_copy_ok` takes the payload step as it takes a field or
+  a tuple member. Two targets stay refused, reaching MIR as a template
+  call ("unsupported metadata: cpp_template"): `copy()` into a union field
+  (`b.up = copy(a.p)`) and the bare payload as a tuple member
+  (`b.t = (a.p, 1)`) (TODO.md "Wrapper fields and elements: the shapes D1
+  leaves refused" (k)).
+  An argument whose evaluation writes -- a tuple or union member value
+  (`eat((mutate(h), 0), h.t[1])`), an Optional record built from a
+  writing call (`eat_opt(P(mutate(h)), h.t[1])`) -- is refused by the
+  call's argument-order rule as its scalar twin ("order-sensitive eager
+  operands"). Whether an operand writes is its fragment's fact
+  (`emit.Fragment.writes`): set where a writing statement is emitted (a
+  call whose summary writes, a walrus or global write) and carried by
+  every splice, so no builder states it and none can drop it.
+- **Sums under elements.** A path past a container's elements step names
+  any element, never one sum: `reach.sum_places` lists none there, so a
+  write through `[elements]` (`xs[0] = None`, `xs[0].p = P(2)`) states no
+  stored outcome ("may") and a summary publishes no stored-alternatives
+  entry for it.
+- **Replacement.** A wrapper field's write replaces storage
+  (`shapes.owned_field`), so presence's field kill and
+  `call_contract.endpoint_admitted` see every write as before. Retention's
+  oracle spares an aggregate referent at a replaced field storing no
+  record or container inline (`reach._replaced_leaf`: an owned leaf, or a
+  wrapper whose members are leaves and owned leaves); a wrapper with a
+  record member keeps its `alias_obligation`. A write of a scalar-only
+  wrapper field frees no buffer, but retention may still report it
+  against an external opaque loan: safe, filed.
+- **Refused (filed).** A wrapper holding a loan ("record member holds a
+  borrow", step C+D2); a wrapper or container inside a wrapper member;
+  wrapper locals and container-literal elements with an owned-leaf member;
+  a loop variable bound to a wrapper element ("wrapper loop variable needs
+  local payload"); wrapper parameters with an owned-leaf member; tuple
+  unpack of a field or an element; list-of-wrapper stub methods; an
+  Optional record element bound to a local ("optional capture needs local
+  name"); a narrowed payload copied into a union field or placed bare as
+  a tuple member (above). An element record with a `readonly[...]` field of any class,
+  a wrapper's included, stays refused (`scalar_leaves.element_record_member`),
+  while a holder's readonly wrapper field is modeled.
+
+The Optional record payload, which every wrapper field above follows:
 
 - **Invariant.** A wrapper's members belong to the value at a place,
   never to the root slot alone: `nodes.place_shape(place, slots, records)`
@@ -4479,10 +4574,9 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   at a record; an inline payload exists only at a field place. The refactor that introduced the resolver
   changed no verdict (census over the full test corpus and the stdlib:
   0 of 29713 bodies).
-- **Admission.** `scalar_leaves.optional_record_field` admits an Optional
-  (not pointer-represented, `readonly` removed) whose payload passes
-  `plain_record_element` and holds no loan; `modeled_field` admits it (its
-  class is OPTIONAL), so MIR models the field. THIR publishes its field identity as it
+- **Admission.** `scalar_leaves.optional_record_field` names an Optional
+  (`readonly` removed) the wrapper rule admits whose payload is a record;
+  `modeled_field` admits it, so MIR models the field. THIR publishes its field identity as it
   does for every declared member (metadata; no render reads it), and
   `thir/validate.py` accepts a whole access (STORAGE form, the Optional
   type, or the payload type at an assign target inside a narrowed region)
@@ -4642,8 +4736,9 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
     `if b.p is not None`): "optional field copy from a narrowed payload".
   - A whole-field store of a call's owned Optional result (`h.p =
     find(11)`): "record initializer type mismatch" (`store_found`).
-  - Union, tuple, scalar-Optional and `str | None` fields; payloads that
-    hold a loan or have a record field: "unsupported record fields".
+  - Payloads that hold a loan or have a record field: "unsupported record
+    fields". (Union, tuple, scalar-Optional and `str | None` fields are
+    places since the wrapper-fields unit, "Wrapper fields and elements".)
 - **Precision.** Retention's oracle stays coarse (a replacement of
   external storage may free a loan held anywhere external; making it
   precise would remove conflicts and `argument_alias` warnings, filed in
@@ -5114,8 +5209,7 @@ unhoisted loop target is the comprehension's own binding: it hides an
 enclosing one of the same name and every fact kept by that name
 (`_Lowering.nested(hide=...)`). As an operand
 the comprehension writes what the expressions its body lowers write
-(`_WriteFacts`: a writing expression recorded while the comprehension is
-innermost marks it), so
+(`Fragment.writes`: its body's fragments are spliced into its own), so
 `pair(len([w for w in xs if grow(xs)]), len(xs))` and `v + len([...])`
 with a writing filter are refused "order-sensitive eager operands", as
 their call twins are. It reaches every position a literal does
@@ -5160,8 +5254,9 @@ mean the owned form is the overloads line's (TODO.md "A written
 `list[Own[P]]` parameter", TODO.md "Composite open-T leaves at Own[X]
 (with Callable contract unit 2b)", BUGS.md#own-tuple-component-type-arg);
 MIR adds no `Own` logic. In
-storage the form is the type mapping's, so a `force_pointer_repr`
-Optional (a boundary property) still stores its payload inline. A
+storage the form is the type mapping's: a `force_pointer_repr` Optional
+(a boundary property) answers its payload as a member, though a field of
+one stays refused ("Wrapper fields and elements", the safe side). A
 recursive alias union, a record the source does not know and a type MIR
 does not model answer `UNEXPANDED`, which each reader takes as "may hold
 anything" in its own terms. `shapes.member_projection` maps a selector to
@@ -5198,11 +5293,12 @@ path). `value.nested_members` is a pure storage
 walk: it steps through every member. Which members a reader may read
 through is the reader's. `definitions._read_records` reads, after the
 struct bases, the records reached from the fields, once each, the last
-field first: a record field, a modeled Optional field's payload
-(`optional_record_field`), and the records a container field's declared
-members hold through nested containers -- never through a tuple, union,
-pointer-Optional or `Own[...]` field, nor a wrapper or `Own[...]` container
-member; definitions verify depth-first in that order, so a cycle reports
+field first: a record field, a record a wrapper field stores inline
+(a tuple, union or Optional member), and the records a container field's
+declared members hold through nested containers and wrappers
+(`nested_members`) -- never through a field `modeled_field` refuses (a
+pointer Optional, an `Own[...]`, a wrapper holding a loan), nor an
+`Own[...]` container member; definitions verify depth-first in that order, so a cycle reports
 the refusal of the record it re-enters first. `container_definition`
 reads an element record's definition and then only its container fields'
 records: any other field refuses the element's layout ("unsupported

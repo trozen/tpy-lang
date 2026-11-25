@@ -275,8 +275,8 @@ def test_a_derived_initializer_is_an_ordinary_statement(field: str, param: str, 
 
 
 def test_owned_leaf_field_exclusions() -> None:
-    source = ("from tpy import Own, StrView\nclass Record:\n    pair: tuple[str, str]\n"
-              "    def __init__(self, value: str):\n        self.pair = (value, value)\n")
+    source = ("from tpy import Own, StrView\nclass Record:\n    pair: tuple[tuple[str, str], str]\n"
+              "    def __init__(self, value: str):\n        self.pair = ((value, value), value)\n")
     compiler, modules = _compile(source)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Record")

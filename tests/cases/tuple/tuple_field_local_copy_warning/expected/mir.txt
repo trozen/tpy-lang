@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@28:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::main@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Point.__init__@13:4: covered (storage: no_proof_required), summary: known
-main::Mixed.__init__@21:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Mixed.__init__@21:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)

@@ -227,9 +227,9 @@ def rejected(cell: Cell, value: int32) -> bool:
     return False
 ''', "order-sensitive eager operands", None),
     ('''class Wide:
-    pair: tuple[int32, int32]
+    pair: tuple[tuple[int32, int32], int32]
     def __init__(self, value: int32):
-        self.pair = (value, value)
+        self.pair = ((value, value), value)
 def ignore_wide(cell: readonly[Wide]) -> int32:
     return 0
 def rejected(seed: Cell) -> int32:

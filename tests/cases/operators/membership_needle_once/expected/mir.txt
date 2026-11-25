@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::needle@143:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::color@148:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
-main::make@153:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::make@153:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::g_body@158:0: uncovered (unsupported expression)
 main::a_body@163:0: uncovered (async body)
 main::lam@168:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
@@ -27,7 +27,7 @@ main::Rebinding.__next__@136:4: uncovered (error-return body)
 main::Nums.__init__@19:4: covered (storage: no_proof_required), summary: known
 main::Shades.__init__@37:4: covered (storage: no_proof_required), summary: known
 main::Moving.__init__@55:4: covered (storage: no_proof_required), summary: known
-main::Growing.__init__@75:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::Growing.__init__@75:4: covered (storage: no_proof_required), summary: known
 main::Flags.__init__@93:4: covered (storage: no_proof_required), summary: known
 main::BigNums.__init__@109:4: covered (storage: no_proof_required), summary: known
 main::Rebinding.__init__@128:4: covered (storage: no_proof_required), summary: known

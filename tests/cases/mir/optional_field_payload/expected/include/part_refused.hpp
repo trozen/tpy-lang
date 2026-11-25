@@ -11,9 +11,9 @@ struct SH;
 
 inline constexpr std::string_view __name__ = "part_refused";
 
-// def str_payload(h: SH) -> int32:  # tpyc: mir(uncovered /unsupported field type or form/)
+// def str_payload(h: SH) -> int32:  # tpyc: mir(uncovered /borrow of an Optional field's payload/)
 int32_t str_payload(const SH& h);
-// def str_append(h: SH) -> None:  # tpyc: mir(uncovered /unsupported field type or form/)
+// def str_append(h: SH) -> None:  # tpyc: mir(uncovered /optional field payload write/)
 void str_append(SH& h);
 // def main() -> None:
 void main();

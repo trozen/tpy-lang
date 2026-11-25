@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@20:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-main::Box.gen_field@14:4: uncovered (unsupported field type or form)
-main::Box.__init__@11:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::main@20:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Box.gen_field@14:4: covered (storage: no_facts: storage facts have not been published)
+main::Box.__init__@11:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

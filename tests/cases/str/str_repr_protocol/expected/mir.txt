@@ -38,10 +38,10 @@ main::forward@440:0: uncovered (unsupported parameter type)
 main::frames_async@445:0: uncovered (async body)
 main::frames@453:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::scalars_generic@485:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
-main::main@493:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::main@493:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::A.__repr__@17:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::S.__str__@25:4: covered (storage: no_proof_required), summary: known
-main::Holder.get_a@58:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: unsupported record fields)
+main::Holder.get_a@58:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Holder.__repr__@61:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::Box.bump@88:4: covered (storage: no_proof_required), summary: known
 main::Box.__repr__@91:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
@@ -53,7 +53,7 @@ main::Shower.show@213:4: uncovered (unsupported parameter type), summary: opaque
 main::A.__init__@14:4: covered (storage: no_proof_required), summary: known
 main::S.__init__@22:4: covered (storage: no_proof_required), summary: known
 main::Plain.__init__@30:4: covered (storage: no_proof_required), summary: known
-main::Holder.__init__@52:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.__init__@52:4: covered (storage: no_proof_required), summary: known
 main::Box.__init__@85:4: covered (storage: no_proof_required), summary: known
 main::Shelf.__init__@98:4: covered (storage: no_proof_required), summary: known
 main::Cell.__init__@116:4: uncovered (missing record layout)

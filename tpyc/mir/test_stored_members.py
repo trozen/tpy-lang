@@ -71,6 +71,13 @@ class Pair:
         self.pair = (a, 1)
 
 
+class Deep:
+    pair: tuple[tuple[A, int32], int32]
+
+    def __init__(self, a: A) -> None:
+        self.pair = ((a, 1), 2)
+
+
 class Maybe:
     o: A | None
 
@@ -326,15 +333,17 @@ def test_records_are_read_through_what_the_certificate_admits(program: _Program)
     a, b = program.types["A"], program.types["B"]
     # A modeled Optional field's payload record is read with the record's definition...
     assert a in _read_records(program.constructors["Maybe"])
-    # ...a tuple field, which the certificate refuses, is read through by none...
-    assert a not in _read_records(program.constructors["Pair"])
-    # ...nor a container's wrapper element; a container's record element is read.
-    assert _read_records(program.constructors["Rows"]) == [b]
+    # ...as is a tuple field's record member; a tuple holding a tuple, which the
+    # certificate refuses, is read through by none...
+    assert a in _read_records(program.constructors["Pair"])
+    assert a not in _read_records(program.constructors["Deep"])
+    # ...and a container's wrapper element's record, the last field first.
+    assert _read_records(program.constructors["Rows"]) == [b, a]
     # Through nested containers, at any depth; a record two members reach is read once.
     assert _read_records(program.constructors["Grid"]) == [b]
     assert _read_records(program.constructors["Twice"]) == [b]
-    # A container's Optional element is a wrapper too: its payload record is not read.
-    assert _read_records(program.constructors["Opts"]) == []
+    # A container's Optional element stores its payload record inline: it is read.
+    assert _read_records(program.constructors["Opts"]) == [b]
 
 
 def test_a_refused_cyclic_member_keeps_its_definition_refusal() -> None:

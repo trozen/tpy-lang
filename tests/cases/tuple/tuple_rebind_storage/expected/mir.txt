@@ -26,7 +26,7 @@ main::literal@239:0: uncovered (unsupported statement), summary: opaque (unsuppo
 main::owned_call@247:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::alias_after@257:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::inline_then_borrow@266:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::subscript_source@281:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::subscript_source@281:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::arg_last_use@293:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::return_last_use@302:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::return_borrowed@310:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
@@ -75,7 +75,7 @@ main::genexpr_read@838:0: uncovered (unsupported statement), summary: opaque (un
 main::genexpr_nested@850:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::genexpr_in_def@864:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::capture_copy@878:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::lambda_comprehension@888:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::lambda_comprehension@888:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::walk@901:0: incomplete (suspension: loan of caller storage held across a suspension)
 main::walk_rebind@906:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::copy_carry@918:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -139,11 +139,11 @@ main::Keeper.save@1385:4: uncovered (unsupported field type or form), summary: o
 main::Box.__init__@24:4: covered (storage: no_proof_required), summary: known
 main::Bag.__init__@31:4: covered (storage: no_proof_required), summary: known
 main::Tok.__init__@37:4: covered (storage: no_proof_required), summary: known
-main::Holder.__init__@44:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.__init__@44:4: covered (storage: no_proof_required), summary: known
 main::Built.__init__@60:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
-main::HB.__init__@499:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-main::HM.__init__@1243:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-main::HCtor.__init__@1323:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::HB.__init__@499:4: covered (storage: no_proof_required), summary: known
+main::HM.__init__@1243:4: covered (storage: no_proof_required), summary: known
+main::HCtor.__init__@1323:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::TwoHop.__init__@1350:4: covered (storage: no_proof_required), summary: known
 main::Named.__init__@1358:4: covered (storage: no_proof_required), summary: known
 main::Lab.__init__@1366:4: uncovered (missing record layout)

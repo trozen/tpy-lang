@@ -8,7 +8,7 @@ fixtures::take_list@141:0: covered (storage: no_proof_required), summary: known
 fixtures::size@145:0: covered (storage: no_proof_required), summary: known
 fixtures::A.bump@13:4: covered (storage: no_proof_required), summary: known
 fixtures::T.__bool__@39:4: covered (storage: no_proof_required), summary: known
-fixtures::H.pick@68:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: unsupported record fields)
+fixtures::H.pick@68:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 fixtures::Ring.after@80:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
 fixtures::Ctx.__enter__@97:4: covered (storage: no_proof_required), summary: known
 fixtures::Ctx.__exit__@100:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
@@ -19,7 +19,7 @@ fixtures::B.__init__@21:4: covered (storage: no_proof_required), summary: known
 fixtures::N.__init__@29:4: covered (storage: no_proof_required), summary: known
 fixtures::T.__init__@36:4: covered (storage: no_proof_required), summary: known
 fixtures::W.__init__@46:4: covered (storage: no_proof_required), summary: known
-fixtures::H.__init__@59:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+fixtures::H.__init__@59:4: covered (storage: no_proof_required), summary: known
 fixtures::Ring.__init__@76:4: covered (storage: no_proof_required), summary: known
 fixtures::Ctx.__init__@94:4: covered (storage: no_proof_required), summary: known
 fixtures::OwnCtx.__init__@105:4: covered (storage: no_proof_required), summary: known
@@ -89,7 +89,7 @@ part_tuples::tuple_return@25:0: uncovered (unsupported return type), summary: op
 part_tuples::tuple_finally_return@32:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 part_tuples::whole_tuple_return@41:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 part_tuples::whole_tuple_finally@48:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-part_tuples::tuple_append@57:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_tuples::tuple_append@57:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
 part_tuples::main@67:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 part_values::__tpy_init: uncovered (module initialization)
 part_values::value_locals@10:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)

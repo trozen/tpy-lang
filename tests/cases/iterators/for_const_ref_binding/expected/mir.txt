@@ -35,8 +35,8 @@ main::test_pass_to_readonly_func@385:0: covered (storage: no_proof_required), su
 main::test_ptr_from_loop_var@393:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::test_value_type_loop@401:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::test_sequential_loops_same_var@409:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_bigint_const_ref@419:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
-main::test_bigint_mutated@427:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::test_bigint_const_ref@419:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_bigint_mutated@427:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::Point.value@25:4: covered (storage: no_proof_required), summary: known
 main::Grid.bump_own@38:4: covered (storage: no_proof_required), summary: known
 main::Shelf.bump_row@186:4: covered (storage: no_proof_required), summary: known

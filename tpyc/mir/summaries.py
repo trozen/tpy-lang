@@ -604,6 +604,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                     # element or a member (which takes the moved value; the
                     # moved storage is a transfer of `_private_records`).
                     pass
+                case MIRConstruct() if wrapper and stmt.target.projections:
+                    # A tuple field rebuilt in place from its members (`construct_ok`).
+                    pass
                 case MIRIteratorInit() | MIRIteratorHasNext() | MIRIteratorRead() | MIRIteratorAdvance():
                     pass
                 case MIRWrap(source=source) if wrapper and (

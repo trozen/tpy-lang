@@ -58,12 +58,12 @@ part_kinds::wrap_opt@167:0: uncovered (unsupported return type), summary: opaque
 part_kinds::main@171:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
 part_kinds::Acc.__iadd__@55:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 part_kinds::A.get_n@87:4: covered (storage: no_proof_required), summary: known
-part_kinds::Slot.put@143:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+part_kinds::Slot.put@143:4: covered (storage: no_proof_required), summary: known
 part_kinds::Leaf.__init__@12:4: covered (storage: no_proof_required), summary: known
 part_kinds::Acc.__init__@49:4: covered (storage: no_proof_required), summary: known
 part_kinds::A.__init__@84:4: covered (storage: no_proof_required), summary: known
 part_kinds::B.__init__@94:4: covered (storage: no_proof_required), summary: known
-part_kinds::Slot.__init__@140:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_kinds::Slot.__init__@140:4: covered (storage: no_proof_required), summary: known
 part_moves::__tpy_init: uncovered (module initialization)
 part_moves::ptr_union@39:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 part_moves::lend_narrowed@45:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
@@ -118,14 +118,14 @@ part_params::CM.__init__@54:4: covered (storage: no_proof_required), summary: kn
 part_stores::__tpy_init: uncovered (module initialization)
 part_stores::with_union@76:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 part_stores::with_twin@81:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-part_stores::main@86:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-part_stores::Holder.set@33:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+part_stores::main@86:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_stores::Holder.set@33:4: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)
 part_stores::HolderTwin.set@53:4: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)
 part_stores::RBase.__enter__@66:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 part_stores::RBase.__exit__@69:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 part_stores::Base.__init__@11:4: covered (storage: no_proof_required), summary: known
 part_stores::Sub.__init__@16:4: covered (storage: no_proof_required), summary: known
-part_stores::Holder.__init__@26:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_stores::Holder.__init__@26:4: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)
 part_stores::HolderTwin.__init__@47:4: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)
 part_stores::RBase.__init__@63:4: covered (storage: no_proof_required), summary: known
 part_tuples::__tpy_init: uncovered (module initialization)

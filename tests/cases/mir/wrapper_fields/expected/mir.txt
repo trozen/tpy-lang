@@ -1,61 +1,174 @@
+fixtures::__tpy_init: uncovered (module initialization)
+fixtures::clear@78:0: covered (storage: no_proof_required), summary: known
+fixtures::read@83:0: covered (storage: no_proof_required), summary: known
+fixtures::mutate@122:0: covered (storage: no_proof_required), summary: known
+fixtures::P.bump@11:4: covered (storage: no_proof_required), summary: known
+fixtures::H.reset@25:4: covered (storage: no_proof_required), summary: known
+fixtures::H.via_self@29:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
+fixtures::P.__init__@8:4: covered (storage: no_proof_required), summary: known
+fixtures::H.__init__@20:4: covered (storage: no_proof_required), summary: known
+fixtures::Empty.__init__@42:4: covered (storage: no_proof_required), summary: known
+fixtures::Built.__init__@50:4: covered (storage: no_proof_required), summary: known
+fixtures::Pair.__init__@58:4: uncovered (unsupported container element), summary: opaque (unsupported container element)
+fixtures::Ro.__init__@66:4: covered (storage: no_proof_required), summary: known
+fixtures::Num.__init__@74:4: covered (storage: no_proof_required), summary: known
+fixtures::HL.__init__@94:4: covered (storage: no_proof_required), summary: known
+fixtures::S.__init__@103:4: covered (storage: no_proof_required), summary: known
+fixtures::SH.__init__@110:4: covered (storage: no_proof_required), summary: known
+fixtures::T.__init__@118:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
-main::clear@80:0: covered (storage: no_proof_required), summary: known
-main::read@85:0: covered (storage: no_proof_required), summary: known
-main::alias@92:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: alias_obligation, summary: known
-main::alias_call@102:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
-main::alias_read_first@107:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
-main::alias_other_field@117:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
-main::callee@126:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
-main::fresh@136:0: uncovered (unproven optional field read), summary: opaque (unproven optional field read)
-main::fresh_alias@145:0: uncovered (payload access without current presence proof), summary: opaque (payload access without current presence proof)
-main::fresh_call@153:0: uncovered (payload access without current presence proof), summary: opaque (payload access without current presence proof)
-main::empties@160:0: covered (storage: no_proof_required), summary: known
-main::fresh_condition@166:0: uncovered (payload access without current presence proof), summary: opaque (payload access without current presence proof)
-main::keep_other_field@173:0: covered (storage: no_proof_required), summary: known
-main::own_field_write@181:0: covered (storage: no_proof_required), summary: known
-main::holders@191:0: covered (storage: no_proof_required), summary: known
-main::keep_record_field@217:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-main::keep_leaf_field@225:0: covered (storage: no_proof_required), summary: known
-main::keep_root@233:0: covered (storage: no_proof_required), summary: known
-main::keep_root_condition@244:0: covered (storage: no_proof_required), summary: known
-main::keep_initialization@254:0: covered (storage: no_proof_required), summary: known
-main::keep_backing@263:0: covered (storage: no_proof_required), summary: known
-main::loop_write@274:0: covered (storage: no_proof_required), summary: known
-main::refill@285:0: covered (storage: no_proof_required), summary: known
-main::copy_field@293:0: covered (storage: no_proof_required), summary: known
-main::copy_param@298:0: covered (storage: no_proof_required), summary: known
-main::copy_both@303:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-main::written_then_read@310:0: uncovered (unproven optional field read), summary: opaque (unproven optional field read)
-main::copied_then_read@316:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
-main::find@323:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::store_found@328:0: uncovered (record initializer type mismatch), summary: opaque (record initializer type mismatch)
-main::bump_payload@333:0: covered (storage: no_proof_required), summary: known
-main::payload_borrow@339:0: covered (storage: no_proof_required), summary: known
-main::payload_return@348:0: certified, summary: known
-main::id_p@354:0: certified, summary: known
-main::payload_return_call@359:0: certified, summary: known
-main::set_s@379:0: covered (storage: no_proof_required), summary: known
-main::keep_payload@385:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
-main::payload_sub_return@396:0: covered (storage: no_proof_required), summary: known
-main::set_field@402:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-main::payload_return_warning@408:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: argument_alias, summary: known
-main::payload_write@416:0: covered (storage: no_proof_required), summary: known
-main::ro_read@422:0: covered (storage: no_proof_required), summary: known
-main::local@429:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::local_forms@437:0: covered (storage: no_proof_required), summary: known
-main::built_forms@446:0: covered (storage: no_proof_required), summary: known
-main::local_temporary@455:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::main@461:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
-main::P.bump@13:4: covered (storage: no_proof_required), summary: known
-main::H.reset@27:4: covered (storage: no_proof_required), summary: known
-main::H.via_self@31:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
-main::P.__init__@10:4: covered (storage: no_proof_required), summary: known
-main::H.__init__@22:4: covered (storage: no_proof_required), summary: known
-main::Empty.__init__@44:4: covered (storage: no_proof_required), summary: known
-main::Built.__init__@52:4: covered (storage: no_proof_required), summary: known
-main::Pair.__init__@60:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-main::Ro.__init__@68:4: covered (storage: no_proof_required), summary: known
-main::Num.__init__@76:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-main::HL.__init__@209:4: covered (storage: no_proof_required), summary: known
-main::S.__init__@368:4: covered (storage: no_proof_required), summary: known
-main::SH.__init__@375:4: covered (storage: no_proof_required), summary: known
+main::main@14:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_alias::__tpy_init: uncovered (module initialization)
+part_alias::alias@7:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: alias_obligation, summary: known
+part_alias::alias_call@17:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+part_alias::alias_read_first@22:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_alias::alias_other_field@32:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_alias::callee@41:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
+part_alias::main@50:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_elements::__tpy_init: uncovered (module initialization)
+part_elements::clears@16:0: covered (storage: no_proof_required), summary: known
+part_elements::clear_view@21:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_elements::callee_clear@28:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_elements::dict_set@35:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_elements::list_set@42:0: covered (storage: no_proof_required), summary: known
+part_elements::comprehension@47:0: covered (storage: no_proof_required), summary: known
+part_elements::dict_comprehension@53:0: covered (storage: no_proof_required), summary: known
+part_elements::comprehension_clear@59:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_elements::scalar_literal@67:0: covered (storage: no_proof_required), summary: known
+part_elements::records@73:0: certified, summary: known
+part_elements::list_view_set@80:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_elements::set_opts@95:0: covered (storage: no_proof_required), summary: known
+part_elements::set_engaged@101:0: covered (storage: no_proof_required), summary: known
+part_elements::set_opts_call@106:0: covered (storage: no_proof_required), summary: known
+part_elements::set_str_none@112:0: covered (storage: no_proof_required), summary: known
+part_elements::set_elem_field@117:0: covered (storage: no_proof_required), summary: known
+part_elements::set_elem_field_call@121:0: covered (storage: no_proof_required), summary: known
+part_elements::clear_cells@126:0: covered (storage: no_proof_required), summary: known
+part_elements::read_opt@133:0: uncovered (unsupported optional test), summary: opaque (unsupported optional test)
+part_elements::main@137:0: uncovered (unsupported tuple scalar), summary: opaque (unsupported tuple scalar)
+part_elements::R.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_elements::SP.__init__@90:4: covered (storage: no_proof_required), summary: known
+part_payload::__tpy_init: uncovered (module initialization)
+part_payload::bump_payload@7:0: covered (storage: no_proof_required), summary: known
+part_payload::payload_borrow@13:0: covered (storage: no_proof_required), summary: known
+part_payload::payload_return@22:0: certified, summary: known
+part_payload::id_p@28:0: certified, summary: known
+part_payload::payload_return_call@33:0: certified, summary: known
+part_payload::set_s@39:0: covered (storage: no_proof_required), summary: known
+part_payload::keep_payload@45:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_payload::payload_sub_return@56:0: covered (storage: no_proof_required), summary: known
+part_payload::set_field@62:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_payload::payload_return_warning@68:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: argument_alias, summary: known
+part_payload::payload_write@76:0: covered (storage: no_proof_required), summary: known
+part_payload::ro_read@82:0: covered (storage: no_proof_required), summary: known
+part_payload::local@89:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_payload::local_forms@97:0: covered (storage: no_proof_required), summary: known
+part_payload::built_forms@106:0: covered (storage: no_proof_required), summary: known
+part_payload::local_temporary@115:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_payload::main@121:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+part_presence::__tpy_init: uncovered (module initialization)
+part_presence::fresh@7:0: uncovered (unproven optional field read), summary: opaque (unproven optional field read)
+part_presence::fresh_alias@16:0: uncovered (payload access without current presence proof), summary: opaque (payload access without current presence proof)
+part_presence::fresh_call@24:0: uncovered (payload access without current presence proof), summary: opaque (payload access without current presence proof)
+part_presence::empties@31:0: covered (storage: no_proof_required), summary: known
+part_presence::fresh_condition@37:0: uncovered (payload access without current presence proof), summary: opaque (payload access without current presence proof)
+part_presence::keep_other_field@44:0: covered (storage: no_proof_required), summary: known
+part_presence::own_field_write@52:0: covered (storage: no_proof_required), summary: known
+part_presence::holders@62:0: covered (storage: no_proof_required), summary: known
+part_presence::keep_record_field@77:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_presence::keep_leaf_field@85:0: covered (storage: no_proof_required), summary: known
+part_presence::keep_root@93:0: covered (storage: no_proof_required), summary: known
+part_presence::keep_root_condition@104:0: covered (storage: no_proof_required), summary: known
+part_presence::keep_initialization@114:0: covered (storage: no_proof_required), summary: known
+part_presence::keep_backing@123:0: covered (storage: no_proof_required), summary: known
+part_presence::loop_write@134:0: covered (storage: no_proof_required), summary: known
+part_presence::eat_opt_p@144:0: covered (storage: no_proof_required), summary: known
+part_presence::order_opt_record@152:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_presence::order_opt_pure@157:0: covered (storage: no_proof_required), summary: known
+part_presence::main@161:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_refused::__tpy_init: uncovered (module initialization)
+part_refused::literal@34:0: uncovered (unsupported tuple scalar), summary: opaque (unsupported tuple scalar)
+part_refused::dict_literal@39:0: uncovered (unsupported tuple scalar), summary: opaque (unsupported tuple scalar)
+part_refused::local@45:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+part_refused::loop_variable@51:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
+part_refused::append@59:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
+part_refused::pop@63:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+part_refused::sort@67:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+part_refused::tuple_key@72:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+part_refused::set_member@76:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+part_refused::tuple_keys@81:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
+part_refused::ro_read@97:0: covered (storage: no_proof_required), summary: known
+part_refused::ro_elements@102:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_refused::main@106:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_refused::Tok.__init__@9:4: covered (storage: no_proof_required), summary: known
+part_refused::Loaned.__init__@18:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
+part_refused::Nested.__init__@27:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_refused::RO.__init__@92:4: covered (storage: no_proof_required), summary: known
+part_sums::__tpy_init: uncovered (module initialization)
+part_sums::refill@26:0: covered (storage: no_proof_required), summary: known
+part_sums::payload_len@32:0: covered (storage: no_proof_required), summary: known
+part_sums::ro_read@39:0: covered (storage: no_proof_required), summary: known
+part_sums::copies@46:0: covered (storage: no_proof_required), summary: known
+part_sums::from_param@53:0: covered (storage: no_proof_required), summary: known
+part_sums::presence@59:0: uncovered (payload access without current presence proof), summary: opaque (payload access without current presence proof)
+part_sums::empties_k@66:0: covered (storage: no_proof_required), summary: known
+part_sums::presence_call@71:0: uncovered (payload access without current presence proof), summary: opaque (payload access without current presence proof)
+part_sums::presence_kept@79:0: covered (storage: no_proof_required), summary: known
+part_sums::from_plain@104:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_sums::union_from_plain@111:0: covered (storage: no_proof_required), summary: known
+part_sums::from_narrowed@116:0: covered (storage: no_proof_required), summary: known
+part_sums::eat_union@121:0: covered (storage: no_proof_required), summary: known
+part_sums::order_union@126:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_sums::order_union_pure@131:0: covered (storage: no_proof_required), summary: known
+part_sums::main@135:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_sums::S.reset@20:4: covered (storage: no_proof_required), summary: known
+part_sums::S.__init__@14:4: covered (storage: no_proof_required), summary: known
+part_sums::F.__init__@94:4: covered (storage: no_proof_required), summary: known
+part_tuple::__tpy_init: uncovered (module initialization)
+part_tuple::refill@29:0: covered (storage: no_proof_required), summary: known
+part_tuple::view_write@34:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_tuple::view_callee@41:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_tuple::cross_copy@48:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_tuple::cross_copy_call@55:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+part_tuple::inner_scope@60:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
+part_tuple::kill_member@70:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_tuple::kill_str@76:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_tuple::kill_str_call@82:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+part_tuple::member_view@87:0: covered (storage: no_proof_required), summary: known
+part_tuple::member_view_call@92:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_tuple::eat@98:0: covered (storage: no_proof_required), summary: known
+part_tuple::eat_scalar@102:0: covered (storage: no_proof_required), summary: known
+part_tuple::order_tuple@108:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_tuple::order_scalar@112:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_tuple::get_str@116:0: covered (storage: no_proof_required), summary: known
+part_tuple::eat_view@120:0: covered (storage: no_proof_required), summary: known
+part_tuple::idx_recv_writes@126:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_tuple::idx_index_writes@132:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_tuple::idx_pure@137:0: covered (storage: no_proof_required), summary: known
+part_tuple::idx_literal@142:0: covered (storage: no_proof_required), summary: known
+part_tuple::ro_read@147:0: covered (storage: no_proof_required), summary: known
+part_tuple::copy_field@152:0: covered (storage: no_proof_required), summary: known
+part_tuple::members@157:0: covered (storage: no_facts: storage facts have not been published)
+part_tuple::main@163:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_tuple::TS.reset@17:4: covered (storage: no_proof_required), summary: known
+part_tuple::TS.__init__@13:4: covered (storage: no_proof_required), summary: known
+part_tuple::TP.__init__@25:4: covered (storage: no_proof_required), summary: known
+part_writes::__tpy_init: uncovered (module initialization)
+part_writes::refill@7:0: covered (storage: no_proof_required), summary: known
+part_writes::copy_field@15:0: covered (storage: no_proof_required), summary: known
+part_writes::copy_param@20:0: covered (storage: no_proof_required), summary: known
+part_writes::copy_both@25:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_writes::written_then_read@32:0: uncovered (unproven optional field read), summary: opaque (unproven optional field read)
+part_writes::copied_then_read@38:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+part_writes::find@45:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_writes::store_found@50:0: uncovered (record initializer type mismatch), summary: opaque (record initializer type mismatch)
+part_writes::payload_into_union@69:0: covered (storage: no_proof_required), summary: known
+part_writes::payload_into_plain@75:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_writes::payload_into_wrappers@81:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_writes::payload_into_local@87:0: covered (storage: no_proof_required), summary: known
+part_writes::payload_into_element@95:0: covered (storage: no_proof_required), summary: known
+part_writes::payload_into_union_copy@102:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+part_writes::payload_into_tuple@107:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
+part_writes::payload_copies@112:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_writes::main@130:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_writes::Into.__init__@60:4: covered (storage: no_proof_required), summary: known

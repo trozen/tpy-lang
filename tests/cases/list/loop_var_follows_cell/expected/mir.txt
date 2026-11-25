@@ -3,8 +3,8 @@ main::a64@8:0: covered (storage: no_proof_required), summary: known
 main::big@12:0: covered (storage: no_proof_required), summary: known
 main::list_loop@39:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::views@49:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
-main::nested@71:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::mixed@89:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::nested@71:0: uncovered (unsupported tuple scalar), summary: opaque (unsupported tuple scalar)
+main::mixed@89:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::gen@99:0: uncovered (unsupported hoisted value)
 main::coro@108:0: uncovered (async body)
 main::after_loop@119:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

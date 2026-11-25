@@ -23,7 +23,7 @@ main::with_as@232:0: uncovered (unsupported statement), summary: opaque (unsuppo
 main::swap@251:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::enum_head@259:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::items_head@267:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::list_tuple_head@275:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::list_tuple_head@275:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::cond_head@284:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::late_closure@295:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::nocopy_target@307:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

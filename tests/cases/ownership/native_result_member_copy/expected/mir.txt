@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::copy_of@28:0: uncovered (no body to lower)
 main::same_of@34:0: uncovered (no body to lower)
-main::main@37:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::main@37:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::A.__init__@12:4: covered (storage: no_proof_required), summary: known
-main::R.__init__@20:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::R.__init__@20:4: uncovered (unsupported container element), summary: opaque (unsupported container element)

@@ -31,7 +31,7 @@ part_genexpr::<genexpr>@28:14: covered (storage: no_facts: storage facts have no
 part_refusals::__tpy_init: uncovered (module initialization)
 part_refusals::bumped_bytes@12:0: uncovered (unsupported native target binding)
 part_refusals::stepped@19:0: uncovered (range step across a suspension)
-part_refusals::sums@25:0: uncovered (unsupported native container element)
+part_refusals::sums@25:0: uncovered (unsupported hoisted value)
 part_refusals::owned@31:0: uncovered (unsupported hoisted value)
 part_refusals::limits@38:0: uncovered (container source needs a place)
 part_refusals::main@54:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

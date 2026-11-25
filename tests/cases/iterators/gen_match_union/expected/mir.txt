@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@39:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::main@39:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Box.describe@29:4: uncovered (match across a suspension)
 main::Dog.__init__@12:4: covered (storage: no_proof_required), summary: known
 main::Cat.__init__@19:4: covered (storage: no_proof_required), summary: known
-main::Box.__init__@26:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Box.__init__@26:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)

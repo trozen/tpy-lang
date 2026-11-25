@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::quiet@38:0: covered (storage: no_proof_required), summary: known
-main::mk@49:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::mk@49:0: covered (storage: no_proof_required), summary: known
 main::wrap_b@53:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::gen_codes@58:0: uncovered (unsupported expression form)
 main::async_code@63:0: uncovered (async body)

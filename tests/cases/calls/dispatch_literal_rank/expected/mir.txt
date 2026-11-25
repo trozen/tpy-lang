@@ -32,7 +32,7 @@ main::pk@314:0: uncovered (no body to lower)
 main::pk@319:0: uncovered (no body to lower)
 main::huge@323:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::yield_union@327:0: uncovered (unsupported parameter type)
-main::va@337:0: uncovered (unsupported native container element)
+main::va@337:0: uncovered (container name type mismatch)
 main::af@342:0: uncovered (async body)
 main::await_af@346:0: uncovered (async body)
 main::tp@352:0: uncovered (no body to lower)
@@ -89,4 +89,4 @@ main::V.wide@223:4: uncovered (no body to lower)
 main::Animal.__init__@12:4: covered (storage: no_proof_required), summary: known
 main::Dog.__init__@17:4: covered (storage: no_proof_required), summary: known
 main::V.__init__@86:4: covered (storage: no_proof_required), summary: known
-main::Cu.__init__@333:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Cu.__init__@333:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

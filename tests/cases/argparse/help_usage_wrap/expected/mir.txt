@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@9:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::main@9:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::__tpy_builder_argparse_help_1@22:11: uncovered (unsupported return type)
-main::__tpy_builder_argparse_parse_1@22:11: uncovered (unsupported record fields)
-main::__tpy_builder_argparse_args_1.__init__@22:11: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::__tpy_builder_argparse_parse_1@22:11: uncovered (unsupported local type or form)
+main::__tpy_builder_argparse_args_1.__init__@22:11: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

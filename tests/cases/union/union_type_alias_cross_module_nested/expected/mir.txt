@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@6:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@6:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
 shapes::__tpy_init: uncovered (module initialization)
 shapes::Circle.__init__@8:4: covered (storage: no_proof_required), summary: known
 shapes::Rect.__init__@15:4: covered (storage: no_proof_required), summary: known

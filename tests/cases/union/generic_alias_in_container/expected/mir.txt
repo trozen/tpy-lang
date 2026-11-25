@@ -1,2 +1,2 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@8:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@8:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)

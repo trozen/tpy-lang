@@ -3,4 +3,4 @@ main::main@17:0: uncovered (print argument needs a scalar leaf), summary: opaque
 main::show_optional@71:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Rec.__eq__: uncovered (uncertified binary operation)
 main::Rec.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
-main::Rec.__init__: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Rec.__init__: covered (storage: no_proof_required), summary: known

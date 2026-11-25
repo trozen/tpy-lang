@@ -19,7 +19,7 @@ __gen_stepped stepped(int32_t n) {
 }
 
 
-// def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:  # tpyc: mir(uncovered /unsupported native container element/)
+// def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:  # tpyc: mir(uncovered /unsupported hoisted value/)
 __gen_sums sums(const std::vector<std::tuple<int32_t, int32_t>>& pairs) {
     return __gen_sums(pairs);
 }

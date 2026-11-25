@@ -678,7 +678,7 @@ def test_validator_rejects_damaged_element_places(active) -> None:
     _rejects(field_write(MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, receiver)),
              "field write needs its initialization or replacement fact")
     # A container field whose members MIR does not model.
-    nested = make_list(make_list(TupleType((INT32, INT32))))
+    nested = make_list(make_list(TupleType((TupleType((INT32, INT32)), INT32))))
     def nested_field(s: MIRAssign) -> MIRAssign:
         *head, field = s.value.source.projections
         return replace(s, value=MIRBorrow(MIRPlace(s.value.source.root, (*head, replace(field, type=nested)))))

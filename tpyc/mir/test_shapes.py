@@ -146,12 +146,13 @@ def test_modeled_fields_are_a_class_in_the_admitted_set(program: _Program) -> No
     p = program.types["P"]
     for name in ("H.n", "H.s", "H.v", "H.p", "H.inner", "H.xs", "H.ro"):
         assert modeled_field(program.fields[name]), name
-    # A `readonly[...]` leaf member is no place MIR models; an Optional of a
-    # leaf has no record payload.
+    # A `readonly[...]` leaf member is no place MIR models; a wrapper storing a
+    # wrapper inline is none either (`wrapper_member_problem`, one level).
     assert not modeled_field(ReadonlyType(INT32))
     assert not modeled_field(ReadonlyType(STR))
-    assert not modeled_field(OptionalType(INT32))
-    assert not modeled_field(TupleType((INT32, p)))
+    assert modeled_field(OptionalType(INT32)) and modeled_field(TupleType((INT32, p)))
+    assert not modeled_field(OptionalType(TupleType((INT32, INT32))))
+    assert not modeled_field(TupleType((INT32, TupleType((INT32, p)))))
 
 
 # --- the shape the composer gives a value --------------------------------------------
@@ -370,19 +371,21 @@ def test_the_shape_check_refuses_each_forgery_by_its_rule(program: _Program) -> 
     # A field stores its record: no loan of it, and no scalar payload.
     assert shape_problem(pointer, p, MIRPosition.FIELD) == "invalid holding"
     assert shape_problem(replace(inline, members=(None, pointer)), maybe, MIRPosition.FIELD) == (
-        "unsupported optional record holding")
+        "wrapper members disagree with its type")
     assert shape_problem(replace(inline, members=(None, MIRShape(INT32, MIRClass.LEAF))), maybe, MIRPosition.FIELD) == (
-        "unsupported optional payload")
+        "wrapper members disagree with its type")
     # A tuple or union lent at CONST_REF is held by value: no loan form to refuse.
     held = value_shape(pair, role=MIRRole.LOAN, facts=th.THIRTupleLayout((INT32, th.THIRBorrowedRecord(p, False))))
     assert held.holding is MIRHolding.VALUE and shape_problem(held, pair) is None
 
 
 def test_the_shape_check_refuses_a_field_the_composer_refuses(program: _Program) -> None:
-    # A tuple, a container view and a `readonly[...]` leaf are no field MIR models.
+    # A tuple storing a tuple, a container view and a `readonly[...]` leaf are no field MIR models.
     ints = TupleType((INT32, INT32))
+    nested = TupleType((ints, INT32))
+    leaf = MIRShape(INT32, MIRClass.LEAF)
     fields = [
-        (value_shape(ints, facts=th.THIRTupleLayout((INT32, INT32))), ints),
+        (MIRShape(nested, MIRClass.TUPLE, members=(MIRShape(ints, MIRClass.TUPLE, members=(leaf, leaf)), leaf)), nested),
         (value_shape(program.span, access=True, role=MIRRole.LOAN), program.span),
         (MIRShape(INT32, MIRClass.LEAF), ReadonlyType(INT32)),
     ]
@@ -546,7 +549,7 @@ def test_an_optional_fields_inline_payload_is_stored_at_the_fields_access(progra
     typ = program.fields["H.p"]
     assert shape_problem(readonly, typ, MIRPosition.FIELD) is None
     forged = replace(readonly, members=mutable.members)
-    assert shape_problem(forged, typ, MIRPosition.FIELD) == "optional layout increases access"
+    assert shape_problem(forged, typ, MIRPosition.FIELD) == "wrapper members disagree with its type"
 
 
 def test_a_field_is_a_member_of_its_holders_declared_fields(program: _Program) -> None:

@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
-main::show_port@9:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::show_port@9:0: uncovered (borrow of an Optional field's payload), summary: opaque (borrow of an Optional field's payload)
 main::main@16:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Config.__init__@6:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Config.__init__@6:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

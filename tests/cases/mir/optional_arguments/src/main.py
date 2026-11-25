@@ -199,15 +199,15 @@ def narrowed_plain(o: Q | None) -> int32:  # tpyc: mir(covered)
     return 0
 
 
-# constructor callee: a scalar Optional parameter stored in a scalar Optional field (kept refusal: the field)
+# constructor callee: a scalar Optional parameter stored in a scalar Optional field
 class S:
     k: int32 | None
 
-    def __init__(self, k: int32 | None) -> None:  # tpyc: mir(uncovered /unsupported record fields/)
+    def __init__(self, k: int32 | None) -> None:  # tpyc: mir(covered)
         self.k = k
 
 
-def call_scalar_ctor() -> int32:  # tpyc: mir(uncovered /unsupported record fields/)
+def call_scalar_ctor() -> int32:  # tpyc: mir(covered)
     a = S(5)  # a value and None at the scalar Optional parameter
     b = S(None)
     n = 0

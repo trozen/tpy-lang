@@ -15,8 +15,8 @@ main::with_body@149:0: uncovered (unsupported statement), summary: opaque (unsup
 main::try_finally@156:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::match_arm@165:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::alias_writes@175:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::union_capture@187:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::uns@196:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::union_capture@187:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
+main::uns@196:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::tuple_alias@205:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
 main::list_comp@212:0: covered (storage: no_proof_required), summary: known
 main::dict_comp@216:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
@@ -27,7 +27,7 @@ main::varargs@235:0: covered (storage: no_proof_required)
 main::array@240:0: covered (storage: no_proof_required), summary: known
 main::dict_values@245:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::dict_items@250:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::tuple_target@255:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::tuple_target@255:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::zip_slot@261:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::enumerated@266:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::reversed_src@271:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -49,10 +49,10 @@ main::local_source@410:0: covered (storage: no_proof_required), summary: known
 main::comp_shadow@419:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
 main::comp_shadow_alias@425:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::loop_shadow_alias@434:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-main::reused_loop_name@451:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::join_loop_name@464:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::reused_loop_name@451:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
+main::join_loop_name@464:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
 main::raise_if@475:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::try_rebound@482:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::try_rebound@482:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
 main::read_only@497:0: covered (storage: no_proof_required), summary: known
 main::const_receiver@505:0: covered (storage: no_proof_required), summary: known
 main::const_alias_receiver@513:0: certified, summary: known
@@ -91,6 +91,6 @@ main::R.__init__@59:4: covered (storage: no_proof_required), summary: known
 main::Q.__init__@66:4: covered (storage: no_proof_required), summary: known
 main::Init.__init__@99:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
 main::Bag.__init__@279:4: covered (storage: no_proof_required), summary: known
-main::H.__init__@445:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::H.__init__@445:4: covered (storage: no_proof_required), summary: known
 main::Acc.__init__@555:4: covered (storage: no_proof_required), summary: known
 main::IAcc.__init__@563:4: covered (storage: no_proof_required), summary: known

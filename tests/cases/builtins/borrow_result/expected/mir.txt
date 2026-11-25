@@ -16,7 +16,7 @@ main::owned_elements_fn@162:0: uncovered (unsupported record initializer), summa
 main::fresh_fn@175:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::tick@213:0: covered (storage: no_facts: storage facts have not been published)
 main::unproven_fn@223:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
-main::rows_fn@234:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::rows_fn@234:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::consumers_fn@243:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::values_fn@253:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::mk_ps@295:0: covered (storage: no_proof_required), summary: known

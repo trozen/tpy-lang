@@ -16,7 +16,7 @@ inline constexpr std::string_view __name__ = "part_unlowered";
 bool grow_pairs(std::vector<std::tuple<int32_t, int32_t>>& ps);
 // def key_first(ss: Own[list[str]], xs: list[int32], big: bool) -> int32:  # tpyc: mir(uncovered /unsupported metadata/)
 int32_t key_first(std::vector<std::string>&& ss, std::vector<int32_t>& xs, bool big);
-// def unpack_head(ps: list[tuple[int32, int32]], big: bool) -> int32:  # tpyc: mir(uncovered /unsupported native container element/)
+// def unpack_head(ps: list[tuple[int32, int32]], big: bool) -> int32:  # tpyc: mir(uncovered /wrapper loop variable needs local payload/)
 int32_t unpack_head(std::vector<std::tuple<int32_t, int32_t>>& ps, bool big);
 // def printed(xs: list[int32], big: bool) -> None:  # tpyc: mir(uncovered /print argument needs a scalar leaf/)
 void printed(std::vector<int32_t>& xs, bool big);

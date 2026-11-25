@@ -46,7 +46,7 @@ main::sync_enumerate_ints@529:0: uncovered (unsupported statement), summary: opa
 main::gen_enumerate_ints@539:0: uncovered (unsupported hoisted value)
 main::sync_enumerate_rebind_in_loop@551:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::gen_enumerate_rebind_in_loop@561:0: uncovered (unsupported hoisted value)
-main::sync_scalar_iter_rebind@571:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::sync_scalar_iter_rebind@571:0: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)
 main::gen_scalar_iter_rebind@581:0: uncovered (unsupported hoisted value)
 main::sync_two_step@591:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::gen_del_alias@602:0: uncovered (unsupported hoisted value)
@@ -74,7 +74,7 @@ main::gen_retain@852:0: uncovered (unsupported hoisted value)
 main::co_retain@865:0: uncovered (async body)
 main::gen_setter_retain@879:0: uncovered (unsupported hoisted value)
 main::co_setter_retain@892:0: uncovered (async body)
-main::main@904:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::main@904:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::<genexpr>@324:13: uncovered (unsupported capture of an enclosing local)
 main::H.walk@41:4: uncovered (unsupported hoisted value)
 main::Ctx.__enter__@50:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
@@ -84,11 +84,11 @@ main::Setter.value@783:4: covered (storage: no_proof_required), summary: opaque 
 main::Setter.value@787:4: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::Box.__init__@22:4: covered (storage: no_proof_required), summary: known
 main::U.__init__@30:4: covered (storage: no_proof_required), summary: known
-main::H.__init__@37:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::H.__init__@37:4: covered (storage: no_proof_required), summary: known
 main::G.__init__@60:4: covered (storage: no_proof_required), summary: known
 main::Pt.__init__@68:4: uncovered (missing record layout)
 main::PV.__init__@76:4: uncovered (generic constructor)
 main::Named.__init__@84:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-main::N.__init__@94:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::N.__init__@94:4: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)
 main::Keeper.__init__@766:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 main::Setter.__init__@778:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

@@ -13,12 +13,12 @@ main::User.try_load_json: uncovered (error-return body)
 main::WithDefault.__eq__: uncovered (uncertified binary operation)
 main::WithDefault.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::WithDefault.__json_decode__: uncovered (error-return body)
-main::WithDefault.from_json: uncovered (unsupported record fields)
+main::WithDefault.from_json: uncovered (missing constructor definition)
 main::WithDefault.try_from_json: uncovered (error-return body)
 main::WithDefault.__json_encode__: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::WithDefault.to_json: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
 main::WithDefault.save_json: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::WithDefault.load_json: uncovered (unsupported record fields)
+main::WithDefault.load_json: uncovered (unsupported statement)
 main::WithDefault.try_load_json: uncovered (error-return body)
 main::Base.__eq__: covered (storage: no_proof_required)
 main::Base.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
@@ -41,6 +41,6 @@ main::Extended.save_json: uncovered (unsupported statement), summary: opaque (un
 main::Extended.load_json: uncovered (unsupported statement)
 main::Extended.try_load_json: uncovered (error-return body)
 main::User.__init__: covered (storage: no_proof_required), summary: known
-main::WithDefault.__init__: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::WithDefault.__init__: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Base.__init__: covered (storage: no_proof_required), summary: known
 main::Extended.__init__: covered (storage: no_proof_required), summary: known

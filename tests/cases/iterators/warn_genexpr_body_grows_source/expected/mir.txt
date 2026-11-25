@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::grow@12:0: covered (storage: no_proof_required), summary: known
-main::grow_pairs@17:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::grow_pairs@17:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
 main::add_to@22:0: covered (storage: no_proof_required), summary: known
 main::rename@41:0: covered (storage: no_proof_required), summary: known
 main::in_loop_callee@46:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
@@ -23,7 +23,7 @@ main::src_pop@222:0: uncovered (stub protocol argument is not a builtin leaf), s
 main::src_callee@227:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::src_callee_late@232:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::src_dict_view@237:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
-main::src_unpack@242:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::src_unpack@242:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::src_for_over@247:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::src_gen_body@255:0: uncovered (stub protocol argument is not a builtin leaf)
 main::src_async_body@260:0: uncovered (async body)
@@ -71,7 +71,7 @@ main::<genexpr>@224:14: uncovered (unsupported capture of an enclosing local)
 main::<genexpr>@229:14: uncovered (unsupported capture of an enclosing local)
 main::<genexpr>@234:14: uncovered (unsupported capture of an enclosing local)
 main::<genexpr>@239:14: uncovered (unsupported parameter type)
-main::<genexpr>@244:14: uncovered (unsupported native container element)
+main::<genexpr>@244:14: uncovered (unsupported capture of an enclosing local)
 main::<genexpr>@250:13: uncovered (unsupported capture of an enclosing local)
 main::<genexpr>@257:13: uncovered (unsupported capture of an enclosing local)
 main::<genexpr>@262:14: uncovered (unsupported capture of an enclosing local)

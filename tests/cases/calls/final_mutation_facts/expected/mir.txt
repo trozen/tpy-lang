@@ -39,6 +39,6 @@ main::Grower.__init__@74:4: covered (storage: no_proof_required), summary: known
 main::FieldWriter.__init__@79:4: covered (storage: no_proof_required), summary: known
 main::Relay.__init__@94:4: uncovered (generic constructor)
 main::ViewRunner.__init__@121:4: covered (storage: no_proof_required), summary: known
-main::Viewer.__init__@132:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::Viewer.__init__@132:4: covered (storage: no_proof_required), summary: known
 main::Bag.__init__@281:4: uncovered (generic constructor)
 main::Keeper.__init__@291:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

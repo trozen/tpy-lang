@@ -22,7 +22,7 @@ def stepped(n: int32) -> Iterator[int32]:  # tpyc: mir(uncovered /range step acr
 
 
 # tuple_head: a head unpack
-def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:  # tpyc: mir(uncovered /unsupported native container element/)
+def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:  # tpyc: mir(uncovered /unsupported hoisted value/)
     for a, b in pairs:
         yield a + b
 

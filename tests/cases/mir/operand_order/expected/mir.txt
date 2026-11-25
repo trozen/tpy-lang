@@ -1,0 +1,19 @@
+main::__tpy_init: uncovered (module initialization)
+main::word@22:0: covered (storage: no_proof_required), summary: known
+main::tag@27:0: covered (storage: no_proof_required), summary: known
+main::bump@31:0: covered (storage: no_proof_required), summary: known
+main::peek@36:0: covered (storage: no_proof_required), summary: known
+main::slice_writing@41:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::slice_pure@45:0: covered (storage: no_proof_required), summary: known
+main::lst@49:0: covered (storage: no_proof_required), summary: known
+main::view@54:0: covered (storage: no_proof_required), summary: known
+main::call_place_writing@59:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::call_place_pure@63:0: covered (storage: no_proof_required), summary: known
+main::select_writing@84:0: uncovered (named temporary needs stable scalar operands), summary: opaque (named temporary needs stable scalar operands)
+main::select_pure@89:0: certified, summary: known
+main::main@94:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Rec.append_writing@15:4: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+main::Rec.append_pure@18:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@10:4: covered (storage: no_proof_required), summary: known
+main::PW.__init__@70:4: covered (storage: no_proof_required), summary: known
+main::PP.__init__@78:4: covered (storage: no_proof_required), summary: known

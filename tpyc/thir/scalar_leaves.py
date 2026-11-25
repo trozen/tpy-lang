@@ -326,11 +326,25 @@ def members_problem(typ: object, path: frozenset[TpyType] = frozenset()) -> str 
     element, value, _ = declared
     members = (element,) if value is None else (element, value)
     for member in members:
-        if len(members) > 1 and record_type(unwrap_readonly(member)):
+        if len(members) > 1 and stores_record(member):
             return UNSUPPORTED_ELEMENT
         if (problem := element_problem(member, path)) is not None:
             return problem
     return None
+
+
+def stores_record(typ: object) -> bool:
+    """Whether storage of `typ` holds a record inline, directly: the record
+    itself, or a wrapper with a member (`stored_members`, one level) that
+    is no scalar or owned leaf -- a record, the only other member a
+    modeled wrapper has (`wrapper_member_problem`)."""
+    bare = unwrap_readonly(typ)
+    if record_type(bare):
+        return True
+    if value_class(bare) not in WRAPPER_CLASSES:
+        return False
+    stored = stored_types(bare, lambda _: None)
+    return stored is UNEXPANDED or not all(value_class(m) in (MIRClass.LEAF, MIRClass.OWNED_LEAF) for m in stored)
 
 
 def modeled_members(typ: object) -> bool:
@@ -439,12 +453,16 @@ def element_problem(typ: object, path: frozenset[TpyType] = frozenset()) -> str 
     when it does -- the one member rule, at any depth: a scalar or owned
     leaf; a plain record (`_plain_record_fields`) whose every field is such
     a leaf or a native container whose members are container elements; or
-    such a native container itself (`members_problem`). A type that reaches
-    itself through its members is refused by name; `path` holds the types
-    the walk is inside, so sibling members of one type stay admissible."""
+    such a native container itself (`members_problem`); a wrapper, as an
+    element or as such a record's field, by the wrapper rule
+    (`wrapper_member_problem`). A type that reaches itself through its
+    members is refused by name; `path` holds the types the walk is inside,
+    so sibling members of one type stay admissible."""
     bare = unwrap_readonly(typ)
     if storage_leaf(bare) or owned_leaf(bare):
         return None
+    if value_class(bare) in WRAPPER_CLASSES:
+        return wrapper_member_problem(bare)
     if bare in path:
         return RECURSIVE_ELEMENT
     inside = path | {bare}
@@ -456,10 +474,41 @@ def element_problem(typ: object, path: frozenset[TpyType] = frozenset()) -> str 
     for field in fields:
         if storage_leaf(field) or owned_leaf(field):
             continue
-        if not native_container_type(field):
+        if not element_record_member(field):
             return UNSUPPORTED_ELEMENT
-        if (problem := element_problem(field, inside)) is not None:
+        problem = (wrapper_member_problem(field) if value_class(field) in WRAPPER_CLASSES
+                   else element_problem(field, inside))
+        if problem is not None:
             return problem
+    return None
+
+
+def element_record_member(field: object) -> bool:
+    """Whether a non-leaf field of an element record is one whose members
+    the element rule walks (`element_problem`): a native container or a
+    wrapper declared bare. A `readonly[...]` field of any class is
+    refused."""
+    return not isinstance(field, ReadonlyType) and value_class(field) in (MIRClass.CONTAINER, *WRAPPER_CLASSES)
+
+
+def wrapper_member_problem(typ: object) -> str | None:
+    """Why MIR does not model a record field or container element of
+    wrapper type `typ` (a tuple, an Optional, a union) as a place, None
+    when it does: each member it stores inline (`stored_members`, one
+    level) is a scalar leaf, an owned leaf or a plain record
+    (`plain_record_element`), its representation is storage (no
+    `force_pointer_repr`), and nothing in it holds a loan (`loan_free`): a
+    loan stored at a member's depth has no key. The one rule for both
+    holders, the rule an Optional field's record payload has."""
+    bare = unwrap_readonly(typ)
+    if value_class(bare) not in WRAPPER_CLASSES or isinstance(bare, OptionalType) and bare.force_pointer_repr:
+        return UNSUPPORTED_ELEMENT
+    stored = stored_types(bare, lambda _: None)
+    if stored is UNEXPANDED or not loan_free(bare):
+        return UNSUPPORTED_ELEMENT
+    # The declared members: an `Own[...]` or `readonly[...]` one is none of these.
+    if not all(storage_leaf(m) or owned_leaf(m) or plain_record_element(m) for m in stored):
+        return UNSUPPORTED_ELEMENT
     return None
 
 
@@ -534,16 +583,14 @@ def record_type(typ: object) -> bool:
 def optional_record_field(typ: object) -> NominalType | None:
     """The payload record of a record member of declared type `typ` that is
     an Optional MIR models in place (`std::optional<P>` storage), or None:
-    the payload is a plain record (`plain_record_element`: leaf fields
-    only, so a payload place is at most one field deep, and no user hook
-    runs on its copy or destruction) holding no loan (`loan_free`), so no
-    stored-loan entry sits under the payload."""
+    an Optional whose payload is a record, admitted by the wrapper rule
+    (`wrapper_member_problem`: a plain record, so a payload place is at
+    most one field deep and no user hook runs on its copy or destruction,
+    holding no loan, so no stored-loan entry sits under the payload)."""
     bare = unwrap_readonly(typ)
-    if not isinstance(bare, OptionalType) or bare.force_pointer_repr:
+    if not isinstance(bare, OptionalType) or wrapper_member_problem(bare) is not None:
         return None
-    # The declared payload: an `Own[...]` one is no record MIR models in place.
-    inner = bare.inner
-    return inner if isinstance(inner, NominalType) and plain_record_element(inner) and loan_free(inner) else None
+    return bare.inner if record_type(bare.inner) else None
 
 
 def converted_literal(typ: object, value: object) -> object | None:
@@ -577,20 +624,25 @@ class MIRClass(Enum):
     UNION = auto()
 
 
+# The classes that store their members inline.
+WRAPPER_CLASSES = frozenset({MIRClass.TUPLE, MIRClass.OPTIONAL, MIRClass.UNION})
+
+
 def modeled_field(typ: object) -> bool:
     """Whether a record member of declared type `typ` has a shape MIR
     models: its class is one a field holds, a scalar leaf, an owned leaf
     or a view of one declared bare (a `readonly[...]` leaf member is no
-    place MIR models), a native container or a record stored inline, or an
-    Optional of a plain loan-free record (`optional_record_field`), whose
-    payload MIR reaches through the field's own layout. The shape question
-    only: whether a record's definition verifies is `MIRDefinitions`'s
-    answer, never this predicate's."""
+    place MIR models), a native container or a record stored inline, or a
+    tuple, Optional or union the wrapper rule admits
+    (`wrapper_member_problem`), whose members MIR reaches through the
+    field's own layout. The shape question only: whether a record's
+    definition verifies is `MIRDefinitions`'s answer, never this
+    predicate's."""
     match value_class(typ):
         case MIRClass.LEAF | MIRClass.OWNED_LEAF | MIRClass.VIEW:
             return not isinstance(typ, ReadonlyType)
-        case MIRClass.OPTIONAL:
-            return optional_record_field(typ) is not None
+        case MIRClass.TUPLE | MIRClass.OPTIONAL | MIRClass.UNION:
+            return wrapper_member_problem(typ) is None
         case MIRClass.CONTAINER | MIRClass.RECORD:
             return True
     return False

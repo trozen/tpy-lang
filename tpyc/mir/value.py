@@ -19,9 +19,9 @@ from typing import Protocol
 from ..thir import nodes as th
 from ..thir.nodes import Form
 from ..thir.scalar_leaves import (
-    UNEXPANDED, UNSUPPORTED_ELEMENT, FieldSource, MIRClass, binds_cursor, holds_loan, members_problem,
-    modeled_ancestors, modeled_field, native_container_subject, readonly_elements, record_type, stored_members,
-    stored_types, value_class, walk_stored,
+    UNEXPANDED, UNSUPPORTED_ELEMENT, FieldSource, MIRClass, binds_cursor, element_record_member, holds_loan,
+    members_problem, modeled_ancestors, modeled_field, native_container_subject, readonly_elements, record_type,
+    stored_members, stored_types, value_class, walk_stored, wrapper_member_problem, WRAPPER_CLASSES,
 )
 from ..type_def_registry import ParamPassing
 from ..typesys import (
@@ -213,8 +213,24 @@ class MIRShape:
 
     @property
     def owned_tuple(self) -> bool:
-        """A tuple storing a record member inline."""
+        """A tuple storing a member that owns storage inline: a record, or an
+        owned leaf's buffer."""
         return self.cls is MIRClass.TUPLE and any(m is not None and m.owns_storage for m in self.members)
+
+    @property
+    def record_tuple(self) -> bool:
+        """A tuple storing a record member inline: a record member MIR
+        neither copies nor lends out of a tuple value no binding holds."""
+        return self.cls is MIRClass.TUPLE and any(
+            m is not None and m.cls is MIRClass.RECORD and m.is_storage for m in self.members)
+
+    @property
+    def stores_type_members(self) -> bool:
+        """A wrapper or container whose members are the ones storage of its
+        type holds (`storage_shape`): a field's or an element's, never a
+        slot's borrow form."""
+        stored = storage_shape(self.type, self.readonly)
+        return not isinstance(stored, str) and stored.members == self.members
 
     @property
     def inline_sum(self) -> bool:
@@ -584,15 +600,21 @@ def _layouts_problem(members: Iterable[MIRShape | None], layouts: Records,
                 continue
             case MIRClass.RECORD:
                 for field in layout.fields:
-                    field_cls = None if isinstance(field.type, ReadonlyType) else value_class(field.type)
-                    if field_cls is MIRClass.CONTAINER:
-                        shape = storage_shape(field.type)
-                        if isinstance(shape, str):
-                            return shape
-                        if (problem := _layouts_problem(shape.members, layouts, inside | {member.type})) is not None:
-                            return problem
-                    elif field_cls not in _LEAVES:
-                        return UNSUPPORTED_ELEMENT
+                    # The element rule's walk (`element_problem`): which fields it enters, a wrapper by its rule.
+                    if not element_record_member(field.type):
+                        if isinstance(field.type, ReadonlyType) or value_class(field.type) not in _LEAVES:
+                            return UNSUPPORTED_ELEMENT
+                        continue
+                    wrapper = value_class(field.type) in WRAPPER_CLASSES
+                    if wrapper and (problem := wrapper_member_problem(field.type)) is not None:
+                        return problem
+                    shape = storage_shape(field.type)
+                    if isinstance(shape, str):
+                        return shape
+                    # A container's members, or what a wrapper stores inline (`inline_members`).
+                    members = (shape,) if wrapper else shape.members
+                    if (problem := _layouts_problem(members, layouts, inside | {member.type})) is not None:
+                        return problem
             case MIRClass.CONTAINER:
                 if (problem := _layouts_problem(member.members, layouts, inside)) is not None:
                     return problem
@@ -696,7 +718,6 @@ class MIRPosition(Enum):
     FIELD = auto()
 
 
-WRAPPER_CLASSES = frozenset({MIRClass.TUPLE, MIRClass.OPTIONAL, MIRClass.UNION})
 # The layout fact of each wrapper class.
 _LAYOUT_CLASSES = {th.THIRTupleLayout: MIRClass.TUPLE, th.THIROptionalLayout: MIRClass.OPTIONAL,
                    th.THIRUnionLayout: MIRClass.UNION}
@@ -760,9 +781,9 @@ def value_shape(declared: TpyType, cls: MIRClass | None = None, *, access: bool 
       selects whatever their holding (`int32 | None` keeps its scalar
       payload); an Optional's own slot is storage at its own access, and
       a pointer payload carries the loan's (`readonly[P] | None`);
-    - a field's Optional and a container take the members their storage
-      holds (`storage_shape`) at their access, at a field those `layouts`
-      admits, none when it admits none.
+    - a field's wrapper takes the members its storage holds
+      (`storage_shape`) at its access; a field's container those its
+      `layouts` admit, none when they admit none.
     A lent owned leaf and a view are a readonly pointer: the access their
     class has (`loan_access`). A THIR type's `Ref[...]` names no loan (the
     passing or the return representation does): it is stripped here, until
@@ -782,14 +803,20 @@ def value_shape(declared: TpyType, cls: MIRClass | None = None, *, access: bool 
         require_valid(cls is not None, "unsupported slot type")
     members: tuple[MIRShape | None, ...] = ()
     # A slot's wrapper members are the ones its layout fact selects.
-    require_valid(cls not in WRAPPER_CLASSES or facts is not None or field and cls is MIRClass.OPTIONAL,
+    require_valid(cls not in WRAPPER_CLASSES or facts is not None or field,
                   "wrapper without its layout facts")
     match cls:
+        case MIRClass.TUPLE | MIRClass.OPTIONAL | MIRClass.UNION if field:
+            # The members storage of the type holds, at the field's access:
+            # a field admitted (`modeled_field`) composes them, never none.
+            stored = storage_shape(typ, access)
+            require_valid(not isinstance(stored, str), "wrapper field members do not compose")
+            members = stored.members
         case MIRClass.TUPLE:
             members = tuple(map(thir_member, facts.elements))
         case MIRClass.UNION:
             members = tuple(None if m is None else thir_member(m) for m in facts.elements)
-        case MIRClass.OPTIONAL | MIRClass.CONTAINER | MIRClass.CONTAINER_VIEW if field:
+        case MIRClass.CONTAINER | MIRClass.CONTAINER_VIEW if field:
             # What lies in the field is reached at the field's access.
             members = storage_shape(typ, access, position, layouts).members
         case MIRClass.OPTIONAL:
@@ -977,6 +1004,10 @@ def _members_problem(shape: MIRShape, declared: TpyType, position: MIRPosition, 
     Optional's of its declared payload's), a container's the builder's; a
     stored record holding a borrow only in a producer's slot (`producer`)."""
     readonly = isinstance(declared, ReadonlyType)
+    if position is MIRPosition.FIELD and shape.cls in WRAPPER_CLASSES:
+        # A field stores its wrapper's members inline, as its type composes them (a pinned
+        # pointer Optional is no field MIR models: `position_problem`).
+        return None if shape.stores_type_members else "wrapper members disagree with its type"
     match shape.cls:
         case MIRClass.TUPLE:
             types = shape.type.element_types
@@ -1005,21 +1036,15 @@ def _members_problem(shape: MIRShape, declared: TpyType, position: MIRPosition, 
             if len(kinds) != 1 or len(shape.members) < 2:
                 return "mixed or empty union layout"
         case MIRClass.OPTIONAL:
-            # A field stores its payload record inline; a slot points at it
-            # or, as owned storage of its own, stores it inline.
-            holding = ((MIRHolding.VALUE,) if position is MIRPosition.FIELD
-                       else (MIRHolding.POINTER, MIRHolding.VALUE))
+            # A slot points at its payload record or, as owned storage of its own, stores it inline.
+            holding = (MIRHolding.POINTER, MIRHolding.VALUE)
             if (shape.type.force_pointer_repr or len(shape.members) != 2 or shape.members[0] is not None
                     or shape.payload is None):
                 return "unsupported optional layout"
-            if position is MIRPosition.FIELD and shape.payload.cls is not MIRClass.RECORD:
-                return "unsupported optional payload"
             if shape.payload.cls is MIRClass.CONTAINER and shape.payload.is_storage:
                 # A slot's own container storage lies inline as its type stores it (a reseat's
                 # `std::optional<std::vector<T>>`).
-                stored = storage_shape(shape.type, shape.readonly)
-                return None if not isinstance(stored, str) and stored.members == shape.members else (
-                    "unsupported optional payload")
+                return None if shape.stores_type_members else "unsupported optional payload"
             # An inline payload is reached at its field's access, as a container's members are.
             return _member_problem(shape.payload, shape.type.inner, readonly or shape.readonly, "optional", holding,
                                    producer)

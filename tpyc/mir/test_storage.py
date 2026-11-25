@@ -10,7 +10,7 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..type_def_registry import ParamPassing
-from ..typesys import BOOL, INT32, NominalType, OptionalType, UnionType
+from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .testutil import lower_function
@@ -280,7 +280,7 @@ def test_semantic_facts_are_required(functions: dict[str, th.THIRFunction]) -> N
     not_covered(replace(fn, body=(alias, replace(store, target=replace(
         store.target, field_identity=None)), ret)), "missing field identity")
     # An identity of a member type MIR does not model refuses by that type.
-    for unmodeled in (OptionalType(INT32), UnionType((INT32, BOOL))):
+    for unmodeled in (OptionalType(TupleType((INT32, INT32))), UnionType((INT32, TupleType((INT32, BOOL))))):
         not_covered(replace(fn, body=(alias, replace(store, target=replace(
             store.target, field_identity=replace(store.target.field_identity, type=unmodeled))), ret)),
             "unsupported field type or form")

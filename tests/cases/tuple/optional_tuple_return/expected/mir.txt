@@ -19,7 +19,7 @@ main::tagged@177:0: uncovered (unsupported return type), summary: opaque (unsupp
 main::maybe_tagged@181:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::bare_return@188:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::section_free@192:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::section_method@212:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::section_method@212:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::section_relay@238:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::section_finally@259:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::section_match@272:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
@@ -34,4 +34,4 @@ main::Holder.peek@57:4: uncovered (unsupported return type), summary: opaque (un
 main::Holder.pair_prop@65:4: uncovered (unsupported return type)
 main::Holder.pair_prop@65:4#2: uncovered (unsupported return type)
 main::Box.__init__@16:4: covered (storage: no_proof_required), summary: known
-main::Holder.__init__@25:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.__init__@25:4: covered (storage: no_proof_required), summary: known

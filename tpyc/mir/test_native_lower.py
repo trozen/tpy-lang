@@ -230,7 +230,8 @@ def test_owned_leaf_elements_lower(typ: str, line: str) -> None:
     assert line in [l.strip() for l in dump_function(fn).splitlines()]
 
 
-@pytest.mark.parametrize("typ", ["list[tuple[int32, int32]]", "list[Cell | None]", "dict[int32, Cell]"])
+@pytest.mark.parametrize("typ", ["list[tuple[tuple[int32, int32], int32]]", "list[tuple[int32, str]]",
+                                 "list[tuple[int32, int32]]", "list[Cell | None]", "dict[int32, Cell]"])
 def test_other_native_elements_remain_uncovered(typ: str) -> None:
     _, bodies, _, _ = compile_bodies(PREFIX + f'''def other(xs: {typ}) -> int32:
     for item in xs:

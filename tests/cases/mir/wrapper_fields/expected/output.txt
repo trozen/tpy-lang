@@ -18,10 +18,18 @@ keep_record_field 16
 keep_leaf_field 16
 keep_root 20
 loop_write 3
+order_opt_record 5
+order_opt_pure 5
 refill 2
 copy_field 2
 copy_param 7
 copy_both 7
+written_then_read 2
+copied_then_read 14
+store_found 11
+payload_into local 30
+payload_into 30 30 30 40
+payload_into o 30
 bump_payload 3
 payload_borrow 3
 payload_return 3
@@ -29,14 +37,44 @@ payload_return_call 3
 payload_sub_return sixteen
 keep_payload 1
 payload_write 5
-written_then_read 2
-copied_then_read 14
-store_found 11
 ro_read 15
 local 1
 local_forms 4
 local_temporary 1
 built_forms 8
+tuple ro_read 5
+tuple member_view bbb
+tuple cross_copy 3
+tuple order 5 5
+tuple idx e b e h
+tuple scalar 3 4
+tuple members 5
+tuple members 8
+tuple record 2 3
+sums payload_len 3
+sums copies True 5
+sums ro_read 11
+sums presence 9 9 9
+sums from_plain q 7
+sums union_from_plain 7
+sums order_union 3 3
+elements list_set 2 bb
+elements dict aa
+elements comprehension 2 2
+elements scalar_literal 3
+elements records 2
+elements clears 0
+elements set_opts True True True
+elements set_engaged False False
+elements set_str_none 2
+elements cells 0 0 1
+refused literal 2 2 3
+refused loop 2
+refused sort 1
+refused key 3 True
+refused loaned 1 True
+refused ro_read 1
+refused keys 1 0
 empty 0
 built 8
 pair 1

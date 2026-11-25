@@ -36,7 +36,7 @@ main::free_positions@353:0: uncovered (unsupported metadata: template_args_cpp),
 main::record_positions@359:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::body_positions@372:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::other_positions@396:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
-main::element_positions@412:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::element_positions@412:0: uncovered (unsupported tuple scalar), summary: opaque (unsupported tuple scalar)
 main::main@435:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Holder.store@63:4: uncovered (generic body)
 main::HolderTwin.store@73:4: covered (storage: no_proof_required), summary: known

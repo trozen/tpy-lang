@@ -50,10 +50,10 @@ part_positions::Node.bump@19:4: covered (storage: no_proof_required), summary: k
 part_positions::Node.put@27:4: covered (storage: no_proof_required), summary: known
 part_positions::Node.__init__@12:4: covered (storage: no_proof_required), summary: known
 part_refused::__tpy_init: uncovered (module initialization)
-part_refused::str_payload@14:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
-part_refused::str_append@21:0: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
-part_refused::main@26:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-part_refused::SH.__init__@9:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+part_refused::str_payload@14:0: uncovered (borrow of an Optional field's payload), summary: opaque (borrow of an Optional field's payload)
+part_refused::str_append@21:0: uncovered (optional field payload write), summary: opaque (optional field payload write)
+part_refused::main@26:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_refused::SH.__init__@9:4: covered (storage: no_proof_required), summary: known
 part_writes::__tpy_init: uncovered (module initialization)
 part_writes::w_call@8:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_writes::w_call_refill@17:0: covered (storage: no_proof_required), conflicts: replacement, summary: known

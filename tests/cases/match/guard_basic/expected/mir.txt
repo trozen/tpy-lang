@@ -18,5 +18,5 @@ main::Cat.__eq__: covered (storage: no_proof_required)
 main::Cat.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::Dog.__init__: covered (storage: no_proof_required), summary: known
 main::Cat.__init__: covered (storage: no_proof_required), summary: known
-main::OptN.__init__@167:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::OptN.__init__@167:4: covered (storage: no_proof_required), summary: known
 main::PlainN.__init__@173:4: covered (storage: no_proof_required), summary: known

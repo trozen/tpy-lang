@@ -5,4 +5,4 @@ main::Canvas.shape@24:4: uncovered (unsupported return type), summary: opaque (u
 main::Canvas.shape@24:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::Circle.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::Square.__init__@14:4: covered (storage: no_proof_required), summary: known
-main::Canvas.__init__@20:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Canvas.__init__@20:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)

@@ -27,7 +27,7 @@ main::UQ.__repr__@102:4: covered (storage: no_proof_required), summary: opaque (
 main::P.__init__: covered (storage: no_proof_required), summary: known
 main::H.__init__: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::D.__init__: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-main::V.__init__: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::V.__init__: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::K.__init__@42:4: covered (storage: no_proof_required), summary: known
 main::KH.__init__: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::R.__init__: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

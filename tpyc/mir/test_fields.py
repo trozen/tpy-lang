@@ -653,11 +653,11 @@ from tpy import StrView, int32
 
 class Holder:
     view: StrView
-    pair: tuple[int32, int32]
+    pair: tuple[tuple[int32, int32], int32]
 
     def __init__(self, view: StrView) -> None:
         self.view = view
-        self.pair = (1, 2)
+        self.pair = ((1, 2), 3)
 
 
 def write(h: Holder, view: StrView) -> None:

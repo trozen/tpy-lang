@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::dump_pairs@5:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::dump_pairs@5:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::dump_items@9:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
-main::sum_first@13:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::main@19:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::sum_first@13:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
+main::main@19:0: uncovered (unsupported tuple scalar), summary: opaque (unsupported tuple scalar)

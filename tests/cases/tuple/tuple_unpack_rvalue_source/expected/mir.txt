@@ -3,4 +3,4 @@ main::make@15:0: uncovered (unsupported return type), summary: opaque (unsupport
 main::from_call@19:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::from_field@24:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::main@29:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Holder.__init__@11:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.__init__@11:4: covered (storage: no_proof_required), summary: known

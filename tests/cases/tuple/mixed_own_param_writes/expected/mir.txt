@@ -55,4 +55,4 @@ main::Adder.__init__@292:4: covered (storage: no_proof_required), summary: known
 main::TakerImpl.__init__@315:4: covered (storage: no_proof_required), summary: known
 main::TokPair.__init__@335:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
 main::Init.__init__@355:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::Slot.__init__@366:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Slot.__init__@366:4: covered (storage: no_proof_required), summary: known

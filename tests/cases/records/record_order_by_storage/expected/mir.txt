@@ -4,7 +4,7 @@ main::ded_number@365:0: covered (storage: no_proof_required), summary: known
 main::async_section@427:0: uncovered (async body)
 main::inl_number@529:0: covered (storage: no_proof_required), summary: known
 main::hb_number@566:0: covered (storage: no_proof_required), summary: known
-main::main@570:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::main@570:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
 main::DcHolder.__eq__: uncovered (uncertified binary operation)
 main::DcHolder.__repr__: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::DcB.__eq__: covered (storage: no_proof_required)
@@ -41,9 +41,9 @@ main::OptB.__init__@40:4: covered (storage: no_proof_required), summary: known
 main::DerBase.__init__@48:4: covered (storage: no_proof_required), summary: known
 main::DerHolder.__init__@55:4: covered (storage: no_proof_required), summary: known
 main::DerChild.__init__@60:4: covered (storage: no_proof_required), summary: known
-main::TupHolder.__init__@68:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::TupHolder.__init__@68:4: covered (storage: no_proof_required), summary: known
 main::TupB.__init__@75:4: covered (storage: no_proof_required), summary: known
-main::UniHolder.__init__@83:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::UniHolder.__init__@83:4: covered (storage: no_proof_required), summary: known
 main::UniB.__init__@90:4: covered (storage: no_proof_required), summary: known
 main::UniC.__init__@97:4: covered (storage: no_proof_required), summary: known
 main::GenHolder.__init__@105:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)

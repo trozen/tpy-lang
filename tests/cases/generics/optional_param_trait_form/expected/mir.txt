@@ -25,13 +25,13 @@ main::Guard.__enter__@40:4: uncovered (missing constructor definition), summary:
 main::Guard.__exit__@43:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Container.probe@82:4: uncovered (generic body)
 main::Container.held@86:4: uncovered (generic body)
-main::ContainerTwin.probe@96:4: covered (storage: no_proof_required), summary: opaque (summary record: unsupported record fields)
-main::ContainerTwin.held@99:4: uncovered (unsupported field type or form), summary: opaque (unsupported field type or form)
+main::ContainerTwin.probe@96:4: covered (storage: no_proof_required), summary: known
+main::ContainerTwin.held@99:4: covered (storage: no_proof_required), summary: known
 main::CellBox.held@109:4: covered (storage: no_proof_required), summary: known
 main::Cell.__init__@22:4: covered (storage: no_proof_required), summary: known
 main::Pinned.__init__@35:4: covered (storage: no_proof_required), summary: known
 main::Container.__init__@77:4: uncovered (generic constructor)
-main::ContainerTwin.__init__@93:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::ContainerTwin.__init__@93:4: covered (storage: no_proof_required), summary: known
 main::CellBox.__init__@106:4: covered (storage: no_proof_required), summary: known
 part_frame::__tpy_init: uncovered (module initialization)
 part_frame::gen@12:0: uncovered (generic body)

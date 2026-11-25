@@ -58,7 +58,7 @@ int32_t scalar_loops(std::optional<int32_t> k);
 int32_t via_scalar(const ::tpy::Union<bool, int32_t>& x);
 // def narrowed_plain(o: Q | None) -> int32:  # tpyc: mir(covered)
 int32_t narrowed_plain(const Q* o);
-// def call_scalar_ctor() -> int32:  # tpyc: mir(uncovered /unsupported record fields/)
+// def call_scalar_ctor() -> int32:  # tpyc: mir(covered)
 int32_t call_scalar_ctor();
 // def call_scalar_ctor_arg(z: int32 | None) -> int32:  # tpyc: mir(covered)
 int32_t call_scalar_ctor_arg(std::optional<int32_t> z);
@@ -186,7 +186,7 @@ struct S {
     // k: int32 | None
     std::optional<int32_t> k;
 
-    // def __init__(self, k: int32 | None) -> None:  # tpyc: mir(uncovered /unsupported record fields/)
+    // def __init__(self, k: int32 | None) -> None:  # tpyc: mir(covered)
     S() = default;
     explicit S(std::optional<int32_t> k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.S";
@@ -290,7 +290,7 @@ inline int32_t H::clear_read(const Q* p) {
     return 0;
 }
 
-// def __init__(self, k: int32 | None) -> None:  # tpyc: mir(uncovered /unsupported record fields/)
+// def __init__(self, k: int32 | None) -> None:  # tpyc: mir(covered)
 //     self.k = k
 inline S::S(std::optional<int32_t> k) : k(k) {}
 

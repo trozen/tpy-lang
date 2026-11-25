@@ -7,4 +7,4 @@ main::Wrapper.node@28:4: uncovered (unsupported parameter type), summary: opaque
 main::Holder.num@38:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::Node.__init__@14:4: covered (storage: no_proof_required), summary: known
 main::Wrapper.__init__@20:4: covered (storage: no_proof_required), summary: known
-main::Holder.__init__@34:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.__init__@34:4: covered (storage: no_proof_required), summary: known

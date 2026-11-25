@@ -24,13 +24,13 @@ main::optional_elem@228:0: uncovered (unsupported parameter type), summary: opaq
 main::own_elem@236:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::readonly_elem@243:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::box_rc_elem@249:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
-main::span_slice_unpack@273:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::span_param_unpack@281:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::varargs_unpack@287:0: uncovered (unsupported native container element)
+main::span_slice_unpack@273:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::span_param_unpack@281:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::varargs_unpack@287:0: uncovered (unsupported statement)
 main::varargs_span_unpack@295:0: uncovered (container holds a borrow)
 main::varargs_span_decl@300:0: uncovered (container holds a borrow)
-main::varargs_span_caller@307:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::varargs_span_decl_caller@312:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::varargs_span_caller@307:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+main::varargs_span_decl_caller@312:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 main::ptr_pack_direct@336:0: uncovered (container holds a borrow)
 main::ptr_pack_unpack@340:0: uncovered (container holds a borrow)
 main::grow_while_borrowed@346:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -43,6 +43,6 @@ main::M.__init__@47:4: covered (storage: no_proof_required), summary: known
 main::H.__init__@103:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::C.__init__@118:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
 main::Cell.__init__@262:4: covered (storage: no_proof_required), summary: known
-main::Holder.__init__@269:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Holder.__init__@269:4: covered (storage: no_proof_required), summary: known
 main::Gauge.__init__@322:4: covered (storage: no_proof_required), summary: known
 main::Dial.__init__@332:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

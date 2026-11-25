@@ -156,7 +156,7 @@ main::Cat.__init__@501:4: covered (storage: no_proof_required), summary: known
 main::Owner.__init__@508:4: covered (storage: no_proof_required), summary: known
 main::Bell.__init__@571:4: covered (storage: no_proof_required), summary: known
 main::Gong.__init__@582:4: covered (storage: no_proof_required), summary: known
-main::Tower.__init__@596:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Tower.__init__@596:4: covered (storage: no_proof_required), summary: known
 main::Feed.__init__@667:4: covered (storage: no_proof_required), summary: known
 main::RankA.__init__@771:4: covered (storage: no_proof_required), summary: known
 main::Wide.__init__@857:4: covered (storage: no_proof_required), summary: known

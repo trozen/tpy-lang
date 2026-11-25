@@ -16,7 +16,7 @@ main::async_match@187:0: uncovered (async body)
 main::inline@198:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
 main::walrus@203:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
 main::readonly_slot@213:0: covered (storage: no_proof_required), summary: known
-main::loop_var@220:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::loop_var@220:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::ctor_slot@230:0: certified, summary: known
 main::str_member@237:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::str_total@243:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
@@ -24,10 +24,10 @@ main::total@252:0: covered (storage: no_proof_required), summary: known
 main::const_member@259:0: covered (storage: no_proof_required), summary: known
 main::ctor_call_arg@287:0: certified, summary: known
 main::own_forward@293:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::loop_const@298:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::loop_const@298:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::gen_total@306:0: uncovered (unsupported pointer capture)
 main::async_total@312:0: uncovered (async body)
-main::loop_method@319:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::loop_method@319:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::closure_narrow@328:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::closure_forward@337:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::wrap_then_mutate@346:0: covered (storage: no_proof_required), summary: known

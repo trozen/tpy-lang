@@ -1,8 +1,8 @@
 main::__tpy_init: uncovered (module initialization)
 main::value_only@15:0: covered (storage: no_proof_required), summary: known
 main::mixed@19:0: certified, summary: known
-main::keep@55:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::main@59:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::keep@55:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
+main::main@59:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Sum.plus@37:4: covered (storage: no_proof_required), summary: known
 main::Sum.__add__@40:4: covered (storage: no_proof_required)
 main::Counter.__init__@11:4: covered (storage: no_proof_required), summary: known

@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@30:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::Holder.first_nonnull@20:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::main@30:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Holder.first_nonnull@20:4: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::P.__init__@10:4: covered (storage: no_proof_required), summary: known
-main::Holder.__init__@16:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::Holder.__init__@16:4: uncovered (inline record sum needs local storage), summary: opaque (inline record sum needs local storage)

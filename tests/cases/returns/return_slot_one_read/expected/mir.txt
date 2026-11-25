@@ -78,7 +78,7 @@ main::Circle.bump@482:4: covered (storage: no_proof_required)
 main::Circle.get@485:4: covered (storage: no_proof_required)
 main::Sq.bump@495:4: covered (storage: no_proof_required), summary: known
 main::Sq.get@498:4: covered (storage: no_proof_required), summary: known
-main::H.pick@540:4: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
+main::H.pick@540:4: uncovered (record initializer type mismatch), summary: opaque (record initializer type mismatch)
 main::SR.__span__@555:4: uncovered (unsupported metadata: wrap)
 main::SR.__span__@555:4#2: uncovered (unsupported metadata: wrap)
 main::SR.__iter__@559:4: uncovered (view of container storage)
@@ -86,7 +86,7 @@ main::SR.__iter__@559:4#2: uncovered (view of container storage)
 main::A.__init__@12:4: covered (storage: no_proof_required), summary: known
 main::B.__init__@49:4: covered (storage: no_proof_required), summary: known
 main::K.__init__@74:4: covered (storage: no_proof_required), summary: known
-main::U.__init__@167:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::U.__init__@167:4: covered (storage: no_proof_required), summary: known
 main::S.__init__@182:4: covered (storage: no_proof_required), summary: known
 main::HP.__init__@189:4: covered (storage: no_proof_required), summary: known
 main::InA.__init__@224:4: covered (storage: no_proof_required), summary: known
@@ -94,7 +94,7 @@ main::OutA.__init__@231:4: covered (storage: no_proof_required), summary: known
 main::PH.__init__@242:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 main::Inner.__init__@253:4: covered (storage: no_proof_required), summary: known
 main::OE.__init__@287:4: covered (storage: no_proof_required), summary: known
-main::TP.__init__@320:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::TP.__init__@320:4: covered (storage: no_proof_required), summary: known
 main::NP.__init__@373:4: covered (storage: no_proof_required), summary: known
 main::Ctx.__init__@388:4: covered (storage: no_proof_required), summary: known
 main::Circle.__init__@479:4: covered (storage: no_proof_required), summary: known

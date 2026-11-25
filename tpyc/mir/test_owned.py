@@ -354,8 +354,8 @@ def test_owned_and_self_alias_method_bodies(body: str) -> None:
     # caller has no summary to apply.
     ("value: int32 = 5", "pass", "call needs finalized known summary"),
     ("value: int32", "self.value = value\n        print(value)", "call needs finalized known summary"),
-    ("value: tuple[int32, int32]", "self.value = (value, value)", "unsupported record fields"),
-    ("value: int32 | None", "self.value = value", "unsupported record fields"),
+    ("value: tuple[tuple[int32, int32], int32]", "self.value = ((value, value), value)", "unsupported record fields"),
+    ("value: tuple[int32, int32] | None", "self.value = (value, value)", "unsupported record fields"),
 ])
 def test_real_constructor_effects_and_sibling_shapes_remain_uncovered(
     declaration: str, assignment: str, reason: str,

@@ -2,15 +2,15 @@ main::__tpy_init: uncovered (module initialization)
 main::for_big@16:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::for_str@22:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
 main::for_bytes@28:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::for_tuple@34:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::for_union@40:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::for_unpack@49:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::for_tuple@34:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
+main::for_union@40:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
+main::for_unpack@49:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::dict_items@55:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
 main::dict_values@61:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
 main::array_source@67:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::poke@73:0: covered (storage: no_proof_required), summary: known
 main::poke_arr@78:0: covered (storage: no_proof_required), summary: known
-main::comps@83:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::comps@83:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::gen_body@96:0: covered (storage: no_facts: storage facts have not been published)
 main::via_callee@104:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::via_nested_def@110:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -18,7 +18,7 @@ main::reset_global@133:0: uncovered (element write needs a container place), sum
 main::walk@137:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::two@143:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
 main::alias_target@149:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::nested_grid@159:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::nested_grid@159:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::keep_owned_target@167:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::keep_read_only@174:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::keep_unrelated@185:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
@@ -40,7 +40,7 @@ main::span_local@342:0: uncovered (unsupported metadata: wrap), summary: opaque 
 main::slice_source@349:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::add_nine@357:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
 main::generic_touch@361:0: uncovered (generic body)
-main::keep_isinstance@366:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::keep_isinstance@366:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::pure_len@375:0: covered (storage: no_proof_required), summary: known
 main::keep_pure@379:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::keep_generic_prod@385:0: uncovered (unsupported parameter type)
@@ -71,7 +71,7 @@ main::keep_inert_ops@662:0: uncovered (missing or inconsistent hoisted binding f
 main::post_loop_str@685:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
 main::post_loop_bytes@693:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
 main::post_loop_rebind@701:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
-main::post_loop_unpack@709:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::post_loop_unpack@709:0: uncovered (unsupported tuple scalar), summary: opaque (unsupported tuple scalar)
 main::any_record@729:0: uncovered (unsupported parameter type)
 main::keep_comp_in_body@736:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::poke_str@745:0: covered (storage: no_proof_required), summary: known
@@ -80,7 +80,7 @@ main::comp_reads_copy@759:0: uncovered (unsupported metadata: cpp_template), sum
 main::comp_str_local@770:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::comp_walrus_str@777:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::comp_own_arg@803:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::head_move@810:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::head_move@810:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::getitem_ref_writes@834:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::main@840:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::<genexpr>@765:16: uncovered (unsupported parameter type)
@@ -111,20 +111,20 @@ main::Shown.__repr__@721:4: uncovered (element write needs a container place), s
 main::Sink.take@796:4: covered (storage: no_proof_required), summary: known
 main::Rows.__getitem__@827:4: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
 main::Rows.__getitem__@827:4#2: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
-main::Holder.__init__@121:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::Holder.__init__@121:4: covered (storage: no_proof_required), summary: known
 main::InCtor.__init__@201:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
 main::K.__init__@251:4: covered (storage: no_proof_required), summary: known
 main::KA.__init__@292:4: covered (storage: no_proof_required), summary: known
-main::Bag.__init__@309:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::Bag.__init__@309:4: covered (storage: no_proof_required), summary: known
 main::W.__init__@395:4: covered (storage: no_proof_required), summary: known
 main::Counter.__init__@480:4: covered (storage: no_proof_required), summary: known
 main::Mgr.__init__@501:4: covered (storage: no_proof_required), summary: known
 main::Drop.__init__@532:4: uncovered (custom record special member), summary: opaque (custom record special member)
 main::Slot.__init__@551:4: uncovered (member definition: custom record special member), summary: opaque (member definition: custom record special member)
-main::Viewed.__init__@572:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::Viewed.__init__@572:4: covered (storage: no_proof_required), summary: known
 main::Plain.__init__@594:4: covered (storage: no_proof_required), summary: known
 main::Peek.__init__@647:4: covered (storage: no_proof_required), summary: known
 main::Shown.__init__@718:4: covered (storage: no_proof_required), summary: known
 main::Taken.__init__@786:4: uncovered (range needs int32 unit step), summary: opaque (range needs int32 unit step)
 main::Sink.__init__@793:4: covered (storage: no_proof_required), summary: known
-main::Rows.__init__@824:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::Rows.__init__@824:4: covered (storage: no_proof_required), summary: known

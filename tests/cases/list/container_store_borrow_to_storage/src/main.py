@@ -36,7 +36,7 @@ def store_dict(d: dict[str, A | None], p: A | None) -> None:
     d["k"] = p           # dict subscript-assign shares the element-store path
 
 
-def store_narrowed(xs: list[A | B], p: A | B) -> None:
+def store_narrowed(xs: list[A | B], p: A | B) -> None:  # tpyc: mir_summary(known)
     if isinstance(p, A):
         xs[0] = p        # p is narrowed to a concrete A, not a variant -- the
                          # value-variant lift must be skipped (no double-wrap)

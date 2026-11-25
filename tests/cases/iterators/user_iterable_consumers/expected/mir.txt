@@ -39,10 +39,10 @@ main::Cnt.__init__@22:4: covered (storage: no_proof_required), summary: known
 main::GBag.__init__@38:4: covered (storage: no_proof_required), summary: known
 main::Rec.__init__@49:4: covered (storage: no_proof_required), summary: known
 main::RBag.__init__@60:4: covered (storage: no_proof_required), summary: known
-main::PBag.__init__@70:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::PBag.__init__@70:4: uncovered (unsupported tuple scalar), summary: opaque (unsupported tuple scalar)
 main::Src.__init__@80:4: covered (storage: no_proof_required), summary: known
 main::Tx.__init__@92:4: covered (storage: no_proof_required), summary: known
-main::Window.__init__@111:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
+main::Window.__init__@111:4: covered (storage: no_proof_required), summary: known
 main::Ints.__init__@129:4: covered (storage: no_proof_required), summary: known
 main::Box.__init__@139:4: uncovered (generic constructor)
 main::Holder.__init__@149:4: covered (storage: no_proof_required), summary: known

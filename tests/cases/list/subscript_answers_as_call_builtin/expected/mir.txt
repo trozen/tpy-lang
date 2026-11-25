@@ -35,7 +35,7 @@ main::nested@381:0: uncovered (uncertified element read), summary: opaque (uncer
 main::pending@391:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
 main::record_keys@437:0: uncovered (unsupported metadata: record_getitem), summary: opaque (unsupported metadata: record_getitem)
 main::explicit_calls@447:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
-main::union_store@470:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+main::union_store@470:0: uncovered (unsupported union record holding), summary: opaque (unsupported union record holding)
 main::popped_keys@481:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
 main::main@502:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Holder.run@62:4: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

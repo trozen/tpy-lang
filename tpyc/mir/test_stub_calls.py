@@ -843,8 +843,8 @@ def test_method_stub_summary_gates(methods) -> None:
     append = methods.stubs["methods"]["append"][0]
     signature = append.signature
     xs, value = signature.param_types
-    # A nested container whose own member MIR does not model (a tuple) is refused at its depth.
-    nested = replace(xs, type_args=(replace(xs, type_args=(TupleType((INT32, INT32)),)),))
+    # A nested container whose own member MIR does not model (a tuple storing a tuple) is refused at its depth.
+    nested = replace(xs, type_args=(replace(xs, type_args=(TupleType((TupleType((INT32, INT32)), INT32)),)),))
     damaged_receiver = (STR, value)
     for damaged, reason in (
         (replace(append, identity=replace(append.identity, param_types=damaged_receiver),

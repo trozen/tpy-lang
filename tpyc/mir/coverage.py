@@ -7,10 +7,11 @@ from ..thir.metadata import unsupported_metadata
 # `view_compatible` is the one predicate between a view holder and what it
 # borrows: a TypeDef family pairing, a leaf fact rather than a MIR rule.
 from ..thir.scalar_leaves import (  # noqa: F401
-    MIRClass, primitive_leaf, primitive_owned_leaf, storage_leaf, view_compatible,
+    MIRClass, owned_leaf, primitive_leaf, primitive_owned_leaf, storage_leaf, view_compatible,
 )
 from ..typesys import (
-    FLOAT, INT32, FloatLiteralType, IntLiteralType, Representation, TpyType, passing_representation, through_view,
+    FLOAT, INT32, FloatLiteralType, IntLiteralType, OptionalType, Representation, TpyType, UnionType,
+    passing_representation, through_view,
 )
 from .call_contract import MIRCallSummary, MIRParameterBinding
 from .nodes import MIRCall, MIRPlace, MIRSlot, MIRSlotId, call_place
@@ -21,12 +22,18 @@ def literal_type(expr: th.THIRLiteral, expected: TpyType | None = None) -> TpyTy
     """The type of the leaf a scalar literal holds. A number literal sema
     left unresolved converts to its context's leaf type when the context
     names one; alone it is the C++ literal it spells (`int` / `double`).
-    Whether the value fits is `scalar_leaves.leaf_constant`'s question."""
+    Whether the value fits is `scalar_leaves.leaf_constant`'s question. A
+    literal sema typed at the sum its context builds (`h.o = 3` on an
+    `int32 | None` field) is a constant of the member it engages."""
     typ = expr.result_type
     if isinstance(typ, (IntLiteralType, FloatLiteralType)):
-        if expected is not None and storage_leaf(expected):
+        if expected is not None and (storage_leaf(expected) or owned_leaf(expected)):
             return expected
         return INT32 if isinstance(typ, IntLiteralType) else FLOAT
+    if expected is not None and expected != typ and (
+            isinstance(typ, OptionalType) and expected == typ.inner
+            or isinstance(typ, UnionType) and expected in typ.members):
+        return expected
     return typ
 
 

@@ -139,7 +139,7 @@ part_record_frames::SizedIter.__iter__@101:4: covered (storage: not_covered: bor
 part_record_frames::SizedIter.__next__@104:4: uncovered (error-return body)
 part_record_frames::SizedIter.size@109:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
 part_record_frames::SizedBag.__iter__@115:4: covered (storage: no_proof_required)
-part_record_frames::Pairs.__init__@16:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_record_frames::Pairs.__init__@16:4: covered (storage: no_proof_required), summary: known
 part_record_frames::Counts.__init__@27:4: covered (storage: no_proof_required), summary: known
 part_record_frames::GenCounts.__init__@39:4: uncovered (generic constructor)
 part_record_frames::SizedIter.__init__@98:4: covered (storage: no_proof_required), summary: known

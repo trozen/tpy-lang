@@ -1,16 +1,33 @@
-main.py:23: warning: copies P | None into field; use copy() to make this explicit
-main.py:34: warning: Mutation of 'self.p' while borrowed (field assignment may invalidate references)
-main.py:61: warning: copies P into field (tuple element 1); use copy() to make this explicit
-main.py:69: warning: copies P | None into field; use copy() to make this explicit
-main.py:103: warning: argument 'h' contains 'h.p', which 'alias' modifies through parameter 'b' while it still uses 'a'; pass a copy ('copy(h)') or restructure so the call does not hand over both
-main.py:210: warning: copies P | None into field; use copy() to make this explicit
-main.py:211: warning: copies P into field; use copy() to make this explicit
-main.py:140: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-main.py:294: warning: copies P | None into field; use copy() to make this explicit
-main.py:299: warning: copies P | None into field; use copy() to make this explicit
-main.py:305: warning: copies P | None into field; use copy() to make this explicit
-main.py:306: warning: copies P | None into field; use copy() to make this explicit
-main.py:312: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-main.py:318: warning: copies P into field; use copy() to make this explicit
-main.py:319: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-main.py:409: warning: argument 't.s' is what 'set_field' modifies through parameter 't' while it still uses 'value'; bind it to a local first ('v = t.s') or restructure so the call does not hand over both
+fixtures.py:21: warning: copies P | None into field; use copy() to make this explicit
+fixtures.py:32: warning: Mutation of 'self.p' while borrowed (field assignment may invalidate references)
+fixtures.py:59: warning: copies P into field (tuple element 1); use copy() to make this explicit
+fixtures.py:67: warning: copies P | None into field; use copy() to make this explicit
+fixtures.py:95: warning: copies P | None into field; use copy() to make this explicit
+fixtures.py:96: warning: copies P into field; use copy() to make this explicit
+part_alias.py:18: warning: argument 'h' contains 'h.p', which 'alias' modifies through parameter 'b' while it still uses 'a'; pass a copy ('copy(h)') or restructure so the call does not hand over both
+part_elements.py:23: warning: this call may move the elements of 'xs', but 's' still views them and is read on line 24; look it up again after this call, or copy what 's' views first
+part_elements.py:30: warning: this call may move the elements of 'xs', but 's' still views them and is read on line 31; look it up again after this call, or copy what 's' views first
+part_elements.py:37: warning: this assignment may free the element 's' still views, and 's' is read on line 38; copy what 's' views first, or use 's' before this assignment
+part_elements.py:62: warning: this call may move the elements of 'xs', but 's' still views them and is read on line 63; look it up again after this call, or copy what 's' views first
+part_elements.py:82: warning: this assignment may free the element 's' still views, and 's' is read on line 83; copy what 's' views first, or use 's' before this assignment
+part_payload.py:69: warning: argument 't.s' is what 'set_field' modifies through parameter 't' while it still uses 'value'; bind it to a local first ('v = t.s') or restructure so the call does not hand over both
+part_presence.py:11: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+part_refused.py:19: warning: copies Tok into field (tuple element 0); use copy() to make this explicit
+part_tuple.py:36: warning: this assignment frees the old value of 'h.t', but 's' still views it and is read on line 37; copy what 's' views first, or use 's' before this assignment
+part_tuple.py:43: warning: this call frees the old value of 'h.t', but 's' still views it and is read on line 44; copy what 's' views first, or use 's' before this call
+part_tuple.py:56: warning: argument 'h' contains 'h.t', which 'cross_copy' modifies through parameter 'b' while it still uses 'a'; pass a copy ('copy(h)') or restructure so the call does not hand over both
+part_tuple.py:64: warning: the object made for 'h' is freed at the end of this block, but 's' still views it and is read on line 65; create 'h' before the block
+part_tuple.py:83: warning: argument 'h.t[1]' points into 'h.t', which 'kill_str' modifies through parameter 'h' while it still uses 'v'; bind it to a local first ('v = h.t[1]') or restructure so the call does not hand over both
+part_tuple.py:94: warning: Mutation of 'h' while borrowed (field assignment may invalidate references)
+part_tuple.py:94: warning: this assignment frees the old value of 'h.t', but 's' still views it and is read on line 95; copy what 's' views first, or use 's' before this assignment
+part_tuple.py:133: warning: this call overwrites 'h.t' in place, but 'h.t[1]' still refers to it and sees the new value on line 133; copy what 'h.t[1]' refers to first, or use 'h.t[1]' before this call
+part_writes.py:16: warning: copies P | None into field; use copy() to make this explicit
+part_writes.py:21: warning: copies P | None into field; use copy() to make this explicit
+part_writes.py:27: warning: copies P | None into field; use copy() to make this explicit
+part_writes.py:28: warning: copies P | None into field; use copy() to make this explicit
+part_writes.py:34: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+part_writes.py:40: warning: copies P into field; use copy() to make this explicit
+part_writes.py:41: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+part_writes.py:71: warning: copies P into field; use copy() to make this explicit
+part_writes.py:77: warning: copies P into field; use copy() to make this explicit
+part_writes.py:109: warning: copies P into field (tuple element 0); use copy() to make this explicit

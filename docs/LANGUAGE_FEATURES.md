@@ -11540,6 +11540,11 @@ if h.o is not None:        # an Optional field's payload: freed when the write s
     print(r.v)             # (a write that may store either -- `h.o = src.o`, `w.h = H(0)` -- warns "may free
                            #   the old value of 'h.o' or overwrite it in place")
 
+s: StrView = h.t[1]        # a tuple, Optional or union field holding scalars, `str` and plain records
+h.t = (2, "b" * 3)         # warning: this assignment frees the old value of 'h.t', but 's' still views it
+                           #   and is read on line 3; copy what 's' views first, or use 's' before ...
+print(s)                   # CPython prints the old string; TPy reads freed storage
+
 p = xs[i]                  # an element against an element: indices carry no identity, so a "may" warning
 xs[j] = P(9)               # warning: this assignment may overwrite what 'p' refers to in place, and 'p' would
                            #   see the new value on line 3; copy what 'p' refers to first, or use 'p' before ...
@@ -11597,7 +11602,7 @@ What is warned -- a hazard MIR proves on its own facts:
 What stays silent -- MIR keeps each as evidence in its verdict (`--dump-mir`, `# tpyc: mir(conflict ...)`) without proving it, and silence is not a safety claim (each known bug keeps its BUGS.md entry):
 
 - a read only on some paths (`if c: buf = mk("b")` then `if not c: return len(v)` is safe; `if f:` around both the store and the read, or an independent `if g:` around the read, is a silent dangle: `BUGS.md#mir-hazard-read-on-some-paths-silent`) -- in a loop, a read only at the top of the next pass (`print(prev.s[0])` before `prev = Tok(buf, i)`), which the last pass skips, is the same; a read only through a call (`size(t)`); a body MIR does not lower (a comprehension in it, a list of views built in the loop: `out.append(Tok(buf, i))`);
-- a dict store under its own iteration or its `.values()` / `.items()` walk (`BUGS.md#dict-grows-during-own-iteration`), an element hazard MIR does not lower (an Optional or tuple element, an `ArrayList`: `BUGS.md#setitem-write-under-live-element-borrow`; a generic body: TODO.md "generic bodies", item (2d) of "Promote evidence-only conflict classes to warnings"; a `dict[str, P]` record value: `BUGS.md#dict-record-value-getter-silent`; a getter returning from a `try` or a `match` arm; a user `__getitem__`);
+- a dict store under its own iteration or its `.values()` / `.items()` walk (`BUGS.md#dict-grows-during-own-iteration`), an element hazard MIR does not lower (an Optional record element bound to a local, `kept = xs[0]; xs[0] = None` on `list[Node | None]`; a list of tuples whose body also calls `append`, `pop` or `sort`; a wrapper element or field holding a loan or nesting a wrapper or container, a container literal of tuples with a `str` member, an `ArrayList`: `BUGS.md#setitem-write-under-live-element-borrow`, TODO.md "Wrapper fields and elements: the shapes D1 leaves refused"; a generic body: TODO.md "generic bodies", item (2d) of "Promote evidence-only conflict classes to warnings"; a `dict[str, P]` record value: `BUGS.md#dict-record-value-getter-silent`; a getter returning from a `try` or a `match` arm; a user `__getitem__`);
 - what the caller passes (`def f(t: Tok, xs: list[str]): xs[0] = ...; print(t.s)`, `BUGS.md#borrowed-arg-into-mutated-storage`), escapes only on a raise path, a write through a name that may reach either of two objects (joined into both rather than replacing either; a write reaching one object -- the body's own, a parameter's, `self`'s or an alias's -- replaces what its member held);
 - a store escape on only some paths (a returned record that keeps a dead local's view on one branch only: `if flag: return t` ... `return u`);
 - and, safe: `t.s = tmp; t.s = "safe"`, `old = t.s; t.s = tmp; t.s = old`, a callee that resets the view before the read, `len(v)` of a stale view.

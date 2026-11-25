@@ -40,7 +40,7 @@ main::same_element@294:0: covered (storage: no_proof_required), conflicts: argum
 main::same_int_element@298:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 main::touch@303:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::element_field@310:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
-main::main@314:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::main@314:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
 main::H.setname@19:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::Counter.merge_from@146:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::Log.record_first@207:4: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
@@ -52,7 +52,7 @@ main::Line.__init__@125:4: covered (storage: no_proof_required), summary: known
 main::Counter.__init__@143:4: covered (storage: no_proof_required), summary: known
 main::R.__init__@174:4: covered (storage: no_proof_required), summary: known
 main::Holder.__init__@182:4: covered (storage: no_proof_required), summary: known
-main::Log.__init__@203:4: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
+main::Log.__init__@203:4: covered (storage: no_proof_required), summary: known
 main::Stack.__init__@229:4: covered (storage: no_proof_required), summary: known
 main::Cell.__init__@259:4: covered (storage: no_proof_required), summary: known
 main::Named.__init__@280:4: covered (storage: no_proof_required), summary: known
