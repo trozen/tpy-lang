@@ -18,7 +18,7 @@ void main() {
     ::tpy::String s = (::tpy::str_concat("hello", (::tpy::str_concat(" ", "world"))));
     std::cout << s << "\n" << ::tpy::check_signals;
     int32_t x = 42;
-    ::tpy::String s2 = (::tpy::str_concat("x", (::tpy::str_concat("=", ::tpy::fixed_to_str<int32_t>(x)))));
+    ::tpy::String s2 = (::tpy::str_concat("x", (::tpy::str_concat("=", std::string(::tpy::__str__(x))))));
     std::cout << s2 << "\n" << ::tpy::check_signals;
     ::tpy::String s3 = (::tpy::str_concat((::tpy::str_concat("a", (::tpy::str_concat(", ", "b")))), (::tpy::str_concat(", ", "c"))));
     std::cout << s3 << "\n" << ::tpy::check_signals;

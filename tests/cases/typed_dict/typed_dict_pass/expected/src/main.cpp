@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def describe(p: Point) -> str:
 //     return "(" + str(p["x"]) + ", " + str(p["y"]) + ")"
 std::string describe(const Point& p) {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(p.x))), ", ")), ::tpy::fixed_to_str<int32_t>(p.y))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", std::string(::tpy::__str__(p.x)))), ", ")), std::string(::tpy::__str__(p.y)))), ")"));
 }
 
 // def translate(p: Point, dx: int32, dy: int32) -> Own[Point]:

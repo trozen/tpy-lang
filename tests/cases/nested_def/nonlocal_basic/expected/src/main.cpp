@@ -102,7 +102,7 @@ std::string relabel() {
 std::string view_holder() {
     std::string v = "start";
     auto inner = [&v]() {
-        auto t = std::tuple<N, int32_t>{N((::tpy::str_concat("hello", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(v))))), 5};
+        auto t = std::tuple<N, int32_t>{N((::tpy::str_concat("hello", std::string(::tpy::__str__(::tpy::__len__(v)))))), 5};
         v = std::get<0>(t).s;
     };
     inner();

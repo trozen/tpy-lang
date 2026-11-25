@@ -173,7 +173,7 @@ void locals_() {
     std::function<Box<int32_t>(int32_t)> bx = [](int32_t __tpy_fa0) -> Box<int32_t> { return Box<int32_t>(__tpy_fa0); };
     std::cout << "local generic" << " " << bx(4).v << "\n" << ::tpy::check_signals;
     std::function<std::optional<Pt>()> fo = []() -> std::optional<Pt> { return Pt(); };
-    std::function<::tpy::Union<int32_t, std::string>(std::string_view)> fu = [](std::string_view __tpy_fa0) -> ::tpy::Union<int32_t, std::string> { return std::string(__tpy_fa0); };
+    std::function<::tpy::Union<int32_t, std::string>(std::string_view)> fu = [](std::string_view __tpy_fa0) -> ::tpy::Union<int32_t, std::string> { return std::string(::tpy::__str__(__tpy_fa0)); };
     ::tpy::Union<int32_t, std::string> u = fu("u");
     std::cout << "local optional" << " " << ::tpy::__str__(u) << "\n" << ::tpy::check_signals;
 }
@@ -214,7 +214,7 @@ void ref_arg() {
 //     print("overload", conv(int, "41") + 1, conv(str, 41) + "!")  # tpyc: ok
 void builtins_() {
     std::cout << "map" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpy::builtin_map<::tpy::BigInt>([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, std::array<std::string, 3>{"3", "1", "2"}))) << "\n" << ::tpy::check_signals;
-    std::cout << "sorted" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<int32_t>(std::array<int32_t, 3>{3, 1, 20}, [](int32_t __tpy_fa0) -> std::string { return ::tpy::fixed_to_str<int32_t>(__tpy_fa0); })) << "\n" << ::tpy::check_signals;
+    std::cout << "sorted" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<int32_t>(std::array<int32_t, 3>{3, 1, 20}, [](int32_t __tpy_fa0) -> std::string { return std::string(::tpy::__str__(__tpy_fa0)); })) << "\n" << ::tpy::check_signals;
     std::cout << "map list" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_0 = ::tpy::builtin_map<::tpy::own_arg<std::vector<char>>>([](std::string_view __tpy_fa0) -> std::vector<char> { return ::tpy::construct<std::vector<char>>(__tpy_fa0); }, std::array<std::string, 2>{"ab", "c"});
@@ -240,7 +240,7 @@ void builtins_() {
     std::string_view a = "3";
     std::string_view b = "12";
     std::cout << "max key" << " " << ::tpy::max_key(a, b, [](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }) << "\n" << ::tpy::check_signals;
-    std::cout << "overload" << " " << ((::tpyapp::main::conv__Callable_str_int__str([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, "41")) + (::tpy::BigInt(1))) << " " << (::tpy::str_concat(::tpyapp::main::conv__Callable_int_str__int([](const ::tpy::BigInt& __tpy_fa0) -> std::string { return (__tpy_fa0).to_string(); }, ::tpy::BigInt(41)), "!")) << "\n" << ::tpy::check_signals;
+    std::cout << "overload" << " " << ((::tpyapp::main::conv__Callable_str_int__str([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, "41")) + (::tpy::BigInt(1))) << " " << (::tpy::str_concat(::tpyapp::main::conv__Callable_int_str__int([](const ::tpy::BigInt& __tpy_fa0) -> std::string { return std::string(::tpy::__str__(__tpy_fa0)); }, ::tpy::BigInt(41)), "!")) << "\n" << ::tpy::check_signals;
 }
 
 // def method_field_ctor() -> None:

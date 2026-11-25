@@ -229,7 +229,7 @@ __gen_chars chars(std::string_view s) {
 // def mks(n: int32) -> str:
 //     return "abcdefghijklmnopqrstuvwxyz0123456789-" + str(n)
 std::string mks(int32_t n) {
-    return (::tpy::str_concat("abcdefghijklmnopqrstuvwxyz0123456789-", ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat("abcdefghijklmnopqrstuvwxyz0123456789-", std::string(::tpy::__str__(n))));
 }
 
 // def sp(s: str) -> StrView:

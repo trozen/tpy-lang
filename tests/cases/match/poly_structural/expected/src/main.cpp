@@ -17,10 +17,10 @@ std::string classify(const Shape& s) {
     if (const Square* __mpoly_0 = ::tpy::dyn_adapter_cast<Shape, Square>(&__match_subject_1)) {
         const Square& __case_0 = *__mpoly_0;
         auto& k = __case_0.side;
-        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("square ", (k).to_string())), " -> ")), (__case_0.area()).to_string()));
+        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("square ", std::string(::tpy::__str__(k)))), " -> ")), std::string(::tpy::__str__(__case_0.area()))));
     } else if (const Rect* __mpoly_1 = ::tpy::dyn_adapter_cast<Shape, Rect>(&__match_subject_1)) {
         const Rect& __case_1 = *__mpoly_1;
-        return (::tpy::str_concat("rect -> ", (__case_1.area()).to_string()));
+        return (::tpy::str_concat("rect -> ", std::string(::tpy::__str__(__case_1.area()))));
     } else {
         return "?";
     }

@@ -55,7 +55,7 @@ void main() {
     std::cout << static_cast<int32_t>(~(0)) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt n = ::tpy::BigInt(static_cast<uint64_t>(c));
     std::cout << n << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::fixed_to_str<uint8_t>(c) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(c)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

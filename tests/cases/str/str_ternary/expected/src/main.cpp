@@ -25,7 +25,7 @@ void test_ternary(std::string_view a, std::string_view b) {
     std::cout << y << "\n" << ::tpy::check_signals;
     std::string_view z = "literal_a";
     std::cout << z << "\n" << ::tpy::check_signals;
-    std::string w = (((!b.empty())) ? (std::string(a)) : (::tpy::fixed_to_str<int32_t>(42)));
+    std::string w = (((!b.empty())) ? (std::string(a)) : (std::string(::tpy::__str__(42))));
     std::cout << w << "\n" << ::tpy::check_signals;
 }
 
@@ -44,7 +44,7 @@ void test_or(std::string_view a, std::string_view b) {
     std::cout << x << "\n" << ::tpy::check_signals;
     std::string_view y = ((!a.empty()) ? a : std::string_view("default"));
     std::cout << y << "\n" << ::tpy::check_signals;
-    std::string z = ((!a.empty()) ? std::string(a) : ::tpy::fixed_to_str<int32_t>(42));
+    std::string z = ((!a.empty()) ? std::string(a) : std::string(::tpy::__str__(42)));
     std::cout << z << "\n" << ::tpy::check_signals;
 }
 

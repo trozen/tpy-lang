@@ -243,7 +243,7 @@ void main() {
     std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::part_frames::gen_cells(cells))) << " " << ::tpy::__getitem__(cells, 0).v << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<::tpyapp::fixtures::Cell, int32_t>> qs = ::tpy::make_vector<std::tuple<::tpyapp::fixtures::Cell, int32_t>>(std::tuple<::tpyapp::fixtures::Cell, int32_t>{::tpyapp::fixtures::Cell(5), 6});
     std::cout << "gen unpack" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::part_frames::gen_pairs(qs))) << " " << std::get<0>(::tpy::__getitem__(qs, 0)).v << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<std::string, int32_t>> __tmp_1 = {std::tuple<std::string, int32_t>{(::tpy::str_concat("ab", ::tpy::fixed_to_str<int32_t>(1))), 1}, std::tuple<std::string, int32_t>{"cd", 2}};
+    std::vector<std::tuple<std::string, int32_t>> __tmp_1 = {std::tuple<std::string, int32_t>{(::tpy::str_concat("ab", std::string(::tpy::__str__(1)))), 1}, std::tuple<std::string, int32_t>{"cd", 2}};
     std::cout << "gen str" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpyapp::part_frames::gen_strs(__tmp_1))) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<::tpy::Bytes, int32_t>> __tmp_2 = {std::tuple<::tpy::Bytes, int32_t>{::tpy::bytes_literal_owned("xy", 2), 1}};
     std::cout << "gen bytes" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::Bytes>>(::tpyapp::part_frames::gen_bytes(__tmp_2))) << "\n" << ::tpy::check_signals;

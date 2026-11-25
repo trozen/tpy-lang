@@ -49,7 +49,7 @@ inline Animal::Animal(std::string_view name) : name(name) {}
 // def greet(self, x: int) -> str:  # tpyc: ok
 //     return self.name + " got " + str(x) + " treats"
 inline std::string Animal::greet__int(const ::tpy::BigInt& x) const {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(this->name, " got ")), (x).to_string())), " treats"));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(this->name, " got ")), std::string(::tpy::__str__(x)))), " treats"));
 }
 
 inline std::string Animal::greet(const ::tpy::BigInt& x) const {

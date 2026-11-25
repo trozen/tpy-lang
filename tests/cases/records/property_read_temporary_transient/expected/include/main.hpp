@@ -163,6 +163,6 @@ inline int32_t Sink::count_chars(std::string_view v) const {
 
 // def __init__(self, v: StrView) -> None:
 //     self.v = str(v)
-inline Holder::Holder(std::string_view v) : v(std::string(v)) {}
+inline Holder::Holder(std::string_view v) : v(std::string(::tpy::__str__(v))) {}
 void __tpy_init();
 } // namespace tpyapp::main

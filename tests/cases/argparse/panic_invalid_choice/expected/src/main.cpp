@@ -41,7 +41,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             }
             std::string __tpy_argparse_v_mode = ::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1)));
             if ((!((__tpy_argparse_v_mode == "auto") || (__tpy_argparse_v_mode == "manual")))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "invalid choice for --mode: ")), std::string(__tpy_argparse_v_mode))) << "\n" << ::tpy::check_signals;
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "invalid choice for --mode: ")), std::string(::tpy::__str__(__tpy_argparse_v_mode)))) << "\n" << ::tpy::check_signals;
                 ::tpystd::sys::exit__int32(2);
             }
             mode = __tpy_argparse_v_mode;

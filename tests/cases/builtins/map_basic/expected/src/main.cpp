@@ -13,7 +13,7 @@ int32_t double_(int32_t x) {
 // def to_str(x: int32) -> str:
 //     return "v:" + str(x)
 std::string to_str(int32_t x) {
-    return (::tpy::str_concat("v:", ::tpy::fixed_to_str<int32_t>(x)));
+    return (::tpy::str_concat("v:", std::string(::tpy::__str__(x))));
 }
 
 // def main() -> None:

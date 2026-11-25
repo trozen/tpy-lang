@@ -42,7 +42,7 @@ void consume_and_raise() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-            throw ::tpy::ValueError((::tpy::str_concat("gen boom ", ::tpy::fixed_to_str<int32_t>(x))));
+            throw ::tpy::ValueError((::tpy::str_concat("gen boom ", std::string(::tpy::__str__(x)))));
         }
     }
 }

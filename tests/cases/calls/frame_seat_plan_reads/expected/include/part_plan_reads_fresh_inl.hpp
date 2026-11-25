@@ -34,7 +34,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_with_field_cha
             return (::tpy::str_repeat("z", 40));
         }));
         __state = S_RESUME_0;
-        return (::tpy::str_concat((::tpy::str_concat(::tpy::__getitem__((*q), -1), "/")), ::tpy::fixed_to_str<int32_t>(::tpy::__len__((*junk)))));
+        return (::tpy::str_concat((::tpy::str_concat(::tpy::__getitem__((*q), -1), "/")), std::string(::tpy::__str__(::tpy::__len__((*junk))))));
     }
     case S_RESUME_0: {  // after: yield q[-1] + "/" + str(len(junk))
         __state = S_DONE;

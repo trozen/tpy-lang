@@ -1,0 +1,42 @@
+fixed -5 -5 -300 -300 255 255
+fixed 65535 65535 4000000000 4000000000 -9000000000 -9000000000
+fixed 18446744073709551615 18446744073709551615 7 7
+bigint 1000000000000000000000000000000 1000000000000000000000000000000
+float 0.1 0.1 1e+300 1e+300 2.0 2.0
+float nan nan inf inf -inf
+float32 0.10000000149011612 0.10000000149011612
+bool True True False
+char c c
+strs hi hi hi hi st st
+empty ''
+listbool True False True
+listbool True False
+listbool repr True True False
+listbool loop True True
+listbool loop False False
+listbool loop True True
+listbool loop TrueTrueFalseFalseTrueTrue
+temp a string long enough to sit on the heap, not in the SSO buffer xxx an owned 
+lit 7 -1 -5 4000000000
+lit 1180591620717411303424 1.5 1.5 True lit
+lit -9223372036854775808
+map ['3', '1', '20']
+sorted [1, 20, 3]
+mapf ['1.5', '2.0']
+apply 5
+slot 9
+user P(1, 2) P(1, 2)
+sub text payload mutable 42 payload mutable 42
+sub fstr payload|mutable|42
+sub repr abc NumRepr-repr abc NumRepr-repr TextRepr-repr NumRepr-repr
+sub own TextStr-str NumStr-str TextStr-str NumStr-str
+sub deep mut mut MutTextRepr-repr two two
+sub view view view view
+sub char any x any-str x any-str
+plain char any p plain-any p plain-any p|plain-any
+ctor hello xyz! [xyz] xy ab 0
+ctor temp temp arg
+ctor ternary t True
+ctor and
+ctor comp 2 cd
+ctor while 2

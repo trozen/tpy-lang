@@ -295,7 +295,7 @@ std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>> _encode_body
         }
     }
     if ((!(has_ua))) {
-        ::tpy::__setitem__(out, "User-Agent", (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("tpy-requests/", ::tpy::fixed_to_str<int32_t>(std::get<0>(::tpystd::tpy::version::version_info)))), ".")), ::tpy::fixed_to_str<int32_t>(std::get<1>(::tpystd::tpy::version::version_info)))));
+        ::tpy::__setitem__(out, "User-Agent", (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("tpy-requests/", std::string(::tpy::__str__(std::get<0>(::tpystd::tpy::version::version_info))))), ".")), std::string(::tpy::__str__(std::get<1>(::tpystd::tpy::version::version_info))))));
     }
     if ((auth.has_value())) {
         ::tpy::__setitem__(out, "Authorization", ::tpystd::tplib::requests::_basic_auth_header(std::get<0>((*auth)), std::get<1>((*auth))));
@@ -734,14 +734,14 @@ std::string _pool_key(std::string_view url, const ::tpy::Union<bool, std::string
     }
     if (std::holds_alternative<std::string>(verify)) {
         const auto& __verify = std::get<std::string>(verify);
-        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(scheme, "|")), (*host))), "|")), ::tpy::fixed_to_str<int32_t>(port))), "|path:")), __verify));
+        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(scheme, "|")), (*host))), "|")), std::string(::tpy::__str__(port)))), "|path:")), __verify));
     }
     const auto& __verify = std::get<bool>(verify);
     std::string_view vtok = "on";
     if ((!(__verify))) {
         vtok = "off";
     }
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(scheme, "|")), (*host))), "|")), ::tpy::fixed_to_str<int32_t>(port))), "|")), vtok));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(scheme, "|")), (*host))), "|")), std::string(::tpy::__str__(port)))), "|")), vtok));
 }
 
 // def request(method: str, url: str, params: dict[str, str] | None = None,
@@ -1532,7 +1532,7 @@ Response Session::_hop(std::string_view method, std::string_view url, const ::tp
         return resp;
     }
     if ((::tpy::__len__(history) >= this->max_redirects)) {
-        throw TooManyRedirects((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Exceeded ", ::tpy::fixed_to_str<int32_t>(this->max_redirects))), " redirects for url: ")), url)));
+        throw TooManyRedirects((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Exceeded ", std::string(::tpy::__str__(this->max_redirects)))), " redirects for url: ")), url)));
     }
     std::string next_url = ::tpystd::urllib::parse::urljoin(url, (*location));
     std::string next_scheme = ::tpystd::urllib::parse::urlsplit(next_url).scheme;

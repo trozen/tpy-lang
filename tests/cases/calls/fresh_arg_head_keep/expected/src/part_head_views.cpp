@@ -10,7 +10,7 @@ namespace tpyapp::part_head_views {
 // def mks(n: int32) -> str:
 //     return "view-" + str(n)
 std::string mks(int32_t n) {
-    return (::tpy::str_concat("view-", ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat("view-", std::string(::tpy::__str__(n))));
 }
 
 // def sp(s: str) -> StrView:

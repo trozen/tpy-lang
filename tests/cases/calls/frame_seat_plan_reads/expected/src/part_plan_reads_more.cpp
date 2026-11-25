@@ -84,7 +84,7 @@ void coerced() {
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         i = ((*__for_i_0))++;
-        if (Bag(std::vector<std::string>{"0", "2"}).__contains__(::tpy::fixed_to_str<int32_t>(i))) {
+        if (Bag(std::vector<std::string>{"0", "2"}).__contains__(std::string(::tpy::__str__(i)))) {
             hits = ::tpy::add_check<int32_t>(hits, 1);
         }
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));

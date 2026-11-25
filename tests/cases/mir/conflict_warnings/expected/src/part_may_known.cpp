@@ -100,7 +100,7 @@ std::string correlated_scope_rebind(bool f) {
     if (f) {
         tk = &*(__slot_3 = ::tpyapp::fixtures::Tok("y", 2));
     }
-    return std::string(::tpy::char_to_str(::tpy::__getitem__(tk->s, 0)));
+    return std::string(::tpy::__str__(::tpy::__getitem__(tk->s, 0)));
 }
 
 // # known false warning: BUGS.md#mir-warning-after-always-raising-call -- fail() raises on every path,
@@ -194,7 +194,7 @@ void two(R& p, R& q) {
 void two_loop(R& p, R& q, int32_t k) {
     int32_t __stop_0 = k;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        std::string buf = ::tpyapp::fixtures::mk(::tpy::fixed_to_str<int32_t>(i));
+        std::string buf = ::tpyapp::fixtures::mk(std::string(::tpy::__str__(i)));
         q.s = buf;
         p.s = "lit";
     }

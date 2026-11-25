@@ -26,7 +26,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_split::__next_
         }
         c = ::tpy::unwrap_ref(*(*__for_r_0));
         __state = S_RESUME_0;
-        return std::string(c);
+        return std::string(::tpy::__str__(c));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -54,7 +54,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_strip::__next_
         }
         c = ::tpy::unwrap_ref(*(*__for_r_0));
         __state = S_RESUME_0;
-        return std::string(::tpy::char_to_str(c));
+        return std::string(::tpy::__str__(c));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -82,7 +82,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_user_view::__n
         }
         c = ::tpy::unwrap_ref(*(*__for_r_0));
         __state = S_RESUME_0;
-        return std::string(::tpy::char_to_str(c));
+        return std::string(::tpy::__str__(c));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

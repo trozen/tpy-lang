@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def to_str(x: int32) -> str:
 //     return str(x)
 std::string to_str(int32_t x) {
-    return ::tpy::fixed_to_str<int32_t>(x);
+    return std::string(::tpy::__str__(x));
 }
 
 // def double(x: int32) -> int32:

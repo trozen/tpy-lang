@@ -21,7 +21,7 @@ std::tuple<int32_t, Src*> wrap_opt(Src& s) {
 // def mk(i: int32) -> str:
 //     return "item-" + str(i)
 std::string mk(int32_t i) {
-    return (::tpy::str_concat("item-", ::tpy::fixed_to_str<int32_t>(i)));
+    return (::tpy::str_concat("item-", std::string(::tpy::__str__(i))));
 }
 
 // async def use(s: Src) -> int32:

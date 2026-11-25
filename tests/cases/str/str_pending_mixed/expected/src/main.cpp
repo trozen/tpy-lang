@@ -15,7 +15,7 @@ namespace tpyapp::main {
 void test_mixed() {
     std::string_view greeting = "hello";
     std::string_view name = "world";
-    std::string result = ::tpy::fixed_to_str<int32_t>(42);
+    std::string result = std::string(::tpy::__str__(42));
     std::cout << greeting << "\n" << ::tpy::check_signals;
     std::cout << name << "\n" << ::tpy::check_signals;
     std::cout << result << "\n" << ::tpy::check_signals;

@@ -32,7 +32,7 @@ std::string describe(const Owner& o) {
     if (const Dog* __mpoly_2 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_2 = *__mpoly_2;
         auto& d = __case_2;
-        return (::tpy::str_concat("dog legs=", (d.legs).to_string()));
+        return (::tpy::str_concat("dog legs=", std::string(::tpy::__str__(d.legs))));
     }
     {
         return "?";

@@ -153,7 +153,7 @@ inline std::vector<std::string> Rows::run() const {
     std::vector<std::string> out = std::vector<std::string>{};
     int32_t __stop_0 = this->n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        out.push_back((::tpy::str_concat("r", ::tpy::fixed_to_str<int32_t>(i))));
+        out.push_back((::tpy::str_concat("r", std::string(::tpy::__str__(i)))));
     }
     return out;
 }
@@ -181,7 +181,7 @@ inline Tally Counter::run() const {
     int32_t total = 0;
     int32_t __stop_0 = this->n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        tags.push_back((::tpy::str_concat("t", ::tpy::fixed_to_str<int32_t>(i))));
+        tags.push_back((::tpy::str_concat("t", std::string(::tpy::__str__(i)))));
         total = ::tpy::add_check<int32_t>(total, i);
     }
     return Tally(total, std::move(tags));

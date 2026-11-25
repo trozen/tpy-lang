@@ -30,7 +30,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt> send(::tpy::Union<std::monostate, const
 // def sp(m: M) -> tuple[str, int]:
 //     return "s" + str(m.v), m.v
 std::tuple<std::string, ::tpy::BigInt> sp(const M& m) {
-    return std::tuple<std::string, ::tpy::BigInt>{(::tpy::str_concat("s", (m.v).to_string())), m.v};
+    return std::tuple<std::string, ::tpy::BigInt>{(::tpy::str_concat("s", std::string(::tpy::__str__(m.v)))), m.v};
 }
 
 // def pick(m: M) -> tuple[M, M, int]:

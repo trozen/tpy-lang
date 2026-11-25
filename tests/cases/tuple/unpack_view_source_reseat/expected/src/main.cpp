@@ -8,13 +8,13 @@ namespace tpyapp::main {
 // def mk(i: int) -> tuple[str, int]:
 //     return ("payload-number-" + str(i) + "-long-enough-to-defeat-sso", i)
 std::tuple<std::string, ::tpy::BigInt> mk(const ::tpy::BigInt& i) {
-    return std::tuple<std::string, ::tpy::BigInt>{(::tpy::str_concat((::tpy::str_concat("payload-number-", (i).to_string())), "-long-enough-to-defeat-sso")), i};
+    return std::tuple<std::string, ::tpy::BigInt>{(::tpy::str_concat((::tpy::str_concat("payload-number-", std::string(::tpy::__str__(i)))), "-long-enough-to-defeat-sso")), i};
 }
 
 // def mkb(i: int) -> tuple[bytes, int]:
 //     return (b"bytes-payload-long-enough-to-defeat-small-buffers-" + str(i).encode(), i)
 std::tuple<::tpy::Bytes, ::tpy::BigInt> mkb(const ::tpy::BigInt& i) {
-    return std::tuple<::tpy::Bytes, ::tpy::BigInt>{(::tpy::bytes_concat(::tpy::bytes_literal("bytes-payload-long-enough-to-defeat-small-buffers-", 50), ::tpy::bytes_from_str((i).to_string()))), i};
+    return std::tuple<::tpy::Bytes, ::tpy::BigInt>{(::tpy::bytes_concat(::tpy::bytes_literal("bytes-payload-long-enough-to-defeat-small-buffers-", 50), ::tpy::bytes_from_str(std::string(::tpy::__str__(i))))), i};
 }
 
 // def find(i: int) -> tuple[str, int] | None:
@@ -25,7 +25,7 @@ std::optional<std::tuple<std::string, ::tpy::BigInt>> find(const ::tpy::BigInt& 
     if ((i < 0)) {
         return std::nullopt;
     }
-    return std::tuple<std::string, ::tpy::BigInt>{(::tpy::str_concat((::tpy::str_concat("found-payload-", (i).to_string())), "-long-enough-to-defeat-sso")), i};
+    return std::tuple<std::string, ::tpy::BigInt>{(::tpy::str_concat((::tpy::str_concat("found-payload-", std::string(::tpy::__str__(i)))), "-long-enough-to-defeat-sso")), i};
 }
 
 // # free function: the source tuple is rebound while `a` is live.

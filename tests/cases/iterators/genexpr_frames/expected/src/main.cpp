@@ -1917,7 +1917,7 @@ struct __genexpr_main_43_frame : public ::tpy::next_iter_mixin<__genexpr_main_43
 std::expected<std::string, ::tpy::StopIteration> __genexpr_main_43_frame::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         x = *((*__for_it_0))++;
-        return ::tpy::fixed_to_str<int32_t>(x);
+        return std::string(::tpy::__str__(x));
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }

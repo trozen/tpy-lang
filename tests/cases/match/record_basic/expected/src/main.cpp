@@ -21,14 +21,14 @@ std::string describe(const Point& p) {
         return "origin";
     } else if (__match_subject_1.y == 0) {
         auto x = __match_subject_1.x;
-        return (::tpy::str_concat("x-axis: ", ::tpy::fixed_to_str<int32_t>(x)));
+        return (::tpy::str_concat("x-axis: ", std::string(::tpy::__str__(x))));
     } else if (__match_subject_1.x == 0) {
         auto y = __match_subject_1.y;
-        return (::tpy::str_concat("y-axis: ", ::tpy::fixed_to_str<int32_t>(y)));
+        return (::tpy::str_concat("y-axis: ", std::string(::tpy::__str__(y))));
     } else {
         auto x = __match_subject_1.x;
         auto y = __match_subject_1.y;
-        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(x))), ", ")), ::tpy::fixed_to_str<int32_t>(y))), ")"));
+        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", std::string(::tpy::__str__(x)))), ", ")), std::string(::tpy::__str__(y)))), ")"));
     }
     ::std::unreachable();
     return "";
@@ -83,7 +83,7 @@ std::string with_capture(const Point& p) {
     auto& __match_subject_1 = p;
     {
         auto& q = __match_subject_1;
-        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("point: ", ::tpy::fixed_to_str<int32_t>(q.x))), ", ")), ::tpy::fixed_to_str<int32_t>(q.y)));
+        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("point: ", std::string(::tpy::__str__(q.x)))), ", ")), std::string(::tpy::__str__(q.y))));
     }
     ::std::unreachable();
     return "";

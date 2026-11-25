@@ -77,7 +77,7 @@ inline bool Pair::__lt__(const Pair& other) const {
 // def __repr__(self) -> str:
 //     return str(self.key) + ":" + str(self.tag)
 inline std::string Pair::__repr__() const {
-    return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->key), ":")), ::tpy::fixed_to_str<int32_t>(this->tag)));
+    return (::tpy::str_concat((::tpy::str_concat(std::string(::tpy::__str__(this->key)), ":")), std::string(::tpy::__str__(this->tag))));
 }
 void __tpy_init();
 } // namespace tpyapp::main

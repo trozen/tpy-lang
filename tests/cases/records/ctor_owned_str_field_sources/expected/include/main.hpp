@@ -198,7 +198,7 @@ inline Walrus::Walrus(std::string_view a, const ::tpy::BigInt& x) {
     this->s = (::tpy::str_concat((b = a), "!"));
     ::tpy::BigInt y;
     this->n = (((y = x)) + (::tpy::BigInt(1)));
-    this->seen = (::tpy::str_concat(b, (y).to_string()));
+    this->seen = (::tpy::str_concat(b, std::string(::tpy::__str__(y))));
 }
 
 // def __init__(self, a: str) -> None:

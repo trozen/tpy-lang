@@ -85,8 +85,8 @@ inline Point::Point(int32_t x, int32_t y)
 //     writer.write(str(self.x))
 //     writer.write(str(self.y))
 inline void Point::encode(Writer& writer) const {
-    writer.write(::tpy::fixed_to_str<int32_t>(this->x));
-    writer.write(::tpy::fixed_to_str<int32_t>(this->y));
+    writer.write(std::string(::tpy::__str__(this->x)));
+    writer.write(std::string(::tpy::__str__(this->y)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

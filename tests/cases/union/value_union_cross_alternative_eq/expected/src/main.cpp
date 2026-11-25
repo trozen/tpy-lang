@@ -428,7 +428,7 @@ std::string value_record_lt(const ::tpy::Union<Fixed, Zone>& a, const ::tpy::Uni
     {
         try {
             ordered = (a < b);
-            return (::tpy::str_concat("ordered ", std::string(::tpy::bool_to_str(ordered))));
+            return (::tpy::str_concat("ordered ", std::string(::tpy::__str__(ordered))));
         } catch (const ::tpy::TypeError&) {
             return "TypeError";
         }
@@ -466,7 +466,7 @@ std::string str_int_cmp(const ::tpy::Union<int32_t, std::string>& a, const ::tpy
             } else {
                 ordered = (a >= b);
             }
-            return (::tpy::str_concat("ordered ", std::string(::tpy::bool_to_str(ordered))));
+            return (::tpy::str_concat("ordered ", std::string(::tpy::__str__(ordered))));
         } catch (const ::tpy::TypeError&) {
             return "TypeError";
         }

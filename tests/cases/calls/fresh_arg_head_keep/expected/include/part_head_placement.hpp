@@ -245,7 +245,7 @@ inline Src::Src(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
 //     self.name = "cm-long-enough-to-heap-" + str(n) * 10
-inline CM::CM(int32_t n) : name((::tpy::str_concat("cm-long-enough-to-heap-", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 10))))) {}
+inline CM::CM(int32_t n) : name((::tpy::str_concat("cm-long-enough-to-heap-", (::tpy::str_repeat(std::string(::tpy::__str__(n)), 10))))) {}
 
 // def __enter__(self) -> Self:
 //     return self
@@ -271,7 +271,7 @@ inline CM& Mid::get() {
 
 // def __init__(self, n: int32) -> None:
 //     self.name = "manager-name-long-enough-to-heap-" + str(n) * 10
-inline NameMgr::NameMgr(int32_t n) : name((::tpy::str_concat("manager-name-long-enough-to-heap-", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 10))))) {}
+inline NameMgr::NameMgr(int32_t n) : name((::tpy::str_concat("manager-name-long-enough-to-heap-", (::tpy::str_repeat(std::string(::tpy::__str__(n)), 10))))) {}
 
 // def __enter__(self) -> Self:
 //     return self

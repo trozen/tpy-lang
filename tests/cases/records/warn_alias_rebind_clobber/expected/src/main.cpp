@@ -438,7 +438,7 @@ void view_through_call_section() {
     std::string_view v = ::tpyapp::main::ident_view(n->s);
     std::optional<Named> __slot_2;
     for (int32_t i = 0; i < 2; ++i) {
-        n = &*(__slot_2 = Named((::tpy::str_concat("n", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(i, 1)))))));
+        n = &*(__slot_2 = Named((::tpy::str_concat("n", std::string(::tpy::__str__((::tpy::add_check<int32_t>(i, 1))))))));
         std::cout << "view_through_call_iter:" << " " << v << "\n" << ::tpy::check_signals;
         v = ::tpyapp::main::ident_view(n->s);
     }

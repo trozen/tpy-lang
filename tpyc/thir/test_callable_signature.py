@@ -7,7 +7,7 @@ from dataclasses import replace
 import pytest
 
 from ..type_def_registry import ParamPassing
-from ..typesys import FLOAT, INT32, STR, NominalType, Representation
+from ..typesys import FLOAT, INT32, INT64, NominalType, Representation
 from . import nodes as th
 from .dump import _callee_lines, _function_lines
 from .testutil import _compile, _entry
@@ -52,8 +52,8 @@ def run(c: Cell, f: float, a: int64) -> None:
     n = math.log10(f)
     ch = chr(u)
     i = int(f)
-    s1 = str(u)
-    s2 = str(f)
+    s1 = float(u)
+    s2 = float(a)
     k = int32(a)
     t = probe_clock()
     q = probe_pure(f)
@@ -71,8 +71,8 @@ def walk(node: th.THIRNode) -> Iterator[th.THIRNode]:
 
 def calls(fn: th.THIRFunction) -> dict[str, th.THIRCall]:
     found = [node for stmt in fn.body for node in walk(stmt) if isinstance(node, th.THIRCall)]
-    return {node.callee: node for node in found if node.callee != "str"} | {
-        f"str{i}": node for i, node in enumerate(n for n in found if n.callee == "str")}
+    return {node.callee: node for node in found if node.callee != "float"} | {
+        f"float{i}": node for i, node in enumerate(n for n in found if n.callee == "float")}
 
 
 @pytest.fixture(scope="module")
@@ -102,7 +102,7 @@ def test_user_callee_passings_match_the_definition(lowered) -> None:
 def test_native_template_and_constructor_stubs(lowered) -> None:
     functions, _, _ = lowered
     nodes = calls(functions["run"])
-    for name in ("log10", "chr", "int", "probe_clock", "probe_pure", "probe_plain", "probe_view", "str0", "str1"):
+    for name in ("log10", "chr", "int", "probe_clock", "probe_pure", "probe_plain", "probe_view", "float0", "float1"):
         assert nodes[name].stub_callee is not None, name
         assert nodes[name].resolved_callee is None, name
     log10 = nodes["log10"].stub_callee
@@ -146,11 +146,11 @@ def test_declared_contracts(lowered) -> None:
 def test_overloads_of_one_stub_keep_distinct_identities(lowered) -> None:
     functions, _, _ = lowered
     nodes = calls(functions["run"])
-    first, second = nodes["str0"].stub_callee, nodes["str1"].stub_callee
-    assert first.identity.qualified_name == second.identity.qualified_name == "builtins.str.__init__"
-    assert first.identity.param_types == (INT32,) and second.identity.param_types == (FLOAT,)
+    first, second = nodes["float0"].stub_callee, nodes["float1"].stub_callee
+    assert first.identity.qualified_name == second.identity.qualified_name == "builtins.float.__init__"
+    assert first.identity.param_types == (INT32,) and second.identity.param_types == (INT64,)
     assert first.identity != second.identity
-    assert first.signature.return_type == second.signature.return_type == STR
+    assert first.signature.return_type == second.signature.return_type == FLOAT
 
 
 def test_view_result_reports_view_representation(lowered) -> None:

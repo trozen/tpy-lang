@@ -237,10 +237,10 @@ inline std::string Holder::describe(const ::tpy::Union<std::monostate, Fixed, Zo
     }
     if (std::holds_alternative<Fixed>(tz)) {
         const auto& __tz = std::get<Fixed>(tz);
-        return (::tpy::str_concat("fixed:", ::tpy::fixed_to_str<int32_t>(__tz.off)));
+        return (::tpy::str_concat("fixed:", std::string(::tpy::__str__(__tz.off))));
     }
     const auto& __tz = std::get<Zone>(tz);
-    return (::tpy::str_concat("zone:", ::tpy::fixed_to_str<int32_t>(__tz.zid)));
+    return (::tpy::str_concat("zone:", std::string(::tpy::__str__(__tz.zid))));
 }
 
 // def opt(self, tz: Fixed | None = None) -> str:
@@ -251,7 +251,7 @@ inline std::string Holder::opt(std::optional<Fixed> tz) const {
     if ((!tz.has_value())) {
         return "none";
     }
-    return (::tpy::str_concat("fixed:", ::tpy::fixed_to_str<int32_t>((*tz).off)));
+    return (::tpy::str_concat("fixed:", std::string(::tpy::__str__((*tz).off))));
 }
 void __tpy_init();
 } // namespace tpyapp::main

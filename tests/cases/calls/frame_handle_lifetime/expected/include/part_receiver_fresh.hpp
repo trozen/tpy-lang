@@ -448,7 +448,7 @@ inline Acc::Acc(int32_t base) : base(base) {}
 
 // def __init__(self, n: int32) -> None:
 //     self.items = ["bag" + str(n) * 30]
-inline ViewBag::ViewBag(int32_t n) : items(std::vector<std::string>{(::tpy::str_concat("bag", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 30))))}) {}
+inline ViewBag::ViewBag(int32_t n) : items(std::vector<std::string>{(::tpy::str_concat("bag", (::tpy::str_repeat(std::string(::tpy::__str__(n)), 30))))}) {}
 
 // def __getitem__(self, i: int32) -> StrView:
 //     return self.items[i]

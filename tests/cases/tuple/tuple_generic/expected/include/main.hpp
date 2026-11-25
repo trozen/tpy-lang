@@ -52,7 +52,7 @@ inline Point::Point(int32_t x, int32_t y)
 // def __repr__(self) -> str:
 //     return "Point(" + str(self.x) + ", " + str(self.y) + ")"
 inline std::string Point::__repr__() const {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Point(", ::tpy::fixed_to_str<int32_t>(this->x))), ", ")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Point(", std::string(::tpy::__str__(this->x)))), ", ")), std::string(::tpy::__str__(this->y)))), ")"));
 }
 // def first_of_pair[T](p: tuple[T, T]) -> T:
 //     return p[0]

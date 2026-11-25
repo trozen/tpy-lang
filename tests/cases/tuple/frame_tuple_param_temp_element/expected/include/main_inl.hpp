@@ -179,10 +179,10 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_owned_view_gen::__
         v = ::tpyapp::main::sv_first(std::tuple<std::string, ::tpy::BigInt>{s, ::tpy::BigInt(1)});
         junk.emplace(::tpy::array_from_index<std::string, 8>([&](std::size_t __i_0) -> std::string {
             int32_t i = int32_t(__i_0);
-            return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+            return (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         }));
         __state = S_RESUME_0;
-        return (::tpy::str_concat(std::string(v), ::tpy::fixed_to_str<int32_t>(::tpy::__len__((*junk)))));
+        return (::tpy::str_concat(std::string(::tpy::__str__(v)), std::string(::tpy::__str__(::tpy::__len__((*junk))))));
     }
     case S_RESUME_0: {  // after: yield str(v) + str(len(junk))
         __state = S_DONE;

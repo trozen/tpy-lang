@@ -77,7 +77,7 @@ void show(std::string_view tag, const ::tpy::Union<int64_t, uint64_t>& u) {
 //     s = "abc" + str(n)
 //     return s  # tpyc: ok
 ::tpy::Union<int32_t, std::string> string_union(int32_t n) {
-    ::tpy::String s = (::tpy::str_concat("abc", ::tpy::fixed_to_str<int32_t>(n)));
+    ::tpy::String s = (::tpy::str_concat("abc", std::string(::tpy::__str__(n))));
     return static_cast<std::string>(std::move(s));
 }
 
@@ -85,7 +85,7 @@ void show(std::string_view tag, const ::tpy::Union<int64_t, uint64_t>& u) {
 //     s = "abc" + str(n)
 //     return s  # tpyc: ok
 std::string string_twin(int32_t n) {
-    ::tpy::String s = (::tpy::str_concat("abc", ::tpy::fixed_to_str<int32_t>(n)));
+    ::tpy::String s = (::tpy::str_concat("abc", std::string(::tpy::__str__(n))));
     return s;
 }
 

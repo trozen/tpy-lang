@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     s = str(42)  # tpyc: type(str)
 //     print(s)
 void test_str_constructor() {
-    std::string s = ::tpy::fixed_to_str<int32_t>(42);
+    std::string s = std::string(::tpy::__str__(42));
     std::cout << s << "\n" << ::tpy::check_signals;
 }
 
@@ -29,7 +29,7 @@ void test_augassign() {
 //     print(s)
 void test_reassign_from_owned() {
     std::string s = "start";
-    s = ::tpy::fixed_to_str<int32_t>(99);
+    s = std::string(::tpy::__str__(99));
     std::cout << s << "\n" << ::tpy::check_signals;
 }
 

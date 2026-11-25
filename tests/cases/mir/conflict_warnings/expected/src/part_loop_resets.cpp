@@ -7,7 +7,7 @@ namespace tpyapp::part_loop_resets {
 // def mk(n: int32) -> str:
 //     return str(n) * 30
 std::string mk(int32_t n) {
-    return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 30));
+    return (::tpy::str_repeat(std::string(::tpy::__str__(n)), 30));
 }
 
 // def clear_tok(t: Tok) -> None:
@@ -217,12 +217,12 @@ void overkill(::tpyapp::part_loops::Buf& b, ::tpyapp::part_loops::Buf& c, int32_
     for (int32_t i = 0; i < __stop_0; ++i) {
         v = b.s;
         ::tpyapp::part_loops::Buf& x = ((flag) ? (b) : (c));
-        x.s = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        x.s = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         if ((i == 2)) {
             std::cout << "overkill" << " " << ::tpy::__getitem__(v, 0) << "\n" << ::tpy::check_signals;
             return;
         }
-        std::string buf = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        std::string buf = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         v = buf;
     }
     std::cout << "overkill" << " " << ::tpy::__getitem__(v, 0) << "\n" << ::tpy::check_signals;
@@ -246,12 +246,12 @@ void defkill(::tpyapp::part_loops::Buf& b, int32_t k) {
     int32_t __stop_0 = k;
     for (int32_t i = 0; i < __stop_0; ++i) {
         v = b.s;
-        b.s = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        b.s = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         if ((i == 2)) {
             std::cout << "defkill" << " " << ::tpy::__getitem__(v, 0) << "\n" << ::tpy::check_signals;
             return;
         }
-        std::string buf = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        std::string buf = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         v = buf;
     }
     std::cout << "defkill" << " " << ::tpy::__getitem__(v, 0) << "\n" << ::tpy::check_signals;
@@ -278,14 +278,14 @@ void own_weak_reset(::tpyapp::part_loops::Buf& b, ::tpyapp::part_loops::Buf& c, 
     int32_t __stop_0 = k;
     for (int32_t i = 0; i < __stop_0; ++i) {
         v = b.s;
-        b.s = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        b.s = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         if (read_old) {
             std::cout << "own_weak_reset old" << " " << ::tpy::__getitem__(v, 0) << "\n" << ::tpy::check_signals;
         }
         v = "safe";
         v = b.s;
         ::tpyapp::part_loops::Buf& x = ((flag) ? (b) : (c));
-        x.s = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        x.s = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         std::cout << "own_weak_reset new" << " " << ::tpy::__getitem__(v, 0) << "\n" << ::tpy::check_signals;
     }
 }
@@ -309,14 +309,14 @@ void own_direct_reset(::tpyapp::part_loops::Buf& b, int32_t k, bool read_old) {
     int32_t __stop_0 = k;
     for (int32_t i = 0; i < __stop_0; ++i) {
         v = b.s;
-        b.s = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        b.s = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         if (read_old) {
             std::cout << "own_direct_reset old" << " " << ::tpy::__getitem__(v, 0) << "\n" << ::tpy::check_signals;
         }
         v = "safe";
         v = b.s;
         ::tpyapp::part_loops::Buf& x = b;
-        b.s = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        b.s = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         std::cout << "own_direct_reset new" << " " << ::tpy::__getitem__(v, 0) << "\n" << ::tpy::check_signals;
     }
 }
@@ -335,11 +335,11 @@ void own_direct_reset(::tpyapp::part_loops::Buf& b, int32_t k, bool read_old) {
 //     print("two_object_cycle", v[0])
 void two_object_cycle(::tpyapp::part_loops::Buf& b, ::tpyapp::part_loops::Buf& c, int32_t k, bool flag) {
     std::string_view v = b.s;
-    b.s = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(k), 40));
+    b.s = (::tpy::str_repeat(std::string(::tpy::__str__(k)), 40));
     int32_t i = 0;
     while ((i < k)) {
         ::tpyapp::part_loops::Buf& x = ((flag) ? (b) : (c));
-        x.s = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        x.s = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     std::cout << "two_object_cycle" << " " << ::tpy::__getitem__(v, 0) << "\n" << ::tpy::check_signals;
@@ -365,7 +365,7 @@ void nested_reset(::tpyapp::part_loops::Buf& b, int32_t k) {
         int32_t __stop_1 = k;
         for (int32_t i = 0; i < __stop_1; ++i) {
             t = &*(__slot_2 = Tok(b.s, i));
-            b.s = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+            b.s = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         }
         t->s = "safe";
     }

@@ -41,7 +41,7 @@ inline Counter::Counter(int32_t n) : n(n) {}
 // def __repr__(self) -> str:
 //     return "Counter(" + str(self.n) + ")"
 inline std::string Counter::__repr__() const {
-    return (::tpy::str_concat((::tpy::str_concat("Counter(", ::tpy::fixed_to_str<int32_t>(this->n))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat("Counter(", std::string(::tpy::__str__(this->n)))), ")"));
 }
 void __tpy_init();
 } // namespace tpyapp::main

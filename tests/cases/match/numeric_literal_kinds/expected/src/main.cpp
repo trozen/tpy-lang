@@ -152,7 +152,7 @@ std::string as_alt(int32_t v) {
     switch (__match_subject_1) {
     case 2: {
         auto x = __match_subject_1;
-        return (::tpy::str_concat("hit-", ::tpy::fixed_to_str<int32_t>(x)));
+        return (::tpy::str_concat("hit-", std::string(::tpy::__str__(x))));
     }
     default: {
         return "miss";

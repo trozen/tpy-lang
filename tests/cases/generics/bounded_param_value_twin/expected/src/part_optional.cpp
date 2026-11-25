@@ -10,7 +10,7 @@ namespace tpyapp::part_optional {
 //     n = "zz" * 4
 //     print("idt", r, n)
 void reassigned_backing() {
-    std::string n = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(12345678), 2));
+    std::string n = (::tpy::str_repeat(std::string(::tpy::__str__(12345678)), 2));
     std::string r = std::string(::tpyapp::part_optional::idt<std::string_view>(::tpy::str_slice(n, ::tpy::BasicSlice{1, std::nullopt})));
     n = (::tpy::str_repeat("zz", 4));
     std::cout << "idt" << " " << r << " " << n << "\n" << ::tpy::check_signals;
@@ -29,7 +29,7 @@ void reassigned_backing() {
 void locals_into_optional() {
     std::string_view s = "live";
     std::optional<std::string_view> r = ::tpyapp::part_optional::via<std::string_view>(s);
-    std::string n = ::tpy::fixed_to_str<int32_t>(5);
+    std::string n = std::string(::tpy::__str__(5));
     std::optional<std::string> q = ::tpyapp::part_optional::via<std::string>(n);
     ::tpy::Bytes b = (::tpy::bytes_concat(::tpy::bytes_literal("by", 2), ::tpy::bytes_literal("te", 2)));
     std::optional<::tpy::Bytes> o = ::tpyapp::part_optional::via<::tpy::Bytes>(b);

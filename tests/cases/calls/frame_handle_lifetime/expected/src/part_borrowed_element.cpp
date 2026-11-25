@@ -249,7 +249,7 @@ __gen_echo_chars echo_chars(std::string_view s) {
 // def mk_key(n: int32) -> str:
 //     return "key" + str(n) * 20
 std::string mk_key(int32_t n) {
-    return (::tpy::str_concat("key", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 20))));
+    return (::tpy::str_concat("key", (::tpy::str_repeat(std::string(::tpy::__str__(n)), 20))));
 }
 
 // def dispatch_key_and_owned_view() -> None:

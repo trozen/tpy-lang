@@ -94,7 +94,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& e = *__beg_0;
-        rows.push_back((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(e.name, ":")), std::string(::tpy::bool_to_str(e.is_dir())))), "/")), std::string(::tpy::bool_to_str(e.is_file())))), "/")), std::string(::tpy::bool_to_str(e.is_symlink())))));
+        rows.push_back((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(e.name, ":")), std::string(::tpy::__str__(e.is_dir())))), "/")), std::string(::tpy::__str__(e.is_file())))), "/")), std::string(::tpy::__str__(e.is_symlink())))));
         if ((e.name == "f.txt")) {
             size = e.stat().st_size;
         }

@@ -96,7 +96,7 @@ std::string u(const ::tpy::Union<int32_t, std::string>& x) {
         return __x;
     }
     const auto& __x = std::get<int32_t>(x);
-    return (::tpy::str_concat("int ", ::tpy::fixed_to_str<int32_t>(__x)));
+    return (::tpy::str_concat("int ", std::string(::tpy::__str__(__x))));
 }
 
 // def tw(t: tuple[int64, int64]) -> int64:
@@ -276,7 +276,7 @@ P new_p(const Hp& h) {
 // def via(f: Callable[[Hp], Own[P]], h: Hp) -> str:
 //     return "callable " + str(f(h).v)
 std::string via__Callable_Hp_Own_P__Hp(const std::function<P(Hp&)>& f, Hp& h) {
-    return (::tpy::str_concat("callable ", ::tpy::fixed_to_str<int32_t>(f(h).v)));
+    return (::tpy::str_concat("callable ", std::string(::tpy::__str__(f(h).v))));
 }
 
 // async def double(n: int32) -> int32:

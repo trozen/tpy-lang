@@ -4554,11 +4554,13 @@ class SemanticContext:
         warn_node: TpyExpr | TpyStmt | None = None,
         rebinding: bool = False,
         operand: bool = False,
+        argument: bool = False,
     ) -> TpyType:
         """Resolve configured default-int, with range-safe fallback for
         literals; the warning says whether the literal gives a variable its
-        first type, promotes one (`rebinding`), or makes the operation it
-        is an operand of compute in `int` (`operand`)."""
+        first type, promotes one (`rebinding`), makes the operation it is
+        an operand of compute in `int` (`operand`), or is passed as `int`
+        to a parameter that does not fix its type (`argument`)."""
         if not isinstance(typ, IntLiteralType):
             return self.default_int_type
         default_tr = int_traits_of(self.default_int_type)
@@ -4569,11 +4571,13 @@ class SemanticContext:
         ):
             if warn_node is not None:
                 v = typ.value
-                if operand:
+                if operand or argument:
                     fixes = (f"int64({v}) or int({v})"
                              if -(2**63) <= v < 2**63 else f"int({v})")
-                    what = ("the operation computes in int (BigInt). Write "
-                            f"{fixes} to state the type")
+                    what = ("the argument is passed as int (BigInt)"
+                            if argument else
+                            "the operation computes in int (BigInt)")
+                    what = f"{what}. Write {fixes} to state the type"
                 else:
                     what = ("promoting variable to int (BigInt)" if rebinding
                             else "inferring int (BigInt)")

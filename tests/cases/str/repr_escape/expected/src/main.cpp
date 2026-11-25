@@ -97,7 +97,7 @@ void main() {
     char c = ::tpy::__getitem__(t, 2);
     std::cout << "repr" << " " << std::string(::tpy::repr_of(c)) << " " << std::format("{}", ::tpy::repr_of(c)) << " " << std::string(::tpy::repr_of(::tpy::__getitem__(t, 0))) << "\n" << ::tpy::check_signals;
     std::cout << "rec" << " " << Rec(::tpy::__getitem__(t, 1), ::tpy::__getitem__(t, 0)) << " " << Rec(::tpy::__getitem__(t, 1), std::nullopt) << "\n" << ::tpy::check_signals;
-    std::cout << "plain" << " " << std::string(::tpy::char_to_str(c)) << " " << c << " " << std::format("{}", c) << "\n" << ::tpy::check_signals;
+    std::cout << "plain" << " " << std::string(::tpy::__str__(c)) << " " << c << " " << std::format("{}", c) << "\n" << ::tpy::check_signals;
 }
 
 // def show_optional(s: str | None) -> None:

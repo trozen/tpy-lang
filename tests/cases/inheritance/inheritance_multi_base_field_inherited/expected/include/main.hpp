@@ -84,7 +84,7 @@ inline Leaf::Leaf()
 // def as_pair(self) -> str:
 //     return Other.token + "/" + str(Middle.token)
 inline std::string Leaf::as_pair() const {
-    return (::tpy::str_concat((::tpy::str_concat(this->Other::token, "/")), ::tpy::fixed_to_str<int32_t>(this->Middle::token)));
+    return (::tpy::str_concat((::tpy::str_concat(this->Other::token, "/")), std::string(::tpy::__str__(this->Middle::token))));
 }
 void __tpy_init();
 } // namespace tpyapp::main

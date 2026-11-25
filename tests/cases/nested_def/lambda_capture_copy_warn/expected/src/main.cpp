@@ -472,7 +472,7 @@ void while_unpack(const std::vector<std::tuple<int32_t, int32_t>>& pairs) {
 //     s = "v" + str(k)
 //     return lambda: k + len(s)  # tpyc: warning(/copies 'k' when it is created/) warning(/copies 's' when it is created/)
 std::function<::tpy::BigInt()> cost(const ::tpy::BigInt& k) {
-    ::tpy::String s = (::tpy::str_concat("v", (k).to_string()));
+    ::tpy::String s = (::tpy::str_concat("v", std::string(::tpy::__str__(k))));
     return [k, s]() -> ::tpy::BigInt { return ((k) + (::tpy::BigInt(::tpy::__len__(s)))); };
 }
 

@@ -659,7 +659,7 @@ struct __gen_seated_gen : public ::tpy::next_iter_mixin<__gen_seated_gen, int32_
 //     self.text = "item-" + str(n) * 3
 inline Src::Src(int32_t n)
     : n(n),
-      text((::tpy::str_concat("item-", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 3))))) {}
+      text((::tpy::str_concat("item-", (::tpy::str_repeat(std::string(::tpy::__str__(n)), 3))))) {}
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n

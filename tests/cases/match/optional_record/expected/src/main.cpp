@@ -62,7 +62,7 @@ std::string check_point(const Point* p) {
         } else {
             auto x = __match_inner_1.x;
             auto y = __match_inner_1.y;
-            return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(x), ",")), ::tpy::fixed_to_str<int32_t>(y)));
+            return (::tpy::str_concat((::tpy::str_concat(std::string(::tpy::__str__(x)), ",")), std::string(::tpy::__str__(y))));
         }
     }
     ::std::unreachable();

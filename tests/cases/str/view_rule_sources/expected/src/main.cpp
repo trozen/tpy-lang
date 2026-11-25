@@ -52,7 +52,7 @@ std::string mod_y;
 // def mk_s(n: int32) -> str:
 //     return "payload-long-enough-to-defeat-sso-" + str(n)
 std::string mk_s(int32_t n) {
-    return (::tpy::str_concat("payload-long-enough-to-defeat-sso-", ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat("payload-long-enough-to-defeat-sso-", std::string(::tpy::__str__(n))));
 }
 
 // def mk_b(n: int32) -> bytes:
@@ -826,7 +826,7 @@ void sec_loop_order(int32_t n) {
         for (int32_t j = 0; j < 40; ++j) {
             ::tpy::bytearray_append(ba, 65);
         }
-        s = (::tpy::str_concat(::tpy::str_upper(s), (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40))));
+        s = (::tpy::str_concat(::tpy::str_upper(s), (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40))));
         std::cout << "loop-order" << " " << ::tpy::BytesPrinter(::tpy::Bytes(v)) << " " << w << "\n" << ::tpy::check_signals;
         v = ::tpy::Bytes(::tpy::bytes_slice(ba, ::tpy::BasicSlice{0, 4}));
         w = ::tpy::str_slice(s, ::tpy::BasicSlice{0, 4});

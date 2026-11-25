@@ -16,7 +16,7 @@ std::string describe(const Expr& e) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& v = __case_0.value;
-        return (::tpy::str_concat("lit=", (v).to_string()));
+        return (::tpy::str_concat("lit=", std::string(::tpy::__str__(v))));
     }
     default: {
         return "binop";

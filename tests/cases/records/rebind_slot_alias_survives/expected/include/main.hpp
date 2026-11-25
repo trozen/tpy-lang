@@ -656,7 +656,7 @@ inline Deep::Deep(int32_t i) : inner(Inner(i)) {}
 //     self.s = "abcdefghijklmnopqrstuvwxyz0123456789" + str(n)
 //     self.v = v
 inline Viewing::Viewing(int32_t n, std::string_view v)
-    : s((::tpy::str_concat("abcdefghijklmnopqrstuvwxyz0123456789", ::tpy::fixed_to_str<int32_t>(n)))),
+    : s((::tpy::str_concat("abcdefghijklmnopqrstuvwxyz0123456789", std::string(::tpy::__str__(n))))),
       v(v) {}
 
 // def __init__(self, n: int32) -> None:
@@ -768,7 +768,7 @@ inline void Looper::run() const {
 //     self.s = "tagged-object-with-a-long-heap-string-" + str(n)
 //     self.n = n
 inline Tagged::Tagged(int32_t n)
-    : s((::tpy::str_concat("tagged-object-with-a-long-heap-string-", ::tpy::fixed_to_str<int32_t>(n)))),
+    : s((::tpy::str_concat("tagged-object-with-a-long-heap-string-", std::string(::tpy::__str__(n))))),
       n(n) {}
 
 // def bump(self) -> None:
@@ -779,7 +779,7 @@ inline void Tagged::bump() {
 
 // def __init__(self, n: int32) -> None:
 //     self.s = "abcdefghijklmnopqrstuvwxyz0123456789-" + str(n)
-inline Src::Src(int32_t n) : s((::tpy::str_concat("abcdefghijklmnopqrstuvwxyz0123456789-", ::tpy::fixed_to_str<int32_t>(n)))) {}
+inline Src::Src(int32_t n) : s((::tpy::str_concat("abcdefghijklmnopqrstuvwxyz0123456789-", std::string(::tpy::__str__(n))))) {}
 
 // def __init__(self, v: StrView) -> None:
 //     self.v = v
@@ -801,7 +801,7 @@ inline Viewer& Viewer::operator=(Viewer&& other) noexcept {
 //     VIEW_DROPS.append(str(self.v))
 inline Viewer::~Viewer() {
     if (!this->__tpy_owned_) return;
-    VIEW_DROPS->push_back(std::string(this->v));
+    VIEW_DROPS->push_back(std::string(::tpy::__str__(this->v)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

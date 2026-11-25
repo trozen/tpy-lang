@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def greet(name: str) -> str:
 //     return str("Hello ") + name
 std::string greet(std::string_view name) {
-    return (::tpy::str_concat(std::string("Hello "), name));
+    return (::tpy::str_concat(std::string(::tpy::__str__("Hello ")), name));
 }
 
 // def get_name() -> str:
 //     return str(int32(42))
 std::string get_name() {
-    return ::tpy::fixed_to_str<int32_t>(42);
+    return std::string(::tpy::__str__(42));
 }
 
 // def main() -> None:

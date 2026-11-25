@@ -101,7 +101,7 @@ void main() {
         auto __end_5 = __obj_5.end();
         for (; __beg_5 != __end_5; ++__beg_5) {
             const std::string& w = *__beg_5;
-            __result.push_back(::tpy::fixed_to_str<int32_t>(::tpy::__len__(w)));
+            __result.push_back(std::string(::tpy::__str__(::tpy::__len__(w))));
         }
         std::move(__result);
     });

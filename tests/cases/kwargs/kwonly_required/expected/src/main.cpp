@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //         s = fill + s
 //     return s
 std::string format_value(int32_t value, int32_t width, std::string_view fill) {
-    std::string s = ::tpy::fixed_to_str<int32_t>(value);
+    std::string s = std::string(::tpy::__str__(value));
     while ((::tpy::__len__(s) < width)) {
         s = (::tpy::str_concat(fill, s));
     }

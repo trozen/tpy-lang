@@ -7,7 +7,7 @@ namespace tpyapp::part_loops {
 // def mk(n: int32) -> str:
 //     return str(n) * 30
 std::string mk(int32_t n) {
-    return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 30));
+    return (::tpy::str_repeat(std::string(::tpy::__str__(n)), 30));
 }
 
 // # a store on one pass only: no later pass rewrites it, so it escapes

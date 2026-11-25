@@ -362,7 +362,7 @@ __coro_coro coro(::tpy::Union<const Cat*, const Dog*> a) {
         }
         auto& __a_narrowed = *std::get<const Dog*>(a);
         __state = S_DONE;
-        std::string __tpy_async_ret = (::tpy::str_concat(__a_narrowed.sound(), ::tpy::fixed_to_str<int32_t>(__a)));
+        std::string __tpy_async_ret = (::tpy::str_concat(__a_narrowed.sound(), std::string(::tpy::__str__(__a))));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -409,7 +409,7 @@ __coro_coro_complement coro_complement(::tpy::Union<const Cat*, const Dog*> a) {
         auto& __acache_narrowed = *std::get<Cat*>(acache);
         __acache_narrowed.n = ::tpy::add_check<int32_t>(__acache_narrowed.n, __acache);
         __state = S_DONE;
-        std::string __tpy_async_ret = (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("coro_global ", __acache_narrowed.sound())), " ")), ::tpy::fixed_to_str<int32_t>(before))), " ")), ::tpy::fixed_to_str<int32_t>(__acache_narrowed.n)));
+        std::string __tpy_async_ret = (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("coro_global ", __acache_narrowed.sound())), " ")), std::string(::tpy::__str__(before)))), " ")), std::string(::tpy::__str__(__acache_narrowed.n))));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

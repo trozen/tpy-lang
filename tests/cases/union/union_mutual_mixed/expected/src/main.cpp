@@ -17,7 +17,7 @@ std::string show(const Value& v) {
         return (::tpy::str_concat("-", ::tpyapp::main::show(__v.inner.get())));
     } else if (std::holds_alternative<::tpy::BigInt>(v.value)) {
         const auto& __v = std::get<::tpy::BigInt>(v.value);
-        return (__v).to_string();
+        return std::string(::tpy::__str__(__v));
     } else {
         const auto& __v = std::get<std::string>(v.value);
         return __v;

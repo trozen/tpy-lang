@@ -39,7 +39,7 @@ struct __genexpr_from_global_1_frame : public ::tpy::next_iter_mixin<__genexpr_f
 std::expected<std::tuple<std::string, double>, ::tpy::StopIteration> __genexpr_from_global_1_frame::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         x = *((*__for_it_0))++;
-        return std::tuple<std::string, double>{std::string(::tpy::char_to_str(x)), 0.0};
+        return std::tuple<std::string, double>{std::string(::tpy::__str__(x)), 0.0};
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
@@ -100,7 +100,7 @@ template <typename F_scale>
 std::expected<std::tuple<std::string, double>, ::tpy::StopIteration> __genexpr_from_local_2_frame<F_scale>::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         c = *((*__for_it_0))++;
-        return std::tuple<std::string, double>{std::string(::tpy::char_to_str(c)), scale};
+        return std::tuple<std::string, double>{std::string(::tpy::__str__(c)), scale};
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }

@@ -20,7 +20,7 @@ std::string describe(const std::vector<::tpystd::tplib::box::Box<Animal>>& anima
     } else if (const Snake* __mpoly_1 = dynamic_cast<const Snake*>(&__match_subject_1)) {
         const Snake& __case_1 = *__mpoly_1;
         auto& s = __case_1;
-        return (::tpy::str_concat("snake legs=", (s.legs).to_string()));
+        return (::tpy::str_concat("snake legs=", std::string(::tpy::__str__(s.legs))));
     } else {
         return "?";
     }

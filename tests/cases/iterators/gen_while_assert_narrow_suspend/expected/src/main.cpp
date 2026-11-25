@@ -24,7 +24,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_loop::__next__() {
     case S_RESUME_0: {  // after: yield "tick"
         const auto& __a = std::get<::tpy::BigInt>(a);
         __state = S_RESUME_1;
-        return (((__a) + (::tpy::BigInt(1)))).to_string();
+        return std::string(::tpy::__str__(((__a) + (::tpy::BigInt(1)))));
     }
     case S_RESUME_1: {  // after: yield str(a + 1)
         const auto& __a = std::get<::tpy::BigInt>(a);

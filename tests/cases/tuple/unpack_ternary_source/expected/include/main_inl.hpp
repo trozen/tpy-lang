@@ -59,7 +59,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_view::__next__
     case S_RESUME_0: {  // after: yield s
         t1 = std::tuple<std::string, int32_t>{"qq", 5};
         __state = S_RESUME_1;
-        return (::tpy::str_concat(s, ::tpy::fixed_to_str<int32_t>(n)));
+        return (::tpy::str_concat(s, std::string(::tpy::__str__(n))));
     }
     case S_RESUME_1: {  // after: yield s + str(n)
         __state = S_DONE;

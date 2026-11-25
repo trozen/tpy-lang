@@ -36,7 +36,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_2: {  // after: yield y
         __state = S_RESUME_3;
-        return ::tpy::fixed_to_str<int32_t>(::tpy::__len__(z));
+        return std::string(::tpy::__str__(::tpy::__len__(z)));
     }
     case S_RESUME_3: {  // after: yield str(len(z))
         __state = S_DONE;

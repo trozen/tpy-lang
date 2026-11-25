@@ -227,7 +227,7 @@ inline Reader::Reader(const ::tpy::Union<int32_t, std::string>& x) : value("") {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        this->value = std::string(::tpy::char_to_str(::tpy::__getitem__(__case_0, 0)));
+        this->value = std::string(::tpy::__str__(::tpy::__getitem__(__case_0, 0)));
         break;
     }
     default: {
@@ -248,7 +248,7 @@ inline std::string Reader::read(const ::tpy::Union<int32_t, std::string>& x) con
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        return std::string(::tpy::char_to_str(::tpy::__getitem__(__case_0, -1)));
+        return std::string(::tpy::__str__(::tpy::__getitem__(__case_0, -1)));
     }
     default: {
         return "";

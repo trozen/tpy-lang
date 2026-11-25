@@ -61,7 +61,7 @@ inline PairIter& PairIter::__iter__() {
 //     raise StopIteration
 inline std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> PairIter::__next__() {
     if ((this->current < this->limit)) {
-        std::string key = ::tpy::fixed_to_str<int32_t>(this->current);
+        std::string key = std::string(::tpy::__str__(this->current));
         int32_t val = (::tpy::mul_check<int32_t>(this->current, 10));
         this->current = ::tpy::add_check<int32_t>(this->current, 1);
         return std::tuple<std::string, int32_t>{key, val};

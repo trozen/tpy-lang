@@ -42,7 +42,7 @@ void with_field_chain() {
         int32_t _ = int32_t(__i_0);
         return (::tpy::str_repeat("x", 60));
     });
-    q.push_back((::tpy::str_concat("after-", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(junk)))));
+    q.push_back((::tpy::str_concat("after-", std::string(::tpy::__str__(::tpy::__len__(junk))))));
     std::cout << "fresh with" << " " << ::tpy::__len__(q) << " " << ::tpy::__getitem__(q, -2) << " " << ::tpy::__getitem__(q, -1) << "\n" << ::tpy::check_signals;
 }
 

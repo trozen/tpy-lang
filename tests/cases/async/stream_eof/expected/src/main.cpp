@@ -73,8 +73,8 @@ namespace tpyapp::main {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         tail = std::move(__r3).value();
         __sub_3.reset();
-        std::cout << (::tpy::str_concat("tail_len: ", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(tail)))) << "\n" << ::tpy::check_signals;
-        std::cout << (::tpy::str_concat("at_eof: ", std::string(::tpy::bool_to_str((*reader).at_eof())))) << "\n" << ::tpy::check_signals;
+        std::cout << (::tpy::str_concat("tail_len: ", std::string(::tpy::__str__(::tpy::__len__(tail))))) << "\n" << ::tpy::check_signals;
+        std::cout << (::tpy::str_concat("at_eof: ", std::string(::tpy::__str__((*reader).at_eof())))) << "\n" << ::tpy::check_signals;
         (*writer).close();
         __sub_4.emplace((*writer));
         __state = S_RESUME_4;

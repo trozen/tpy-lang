@@ -103,7 +103,7 @@ void method() {
         try {
             w.run();
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << (::tpy::str_concat((::tpy::str_concat("method: caught after ", (w.steps).to_string())), " step")) << "\n" << ::tpy::check_signals;
+            std::cout << (::tpy::str_concat((::tpy::str_concat("method: caught after ", std::string(::tpy::__str__(w.steps)))), " step")) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -193,7 +193,7 @@ void generator() {
                 }
             }
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << (::tpy::str_concat((::tpy::str_concat("generator: caught after ", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(seen)))), " item")) << "\n" << ::tpy::check_signals;
+            std::cout << (::tpy::str_concat((::tpy::str_concat("generator: caught after ", std::string(::tpy::__str__(::tpy::__len__(seen))))), " item")) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -221,7 +221,7 @@ void closure() {
         try {
             bump();
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << (::tpy::str_concat("closure: caught, count=", ::tpy::fixed_to_str<int32_t>(count))) << "\n" << ::tpy::check_signals;
+            std::cout << (::tpy::str_concat("closure: caught, count=", std::string(::tpy::__str__(count)))) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -318,7 +318,7 @@ __coro_quiet quiet() {
 //     except KeyboardInterrupt:
 //         print("async: caught KeyboardInterrupt after the run")
 void after_async_run() {
-    std::cout << (::tpy::str_concat("async: run returned ", (::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::quiet()))).to_string())) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat("async: run returned ", std::string(::tpy::__str__(::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::quiet())))))) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::interrupt();

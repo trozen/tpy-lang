@@ -71,7 +71,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_each_pad::__next__
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return std::string(::tpy::str_strip(p.s));
+        return std::string(::tpy::__str__(::tpy::str_strip(p.s)));
     }
     case S_RESUME_0: {  // after: yield str(p.s.strip())
         __state = S_DONE;
@@ -104,7 +104,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_fresh_slice::_
         }
         c = ::tpy::unwrap_ref(*(*__for_r_0));
         __state = S_RESUME_0;
-        return std::string(::tpy::char_to_str(c));
+        return std::string(::tpy::__str__(c));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -134,7 +134,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_owned_of_view::__n
         }
         c = *((*__for_it_0))++;
         __state = S_RESUME_0;
-        return std::string(::tpy::char_to_str(c));
+        return std::string(::tpy::__str__(c));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

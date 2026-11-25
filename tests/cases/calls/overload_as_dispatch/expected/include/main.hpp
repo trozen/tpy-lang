@@ -1576,7 +1576,7 @@ inline Wide::Wide() {
 // @overload
 // def m(self, x: int32 = 0) -> str: ...
 inline std::string Wide::m__int32(int32_t x) const {
-    return (::tpy::str_concat("m ", ::tpy::fixed_to_str<int32_t>(x)));
+    return (::tpy::str_concat("m ", std::string(::tpy::__str__(x))));
 }
 
 inline std::string Wide::m(int32_t x) const {
@@ -1586,7 +1586,7 @@ inline std::string Wide::m(int32_t x) const {
 // @overload
 // def m(self, x: int64 = 3000000000) -> str: ...
 inline std::string Wide::m__int64(int64_t x) const {
-    return (::tpy::str_concat("m ", ::tpy::fixed_to_str<int64_t>(x)));
+    return (::tpy::str_concat("m ", std::string(::tpy::__str__(x))));
 }
 
 inline std::string Wide::m(int64_t x) const {
@@ -1597,7 +1597,7 @@ inline std::string Wide::m(int64_t x) const {
 // def e(self, x: int8 = 0) -> str: ...
 inline std::string Wide::e__int8(int8_t x) const {
     std::string_view y = "s";
-    return (::tpy::str_concat((::tpy::str_concat("e ", ::tpy::fixed_to_str<int8_t>(x))), y));
+    return (::tpy::str_concat((::tpy::str_concat("e ", std::string(::tpy::__str__(x)))), y));
 }
 
 inline std::string Wide::e(int8_t x) const {
@@ -1607,7 +1607,7 @@ inline std::string Wide::e(int8_t x) const {
 // @overload
 // def e(self, x: int32, y: str) -> str: ...
 inline std::string Wide::e__int32__str(int32_t x, std::string_view y) const {
-    return (::tpy::str_concat((::tpy::str_concat("e ", ::tpy::fixed_to_str<int32_t>(x))), y));
+    return (::tpy::str_concat((::tpy::str_concat("e ", std::string(::tpy::__str__(x)))), y));
 }
 
 inline std::string Wide::e(int32_t x, std::string_view y) const {

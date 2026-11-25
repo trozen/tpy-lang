@@ -78,10 +78,10 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_after::__next_
     case S_RESUME_0: {  // after: yield a.name[0:14]
         junk.emplace(::tpy::array_from_index<std::string, 20>([&](std::size_t __i_0) -> std::string {
             int32_t i = int32_t(__i_0);
-            return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+            return (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         }));
         __state = S_RESUME_1;
-        return (::tpy::str_concat(::tpy::char_to_str(::tpy::__getitem__((*a).name, -1)), ::tpy::fixed_to_str<int32_t>(::tpy::__len__((*junk)))));
+        return (::tpy::str_concat(::tpy::char_to_str(::tpy::__getitem__((*a).name, -1)), std::string(::tpy::__str__(::tpy::__len__((*junk))))));
     }
     case S_RESUME_1: {  // after: yield a.name[-1] + str(len(junk))
         __state = S_DONE;

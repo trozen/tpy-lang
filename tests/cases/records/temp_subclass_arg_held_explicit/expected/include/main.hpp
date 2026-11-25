@@ -99,7 +99,7 @@ inline Mat::Mat() : hits(::tpy::BigInt(0)) {}
 //     return "mat" + str(self.hits)
 inline std::string Mat::hit() {
     this->hits = (this->hits) + (::tpy::BigInt(1));
-    return (::tpy::str_concat("mat", (this->hits).to_string()));
+    return (::tpy::str_concat("mat", std::string(::tpy::__str__(this->hits))));
 }
 
 // def hit(self) -> str:
@@ -107,7 +107,7 @@ inline std::string Mat::hit() {
 //     return "chrome" + str(self.hits)
 inline std::string Chrome::hit() {
     this->hits = (this->hits) + (::tpy::BigInt(1));
-    return (::tpy::str_concat("chrome", (this->hits).to_string()));
+    return (::tpy::str_concat("chrome", std::string(::tpy::__str__(this->hits))));
 }
 // def two[U: Surface](a: U, b: U) -> str:
 //     return a.hit() + " " + b.hit()

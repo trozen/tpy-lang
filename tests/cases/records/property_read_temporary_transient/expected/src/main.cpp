@@ -73,7 +73,7 @@ void main() {
     std::cout << "concat:" << " " << (::tpy::str_concat(::tpyapp::main::mk().head(), "z")) << "\n" << ::tpy::check_signals;
     std::cout << "method:" << " " << ::tpy::list_count(::tpyapp::main::mk().data(), 1) << "\n" << ::tpy::check_signals;
     std::cout << "user_param:" << " " << ::tpyapp::main::takes_str(::tpyapp::main::mk().head()) << "\n" << ::tpy::check_signals;
-    std::cout << "str_call:" << " " << std::string(::tpyapp::main::mk().head()) << "\n" << ::tpy::check_signals;
+    std::cout << "str_call:" << " " << std::string(::tpy::__str__(::tpyapp::main::mk().head())) << "\n" << ::tpy::check_signals;
     if ((!::tpyapp::main::mk().head().empty())) {
         std::cout << "truthy: yes" << "\n" << ::tpy::check_signals;
     }

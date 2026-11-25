@@ -13,7 +13,7 @@ void greet(char ch) {
 // def bracket(text: str, open_ch: char = '(', close_ch: char = ')') -> str:
 //     return str(open_ch) + text + str(close_ch)
 std::string bracket(std::string_view text, char open_ch, char close_ch) {
-    return (::tpy::str_concat((::tpy::str_concat(std::string(::tpy::char_to_str(open_ch)), text)), std::string(::tpy::char_to_str(close_ch))));
+    return (::tpy::str_concat((::tpy::str_concat(std::string(::tpy::__str__(open_ch)), text)), std::string(::tpy::__str__(close_ch))));
 }
 
 // def main() -> None:

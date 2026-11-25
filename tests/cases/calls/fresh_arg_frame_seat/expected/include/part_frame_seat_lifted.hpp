@@ -441,7 +441,7 @@ struct __coro_value_out {
 
 // def __init__(self, n: int32) -> None:
 //     self.text = str(n) * 60
-inline Src::Src(int32_t n) : text((::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 60))) {}
+inline Src::Src(int32_t n) : text((::tpy::str_repeat(std::string(::tpy::__str__(n)), 60))) {}
 
 // def __init__(self, v: int32) -> None:
 //     self.v = v

@@ -248,8 +248,8 @@ void main() {
     ::nb::VErr ve = ::nb::VErr(3);
     std::cout << "group-kw-shared-name" << " " << std::string(::tpy::__str__(ve)) << "\n" << ::tpy::check_signals;
     ::nb::KErr ka = ::nb::KErr(std::string_view("a"), 3);
-    ::nb::KErr kb = ::nb::KErr({1, 2}, 3);
-    ::nb::KErr kc = ::nb::KErr({1, 2, 3}, 2);
+    ::nb::KErr kb = ::nb::KErr(std::vector<int32_t>{1, 2}, 3);
+    ::nb::KErr kc = ::nb::KErr(std::vector<int32_t>{1, 2, 3}, 2);
     std::cout << "group-kw-generic" << " " << std::string(::tpy::__str__(ka)) << " " << std::string(::tpy::__str__(kb)) << " " << std::string(::tpy::__str__(kc)) << "\n" << ::tpy::check_signals;
     {
         try {

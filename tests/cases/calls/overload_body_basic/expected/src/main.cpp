@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def describe(x: int) -> str:  # tpyc: ok
 //     return "int: " + str(x)
 std::string describe__int(const ::tpy::BigInt& x) {
-    return (::tpy::str_concat("int: ", (x).to_string()));
+    return (::tpy::str_concat("int: ", std::string(::tpy::__str__(x))));
 }
 
 // @dispatch

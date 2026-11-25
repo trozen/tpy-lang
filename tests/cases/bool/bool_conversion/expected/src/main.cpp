@@ -45,21 +45,21 @@ void __tpy_init() {
 
     b0 = false;
     std::cout << ::tpy::print_bool(b0) << "\n" << ::tpy::check_signals;
-    b1 = true;
+    b1 = ::tpy::__bool__(true);
     std::cout << ::tpy::print_bool(b1) << "\n" << ::tpy::check_signals;
-    b2 = false;
+    b2 = ::tpy::__bool__(false);
     std::cout << ::tpy::print_bool(b2) << "\n" << ::tpy::check_signals;
-    b3 = (0 != 0);
+    b3 = ::tpy::__bool__(0);
     std::cout << ::tpy::print_bool(b3) << "\n" << ::tpy::check_signals;
-    b4 = (1 != 0);
+    b4 = ::tpy::__bool__(1);
     std::cout << ::tpy::print_bool(b4) << "\n" << ::tpy::check_signals;
-    b5 = (-5 != 0);
+    b5 = ::tpy::__bool__(-5);
     std::cout << ::tpy::print_bool(b5) << "\n" << ::tpy::check_signals;
-    b6 = (0 != 0);
+    b6 = ::tpy::__bool__(0);
     std::cout << ::tpy::print_bool(b6) << "\n" << ::tpy::check_signals;
-    b7 = (42 != 0);
+    b7 = ::tpy::__bool__(42);
     std::cout << ::tpy::print_bool(b7) << "\n" << ::tpy::check_signals;
-    b8 = (-100 != 0);
+    b8 = ::tpy::__bool__(-100);
     std::cout << ::tpy::print_bool(b8) << "\n" << ::tpy::check_signals;
 }
 

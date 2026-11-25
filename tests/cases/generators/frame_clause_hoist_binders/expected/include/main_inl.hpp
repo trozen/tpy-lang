@@ -29,7 +29,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_for_body::__ne
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -69,7 +69,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_for_else::__ne
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -104,7 +104,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_while_body::__
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -143,7 +143,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_while_else::__
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -180,7 +180,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_if_arms::__nex
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -219,7 +219,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_try_except::__
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -259,7 +259,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_finally::__nex
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -301,7 +301,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_with_body::__n
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -347,7 +347,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_with_target::_
     }
     case S_RESUME_0: {  // after: yield "sep"
         __state = S_RESUME_1;
-        return (t).to_string();
+        return std::string(::tpy::__str__(t));
     }
     case S_RESUME_1: {  // after: yield str(t)
         __state = S_DONE;
@@ -391,7 +391,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_match_arm::__n
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -433,7 +433,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_nested_loop::_
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -468,7 +468,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_walrus::__next
     }
     case S_RESUME_0: {  // after: yield "w"
         __state = S_RESUME_1;
-        return (w).to_string();
+        return std::string(::tpy::__str__(w));
     }
     case S_RESUME_1: {  // after: yield str(w)
         __state = S_DONE;
@@ -504,7 +504,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_int32::__next_
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return ::tpy::fixed_to_str<int32_t>(k);
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -547,7 +547,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_optional::__ne
             return "none";
         } else {
             __state = S_RESUME_2;
-            return ((*n)).to_string();
+            return std::string(::tpy::__str__((*n)));
         }
     }
     case S_RESUME_1:  // after: yield "none"
@@ -623,7 +623,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record::__next
             k = std::move(std::get<1>(__tup_1));
         }
         __state = S_RESUME_0;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_0: {  // after: yield str(k)
         r->v = ::tpy::BigInt(99);
@@ -661,7 +661,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_list::__ne
             k = std::move(std::get<1>(__tup_1));
         }
         __state = S_RESUME_0;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_0: {  // after: yield str(k)
         (*xs).push_back(9);
@@ -705,7 +705,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_with::_
         __with_exit_3:
         __ctx_3.__exit__({}, nullptr, {});
         __state = S_RESUME_0;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_0: {  // after: yield str(k)
         r->v = ::tpy::BigInt(92);
@@ -744,7 +744,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_try::__
             }
         }
         __state = S_RESUME_0;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_0: {  // after: yield str(k)
         r->v = ::tpy::BigInt(93);
@@ -783,7 +783,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_if::__n
             k = std::move(std::get<1>(__tup_2));
         }
         __state = S_RESUME_0;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_0: {  // after: yield str(k)
         r->v = ::tpy::BigInt(94);
@@ -829,7 +829,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_match::
         }
         }
         __state = S_RESUME_0;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_0: {  // after: yield str(k)
         r->v = ::tpy::BigInt(95);
@@ -869,7 +869,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_try
             }
         }
         __state = S_RESUME_0;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_0: {  // after: yield str(k)
         junk.emplace(::tpy::array_from_index<Cell, 50>([&](std::size_t __i_0) -> Cell {
@@ -911,7 +911,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_if:
             k = std::move(std::get<1>(__tup_2));
         }
         __state = S_RESUME_0;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_0: {  // after: yield str(k)
         junk.emplace(::tpy::array_from_index<Cell, 50>([&](std::size_t __i_0) -> Cell {
@@ -951,7 +951,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_loo
             k = std::move(std::get<1>(__tup_1));
         }
         __state = S_RESUME_0;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_0: {  // after: yield str(k)
         junk.emplace(::tpy::array_from_index<Cell, 50>([&](std::size_t __i_1) -> Cell {
@@ -992,7 +992,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_box::__nex
             k = std::get<1>(__tup_1);
         }
         __state = S_RESUME_0;
-        return ::tpy::fixed_to_str<int32_t>(k);
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_0: {  // after: yield str(k)
         junk.emplace(::tpy::array_from_index<int32_t, 40>([&](std::size_t __i_1) -> int32_t {
@@ -1035,7 +1035,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_plain_assign::
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -1069,7 +1069,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_literal_src::_
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return ::tpy::fixed_to_str<int32_t>(k);
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -1108,7 +1108,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_prebound::__ne
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -1136,7 +1136,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_toplevel::__ne
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_1: {  // after: yield str(k)
         __state = S_DONE;
@@ -1176,7 +1176,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Source_pairs::__ne
     }
     case S_RESUME_1: {  // after: yield s
         __state = S_RESUME_2;
-        return (k).to_string();
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_2: {  // after: yield str(k)
         __state = S_DONE;

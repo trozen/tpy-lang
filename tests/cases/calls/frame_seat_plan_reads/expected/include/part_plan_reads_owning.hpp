@@ -582,7 +582,7 @@ template <::tpystd::typing::Iterable<char> T_xs>
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             char c = ::tpy::unwrap_ref(*__r_1);
-            out += std::string(::tpy::char_to_str(c));
+            out += std::string(::tpy::__str__(c));
         }
         __state = S_DONE;
         std::string __tpy_async_ret = std::move(out);

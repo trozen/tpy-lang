@@ -33,7 +33,7 @@ void __tpy_init() {
     result = &__global_slot_3;
     greeting->assign("Hello");
     name->assign("World");
-    result->assign(std::string((::tpy::str_concat(std::string((::tpy::str_concat(std::string((::tpy::str_concat(std::string(::tpy::__str__((*greeting))), ", "))), std::string(::tpy::__str__((*name)))))), "!"))));
+    result->assign(std::string(::tpy::__str__((::tpy::str_concat(std::string(::tpy::__str__((::tpy::str_concat(std::string(::tpy::__str__((::tpy::str_concat(std::string(::tpy::__str__((*greeting))), ", ")))), std::string(::tpy::__str__((*name))))))), "!")))));
     std::cout << std::string(::tpy::__str__((*result))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__((*result)) << "\n" << ::tpy::check_signals;
     if ((std::string(::tpy::__str__((*result))) == "Hello, World!")) {

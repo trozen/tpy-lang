@@ -288,7 +288,7 @@ void getitem_heads() {
             return Acc(999);
         }));
         __state = S_DONE;
-        std::string __tpy_async_ret = (::tpy::str_concat(std::string(s), ::tpy::fixed_to_str<int32_t>(::tpy::__len__((*junk)))));
+        std::string __tpy_async_ret = (::tpy::str_concat(std::string(::tpy::__str__(s)), std::string(::tpy::__str__(::tpy::__len__((*junk))))));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -396,7 +396,7 @@ void view_heads(bool f) {
 // def mks(n: int32) -> str:
 //     return "mks" + str(n) * 20
 std::string mks(int32_t n) {
-    return (::tpy::str_concat("mks", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 20))));
+    return (::tpy::str_concat("mks", (::tpy::str_repeat(std::string(::tpy::__str__(n)), 20))));
 }
 
 // def mk_ints(n: int32) -> Own[list[int32]]:

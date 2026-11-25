@@ -9,7 +9,7 @@ std::tuple<std::string, ::tpy::BigInt> shadowed;
 // def mk(i: int) -> tuple[str, int]:
 //     return ("payload-number-" + str(i) + "-long-enough-to-defeat-sso", i)
 std::tuple<std::string, ::tpy::BigInt> mk(const ::tpy::BigInt& i) {
-    return std::tuple<std::string, ::tpy::BigInt>{(::tpy::str_concat((::tpy::str_concat("payload-number-", (i).to_string())), "-long-enough-to-defeat-sso")), i};
+    return std::tuple<std::string, ::tpy::BigInt>{(::tpy::str_concat((::tpy::str_concat("payload-number-", std::string(::tpy::__str__(i)))), "-long-enough-to-defeat-sso")), i};
 }
 
 // def split2(s: str) -> tuple[str, str]:
@@ -27,7 +27,7 @@ void for_call_unpack() {
     std::string a;
     std::string b;
     for (int32_t i = 0; i < 3; ++i) {
-        auto __tup_1 = ::tpyapp::main::split2((::tpy::str_concat("iter", ::tpy::fixed_to_str<int32_t>(i))));
+        auto __tup_1 = ::tpyapp::main::split2((::tpy::str_concat("iter", std::string(::tpy::__str__(i)))));
         a = std::move(std::get<0>(__tup_1));
         b = std::move(std::get<1>(__tup_1));
     }
@@ -46,7 +46,7 @@ void while_call_unpack() {
     std::string a;
     std::string b;
     while ((i < 2)) {
-        auto __tup_1 = ::tpyapp::main::split2((::tpy::str_concat("w", ::tpy::fixed_to_str<int32_t>(i))));
+        auto __tup_1 = ::tpyapp::main::split2((::tpy::str_concat("w", std::string(::tpy::__str__(i)))));
         a = std::move(std::get<0>(__tup_1));
         b = std::move(std::get<1>(__tup_1));
         i = ::tpy::add_check<int32_t>(i, 1);
@@ -87,8 +87,8 @@ void loop_local_views() {
     std::string c;
     for (int32_t i = 0; i < 3; ++i) {
         std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(i));
-        H h = H((::tpy::str_concat((::tpy::str_concat("holder-name-", ::tpy::fixed_to_str<int32_t>(i))), "-long-enough-to-defeat-sso")));
-        ::tpy::String s = (::tpy::str_concat((::tpy::str_concat("slice-source-", ::tpy::fixed_to_str<int32_t>(i))), "-long-enough-to-defeat-sso"));
+        H h = H((::tpy::str_concat((::tpy::str_concat("holder-name-", std::string(::tpy::__str__(i)))), "-long-enough-to-defeat-sso")));
+        ::tpy::String s = (::tpy::str_concat((::tpy::str_concat("slice-source-", std::string(::tpy::__str__(i)))), "-long-enough-to-defeat-sso"));
         a = std::get<0>(t);
         f = h.name;
         c = ::tpy::str_slice(s, ::tpy::BasicSlice{2, std::nullopt});
@@ -160,7 +160,7 @@ void view_of_view() {
         std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(i));
         std::string_view v = std::get<0>(t);
         w = v;
-        ::tpy::String s = (::tpy::str_concat("slice-of-slice-source-long-enough-to-defeat-sso-", ::tpy::fixed_to_str<int32_t>(i)));
+        ::tpy::String s = (::tpy::str_concat("slice-of-slice-source-long-enough-to-defeat-sso-", std::string(::tpy::__str__(i))));
         std::string_view v2 = ::tpy::str_slice(s, ::tpy::BasicSlice{2, std::nullopt});
         x = ::tpy::str_slice(v2, ::tpy::BasicSlice{3, std::nullopt});
     }
@@ -181,7 +181,7 @@ void deep_sources() {
     for (int32_t i = 0; i < 2; ++i) {
         std::tuple<std::tuple<std::string, int32_t>, int32_t> n = std::tuple<std::tuple<std::string, int32_t>, int32_t>{std::tuple<std::string, int32_t>{std::get<0>(::tpyapp::main::mk(::tpy::BigInt(i))), i}, i};
         a = std::get<0>(std::get<0>(n));
-        ::tpy::String s = (::tpy::str_concat((::tpy::str_concat("   strip-source-long-enough-to-defeat-sso-", ::tpy::fixed_to_str<int32_t>(i))), "   "));
+        ::tpy::String s = (::tpy::str_concat((::tpy::str_concat("   strip-source-long-enough-to-defeat-sso-", std::string(::tpy::__str__(i)))), "   "));
         b = ::tpy::str_strip(s);
     }
     std::cout << "deep_sources" << " " << a << " " << b << "\n" << ::tpy::check_signals;
@@ -447,7 +447,7 @@ void with_target_arm(bool flag) {
 void capture_rebind() {
     std::string v;
     for (int32_t i = 0; i < 2; ++i) {
-        H h = H((::tpy::str_concat((::tpy::str_concat("capture-holder-", ::tpy::fixed_to_str<int32_t>(i))), "-long-enough-to-defeat-sso")));
+        H h = H((::tpy::str_concat((::tpy::str_concat("capture-holder-", std::string(::tpy::__str__(i)))), "-long-enough-to-defeat-sso")));
         v = "lit";
         auto& __match_subject_1 = h;
         {
@@ -624,7 +624,7 @@ void capture_of_call() {
     for (int32_t i = 0; i < 2; ++i) {
         v = "lit";
         {
-            ::tpy::String __tmp_1 = (::tpy::str_concat((::tpy::str_concat("capture-of-call-", ::tpy::fixed_to_str<int32_t>(i))), "-long-enough-to-defeat-sso"));
+            ::tpy::String __tmp_1 = (::tpy::str_concat((::tpy::str_concat("capture-of-call-", std::string(::tpy::__str__(i)))), "-long-enough-to-defeat-sso"));
             auto __match_subject_1 = M(__tmp_1);
             {
                 v = __match_subject_1.name;

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def report(a: int32, b: int32 = 0, *, mode: str = "x") -> str:
 //     return mode + ":" + str(a + b)
 std::string report__int32__int32__str(int32_t a, int32_t b, std::string_view mode) {
-    return (::tpy::str_concat((::tpy::str_concat(mode, ":")), ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(a, b)))));
+    return (::tpy::str_concat((::tpy::str_concat(mode, ":")), std::string(::tpy::__str__((::tpy::add_check<int32_t>(a, b))))));
 }
 
 // @dispatch

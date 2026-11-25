@@ -47,7 +47,7 @@ void literal_section() {
 // def g(x: int32) -> str:
 //     return "int " + str(x)
 std::string g__int32(int32_t x) {
-    return (::tpy::str_concat("int ", ::tpy::fixed_to_str<int32_t>(x)));
+    return (::tpy::str_concat("int ", std::string(::tpy::__str__(x))));
 }
 
 // @dispatch
@@ -147,7 +147,7 @@ void cross_module_section() {
 // def label(x: int) -> str:
 //     return "int " + str(x)
 std::string label__int(const ::tpy::BigInt& x) {
-    return (::tpy::str_concat("int ", (x).to_string()));
+    return (::tpy::str_concat("int ", std::string(::tpy::__str__(x))));
 }
 
 // @dispatch

@@ -29,7 +29,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_g::__next__() {
     }
     case S_RESUME_0: {  // after: yield name  # tpyc: ok
         __state = S_RESUME_1;
-        return ::tpy::fixed_to_str<int32_t>(num);
+        return std::string(::tpy::__str__(num));
     }
     case S_RESUME_1: {  // after: yield str(num)
         __state = S_DONE;

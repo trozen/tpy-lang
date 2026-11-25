@@ -266,7 +266,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_union::__next__()
             k = std::get<1>(__tup_1);
         }
         __state = S_RESUME_0;
-        return ::tpy::fixed_to_str<int32_t>(k);
+        return std::string(::tpy::__str__(k));
     }
     case S_RESUME_0: {  // after: yield str(k)
         junk.emplace(::tpy::array_from_index<Pic, 40>([&](std::size_t __i_1) -> Pic {

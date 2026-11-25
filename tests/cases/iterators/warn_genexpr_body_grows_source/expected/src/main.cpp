@@ -475,7 +475,7 @@ __genexpr_view_demoted_21_frame<F_r> __genexpr_view_demoted_21(int32_t __r0, F_r
 std::string view_demoted(Rec& r) {
     std::string lbl = r.name;
     int32_t n = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_view_demoted_21(1, r));
-    return (::tpy::str_concat((::tpy::str_concat(lbl, " ")), ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat((::tpy::str_concat(lbl, " ")), std::string(::tpy::__str__(n))));
 }
 
 namespace {
@@ -547,7 +547,7 @@ __genexpr_view_demoted_direct_22_frame<F_r> __genexpr_view_demoted_direct_22(int
 std::string view_demoted_direct(Rec& r) {
     std::string lbl = r.name;
     int32_t n = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_view_demoted_direct_22(1, r));
-    return (::tpy::str_concat((::tpy::str_concat(lbl, " ")), ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat((::tpy::str_concat(lbl, " ")), std::string(::tpy::__str__(n))));
 }
 
 namespace {
@@ -858,7 +858,7 @@ __genexpr_view_kept_26_frame<F_r> __genexpr_view_kept_26(const std::vector<int32
 std::string view_kept(const Rec& r, const std::vector<int32_t>& xs) {
     std::string lbl = r.name;
     int32_t n = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_view_kept_26(xs, r));
-    return (::tpy::str_concat((::tpy::str_concat(lbl, " ")), ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat((::tpy::str_concat(lbl, " ")), std::string(::tpy::__str__(n))));
 }
 
 namespace {

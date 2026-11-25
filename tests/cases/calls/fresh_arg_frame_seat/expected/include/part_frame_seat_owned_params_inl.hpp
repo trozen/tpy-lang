@@ -48,7 +48,7 @@ inline std::expected<std::tuple<std::string, Src*>, ::tpy::StopIteration> __gen_
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return std::tuple<std::string, Src*>{(::tpy::str_concat("key-", ::tpy::fixed_to_str<int32_t>(s.n))), &(s)};
+        return std::tuple<std::string, Src*>{(::tpy::str_concat("key-", std::string(::tpy::__str__(s.n)))), &(s)};
     }
     case S_RESUME_0: {  // after: yield ("key-" + str(s.n), s)
         __state = S_DONE;

@@ -18,7 +18,7 @@ void main() {
         return (::tpy::mul_check<int32_t>(x, 3));
     };
     auto label = [](std::string_view prefix, int32_t n) -> std::string {
-        return (::tpy::str_concat(prefix, ::tpy::fixed_to_str<int32_t>(n)));
+        return (::tpy::str_concat(prefix, std::string(::tpy::__str__(n))));
     };
     std::cout << scale(4) << "\n" << ::tpy::check_signals;
     std::cout << label("n=", 7) << "\n" << ::tpy::check_signals;

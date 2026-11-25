@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def pick(x: int32, *, tag: str = "") -> str:
 //     return tag + ":" + str(x)
 std::string pick__int32__str(int32_t x, std::string_view tag) {
-    return (::tpy::str_concat((::tpy::str_concat(tag, ":")), ::tpy::fixed_to_str<int32_t>(x)));
+    return (::tpy::str_concat((::tpy::str_concat(tag, ":")), std::string(::tpy::__str__(x))));
 }
 
 // @dispatch

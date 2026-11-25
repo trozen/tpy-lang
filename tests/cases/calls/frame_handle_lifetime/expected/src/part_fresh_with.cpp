@@ -43,7 +43,7 @@ void sync_after() {
     __ctx_1.__exit__({}, {}, {});
     std::array<std::string, 20> junk1 = ::tpy::array_from_index<std::string, 20>([&](std::size_t __i_0) -> std::string {
         int32_t k = int32_t(__i_0);
-        return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(k), 40));
+        return (::tpy::str_repeat(std::string(::tpy::__str__(k)), 40));
     });
     std::cout << "with_elem" << " " << ::tpy::str_slice(a1.name, ::tpy::BasicSlice{0, 14}) << " " << ::tpy::__getitem__(a1.name, -1) << " " << ::tpy::__len__(junk1) << "\n" << ::tpy::check_signals;
     std::optional<Bag> __with_root_1;
@@ -59,7 +59,7 @@ void sync_after() {
     __ctx_2.__exit__({}, {}, {});
     std::array<std::string, 20> junk2 = ::tpy::array_from_index<std::string, 20>([&](std::size_t __i_1) -> std::string {
         int32_t k = int32_t(__i_1);
-        return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(k), 40));
+        return (::tpy::str_repeat(std::string(::tpy::__str__(k)), 40));
     });
     std::cout << "with_field" << " " << ::tpy::str_slice(a2.name, ::tpy::BasicSlice{0, 14}) << " " << ::tpy::__getitem__(a2.name, -1) << " " << ::tpy::__len__(junk2) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<Mid>> __with_root_2;
@@ -75,7 +75,7 @@ void sync_after() {
     __ctx_3.__exit__({}, {}, {});
     std::array<std::string, 20> junk3 = ::tpy::array_from_index<std::string, 20>([&](std::size_t __i_2) -> std::string {
         int32_t k = int32_t(__i_2);
-        return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(k), 40));
+        return (::tpy::str_repeat(std::string(::tpy::__str__(k)), 40));
     });
     std::cout << "with_list_field" << " " << ::tpy::str_slice(a3.name, ::tpy::BasicSlice{0, 14}) << " " << ::tpy::__getitem__(a3.name, -1) << " " << ::tpy::__len__(junk3) << "\n" << ::tpy::check_signals;
 }
@@ -149,7 +149,7 @@ __gen_gen_stored_ptr gen_stored_ptr() {
         __sub_0.reset();
         junk.emplace(::tpy::array_from_index<std::string, 20>([&](std::size_t __i_0) -> std::string {
             int32_t i = int32_t(__i_0);
-            return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+            return (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         }));
         std::cout << "with_async" << " " << ::tpy::str_slice((*a).name, ::tpy::BasicSlice{0, 14}) << " " << ::tpy::__getitem__((*a).name, -1) << " " << ::tpy::__len__((*junk)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;

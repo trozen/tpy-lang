@@ -16,7 +16,7 @@ void fill_free(Pic& p, int32_t n) {
         ::tpy::ordered_map<std::string, int32_t> __result;
         int32_t __stop_0 = n;
         for (int32_t j = 0; j < __stop_0; ++j) {
-            __result.insert_or_assign(::tpy::fixed_to_str<int32_t>(j), j);
+            __result.insert_or_assign(std::string(::tpy::__str__(j)), j);
         }
         std::move(__result);
     });

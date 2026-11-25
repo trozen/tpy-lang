@@ -119,7 +119,7 @@ inline void Box<N>::run() const {
     std::cout << "aug" << " " << x << "\n" << ::tpy::check_signals;
     Holder<int32_t> h = Holder<int32_t>(::tpy::int_cast_check<int32_t>(N));
     std::cout << "holder" << " " << h.x << "\n" << ::tpy::check_signals;
-    std::cout << "ctor" << " " << ::tpy::print_float(static_cast<double>(::tpy::int_cast_check<int32_t>(N))) << " " << ::tpy::fixed_to_str<int32_t>(::tpy::int_cast_check<int32_t>(N)) << " " << ::tpy::int_cast_check<int32_t>(N) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor" << " " << ::tpy::print_float(static_cast<double>(::tpy::int_cast_check<int32_t>(N))) << " " << std::string(::tpy::__str__(::tpy::int_cast_check<int32_t>(N))) << " " << ::tpy::int_cast_check<int32_t>(N) << "\n" << ::tpy::check_signals;
     int64_t c = ::tpy::int_cast_check<int64_t>(N);
     std::cout << "decl" << " " << c << "\n" << ::tpy::check_signals;
     std::cout << "fn" << " " << ::tpyapp::main::pick__int32(::tpy::int_cast_check<int32_t>(N)) << " " << ::tpyapp::main::take__int64(::tpy::int_cast_check<int64_t>(N)) << "\n" << ::tpy::check_signals;

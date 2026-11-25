@@ -1029,7 +1029,7 @@ inline B::B(int32_t w) : w(w) {}
 inline A::A(int32_t v, B&& b)
     : v(v),
       b(std::move(b)),
-      t((::tpy::str_concat("t", ::tpy::fixed_to_str<int32_t>(v)))) {}
+      t((::tpy::str_concat("t", std::string(::tpy::__str__(v))))) {}
 
 // def bump(self) -> None:
 //     self.v += 1

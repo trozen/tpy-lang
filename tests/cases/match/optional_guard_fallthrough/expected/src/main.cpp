@@ -43,7 +43,7 @@ std::string with_capture(std::optional<int32_t> x, bool flag) {
         if ((!v.has_value())) {
             return "none-noflag";
         }
-        return ::tpy::fixed_to_str<int32_t>((*v));
+        return std::string(::tpy::__str__((*v)));
     }
     ::std::unreachable();
 }

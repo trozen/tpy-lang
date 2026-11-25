@@ -39,18 +39,18 @@ void __tpy_init() {
     initialized = true;
 
     std::cout << std::string() << "\n" << ::tpy::check_signals;
-    std::cout << std::string("hello") << "\n" << ::tpy::check_signals;
-    std::cout << std::string(::tpy::bool_to_str(true)) << "\n" << ::tpy::check_signals;
-    std::cout << std::string(::tpy::bool_to_str(false)) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__("hello")) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(true)) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(false)) << "\n" << ::tpy::check_signals;
     c = 'A';
-    std::cout << std::string(::tpy::char_to_str(c)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::fixed_to_str<int32_t>(42) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::fixed_to_str<int32_t>(-123) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::fixed_to_str<int32_t>(0) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::fixed_to_str<int32_t>(12345) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::fixed_to_str<int32_t>(-99999) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(c)) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(42)) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(-123)) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(0)) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(12345)) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(-99999)) << "\n" << ::tpy::check_signals;
     x = 3.14;
-    std::cout << ::tpy::float_to_str(x) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(x)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

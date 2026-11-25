@@ -2368,7 +2368,7 @@ inline Pt::Pt(int32_t x, int32_t y)
 // def __init__(self, i: int32) -> None:
 //     self.s = "name" + str(i)
 //     self.pv = PV(i)
-inline Named::Named(int32_t i) : s((::tpy::str_concat("name", ::tpy::fixed_to_str<int32_t>(i)))) {
+inline Named::Named(int32_t i) : s((::tpy::str_concat("name", std::string(::tpy::__str__(i))))) {
     int32_t __tmp_1 = i;
     this->pv = PV<int32_t>(std::move(__tmp_1));
 }

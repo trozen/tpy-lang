@@ -79,14 +79,14 @@ namespace tpyapp::main {
 // def pick(v: int64) -> str:
 //     return "pick int64 " + str(v)
 std::string pick__int64(int64_t v) {
-    return (::tpy::str_concat("pick int64 ", ::tpy::fixed_to_str<int64_t>(v)));
+    return (::tpy::str_concat("pick int64 ", std::string(::tpy::__str__(v))));
 }
 
 // @dispatch
 // def pick2(v: int64) -> str:
 //     return "pick2 int64 " + str(v)
 std::string pick2__int64(int64_t v) {
-    return (::tpy::str_concat("pick2 int64 ", ::tpy::fixed_to_str<int64_t>(v)));
+    return (::tpy::str_concat("pick2 int64 ", std::string(::tpy::__str__(v))));
 }
 
 // def free_fn(x: int32 | None, o: A | None, p: Ptr[A], u: int32 | str,
@@ -126,7 +126,7 @@ void free_fn(std::optional<int32_t> x, const A* o, A* p, const ::tpy::Union<int3
     std::cout << "free fresh" << " " << ::tpyapp::main::text(std::tuple<int32_t, std::string>{1, "a"}) << " " << ::tpyapp::main::text(A(5)) << " " << std::string(::tpy::__str__(std::tuple<int32_t, std::string>{1, "a"})) << "\n" << ::tpy::check_signals;
     std::cout << "free field" << " " << std::string(::tpy::__str__(h.o)) << " " << std::string(::tpy::__str__(h.x)) << " " << std::string(::tpy::repr_of(h.pair)) << " " << ::tpyapp::main::text(::tpy::optional_to_ptr(h.o)) << " " << ::tpyapp::main::text(auto(h.x)) << "\n" << ::tpy::check_signals;
     std::cout << "free call" << " " << std::string(::tpy::__str__(h.get_a())) << " " << std::string(::tpy::repr_of(h.get_a())) << " " << ::tpyapp::main::text(h.get_a()) << "\n" << ::tpy::check_signals;
-    std::cout << "free scalars" << " " << std::string(sv) << " " << std::string(s) << " " << std::string(::tpy::char_to_str(c)) << " " << std::string(::tpy::repr_of(c)) << " " << ::tpyapp::main::text(auto(3)) << " " << ::tpyapp::main::text(auto(sv)) << "\n" << ::tpy::check_signals;
+    std::cout << "free scalars" << " " << std::string(::tpy::__str__(sv)) << " " << std::string(::tpy::__str__(s)) << " " << std::string(::tpy::__str__(c)) << " " << std::string(::tpy::repr_of(c)) << " " << ::tpyapp::main::text(auto(3)) << " " << ::tpyapp::main::text(auto(sv)) << "\n" << ::tpy::check_signals;
     std::cout << "free enum" << " " << std::string(::tpy::__str__(Color::RED)) << " " << std::string(::tpy::repr_of(Color::RED)) << " " << std::string(::tpy::__str__(Num::ONE)) << " " << ::tpyapp::main::text(auto(Num::ONE)) << " " << std::format("{}", ::tpy::__str__(Color::RED)) << " " << ::tpyapp::main::rtext(auto(Color::RED)) << "\n" << ::tpy::check_signals;
     std::cout << "free record" << " " << std::string(::tpy::__str__(A(1))) << " " << std::string(::tpy::__str__(S())) << " " << ::tpy::print_bool(::tpy::str_startswith(std::string(::tpy::repr_of(S())), "<__main__.S object at 0x")) << " " << ::tpyapp::main::text(S()) << " " << ::tpy::print_bool(::tpy::str_startswith(std::string(::tpy::__str__(Plain())), "<__main__.Plain object at 0x")) << " " << ::tpy::print_bool(::tpy::str_startswith(std::format("{}", ::tpy::__str__(Plain())), "<__main__.Plain object at 0x")) << " " << ::tpy::print_bool(::tpy::str_startswith(std::format("{}", ::tpy::repr_of(Plain())), "<__main__.Plain object at 0x")) << " " << ::tpy::print_bool(::tpy::str_startswith(std::format("{}", ::tpy::__str__(Plain())), "<__main__.Plain object at 0x")) << "\n" << ::tpy::check_signals;
     std::cout << "free none" << " " << std::string(::tpy::__str__(std::monostate{})) << " " << std::string(::tpy::repr_of(std::monostate{})) << " " << std::string(::tpy::repr_of(true)) << " " << ::tpyapp::main::text(auto(std::monostate{})) << "\n" << ::tpy::check_signals;
@@ -134,7 +134,7 @@ void free_fn(std::optional<int32_t> x, const A* o, A* p, const ::tpy::Union<int3
     std::span<int32_t> sp = std::span<int32_t>(ys);
     std::cout << "free span" << " " << std::string(::tpy::__str__(sp)) << " " << std::string(::tpy::repr_of(sp)) << " " << std::format("{}", ::tpy::list_to_str(sp)) << "\n" << ::tpy::check_signals;
     if ((x.has_value())) {
-        std::cout << "free narrowed" << " " << ::tpy::fixed_to_str<int32_t>((*x)) << " " << std::string(::tpy::repr_of((*x))) << " " << ::tpyapp::main::text(auto((*x))) << "\n" << ::tpy::check_signals;
+        std::cout << "free narrowed" << " " << std::string(::tpy::__str__((*x))) << " " << std::string(::tpy::repr_of((*x))) << " " << ::tpyapp::main::text(auto((*x))) << "\n" << ::tpy::check_signals;
     }
     if ((o != nullptr)) {
         std::cout << "free narrowed" << " " << std::string(::tpy::__str__((*o))) << " " << ::tpyapp::main::text((*o)) << "\n" << ::tpy::check_signals;

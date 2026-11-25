@@ -1165,7 +1165,7 @@ std::string owned_str_yield(std::vector<std::string>& ys, const std::vector<int3
             out += s;
         }
     }
-    return (::tpy::str_concat(out, ::tpy::fixed_to_str<int32_t>(::tpy::__len__(ys))));
+    return (::tpy::str_concat(out, std::string(::tpy::__str__(::tpy::__len__(ys)))));
 }
 
 namespace {

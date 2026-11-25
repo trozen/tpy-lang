@@ -627,7 +627,7 @@ inline ViewHolder::ViewHolder(std::string_view sv) : sv(sv) {}
 
 // def __init__(self, k: int32) -> None:
 //     self.items = ["hbag" + str(k) * 20]
-inline HolderBag::HolderBag(int32_t k) : items(std::vector<std::string>{(::tpy::str_concat("hbag", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(k), 20))))}) {}
+inline HolderBag::HolderBag(int32_t k) : items(std::vector<std::string>{(::tpy::str_concat("hbag", (::tpy::str_repeat(std::string(::tpy::__str__(k)), 20))))}) {}
 
 // def __getitem__(self, i: int32) -> Own[ViewHolder]:
 //     return ViewHolder(self.items[i])

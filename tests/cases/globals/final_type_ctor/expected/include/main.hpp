@@ -23,7 +23,7 @@ inline const ::tpy::BigInt WIDE = ::tpy::BigInt(static_cast<int64_t>(SMALL));
 // DBL: Final[float] = float(SMALL)
 inline constexpr double DBL = static_cast<double>(SMALL);
 // FLAG: Final[bool] = bool(1)
-inline constexpr bool FLAG = (1 != 0);
+inline constexpr bool FLAG = ::tpy::__bool__(1);
 // CH: Final[char] = char(65)
 inline constexpr char CH = ::tpy::chr(65);
 

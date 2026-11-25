@@ -658,12 +658,12 @@ void str_no_read_after(const std::vector<int32_t>& xs) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            __result.push_back(::tpy::fixed_to_str<int32_t>(x));
+            __result.push_back(std::string(::tpy::__str__(x)));
         }
         std::move(__result);
     });
     for (int32_t a = 1; a < 3; ++a) {
-        std::string s = ::tpy::fixed_to_str<int32_t>(a);
+        std::string s = std::string(::tpy::__str__(a));
         std::cout << "str_no_read_after body" << " " << s << "\n" << ::tpy::check_signals;
     }
     auto& __obj_2 = names;

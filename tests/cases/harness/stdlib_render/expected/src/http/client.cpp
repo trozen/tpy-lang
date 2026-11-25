@@ -185,7 +185,7 @@ int32_t _hex_val(int32_t c) {
         if ((port == default_port)) {
             lines.push_back((::tpy::str_concat("Host: ", host)));
         } else {
-            lines.push_back((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Host: ", host)), ":")), ::tpy::fixed_to_str<int32_t>(port))));
+            lines.push_back((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Host: ", host)), ":")), std::string(::tpy::__str__(port)))));
         }
     }
     if ((!(has_ae))) {
@@ -194,7 +194,7 @@ int32_t _hex_val(int32_t c) {
     if (((!(has_cl)) && (!(has_te)))) {
         ::tpy::BigInt cl = ::tpystd::http::client::_content_length(method, body);
         if ((cl >= 0)) {
-            lines.push_back((::tpy::str_concat("Content-Length: ", (cl).to_string())));
+            lines.push_back((::tpy::str_concat("Content-Length: ", std::string(::tpy::__str__(cl)))));
         }
     }
     if ((headers != nullptr)) {

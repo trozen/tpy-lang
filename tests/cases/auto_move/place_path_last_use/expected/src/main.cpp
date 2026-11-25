@@ -41,13 +41,13 @@ A mka(int32_t n) {
 // def mkh(n: int32) -> Own[H]:
 //     return H(mka(n), mka(n + 1), "s" + str(n), [n], NB(n), mka(n + 2))
 H mkh(int32_t n) {
-    return H(::tpyapp::main::mka(n), ::tpyapp::main::mka((::tpy::add_check<int32_t>(n, 1))), (::tpy::str_concat("s", ::tpy::fixed_to_str<int32_t>(n))), std::vector<int32_t>{n}, NB(n), ::tpyapp::main::mka((::tpy::add_check<int32_t>(n, 2))));
+    return H(::tpyapp::main::mka(n), ::tpyapp::main::mka((::tpy::add_check<int32_t>(n, 1))), (::tpy::str_concat("s", std::string(::tpy::__str__(n)))), std::vector<int32_t>{n}, NB(n), ::tpyapp::main::mka((::tpy::add_check<int32_t>(n, 2))));
 }
 
 // def mkc(n: int32) -> Own[HC]:
 //     return HC(mka(n), mka(n + 1), "s" + str(n), [n], mka(n + 2))
 HC mkc(int32_t n) {
-    return HC(::tpyapp::main::mka(n), ::tpyapp::main::mka((::tpy::add_check<int32_t>(n, 1))), (::tpy::str_concat("s", ::tpy::fixed_to_str<int32_t>(n))), std::vector<int32_t>{n}, ::tpyapp::main::mka((::tpy::add_check<int32_t>(n, 2))));
+    return HC(::tpyapp::main::mka(n), ::tpyapp::main::mka((::tpy::add_check<int32_t>(n, 1))), (::tpy::str_concat("s", std::string(::tpy::__str__(n)))), std::vector<int32_t>{n}, ::tpyapp::main::mka((::tpy::add_check<int32_t>(n, 2))));
 }
 
 // def eat_a(a: Own[A]) -> None:

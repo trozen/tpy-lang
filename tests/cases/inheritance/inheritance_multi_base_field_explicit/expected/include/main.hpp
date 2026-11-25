@@ -77,7 +77,7 @@ inline Combined::Combined(int32_t n, std::string_view label)
 inline std::string Combined::summary() const {
     int32_t n = this->Counter::value;
     std::string label = this->Tag::value;
-    return (::tpy::str_concat((::tpy::str_concat(label, "=")), ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat((::tpy::str_concat(label, "=")), std::string(::tpy::__str__(n))));
 }
 void __tpy_init();
 } // namespace tpyapp::main

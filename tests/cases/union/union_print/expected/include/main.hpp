@@ -46,7 +46,7 @@ inline Pt::Pt(int32_t x, int32_t y)
 // def __repr__(self) -> str:
 //     return "Pt(" + str(self.x) + ", " + str(self.y) + ")"
 inline std::string Pt::__repr__() const {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Pt(", ::tpy::fixed_to_str<int32_t>(this->x))), ", ")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Pt(", std::string(::tpy::__str__(this->x)))), ", ")), std::string(::tpy::__str__(this->y)))), ")"));
 }
 void __tpy_init();
 } // namespace tpyapp::main

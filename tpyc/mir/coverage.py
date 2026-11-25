@@ -18,14 +18,17 @@ from .nodes import MIRCall, MIRPlace, MIRSlot, MIRSlotId, call_place
 from .value import holding_representation
 
 
-def literal_type(expr: th.THIRLiteral, expected: TpyType | None = None) -> TpyType:
-    """The type of the leaf a scalar literal holds. A number literal sema
-    left unresolved converts to its context's leaf type when the context
-    names one; alone it is the C++ literal it spells (`int` / `double`).
-    Whether the value fits is `scalar_leaves.leaf_constant`'s question. A
-    literal sema typed at the sum its context builds (`h.o = 3` on an
-    `int32 | None` field) is a constant of the member it engages."""
+def literal_type(expr: th.THIRExpr, expected: TpyType | None = None) -> TpyType:
+    """The type of the leaf an expression holds: its result type, except for
+    a literal. A number literal sema left unresolved converts to its
+    context's leaf type when the context names one and alone is the C++
+    literal it spells (`int` / `double`); whether the value fits is
+    `scalar_leaves.leaf_constant`'s question. A literal sema typed at the
+    sum its context builds (`h.o = 3` on an `int32 | None` field) is a
+    constant of the member it engages."""
     typ = expr.result_type
+    if not isinstance(expr, th.THIRLiteral):
+        return typ
     if isinstance(typ, (IntLiteralType, FloatLiteralType)):
         if expected is not None and (storage_leaf(expected) or owned_leaf(expected)):
             return expected

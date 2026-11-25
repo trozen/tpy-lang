@@ -28,7 +28,7 @@ std::string show(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::
     }
     if (std::holds_alternative<const ::tpy::Bytes*>(v)) {
         auto& __v = *std::get<const ::tpy::Bytes*>(v);
-        return ::tpy::fixed_to_str<int32_t>(::tpy::__len__(__v));
+        return std::string(::tpy::__str__(::tpy::__len__(__v)));
     }
     auto& __v = *std::get<const ::tpy::ordered_map<std::string, std::string>*>(v);
     return "dict";

@@ -251,7 +251,7 @@ inline Boxed<T>::Boxed(::tpy::own_param_t<T> v)
 //     return str(len(self.v))
 template<::tpystd::typing::Sized T>
 inline std::string Boxed<T>::show() const {
-    return ::tpy::fixed_to_str<int32_t>(::tpy::__len__(this->v));
+    return std::string(::tpy::__str__(::tpy::__len__(this->v)));
 }
 
 void __tpy_init();

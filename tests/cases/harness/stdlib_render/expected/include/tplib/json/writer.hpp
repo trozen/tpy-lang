@@ -257,7 +257,7 @@ inline void JsonWriter::write_int(int64_t v) {
     } else if (this->_needs_comma) {
         this->_buf += ", ";
     }
-    this->_buf += ::tpy::fixed_to_str<int64_t>(v);
+    this->_buf += std::string(::tpy::__str__(v));
     this->_needs_comma = true;
 }
 
@@ -274,7 +274,7 @@ inline void JsonWriter::write_int32(int32_t v) {
     } else if (this->_needs_comma) {
         this->_buf += ", ";
     }
-    this->_buf += ::tpy::fixed_to_str<int32_t>(v);
+    this->_buf += std::string(::tpy::__str__(v));
     this->_needs_comma = true;
 }
 
@@ -291,7 +291,7 @@ inline void JsonWriter::write_bigint(const ::tpy::BigInt& v) {
     } else if (this->_needs_comma) {
         this->_buf += ", ";
     }
-    this->_buf += (v).to_string();
+    this->_buf += std::string(::tpy::__str__(v));
     this->_needs_comma = true;
 }
 
@@ -311,7 +311,7 @@ inline void JsonWriter::write_float(double v) {
     } else if (this->_needs_comma) {
         this->_buf += ", ";
     }
-    this->_buf += ::tpy::float_to_str(v);
+    this->_buf += std::string(::tpy::__str__(v));
     this->_needs_comma = true;
 }
 
@@ -328,7 +328,7 @@ inline void JsonWriter::write_float32(float v) {
     } else if (this->_needs_comma) {
         this->_buf += ", ";
     }
-    this->_buf += ::tpy::float_to_str(static_cast<double>(v));
+    this->_buf += std::string(::tpy::__str__(v));
     this->_needs_comma = true;
 }
 

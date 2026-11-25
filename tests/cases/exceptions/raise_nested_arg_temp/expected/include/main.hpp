@@ -66,7 +66,7 @@ inline Tag::Tag(const ::tpy::BigInt& n) : n(n) {}
 //     super().__init__("tag" + str(t.n))
 //     self.n = t.n
 inline TagError::TagError(const Tag& t)
-    : ::tpy::Exception((::tpy::str_concat("tag", (t.n).to_string()))),
+    : ::tpy::Exception((::tpy::str_concat("tag", std::string(::tpy::__str__(t.n))))),
       n(t.n) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -42,7 +42,7 @@ void free_function() {
     std::cout << "fn sum" << " " << ::tpy::builtin_sum_start<int32_t>(xs, 5) << "\n" << ::tpy::check_signals;
     std::cout << "fn sorted" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<int32_t>(xs, [](int32_t v) -> int32_t { return ::tpy::neg_check<int32_t>(v); }, true)) << "\n" << ::tpy::check_signals;
     std::cout << "fn sorted reverse" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(xs, true)) << "\n" << ::tpy::check_signals;
-    std::cout << "fn str" << " " << ::tpy::fixed_to_str<int32_t>(5) << "\n" << ::tpy::check_signals;
+    std::cout << "fn str" << " " << std::string(::tpy::__str__(5)) << "\n" << ::tpy::check_signals;
     std::cout << "fn String" << " " << ::tpy::fixed_to_str<int32_t>(5) << "\n" << ::tpy::check_signals;
     std::cout << "fn bytes" << " " << ::tpy::__len__(::tpy::bytes_from_size(3)) << "\n" << ::tpy::check_signals;
     std::cout << "fn min" << " " << ::tpy::builtin_min_key<int32_t>(xs, [](int32_t v) -> int32_t { return ::tpy::neg_check<int32_t>(v); }) << "\n" << ::tpy::check_signals;
@@ -125,7 +125,7 @@ void __tpy_init() {
     ys = &__global_slot_1;
     std::cout << "module sum" << " " << ::tpy::builtin_sum_start<int32_t>((*ys), 1) << "\n" << ::tpy::check_signals;
     std::cout << "module sorted" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>((*ys), true)) << "\n" << ::tpy::check_signals;
-    std::cout << "module str" << " " << ::tpy::float_to_str(1.5) << "\n" << ::tpy::check_signals;
+    std::cout << "module str" << " " << std::string(::tpy::__str__(1.5)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -668,7 +668,7 @@ inline int32_t Bag::first() const {
 
 // def __init__(self, x: int32) -> None:
 //     self.tag = "tag-abcdefghijklmnopqrstuvwxyz-" + str(x)
-inline P::P(int32_t x) : tag((::tpy::str_concat("tag-abcdefghijklmnopqrstuvwxyz-", ::tpy::fixed_to_str<int32_t>(x)))) {}
+inline P::P(int32_t x) : tag((::tpy::str_concat("tag-abcdefghijklmnopqrstuvwxyz-", std::string(::tpy::__str__(x))))) {}
 
 // def name(self) -> StrView:
 //     return self.tag

@@ -236,7 +236,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen_roots::__next__() {
             return (::tpy::str_repeat("y", 40));
         }));
         __state = S_RESUME_0;
-        return (::tpy::str_concat(::tpy::str_slice(key, ::tpy::BasicSlice{-2, std::nullopt}), ::tpy::fixed_to_str<int32_t>(::tpy::__len__((*junk)))));
+        return (::tpy::str_concat(::tpy::str_slice(key, ::tpy::BasicSlice{-2, std::nullopt}), std::string(::tpy::__str__(::tpy::__len__((*junk))))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

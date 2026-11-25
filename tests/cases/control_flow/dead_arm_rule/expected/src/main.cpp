@@ -649,7 +649,7 @@ std::string range_loop(const std::vector<int32_t>& xs) {
 std::string range_walrus() {
     int32_t x = 0;
     if (((x == 0) && ((x = 1) == 1))) {
-        return (::tpy::str_concat("live ", ::tpy::fixed_to_str<int32_t>(x)));
+        return (::tpy::str_concat("live ", std::string(::tpy::__str__(x))));
     }
     return "dead";
 }
@@ -788,7 +788,7 @@ std::string user_eq(const AnyEq& x) {
 //     return str(b) + " " + str(m == "r" or m == "w")
 std::string value_compare(std::string_view mode, std::string_view m) {
     bool b = true;
-    return (::tpy::str_concat((::tpy::str_concat(std::string(::tpy::bool_to_str(b)), " ")), std::string(::tpy::bool_to_str(true))));
+    return (::tpy::str_concat((::tpy::str_concat(std::string(::tpy::__str__(b)), " ")), std::string(::tpy::__str__(true))));
 }
 
 // # a match guard that runs code and is decided False: the guard runs, the
@@ -1257,7 +1257,7 @@ std::string nested_decided() {
 // def kw_sink(**kw: Unpack[Opt]) -> str:
 //     return str(kw["n"])
 std::string kw_sink(const Opt& kw) {
-    return ::tpy::fixed_to_str<int32_t>(kw.n);
+    return std::string(::tpy::__str__(kw.n));
 }
 
 // @dispatch
@@ -1392,7 +1392,7 @@ std::string impure_isinstance() {
 //     return str(v)
 std::string value_undecided(bool t) {
     bool v = (t && false);
-    return std::string(::tpy::bool_to_str(v));
+    return std::string(::tpy::__str__(v));
 }
 
 // # a name bound in the live arm of a decided `if` is assigned after it.
@@ -1405,7 +1405,7 @@ std::string live_binding() {
     if (true) {
         x = 3;
     }
-    return ::tpy::fixed_to_str<int32_t>(x);
+    return std::string(::tpy::__str__(x));
 }
 
 // # a name bound only in a dead arm is still a local: the live code binds it
@@ -1419,7 +1419,7 @@ std::string dead_local() {
     if (false) {
     }
     int32_t shadowed = 9;
-    return ::tpy::fixed_to_str<int32_t>(shadowed);
+    return std::string(::tpy::__str__(shadowed));
 }
 
 // # under `global`, the dead arm's write is the global's: the read is too.
@@ -1431,7 +1431,7 @@ std::string dead_local() {
 std::string dead_global() {
     if (false) {
     }
-    return ::tpy::fixed_to_str<int32_t>(shadowed);
+    return std::string(::tpy::__str__(shadowed));
 }
 
 // # a walrus inside a lambda binds the lambda's own name, so the dead arm makes
@@ -1443,7 +1443,7 @@ std::string dead_global() {
 std::string lambda_walrus_global() {
     if (false) {
     }
-    return ::tpy::fixed_to_str<int32_t>(shadowed);
+    return std::string(::tpy::__str__(shadowed));
 }
 
 // # a closure's read of an enclosing local is that local, bound before it.
@@ -1459,7 +1459,7 @@ std::string closure_local() {
     auto bump = [&shadowed]() -> int32_t {
         return (::tpy::add_check<int32_t>(shadowed, 1));
     };
-    return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(cb()), " ")), ::tpy::fixed_to_str<int32_t>(bump())));
+    return (::tpy::str_concat((::tpy::str_concat(std::string(::tpy::__str__(cb())), " ")), std::string(::tpy::__str__(bump()))));
 }
 
 // # the decided edge reaches MIR: nothing falls off the end after the `if`.
@@ -1516,7 +1516,7 @@ std::string walrus_scalar() {
     int32_t t = 1;
     int32_t w;
     (void)(((w = t) && false));
-    return ::tpy::fixed_to_str<int32_t>(w);
+    return std::string(::tpy::__str__(w));
 }
 
 // def either(k: bool) -> Own[Dog | Cat]:
@@ -1836,7 +1836,7 @@ std::string guard_capture(int32_t n) {
         break;
     }
     }
-    return ::tpy::fixed_to_str<int32_t>(x);
+    return std::string(::tpy::__str__(x));
 }
 
 // # a guard that folds to True is no guard: the arms after it are dead.
@@ -1852,7 +1852,7 @@ std::string guard_true(int32_t n) {
     default: {
         auto x = __match_subject_1;
         if (true) {
-            return ::tpy::fixed_to_str<int32_t>(x);
+            return std::string(::tpy::__str__(x));
         }
         break;
     }
@@ -1874,7 +1874,7 @@ std::string arm_local() {
         data.push_back(2);
         x = ::tpy::__len__(data);
     }
-    return ::tpy::fixed_to_str<int32_t>(x);
+    return std::string(::tpy::__str__(x));
 }
 
 // # `global` in a dead arm declares the name for the whole function: the
@@ -1888,7 +1888,7 @@ std::string dead_global_decl() {
     if (false) {
     }
     shadowed = 7;
-    return ::tpy::fixed_to_str<int32_t>(shadowed);
+    return std::string(::tpy::__str__(shadowed));
 }
 
 // # `nonlocal` in a dead arm declares the name for the whole nested def: its
@@ -1911,7 +1911,7 @@ std::string dead_nonlocal_decl() {
         n = 7;
     };
     inner();
-    return ::tpy::fixed_to_str<int32_t>(n);
+    return std::string(::tpy::__str__(n));
 }
 
 // # a def nested in a dead arm of a nested def declares for its own scope:
@@ -1931,7 +1931,7 @@ std::string inner_scope_nonlocal() {
         int32_t x = 2;
         if (false) {
         }
-        return ::tpy::fixed_to_str<int32_t>(x);
+        return std::string(::tpy::__str__(x));
     };
     return inner();
 }
@@ -1953,7 +1953,7 @@ std::string dead_match_global(const Dog& a) {
     {
     }
     shadowed = 9;
-    return ::tpy::fixed_to_str<int32_t>(shadowed);
+    return std::string(::tpy::__str__(shadowed));
 }
 
 // # a match with no arm left is what its subject runs: nothing for a name,
@@ -2029,7 +2029,7 @@ std::string del_rebind() {
     std::array<int32_t, 1> __slot_2 = {2};
     std::array<int32_t, 1>* x = &__slot_2;
     { auto __del_sink = std::move(*x); }
-    return ::tpy::fixed_to_str<int32_t>(n);
+    return std::string(::tpy::__str__(n));
 }
 
 // # a walrus that may not run leaves the `del` after it needing the decided
@@ -2055,7 +2055,7 @@ std::string del_cond_walrus(bool flag) {
         y = 1;
     }
     int32_t z = ((flag) ? ((y = 2)) : (0));
-    return ::tpy::fixed_to_str<int32_t>(z);
+    return std::string(::tpy::__str__(z));
 }
 
 // # a `finally` body is walked twice: what the decided arm binds is declared in
@@ -2088,7 +2088,7 @@ std::string finally_arm() {
         n = ::tpy::__len__((*y));
         { auto __del_sink = std::move(*y); }
     }
-    return ::tpy::fixed_to_str<int32_t>(n);
+    return std::string(::tpy::__str__(n));
 }
 
 // def take_str(s: Own[str]) -> int32:
@@ -2108,7 +2108,7 @@ int32_t take_str(std::string s) {
 //     return out
 std::string capture_rebind(const Animal& a, std::string_view s) {
     ::tpy::String x = (::tpy::str_concat(s, "!"));
-    std::string out = ::tpy::fixed_to_str<int32_t>(::tpyapp::main::take_str(std::move(x)));
+    std::string out = std::string(::tpy::__str__(::tpyapp::main::take_str(std::move(x))));
     auto& __match_subject_1 = a;
     {
         x = __match_subject_1.name;
@@ -2502,7 +2502,7 @@ __coro_none_await_arm_awaits none_await_arm_awaits() {
         (void)std::move(__r0).value();
         __sub_0.reset();
         {
-            calls->push_back((::tpy::str_concat("arm", ::tpy::fixed_to_str<int32_t>(i))));
+            calls->push_back((::tpy::str_concat("arm", std::string(::tpy::__str__(i)))));
             if ((i == 1)) {
                 __state = S_JOIN_0;
                 continue;

@@ -22,7 +22,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_in_generator::__ne
     case S_RESUME_0: {  // after: yield f_list(ms)  # the call decides ms
         (*ms).push_back(::tpyapp::main::a64());
         __state = S_RESUME_1;
-        return ::tpy::fixed_to_str<int64_t>(::tpy::__getitem__((*ms), 3));
+        return std::string(::tpy::__str__(::tpy::__getitem__((*ms), 3)));
     }
     case S_RESUME_1: {  // after: yield str(ms[3])
         __state = S_DONE;

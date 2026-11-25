@@ -1,0 +1,36 @@
+fixed False False True True False False
+fixed True True False False True True
+fixed False False True True
+bigint False False True True True True
+float False False False False True True
+float32 False False True
+bool True True False False
+strs False False True True False False
+char True
+char nul True True
+listbool False True True
+listbool False True
+listbool loop False False
+listbool loop True True
+listbool loop False False
+listbool loop FalseFalseTrueTrueFalseFalse
+listbool write True
+user False True False True
+user True True
+lit False True True False False True
+lit True
+filter [3, 4]
+map [False, True, False, True]
+slot False True
+map str [False, True]
+subclass False False False False
+subclass int False False True True
+subclass own True True
+subclass full True True True True
+subclass ne True True False
+subclass empty False False True
+subclass len True True
+subclass wide len True True False False
+subclass view True True False False
+method False True False True False
+lambda False True

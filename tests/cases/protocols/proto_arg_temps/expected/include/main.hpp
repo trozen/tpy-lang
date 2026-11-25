@@ -577,7 +577,7 @@ void via_proto(std::string_view tag, T_sk&& sk, const std::vector<int32_t>& pv, 
     B b = B();
     std::string __tmp_5{b.v};
     std::cout << tag << " " << "str_own field" << " " << sk.take_str(std::move(__tmp_5)) << " " << b.v << "\n" << ::tpy::check_signals;
-    ::tpy::String s = (::tpy::str_concat(::tpy::fixed_to_str<int32_t>(::tpy::__len__(pv)), "x"));
+    ::tpy::String s = (::tpy::str_concat(std::string(::tpy::__str__(::tpy::__len__(pv))), "x"));
     std::string __tmp_6{s};
     std::cout << tag << " " << "str_own owned" << " " << sk.take_str(std::move(__tmp_6)) << " " << s << "\n" << ::tpy::check_signals;
     int32_t n = 7;
@@ -627,7 +627,7 @@ void via_bound(std::string_view tag, ::tpy::param_val_or_ref_t<T> sk, const std:
     B b = B();
     std::string __tmp_5{b.v};
     std::cout << tag << " " << "str_own field" << " " << sk.take_str(std::move(__tmp_5)) << " " << b.v << "\n" << ::tpy::check_signals;
-    ::tpy::String s = (::tpy::str_concat(::tpy::fixed_to_str<int32_t>(::tpy::__len__(pv)), "x"));
+    ::tpy::String s = (::tpy::str_concat(std::string(::tpy::__str__(::tpy::__len__(pv))), "x"));
     std::string __tmp_6{s};
     std::cout << tag << " " << "str_own owned" << " " << sk.take_str(std::move(__tmp_6)) << " " << s << "\n" << ::tpy::check_signals;
     int32_t n = 7;

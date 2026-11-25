@@ -169,7 +169,7 @@ inline Frac Frac::__truediv__(const ::tpy::BigInt& other) const {
 // def __str__(self) -> str:
 //     return str(self.num) + "/" + str(self.den)
 inline std::string Frac::__str__() const {
-    return (::tpy::str_concat((::tpy::str_concat((this->num).to_string(), "/")), (this->den).to_string()));
+    return (::tpy::str_concat((::tpy::str_concat(std::string(::tpy::__str__(this->num)), "/")), std::string(::tpy::__str__(this->den))));
 }
 
 // def __init__(self, x: float, y: float) -> None:
@@ -194,7 +194,7 @@ inline Vec Vec::__rmul__(double k) const {
 // def __str__(self) -> str:
 //     return "Vec(" + str(self.x) + ", " + str(self.y) + ")"
 inline std::string Vec::__str__() const {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Vec(", ::tpy::float_to_str(this->x))), ", ")), ::tpy::float_to_str(this->y))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Vec(", std::string(::tpy::__str__(this->x)))), ", ")), std::string(::tpy::__str__(this->y)))), ")"));
 }
 
 // def __init__(self, total: int) -> None:
@@ -210,7 +210,7 @@ inline Acc Acc::__add__(const ::tpy::BigInt& n) const {
 // def __str__(self) -> str:
 //     return "Acc(" + str(self.total) + ")"
 inline std::string Acc::__str__() const {
-    return (::tpy::str_concat((::tpy::str_concat("Acc(", (this->total).to_string())), ")"));
+    return (::tpy::str_concat((::tpy::str_concat("Acc(", std::string(::tpy::__str__(this->total)))), ")"));
 }
 void __tpy_init();
 } // namespace tpyapp::main

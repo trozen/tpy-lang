@@ -1641,7 +1641,7 @@ inline Named::Named() : n(0) {}
 //     return "x" + str(self.n)
 inline std::string Named::name() {
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
-    return (::tpy::str_concat("x", ::tpy::fixed_to_str<int32_t>(this->n)));
+    return (::tpy::str_concat("x", std::string(::tpy::__str__(this->n))));
 }
 
 // def __init__(self) -> None:
@@ -1653,7 +1653,7 @@ inline Titled::Titled() : n(0) {}
 //     return "y" + str(self.n)
 inline std::string Titled::name() {
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
-    return (::tpy::str_concat("y", ::tpy::fixed_to_str<int32_t>(this->n)));
+    return (::tpy::str_concat("y", std::string(::tpy::__str__(this->n))));
 }
 
 // def __init__(self) -> None:
@@ -1713,7 +1713,7 @@ inline Banner::Banner() : n(0) {}
 //     return "b" + str(self.n)
 inline std::string Banner::text() {
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
-    return (::tpy::str_concat("b", ::tpy::fixed_to_str<int32_t>(this->n)));
+    return (::tpy::str_concat("b", std::string(::tpy::__str__(this->n))));
 }
 
 // def text(self) -> Own[str]:

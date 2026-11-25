@@ -30,7 +30,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_sv::__next__()
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return std::string(::tpy::str_slice(s, ::tpy::BasicSlice{0, 8}));
+        return std::string(::tpy::__str__(::tpy::str_slice(s, ::tpy::BasicSlice{0, 8})));
     }
     case S_RESUME_0: {  // after: yield str(s[0:8])
         __state = S_DONE;

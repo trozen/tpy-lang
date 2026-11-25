@@ -138,7 +138,7 @@ inline int32_t Slot::__len__() const {
 
 inline int64_t Slot::__getitem__(int32_t i) const {
     if ((!(this->filled))) {
-        throw ::tpy::KeyError(::tpy::fixed_to_str<int32_t>(i));
+        throw ::tpy::KeyError(std::string(::tpy::__str__(i)));
     }
     return this->value;
 }

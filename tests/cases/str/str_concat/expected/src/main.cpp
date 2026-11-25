@@ -53,7 +53,7 @@ void test_literal_concat() {
 //     a += " end"
 //     print(a)  # hello end
 void test_cross_type_concat() {
-    std::string a = std::string("hello");
+    std::string a = std::string(::tpy::__str__("hello"));
     ::tpy::String b = ::tpy::String(" world");
     std::cout << (::tpy::str_concat(a, b)) << "\n" << ::tpy::check_signals;
     std::cout << (::tpy::str_concat(b, a)) << "\n" << ::tpy::check_signals;
@@ -78,11 +78,11 @@ void test_reassign_concat() {
     ::tpy::String s = ::tpy::String("hello");
     s += " world";
     std::cout << s << "\n" << ::tpy::check_signals;
-    std::string a = std::string("a");
+    std::string a = std::string(::tpy::__str__("a"));
     a += "b";
     std::cout << a << "\n" << ::tpy::check_signals;
     int32_t n = 42;
-    a += ::tpy::fixed_to_str<int32_t>(n);
+    a += std::string(::tpy::__str__(n));
     std::cout << a << "\n" << ::tpy::check_signals;
 }
 
@@ -97,7 +97,7 @@ void test_loop_concat() {
     ::tpy::String s = ::tpy::String("");
     int32_t i = 0;
     while ((i < 5)) {
-        s += ::tpy::fixed_to_str<int32_t>(i);
+        s += std::string(::tpy::__str__(i));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     std::cout << s << "\n" << ::tpy::check_signals;

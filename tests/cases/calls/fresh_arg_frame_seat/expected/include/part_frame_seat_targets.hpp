@@ -253,7 +253,7 @@ __genexpr_in_pass_1_frame<F_w> __genexpr_in_pass_1(int32_t __r0, F_w&& w) {
 //     self.text = str(n) * 5
 //     self.xs = [n, n + 1]
 inline Src::Src(int32_t n)
-    : text((::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 5))),
+    : text((::tpy::str_repeat(std::string(::tpy::__str__(n)), 5))),
       xs(std::vector<int32_t>{n, (::tpy::add_check<int32_t>(n, 1))}) {}
 
 // def __init__(self, s: StrView) -> None:

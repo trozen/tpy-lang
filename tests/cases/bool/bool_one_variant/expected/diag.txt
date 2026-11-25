@@ -1,0 +1,6 @@
+part_more.py:18: warning: Method 'LoudStr.__bool__' hides 'str.__bool__' -- any 'str' reference will call 'str.__bool__', not 'LoudStr.__bool__' (differs from Python's dynamic dispatch)
+part_more.py:24: warning: Method 'NeInt.__eq__' hides 'int.__eq__' -- any 'int' reference will call 'int.__eq__', not 'NeInt.__eq__' (differs from Python's dynamic dispatch)
+part_more.py:39: warning: Method 'LenStr.__len__' hides 'str.__len__' -- any 'str' reference will call 'str.__len__', not 'LenStr.__len__' (differs from Python's dynamic dispatch)
+part_more.py:45: warning: Method 'WideLenStr.__len__' hides 'str.__len__' -- any 'str' reference will call 'str.__len__', not 'WideLenStr.__len__' (differs from Python's dynamic dispatch)
+part_more.py:51: warning: Method 'ZeroLenStr.__len__' hides 'str.__len__' -- any 'str' reference will call 'str.__len__', not 'ZeroLenStr.__len__' (differs from Python's dynamic dispatch)
+main.py:111: warning: Integer literal 5000000000 is outside default int32 range; the argument is passed as int (BigInt). Write int64(5000000000) or int(5000000000) to state the type.

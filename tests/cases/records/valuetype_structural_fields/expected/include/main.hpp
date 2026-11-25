@@ -146,7 +146,7 @@ inline P::P(int32_t n) : n(n) {}
 // def __str__(self) -> str:
 //     return "P(" + str(self.n) + ")"
 inline std::string P::__str__() const {
-    return (::tpy::str_concat((::tpy::str_concat("P(", ::tpy::fixed_to_str<int32_t>(this->n))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat("P(", std::string(::tpy::__str__(this->n)))), ")"));
 }
 
 // def __init__(self, x: T | None) -> None:

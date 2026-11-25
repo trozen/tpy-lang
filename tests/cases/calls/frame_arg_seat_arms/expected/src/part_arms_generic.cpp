@@ -22,7 +22,7 @@ __gen_genb genb(Box& b) {
 // def mk(i: int32) -> str:
 //     return "item-" + str(i)
 std::string mk(int32_t i) {
-    return (::tpy::str_concat("item-", ::tpy::fixed_to_str<int32_t>(i)));
+    return (::tpy::str_concat("item-", std::string(::tpy::__str__(i))));
 }
 
 // async def tick() -> int32:

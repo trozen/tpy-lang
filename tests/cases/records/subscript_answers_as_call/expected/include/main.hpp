@@ -1316,7 +1316,7 @@ inline Sink::Sink() : seen(std::vector<std::string>{}) {}
 // def __setitem__(self, k: str, v: int32) -> None:
 //     self.seen.append(k + "=" + str(v))
 inline void Sink::__setitem__(std::string_view k, int32_t v) {
-    this->seen.push_back((::tpy::str_concat((::tpy::str_concat(k, "=")), ::tpy::fixed_to_str<int32_t>(v))));
+    this->seen.push_back((::tpy::str_concat((::tpy::str_concat(k, "=")), std::string(::tpy::__str__(v)))));
 }
 
 // def __init__(self) -> None:

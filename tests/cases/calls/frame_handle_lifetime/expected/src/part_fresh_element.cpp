@@ -405,7 +405,7 @@ __gen_sv_chars sv_chars(std::string_view s) {
         __sub_0.reset();
         junk.emplace(::tpyapp::part_borrowed_element::make_junk());
         __state = S_DONE;
-        std::string __tpy_async_ret = (::tpy::str_concat(std::string(s), ::tpy::fixed_to_str<int32_t>((::tpy::sub_check<int32_t>(::tpy::__len__((*junk)), 20)))));
+        std::string __tpy_async_ret = (::tpy::str_concat(std::string(::tpy::__str__(s)), std::string(::tpy::__str__((::tpy::sub_check<int32_t>(::tpy::__len__((*junk)), 20))))));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -8,7 +8,7 @@ namespace tpystd::termios {
 // def _message(err: int32) -> str:
 //     return "(" + str(err) + ", " + repr(strerror(err)) + ")"
 std::string _message(int32_t err) {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(err))), ", ")), std::string(::tpy::repr_of(::tpy::stdlib::os::strerror(static_cast<int64_t>(err)))))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", std::string(::tpy::__str__(err)))), ", ")), std::string(::tpy::repr_of(::tpy::stdlib::os::strerror(static_cast<int64_t>(err)))))), ")"));
 }
 
 // # CPython rejects a negative fd while converting the argument, before any
@@ -19,7 +19,7 @@ std::string _message(int32_t err) {
 //                          + str(fd) + ")")
 void _check_fd(int64_t fd) {
     if ((fd < 0)) {
-        throw ::tpy::ValueError((::tpy::str_concat((::tpy::str_concat("file descriptor cannot be a negative integer (", ::tpy::fixed_to_str<int64_t>(fd))), ")")));
+        throw ::tpy::ValueError((::tpy::str_concat((::tpy::str_concat("file descriptor cannot be a negative integer (", std::string(::tpy::__str__(fd)))), ")")));
     }
 }
 
@@ -82,14 +82,14 @@ void tcsetattr(int64_t fd, int32_t when, const TermAttributes& attributes) {
 //     return out + "]]"
 std::string TermAttributes::__repr__() const {
     bool numeric = ((static_cast<int64_t>(this->_lflag & ::tpy_const_termios_icanon)) == 0);
-    ::tpy::String out = (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("[", ::tpy::fixed_to_str<int64_t>(this->_iflag))), ", ")), ::tpy::fixed_to_str<int64_t>(this->_oflag))), ", ")), ::tpy::fixed_to_str<int64_t>(this->_cflag))), ", ")), ::tpy::fixed_to_str<int64_t>(this->_lflag))), ", ")), ::tpy::fixed_to_str<int64_t>(this->_ispeed))), ", ")), ::tpy::fixed_to_str<int64_t>(this->_ospeed))), ", ["));
+    ::tpy::String out = (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("[", std::string(::tpy::__str__(this->_iflag)))), ", ")), std::string(::tpy::__str__(this->_oflag)))), ", ")), std::string(::tpy::__str__(this->_cflag)))), ", ")), std::string(::tpy::__str__(this->_lflag)))), ", ")), std::string(::tpy::__str__(this->_ispeed)))), ", ")), std::string(::tpy::__str__(this->_ospeed)))), ", ["));
     int32_t __stop_0 = ::tpy::__len__(this->_cc);
     for (int32_t i = 0; i < __stop_0; ++i) {
         if ((i > 0)) {
             out += ", ";
         }
         if ((numeric && ((i == ::tpy_const_termios_vmin) || (i == ::tpy_const_termios_vtime)))) {
-            out += ::tpy::fixed_to_str<uint8_t>(::tpy::bytes_getitem(this->_cc, i));
+            out += std::string(::tpy::__str__(::tpy::bytes_getitem(this->_cc, i)));
         } else {
             out += std::string(::tpy::repr_of(::tpy::construct<::tpy::Bytes>(std::array<uint8_t, 1>{::tpy::bytes_getitem(this->_cc, i)})));
         }

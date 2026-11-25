@@ -485,7 +485,7 @@ inline Src::Src(int32_t n) : n(n) {}
 //     self.name = "mid-name-long-enough-to-defeat-sso-" + str(n)
 inline Mid::Mid(int32_t n)
     : s(Src(n)),
-      name((::tpy::str_concat("mid-name-long-enough-to-defeat-sso-", ::tpy::fixed_to_str<int32_t>(n)))) {}
+      name((::tpy::str_concat("mid-name-long-enough-to-defeat-sso-", std::string(::tpy::__str__(n))))) {}
 
 // def __init__(self, n: int32) -> None:
 //     self.m = Mid(n)

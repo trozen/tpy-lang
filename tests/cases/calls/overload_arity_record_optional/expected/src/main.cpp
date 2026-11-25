@@ -9,7 +9,7 @@ namespace tpyapp::main {
 std::string fmt__int(const ::tpy::BigInt& value) {
     Tag* tag = nullptr;
     if (true) {
-        return (value).to_string();
+        return std::string(::tpy::__str__(value));
     }
 }
 
@@ -18,7 +18,7 @@ std::string fmt__int(const ::tpy::BigInt& value) {
 std::string fmt__int__Tag(const ::tpy::BigInt& value, const Tag& tag) {
     if (false) {
     }
-    return (::tpy::str_concat((::tpy::str_concat(tag.name, "=")), (value).to_string()));
+    return (::tpy::str_concat((::tpy::str_concat(tag.name, "=")), std::string(::tpy::__str__(value))));
 }
 
 // def main() -> None:

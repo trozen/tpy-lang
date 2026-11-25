@@ -71,7 +71,7 @@ void push__list_int32__int32(std::vector<int32_t>& xs, int32_t v) {
 // def show(x: int) -> str: ...
 std::string show__int(const ::tpy::BigInt& x) {
     if (true) {
-        return (::tpy::str_concat("n=", (x).to_string()));
+        return (::tpy::str_concat("n=", std::string(::tpy::__str__(x))));
     }
 }
 

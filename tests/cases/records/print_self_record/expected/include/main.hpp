@@ -43,7 +43,7 @@ inline W::W() : n(1) {}
 // def __str__(self) -> str:
 //     return "W(" + str(self.n) + ")"
 inline std::string W::__str__() const {
-    return (::tpy::str_concat((::tpy::str_concat("W(", ::tpy::fixed_to_str<int32_t>(this->n))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat("W(", std::string(::tpy::__str__(this->n)))), ")"));
 }
 
 // def show(self) -> None:

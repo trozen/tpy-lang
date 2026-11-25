@@ -111,7 +111,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_chars::__next__() 
         }
         c = *((*__for_it_0))++;
         __state = S_RESUME_0;
-        return std::string(::tpy::char_to_str(c));
+        return std::string(::tpy::__str__(c));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

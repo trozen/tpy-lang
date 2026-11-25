@@ -49,7 +49,7 @@ inline Box::Box(int32_t base) : base(base) {}
 // def apply(self, x: int32, *, tag: str = "") -> str:
 //     return tag + ":" + str(self.base + x)
 inline std::string Box::apply__int32__str(int32_t x, std::string_view tag) const {
-    return (::tpy::str_concat((::tpy::str_concat(tag, ":")), ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(this->base, x)))));
+    return (::tpy::str_concat((::tpy::str_concat(tag, ":")), std::string(::tpy::__str__((::tpy::add_check<int32_t>(this->base, x))))));
 }
 
 inline std::string Box::apply(int32_t x, std::string_view tag) const {

@@ -40,7 +40,7 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
 std::expected<std::string, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         x = *((*__for_it_0))++;
-        return ::tpy::fixed_to_str<int32_t>(x);
+        return std::string(::tpy::__str__(x));
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
@@ -81,7 +81,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t n = *__beg_0;
-        std::cout << ::tpy::fixed_to_str<int32_t>(n) << "\n" << ::tpy::check_signals;
+        std::cout << std::string(::tpy::__str__(n)) << "\n" << ::tpy::check_signals;
     }
     std::vector<std::string> parts = ::tpy::construct<std::vector<std::string>>(::tpyapp::main::__genexpr_main_1(nums));
     std::cout << ::tpy::ListPrinter(parts) << "\n" << ::tpy::check_signals;
@@ -89,11 +89,11 @@ void main() {
     int32_t q = 5;
     int32_t p2 = 1;
     int32_t q2 = 200;
-    std::cout << ::tpy::fixed_to_str<int32_t>(p) << " " << ::tpy::fixed_to_str<int32_t>(q) << " " << ::tpy::fixed_to_str<int32_t>(p2) << " " << ::tpy::fixed_to_str<int32_t>(q2) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(p)) << " " << std::string(::tpy::__str__(q)) << " " << std::string(::tpy::__str__(p2)) << " " << std::string(::tpy::__str__(q2)) << "\n" << ::tpy::check_signals;
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{6, 7};
     int32_t r = std::get<0>(t);
     int32_t s = std::get<1>(t);
-    std::cout << ::tpy::fixed_to_str<int32_t>(r) << " " << ::tpy::fixed_to_str<int32_t>(s) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(r)) << " " << std::string(::tpy::__str__(s)) << "\n" << ::tpy::check_signals;
     std::array<std::tuple<int32_t, int32_t>, 2> pairs = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
     auto& __obj_1 = pairs;
     auto __beg_1 = __obj_1.begin();
@@ -102,9 +102,9 @@ void main() {
         auto&& __for_tup_0 = *__beg_1;
         int32_t u = std::get<0>(__for_tup_0);
         int32_t v = std::get<1>(__for_tup_0);
-        std::cout << ::tpy::fixed_to_str<int32_t>(u) << " " << ::tpy::fixed_to_str<int32_t>(v) << "\n" << ::tpy::check_signals;
+        std::cout << std::string(::tpy::__str__(u)) << " " << std::string(::tpy::__str__(v)) << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::fixed_to_str<int32_t>(a) << " " << ::tpy::fixed_to_str<int32_t>(b) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(a)) << " " << std::string(::tpy::__str__(b)) << "\n" << ::tpy::check_signals;
 }
 
 // a, b = 1, 2  # tpyc: type(int32)

@@ -116,7 +116,7 @@ int32_t record_len(const Rec& r) {
 //     print("builtin_ctors:", items[0].x, t, f, len(c), w, s, ch)
 void builtin_ctors(int32_t n, ::tpy::BytesView b, std::string_view s) {
     std::array<Point, 1> items = {Point(1, 2)};
-    std::string t = ::tpy::fixed_to_str<int32_t>(n);
+    std::string t = std::string(::tpy::__str__(n));
     double f = static_cast<double>(n);
     ::tpy::Bytes c = ::tpy::Bytes(b);
     ::tpy::String w = ::tpy::String(s);
@@ -169,7 +169,7 @@ int32_t clear_and_len(Box& r, ::tpy::BytesView data) {
 // def fresh_str(r: Box) -> int32:  # tpyc: mir(covered)
 //     return mutate_and_read(r, str(r.n))
 int32_t fresh_str(Box& r) {
-    return ::tpyapp::main::mutate_and_read(r, (r.n).to_string());
+    return ::tpyapp::main::mutate_and_read(r, std::string(::tpy::__str__(r.n)));
 }
 
 // # free function: `bytes(r.b)` is a defensive copy the callee clearing `r.b` cannot reach
@@ -210,7 +210,7 @@ void float32_from_int() {
 // def str_key_aug(d: dict[str, int32], sv: StrView) -> None:
 //     d[str(sv)] += 1
 void str_key_aug(::tpy::ordered_map<std::string, int32_t>& d, std::string_view sv) {
-    ::tpy::__setitem__(d, std::string(sv), ::tpy::add_check<int32_t>(::tpy::__getitem__(d, std::string(sv)), 1));
+    ::tpy::__setitem__(d, std::string(::tpy::__str__(sv)), ::tpy::add_check<int32_t>(::tpy::__getitem__(d, std::string(::tpy::__str__(sv))), 1));
 }
 
 // def grow(ba: bytearray) -> int32:

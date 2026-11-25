@@ -15,7 +15,7 @@ namespace tpyapp::main {
 std::string describe_expr(const Expr& e) {
     if (std::holds_alternative<Lit>(e.value)) {
         const auto& __e = std::get<Lit>(e.value);
-        return (__e.value).to_string();
+        return std::string(::tpy::__str__(__e.value));
     } else {
         if (true) {
             const auto& __e = std::get<BinOp>(e.value);
@@ -38,7 +38,7 @@ std::string show_value(const Value& v) {
         return (::tpy::str_concat("-", ::tpyapp::main::show_value(__v.inner.get())));
     } else if (std::holds_alternative<::tpy::BigInt>(v.value)) {
         const auto& __v = std::get<::tpy::BigInt>(v.value);
-        return (__v).to_string();
+        return std::string(::tpy::__str__(__v));
     } else {
         const auto& __v = std::get<std::string>(v.value);
         return __v;

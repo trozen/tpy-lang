@@ -22,7 +22,7 @@ std::string nested_param(::tpy::Union<const Box<Box<int32_t>>*, const Box<Box<st
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value.value;
-        return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
+        return (::tpy::str_concat("number: ", std::string(::tpy::__str__(n))));
     }
     }
     ::std::unreachable();
@@ -51,7 +51,7 @@ std::string union_subj_union_field(::tpy::Union<const Container*, const int32_t*
         {
             if (std::holds_alternative<int32_t>(__case_0.value)) {
                 auto n = std::get<int32_t>(__case_0.value);
-                return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
+                return (::tpy::str_concat("number: ", std::string(::tpy::__str__(n))));
             }
         }
         break;
@@ -59,7 +59,7 @@ std::string union_subj_union_field(::tpy::Union<const Container*, const int32_t*
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         auto n = __case_1;
-        return (::tpy::str_concat("bare: ", ::tpy::fixed_to_str<int32_t>(n)));
+        return (::tpy::str_concat("bare: ", std::string(::tpy::__str__(n))));
     }
     }
     return "";
@@ -82,7 +82,7 @@ std::string union_field_param(const Outer& o) {
     } else if (std::holds_alternative<Box<int32_t>>(__match_subject_1.item)) {
         auto& __field_match_subject_1_item = std::get<Box<int32_t>>(__match_subject_1.item);
         auto n = __field_match_subject_1_item.value;
-        return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
+        return (::tpy::str_concat("number: ", std::string(::tpy::__str__(n))));
     } else {
         return "other";
     }
@@ -110,7 +110,7 @@ void double_union(const std::vector<Tagged>& items) {
             std::cout << (::tpy::str_concat("string: ", s)) << "\n" << ::tpy::check_signals;
         } else if (__match_subject_1.label == "n" && std::holds_alternative<int32_t>(__match_subject_1.inner)) {
             auto n = std::get<int32_t>(__match_subject_1.inner);
-            std::cout << (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n))) << "\n" << ::tpy::check_signals;
+            std::cout << (::tpy::str_concat("number: ", std::string(::tpy::__str__(n)))) << "\n" << ::tpy::check_signals;
         } else {
             std::cout << "other" << "\n" << ::tpy::check_signals;
         }

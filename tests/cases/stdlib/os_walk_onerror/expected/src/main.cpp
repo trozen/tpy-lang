@@ -66,7 +66,7 @@ std::vector<std::string> walk_rows(std::string_view root, std::optional<std::fun
             if ((::tpy::__len__(rel) == 0)) {
                 rel = ".";
             }
-            rows.push_back((::tpy::str_concat((::tpy::str_concat(rel, " files=")), ::tpy::fixed_to_str<int32_t>(::tpy::__len__(filenames)))));
+            rows.push_back((::tpy::str_concat((::tpy::str_concat(rel, " files=")), std::string(::tpy::__str__(::tpy::__len__(filenames))))));
         }
     }
     ::tpy::sort_in_place(rows);

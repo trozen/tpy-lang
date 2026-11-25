@@ -118,7 +118,7 @@ int32_t StringIO::write(std::string_view s) {
     if ((n == 0)) {
         return n;
     }
-    std::string owned = std::string(s);
+    std::string owned = std::string(::tpy::__str__(s));
     if ((this->_pos == this->_total)) {
         this->_chunks.push_back(std::move(owned));
         this->_total = (::tpy::add_check<int32_t>(this->_total, n));

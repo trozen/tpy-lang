@@ -27,7 +27,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
         if (std::holds_alternative<::tpy::BigInt>(a)) {
             const auto& __a = std::get<::tpy::BigInt>(a);
             __state = S_RESUME_0;
-            return (::tpy::str_concat("int:", (((__a) + (::tpy::BigInt(1)))).to_string()));
+            return (::tpy::str_concat("int:", std::string(::tpy::__str__(((__a) + (::tpy::BigInt(1)))))));
         } else {
             const auto& __a = std::get<std::string>(a);
             __state = S_JOIN_0;

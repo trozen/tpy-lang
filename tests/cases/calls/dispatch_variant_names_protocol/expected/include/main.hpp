@@ -208,14 +208,14 @@ std::string describe__Animal(T_x&& x) {
 //     return "walks on " + str(x.walk())
 template<Walker T_x>
 std::string move__Walker(T_x&& x) {
-    return (::tpy::str_concat("walks on ", (x.walk()).to_string()));
+    return (::tpy::str_concat("walks on ", std::string(::tpy::__str__(x.walk()))));
 }
 // @dispatch
 // def move(x: Swimmer) -> str:
 //     return "swims with " + str(x.swim())
 template<Swimmer T_x>
 std::string move__Swimmer(T_x&& x) {
-    return (::tpy::str_concat("swims with ", (x.swim()).to_string()));
+    return (::tpy::str_concat("swims with ", std::string(::tpy::__str__(x.swim()))));
 }
 // @dispatch
 // def count(v: Iterable[int]) -> str:
@@ -234,14 +234,14 @@ std::string count__Iterable_int(T_v&& v) {
         const ::tpy::BigInt& _ = ::tpy::unwrap_ref(*__r_1);
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    return (::tpy::str_concat("iterable ", ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat("iterable ", std::string(::tpy::__str__(n))));
 }
 // @dispatch
 // def count(v: HasLen) -> str:
 //     return "sized " + str(len(v))
 template<HasLen T_v>
 std::string count__HasLen(const T_v& v) {
-    return (::tpy::str_concat("sized ", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(v))));
+    return (::tpy::str_concat("sized ", std::string(::tpy::__str__(::tpy::__len__(v)))));
 }
 
 void __tpy_init();

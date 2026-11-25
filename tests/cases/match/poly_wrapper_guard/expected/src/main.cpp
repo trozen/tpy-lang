@@ -18,15 +18,15 @@ std::string describe(::tpystd::tplib::box::Box<Pet>& b) {
         Dog& __case_0 = *__mpoly_0;
         auto& k = __case_0.n;
         if ((k > 0)) {
-            return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("dog+ ", (k).to_string())), " legs=")), (b.__deref__().legs()).to_string()));
+            return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("dog+ ", std::string(::tpy::__str__(k)))), " legs=")), std::string(::tpy::__str__(b.__deref__().legs()))));
         }
     }
     if (Dog* __mpoly_1 = dynamic_cast<Dog*>(&__match_subject_1)) {
         Dog& __case_1 = *__mpoly_1;
-        return (::tpy::str_concat("dog0 legs=", (b.__deref__().legs()).to_string()));
+        return (::tpy::str_concat("dog0 legs=", std::string(::tpy::__str__(b.__deref__().legs()))));
     }
     {
-        return (::tpy::str_concat("other legs=", (b.__deref__().legs()).to_string()));
+        return (::tpy::str_concat("other legs=", std::string(::tpy::__str__(b.__deref__().legs()))));
     }
     ::std::unreachable();
 }

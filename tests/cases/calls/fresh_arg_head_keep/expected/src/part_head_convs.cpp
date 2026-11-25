@@ -68,7 +68,7 @@ __gen_gfirst gfirst(Has& h) {
 // def mks(n: int32) -> str:
 //     return "view-long-enough-to-heap-" + str(n)
 std::string mks(int32_t n) {
-    return (::tpy::str_concat("view-long-enough-to-heap-", ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat("view-long-enough-to-heap-", std::string(::tpy::__str__(n))));
 }
 
 // def sp(s: str) -> StrView:
@@ -357,7 +357,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view ch = ::tpy::unwrap_ref(*__r_3);
-            got.push_back((::tpy::str_concat(ch, ::tpy::fixed_to_str<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::part_head_convs::junk(), 0))))));
+            got.push_back((::tpy::str_concat(ch, std::string(::tpy::__str__((::tpy::mul_check<int32_t>(::tpyapp::part_head_convs::junk(), 0)))))));
         }
     }
     std::cout << "convs views" << " " << ::tpy::ListPrinter(got) << "\n" << ::tpy::check_signals;

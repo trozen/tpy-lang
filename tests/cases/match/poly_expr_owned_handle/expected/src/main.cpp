@@ -33,7 +33,7 @@ std::string describe(const ::tpy::BigInt& kind) {
     } else if (Snake* __mpoly_1 = dynamic_cast<Snake*>(&__match_subject_1)) {
         Snake& __case_1 = *__mpoly_1;
         auto& s = __case_1;
-        return (::tpy::str_concat("snake legs=", (s.legs).to_string()));
+        return (::tpy::str_concat("snake legs=", std::string(::tpy::__str__(s.legs))));
     } else {
         return "?";
     }

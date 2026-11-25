@@ -918,8 +918,9 @@ class _Lowering:
         for index, (arg, binding) in enumerate(zip(expr.args, summary.parameters)):
             lent = False
             if binding.protocol:
-                # A view dispatches to the runtime code of the leaf it views.
-                read = through_view(arg.result_type)
+                # A view dispatches to the runtime code of the leaf it views;
+                # an unresolved number literal, to its C++ literal's leaf.
+                read = through_view(literal_type(arg))
                 _require(arg, stub_protocol_argument(read), "stub protocol argument is not a builtin leaf")
                 built = _built_aggregate(arg)
                 if built or self.container_receiver(arg):
@@ -995,7 +996,7 @@ class _Lowering:
         for arg, binding in zip(expr.args, summary.parameters[1:]):
             argument = None
             if binding.protocol:
-                read = through_view(arg.result_type)
+                read = through_view(literal_type(arg))
                 _require(arg, stub_protocol_argument(read) and not self.container_receiver(arg),
                          "stub protocol argument is not a builtin leaf")
                 if owned_leaf(read):
@@ -1041,7 +1042,7 @@ class _Lowering:
                 return self.lent_argument(binding, arg)
             case MIRClass.CONTAINER_VIEW, _:
                 return self.view_argument(arg, binding)
-        typ = arg.result_type if binding.protocol else binding.type
+        typ = literal_type(arg) if binding.protocol else binding.type
         plan = self.expr(arg, typ)
         _require(arg, plan.shape_of().type == typ, "call scalar argument mismatch")
         return plan
@@ -2614,7 +2615,7 @@ class _Lowering:
         receiver -- whose interior MIR does not model -- after its bounds
         are read, and a call's view result borrows what the call lends."""
         _require(expr, view_leaf(holder), "unsupported view source")
-        typ = literal_type(expr) if isinstance(expr, th.THIRLiteral) else expr.result_type
+        typ = literal_type(expr)
         if not view_leaf(typ):
             source = self.owned_value(expr)
             self.fresh_boundary(expr, source)
@@ -2764,7 +2765,7 @@ class _Lowering:
     def value(self, expr: th.THIRExpr, expected: TpyType | None = None) -> Fragment:
         """Check an operand, as the slot an operation reads: a view holder,
         an owned leaf read through a borrow, else a scalar value (`expr`)."""
-        typ = literal_type(expr, expected) if isinstance(expr, th.THIRLiteral) else expr.result_type
+        typ = literal_type(expr, expected)
         if view_leaf(typ):
             return self.operand(expr, self.view_value(expr, typ))
         if owned_leaf(typ):
@@ -2777,7 +2778,7 @@ class _Lowering:
         static literal, a holder a borrowed call result is lent by, or a
         passthrough's view of its source. Its consumer converts it
         (`operand`, `owned_sink`, `Fragment.view`)."""
-        typ = literal_type(expr, expected) if isinstance(expr, th.THIRLiteral) else expr.result_type
+        typ = literal_type(expr, expected)
         _require(expr, owned_leaf(typ), "unsupported owned-leaf expression type")
         _require(expr, self.types.get(expr, typ) == typ, "literal adopts two types")
         loc = expr.loc
@@ -4257,7 +4258,7 @@ class _Lowering:
             _require(expr, expr.result_type == typ, "move type mismatch")
             return typ
         _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
-        typ = literal_type(expr, expected) if isinstance(expr, th.THIRLiteral) else expr.result_type
+        typ = literal_type(expr, expected)
         _require(expr, storage_leaf(typ), "unsupported expression type")
         _require(expr, self.types.get(expr, typ) == typ, "literal adopts two types")
         self.types[expr] = typ

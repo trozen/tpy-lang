@@ -177,7 +177,7 @@ std::string optional_local(bool flag) {
     for (int32_t i = 0; i < 2; ++i) {
         v = std::nullopt;
         if (flag) {
-            v = ::tpy::fixed_to_str<int32_t>(i);
+            v = std::string(::tpy::__str__(i));
         }
         std::cout << ::tpy::print_bool((!v.has_value())) << "\n" << ::tpy::check_signals;
     }
@@ -194,7 +194,7 @@ std::string optional_local(bool flag) {
 std::string str_local() {
     std::string s;
     for (int32_t i = 0; i < 2; ++i) {
-        s = ::tpy::fixed_to_str<int32_t>(i);
+        s = std::string(::tpy::__str__(i));
         std::cout << s << "\n" << ::tpy::check_signals;
     }
     s = "after";

@@ -233,7 +233,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_flat_gen::__next__() {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 char c = ::tpy::unwrap_ref(*__r_1);
-                out += std::string(::tpy::char_to_str(c));
+                out += std::string(::tpy::__str__(c));
             }
         }
         t = 0;
@@ -257,7 +257,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_flat_gen::__next__() {
                     auto __r_5 = __itr_4.__next__();
                     if (!__r_5.has_value()) break;
                     char c = ::tpy::unwrap_ref(*__r_5);
-                    out += std::string(::tpy::char_to_str(c));
+                    out += std::string(::tpy::__str__(c));
                 }
             }
         }
@@ -476,7 +476,7 @@ __coro_returned_await returned_await(int32_t n) {
         __await_lift_0 = std::move(__r2).value();
         __sub_2.reset();
         __state = S_DONE;
-        std::string __tpy_async_ret = (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(a, " ")), ::tpy::fixed_to_str<int32_t>(b))), " ")), __await_lift_0));
+        std::string __tpy_async_ret = (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(a, " ")), std::string(::tpy::__str__(b)))), " ")), __await_lift_0));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

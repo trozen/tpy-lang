@@ -11,10 +11,10 @@ namespace tpyapp::main {
 std::string show(::tpy::Union<const Pet*, const int32_t*> p) {
     if (std::holds_alternative<const Pet*>(p)) {
         auto& __p = *std::get<const Pet*>(p);
-        return (::tpy::str_concat("pet", ::tpy::fixed_to_str<int32_t>(__p.n)));
+        return (::tpy::str_concat("pet", std::string(::tpy::__str__(__p.n))));
     }
     auto& __p = *std::get<const int32_t*>(p);
-    return (::tpy::str_concat("int", ::tpy::fixed_to_str<int32_t>(__p)));
+    return (::tpy::str_concat("int", std::string(::tpy::__str__(__p))));
 }
 
 // def shadow_isinstance(x: Pet | int32, xs: list[Pet | int32]) -> None:

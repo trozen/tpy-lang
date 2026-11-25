@@ -40,7 +40,7 @@ std::string join_iterable() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            __result.push_back(::tpy::fixed_to_str<int32_t>(x));
+            __result.push_back(std::string(::tpy::__str__(x)));
         }
         std::move(__result);
     }));

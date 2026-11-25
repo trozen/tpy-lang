@@ -76,12 +76,12 @@ void __tpy_init() {
     std::cout << ::tpy::print_float(::tpy::float_from_str("1e3")) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(std::numeric_limits<double>::infinity()) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(-std::numeric_limits<double>::infinity()) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((0.0 != 0.0)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((1.5 != 0.0)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((-(0.1) != 0.0)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((std::string_view("").size() != 0)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((std::string_view("hello").size() != 0)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((std::string_view(" ").size() != 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__bool__(0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__bool__(1.5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__bool__(-(0.1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__bool__("")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__bool__("hello")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__bool__(" ")) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

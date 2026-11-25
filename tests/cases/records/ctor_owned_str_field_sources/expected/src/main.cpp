@@ -77,7 +77,7 @@ void main() {
 //     self.echo = self.full + "?"  # tpyc: ok
 Tags::Tags(std::string_view a, const ::tpy::BigInt& x, const Owner& o, std::optional<std::string_view> m)
     : full((::tpy::str_concat(a, "!"))),
-      conv((::tpy::str_concat("p", (x).to_string()))),
+      conv((::tpy::str_concat("p", std::string(::tpy::__str__(x))))),
       fmt(std::format("{}-{}", a, (x).to_string())),
       pick((((x > 0)) ? (a) : (std::string_view("z")))),
       opt((((m.has_value())) ? ((*m)) : (std::string_view("none")))),

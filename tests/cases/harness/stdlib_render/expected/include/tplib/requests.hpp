@@ -1262,7 +1262,7 @@ inline ::tpystd::json::JsonValue Response::json() const {
 //                         + " for url: " + self.url)
 inline void Response::raise_for_status() const {
     if ((this->status_code >= 400)) {
-        throw HTTPError((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->status_code), " ")), this->reason)), " for url: ")), this->url)));
+        throw HTTPError((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(std::string(::tpy::__str__(this->status_code)), " ")), this->reason)), " for url: ")), this->url)));
     }
 }
 

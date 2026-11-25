@@ -89,7 +89,7 @@ std::string describe__Animal(T_x&& x) {
 //     return "sized " + str(len(v))
 template<HasLen T_v>
 std::string count__HasLen(const T_v& v) {
-    return (::tpy::str_concat("sized ", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(v))));
+    return (::tpy::str_concat("sized ", std::string(::tpy::__str__(::tpy::__len__(v)))));
 }
 // @dispatch
 // def count(v: Iterable[int]) -> str:
@@ -108,7 +108,7 @@ std::string count__Iterable_int(T_v&& v) {
         const ::tpy::BigInt& _ = ::tpy::unwrap_ref(*__r_1);
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    return (::tpy::str_concat("iterable ", ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat("iterable ", std::string(::tpy::__str__(n))));
 }
 
 void __tpy_init();

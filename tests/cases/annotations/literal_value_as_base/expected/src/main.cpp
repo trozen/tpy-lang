@@ -29,7 +29,7 @@ void fmt(int32_t level, bool b, const ::tpy::BigInt& n, bool p) {
 // def conv(level: Literal[-1, 0, 9], n: int) -> None:
 //     print("str", str(level), str(n))  # tpyc: ok
 void conv(int32_t level, const ::tpy::BigInt& n) {
-    std::cout << "str" << " " << ::tpy::fixed_to_str<int32_t>(level) << " " << (n).to_string() << "\n" << ::tpy::check_signals;
+    std::cout << "str" << " " << std::string(::tpy::__str__(level)) << " " << std::string(::tpy::__str__(n)) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -669,7 +669,7 @@ void main() {
     std::cout << "wider" << " " << ::tpyapp::main::narrower(2, "x") << " " << ::tpyapp::main::maybe("rb") << " " << ::tpyapp::main::maybe(std::nullopt) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::generic("rb", false);
     std::vector<bool> xb = {true, false};
-    std::cout << "element" << " " << std::string(::tpy::bool_to_str(::tpy::__getitem__(xb, 1))) << " " << ::tpy::print_bool(::tpy::__getitem__(xb, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "element" << " " << std::string(::tpy::__str__(::tpy::__getitem__(xb, 1))) << " " << ::tpy::print_bool(::tpy::__getitem__(xb, 0)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::pending_locals(true);
     ::tpyapp::main::fallback();
     ::tpyapp::main::no_address();

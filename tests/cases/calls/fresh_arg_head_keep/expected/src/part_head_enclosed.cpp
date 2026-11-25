@@ -8,7 +8,7 @@ namespace tpyapp::part_head_enclosed {
 // def label(s: Src) -> str:
 //     return "label-long-enough-to-heap-" + str(s.n) * 10
 std::string label(const Src& s) {
-    return (::tpy::str_concat("label-long-enough-to-heap-", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(s.n), 10))));
+    return (::tpy::str_concat("label-long-enough-to-heap-", (::tpy::str_repeat(std::string(::tpy::__str__(s.n)), 10))));
 }
 
 // def mk(n: int32) -> int32:
@@ -43,7 +43,7 @@ void values() {
     }
     std::array<std::string, 20> junk = ::tpy::array_from_index<std::string, 20>([&](std::size_t __i_0) -> std::string {
         int32_t i = int32_t(__i_0);
-        return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        return (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
     });
     std::cout << "enclosed value" << " " << ::tpy::str_slice(t, ::tpy::BasicSlice{0, 12}) << " " << ::tpy::__len__(t) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
 }
@@ -165,7 +165,7 @@ void chains() {
     __ctx_6.__exit__({}, nullptr, {});
     std::array<std::string, 20> junk = ::tpy::array_from_index<std::string, 20>([&](std::size_t __i_0) -> std::string {
         int32_t k = int32_t(__i_0);
-        return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(k), 40));
+        return (::tpy::str_repeat(std::string(::tpy::__str__(k)), 40));
     });
     std::cout << "enclosed chain" << " " << ::tpy::str_slice(a.name, ::tpy::BasicSlice{0, 12}) << " " << ::tpy::__getitem__(a.name, -1) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
     std::optional<Top> __with_root_1;
@@ -327,10 +327,10 @@ std::expected<std::string, ::tpy::StopIteration> __gen_owned_gen::__next__() {
     case S_RESUME_0: {  // after: yield "a"
         junk.emplace(::tpy::array_from_index<std::string, 20>([&](std::size_t __i_0) -> std::string {
             int32_t j = int32_t(__i_0);
-            return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(j), 30));
+            return (::tpy::str_repeat(std::string(::tpy::__str__(j)), 30));
         }));
         __state = S_RESUME_1;
-        return (::tpy::str_concat(::tpy::str_slice(t, ::tpy::BasicSlice{-2, std::nullopt}), ::tpy::fixed_to_str<int32_t>(::tpy::__len__((*junk)))));
+        return (::tpy::str_concat(::tpy::str_slice(t, ::tpy::BasicSlice{-2, std::nullopt}), std::string(::tpy::__str__(::tpy::__len__((*junk))))));
     }
     case S_RESUME_1:  // after: yield t[-2:] + str(len(junk))
     case S_JOIN_0: {

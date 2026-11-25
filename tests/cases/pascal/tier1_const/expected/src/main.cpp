@@ -33,7 +33,7 @@ void __tpy_init() {
     i = (::tpy::add_check<int32_t>(n, 5));
     std::cout << i << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(pi) << "\n" << ::tpy::check_signals;
-    std::cout << std::string(greeting) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(greeting)) << "\n" << ::tpy::check_signals;
     if (enabled) {
         std::cout << "on" << "\n" << ::tpy::check_signals;
     } else {

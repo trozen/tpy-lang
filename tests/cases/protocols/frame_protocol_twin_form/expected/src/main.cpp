@@ -500,7 +500,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_relay::__next__() {
         k = ::tpy::unwrap_ref(*(*__for_r_1));
         s2 = "x";
         __state = S_RESUME_1;
-        return ::tpy::fixed_to_str<int32_t>(k);
+        return std::string(::tpy::__str__(k));
     }
     case S_JOIN_2: {
         s2 = "abc";

@@ -21,7 +21,7 @@ namespace tpyapp::main {
 int32_t main() {
     __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1({"b"});
     std::cout << args.cmd << "\n" << ::tpy::check_signals;
-    std::cout << (::tpy::str_concat("x is None: ", std::string(::tpy::bool_to_str((!args.x.has_value()))))) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat("x is None: ", std::string(::tpy::__str__((!args.x.has_value()))))) << "\n" << ::tpy::check_signals;
     return 0;
 }
 

@@ -19,7 +19,7 @@ std::string classify(std::optional<int32_t> x) {
         switch (__match_inner_1) {
         default: {
             auto v = __match_inner_1;
-            return ::tpy::fixed_to_str<int32_t>(v);
+            return std::string(::tpy::__str__(v));
         }
         }
     }

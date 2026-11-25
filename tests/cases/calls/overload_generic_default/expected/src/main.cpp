@@ -18,7 +18,7 @@ std::string lit0__int32(int32_t x) {
     if ((x == 0)) {
         return "zero";
     }
-    return (::tpy::str_concat("impl sees ", ::tpy::fixed_to_str<int32_t>(x)));
+    return (::tpy::str_concat("impl sees ", std::string(::tpy::__str__(x))));
 }
 
 // def poke(p: Ptr[int32]) -> None:

@@ -246,7 +246,7 @@ __coro_readonly_bound readonly_bound(const Acc& r) {
 // def mk_text(n: int32) -> str:
 //     return "pad-" + str(n) * 30
 std::string mk_text(int32_t n) {
-    return (::tpy::str_concat("pad-", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 30))));
+    return (::tpy::str_concat("pad-", (::tpy::str_repeat(std::string(::tpy::__str__(n)), 30))));
 }
 
 // def mk_texts(n: int32) -> Own[list[str]]:

@@ -78,7 +78,7 @@ __gen_acc_items acc_items(const Acc& a) {
 //     res: list[str] = ["ab" + str(n) * 30 + "xyz", "q"]
 //     return res
 std::vector<std::string> make_strs(int32_t n) {
-    std::vector<std::string> res = {(::tpy::str_concat((::tpy::str_concat("ab", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 30)))), "xyz")), "q"};
+    std::vector<std::string> res = {(::tpy::str_concat((::tpy::str_concat("ab", (::tpy::str_repeat(std::string(::tpy::__str__(n)), 30)))), "xyz")), "q"};
     return res;
 }
 

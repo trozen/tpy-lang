@@ -25,7 +25,7 @@ __gen_gen gen() {
 void churn() {
     std::array<::tpy::String, 20> junk = ::tpy::array_from_index<::tpy::String, 20>([&](std::size_t __i_0) -> ::tpy::String {
         int32_t k = int32_t(__i_0);
-        return (::tpy::str_concat(::tpyapp::part_head_compounds::seed(), ::tpy::fixed_to_str<int32_t>(k)));
+        return (::tpy::str_concat(::tpyapp::part_head_compounds::seed(), std::string(::tpy::__str__(k))));
     });
     std::cout << "compound churn" << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
 }

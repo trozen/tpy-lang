@@ -70,7 +70,7 @@ void two_loop_str_owned(std::string_view s, int32_t n) {
     }
     int32_t __stop_1 = n;
     for (int32_t i = 0; i < __stop_1; ++i) {
-        t = (::tpy::str_concat(s, ::tpy::fixed_to_str<int32_t>(i)));
+        t = (::tpy::str_concat(s, std::string(::tpy::__str__(i))));
     }
     std::cout << "two_loop_str_owned" << " " << t << "\n" << ::tpy::check_signals;
 }
@@ -110,7 +110,7 @@ void two_loop_str_view_then_owned(std::string_view s, int32_t n) {
     }
     int32_t __stop_1 = n;
     for (int32_t j = 0; j < __stop_1; ++j) {
-        t = (::tpy::str_concat(s, ::tpy::fixed_to_str<int32_t>(j)));
+        t = (::tpy::str_concat(s, std::string(::tpy::__str__(j))));
     }
     std::cout << "two_loop_str_view_then_owned" << " " << t << "\n" << ::tpy::check_signals;
 }

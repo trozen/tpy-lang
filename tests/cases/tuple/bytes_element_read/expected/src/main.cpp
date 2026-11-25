@@ -13,7 +13,7 @@ int32_t gk{};
 // def mk(n: int32) -> tuple[bytes, int32]:
 //     return (str(n).encode() * 2, n)
 std::tuple<::tpy::Bytes, int32_t> mk(int32_t n) {
-    return std::tuple<::tpy::Bytes, int32_t>{(::tpy::bytes_repeat(::tpy::bytes_from_str(::tpy::fixed_to_str<int32_t>(n)), 2)), n};
+    return std::tuple<::tpy::Bytes, int32_t>{(::tpy::bytes_repeat(::tpy::bytes_from_str(std::string(::tpy::__str__(n))), 2)), n};
 }
 
 // def mkb() -> tuple[Own[Rec], bytes]:

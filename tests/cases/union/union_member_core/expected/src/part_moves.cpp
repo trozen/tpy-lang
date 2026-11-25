@@ -47,7 +47,7 @@ std::string lend_narrowed(const ::tpy::Union<V, std::string>& u) {
 //     if isinstance(r, str) and isinstance(r2, str) and isinstance(u, str):
 //         print("moves-captured", r, r2, u)
 void captured_narrowed(int32_t k) {
-    ::tpy::Union<int32_t, std::string> u = static_cast<std::string>((::tpy::str_concat("c", ::tpy::fixed_to_str<int32_t>(k))));
+    ::tpy::Union<int32_t, std::string> u = static_cast<std::string>((::tpy::str_concat("c", std::string(::tpy::__str__(k)))));
     auto inner = [&u]() -> ::tpy::Union<int32_t, std::string> {
         if (std::holds_alternative<std::string>(u)) {
             auto& __u = std::get<std::string>(u);
@@ -115,7 +115,7 @@ void captured_narrowed_rec(int32_t k) {
 //             print("moves-narrowed-finally", u.s)
 //     return 0
 ::tpy::Union<V, int32_t> narrowed_finally(int32_t k) {
-    ::tpy::Union<V, std::string> u = V((::tpy::str_concat("f", ::tpy::fixed_to_str<int32_t>(k))));
+    ::tpy::Union<V, std::string> u = V((::tpy::str_concat("f", std::string(::tpy::__str__(k)))));
     if (true) {
         auto& __u = std::get<V>(u);
         {
@@ -256,7 +256,7 @@ std::tuple<A, int32_t> rec_closure_twin(int32_t k) {
 //     print("moves-closure", f())
 //     return t  # tpyc: ok
 std::tuple<::tpy::Union<int32_t, std::string>, int32_t> str_closure(int32_t k) {
-    std::tuple<::tpy::String, int32_t> t = std::tuple<::tpy::String, int32_t>{(::tpy::str_concat("s", ::tpy::fixed_to_str<int32_t>(k))), k};
+    std::tuple<::tpy::String, int32_t> t = std::tuple<::tpy::String, int32_t>{(::tpy::str_concat("s", std::string(::tpy::__str__(k)))), k};
     auto f = [&t]() -> int32_t {
         return ::tpy::__len__(std::get<0>(t));
     };
@@ -273,7 +273,7 @@ std::tuple<::tpy::Union<int32_t, std::string>, int32_t> str_closure(int32_t k) {
 //     finally:
 //         print("moves-finally", t[0])
 std::tuple<::tpy::Union<int32_t, std::string>, int32_t> str_finally(int32_t k) {
-    std::tuple<::tpy::String, int32_t> t = std::tuple<::tpy::String, int32_t>{(::tpy::str_concat("f", ::tpy::fixed_to_str<int32_t>(k))), k};
+    std::tuple<::tpy::String, int32_t> t = std::tuple<::tpy::String, int32_t>{(::tpy::str_concat("f", std::string(::tpy::__str__(k)))), k};
     {
         bool __fin_ran_3 = false;
         try {
@@ -297,7 +297,7 @@ std::tuple<::tpy::Union<int32_t, std::string>, int32_t> str_finally(int32_t k) {
 //     finally:
 //         print("moves-finally", t[0])
 std::tuple<std::string, int32_t> str_finally_twin(int32_t k) {
-    std::tuple<::tpy::String, int32_t> t = std::tuple<::tpy::String, int32_t>{(::tpy::str_concat("f", ::tpy::fixed_to_str<int32_t>(k))), k};
+    std::tuple<::tpy::String, int32_t> t = std::tuple<::tpy::String, int32_t>{(::tpy::str_concat("f", std::string(::tpy::__str__(k)))), k};
     {
         bool __fin_ran_4 = false;
         try {

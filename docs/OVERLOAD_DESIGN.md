@@ -934,10 +934,10 @@ is an ordinary value of the default int (sema types it so and converts the
 constant once where it is read), so it ranks, infers and converts as any
 default-int value does. Under the default `int32`, `pick(N)` beside
 `pick(int32)` / `pick(int)` takes the `int32` variant, `take(N)` beside
-`take(uint8)` / `take(int64)` the `int64` one, `str(N)` the `int32`
+`take(uint8)` / `take(int64)` the `int64` one, `float(N)` the `int32`
 variant and `uint8(N)` the checked narrowing; under
-`--default-int=BigInt` `pick(N)` takes `pick(int)` and `str(N)` the `int`
-variant.
+`--default-int=BigInt` `pick(N)` takes `pick(int)` and `float(N)` the
+`int` variant.
 
 **Tiers come from the declared parameter.** A parameter declared with the
 callee's own type parameter ranks by its DECLARED shape (`_declared_tier`):
@@ -1269,8 +1269,9 @@ in the `SUBCLASS` tier -- as a subclass at its base, behind a `Literal`
 parameter its set fits (`_literal_value_cost`) -- and converts to any other
 type at a cost of 1 (`_converted_cell`), so `f(mode)` with
 `mode: Literal["r", "w"]` at `f(str)` / `f(String)` picks `str`,
-`"text:" + mode` takes `str`'s own `__add__`, and `str(xs[1])` over a
-`list[Literal[True, False]]` takes the `bool` variant over the protocol one.
+`"text:" + mode` takes `str`'s own `__add__`, and `float(xs[1])` over a
+`list[Literal[True, False]]` takes the `bool` variant over the numeric
+ones.
 A local every binding of which stores a literal ranks as the `Literal` of
 those values (`enriched_source`), so `s = "x"; f(s)` at
 `f(Literal["r"])` / `f(str)` picks `str`, and `t = "r"; f(t)` the

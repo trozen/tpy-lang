@@ -12,7 +12,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_view::__next__
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return std::string(v);
+        return std::string(::tpy::__str__(v));
     }
     case S_RESUME_0: {  // after: yield str(v)
         __state = S_DONE;

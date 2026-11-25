@@ -1496,7 +1496,7 @@ inline int32_t Tagged::retag(int32_t x) {
 inline std::string Tagged::view_via_method(const std::vector<int32_t>& xs) {
     std::string v = this->tag;
     int32_t total = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_view_via_method_10(xs, (*this)));
-    return (::tpy::str_concat((::tpy::str_concat(v, " ")), ::tpy::fixed_to_str<int32_t>(total)));
+    return (::tpy::str_concat((::tpy::str_concat(v, " ")), std::string(::tpy::__str__(total))));
 }
 
 // def iter_self(self, big: bool) -> int32:
@@ -1580,7 +1580,7 @@ inline int32_t Tagged::count_direct(Tagged& other) const {
 inline std::string Tagged::view_other(const Rec& r) {
     std::string lbl = r.name;
     int32_t n = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_view_other_13(1, r, (*this)));
-    return (::tpy::str_concat((::tpy::str_concat(lbl, " ")), ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat((::tpy::str_concat(lbl, " ")), std::string(::tpy::__str__(n))));
 }
 
 // def rec(self, k: int32) -> int32:

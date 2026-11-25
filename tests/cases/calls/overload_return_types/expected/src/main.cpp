@@ -30,7 +30,7 @@ void use_dog_result(std::string_view name) {
 // def use_cat_result(lives: int) -> None:
 //     print("Cat lives: " + str(lives))
 void use_cat_result(const ::tpy::BigInt& lives) {
-    std::cout << (::tpy::str_concat("Cat lives: ", (lives).to_string())) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat("Cat lives: ", std::string(::tpy::__str__(lives)))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

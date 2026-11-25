@@ -90,7 +90,7 @@ inline void Service::tick_cache() {
 // def report(self) -> str:
 //     return "req=" + str(RateLimiter._count) + " cache=" + str(CacheStats._count)
 inline std::string Service::report() const {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("req=", ::tpy::fixed_to_str<int32_t>(this->RateLimiter::_count))), " cache=")), ::tpy::fixed_to_str<int32_t>(this->CacheStats::_count)));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("req=", std::string(::tpy::__str__(this->RateLimiter::_count)))), " cache=")), std::string(::tpy::__str__(this->CacheStats::_count))));
 }
 void __tpy_init();
 } // namespace tpyapp::main

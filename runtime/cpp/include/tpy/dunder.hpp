@@ -295,6 +295,78 @@ void __delitem__(T& x, K&& k) {
 // No overload for dict / set: neither defines `__bool__` in Python, so their
 // truth test (and a subclass's `__len__` override) goes through `__len__`.
 
+namespace dunder_detail {
+template<typename T>
+concept member_bool = requires(const T& t) { { t.__bool__() } -> std::convertible_to<bool>; };
+// A class's own `__bool__` of any constness and any result type: an
+// expression test rather than `&T::__bool__`, which an overload set fails.
+template<typename T>
+concept member_bool_any = requires(T& t) { t.__bool__(); } || requires(const T& t) { t.__bool__(); };
+template<typename T>
+concept member_len = requires(const T& t) { t.__len__(); };
+// The text builtins `str`, `String` and `StrView` are, and a class deriving one.
+template<typename T>
+concept text_or_derived = std::derived_from<T, std::string> || std::derived_from<T, std::string_view>;
+// The member `__len__`'s own result, not `::tpy::__len__`'s `int32_t`: a
+// wider length must not narrow to a false truth test.
+template<typename T>
+bool member_len_truth(const T& x) {
+    const auto n = x.__len__();
+    if constexpr (!std::is_unsigned_v<std::remove_cvref_t<decltype(n)>>) {
+        if (n < 0) [[unlikely]] raise_value_error("__len__() should return >= 0");
+    }
+    return n != 0;
+}
+} // namespace dunder_detail
+
+// A `list[bool]` element: a bit proxy class, not a `bool` (libc++'s
+// `const_reference` is a class too; libstdc++'s is plain `bool`).
+template<typename T>
+concept vector_bool_proxy =
+    (std::same_as<T, std::vector<bool>::reference>
+     || std::same_as<T, std::vector<bool>::const_reference>)
+    && (!std::same_as<T, bool>);
+
+// The builtins that define `__bool__`: `bool(x)` renders this one call for
+// every argument. Each overload takes its type exactly, or a class deriving
+// it -- an implicit conversion to `bool`, `BigInt` or `std::string_view`
+// would make every pointer, `std::optional` or class with a conversion
+// operator look Truthy to the concept.
+template<typename T>
+    requires std::same_as<T, bool>
+constexpr bool __bool__(T x) noexcept { return x; }
+template<typename T>
+    requires std::integral<T> && (!std::same_as<T, bool>) && (!std::same_as<T, char>)
+constexpr bool __bool__(T x) noexcept { return x != 0; }
+// A `char` is a one-character str, which has no `__bool__`: its truth test is
+// its `__len__`, and the deletion keeps it from promoting to the int overload.
+bool __bool__(char) = delete;
+template<std::floating_point T>
+constexpr bool __bool__(T x) noexcept { return x != 0; }
+// A class deriving a builtin inherits its truth test unless it defines its
+// own `__bool__`, whatever its constness or result type. The member-forwarding
+// template below takes a const one; a mutating one leaves `::tpy::__bool__`
+// unmatched (sema refuses `bool()` for it, and `truthy()` would fall through
+// to `__len__`, which no TPy program reaches today). The test reads through
+// the base, so a subclass's own `!=` / `empty` is not what runs.
+template<typename T>
+    requires std::derived_from<T, BigInt> && (!dunder_detail::member_bool_any<T>)
+inline bool __bool__(const T& x) { return static_cast<const BigInt&>(x) != 0; }
+// `str` has no `__bool__` of its own in Python: its truth is its length, so a
+// subclass overriding `__len__` is tested by that override.
+template<typename S>
+    requires dunder_detail::text_or_derived<S> && (!dunder_detail::member_bool_any<S>)
+constexpr bool __bool__(const S& x) {
+    if constexpr (dunder_detail::member_len<S>) return dunder_detail::member_len_truth(x);
+    else if constexpr (std::derived_from<S, std::string_view>)
+        return !static_cast<const std::string_view&>(x).empty();
+    else return !static_cast<const std::string&>(x).empty();
+}
+template<std::size_t N>
+constexpr bool __bool__(const char (&x)[N]) noexcept { return !literal_view(x).empty(); }
+template<vector_bool_proxy R>
+constexpr bool __bool__(const R& x) noexcept { return static_cast<bool>(x); }
+
 // Default template: user types that define __bool__() method
 template<typename T>
     requires requires(const T& t) { { t.__bool__() } -> std::convertible_to<bool>; }
@@ -314,10 +386,6 @@ bool __bool__(const T& x) {
 // instantiation also sees overloads declared after this header (`ordered_set`'s
 // in set_ops.hpp), through a derived class's base.
 namespace dunder_detail {
-template<typename T>
-concept member_bool = requires(const T& t) { { t.__bool__() } -> std::convertible_to<bool>; };
-template<typename T>
-concept member_len = requires(const T& t) { t.__len__(); };
 template<typename T>
 concept free_bool = requires(const T& t) { { __bool__(t) } -> std::convertible_to<bool>; };
 template<typename T>
@@ -420,37 +488,85 @@ inline std::string __str__(uint64_t x) { return std::to_string(x); }
 inline std::string __str__(double x) { return format_float(x); }
 inline std::string __str__(float x) { return format_float(static_cast<double>(x)); }
 inline std::string __str__(const std::string& x) { return x; }
+// A temporary's buffer moves into the result instead of being copied.
+inline std::string __str__(std::string&& x) { return std::move(x); }
 // A `String` is an exact match for the formattable fallback below, which would
 // out-rank `const std::string&`'s derived-to-base conversion. Same trap as
 // `__repr__`; the answer is the same either way today, and this keeps it so.
 inline std::string __str__(const String& x) { return x; }
+inline std::string __str__(String&& x) { return std::move(x); }
 inline std::string __str__(std::string_view x) { return std::string(x); }
 // A string literal. The only C-string text overload: every `char*` is a
 // pointer to one char and renders through the pointer overload above.
 template<std::size_t N>
 inline std::string __str__(const char (&x)[N]) { return std::string(literal_view(x)); }
 inline std::string __str__(const BigInt& x) { return x.to_string(); }
+// A `list[bool]` element is a bit proxy, not a `bool`: the fallbacks below
+// would print it as `1`. They exclude it, so this is its only candidate.
+template<vector_bool_proxy R>
+inline std::string __str__(const R& x) { return static_cast<bool>(x) ? "True" : "False"; }
+
+namespace dunder_detail {
+template<typename T>
+concept member_str = requires(const T& t) { t.__str__(); };
+template<typename T>
+concept member_repr = requires(const T& t) { t.__repr__(); };
+// A class deriving `str`, `String` or `StrView`: `str.__str__` is the text
+// itself, so the class's own `__repr__` is not what `str()` of it reads.
+template<typename T>
+concept derived_text = text_or_derived<T>
+    && (!std::same_as<T, std::string>) && (!std::same_as<T, String>)
+    && (!std::same_as<T, std::string_view>);
+// A `__str__` / `__repr__` result is a str, but its C++ form need not be a
+// string: a `char` (a one-character str) or an `Any` holding one is rendered
+// through its own text.
+template<typename R>
+auto as_text(R&& r) {
+    if constexpr (std::convertible_to<R, std::string_view>) return std::forward<R>(r);
+    else return std::string(__str__(r));
+}
+template<typename T>
+concept derived_bigint = std::derived_from<T, BigInt> && (!std::same_as<T, BigInt>);
+} // namespace dunder_detail
 
 // Default template: user types that define __str__() method
 template<typename T>
-    requires requires(const T& t) { t.__str__(); }
+    requires dunder_detail::member_str<T>
 auto __str__(const T& x) {
-    return x.__str__();
+    return dunder_detail::as_text(x.__str__());
 }
+
+// A class deriving a builtin inherits its text unless it defines its own
+// `__str__`, read through the base so the class's generated `operator<<`
+// (its default object form) is not what runs. `int` has no `__str__` of its
+// own in Python (`object.__str__` calls `repr`), so an `int` subclass's own
+// `__repr__` is its text too, through the fallback below.
+template<typename T>
+    requires dunder_detail::derived_text<T> && (!dunder_detail::member_str<T>)
+std::string __str__(const T& x) {
+    if constexpr (std::derived_from<T, std::string_view>)
+        return std::string(static_cast<const std::string_view&>(x));
+    else return static_cast<const std::string&>(x);
+}
+template<typename T>
+    requires dunder_detail::derived_bigint<T> && (!dunder_detail::member_str<T>)
+          && (!dunder_detail::member_repr<T>)
+std::string __str__(const T& x) { return static_cast<const BigInt&>(x).to_string(); }
 
 // Fallback: types with __repr__ but no __str__ (matches Python behavior)
 template<typename T>
-    requires (!requires(const T& t) { t.__str__(); })
-          && requires(const T& t) { t.__repr__(); }
+    requires (!dunder_detail::member_str<T>) && dunder_detail::member_repr<T>
+          && (!dunder_detail::derived_text<T>)
 auto __str__(const T& x) {
-    return x.__repr__();
+    return dunder_detail::as_text(x.__repr__());
 }
 
 // Fallback for formattable types without __str__/__repr__ (e.g. int, double).
 template<typename T>
-    requires (!requires(const T& t) { t.__str__(); })
-          && (!requires(const T& t) { t.__repr__(); })
+    requires (!dunder_detail::member_str<T>) && (!dunder_detail::member_repr<T>)
           && (!object_pointer<T>)
+          && (!vector_bool_proxy<T>)
+          && (!dunder_detail::derived_text<T>) && (!dunder_detail::derived_bigint<T>)
           && std::formattable<T, char>
 auto __str__(const T& x) {
     return std::format("{}", x);
@@ -465,11 +581,12 @@ inline std::string __str__(T x) {
 // Fallback for types with operator<< but no __str__/__repr__/formattable.
 // Excludes enums so the enum __str__ above is the only candidate for them.
 template<typename T>
-    requires (!requires(const T& t) { t.__str__(); })
-          && (!requires(const T& t) { t.__repr__(); })
+    requires (!dunder_detail::member_str<T>) && (!dunder_detail::member_repr<T>)
           && (!std::is_enum_v<T>)
           && (!object_pointer<T>)
+          && (!vector_bool_proxy<T>)
           && (!std::formattable<T, char>)
+          && (!dunder_detail::derived_text<T>) && (!dunder_detail::derived_bigint<T>)
           && requires(std::ostream& os, const T& t) { os << t; }
 std::string __str__(const T& x) {
     std::ostringstream ss;
@@ -520,6 +637,11 @@ inline std::string __repr__(const T& x) {
 // Bool: Python repr uses True/False (not C++ true/false)
 inline std::string_view __repr__(bool x) {
     return x ? "True" : "False";
+}
+// A `list[bool]` element's bit proxy, which the fallbacks below exclude.
+template<vector_bool_proxy R>
+inline std::string_view __repr__(const R& x) {
+    return static_cast<bool>(x) ? "True" : "False";
 }
 
 // None: repr matches str ("None")
@@ -590,6 +712,7 @@ template<typename T>
           && (!std::same_as<T, std::string_view>)
           && (!std::floating_point<T>)
           && (!object_pointer<T>)
+          && (!vector_bool_proxy<T>)
           && std::formattable<T, char>
 auto __repr__(const T& x) {
     return std::format("{}", x);
@@ -617,6 +740,7 @@ template<typename T>
           && (!requires { T::__tpy_class_name__; })
           && (!std::is_enum_v<T>)
           && (!object_pointer<T>)
+          && (!vector_bool_proxy<T>)
           && (!std::formattable<T, char>)
           && requires(std::ostream& os, const T& t) { os << t; }
 std::string __repr__(const T& x) {

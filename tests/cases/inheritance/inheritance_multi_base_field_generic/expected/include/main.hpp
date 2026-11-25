@@ -86,7 +86,7 @@ inline int32_t Combined::n_plus(int32_t delta) const {
 // def combined(self) -> str:
 //     return Label.value + "=" + str(Box.value)
 inline std::string Combined::combined() const {
-    return (::tpy::str_concat((::tpy::str_concat(this->Label::value, "=")), ::tpy::fixed_to_str<int32_t>(this->Box<int32_t>::value)));
+    return (::tpy::str_concat((::tpy::str_concat(this->Label::value, "=")), std::string(::tpy::__str__(this->Box<int32_t>::value))));
 }
 void __tpy_init();
 } // namespace tpyapp::main

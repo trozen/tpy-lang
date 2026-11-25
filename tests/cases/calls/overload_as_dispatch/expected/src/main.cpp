@@ -104,7 +104,7 @@ std::string fmt__int32(int32_t v) {
     if ((!tag.has_value())) {
         tag = "d";
     }
-    return (::tpy::str_concat((*tag), ::tpy::fixed_to_str<int32_t>(v)));
+    return (::tpy::str_concat((*tag), std::string(::tpy::__str__(v))));
 }
 
 // @overload
@@ -114,7 +114,7 @@ std::string fmt__int32__str_None(int32_t v, std::optional<std::string_view> __pa
     if ((!tag.has_value())) {
         tag = "d";
     }
-    return (::tpy::str_concat((*tag), ::tpy::fixed_to_str<int32_t>(v)));
+    return (::tpy::str_concat((*tag), std::string(::tpy::__str__(v))));
 }
 
 // @overload
@@ -122,7 +122,7 @@ std::string fmt__int32__str_None(int32_t v, std::optional<std::string_view> __pa
 std::string label__int32(int32_t v) {
     Tag* tag = nullptr;
     if (true) {
-        return ::tpy::fixed_to_str<int32_t>(v);
+        return std::string(::tpy::__str__(v));
     }
 }
 
@@ -130,9 +130,9 @@ std::string label__int32(int32_t v) {
 // def label(v: int32, tag: Tag | None) -> str: ...
 std::string label__int32__Tag_None(int32_t v, const Tag* tag) {
     if ((tag == nullptr)) {
-        return ::tpy::fixed_to_str<int32_t>(v);
+        return std::string(::tpy::__str__(v));
     }
-    return (::tpy::str_concat(tag->name, ::tpy::fixed_to_str<int32_t>(v)));
+    return (::tpy::str_concat(tag->name, std::string(::tpy::__str__(v))));
 }
 
 // # defaults: an omitted argument takes the implementation's default
@@ -175,7 +175,7 @@ int32_t dflt__str__int32(std::string_view x, int32_t y) {
 std::string wide__int32(int32_t x) {
     if (false) {
     }
-    return (::tpy::str_concat("int ", ::tpy::fixed_to_str<int32_t>(x)));
+    return (::tpy::str_concat("int ", std::string(::tpy::__str__(x))));
 }
 
 // @overload
@@ -297,7 +297,7 @@ std::string pokw__str__int32(std::string_view mode, int32_t x) {
 std::string triple__lit_3(int64_t x) {
     if (false) {
     }
-    return ::tpy::fixed_to_str<int64_t>((::tpy::mul_check<int64_t>(x, static_cast<int64_t>(3000000000))));
+    return std::string(::tpy::__str__((::tpy::mul_check<int64_t>(x, static_cast<int64_t>(3000000000)))));
 }
 
 // @overload
@@ -489,7 +489,7 @@ std::string describe__Cat__int32(const Cat& a, int32_t k) {
     {
         auto n = __match_subject_1.lives;
         if ((k > 0)) {
-            return (::tpy::str_concat("cat ", ::tpy::fixed_to_str<int32_t>(n)));
+            return (::tpy::str_concat("cat ", std::string(::tpy::__str__(n))));
         }
     }
     {
@@ -505,7 +505,7 @@ std::string describe__Owner__int32(Owner& a, int32_t k) {
     {
         auto& p = __match_subject_1.pet;
         p.lives = ::tpy::add_check<int32_t>(p.lives, 1);
-        return (::tpy::str_concat("owner ", ::tpy::fixed_to_str<int32_t>(p.lives)));
+        return (::tpy::str_concat("owner ", std::string(::tpy::__str__(p.lives))));
     }
     ::std::unreachable();
 }
@@ -784,13 +784,13 @@ __coro_run_co run_co() {
 // @overload
 // def wide_cell(x: int32 = 0) -> str: ...
 std::string wide_cell__int32(int32_t x) {
-    return (::tpy::str_concat("wide ", ::tpy::fixed_to_str<int32_t>(x)));
+    return (::tpy::str_concat("wide ", std::string(::tpy::__str__(x))));
 }
 
 // @overload
 // def wide_cell(x: int64 = 3000000000) -> str: ...
 std::string wide_cell__int64(int64_t x) {
-    return (::tpy::str_concat("wide ", ::tpy::fixed_to_str<int64_t>(x)));
+    return (::tpy::str_concat("wide ", std::string(::tpy::__str__(x))));
 }
 
 // # boundary: 127 fits the int8 copy, 128 only the int32 one
@@ -798,25 +798,25 @@ std::string wide_cell__int64(int64_t x) {
 // def edge8(x: int8 = 0) -> str: ...
 std::string edge8__int8(int8_t x) {
     std::string_view y = "s";
-    return (::tpy::str_concat((::tpy::str_concat("edge8 ", ::tpy::fixed_to_str<int8_t>(x))), y));
+    return (::tpy::str_concat((::tpy::str_concat("edge8 ", std::string(::tpy::__str__(x)))), y));
 }
 
 // @overload
 // def edge8(x: int32, y: str) -> str: ...
 std::string edge8__int32__str(int32_t x, std::string_view y) {
-    return (::tpy::str_concat((::tpy::str_concat("edge8 ", ::tpy::fixed_to_str<int32_t>(x))), y));
+    return (::tpy::str_concat((::tpy::str_concat("edge8 ", std::string(::tpy::__str__(x)))), y));
 }
 
 // @overload
 // def past8(x: int8 = 0) -> str: ...
 std::string past8__int8(int8_t x) {
-    return (::tpy::str_concat("past8 ", ::tpy::fixed_to_str<int8_t>(x)));
+    return (::tpy::str_concat("past8 ", std::string(::tpy::__str__(x))));
 }
 
 // @overload
 // def past8(x: int32 = 0) -> str: ...
 std::string past8__int32(int32_t x) {
-    return (::tpy::str_concat("past8 ", ::tpy::fixed_to_str<int32_t>(x)));
+    return (::tpy::str_concat("past8 ", std::string(::tpy::__str__(x))));
 }
 
 // # a written literal out of a Literal set's default width ranks by its value;
@@ -833,53 +833,53 @@ std::string lit_wide__lit_1(int32_t x) {
 // def lit_wide(x: int32) -> str:
 //     return "lit i32 " + str(x)
 std::string lit_wide__int32(int32_t x) {
-    return (::tpy::str_concat("lit i32 ", ::tpy::fixed_to_str<int32_t>(x)));
+    return (::tpy::str_concat("lit i32 ", std::string(::tpy::__str__(x))));
 }
 
 // @dispatch
 // def lit_wide(x: int64) -> str:
 //     return "lit i64 " + str(x)
 std::string lit_wide__int64(int64_t x) {
-    return (::tpy::str_concat("lit i64 ", ::tpy::fixed_to_str<int64_t>(x)));
+    return (::tpy::str_concat("lit i64 ", std::string(::tpy::__str__(x))));
 }
 
 // @overload
 // def rank_cell(x: RankA, y: int32 = 5) -> str: ...
 std::string rank_cell__RankA__int32(const RankA& x, int32_t y) {
-    return (::tpy::str_concat("y", ::tpy::fixed_to_str<int32_t>(y)));
+    return (::tpy::str_concat("y", std::string(::tpy::__str__(y))));
 }
 
 // @overload
 // def rank_cell(x: RankB) -> str: ...
 std::string rank_cell__RankB(const RankB& x) {
     int32_t y = 5;
-    return (::tpy::str_concat("y", ::tpy::fixed_to_str<int32_t>(y)));
+    return (::tpy::str_concat("y", std::string(::tpy::__str__(y))));
 }
 
 // @overload
 // def rank_typed(x: RankA, y: int32 = int32(5)) -> str: ...
 std::string rank_typed__RankA__int32(const RankA& x, int32_t y) {
-    return (::tpy::str_concat("y", ::tpy::fixed_to_str<int32_t>(y)));
+    return (::tpy::str_concat("y", std::string(::tpy::__str__(y))));
 }
 
 // @overload
 // def rank_typed(x: RankB) -> str: ...
 std::string rank_typed__RankB(const RankB& x) {
     int32_t y = 5;
-    return (::tpy::str_concat("y", ::tpy::fixed_to_str<int32_t>(y)));
+    return (::tpy::str_concat("y", std::string(::tpy::__str__(y))));
 }
 
 // @overload
 // def ch(x: char = Q) -> str: ...
 std::string ch__char(char x) {
     int32_t y = 0;
-    return (::tpy::str_concat((::tpy::str_concat("ch ", std::string(::tpy::char_to_str(x)))), ::tpy::fixed_to_str<int32_t>(y)));
+    return (::tpy::str_concat((::tpy::str_concat("ch ", std::string(::tpy::__str__(x)))), std::string(::tpy::__str__(y))));
 }
 
 // @overload
 // def ch(x: char, y: int32) -> str: ...
 std::string ch__char__int32(char x, int32_t y) {
-    return (::tpy::str_concat((::tpy::str_concat("ch ", std::string(::tpy::char_to_str(x)))), ::tpy::fixed_to_str<int32_t>(y)));
+    return (::tpy::str_concat((::tpy::str_concat("ch ", std::string(::tpy::__str__(x)))), std::string(::tpy::__str__(y))));
 }
 
 // # a one-character str literal runs the str variant beside a char one
@@ -912,19 +912,19 @@ std::string by_mode__str(std::string_view m) {
 // @overload
 // def by_const(k: int32 = 0) -> str: ...
 std::string by_const__int32(int32_t k) {
-    return (::tpy::str_concat("const ", ::tpy::fixed_to_str<int32_t>(k)));
+    return (::tpy::str_concat("const ", std::string(::tpy::__str__(k))));
 }
 
 // @overload
 // def by_const(k: str) -> str: ...
 std::string by_const__str(std::string_view k) {
-    return (::tpy::str_concat("const ", std::string(k)));
+    return (::tpy::str_concat("const ", std::string(::tpy::__str__(k))));
 }
 
 // @overload
 // def by_wide(x: int64 = 0) -> str: ...
 std::string by_wide__int64(int64_t x) {
-    return (::tpy::str_concat("wide64 ", ::tpy::fixed_to_str<int64_t>(x)));
+    return (::tpy::str_concat("wide64 ", std::string(::tpy::__str__(x))));
 }
 
 // @overload
@@ -953,13 +953,13 @@ std::string forward(std::string_view s) {
 // @overload
 // def cb(f: Callable[[int32], int32], m: Literal["a", "b"] = "a") -> str: ...
 std::string cb__lit_a__b__v0(const std::function<int32_t(int32_t)>& f, std::string_view m) {
-    return (::tpy::str_concat((::tpy::str_concat("cb ", ::tpy::fixed_to_str<int32_t>(f(2)))), m));
+    return (::tpy::str_concat((::tpy::str_concat("cb ", std::string(::tpy::__str__(f(2))))), m));
 }
 
 // @overload
 // def cb(f: Callable[[int64], int64], m: Literal["a", "b"] = "a") -> str: ...
 std::string cb__lit_a__b__v1(const std::function<int64_t(int64_t)>& f, std::string_view m) {
-    return (::tpy::str_concat((::tpy::str_concat("cb ", ::tpy::fixed_to_str<int64_t>(f(2)))), m));
+    return (::tpy::str_concat((::tpy::str_concat("cb ", std::string(::tpy::__str__(f(2))))), m));
 }
 
 // def inc(n: int32) -> int32:

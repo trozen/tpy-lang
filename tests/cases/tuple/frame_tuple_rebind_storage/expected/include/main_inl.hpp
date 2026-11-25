@@ -1462,7 +1462,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_str_holder::__
     }
     case S_RESUME_1: {  // after: yield name
         __state = S_RESUME_2;
-        return ::tpy::fixed_to_str<int32_t>(std::get<1>(t));
+        return std::string(::tpy::__str__(std::get<1>(t)));
     }
     case S_RESUME_2: {  // after: yield str(t[1])
         __state = S_DONE;

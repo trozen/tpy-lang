@@ -71,6 +71,10 @@ _SELFCHECKS = [
      "a fresh argument binds a written or address-taken parameter as itself, alive to the end of its full-expression"),
     ("test_text_optional_ptr.cpp",
      "optionals, pointers and union pointer alternatives render None or their payload, never an address"),
+    ("test_str_builtin_forms.cpp",
+     "str of a temporary str/String moves its buffer; a list[bool] element renders True/False"),
+    ("test_bool_builtin_forms.cpp",
+     "bool of each builtin is its Python truth value; no conversion makes a pointer, optional or char Truthy"),
     ("test_none_access_host.cpp",
      "a failed None check is caught as NoneAccessError with its message, and keeps the marker through clone/__raise__"),
 ]

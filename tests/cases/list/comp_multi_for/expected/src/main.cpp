@@ -1946,7 +1946,7 @@ void lc_walrus_source() {
     std::vector<char> chars = ({
         std::vector<char> __result;
         for (int32_t i = 0; i < 2; ++i) {
-            if ((!(s = ::tpy::fixed_to_str<int32_t>((::tpy::mul_check<int32_t>(i, 7)))).empty())) {
+            if ((!(s = std::string(::tpy::__str__((::tpy::mul_check<int32_t>(i, 7))))).empty())) {
                 auto& __obj_1 = s;
                 auto __beg_1 = __obj_1.begin();
                 auto __end_1 = __obj_1.end();
@@ -2014,7 +2014,7 @@ void lc_walrus_source() {
     std::cout << "lc walrus source set" << " " << ::tpy::__len__(({
         ::tpy::ordered_set<char> __result;
         for (int32_t i = 0; i < 12; ++i) {
-            if ((!(u = ::tpy::fixed_to_str<int32_t>(i)).empty())) {
+            if ((!(u = std::string(::tpy::__str__(i))).empty())) {
                 auto& __obj_10 = u;
                 auto __beg_10 = __obj_10.begin();
                 auto __end_10 = __obj_10.end();
@@ -2141,7 +2141,7 @@ void lc_sources(const std::vector<std::tuple<C, ::tpy::BigInt>>& pairs, const st
                 const auto& __for_tup_9 = *__beg_3;
                 std::string k = std::get<0>(__for_tup_9);
                 ::tpy::BigInt v = std::get<1>(__for_tup_9);
-                __result.push_back((::tpy::str_concat(k, (v).to_string())));
+                __result.push_back((::tpy::str_concat(k, std::string(::tpy::__str__(v)))));
             }
         }
         std::move(__result);

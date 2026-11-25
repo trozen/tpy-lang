@@ -125,9 +125,9 @@ void test_conversions() {
     float a = 3.14f;
     double b = static_cast<double>(a);
     std::cout << ::tpy::print_float(b) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::float_to_str(static_cast<double>(a)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((a != 0.0f)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((0.0f != 0.0f)) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__bool__(a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__bool__(0.0f)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_comparison() -> None:

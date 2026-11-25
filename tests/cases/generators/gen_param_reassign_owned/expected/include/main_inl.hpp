@@ -129,7 +129,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gstr::__next__() {
         }
         i = ((*__for_i_0))++;
         __state = S_RESUME_0;
-        return std::string(s);
+        return std::string(::tpy::__str__(s));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

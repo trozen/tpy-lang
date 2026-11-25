@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def pair(n: int32) -> tuple[str, str]:
 //     return ("host-" + str(n), "port-" + str(n))
 std::tuple<std::string, std::string> pair(int32_t n) {
-    return std::tuple<std::string, std::string>{(::tpy::str_concat("host-", ::tpy::fixed_to_str<int32_t>(n))), (::tpy::str_concat("port-", ::tpy::fixed_to_str<int32_t>(n)))};
+    return std::tuple<std::string, std::string>{(::tpy::str_concat("host-", std::string(::tpy::__str__(n)))), (::tpy::str_concat("port-", std::string(::tpy::__str__(n))))};
 }
 
 // async def read_addr() -> None:

@@ -144,7 +144,7 @@ void later_use() {
 //         print("bytesview", len(w))
 void views(int32_t k) {
     std::vector<std::string_view> vs = std::vector<std::string_view>{};
-    ::tpy::String s = (::tpy::str_concat("ab", ::tpy::fixed_to_str<int32_t>(k)));
+    ::tpy::String s = (::tpy::str_concat("ab", std::string(::tpy::__str__(k))));
     vs.push_back(s);
     auto& __obj_0 = vs;
     auto __beg_0 = __obj_0.begin();
@@ -176,7 +176,7 @@ void views(int32_t k) {
 //     u: int32 | StrView = s  # tpyc: ok
 //     print("union_view", u)
 void union_view(int32_t k) {
-    ::tpy::String s = (::tpy::str_concat("ab", ::tpy::fixed_to_str<int32_t>(k)));
+    ::tpy::String s = (::tpy::str_concat("ab", std::string(::tpy::__str__(k))));
     ::tpy::Union<std::string_view, int32_t> u = static_cast<std::string_view>(s);
     std::cout << "union_view" << " " << ::tpy::__str__(u) << "\n" << ::tpy::check_signals;
 }

@@ -86,7 +86,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_sv_chars::__next__
         c = *((*__for_it_0))++;
         junk.emplace(::tpyapp::part_borrowed_element::make_junk());
         __state = S_RESUME_0;
-        return (::tpy::str_concat(::tpy::char_to_str(c), ::tpy::fixed_to_str<int32_t>((::tpy::sub_check<int32_t>(::tpy::__len__((*junk)), 20)))));
+        return (::tpy::str_concat(::tpy::char_to_str(c), std::string(::tpy::__str__((::tpy::sub_check<int32_t>(::tpy::__len__((*junk)), 20))))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<N>& obj) {
 template<std::size_t N>
 inline void Box<N>::run() const {
     std::cout << "read" << " " << ::tpy::BigInt(static_cast<uint64_t>(N)) << "\n" << ::tpy::check_signals;
-    std::cout << "ctor" << " " << (::tpy::BigInt(static_cast<uint64_t>(N))).to_string() << "\n" << ::tpy::check_signals;
+    std::cout << "ctor" << " " << std::string(::tpy::__str__(::tpy::BigInt(static_cast<uint64_t>(N)))) << "\n" << ::tpy::check_signals;
     std::cout << "fn" << " " << ::tpyapp::main::pick__int(::tpy::BigInt(static_cast<uint64_t>(N))) << "\n" << ::tpy::check_signals;
     std::cout << "op" << " " << ((::tpy::BigInt(static_cast<uint64_t>(N))) + (::tpy::BigInt(1))) << " " << -(::tpy::BigInt(static_cast<uint64_t>(N))) << " " << ~(::tpy::BigInt(static_cast<uint64_t>(N))) << " " << ::tpy::print_bool((::tpy::BigInt(static_cast<uint64_t>(N)) < 5)) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt x = ::tpy::BigInt(0);

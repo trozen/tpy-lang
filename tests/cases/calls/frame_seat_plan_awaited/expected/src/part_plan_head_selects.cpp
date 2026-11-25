@@ -43,7 +43,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen_or::__next__() {
         }
         ch = ::tpy::unwrap_ref(*(*__for_r_0));
         __state = S_RESUME_0;
-        return std::string(::tpy::char_to_str(ch));
+        return std::string(::tpy::__str__(ch));
     }
     case S_RESUME_1:  // after: yield str(x)
     case S_JOIN_1: {
@@ -54,7 +54,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen_or::__next__() {
         }
         x = ::tpy::unwrap_ref(*(*__for_r_1));
         __state = S_RESUME_1;
-        return ::tpy::fixed_to_str<int32_t>(x);
+        return std::string(::tpy::__str__(x));
     }
     case S_JOIN_2: {
         auto&& __tmp_2 = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(n));

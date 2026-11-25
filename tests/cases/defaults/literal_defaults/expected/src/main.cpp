@@ -18,7 +18,7 @@ std::string free_str(std::string_view mode) {
 // def kwonly(x: int, *, mode: Literal["r", "rb"] = "rb") -> str:  # tpyc: ok
 //     return str(x) + mode
 std::string kwonly(const ::tpy::BigInt& x, std::string_view mode) {
-    return (::tpy::str_concat((x).to_string(), mode));
+    return (::tpy::str_concat(std::string(::tpy::__str__(x)), mode));
 }
 
 // # int Literal, negative member
@@ -51,7 +51,7 @@ std::string optional(std::optional<std::string_view> mode) {
 // def keyword_skip(mode: Literal["r", "rb"] = "rb", n: int = 1) -> str:  # tpyc: ok
 //     return mode + str(n)
 std::string keyword_skip(std::string_view mode, const ::tpy::BigInt& n) {
-    return (::tpy::str_concat(mode, (n).to_string()));
+    return (::tpy::str_concat(mode, std::string(::tpy::__str__(n))));
 }
 
 // # equality narrowing on the defaulted parameter

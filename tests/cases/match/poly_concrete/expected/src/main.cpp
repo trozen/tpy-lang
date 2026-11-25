@@ -19,10 +19,10 @@ std::string classify(const Animal& a) {
         return "dog";
     } else if (const Snake* __mpoly_1 = dynamic_cast<const Snake*>(&__match_subject_1)) {
         const Snake& __case_1 = *__mpoly_1;
-        return (::tpy::str_concat("snake legs=", (__case_1.legs).to_string()));
+        return (::tpy::str_concat("snake legs=", std::string(::tpy::__str__(__case_1.legs))));
     } else if (const Animal* __mpoly_2 = dynamic_cast<const Animal*>(&__match_subject_1)) {
         const Animal& __case_2 = *__mpoly_2;
-        return (::tpy::str_concat("animal legs=", (__case_2.legs).to_string()));
+        return (::tpy::str_concat("animal legs=", std::string(::tpy::__str__(__case_2.legs))));
     }
     ::std::unreachable();
 }

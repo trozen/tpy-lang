@@ -169,7 +169,7 @@ __coro_solo solo(int32_t x) {
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_4 = std::move(__r4).value();
         __sub_4.reset();
-        std::cout << "reads str" << " " << ::tpy::str_slice(std::string(__await_lift_4), ::tpy::BasicSlice{std::nullopt, 2}) << "\n" << ::tpy::check_signals;
+        std::cout << "reads str" << " " << ::tpy::str_slice(std::string(::tpy::__str__(__await_lift_4)), ::tpy::BasicSlice{std::nullopt, 2}) << "\n" << ::tpy::check_signals;
         __sub_5.emplace(__head_arg_5.emplace(Src(i)));
         __state = S_RESUME_5;
         continue;
@@ -179,7 +179,7 @@ __coro_solo solo(int32_t x) {
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_5 = std::move(__r5).value();
         __sub_5.reset();
-        std::cout << "reads eq" << " " << ::tpy::print_bool((__await_lift_5 == (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40)))) << "\n" << ::tpy::check_signals;
+        std::cout << "reads eq" << " " << ::tpy::print_bool((__await_lift_5 == (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40)))) << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }

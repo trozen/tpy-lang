@@ -355,7 +355,7 @@ void main() {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __self.tag = s ? std::make_optional(std::string(*s)) : std::nullopt;
-        __self.either = ::tpy::fixed_to_str<int32_t>(n);
+        __self.either = std::string(::tpy::__str__(n));
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_1;
         continue;
@@ -466,7 +466,7 @@ void Box::method_writes(std::optional<std::string_view> s, std::optional<::tpy::
     this->show("method.union_literal");
     this->either = std::string(text);
     this->show("method.union_view");
-    this->either = ::tpy::fixed_to_str<int32_t>(n);
+    this->either = std::string(::tpy::__str__(n));
     this->show("method.union_conv");
     this->pair = ::tpy::__getitem__(pairs, 0);
     this->n64 = wide;

@@ -71,7 +71,7 @@ void main() {
     ::tpy::ByteArray ba2 = ::tpy::bytearray_from_size(2);
     ::tpy::bytearray_setitem(ba2, 0, 1);
     ::tpy::bytearray_setitem(ba2, 1, 0);
-    auto __tup_4 = std::tuple<bool, bool>{((::tpy::Bytes(ba2))[0] != 0), ((::tpy::Bytes(ba2))[1] != 0)};
+    auto __tup_4 = std::tuple<bool, bool>{::tpy::__bool__(((::tpy::Bytes(ba2))[0] != 0)), ::tpy::__bool__(((::tpy::Bytes(ba2))[1] != 0))};
     bool t = std::get<0>(__tup_4);
     bool f2 = std::get<1>(__tup_4);
     std::cout << ::tpy::print_bool(t) << "\n" << ::tpy::check_signals;

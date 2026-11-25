@@ -42,12 +42,12 @@ std::string kind(const V& v) {
     case 4: {
         auto& __case_4 = std::get<4>(__match_subject_1.value);
         auto& items = __case_4;
-        return (::tpy::str_concat("list/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(items))));
+        return (::tpy::str_concat("list/", std::string(::tpy::__str__(::tpy::__len__(items)))));
     }
     case 2: {
         auto& __case_5 = std::get<2>(__match_subject_1.value);
         auto& d = __case_5;
-        return (::tpy::str_concat("dict/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(d))));
+        return (::tpy::str_concat("dict/", std::string(::tpy::__str__(::tpy::__len__(d)))));
     }
     }
     ::std::unreachable();
@@ -113,12 +113,12 @@ std::string kind_after_null_guard(const V& v) {
     case 4: {
         auto& __case_3 = std::get<4>(__match_subject_1.value);
         auto& items = __case_3;
-        return (::tpy::str_concat("list/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(items))));
+        return (::tpy::str_concat("list/", std::string(::tpy::__str__(::tpy::__len__(items)))));
     }
     case 2: {
         auto& __case_4 = std::get<2>(__match_subject_1.value);
         auto& d = __case_4;
-        return (::tpy::str_concat("dict/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(d))));
+        return (::tpy::str_concat("dict/", std::string(::tpy::__str__(::tpy::__len__(d)))));
     }
     }
     ::std::unreachable();
@@ -141,7 +141,7 @@ std::string flat_kind(const W& v) {
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1);
         auto& n = __case_1;
-        return (::tpy::str_concat("i:", (n).to_string()));
+        return (::tpy::str_concat("i:", std::string(::tpy::__str__(n))));
     }
     case 2: {
         auto& __case_2 = std::get<2>(__match_subject_1);
@@ -195,7 +195,7 @@ std::string kind_guarded(const V& v) {
     case 2: {
         auto& __case_2 = std::get<2>(__match_subject_1.value);
         auto& d = __case_2;
-        return (::tpy::str_concat("dict/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(d))));
+        return (::tpy::str_concat("dict/", std::string(::tpy::__str__(::tpy::__len__(d)))));
     }
     case 3: {
         auto& __case_3 = std::get<3>(__match_subject_1.value);
@@ -212,7 +212,7 @@ std::string kind_guarded(const V& v) {
     case 4: {
         auto& __case_4 = std::get<4>(__match_subject_1.value);
         auto& items = __case_4;
-        return (::tpy::str_concat("list/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(items))));
+        return (::tpy::str_concat("list/", std::string(::tpy::__str__(::tpy::__len__(items)))));
     }
     case 5: {
         auto& __case_5 = std::get<5>(__match_subject_1.value);

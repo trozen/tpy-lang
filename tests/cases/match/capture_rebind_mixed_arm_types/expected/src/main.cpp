@@ -18,7 +18,7 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto& v = __case_0.lives;
-        return (v).to_string();
+        return std::string(::tpy::__str__(v));
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);

@@ -410,7 +410,7 @@ struct __coro_tasks_keep_nothing {
 
 // def __init__(self, n: int32) -> None:
 //     self.text = str(n) * 5
-inline Src::Src(int32_t n) : text((::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 5))) {}
+inline Src::Src(int32_t n) : text((::tpy::str_repeat(std::string(::tpy::__str__(n)), 5))) {}
 
 // def __init__(self, text: StrView) -> None:
 //     self.text = text
@@ -419,7 +419,7 @@ inline W::W(std::string_view text) : text(text) {}
 // def __str__(self) -> str:
 //     return "w:" + str(len(self.text))
 inline std::string W::__str__() const {
-    return (::tpy::str_concat("w:", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(this->text))));
+    return (::tpy::str_concat("w:", std::string(::tpy::__str__(::tpy::__len__(this->text)))));
 }
 
 // def __init__(self, s: readonly[Src]) -> None:

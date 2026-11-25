@@ -77,7 +77,7 @@ inline std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> Pai
     if ((this->current < this->limit)) {
         int32_t val = this->current;
         this->current = ::tpy::add_check<int32_t>(this->current, 1);
-        return std::tuple<std::string, int32_t>{::tpy::fixed_to_str<int32_t>(val), (::tpy::mul_check<int32_t>(val, 10))};
+        return std::tuple<std::string, int32_t>{std::string(::tpy::__str__(val)), (::tpy::mul_check<int32_t>(val, 10))};
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }

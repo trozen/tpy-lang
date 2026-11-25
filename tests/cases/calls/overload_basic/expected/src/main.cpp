@@ -17,7 +17,7 @@ std::string describe__Dog(const Dog& animal) {
 std::string describe__Cat(const Cat& animal) {
     if (false) {
     } else {
-        return (::tpy::str_concat((::tpy::str_concat("Cat with ", (animal.lives).to_string())), " lives"));
+        return (::tpy::str_concat((::tpy::str_concat("Cat with ", std::string(::tpy::__str__(animal.lives)))), " lives"));
     }
 }
 

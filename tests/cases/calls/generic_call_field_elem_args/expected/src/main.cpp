@@ -43,7 +43,7 @@ void main() {
     std::cout << "comp_dict" << " " << ::tpyapp::main::take_dict<int32_t>(1, ::tpy::as_mut_lvalue(({
         ::tpy::ordered_map<std::string, int32_t> __result;
         for (int32_t i = 0; i < 2; ++i) {
-            __result.insert_or_assign(::tpy::fixed_to_str<int32_t>(i), i);
+            __result.insert_or_assign(std::string(::tpy::__str__(i)), i);
         }
         std::move(__result);
     }))) << "\n" << ::tpy::check_signals;

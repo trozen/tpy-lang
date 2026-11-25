@@ -43,7 +43,7 @@ inline Buffer::Buffer() : _items(std::vector<std::string>{}) {}
 // def add(self, s: str) -> None:
 //     self._items.append(str(s))
 inline void Buffer::add(std::string_view s) {
-    this->_items.push_back(std::string(s));
+    this->_items.push_back(std::string(::tpy::__str__(s)));
 }
 
 // def size(self) -> int32:

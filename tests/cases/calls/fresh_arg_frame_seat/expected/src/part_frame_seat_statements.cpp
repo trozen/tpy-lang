@@ -478,7 +478,7 @@ __coro_members members() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        ::tpy::__setitem__((*d), std::string(__await_lift_0), i);
+        ::tpy::__setitem__((*d), std::string(::tpy::__str__(__await_lift_0)), i);
         __sub_1.emplace(__head_arg_1.emplace(Holder(i)));
         __state = S_RESUME_1;
         continue;

@@ -89,7 +89,7 @@ std::string deep3(::tpy::Union<const Box<Box<Box<int32_t>>>*, const Box<Box<Box<
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value.value.value;
-        return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
+        return (::tpy::str_concat("number: ", std::string(::tpy::__str__(n))));
     }
     }
     ::std::unreachable();
@@ -113,7 +113,7 @@ std::string positional_nested(::tpy::Union<const Box<int32_t>*, const Box<std::s
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value;
-        return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
+        return (::tpy::str_concat("number: ", std::string(::tpy::__str__(n))));
     }
     }
     ::std::unreachable();
@@ -192,7 +192,7 @@ std::string check_float(const FloatHolder& h) {
     auto& __match_subject_1 = h;
     if (std::holds_alternative<double>(__match_subject_1.value)) {
         auto f = std::get<double>(__match_subject_1.value);
-        return (::tpy::str_concat("float: ", ::tpy::float_to_str(f)));
+        return (::tpy::str_concat("float: ", std::string(::tpy::__str__(f))));
     } else if (std::holds_alternative<std::string>(__match_subject_1.value)) {
         auto& s = std::get<std::string>(__match_subject_1.value);
         return (::tpy::str_concat("str: ", s));

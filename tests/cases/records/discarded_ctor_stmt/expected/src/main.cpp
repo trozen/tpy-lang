@@ -295,14 +295,14 @@ void conversions(bool flag) {
     ::tpy::BytesView b = ::tpy::bytes_literal("xy", 2);
     std::string_view digits = "12";
     if (flag) {
-        (void)(std::string(s));
+        (void)(std::string(::tpy::__str__(s)));
         (void)(::tpy::String(s));
         (void)(::tpy::Bytes(b));
         (void)(::tpy::ByteArray(b));
         (void)(k);
         (void)(::tpy::BigInt(static_cast<int64_t>(k)));
         (void)(static_cast<double>(k));
-        (void)((k != 0));
+        (void)(::tpy::__bool__(k));
         (void)(::tpy::BigInt::from_str(digits));
         (void)(::tpy::float_from_str(digits));
         (void)(::tpyapp::main::note(k));

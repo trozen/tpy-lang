@@ -668,7 +668,7 @@ void owned_element_view(std::string_view s, const std::tuple<std::string, ::tpy:
     std::string_view z = ::tpyapp::main::sv_first(p);
     std::array<std::string, 8> junk = ::tpy::array_from_index<std::string, 8>([&](std::size_t __i_0) -> std::string {
         int32_t i = int32_t(__i_0);
-        return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        return (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
     });
     std::cout << "owned view" << " " << v << " " << w << " " << n << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
     std::cout << "owned view twins" << " " << x << " " << y << " " << z << "\n" << ::tpy::check_signals;

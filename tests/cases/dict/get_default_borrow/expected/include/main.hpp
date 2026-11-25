@@ -524,7 +524,7 @@ inline W::W(int32_t n)
 //     log.append("mk " + str(n))
 //     self.n = n
 inline N::N(int32_t n, std::vector<std::string>& log) {
-    log.push_back((::tpy::str_concat("mk ", ::tpy::fixed_to_str<int32_t>(n))));
+    log.push_back((::tpy::str_concat("mk ", std::string(::tpy::__str__(n)))));
     this->n = n;
 }
 // # generic body: the result is a copy at every V (a value V as before; a

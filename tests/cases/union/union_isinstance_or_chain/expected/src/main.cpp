@@ -24,7 +24,7 @@ std::string three_member(::tpy::Union<const A*, const B*, const C*> v) {
         return "ab";
     }
     auto& __v = *std::get<const C*>(v);
-    return (::tpy::str_concat("c", (__v.ctag).to_string()));
+    return (::tpy::str_concat("c", std::string(::tpy::__str__(__v.ctag))));
 }
 
 // def and_chain(v: A | B, flag: bool) -> str:

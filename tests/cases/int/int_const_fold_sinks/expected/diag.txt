@@ -1,11 +1,13 @@
 main.py:46: warning: Integer literal 1099511627776 is outside default int32 range; inferring int (BigInt).
 main.py:57: warning: Integer literal 1099511627776 is outside default int32 range; inferring int (BigInt).
-main.py:126: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-main.py:126: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-main.py:126: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-main.py:126: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-main.py:149: warning: Integer literal 1099511627776 is outside default int32 range; inferring int (BigInt).
+main.py:75: warning: Integer literal 1099511627776 is outside default int32 range; the argument is passed as int (BigInt). Write int64(1099511627776) or int(1099511627776) to state the type.
+main.py:75: warning: Integer literal -9223372036854775808 is outside default int32 range; the argument is passed as int (BigInt). Write int64(-9223372036854775808) or int(-9223372036854775808) to state the type.
+main.py:127: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:127: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:127: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:127: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
 main.py:150: warning: Integer literal 1099511627776 is outside default int32 range; inferring int (BigInt).
 main.py:151: warning: Integer literal 1099511627776 is outside default int32 range; inferring int (BigInt).
 main.py:152: warning: Integer literal 1099511627776 is outside default int32 range; inferring int (BigInt).
-main.py:152: warning: Integer literal 1099511627776 is outside default int32 range; inferring int (BigInt).
+main.py:153: warning: Integer literal 1099511627776 is outside default int32 range; inferring int (BigInt).
+main.py:153: warning: Integer literal 1099511627776 is outside default int32 range; inferring int (BigInt).

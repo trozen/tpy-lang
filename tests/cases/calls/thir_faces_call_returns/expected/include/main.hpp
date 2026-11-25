@@ -204,7 +204,7 @@ inline std::unique_ptr<Cloneable> Sheep::replicate() const {
 // def label(self) -> str:
 //     return "sheep" + str(self.gen)
 inline std::string Sheep::label() const {
-    return (::tpy::str_concat("sheep", (this->gen).to_string()));
+    return (::tpy::str_concat("sheep", std::string(::tpy::__str__(this->gen))));
 }
 
 // def __init__(self, v: int) -> None:

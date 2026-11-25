@@ -1,0 +1,33 @@
+main::__tpy_init: uncovered (module initialization)
+main::gs@18:0: uncovered (generic body)
+main::make@23:0: covered (storage: no_proof_required), summary: known
+main::make_owned@27:0: covered (storage: no_proof_required), summary: known
+main::apply@31:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+main::families@35:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::first_text@70:0: covered (storage: no_proof_required), summary: known
+main::first_repr@75:0: covered (storage: no_proof_required), summary: known
+main::loop_text@80:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::bool_elements@88:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::temporaries@102:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::literals@108:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::callables@117:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::user_class@129:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::main@135:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Point.__str__@14:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+main::Point.__init__@10:4: covered (storage: no_proof_required), summary: known
+part_subclass::__tpy_init: uncovered (module initialization)
+part_subclass::gs@74:0: uncovered (generic body)
+part_subclass::show@78:0: covered (storage: no_proof_required), summary: known
+part_subclass::text@82:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+part_subclass::text_forms@105:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+part_subclass::construction@120:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
+part_subclass::main@144:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_subclass::TextRepr.__repr__@22:4: covered (storage: no_proof_required)
+part_subclass::NumRepr.__repr__@27:4: covered (storage: no_proof_required)
+part_subclass::TextStr.__str__@32:4: covered (storage: no_proof_required)
+part_subclass::NumStr.__str__@37:4: covered (storage: no_proof_required)
+part_subclass::MutTextRepr.__repr__@42:4: covered (storage: no_proof_required)
+part_subclass::LetterStr.__str__@55:4: covered (storage: no_proof_required)
+part_subclass::AnyStr.__str__@60:4: uncovered (unsupported return type)
+part_subclass::PlainLetter.__str__@65:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+part_subclass::PlainAny.__repr__@70:4: uncovered (unsupported return type)

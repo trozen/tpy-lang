@@ -26,7 +26,7 @@ namespace tpyapp::main {
 //     return 0
 int32_t main() {
     __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1({"-v", "a", "--x", "hello"});
-    std::cout << (::tpy::str_concat("verbose=", std::string(::tpy::bool_to_str(args.verbose)))) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat("verbose=", std::string(::tpy::__str__(args.verbose)))) << "\n" << ::tpy::check_signals;
     std::cout << (::tpy::str_concat("cmd=", args.cmd)) << "\n" << ::tpy::check_signals;
     if ((args.x.has_value())) {
         std::cout << (::tpy::str_concat("x=", (*args.x))) << "\n" << ::tpy::check_signals;

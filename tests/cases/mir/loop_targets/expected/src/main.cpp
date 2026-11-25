@@ -244,7 +244,7 @@ std::string param_after(std::string_view __param_s) {
         char c = *__beg_0;
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    s += ::tpy::fixed_to_str<int32_t>(n);
+    s += std::string(::tpy::__str__(n));
     return std::string(s);
 }
 

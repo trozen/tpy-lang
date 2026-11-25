@@ -124,7 +124,7 @@ void match_position(int32_t n, std::string_view d) {
     switch (__match_subject_1) {
     case 1: {
         std::cout << "match:" << " " << ::tpy::check_signals;
-        const auto& __tmp_1 = (::tpy::str_concat(::tpy::fixed_to_str<int32_t>(n), d));
+        const auto& __tmp_1 = (::tpy::str_concat(std::string(::tpy::__str__(n)), d));
         std::cout << "l" << __tmp_1 << "m" << "\n" << ::tpy::check_signals;
         break;
     }

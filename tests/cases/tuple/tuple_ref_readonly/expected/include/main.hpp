@@ -62,7 +62,7 @@ inline Container::Container(int32_t value) : value(value) {}
 // def __repr__(self) -> str:
 //     return "Container(value=" + str(self.value) + ")"
 inline std::string Container::__repr__() const {
-    return (::tpy::str_concat((::tpy::str_concat("Container(value=", ::tpy::fixed_to_str<int32_t>(this->value))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat("Container(value=", std::string(::tpy::__str__(this->value)))), ")"));
 }
 
 // def __init__(self, inner: Container) -> None:

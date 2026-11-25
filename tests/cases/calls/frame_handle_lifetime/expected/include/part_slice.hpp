@@ -207,7 +207,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
             out += std::string(::tpy::__str__(c));
         }
         __state = S_DONE;
-        std::string __tpy_async_ret = (::tpy::str_concat((::tpy::str_concat(out, "/")), ::tpy::fixed_to_str<int32_t>(::tpy::__len__((*junk)))));
+        std::string __tpy_async_ret = (::tpy::str_concat((::tpy::str_concat(out, "/")), std::string(::tpy::__str__(::tpy::__len__((*junk))))));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -515,7 +515,7 @@ struct __gen_owned_of_view : public ::tpy::next_iter_mixin<__gen_owned_of_view, 
 
 // def __init__(self, n: int32) -> None:
 //     self.s = "  pad" + str(n) * 20 + "  "
-inline Pad::Pad(int32_t n) : s((::tpy::str_concat((::tpy::str_concat("  pad", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 20)))), "  "))) {}
+inline Pad::Pad(int32_t n) : s((::tpy::str_concat((::tpy::str_concat("  pad", (::tpy::str_repeat(std::string(::tpy::__str__(n)), 20)))), "  "))) {}
 
 // def me(self) -> "Pad":
 //     return self

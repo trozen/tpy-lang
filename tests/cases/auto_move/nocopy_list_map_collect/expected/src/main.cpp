@@ -13,7 +13,7 @@ Resource make_resource(int32_t x) {
 // def make_pair(x: int32) -> Own[tuple[str, Resource]]:
 //     return (str(x), Resource(x))
 std::tuple<std::string, Resource> make_pair(int32_t x) {
-    return std::tuple<std::string, Resource>{::tpy::fixed_to_str<int32_t>(x), Resource(x)};
+    return std::tuple<std::string, Resource>{std::string(::tpy::__str__(x)), Resource(x)};
 }
 
 // def main() -> None:

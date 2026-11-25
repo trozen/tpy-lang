@@ -457,7 +457,7 @@ __genexpr_generators_1_frame<std::invoke_result_t<F_make>> __genexpr_generators_
 //     self.text = str(n) * 40
 inline Src::Src(int32_t n)
     : xs(std::vector<int32_t>{n, (::tpy::add_check<int32_t>(n, 1))}),
-      text((::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 40))) {}
+      text((::tpy::str_repeat(std::string(::tpy::__str__(n)), 40))) {}
 
 // def __init__(self, s: StrView) -> None:
 //     self.n = len(s)

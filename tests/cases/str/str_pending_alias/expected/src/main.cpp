@@ -58,7 +58,7 @@ void test_chain_alias_promote() {
 void test_reassign_from_owned_pending(bool cond) {
     std::string result = "ok";
     if (cond) {
-        std::string s = ::tpy::fixed_to_str<int32_t>(123);
+        std::string s = std::string(::tpy::__str__(123));
         result = s;
     }
     std::cout << result << "\n" << ::tpy::check_signals;
@@ -73,7 +73,7 @@ void test_reassign_from_owned_pending(bool cond) {
 std::string test_reassign_from_owned_pending_return(bool cond) {
     std::string result = "ok";
     if (cond) {
-        std::string s = ::tpy::fixed_to_str<int32_t>(123);
+        std::string s = std::string(::tpy::__str__(123));
         result = s;
     }
     return result;
@@ -104,7 +104,7 @@ void test_source_promotes_alias() {
 void test_owned_reassign_no_backprop() {
     std::string_view a = "x";
     std::string b = std::string(a);
-    b = ::tpy::fixed_to_str<int32_t>(99);
+    b = std::string(::tpy::__str__(99));
     std::cout << a << "\n" << ::tpy::check_signals;
     std::cout << b << "\n" << ::tpy::check_signals;
 }

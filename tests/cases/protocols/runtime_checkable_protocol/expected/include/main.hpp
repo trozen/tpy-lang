@@ -321,7 +321,7 @@ std::string free_fn(T_x&& x) {
         return x.speak();
     }
     if constexpr (Walker<std::remove_cvref_t<T_x>>) {
-        return (::tpy::str_concat("walks ", ::tpy::fixed_to_str<int32_t>(x.walk())));
+        return (::tpy::str_concat("walks ", std::string(::tpy::__str__(x.walk()))));
     }
 }
 // # inherited: an undecorated child of a decorated protocol
@@ -336,7 +336,7 @@ std::string inherited(T_x&& x) {
         return x.shout();
     }
     if constexpr (Walker<std::remove_cvref_t<T_x>>) {
-        return (::tpy::str_concat("walks ", ::tpy::fixed_to_str<int32_t>(x.walk())));
+        return (::tpy::str_concat("walks ", std::string(::tpy::__str__(x.walk()))));
     }
 }
 // # generic: a decorated generic protocol, tested bare

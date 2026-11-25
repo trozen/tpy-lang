@@ -122,7 +122,7 @@ int64_t widen_twin(int64_t x) {
 std::string fl(const ::tpy::Union<double, std::string>& x) {
     if (std::holds_alternative<double>(x)) {
         const auto& __x = std::get<double>(x);
-        return (::tpy::str_concat("float ", ::tpy::float_to_str(__x)));
+        return (::tpy::str_concat("float ", std::string(::tpy::__str__(__x))));
     }
     const auto& __x = std::get<std::string>(x);
     return __x;
@@ -135,7 +135,7 @@ std::string fl(const ::tpy::Union<double, std::string>& x) {
 std::string bl(const ::tpy::Union<bool, std::string>& x) {
     if (std::holds_alternative<bool>(x)) {
         const auto& __x = std::get<bool>(x);
-        return (::tpy::str_concat("bool ", std::string(::tpy::bool_to_str(__x))));
+        return (::tpy::str_concat("bool ", std::string(::tpy::__str__(__x))));
     }
     const auto& __x = std::get<std::string>(x);
     return __x;
@@ -247,11 +247,11 @@ void main() {
     std::cout << "ptr-alias" << " " << ::tpyapp::part_params::bump(::tpy::Union<Base*, int32_t*>{&(static_cast<Base&>(s))}) << " " << s.n << "\n" << ::tpy::check_signals;
     Sub s2 = Sub(10);
     std::cout << "ptr-alias-twin" << " " << ::tpyapp::part_params::bump_twin(s2) << " " << s2.n << "\n" << ::tpy::check_signals;
-    ::tpy::String t = (::tpy::str_concat("x", ::tpy::fixed_to_str<int32_t>(3)));
+    ::tpy::String t = (::tpy::str_concat("x", std::string(::tpy::__str__(3))));
     std::cout << "value-str" << " " << ::tpyapp::part_params::gs(::tpy::Union<::tpy::BigInt, std::string>(std::in_place_type<std::string>, t)) << " " << ::tpyapp::part_params::gs(::tpy::Union<::tpy::BigInt, std::string>(std::in_place_type<std::string>, t)) << "\n" << ::tpy::check_signals;
     std::cout << "value-str-twin" << " " << ::tpyapp::part_params::gs_twin(t) << "\n" << ::tpy::check_signals;
     std::cout << "value-lit" << " " << ::tpyapp::part_params::vo(::tpy::Union<std::monostate, int32_t, std::string>(3)) << " " << ::tpyapp::part_params::vo(::tpy::Union<std::monostate, int32_t, std::string>(std::in_place_type<std::string>, "abc")) << " " << ::tpyapp::part_params::vo(::tpy::Union<std::monostate, int32_t, std::string>(std::monostate{})) << "\n" << ::tpy::check_signals;
-    std::cout << "value-fresh" << " " << ::tpyapp::part_params::vo(::tpy::Union<std::monostate, int32_t, std::string>(std::in_place_type<std::string>, (::tpy::str_concat("x", ::tpy::fixed_to_str<int32_t>(4))))) << "\n" << ::tpy::check_signals;
+    std::cout << "value-fresh" << " " << ::tpyapp::part_params::vo(::tpy::Union<std::monostate, int32_t, std::string>(std::in_place_type<std::string>, (::tpy::str_concat("x", std::string(::tpy::__str__(4)))))) << "\n" << ::tpy::check_signals;
     std::cout << "value-lit-twin" << " " << ::tpyapp::part_params::vo_twin(3) << "\n" << ::tpy::check_signals;
     uint32_t n = 7;
     std::cout << "value-widen" << " " << ::tpy::print_bool(::tpyapp::part_params::widen(::tpy::Union<int64_t, std::string>(static_cast<int64_t>(n)))) << "\n" << ::tpy::check_signals;

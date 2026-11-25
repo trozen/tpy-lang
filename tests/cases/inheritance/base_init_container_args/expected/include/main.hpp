@@ -105,7 +105,7 @@ inline Base::Base(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs)
 
 // def __init__(self, s: StrView) -> None:
 //     self.s = str(s)
-inline Label::Label(std::string_view s) : s(std::string(s)) {}
+inline Label::Label(std::string_view s) : s(std::string(::tpy::__str__(s))) {}
 
 // def __init__(self, b: bytearray, xs: list[int32]) -> None:
 //     super().__init__(b, xs)  # tpyc: ok
@@ -117,7 +117,7 @@ inline Child::Child(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs)
 // def __init__(self, n: int32) -> None:
 //     # a conversion at a `StrView` base parameter
 //     super().__init__(str(n))  # tpyc: ok
-inline Numbered::Numbered(int32_t n) : Label(::tpy::fixed_to_str<int32_t>(n)) {}
+inline Numbered::Numbered(int32_t n) : Label(std::string(::tpy::__str__(n))) {}
 
 // def __init__(self) -> None:
 //     # a str literal at a `StrView` base parameter

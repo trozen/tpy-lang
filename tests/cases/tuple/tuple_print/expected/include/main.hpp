@@ -41,7 +41,7 @@ inline Pair::Pair(int32_t a, std::string_view b) : data(std::tuple<int32_t, std:
 // def __str__(self) -> str:
 //     return "Pair((" + str(self.data[0]) + ", '" + self.data[1] + "'))"
 inline std::string Pair::__str__() const {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Pair((", ::tpy::fixed_to_str<int32_t>(std::get<0>(this->data)))), ", '")), std::get<1>(this->data))), "'))"));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Pair((", std::string(::tpy::__str__(std::get<0>(this->data))))), ", '")), std::get<1>(this->data))), "'))"));
 }
 void __tpy_init();
 } // namespace tpyapp::main

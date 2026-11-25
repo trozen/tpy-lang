@@ -295,7 +295,7 @@ template <::tpystd::typing::Iterable<char> T_cs>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        out += std::string(::tpy::char_to_str(c));
+        out += std::string(::tpy::__str__(c));
         __state = S_JOIN_0;
         continue;
     }

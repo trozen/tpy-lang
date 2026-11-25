@@ -931,7 +931,7 @@ inline TwoHop::TwoHop(int32_t i) : xs(std::vector<Box>{Box(i), Box((::tpy::add_c
 //     self.s = "abcdefghijklmnopqrstuvwxyz0123456789" + str(i)
 //     self.n = i
 inline Named::Named(int32_t i)
-    : s((::tpy::str_concat("abcdefghijklmnopqrstuvwxyz0123456789", ::tpy::fixed_to_str<int32_t>(i)))),
+    : s((::tpy::str_concat("abcdefghijklmnopqrstuvwxyz0123456789", std::string(::tpy::__str__(i))))),
       n(i) {}
 
 // def __init__(self, lab: StrView) -> None:

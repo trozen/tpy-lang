@@ -22,7 +22,7 @@ std::string unwrap(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x)
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value;
-        return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
+        return (::tpy::str_concat("number: ", std::string(::tpy::__str__(n))));
     }
     }
     ::std::unreachable();
@@ -69,7 +69,7 @@ std::string mixed(::tpy::Union<const Pair<int32_t>*, const Pair<std::string>*> x
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.first;
         auto& s = __case_1.second;
-        return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(n), " / ")), s));
+        return (::tpy::str_concat((::tpy::str_concat(std::string(::tpy::__str__(n)), " / ")), s));
     }
     }
     ::std::unreachable();

@@ -356,7 +356,7 @@ inline Cell::Cell(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
 //     self.s = "vpad" + str(n) * 20
-inline VPad::VPad(int32_t n) : s((::tpy::str_concat("vpad", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 20))))) {}
+inline VPad::VPad(int32_t n) : s((::tpy::str_concat("vpad", (::tpy::str_repeat(std::string(::tpy::__str__(n)), 20))))) {}
 
 // def trimmed(self) -> StrView:
 //     return self.s

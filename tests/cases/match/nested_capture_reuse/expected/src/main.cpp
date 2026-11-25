@@ -52,7 +52,7 @@ std::string relabel(const Cat& a, const Cat& b) {
                 v = __match_subject_3.lives;
             }
         }
-        return (v).to_string();
+        return std::string(::tpy::__str__(v));
     }
     ::std::unreachable();
     return "?";

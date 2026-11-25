@@ -147,7 +147,7 @@ int32_t depth_nested(const Tree& t, int32_t offset) {
 std::string eval_expr(const Expr& e) {
     if (std::holds_alternative<int32_t>(e.value)) {
         const auto& __e = std::get<int32_t>(e.value);
-        return ::tpy::fixed_to_str<int32_t>(__e);
+        return std::string(::tpy::__str__(__e));
     } else if (std::holds_alternative<std::string>(e.value)) {
         const auto& __e = std::get<std::string>(e.value);
         return __e;

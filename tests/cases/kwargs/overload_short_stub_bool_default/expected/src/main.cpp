@@ -20,7 +20,7 @@ std::string greet__Cat__bool(const Cat& a, bool loud) {
     std::string_view suffix = ((loud) ? (std::string_view("!")) : (std::string_view(".")));
     if (false) {
     }
-    return (::tpy::str_concat((a.lives).to_string(), suffix));
+    return (::tpy::str_concat(std::string(::tpy::__str__(a.lives)), suffix));
 }
 
 // def main() -> None:

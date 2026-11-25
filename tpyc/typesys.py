@@ -8042,6 +8042,22 @@ def is_protocol_type(typ: TpyType) -> bool:
     return isinstance(typ, NominalType) and typ.is_protocol
 
 
+def bare_protocol_param(declared: 'TpyType | None') -> 'NominalType | None':
+    """The protocol a parameter declared `declared` takes, when it names
+    one without type arguments (`Stringable`, `Sized`; not
+    `Iterable[int]`): a parameter that constrains nothing about the
+    argument's own type."""
+    t = declared
+    while t is not None:
+        peeled = unwrap_qualifiers(t)
+        if peeled is t:
+            break
+        t = peeled
+    if not is_protocol_type(t) or t.type_args:
+        return None
+    return t
+
+
 def property_getter_returns_storage_ref(rt: 'TpyType | None') -> bool:
     """A property GETTER's return convention differs from a plain method's for
     the two pointer-repr shapes: the getter hands back the FIELD'S STORAGE by
@@ -10002,6 +10018,12 @@ def binds_runtime_symbol(fn) -> bool:
         # An `@export(binding="C")` function carries a `native_name` for the
         # exported C symbol but has a real body the function driver emits.
         return False
+    if (isinstance(fn, FunctionInfo) and fn.is_constructor
+            and fn.canonical_fi is not None and fn.canonical_fi is not fn):
+        # A construction bound to a binding's `__init__` -- a native class's
+        # own, or the one a builtin's subclass inherits -- runs that type's
+        # C++ constructors, which take the arguments as they declare them.
+        return binds_runtime_symbol(fn.canonical_fi)
     return bool(fn.native_function or fn.native_name is not None
                 or fn.cpp_template is not None)
 

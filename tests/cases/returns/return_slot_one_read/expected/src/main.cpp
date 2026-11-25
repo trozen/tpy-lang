@@ -592,7 +592,7 @@ std::string json_text(const Json& j) {
     }
     case 3: {
         auto& __case_1 = std::get<3>(__match_subject_1.value);
-        return (::tpy::str_concat("list", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(__case_1))));
+        return (::tpy::str_concat("list", std::string(::tpy::__str__(::tpy::__len__(__case_1)))));
     }
     default: {
         return "other";

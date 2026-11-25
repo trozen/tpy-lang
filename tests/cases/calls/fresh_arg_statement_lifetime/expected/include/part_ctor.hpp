@@ -217,7 +217,7 @@ inline After::After()
 
 // def __init__(self) -> None:
 //     self.name = "box-" + str(len("abcdef"))
-inline Box::Box() : name((::tpy::str_concat("box-", ::tpy::fixed_to_str<int32_t>(::tpy::__len__("abcdef"))))) {}
+inline Box::Box() : name((::tpy::str_concat("box-", std::string(::tpy::__str__(::tpy::__len__("abcdef")))))) {}
 
 // def tag(self) -> StrView:
 //     return self.name

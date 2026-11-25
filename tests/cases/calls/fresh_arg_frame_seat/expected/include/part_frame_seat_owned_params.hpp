@@ -429,6 +429,6 @@ struct __coro_consumed {
 //     self.text = "item-" + str(n) * 3
 inline Src::Src(int32_t n)
     : n(n),
-      text((::tpy::str_concat("item-", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 3))))) {}
+      text((::tpy::str_concat("item-", (::tpy::str_repeat(std::string(::tpy::__str__(n)), 3))))) {}
 void __tpy_init();
 } // namespace tpyapp::part_frame_seat_owned_params

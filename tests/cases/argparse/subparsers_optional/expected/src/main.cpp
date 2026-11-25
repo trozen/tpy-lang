@@ -19,7 +19,7 @@ namespace tpyapp::main {
 //     return 0
 int32_t main() {
     __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(std::vector<std::string>{});
-    std::cout << (::tpy::str_concat("cmd is None: ", std::string(::tpy::bool_to_str((!args.cmd.has_value()))))) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat("cmd is None: ", std::string(::tpy::__str__((!args.cmd.has_value()))))) << "\n" << ::tpy::check_signals;
     return 0;
 }
 

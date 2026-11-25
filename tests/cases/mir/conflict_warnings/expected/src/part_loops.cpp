@@ -7,7 +7,7 @@ namespace tpyapp::part_loops {
 // def mk(n: int32) -> str:
 //     return str(n) * 30
 std::string mk(int32_t n) {
-    return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 30));
+    return (::tpy::str_repeat(std::string(::tpy::__str__(n)), 30));
 }
 
 // # store in the body, read after a for loop: the last pass's buffer is freed
@@ -340,7 +340,7 @@ void external_loop(Buf& b, int32_t k) {
     int32_t __stop_0 = k;
     for (int32_t i = 0; i < __stop_0; ++i) {
         t = &*(__slot_2 = Tok(b.s, i));
-        b.s = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        b.s = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
     }
     std::cout << "external_loop" << " " << ::tpy::__getitem__(t->s, 0) << "\n" << ::tpy::check_signals;
 }
@@ -375,7 +375,7 @@ void local_field_loop(int32_t k) {
     int32_t __stop_0 = k;
     for (int32_t i = 0; i < __stop_0; ++i) {
         t = &*(__slot_2 = Tok(b.s, i));
-        b.s = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        b.s = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
     }
     std::cout << "local_field_loop" << " " << ::tpy::__getitem__(t->s, 0) << "\n" << ::tpy::check_signals;
 }
@@ -396,7 +396,7 @@ void external_loop_reset(Buf& b, int32_t k) {
     int32_t __stop_0 = k;
     for (int32_t i = 0; i < __stop_0; ++i) {
         t = &*(__slot_2 = Tok(b.s, i));
-        b.s = (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
+        b.s = (::tpy::str_repeat(std::string(::tpy::__str__(i)), 40));
         t = &*(__slot_3 = Tok("safe", 0));
     }
     std::cout << "external_loop_reset" << " " << ::tpy::__getitem__(t->s, 0) << "\n" << ::tpy::check_signals;

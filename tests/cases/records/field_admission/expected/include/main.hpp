@@ -933,7 +933,7 @@ inline Pt::Pt(int32_t x) : x(x) {}
 // def __str__(self) -> str:
 //     return "Pt(" + str(self.x) + ")"
 inline std::string Pt::__str__() const {
-    return (::tpy::str_concat((::tpy::str_concat("Pt(", ::tpy::fixed_to_str<int32_t>(this->x))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat("Pt(", std::string(::tpy::__str__(this->x)))), ")"));
 }
 
 // def show(self) -> None:

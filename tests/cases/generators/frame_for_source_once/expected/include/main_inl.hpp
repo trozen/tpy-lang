@@ -54,12 +54,12 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_named_src::__next_
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_RESUME_1;
-            return (::tpy::str_concat("named total ", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__((*cells), 0).v, ::tpy::__getitem__((*cells), 1).v)))));
+            return (::tpy::str_concat("named total ", std::string(::tpy::__str__((::tpy::add_check<int32_t>(::tpy::__getitem__((*cells), 0).v, ::tpy::__getitem__((*cells), 1).v))))));
         }
         c = &(*((*__for_it_0))++);
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("named ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("named ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -90,7 +90,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_param_src::__next_
         c = &(*((*__for_it_0))++);
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("param ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("param ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -121,7 +121,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_subscript_src::__n
         c = &(*((*__for_it_0))++);
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("subscript ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("subscript ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -152,7 +152,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_accessor_src::__ne
         c = &(*((*__for_it_0))++);
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("accessor ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("accessor ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -183,7 +183,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_property_src::__ne
         c = &(*((*__for_it_0))++);
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("property ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("property ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -207,7 +207,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_own_call_src::__ne
     }
     case S_RESUME_0: {  // after: yield "own_call " + str(c.v)
         __state = S_RESUME_1;
-        return (::tpy::str_concat("own_call churn ", ::tpy::fixed_to_str<int32_t>(::tpyapp::main::churn())));
+        return (::tpy::str_concat("own_call churn ", std::string(::tpy::__str__(::tpyapp::main::churn()))));
     }
     case S_RESUME_1:  // after: yield "own_call churn " + str(churn())
     case S_JOIN_0: {
@@ -217,7 +217,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_own_call_src::__ne
         }
         c = &(*((*__for_it_0))++);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("own_call ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("own_call ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -242,7 +242,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_copy_src::__next__
     }
     case S_RESUME_0: {  // after: yield "copy " + str(c.v)
         __state = S_RESUME_1;
-        return (::tpy::str_concat("copy churn ", ::tpy::fixed_to_str<int32_t>(::tpyapp::main::churn())));
+        return (::tpy::str_concat("copy churn ", std::string(::tpy::__str__(::tpyapp::main::churn()))));
     }
     case S_RESUME_1:  // after: yield "copy churn " + str(churn())
     case S_JOIN_0: {
@@ -253,7 +253,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_copy_src::__next__
         c = &(*((*__for_it_0))++);
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("copy ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("copy ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -277,7 +277,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_literal_src::__nex
     }
     case S_RESUME_0: {  // after: yield "literal " + str(c.v)
         __state = S_RESUME_1;
-        return (::tpy::str_concat("literal churn ", ::tpy::fixed_to_str<int32_t>(::tpyapp::main::churn())));
+        return (::tpy::str_concat("literal churn ", std::string(::tpy::__str__(::tpyapp::main::churn()))));
     }
     case S_RESUME_1:  // after: yield "literal churn " + str(churn())
     case S_JOIN_0: {
@@ -287,7 +287,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_literal_src::__nex
         }
         c = &(*((*__for_it_0))++);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("literal ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("literal ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -320,12 +320,12 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_slice_mut_src::__n
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_RESUME_1;
-            return (::tpy::str_concat("slice_mut total ", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__((*cells), 1).v, ::tpy::__getitem__((*cells), 2).v)))));
+            return (::tpy::str_concat("slice_mut total ", std::string(::tpy::__str__((::tpy::add_check<int32_t>(::tpy::__getitem__((*cells), 1).v, ::tpy::__getitem__((*cells), 2).v))))));
         }
         c = &(*((*__for_it_0))++);
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("slice_mut ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("slice_mut ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -349,7 +349,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_slice_const_src::_
     }
     case S_RESUME_0: {  // after: yield "slice_const " + str(c.v)
         __state = S_RESUME_1;
-        return (::tpy::str_concat("slice_const churn ", ::tpy::fixed_to_str<int32_t>(::tpyapp::main::churn())));
+        return (::tpy::str_concat("slice_const churn ", std::string(::tpy::__str__(::tpyapp::main::churn()))));
     }
     case S_RESUME_1:  // after: yield "slice_const churn " + str(churn())
     case S_JOIN_0: {
@@ -359,7 +359,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_slice_const_src::_
         }
         c = &(*((*__for_it_0))++);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("slice_const ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("slice_const ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -394,12 +394,12 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_ternary_lvalues_sr
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_RESUME_1;
-            return (::tpy::str_concat("ternary_lv total ", ::tpy::fixed_to_str<int32_t>(::tpy::__getitem__((*xs), 0).v)));
+            return (::tpy::str_concat("ternary_lv total ", std::string(::tpy::__str__(::tpy::__getitem__((*xs), 0).v))));
         }
         c = &(*((*__for_it_0))++);
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("ternary_lv ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("ternary_lv ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -423,7 +423,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_ternary_temps_src:
     }
     case S_RESUME_0: {  // after: yield "ternary_tmp " + str(c.v)
         __state = S_RESUME_1;
-        return (::tpy::str_concat("ternary_tmp churn ", ::tpy::fixed_to_str<int32_t>(::tpyapp::main::churn())));
+        return (::tpy::str_concat("ternary_tmp churn ", std::string(::tpy::__str__(::tpyapp::main::churn()))));
     }
     case S_RESUME_1:  // after: yield "ternary_tmp churn " + str(churn())
     case S_JOIN_0: {
@@ -433,7 +433,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_ternary_temps_src:
         }
         c = &(*((*__for_it_0))++);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("ternary_tmp ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("ternary_tmp ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -460,7 +460,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_walrus_src::__next
     }
     case S_RESUME_0: {  // after: yield "walrus " + str(c.v)
         __state = S_RESUME_1;
-        return (::tpy::str_concat("walrus churn ", ::tpy::fixed_to_str<int32_t>(::tpyapp::main::churn())));
+        return (::tpy::str_concat("walrus churn ", std::string(::tpy::__str__(::tpyapp::main::churn()))));
     }
     case S_RESUME_2: {  // after: yield "walrus target " + str(ws[0].v + ws[1].v)
         __state = S_DONE;
@@ -470,12 +470,12 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_walrus_src::__next
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
             __state = S_RESUME_2;
-            return (::tpy::str_concat("walrus target ", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__((*ws), 0).v, ::tpy::__getitem__((*ws), 1).v)))));
+            return (::tpy::str_concat("walrus target ", std::string(::tpy::__str__((::tpy::add_check<int32_t>(::tpy::__getitem__((*ws), 0).v, ::tpy::__getitem__((*ws), 1).v))))));
         }
         c = &(*((*__for_it_0))++);
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("walrus ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("walrus ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -526,7 +526,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_call_src::__ne
     }
     case S_RESUME_0: {  // after: yield "gen_call " + str(c.v)
         __state = S_RESUME_1;
-        return (::tpy::str_concat("gen_call churn ", ::tpy::fixed_to_str<int32_t>(::tpyapp::main::churn())));
+        return (::tpy::str_concat("gen_call churn ", std::string(::tpy::__str__(::tpyapp::main::churn()))));
     }
     case S_RESUME_1:  // after: yield "gen_call churn " + str(churn())
     case S_JOIN_0: {
@@ -537,7 +537,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_call_src::__ne
         }
         c.emplace(::tpy::own_bind(*(*__for_r_0)));
         __state = S_RESUME_0;
-        return (::tpy::str_concat("gen_call ", ::tpy::fixed_to_str<int32_t>((*c).v)));
+        return (::tpy::str_concat("gen_call ", std::string(::tpy::__str__((*c).v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -610,14 +610,14 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_enumerate_cells_sr
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
             __state = S_RESUME_1;
-            return (::tpy::str_concat("enumerate total ", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__((*cells), 0).v, ::tpy::__getitem__((*cells), 1).v)))));
+            return (::tpy::str_concat("enumerate total ", std::string(::tpy::__str__((::tpy::add_check<int32_t>(::tpy::__getitem__((*cells), 0).v, ::tpy::__getitem__((*cells), 1).v))))));
         }
         __for_tup_2 = &(::tpy::unwrap_ref(*(*__for_r_0)));
         i = std::get<0>((*__for_tup_2));
         c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>((*__for_tup_2)))));
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
-        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("enumerate ", ::tpy::fixed_to_str<int32_t>(i))), " ")), ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("enumerate ", std::string(::tpy::__str__(i)))), " ")), std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -640,7 +640,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_reversed_temp_src:
     }
     case S_RESUME_0: {  // after: yield "reversed_tmp " + str(c.v)
         __state = S_RESUME_1;
-        return (::tpy::str_concat("reversed_tmp churn ", ::tpy::fixed_to_str<int32_t>(::tpyapp::main::churn())));
+        return (::tpy::str_concat("reversed_tmp churn ", std::string(::tpy::__str__(::tpyapp::main::churn()))));
     }
     case S_RESUME_1:  // after: yield "reversed_tmp churn " + str(churn())
     case S_JOIN_0: {
@@ -651,7 +651,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_reversed_temp_src:
         }
         c = &(::tpy::unwrap_ref(*(*__for_r_0)));
         __state = S_RESUME_0;
-        return (::tpy::str_concat("reversed_tmp ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("reversed_tmp ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -931,7 +931,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_nested_src::__next
         c = &(*((*__for_it_1))++);
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("nested ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("nested ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -956,7 +956,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_arg_temp_src::__ne
     }
     case S_RESUME_0: {  // after: yield "arg_temp " + str(c.v)
         __state = S_RESUME_1;
-        return (::tpy::str_concat("arg_temp churn ", ::tpy::fixed_to_str<int32_t>(::tpyapp::main::churn())));
+        return (::tpy::str_concat("arg_temp churn ", std::string(::tpy::__str__(::tpyapp::main::churn()))));
     }
     case S_RESUME_1:  // after: yield "arg_temp churn " + str(churn())
     case S_JOIN_0: {
@@ -966,7 +966,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_arg_temp_src::__ne
         }
         c = &(*((*__for_it_0))++);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("arg_temp ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("arg_temp ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -1268,7 +1268,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Bag_walk::__next__
         c = &(*((*__for_it_0))++);
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("field ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("field ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -1308,7 +1308,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Bag_pairs::__next_
         y = std::get<1>((*__for_tup_0));
         c->v = ::tpy::add_check<int32_t>(c->v, y);
         __state = S_RESUME_0;
-        return (::tpy::str_concat("method_zip ", ::tpy::fixed_to_str<int32_t>(c->v)));
+        return (::tpy::str_concat("method_zip ", std::string(::tpy::__str__(c->v))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

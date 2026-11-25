@@ -67,7 +67,7 @@ int8_t negative(int8_t n) {
 // def bracket(ch: char = "[") -> str:
 //     return str(ch)
 std::string bracket(char ch) {
-    return std::string(::tpy::char_to_str(ch));
+    return std::string(::tpy::__str__(ch));
 }
 
 // def raw(b: bytes = b"ab") -> int32:

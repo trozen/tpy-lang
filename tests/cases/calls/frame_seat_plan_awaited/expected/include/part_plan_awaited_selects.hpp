@@ -93,7 +93,7 @@ template <::tpystd::typing::Iterable<char> T_xs>
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             char x = ::tpy::unwrap_ref(*__r_1);
-            out += std::string(::tpy::char_to_str(x));
+            out += std::string(::tpy::__str__(x));
         }
         __state = S_DONE;
         std::string __tpy_async_ret = (::tpy::str_concat((::tpy::str_concat(out, "|")), ::tpy::str_slice(::tpy::__getitem__((*junk), 0), ::tpy::BasicSlice{std::nullopt, 2})));

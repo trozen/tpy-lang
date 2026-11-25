@@ -99,7 +99,7 @@ int32_t x_or(const Point* p, int32_t fallback) {
 }
 
 std::string scaled(int32_t v, std::optional<int32_t> by, std::optional<std::string_view> tag) {
-    std::string s = ::tpy::fixed_to_str<int32_t>((::tpy::mul_check<int32_t>(v, (((!by.has_value())) ? (1) : ((*by))))));
+    std::string s = std::string(::tpy::__str__((::tpy::mul_check<int32_t>(v, (((!by.has_value())) ? (1) : ((*by)))))));
     if ((!tag.has_value())) {
         return s;
     }

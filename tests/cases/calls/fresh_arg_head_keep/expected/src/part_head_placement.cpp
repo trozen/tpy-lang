@@ -174,7 +174,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_nested_gen::__next__() {
             return (::tpy::str_repeat("y", 50));
         }));
         __state = S_RESUME_1;
-        return (::tpy::str_concat((::tpy::str_concat(::tpy::str_slice(t->name, ::tpy::BasicSlice{-3, std::nullopt}), ::tpy::str_slice(a->name, ::tpy::BasicSlice{-3, std::nullopt}))), ::tpy::fixed_to_str<int32_t>(::tpy::__len__((*junk)))));
+        return (::tpy::str_concat((::tpy::str_concat(::tpy::str_slice(t->name, ::tpy::BasicSlice{-3, std::nullopt}), ::tpy::str_slice(a->name, ::tpy::BasicSlice{-3, std::nullopt}))), std::string(::tpy::__str__(::tpy::__len__((*junk))))));
     }
     case S_RESUME_1: {  // after: yield t.name[-3:] + a.name[-3:] + str(len(junk))
         __state = S_DONE;
@@ -220,7 +220,7 @@ void destroyed_first() {
 // def label(s: Src) -> str:
 //     return "label-long-enough-to-heap-" + str(s.n) * 10
 std::string label(const Src& s) {
-    return (::tpy::str_concat("label-long-enough-to-heap-", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(s.n), 10))));
+    return (::tpy::str_concat("label-long-enough-to-heap-", (::tpy::str_repeat(std::string(::tpy::__str__(s.n)), 10))));
 }
 
 // def owned_targets() -> None:

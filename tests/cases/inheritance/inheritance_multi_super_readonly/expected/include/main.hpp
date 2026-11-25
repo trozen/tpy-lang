@@ -96,7 +96,7 @@ inline Both::Both()
 // def describe(self) -> str:
 //     return super().greet() + ":" + str(super().get_n())
 inline std::string Both::describe() const {
-    return (::tpy::str_concat((::tpy::str_concat(this->Greeter::greet(), ":")), ::tpy::fixed_to_str<int32_t>(this->Counter::get_n())));
+    return (::tpy::str_concat((::tpy::str_concat(this->Greeter::greet(), ":")), std::string(::tpy::__str__(this->Counter::get_n()))));
 }
 void __tpy_init();
 } // namespace tpyapp::main

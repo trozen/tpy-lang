@@ -46,7 +46,7 @@ int64_t neg(int64_t x) {
 // def flag() -> bool:
 //     return len(str(1)) == 1
 bool flag() {
-    return (::tpy::__len__(::tpy::fixed_to_str<int32_t>(1)) == 1);
+    return (::tpy::__len__(std::string(::tpy::__str__(1))) == 1);
 }
 
 // def take_any(v: list[int8] | list[int64]) -> None:

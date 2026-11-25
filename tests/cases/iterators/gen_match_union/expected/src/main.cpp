@@ -76,7 +76,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() 
     }
     case S_RESUME_2: {  // after: yield "cat"
         __state = S_RESUME_3;
-        return ((*c).lives).to_string();
+        return std::string(::tpy::__str__((*c).lives));
     }
     case S_RESUME_1:  // after: yield n
     case S_RESUME_3:  // after: yield str(c.lives)

@@ -72,7 +72,7 @@ std::string iter_live(const std::vector<std::string>& xs) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             char c = ::tpy::unwrap_ref(*__r_1);
-            out += std::string(::tpy::char_to_str(c));
+            out += std::string(::tpy::__str__(c));
         }
         std::cout << "iter_live" << " " << out << "\n" << ::tpy::check_signals;
     }
@@ -103,7 +103,7 @@ std::string reversed_live(const std::vector<std::string>& xs) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             char c = ::tpy::unwrap_ref(*__r_1);
-            out += std::string(::tpy::char_to_str(c));
+            out += std::string(::tpy::__str__(c));
         }
         std::cout << "reversed_live" << " " << out << "\n" << ::tpy::check_signals;
     }
@@ -145,7 +145,7 @@ std::string opt_iter_live(const std::vector<std::string>& xs) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             char c = ::tpy::unwrap_ref(*__r_1);
-            out += std::string(::tpy::char_to_str(c));
+            out += std::string(::tpy::__str__(c));
         }
         std::cout << "opt_iter_live" << " " << out << "\n" << ::tpy::check_signals;
     }
@@ -652,7 +652,7 @@ std::string Picker::first_live(const std::vector<std::string>& xs) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             char c = ::tpy::unwrap_ref(*__r_1);
-            out += std::string(::tpy::char_to_str(c));
+            out += std::string(::tpy::__str__(c));
         }
         std::cout << "method_iter_live" << " " << out << "\n" << ::tpy::check_signals;
     }

@@ -561,7 +561,7 @@ void int_float_conditions(int32_t a, double g, bool c) {
         if (!((a || g))) ::tpy::raise_assertion_error();
         std::cout << "int_float_assert" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "int_float_bool:" << " " << ::tpy::print_bool((a || g)) << " " << ::tpy::print_bool((a && g)) << "\n" << ::tpy::check_signals;
+    std::cout << "int_float_bool:" << " " << ::tpy::print_bool(::tpy::__bool__((a || g))) << " " << ::tpy::print_bool(::tpy::__bool__((a && g))) << "\n" << ::tpy::check_signals;
     std::cout << "int_float_ternary_test:" << " " << (((a || g)) ? (1) : (2)) << "\n" << ::tpy::check_signals;
     int32_t m;
     if (((m = a) || g)) {
@@ -572,7 +572,7 @@ void int_float_conditions(int32_t a, double g, bool c) {
     if (((c) ? ((a || g)) : (static_cast<bool>(g)))) {
         std::cout << "int_float_ternary_arms" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "int_float_ternary_arms_bool:" << " " << ::tpy::print_bool(((c) ? (static_cast<bool>(a)) : (static_cast<bool>(g)))) << "\n" << ::tpy::check_signals;
+    std::cout << "int_float_ternary_arms_bool:" << " " << ::tpy::print_bool(::tpy::__bool__(((c) ? (static_cast<bool>(a)) : (static_cast<bool>(g))))) << "\n" << ::tpy::check_signals;
 }
 
 // def mixed_truth_arms(n: int32, c: bool, r: C, xs: list[int32],
@@ -590,7 +590,7 @@ void mixed_truth_arms(int32_t n, bool c, const C& r, const std::vector<int32_t>&
     if (((c) ? ((static_cast<void>(r), true)) : ((::tpy::__len__(xs) != 0)))) {
         std::cout << "mixed_arms_record_list" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "mixed_arms_bool:" << " " << ::tpy::print_bool(((c) ? ((::tpy::__len__(xs) != 0)) : ((!s.empty())))) << "\n" << ::tpy::check_signals;
+    std::cout << "mixed_arms_bool:" << " " << ::tpy::print_bool(::tpy::__bool__(((c) ? ((::tpy::__len__(xs) != 0)) : ((!s.empty()))))) << "\n" << ::tpy::check_signals;
 }
 
 // def not_or(a: C) -> None:

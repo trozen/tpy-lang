@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def describe(t: Tag) -> str:
 //     return "tag" + str(t.n)
 std::string describe(const Tag& t) {
-    return (::tpy::str_concat("tag", (t.n).to_string()));
+    return (::tpy::str_concat("tag", std::string(::tpy::__str__(t.n))));
 }
 
 // def fail_nested() -> None:

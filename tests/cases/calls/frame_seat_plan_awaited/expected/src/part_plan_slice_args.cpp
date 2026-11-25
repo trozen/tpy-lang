@@ -10,7 +10,7 @@ namespace tpyapp::part_plan_slice_args {
 // def make(n: int32) -> str:
 //     return "abcdefghijklmnop" + str(n)
 std::string make(int32_t n) {
-    return (::tpy::str_concat("abcdefghijklmnop", ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat("abcdefghijklmnop", std::string(::tpy::__str__(n))));
 }
 
 // def view(s: str) -> StrView:

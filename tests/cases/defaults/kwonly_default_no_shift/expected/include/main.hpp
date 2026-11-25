@@ -531,7 +531,7 @@ int64_t total(::tpy::varargs<const ::tpy::storage_t<T>> xs, int64_t k) {
 //     return str(len(xs)) + k
 template<typename T>
 std::string total2(::tpy::varargs<const ::tpy::storage_t<T>> xs, std::string_view k) {
-    return (::tpy::str_concat(::tpy::fixed_to_str<int32_t>(::tpy::__len__(xs)), k));
+    return (::tpy::str_concat(std::string(::tpy::__str__(::tpy::__len__(xs))), k));
 }
 // @dispatch
 // def apply[U](f: Fn[[int64], U], x: int64) -> U:

@@ -140,7 +140,7 @@ void sinks() {
 void formatting() {
     std::cout << "fstr" << " " << std::format("{}", static_cast<int64_t>((-9223372036854775807LL - 1))) << " " << std::format("{}", static_cast<int64_t>(1099511627776)) << " " << std::format("{}", static_cast<int64_t>(1099511627776)) << " " << std::format("{}", 6) << "\n" << ::tpy::check_signals;
     std::cout << "fstr" << " " << std::format("{}", (::tpy::BigInt::from_str("1267650600228229401496703205376")).to_string()) << " " << std::format("{}", static_cast<uint64_t>(18446744073709551615ull)) << " " << std::format("{}", ::tpy::repr_of(6)) << "\n" << ::tpy::check_signals;
-    std::cout << "str" << " " << ::tpy::fixed_to_str<int64_t>(1099511627776) << " " << ::tpy::fixed_to_str<int64_t>((-9223372036854775807LL - 1)) << "\n" << ::tpy::check_signals;
+    std::cout << "str" << " " << std::string(::tpy::__str__(1099511627776)) << " " << std::string(::tpy::__str__((-9223372036854775807LL - 1))) << "\n" << ::tpy::check_signals;
 }
 
 // def unary() -> None:
@@ -346,7 +346,7 @@ void declined() {
         }
     }
     ::tpy::BigInt x = ((::tpy::BigInt(2)).pow(::tpy::BigInt(5000)));
-    std::cout << "wide" << " " << ::tpy::__len__((x).to_string()) << " " << ((x) % (::tpy::BigInt(1000003))) << "\n" << ::tpy::check_signals;
+    std::cout << "wide" << " " << ::tpy::__len__(std::string(::tpy::__str__(x))) << " " << ((x) % (::tpy::BigInt(1000003))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

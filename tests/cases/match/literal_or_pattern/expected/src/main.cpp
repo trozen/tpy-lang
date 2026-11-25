@@ -71,7 +71,7 @@ std::string classify_as(int32_t x) {
     case 2:
     {
         auto n = __match_subject_1;
-        return (::tpy::str_concat("small: ", ::tpy::fixed_to_str<int32_t>(n)));
+        return (::tpy::str_concat("small: ", std::string(::tpy::__str__(n))));
     }
     default: {
         return "other";

@@ -36,7 +36,7 @@ __gen_gen_sv gen_sv(std::string_view s) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        std::string __tpy_async_ret = std::string(::tpy::str_slice(s, ::tpy::BasicSlice{0, 8}));
+        std::string __tpy_async_ret = std::string(::tpy::__str__(::tpy::str_slice(s, ::tpy::BasicSlice{0, 8})));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -129,7 +129,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_heads::__next__() {
         }
         v = ::tpy::unwrap_ref(*(*__for_r_1));
         __state = S_RESUME_1;
-        return (::tpy::str_concat("own ", ::tpy::fixed_to_str<int32_t>(v)));
+        return (::tpy::str_concat("own ", std::string(::tpy::__str__(v))));
     }
     case S_RESUME_2:  // after: yield "lit " + str(y)
     case S_JOIN_2: {
@@ -140,7 +140,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_heads::__next__() {
         }
         y = ::tpy::unwrap_ref(*(*__for_r_2));
         __state = S_RESUME_2;
-        return (::tpy::str_concat("lit ", ::tpy::fixed_to_str<int32_t>(y)));
+        return (::tpy::str_concat("lit ", std::string(::tpy::__str__(y))));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -63,7 +63,7 @@ std::string strings(bool c, const std::tuple<std::string, int32_t>& t1, const st
     auto&& __tup_1 = ((c) ? (t1) : (t2));
     std::string s = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
-    return (::tpy::str_concat(s, ::tpy::fixed_to_str<int32_t>(n)));
+    return (::tpy::str_concat(s, std::string(::tpy::__str__(n))));
 }
 
 

@@ -93,7 +93,7 @@ std::vector<std::string> shout(const std::vector<std::string>& words) {
 }
 
 std::tuple<::tpy::BigInt, std::string> make_pair(const ::tpy::BigInt& n) {
-    return std::tuple<::tpy::BigInt, std::string>{n, (::tpy::str_concat("n=", (n).to_string()))};
+    return std::tuple<::tpy::BigInt, std::string>{n, (::tpy::str_concat("n=", std::string(::tpy::__str__(n))))};
 }
 
 std::tuple<std::string, ::tpy::BigInt> swap(const std::tuple<::tpy::BigInt, std::string>& p) {

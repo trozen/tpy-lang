@@ -60,7 +60,7 @@ __match_end_2:;
     case S_RESUME_0: {  // after: yield "big"
         const auto& __a = std::get<::tpy::BigInt>(a);
         __state = S_RESUME_1;
-        return (((__a) + (::tpy::BigInt(1)))).to_string();
+        return std::string(::tpy::__str__(((__a) + (::tpy::BigInt(1)))));
     }
     case S_RESUME_1:  // after: yield str(a + 1)
     case S_RESUME_2:  // after: yield "other"
@@ -107,7 +107,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_kill::__next__() {
         case 0: {
             auto& __case_0 = std::get<0>(__match_subject_1);
             __state = S_RESUME_0;
-            return (::tpy::str_concat("int:", (((__case_0) + (::tpy::BigInt(1)))).to_string()));
+            return (::tpy::str_concat("int:", std::string(::tpy::__str__(((__case_0) + (::tpy::BigInt(1)))))));
             break;
         }
         default: {

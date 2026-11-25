@@ -45,7 +45,7 @@ std::string describe(int32_t x) {
         if ((n == 0)) {
             return "zero";
         } else {
-            return (::tpy::str_concat("nonzero: ", ::tpy::fixed_to_str<int32_t>(n)));
+            return (::tpy::str_concat("nonzero: ", std::string(::tpy::__str__(n))));
         }
     }
     }

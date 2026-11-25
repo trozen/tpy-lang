@@ -21,7 +21,7 @@ std::string describe(::tpy::Union<const Cat*, const Dog*, const int32_t*, const 
     case 2: {
         auto& __case_0 = *std::get<2>(__match_subject_1);
         auto n = __case_0;
-        return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
+        return (::tpy::str_concat("number: ", std::string(::tpy::__str__(n))));
     }
     case 3: {
         auto& __case_1 = *std::get<3>(__match_subject_1);
@@ -92,7 +92,7 @@ std::string unbox(::tpy::Union<const Box<std::string>*, const int32_t*> x) {
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto n = __case_0;
-        return ::tpy::fixed_to_str<int32_t>(n);
+        return std::string(::tpy::__str__(n));
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);

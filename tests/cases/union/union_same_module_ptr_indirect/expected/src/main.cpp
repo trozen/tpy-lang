@@ -16,7 +16,7 @@ std::string describe(::tpy::Union<const BinOp*, const Lit*> e) {
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& v = __case_0.value;
-        return (::tpy::str_concat("lit=", (v).to_string()));
+        return (::tpy::str_concat("lit=", std::string(::tpy::__str__(v))));
     }
     default: {
         return "binop";

@@ -108,7 +108,7 @@ void assert_message(bool c) {
     ::tpyapp::fixtures::take_list(std::move(__tmp_1));
     std::optional<std::vector<int32_t>> __slot_2;
     if (!(c)) {
-        ::tpy::raise_assertion_error(::tpy::fixed_to_str<int32_t>(::tpyapp::fixtures::size((x = &*(__slot_2 = std::vector<int32_t>{3}), (*x)))));
+        ::tpy::raise_assertion_error(std::string(::tpy::__str__(::tpyapp::fixtures::size((x = &*(__slot_2 = std::vector<int32_t>{3}), (*x))))));
     }
     std::cout << "assert_message" << " " << ::tpy::__len__((*x)) << "\n" << ::tpy::check_signals;
 }

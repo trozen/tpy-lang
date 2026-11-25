@@ -136,11 +136,12 @@ void sinks() {
 //     # An f-string formats a folded value as it formats the hand literal.
 //     print("fstr", f"{-2**63}", f"{2**40}", f"{1099511627776}", f"{2 * 3}")  # tpyc: ok
 //     print("fstr", f"{2**100}", f"{2**64 - 1}", f"{2 * 3!r}")  # tpyc: ok
-//     print("str", str(2**40), str(-2**63))
+//     # A folded value past int32 at str()'s Stringable parameter is passed as int.
+//     print("str", str(2**40), str(-2**63))  # tpyc: warning(/literal 1099511627776 .*passed as int/) warning(/literal -9223372036854775808 .*passed as int/)
 void formatting() {
     std::cout << "fstr" << " " << std::format("{}", static_cast<int64_t>((-9223372036854775807LL - 1))) << " " << std::format("{}", static_cast<int64_t>(1099511627776)) << " " << std::format("{}", static_cast<int64_t>(1099511627776)) << " " << std::format("{}", 6) << "\n" << ::tpy::check_signals;
     std::cout << "fstr" << " " << std::format("{}", (::tpy::BigInt::from_str("1267650600228229401496703205376")).to_string()) << " " << std::format("{}", static_cast<uint64_t>(18446744073709551615ull)) << " " << std::format("{}", ::tpy::repr_of(6)) << "\n" << ::tpy::check_signals;
-    std::cout << "str" << " " << ::tpy::fixed_to_str<int64_t>(static_cast<int64_t>(1099511627776)) << " " << ::tpy::fixed_to_str<int64_t>(static_cast<int64_t>((-9223372036854775807LL - 1))) << "\n" << ::tpy::check_signals;
+    std::cout << "str" << " " << std::string(::tpy::__str__(::tpy::BigInt(static_cast<int64_t>(1099511627776LL)))) << " " << std::string(::tpy::__str__(::tpy::BigInt(static_cast<int64_t>(-9223372036854775807LL - 1)))) << "\n" << ::tpy::check_signals;
 }
 
 // def unary() -> None:
@@ -346,7 +347,7 @@ void declined() {
         }
     }
     ::tpy::BigInt x = ((::tpy::BigInt(2)).pow(::tpy::BigInt(5000)));
-    std::cout << "wide" << " " << ::tpy::__len__((x).to_string()) << " " << ((x) % (::tpy::BigInt(1000003))) << "\n" << ::tpy::check_signals;
+    std::cout << "wide" << " " << ::tpy::__len__(std::string(::tpy::__str__(x))) << " " << ((x) % (::tpy::BigInt(1000003))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

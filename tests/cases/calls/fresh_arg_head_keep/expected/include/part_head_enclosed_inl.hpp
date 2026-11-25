@@ -36,10 +36,10 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     case S_RESUME_0: {  // after: yield a.name[0:3]
         junk.emplace(::tpy::array_from_index<std::string, 20>([&](std::size_t __i_0) -> std::string {
             int32_t j = int32_t(__i_0);
-            return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(j), 30));
+            return (::tpy::str_repeat(std::string(::tpy::__str__(j)), 30));
         }));
         __state = S_RESUME_1;
-        return (::tpy::str_concat(::tpy::char_to_str(::tpy::__getitem__((*a).name, -1)), ::tpy::fixed_to_str<int32_t>(::tpy::__len__((*junk)))));
+        return (::tpy::str_concat(::tpy::char_to_str(::tpy::__getitem__((*a).name, -1)), std::string(::tpy::__str__(::tpy::__len__((*junk))))));
     }
     case S_RESUME_1: {  // after: yield a.name[-1] + str(len(junk))
         __state = S_DONE;

@@ -229,7 +229,7 @@ inline const ::tpyapp::variant_lib::Box& Shelf::first() const {
 //     return "shape " + str(len(xs))
 template<typename T>
 std::string wrap__list_T(const std::vector<::tpy::storage_t<T>>& xs) {
-    return (::tpy::str_concat("shape ", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(xs))));
+    return (::tpy::str_concat("shape ", std::string(::tpy::__str__(::tpy::__len__(xs)))));
 }
 // @dispatch
 // def wrap[T](x: T) -> str:

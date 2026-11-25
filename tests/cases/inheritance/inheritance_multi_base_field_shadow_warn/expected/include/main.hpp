@@ -60,7 +60,7 @@ inline Child::Child(int32_t n)
 // def as_pair(self) -> str:
 //     return str(self.token) + "/" + str(Parent.token)
 inline std::string Child::as_pair() const {
-    return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->token), "/")), ::tpy::fixed_to_str<int32_t>(this->Parent::token)));
+    return (::tpy::str_concat((::tpy::str_concat(std::string(::tpy::__str__(this->token)), "/")), std::string(::tpy::__str__(this->Parent::token))));
 }
 void __tpy_init();
 } // namespace tpyapp::main

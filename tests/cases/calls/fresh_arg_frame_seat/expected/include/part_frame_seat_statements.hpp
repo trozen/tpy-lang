@@ -458,7 +458,7 @@ struct __coro_unpacked {
 //     self.text = str(n) * 40
 //     self.xs = [n, n + 1]
 inline Src::Src(int32_t n)
-    : text((::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 40))),
+    : text((::tpy::str_repeat(std::string(::tpy::__str__(n)), 40))),
       xs(std::vector<int32_t>{n, (::tpy::add_check<int32_t>(n, 1))}) {}
 
 // def __init__(self, s: readonly[Src]) -> None:

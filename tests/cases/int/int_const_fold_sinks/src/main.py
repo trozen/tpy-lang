@@ -71,7 +71,8 @@ def formatting() -> None:
     # An f-string formats a folded value as it formats the hand literal.
     print("fstr", f"{-2**63}", f"{2**40}", f"{1099511627776}", f"{2 * 3}")  # tpyc: ok
     print("fstr", f"{2**100}", f"{2**64 - 1}", f"{2 * 3!r}")  # tpyc: ok
-    print("str", str(2**40), str(-2**63))
+    # A folded value past int32 at str()'s Stringable parameter is passed as int.
+    print("str", str(2**40), str(-2**63))  # tpyc: warning(/literal 1099511627776 .*passed as int/) warning(/literal -9223372036854775808 .*passed as int/)
 
 
 def unary() -> None:

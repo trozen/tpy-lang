@@ -15,7 +15,7 @@ from ..holders import IterHolder
 from ..identity_map import IdentityMap, IdentitySet
 from ..typesys import canonical_readonly, inner_type_param_names, make_iterable, make_readonly, ElementEffect
 from ..typesys import none_identity_of, pointer_repr_optional, readonly_access, repr_shape
-from ..typesys import own_tuple_target, strip_own_type_args
+from ..typesys import own_tuple_target, strip_own_type_args, bare_protocol_param
 from ..typesys import binds_runtime_symbol, body_function_info
 from ..typesys import contains_reference_type, loan_class, Loan, classify_result_representation, ResultPosition, ResultRepresentation, bound_as_spelled, is_void_like_type
 from ..typesys import answers_as_call, element_access_getitem, store_slot_type, store_takes_elements
@@ -836,9 +836,8 @@ class ExpressionAnalyzer:
     def _element_blind(self, declared: TpyType | None) -> bool:
         """Whether `declared` is a protocol a list satisfies through
         methods that do not touch its element (`Sized`)."""
-        t = unwrap_qualifiers(declared) if declared is not None else None
-        if (t is None or not is_protocol_type(t)
-                or getattr(t, "type_args", None)):
+        t = bare_protocol_param(declared)
+        if t is None:
             return False
         info = protocol_info_of(t)
         return (info is not None and not info.fields

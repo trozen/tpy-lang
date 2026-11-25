@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def expected(err: int32) -> str:
 //     return "(" + str(err) + ", " + repr(os.strerror(err)) + ")"
 std::string expected(int32_t err) {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(err))), ", ")), std::string(::tpy::repr_of(::tpy::stdlib::os::strerror(static_cast<int64_t>(err)))))), ")"));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", std::string(::tpy::__str__(err)))), ", ")), std::string(::tpy::repr_of(::tpy::stdlib::os::strerror(static_cast<int64_t>(err)))))), ")"));
 }
 
 // def free_function() -> None:

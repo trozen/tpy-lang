@@ -26,7 +26,7 @@ from ..typesys import (
     PtrType, is_readonly_ptr, VoidType, is_void_like_type, ParamInfo, ReadonlyType,
     strip_auto_readonly, apply_auto_readonly,
     UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
-    UnionType, VOID, BIGINT, BOOL, AnyType, ANY, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union, ensure_qualified,
+    UnionType, VOID, BIGINT, BOOL, AnyType, ANY, is_protocol_type, bare_protocol_param, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union, ensure_qualified,
     ConcreteCoroType,
     is_any_str_type, error_return_matches,
     is_protocol_union, protocol_union_protocols,
@@ -1254,7 +1254,7 @@ class CallAnalyzer:
 
     def fill_positional_call(self, call: TpyCallLike, callee: FunctionInfo,
                              subst: 'dict[str, TpyType | int]',
-                             src: CallSource) -> None:
+                             src: CallSource) -> ArgLayout:
         """`commit_args` for a call whose arguments, `src`, are analyzed
         and received against its resolved `callee` already, bound to it
         here. `src` is read before its operands were analyzed: a decided
@@ -1262,7 +1262,8 @@ class CallAnalyzer:
         if not self.ctx.trial_depth and self.ctx.slot_step_commits():
             src = src.mapped(lambda _, e: self.expr.live_part(e))
         binding = self.bind_args(call, callee.params, callee.name, src=src)
-        self.commit_args(call, callee, binding, subst, analyze=True, src=src)
+        return self.commit_args(call, callee, binding, subst, analyze=True,
+                                src=src)
 
     def kwargs_region_arg(self, call: TpyCallLike, callee: FunctionInfo,
                           binding: ArgBinding, name: str) -> TpyExpr | None:
@@ -4837,7 +4838,14 @@ class CallAnalyzer:
             ctor = self.commit_template_ctor(
                 expr, expr.func_name, init_overloads, pick, arg_types,
                 record_type)
-            self.fill_positional_call(expr, ctor, {}, written)
+            layout = self.fill_positional_call(expr, ctor, {}, written)
+            if not self.ctx.trial_depth and self.ctx.slot_step_commits():
+                # The written operands were analyzed before the pick; the
+                # filled defaults took the receive, which warns of them.
+                at = layout.binding.at
+                for k, p in enumerate(init_overloads[pick.winner].params):
+                    if k not in layout.filled and at[k] is not None:
+                        self.warn_wide_literal_arg(layout.args[at[k]], p.type)
             ret = record_type or ctor.return_type
             expr.resolved_function_info = resolve_cpp_template_type_params(ctor, result_type=ret, ctx=self.ctx)
             self._check_cast_safe(expr, ctor, arg_types, ret)
@@ -6567,13 +6575,13 @@ class CallAnalyzer:
                    else f"argument '{pname}'")
         vpc = value_ptr and isinstance(ptype, PtrType)
         check_ptype = ptype.pointee if vpc else ptype
+        decl = (declared_types[i] if declared_types is not None
+                and i < len(declared_types) else ptype)
         readonly_slot = self._readonly_slot(declared, check_ptype)
         self.ctx.settle_operand(arg, readonly_slot)
         if given is not None:
             arg_type = given
         else:
-            decl = (declared_types[i] if declared_types is not None
-                    and i < len(declared_types) else ptype)
             member = (None if vpc
                       else self.class_member_param(declared, pname))
             with self.ctx.consuming(arg, readonly=readonly_slot):
@@ -6584,6 +6592,7 @@ class CallAnalyzer:
             # `args` is the call's layout, held apart from the tree until
             # it is stored: a decided argument's holder does not see it.
             arg = args[i] = self.expr.live_part(arg)
+            self.warn_wide_literal_arg(arg, decl)
         if builtin_form:
             arg_type = unwrap_own(unwrap_ref_type(arg_type))
         if own_checks:
@@ -6622,6 +6631,41 @@ class CallAnalyzer:
         if own_checks:
             self.mark_pending_slot_context(arg, arg_type, ptype)
         return arg_type
+
+    def warn_wide_literal_arg(self, arg: TpyExpr, ptype: TpyType) -> None:
+        """An int literal outside the default range settles at `int` by
+        the default-int rule; at a parameter whose type does not fix the
+        argument's (a protocol without type arguments, e.g. `Stringable`)
+        nothing else states that, so each such literal leaf of `arg` warns
+        as a binding does."""
+        if bare_protocol_param(ptype) is None:
+            return
+        self._warn_wide_literal_leaves(arg)
+
+    def _warn_wide_literal_leaves(self, node: TpyExpr,
+                                  slot: TpyType | None = None) -> None:
+        """`slot`: the type `node`'s container holds it at -- a display
+        settled at `int` (`[n, 5000000000]`) holds no literal leaf even
+        where the element node keeps its literal type."""
+        node = peel_coerce(node)
+        t = self.ctx.get_expr_type(node)
+        slot = t if slot is None else slot
+        if isinstance(slot, IntLiteralType):
+            if isinstance(t, IntLiteralType):
+                self.ctx.default_int_for_literal(t, warn_node=node,
+                                                 argument=True)
+        elif isinstance(node, TpyTupleLiteral):
+            if (isinstance(slot, TupleType)
+                    and len(slot.element_types) == len(node.elements)):
+                for e, et in zip(node.elements, slot.element_types):
+                    self._warn_wide_literal_leaves(e, et)
+        elif isinstance(node, (TpyArrayLiteral, TpyListRepeat)):
+            elem = (slot.element_type if isinstance(slot, PendingListType)
+                    else slot.type_args[0]
+                    if is_list(slot) and slot.type_args else None)
+            if elem is not None:
+                for e in node.elements:
+                    self._warn_wide_literal_leaves(e, elem)
 
     @staticmethod
     def _readonly_slot(callee: FunctionInfo | None, ptype: TpyType) -> bool:

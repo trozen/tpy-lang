@@ -77,7 +77,7 @@ void other_row(std::vector<std::vector<int32_t>>& rows) {
 //     print("str_view", v)
 void str_view(std::vector<std::string>& names, int32_t i) {
     std::string_view v = ::tpy::__getitem__(names, 0);
-    ::tpy::__setitem__(names, i, (::tpy::str_concat("x", ::tpy::fixed_to_str<int32_t>(i))));
+    ::tpy::__setitem__(names, i, (::tpy::str_concat("x", std::string(::tpy::__str__(i)))));
     std::cout << "str_view" << " " << v << "\n" << ::tpy::check_signals;
 }
 
@@ -94,7 +94,7 @@ void str_loop(std::vector<std::string>& names, int32_t i) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string s = *__beg_0;
-        ::tpy::__setitem__(names, i, (::tpy::str_concat("y", ::tpy::fixed_to_str<int32_t>(i))));
+        ::tpy::__setitem__(names, i, (::tpy::str_concat("y", std::string(::tpy::__str__(i)))));
         std::cout << "str_loop" << " " << s << "\n" << ::tpy::check_signals;
     }
 }
@@ -169,7 +169,7 @@ int32_t inner_ref(std::vector<std::vector<::tpyapp::fixtures::P>>& rows, int32_t
 //     print("tok_view", t.s)
 void tok_view(std::vector<std::string>& names, int32_t i) {
     ::tpyapp::fixtures::Tok t = ::tpyapp::fixtures::Tok(::tpy::__getitem__(names, 0), 1);
-    ::tpy::__setitem__(names, i, (::tpy::str_concat("y", ::tpy::fixed_to_str<int32_t>(i))));
+    ::tpy::__setitem__(names, i, (::tpy::str_concat("y", std::string(::tpy::__str__(i)))));
     std::cout << "tok_view" << " " << t.s << "\n" << ::tpy::check_signals;
 }
 

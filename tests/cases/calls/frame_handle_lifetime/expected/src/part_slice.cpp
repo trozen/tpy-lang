@@ -212,7 +212,7 @@ void sync_head() {
                 auto __r_2 = __itr_1.__next__();
                 if (!__r_2.has_value()) break;
                 std::string_view w = ::tpy::unwrap_ref(*__r_2);
-                out.push_back(std::string(::tpy::str_slice(w, ::tpy::BasicSlice{0, 3})));
+                out.push_back(std::string(::tpy::__str__(::tpy::str_slice(w, ::tpy::BasicSlice{0, 3}))));
             }
         }
     }
@@ -339,7 +339,7 @@ void via_callable(const std::function<std::string_view(std::string_view)>& fn) {
         auto __r_2 = __itr_1.__next__();
         if (!__r_2.has_value()) break;
         std::string_view v = ::tpy::unwrap_ref(*__r_2);
-        std::cout << "callable_handle" << " " << ::tpy::str_slice(std::string(v), ::tpy::BasicSlice{0, 6}) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+        std::cout << "callable_handle" << " " << ::tpy::str_slice(std::string(::tpy::__str__(v)), ::tpy::BasicSlice{0, 6}) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
     }
     {
         std::string __tmp_2 = ::tpyapp::part_slice::make(2);
@@ -349,7 +349,7 @@ void via_callable(const std::function<std::string_view(std::string_view)>& fn) {
             auto __r_4 = __itr_3.__next__();
             if (!__r_4.has_value()) break;
             std::string_view w = ::tpy::unwrap_ref(*__r_4);
-            std::cout << "callable_head" << " " << ::tpy::str_slice(std::string(w), ::tpy::BasicSlice{0, 6}) << "\n" << ::tpy::check_signals;
+            std::cout << "callable_head" << " " << ::tpy::str_slice(std::string(::tpy::__str__(w)), ::tpy::BasicSlice{0, 6}) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -433,7 +433,7 @@ void select_of_fields(bool f) {
         auto __r_2 = __itr_1.__next__();
         if (!__r_2.has_value()) break;
         std::string_view w = ::tpy::unwrap_ref(*__r_2);
-        std::cout << "select_fields" << " " << ::tpy::str_slice(std::string(w), ::tpy::BasicSlice{0, 6}) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+        std::cout << "select_fields" << " " << ::tpy::str_slice(std::string(::tpy::__str__(w)), ::tpy::BasicSlice{0, 6}) << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
     }
 }
 

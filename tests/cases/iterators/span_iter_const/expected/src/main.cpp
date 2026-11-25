@@ -60,7 +60,7 @@ std::string Stack::__repr__() const {
             s += ", ";
         }
         first = false;
-        s += ::tpy::fixed_to_str<int32_t>(x);
+        s += std::string(::tpy::__str__(x));
     }
     s += ")";
     return s;

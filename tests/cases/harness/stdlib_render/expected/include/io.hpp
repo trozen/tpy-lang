@@ -604,7 +604,7 @@ inline __gen_BufferedReader___iter__ BufferedReader::__iter__() {
 //     self._closed = False
 inline StringIO::StringIO(std::string_view initial) : _chunks(std::vector<std::string>{}) {
     if ((::tpy::__len__(initial) > 0)) {
-        this->_chunks.push_back(std::string(initial));
+        this->_chunks.push_back(std::string(::tpy::__str__(initial)));
     }
     this->_pos = 0;
     this->_total = ::tpy::__len__(initial);

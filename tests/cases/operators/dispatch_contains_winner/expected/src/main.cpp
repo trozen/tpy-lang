@@ -169,7 +169,7 @@ void optional_slot() {
 //     print("owned_str:", r, s)
 void owned_str() {
     Keeper k = Keeper();
-    ::tpy::String s = (::tpy::str_concat("ab", ::tpy::fixed_to_str<int32_t>(::tpy::__len__("xyz"))));
+    ::tpy::String s = (::tpy::str_concat("ab", std::string(::tpy::__str__(::tpy::__len__("xyz")))));
     std::string __tmp_1{s};
     bool r = k.__contains__(std::move(__tmp_1));
     std::cout << "owned_str:" << " " << ::tpy::print_bool(r) << " " << s << "\n" << ::tpy::check_signals;

@@ -191,7 +191,7 @@ std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __genexpr_
     }
     while ((*__for_i_0) < (*__for_stop_0)) {
         x = ((*__for_i_0))++;
-        return std::tuple<std::string, int32_t>{::tpy::fixed_to_str<int32_t>(x), (::tpy::mul_check<int32_t>(x, x))};
+        return std::tuple<std::string, int32_t>{std::string(::tpy::__str__(x)), (::tpy::mul_check<int32_t>(x, x))};
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }

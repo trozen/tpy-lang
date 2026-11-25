@@ -446,7 +446,7 @@ inline void PCM::__exit__(std::monostate kind, const ::tpy::BaseException* value
 //     self.s = "ab" + str(n)
 inline PInner::PInner(int32_t n)
     : cm(PCM(n)),
-      s((::tpy::str_concat("ab", ::tpy::fixed_to_str<int32_t>(n)))) {}
+      s((::tpy::str_concat("ab", std::string(::tpy::__str__(n))))) {}
 
 // @property
 // def get_cm(self) -> PCM:

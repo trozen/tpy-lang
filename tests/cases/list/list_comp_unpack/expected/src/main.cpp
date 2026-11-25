@@ -122,7 +122,7 @@ void main() {
             const auto& __for_tup_4 = *__beg_4;
             std::string k = std::get<0>(__for_tup_4);
             int32_t v = std::get<1>(__for_tup_4);
-            __result.push_back((::tpy::str_concat((::tpy::str_concat(k, "=")), ::tpy::fixed_to_str<int32_t>(v))));
+            __result.push_back((::tpy::str_concat((::tpy::str_concat(k, "=")), std::string(::tpy::__str__(v)))));
         }
         std::move(__result);
     });
@@ -183,7 +183,7 @@ void main() {
             const auto& __for_tup_8 = *__beg_8;
             std::string s = std::get<0>(__for_tup_8);
             bool b = std::get<2>(__for_tup_8);
-            __result.push_back((::tpy::str_concat((::tpy::str_concat(s, ":")), std::string(::tpy::bool_to_str(b)))));
+            __result.push_back((::tpy::str_concat((::tpy::str_concat(s, ":")), std::string(::tpy::__str__(b)))));
         }
         std::move(__result);
     });

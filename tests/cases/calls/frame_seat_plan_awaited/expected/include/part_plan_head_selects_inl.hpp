@@ -26,7 +26,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_param::__next_
         }
         ch = ::tpy::unwrap_ref(*(*__for_r_0));
         __state = S_RESUME_0;
-        return std::string(::tpy::char_to_str(ch));
+        return std::string(::tpy::__str__(ch));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -54,7 +54,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_lit::__next__(
         }
         ch = ::tpy::unwrap_ref(*(*__for_r_0));
         __state = S_RESUME_0;
-        return std::string(::tpy::char_to_str(ch));
+        return std::string(::tpy::__str__(ch));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

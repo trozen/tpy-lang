@@ -440,7 +440,7 @@ inline std::string Mat::tag() const {
 //     return self.tag() + str(self.hits)
 inline std::string Mat::hit() {
     this->hits = (this->hits) + (::tpy::BigInt(1));
-    return (::tpy::str_concat(this->tag(), (this->hits).to_string()));
+    return (::tpy::str_concat(this->tag(), std::string(::tpy::__str__(this->hits))));
 }
 
 // def __init__(self) -> None:

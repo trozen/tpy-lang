@@ -105,7 +105,7 @@ inline std::string Vet::treat__Cat(const Cat& animal) {
     this->count = ((this->count) + (::tpy::BigInt(1)));
     if (false) {
     } else {
-        return (::tpy::str_concat((::tpy::str_concat("Treated cat with ", (animal.lives).to_string())), " lives"));
+        return (::tpy::str_concat((::tpy::str_concat("Treated cat with ", std::string(::tpy::__str__(animal.lives)))), " lives"));
     }
 }
 

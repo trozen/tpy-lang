@@ -97,7 +97,7 @@ int32_t raising(Point&& x) {
     };
     Point __tmp_1 = x;
     s.consume(std::move(__tmp_1));
-    throw ::tpy::ValueError(::tpy::fixed_to_str<int32_t>(size()));
+    throw ::tpy::ValueError(std::string(::tpy::__str__(size())));
 }
 
 // # lambda: the closure runs inside a lambda passed on in the `return`.
@@ -194,7 +194,7 @@ int32_t raise_copies(Point&& x, bool early) {
     if (early) {
         Point __tmp_1 = x;
         int32_t n = ::tpyapp::main::sink_len(std::move(__tmp_1));
-        throw ::tpy::ValueError(::tpy::fixed_to_str<int32_t>(n));
+        throw ::tpy::ValueError(std::string(::tpy::__str__(n)));
     }
     auto size = [&x]() -> int32_t {
         return ::tpy::__len__(x.items);

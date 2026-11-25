@@ -21,7 +21,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_checked::__next__(
     case S_RESUME_0: {  // after: yield "checked"
         const auto& __a = std::get<::tpy::BigInt>(a);
         __state = S_RESUME_1;
-        return (((__a) + (::tpy::BigInt(100)))).to_string();
+        return std::string(::tpy::__str__(((__a) + (::tpy::BigInt(100)))));
     }
     case S_RESUME_1: {  // after: yield str(a + 100)
         const auto& __a = std::get<::tpy::BigInt>(a);

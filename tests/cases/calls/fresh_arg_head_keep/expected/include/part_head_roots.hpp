@@ -399,7 +399,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 //         self.d["key-long-enough-to-heap-" + str(n * 10 + k)] = n
 inline Inner::Inner(int32_t n) : d(::tpy::ordered_map<std::string, int32_t>()) {
     for (int32_t k = 0; k < 2; ++k) {
-        ::tpy::__setitem__(this->d, (::tpy::str_concat("key-long-enough-to-heap-", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(n, 10)), k))))), n);
+        ::tpy::__setitem__(this->d, (::tpy::str_concat("key-long-enough-to-heap-", std::string(::tpy::__str__((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(n, 10)), k)))))), n);
     }
 }
 
@@ -440,7 +440,7 @@ inline CS::CS(const Src& s) : n(::tpy::__getitem__(s.xs, 0)) {}
 // def __enter__(self) -> str:
 //     return "a-long-string-that-defeats-sso-" + str(self.n) * 20
 inline std::string CS::__enter__() const {
-    return (::tpy::str_concat("a-long-string-that-defeats-sso-", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(this->n), 20))));
+    return (::tpy::str_concat("a-long-string-that-defeats-sso-", (::tpy::str_repeat(std::string(::tpy::__str__(this->n)), 20))));
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:

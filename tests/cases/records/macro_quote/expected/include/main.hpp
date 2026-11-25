@@ -145,7 +145,7 @@ inline void Point::set_y(int32_t value) {
 // # Test quote/add_method_from_source macro APIs.
 // from tpy import int32
 inline std::string Point::describe() const {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("x=", ::tpy::fixed_to_str<int32_t>(this->x))), ", ")), "y=")), ::tpy::fixed_to_str<int32_t>(this->y)));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("x=", std::string(::tpy::__str__(this->x)))), ", ")), "y=")), std::string(::tpy::__str__(this->y))));
 }
 
 inline void Point::reset() {
@@ -166,13 +166,13 @@ inline int32_t Point::field_count() {
 // # Test quote/add_method_from_source macro APIs.
 // from tpy import int32
 inline std::string Point::show_int(int32_t v) const {
-    return ::tpy::fixed_to_str<int32_t>(v);
+    return std::string(::tpy::__str__(v));
 }
 
 // # Test quote/add_method_from_source macro APIs.
 // from tpy import int32
 inline std::string Point::show_str(std::string_view v) const {
-    return std::string(v);
+    return std::string(::tpy::__str__(v));
 }
 
 inline Person::Person(std::string_view name, int32_t age)
@@ -198,7 +198,7 @@ inline void Person::set_age(int32_t value) {
 // # Test quote/add_method_from_source macro APIs.
 // from tpy import int32
 inline std::string Person::describe() const {
-    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("name=", std::string(this->name))), ", ")), "age=")), ::tpy::fixed_to_str<int32_t>(this->age)));
+    return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("name=", std::string(::tpy::__str__(this->name)))), ", ")), "age=")), std::string(::tpy::__str__(this->age))));
 }
 
 inline void Person::reset() {
@@ -219,13 +219,13 @@ inline int32_t Person::field_count() {
 // # Test quote/add_method_from_source macro APIs.
 // from tpy import int32
 inline std::string Person::show_int(int32_t v) const {
-    return ::tpy::fixed_to_str<int32_t>(v);
+    return std::string(::tpy::__str__(v));
 }
 
 // # Test quote/add_method_from_source macro APIs.
 // from tpy import int32
 inline std::string Person::show_str(std::string_view v) const {
-    return std::string(v);
+    return std::string(::tpy::__str__(v));
 }
 void __tpy_init();
 } // namespace tpyapp::main

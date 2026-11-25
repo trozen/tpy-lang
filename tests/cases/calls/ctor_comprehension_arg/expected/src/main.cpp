@@ -65,7 +65,7 @@ void ctor_set_dict() {
     Tally t = Tally(({
         ::tpy::ordered_map<std::string, int32_t> __result;
         for (int32_t i = 0; i < 3; ++i) {
-            __result.insert_or_assign(::tpy::fixed_to_str<int32_t>(i), i);
+            __result.insert_or_assign(std::string(::tpy::__str__(i)), i);
         }
         std::move(__result);
     }), ({

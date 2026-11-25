@@ -97,11 +97,11 @@ void main() {
     std::cout << ::tpy::print_float(1.0000000001) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(0.9999999999) << "\n" << ::tpy::check_signals;
     y = ((0.1) * (3));
-    std::cout << "str" << " " << ::tpy::float_to_str(y) << " " << (::tpy::str_concat("a", ::tpy::float_to_str(y))) << " " << std::format("{}", ::tpy::float_to_str(y)) << "\n" << ::tpy::check_signals;
-    std::cout << "exp" << " " << ::tpy::float_to_str(1.2345678901234568e+17) << " " << ::tpy::float_to_str(1e+22) << " " << ::tpy::float_to_str(1e-05) << " " << ::tpy::float_to_str(-(0.0)) << " " << ::tpy::float_to_str(2.0) << "\n" << ::tpy::check_signals;
-    std::cout << "nonfinite" << " " << ::tpy::float_to_str(::tpystd::math::inf) << " " << ::tpy::float_to_str(-(::tpystd::math::inf)) << " " << ::tpy::float_to_str(::tpystd::math::nan) << " " << (::tpy::str_concat("x", ::tpy::float_to_str(::tpystd::math::inf))) << "\n" << ::tpy::check_signals;
+    std::cout << "str" << " " << std::string(::tpy::__str__(y)) << " " << (::tpy::str_concat("a", std::string(::tpy::__str__(y)))) << " " << std::format("{}", ::tpy::float_to_str(y)) << "\n" << ::tpy::check_signals;
+    std::cout << "exp" << " " << std::string(::tpy::__str__(1.2345678901234568e+17)) << " " << std::string(::tpy::__str__(1e+22)) << " " << std::string(::tpy::__str__(1e-05)) << " " << std::string(::tpy::__str__(-(0.0))) << " " << std::string(::tpy::__str__(2.0)) << "\n" << ::tpy::check_signals;
+    std::cout << "nonfinite" << " " << std::string(::tpy::__str__(::tpystd::math::inf)) << " " << std::string(::tpy::__str__(-(::tpystd::math::inf))) << " " << std::string(::tpy::__str__(::tpystd::math::nan)) << " " << (::tpy::str_concat("x", std::string(::tpy::__str__(::tpystd::math::inf)))) << "\n" << ::tpy::check_signals;
     float f = 0.1f;
-    std::cout << "f32" << " " << ::tpy::float_to_str(static_cast<double>(f)) << " " << std::format("{}", ::tpy::float_to_str(static_cast<double>(f))) << " " << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
+    std::cout << "f32" << " " << std::string(::tpy::__str__(f)) << " " << std::format("{}", ::tpy::float_to_str(static_cast<double>(f))) << " " << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show<float>(f);
     ::tpyapp::main::show<double>(y);
     std::cout << "spec" << " " << std::format("{:.3f}", y) << " " << std::string(::tpy::repr_of(y)) << "\n" << ::tpy::check_signals;

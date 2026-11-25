@@ -39,7 +39,7 @@ std::string mk(int32_t i) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        std::string __tpy_async_ret = std::string(::tpy::str_slice(s, ::tpy::BasicSlice{0, 3}));
+        std::string __tpy_async_ret = std::string(::tpy::__str__(::tpy::str_slice(s, ::tpy::BasicSlice{0, 3})));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

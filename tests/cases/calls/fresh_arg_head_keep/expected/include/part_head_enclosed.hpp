@@ -426,7 +426,7 @@ inline void NcMgr::__exit__(std::monostate a, const ::tpy::BaseException* b, std
 
 // def __init__(self, n: int32) -> None:
 //     self.name = "cm-long-enough-to-heap-" + str(n) * 10
-inline CM::CM(int32_t n) : name((::tpy::str_concat("cm-long-enough-to-heap-", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(n), 10))))) {}
+inline CM::CM(int32_t n) : name((::tpy::str_concat("cm-long-enough-to-heap-", (::tpy::str_repeat(std::string(::tpy::__str__(n)), 10))))) {}
 
 // def __enter__(self) -> Self:
 //     return self
@@ -477,7 +477,7 @@ inline void PtrCM::__exit__(std::monostate a, const ::tpy::BaseException* b, std
 
 // def __init__(self, s: Src) -> None:
 //     self.text = "view-cm-text-long-enough-to-heap-" + str(s.n) * 20
-inline ViewCM::ViewCM(const Src& s) : text((::tpy::str_concat("view-cm-text-long-enough-to-heap-", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(s.n), 20))))) {}
+inline ViewCM::ViewCM(const Src& s) : text((::tpy::str_concat("view-cm-text-long-enough-to-heap-", (::tpy::str_repeat(std::string(::tpy::__str__(s.n)), 20))))) {}
 
 // def __enter__(self) -> StrView:
 //     return self.text
@@ -496,7 +496,7 @@ inline void ViewCM::__exit__(std::monostate a, const ::tpy::BaseException* b, st
 //     self.box = Box(x)
 inline Pt::Pt(int32_t x)
     : x(x),
-      name((::tpy::str_concat("pt-name-long-enough-to-heap-", (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(x), 10))))),
+      name((::tpy::str_concat("pt-name-long-enough-to-heap-", (::tpy::str_repeat(std::string(::tpy::__str__(x)), 10))))),
       box(Box(x)) {}
 
 // def __init__(self, v: Own[T]) -> None:
