@@ -496,7 +496,7 @@ def test_resume_extraction_is_published():
     # spelled from facts the leaves carry, not from the printer's scope.
     leaves = _leaves(_collect(_NARROWED), "f")
     sub = leaves.resume_extractions["v"]
-    assert not sub.receiver and not sub.ptr_variant and sub.param_const
+    assert not sub.receiver and not any(sub.member_pointer.values()) and sub.param_const
     assert sub.storage == "v" and not sub.slot_backed
     validate_resumable_leaves("f", leaves, lowered=True)
 
@@ -542,8 +542,8 @@ def test_invalid_resume_extraction_rejects():
             dataclasses.replace(sub, receiver=True),
             # A receiver reads the frame's `__self`, never a pointer name.
             dataclasses.replace(sub, receiver=True, indirect=True),
-            # Const pointees belong to a pointer variant.
-            dataclasses.replace(sub, ptr_const=True, ptr_variant=False),
+            # Const pointees belong to members held by pointer.
+            dataclasses.replace(sub, ptr_const=True, member_pointer={}),
             object()):
         with pytest.raises(THIRValidationError,
                            match="invalid resume extraction for v"):

@@ -26,7 +26,6 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from ...codegen_cpp.forms import (LocalBinding, LoopBinding,
                                   is_plain_nonvalue,
-                                  is_ptr_variant_union,
                                   is_storage_tuple_alias_decl,
                                   reads_storage_form_optional)
 from ...identity_map import IdentityMap, IdentitySet
@@ -73,6 +72,7 @@ from ...sema.own_copy import contains_reference_type
 from ...type_def_registry import (is_array, is_bytes_view_type,
                                   is_owned_in_coro_frame,
                                   is_str_view_type)
+from ...typesys import union_borrow_form
 from ...typesys import (ConcreteGenType, FloatLiteralType, IntLiteralType,
                         NominalType, OptionalType, OwnType, PendingListType,
                         peel_binding, peel_slot,
@@ -133,7 +133,7 @@ SHADOW_SINK: 'list | None' = None
 # The record's per-name representation facts (the fields a loop variable
 # inherits from the outer binding it shadows).
 REPR_FIELDS: tuple[str, ...] = (
-    "pointer", "rebind_slot", "ref_alias", "ptr_variant", "value_opt",
+    "pointer", "rebind_slot", "ref_alias", "value_opt",
     "storage_opt", "const_storage_opt", "storage_tuple",
     "const_storage_tuple", "borrow_tuple_mixed",
     "tuple_layout", "inline_elems", "const", "const_loop_var",
@@ -1049,8 +1049,7 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
     elif is_own_pointer_repr_optional(u):
         f["pointer"] = True
         f["optional_storage"] = True
-    if is_ptr_variant_union(u):
-        f["ptr_variant"] = True
+    ptr_union = union_borrow_form(u) is not None
     if _own_opt_storage_binding(typ):
         f["value_opt"] = ValueOptKind.RECORD
     elif _value_opt_string_owned(typ) is not None:
@@ -1090,20 +1089,21 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
         f["borrow_tuple_mixed"] = True
     if by_value_optional(typ) is not None:
         f["move_forced"] = M.BY_VALUE_OPTIONAL
-    if open_borrow and _seeded_form(f) is F.NONE:
+    if open_borrow and _seeded_form(f, ptr_union) is F.NONE:
         return BindingRepr(name=name, site=None, type=typ,
                            form=F.BORROW_TUPLE, site_kind=site.kind,
                            is_param=True, effective_type=u,
                            param_type=ptype if isinstance(ptype, TpyType)
                            else None, **f)
-    return BindingRepr(name=name, site=None, type=typ, form=_seeded_form(f),
+    return BindingRepr(name=name, site=None, type=typ,
+                       form=_seeded_form(f, ptr_union),
                        site_kind=site.kind,
                        is_param=True,
                        param_type=ptype if isinstance(ptype, TpyType)
                        else None, **f)
 
 
-def _seeded_form(f: dict) -> F:
+def _seeded_form(f: dict, ptr_union: bool = False) -> F:
     """The form of a parameter or a seeded global, from the facts its row
     decided: the owned storage optional of an `Own[P | None]` parameter,
     a pointer, a pointer union, a value-repr Optional, a storage tuple, a
@@ -1113,7 +1113,7 @@ def _seeded_form(f: dict) -> F:
         return F.OWNED_SLOT
     if f.get("pointer"):
         return F.POINTER
-    if f.get("ptr_variant"):
+    if ptr_union:
         return F.POINTER_UNION
     if f.get("value_opt") is not None:
         return F.VALUE_OPT
@@ -1746,16 +1746,15 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind):
         if site.in_branch and site.storage.pointer:
             # A branch-first rebind slot: its builder rejects it.
             return _mk(site, name, typ, F.POINTER_UNION, BC.PTR_VARIANT_SLOT,
-                       ptr_variant=True, rebind_slot=True)
+                       rebind_slot=True)
         if not isinstance(init, TpyNoneLiteral) and not _checks._ptr_union_source_ok(
                 init, ctx.declared_view, an, ptr_u,
                 allow_field=name not in pre.reassigned):
             # The slot-hoist rows -- a rebind slot when the name is
             # rebound.
             return _mk(site, name, typ, F.POINTER_UNION, BC.PTR_VARIANT_SLOT,
-                       ptr_variant=True, rebind_slot=site.storage.pointer)
-        return _mk(site, name, typ, F.POINTER_UNION, BC.PTR_VARIANT,
-                   ptr_variant=True)
+                       rebind_slot=site.storage.pointer)
+        return _mk(site, name, typ, F.POINTER_UNION, BC.PTR_VARIANT)
     # `decl.storage_call_tuple`: an owning tuple call (an Own-declared
     # return, the flat
     # per-element-Own family, or a tuple of owned tuples).
@@ -2866,12 +2865,10 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
         # A head target that takes its own copy each pass moves at its last
         # use in the pass where the copy allocates.
         f["move_exception"] = _value_exception(tt)
-    if f.get("rebind_slot"):
+    if f.get("rebind_slot") or shape.form is F.POINTER_UNION:
         pass
     elif shape.form is F.POINTER:
         f["pointer"] = True
-    elif shape.form is F.POINTER_UNION:
-        f["ptr_variant"] = True
     elif shape.owned and storage.pointer:
         # A rebound target keeps the element it takes over in a slot of its
         # own, which the pointer re-points away from at a rebind.
@@ -2881,7 +2878,7 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
         # The target holds the element in place as an owned loop step
         # does: one move at a consuming read, none at a read-only one.
         f["loop_binding"] = LoopBinding.OWNED
-    if not (is_ref or f.get("pointer") or f.get("ptr_variant")):
+    if not (is_ref or f.get("pointer") or shape.form is F.POINTER_UNION):
         # A value-repr Optional is read through its value wherever the
         # target holds it.
         vo = _declared_value_opt_kind(typ, an)
@@ -3791,7 +3788,7 @@ _BORROW_TUPLE_FORMS = frozenset({F.BORROW_TUPLE, F.OPT_BORROW_TUPLE})
 def _is_slot(rec: BindingRepr) -> bool:
     # A pointer-variant union (`::tpy::Union<A*, B*>`) is a pointer slot
     # too, and so is a borrow tuple: its element pointers are one const.
-    return ((rec.reads_as_pointer or rec.ptr_variant
+    return ((rec.reads_as_pointer or rec.union_borrow
              or rec.ptr_tuple is not None or rec.form in _BORROW_TUPLE_FORMS)
             and _slot_family(rec))
 

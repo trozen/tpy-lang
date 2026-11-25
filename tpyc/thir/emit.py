@@ -1869,7 +1869,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # A compound-condition read of the narrowed subject: the bare get, no
         # alias yet -- the ptr-variant deref parenthesizes for member access.
         get = f"std::get<{e.member_cpp}>({e.variant_cpp})"
-        return f"(*{get})" if e.is_ptr_variant else get
+        return f"(*{get})" if e.member_pointer else get
     if isinstance(e, THIRFieldAccess):
         if e.as_lvalue:
             return f"::tpy::as_lvalue({_emit_field_access(e, state)})"
@@ -3649,7 +3649,6 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
     variant = f"{subject}.value" if stmt.wrapper_value else subject
     out.write(f"{indent}switch ({variant}.index()) {{\n")
     state.switch_depth += 1
-    deref = "*" if stmt.is_ptr_variant else ""
     for arm in stmt.arms:
         entry = arm.entries[0]
         if not arm.labels:
@@ -3662,6 +3661,7 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
             out.write(f"{indent}{{\n")
         get = None
         if entry.variant_index is not None:
+            deref = "*" if _member_pointer(stmt, entry.variant_index) else ""
             get = f"{deref}std::get<{entry.variant_index}>({variant})"
         if entry.case_alias is not None:
             out.write(f"{inner}auto& {entry.case_alias} = {get};\n")
@@ -3677,6 +3677,10 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
         out.write(f"{indent}}}\n")
     state.switch_depth -= 1
     out.write(f"{indent}}}\n")
+
+
+def _member_pointer(stmt: THIRMatch, index: int) -> bool:
+    return bool(stmt.member_pointers) and stmt.member_pointers[index]
 
 
 class _MatchEnd:
@@ -3724,15 +3728,17 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
     variant = f"{subject}.value" if stmt.wrapper_value else subject
     out.write(f"{indent}switch ({variant}.index()) {{\n")
     state.switch_depth += 1
-    deref = "*" if stmt.is_ptr_variant else ""
     for arm in stmt.arms:
-        alias = next((e.case_alias for e in arm.entries
-                      if e.case_alias is not None), None)
+        alias_entry = next((e for e in arm.entries
+                            if e.case_alias is not None), None)
+        alias = alias_entry.case_alias if alias_entry is not None else None
         if not arm.labels:
             out.write(f"{indent}default: {{\n")
         else:
             out.write(f"{indent}case {arm.labels[0]}: {{\n")
             if alias is not None:
+                deref = ("*" if _member_pointer(stmt, alias_entry.variant_index)
+                         else "")
                 out.write(f"{inner}auto& {alias} = "
                           f"{deref}std::get<{arm.labels[0]}>({variant});\n")
         use_scope = len(arm.entries) > 1
@@ -4537,7 +4543,7 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         # (VariantAccess.get_by_type with lvalue=True: the ptr-variant deref
         # carries no outer parens).
         qualifier = "const auto&" if stmt.const_ref else "auto&"
-        deref = "*" if stmt.is_ptr_variant else ""
+        deref = "*" if stmt.member_pointer else ""
         out.write(f"{indent}{qualifier} {stmt.alias} = {deref}"
                   f"std::get<{stmt.member_cpp}>({stmt.variant_cpp});\n")
     elif isinstance(stmt, THIRDynNarrowAlias):

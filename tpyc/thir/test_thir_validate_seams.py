@@ -791,7 +791,7 @@ class TestNodeStructuralRules:
     def _union_test(subject: THIRExpr) -> THIRIsinstance:
         u = UnionType((INT32, CHAR))
         fact = THIRUnionTest(source="u", layout=THIRUnionLayout(
-            type=u, elements=u.members), alternatives=(0,))
+            type=u, elements=u.members, borrow=False), alternatives=(0,))
         return THIRIsinstance(result_type=BOOL, subject=subject,
                               member_cpps=("int32_t",), union_test=fact)
 

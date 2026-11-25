@@ -130,7 +130,9 @@ def slot_param(slot: MIRSlot, passing: ParamPassing | None = None) -> th.THIRPar
         case MIRClass.TUPLE:
             facts["tuple_layout"] = th.THIRTupleLayout(tuple(map(_member_fact, shape.members)))
         case MIRClass.UNION:
-            facts["union_layout"] = th.THIRUnionLayout(shape.type, tuple(map(_member_fact, shape.members)))
+            elements = tuple(map(_member_fact, shape.members))
+            facts["union_layout"] = th.THIRUnionLayout(
+                shape.type, elements, any(isinstance(e, th.THIRBorrowedRecord) for e in elements))
     typ = OwnType(shape.type) if shape.is_storage else shape.type
     if passing is None:
         passing = typ.param_passing(shape.readonly)

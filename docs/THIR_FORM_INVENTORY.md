@@ -41,7 +41,7 @@ the detection side-sets in favor of the carried tag.
 |---|---|---|---|
 | Tuple | `std::tuple<T*, ...>` (one pointer shape/elem) | `std::tuple<std::optional<T>, ...>` / `std::tuple<T, ...>` | `TupleType.has_pointer_repr_element()` |
 | Optional `T \| None` (T ref) | `T*` | `std::optional<T>` | `OptionalType.uses_pointer_repr()` |
-| Union `A \| B` (non-value) | `std::variant<A*, B*>` | `std::variant<A, B>` | `context.is_ptr_variant_union(t)` |
+| Union `A \| B` (non-value) | `std::variant<A*, B*>` | `std::variant<A, B>` | `typesys.union_borrow_form(t)` (holder); `UnionType.member_is_pointer(borrow, m)` (member) |
 | Non-value local (record/list/dict/set) | `T*` (pointer-local) or `T&` (alias) | `T` (inline) | `is_value_type()` + side-sets |
 | `str` | `std::string_view` (param/borrow) | `std::string` | TypeDef `param_cpp_formatter` |
 | `String` | `const ::tpy::String&` | `::tpy::String` | TypeDef `param_cpp_formatter` |
@@ -125,23 +125,23 @@ Comparison across forms stays in the runtime (`format.hpp`):
 ### 3a. Predicates (re-derive form per-site)
 - `is_storage_form_source(expr)`, `is_const_storage_source(expr)`,
   `source_form(expr)`, `local_cpp_form(name)` -- `context.py` ~1905-2143.
-- `OptionalType.uses_pointer_repr()`; `is_ptr_variant_union(t)` /
-  `is_ptr_variant_source(expr)` (`context.py` ~1260-1305);
+- `OptionalType.uses_pointer_repr()`; `union_borrow_form(t)` and
+  `UnionType.member_is_pointer(borrow, m)` (typesys: whether a holder has
+  the union's borrow form, whether it holds a member by pointer);
   `TupleType.has_pointer_repr_element()` / `_element_is_pointer_repr`;
   `_tuple_subscript_yields_borrow_ptr` (`expressions.py` ~5991).
 - Per-binding "needs lift" gates: `needs_optional_to_ptr_lift`,
-  `needs_to_ptr_variant_lift`, `callee_returns_own_ptr_optional`,
-  `is_own_ptr_variant_param` (`context.py` ~2053-2233).
+  `callee_returns_own_ptr_optional` (`context.py` ~2053-2233).
 
 ### 3b. `LocalCppForm` + the ~22 local side-sets (the bulk of what dissolves)
 `LocalCppForm` enum (`context.py` ~627): `VALUE`, `POINTER`, `OPTIONAL_STORAGE`,
-`STORAGE_OPTIONAL`, `VALUE_VARIANT`, `PTR_VARIANT`, `STORAGE_TUPLE`,
+`STORAGE_OPTIONAL`, `STORAGE_TUPLE`,
 `BORROW_TUPLE`, `OPTIONAL_BORROW_TUPLE`.
 
 Side-sets on `CodeGenContext` / `LocalScope` that back the classifier (each is a
 name-keyed set the binding site writes and consumers read):
 `pointer_locals`, `const_indirect_locals`, `optional_locals`,
-`storage_form_optional_locals` (+ `const_`), `ptr_variant_locals`,
+`storage_form_optional_locals` (+ `const_`),
 `storage_form_tuple_locals` (+ `const_`), `borrow_form_tuple_locals` (+ `const_`),
 `optional_borrow_tuple_locals` (+ `const_`), `movable_locals`, `rebind_slots`,
 `plain_rebind_slots`, `frame_field_shadows`, `generator_optional_fields`,

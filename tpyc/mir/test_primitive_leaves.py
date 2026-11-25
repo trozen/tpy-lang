@@ -497,7 +497,7 @@ def test_thir_validator_rejects_a_none_default_for_an_enum_first_union(compiled,
     branch = next(stmt for stmt in fn.body if isinstance(stmt, th.THIRIf))
     binding, = branch.hoisted_bindings
     union = UnionType((_enum_type(compiled), UINT8))
-    retyped = replace(binding, type=union, union_layout=th.THIRUnionLayout(union, union.members),
+    retyped = replace(binding, type=union, union_layout=th.THIRUnionLayout(union, union.members, False),
                       physical_default=default)
     body = tuple(replace(branch, hoisted_bindings=(retyped,)) if stmt is branch else stmt for stmt in fn.body)
     with activate_compiler(compiler):

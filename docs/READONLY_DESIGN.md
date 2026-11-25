@@ -257,7 +257,7 @@ Readonly is access, never shape. Whether a type is an Optional, a
 pointer-repr Optional or a pointer-variant union is read through every
 access and ownership wrapper in whatever order the wrappers were applied
 (`typesys.repr_shape`, with the views `pointer_repr_optional` and
-`pointer_variant_union`; an `Own` among the wrappers selects the storage
+`union_borrow_form`; an `Own` among the wrappers selects the storage
 form, so `Own[Point | None]` is not a pointer-repr Optional). Const-ness
 keeps reading the `readonly` wrapper itself (`readonly_access`).
 

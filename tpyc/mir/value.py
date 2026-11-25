@@ -25,7 +25,8 @@ from ..thir.scalar_leaves import (
 )
 from ..type_def_registry import ParamPassing
 from ..typesys import (
-    NominalType, OwnType, ReadonlyType, Representation, TpyType, is_void_like_type, unwrap_readonly,
+    NominalType, OwnType, ReadonlyType, Representation, TpyType, UnionType, is_void_like_type,
+    unwrap_readonly,
     unwrap_ref_type,
 )
 
@@ -829,6 +830,9 @@ def laid_value(declared: TpyType, fact: object) -> MIRShape | str:
         return "missing or invalid layout fact"
     if isinstance(fact, th.THIRUnionLayout) and fact.type != unwrap_readonly(declared):
         return "unsupported union layout"
+    if isinstance(fact, th.THIRUnionLayout) and isinstance(fact.type, UnionType) and (
+            type(fact.borrow) is not bool or fact.disagrees_with_holder()):
+        return "union layout disagrees with its holder form"
     if any(isinstance(r, (th.THIRBorrowedRecord, th.THIROwnedRecord))
            and not (record_type(r.type) and type(r.readonly) is bool) for r in records):
         return "unsupported reference fact"

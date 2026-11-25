@@ -46,7 +46,7 @@ from ..type_def_registry import has_view_param_form
 from ..typesys import (FrameType, OptionalType, TpyType,
                        contains_reference_type, inner_type_param_names,
                        TupleType, UnionType, is_dyn_protocol,
-                       is_ptr_variant_union, param_takes_ownership,
+                       param_takes_ownership, union_borrow_form,
                        pointer_repr_optional, unwrap_qualifiers,
                        unwrap_ref_type, unwrap_send_sync)
 from .read_binding import ReadBinding, ReadKind, root_binding
@@ -199,7 +199,7 @@ def classify_capture(ctx: 'SemanticContext', name: str,
 def _held_as_pointer(typ: TpyType) -> bool:
     """A type whose borrow form is a pointer to its object: a capture
     of a binding of it copies the pointer."""
-    return pointer_repr_optional(typ) is not None or is_ptr_variant_union(typ)
+    return pointer_repr_optional(typ) is not None or union_borrow_form(typ) is not None
 
 
 def capture_holds_pointer(fs: 'FunctionTrackingState', name: str,

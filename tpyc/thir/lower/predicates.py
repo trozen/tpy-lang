@@ -172,10 +172,8 @@ from ...value_category import (
     peel_coerce,
 )
 from ...sema.decl_types import declared_bound_type
-from ...codegen_cpp.forms import (
-    is_ptr_variant_union,
-    reads_storage_form_optional,
-)
+from ...codegen_cpp.forms import reads_storage_form_optional
+from ...typesys import union_borrow_form
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp.int_literals import target_less_int_literal_type
 from ...codegen_cpp.param_const import decide_param_const
@@ -1010,7 +1008,7 @@ def _eligible_ptr_union_wide(t: TpyType | None,
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if not (isinstance(t, UnionType) and is_ptr_variant_union(t)):
+    if not (isinstance(t, UnionType) and union_borrow_form(t) is not None):
         return None
     if not all(_ptr_union_member_wide(m, analyzer) for m in t.members):
         return None
@@ -1091,7 +1089,7 @@ def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
     `int32_t*` alternative) render through the same member-shape-blind
     machinery (`m.to_cpp() + "*"` borrow, bare value storage, `*std::get<
     int32_t*>(v)` extraction), so they ride the record rows unchanged; an
-    ALL-scalar union is value-repr (`is_ptr_variant_union` False) and stays
+    ALL-scalar union is value-repr (`union_borrow_form` None) and stays
     on the U1 slice. str and concrete-container members ride
     `_ptr_union_view_member_ok` (to_cpp_ptr_variant pointer-spells EVERY
     member uniformly, so the shape-blind machinery covers them; the
@@ -1101,7 +1099,7 @@ def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if not (isinstance(t, UnionType) and is_ptr_variant_union(t)):
+    if not (isinstance(t, UnionType) and union_borrow_form(t) is not None):
         return None
     if not all(_f1_record(m, analyzer) or _eligible_scalar(m)
                or is_void_like_type(m)
@@ -1268,7 +1266,7 @@ def _narrow_subject_union(dt: 'TpyType | None',
         # An `Own[A | B]` param binds the STORAGE variant
         # (`std::variant<A, B>&&`): sema peels Own before the union check
         # (`_filter_union_codegen_facts`), and its record is no
-        # `ptr_variant`, so the extraction reads by value
+        # `POINTER_UNION` form, so the extraction reads by value
         # (`std::get<A>(u)`) for free.
         dt = unwrap_readonly(dt.wrapped)
     u = (_eligible_value_union(dt) or _eligible_ptr_union_wide(dt, analyzer)
@@ -8029,7 +8027,7 @@ def _ptr_union_borrow_const(name: str, declared: dict[str, TpyType],
     `const_indirect_locals` from, which is why this combinator has to move
     with that one: a fourth const source added there and not here would let a
     mixed pair through as a compare that does not build."""
-    if not lc.binding(name).ptr_variant:
+    if not lc.binding(name).union_borrow:
         return None
     dt = declared.get(name)
     return bool(
@@ -9209,7 +9207,7 @@ def _ru_wrapper_arg_slot(ptype: TpyType | None) -> 'TpyType | None':
         return None
     pt = unwrap_readonly(pt)
     if isinstance(pt, UnionType):
-        if not pt.needs_wrapper() or is_ptr_variant_union(pt):
+        if not pt.needs_wrapper() or union_borrow_form(pt) is not None:
             return None
         return pt
     # The generic instance is NOT a value type (its substituted body carries
@@ -10334,7 +10332,7 @@ def _union_literal_temp_arg(a: TpyExpr, ptype: TpyType | None, analyzer,
     if pt is None or isinstance(pt, ReadonlyType):
         return None
     ut = unwrap_ref_type(pt)
-    if not (isinstance(ut, UnionType) and is_ptr_variant_union(ut)):
+    if not (isinstance(ut, UnionType) and union_borrow_form(ut) is not None):
         return None
     at = analyzer.get_expr_type(a)
     if member is None or at != unwrap_readonly(member):

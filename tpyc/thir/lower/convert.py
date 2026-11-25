@@ -31,7 +31,7 @@ from ...codegen_cpp.int_literals import render_int_literal_value
 from ...type_def_registry import is_big_int_type, is_fixed_int_type
 from ...sema.own_copy import contains_reference_type
 from ...type_def_registry import has_view_param_form, owned_from_view_explicit
-from ...typesys import (
+from ...typesys import (union_borrow_form,
     AliasRef,
     open_type_param,
     by_value_optional_payload,
@@ -660,7 +660,7 @@ def _elem_kind(t: TpyType) -> str:
     if isinstance(t, OptionalType):
         return "optional" if t.uses_pointer_repr() else "value"
     if isinstance(t, UnionType):
-        return "union" if t.uses_pointer_repr() else "value"
+        return "union" if union_borrow_form(t) is not None else "value"
     if not t.is_value_type():
         return "record"
     return "value"

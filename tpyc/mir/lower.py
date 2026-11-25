@@ -3764,10 +3764,10 @@ class _Lowering:
         return member
 
     def inline_union(self, expr: th.THIRNarrowedRead) -> TpyType | th.THIRBorrowedRecord:
-        _plain(expr, {"variant_cpp", "member_cpp", "is_ptr_variant", "union_extraction"})
+        _plain(expr, {"variant_cpp", "member_cpp", "member_pointer", "union_extraction"})
         member = self.union_extraction(expr, expr.union_extraction)
         reference = isinstance(member, th.THIRBorrowedRecord)
-        _require(expr, expr.is_ptr_variant is reference
+        _require(expr, expr.member_pointer is reference
                  and unwrap_readonly(expr.result_type) == (member.type if reference else member)
                  and expr.form is (th.Form.BORROW if reference else th.Form.VALUE), "union extraction form mismatch")
         return member
@@ -4468,10 +4468,10 @@ class _Lowering:
                 _require(stmt, name not in self.tuple_roots, "owned tuple binding replacement is unsupported")
         match stmt:
             case th.THIRNarrowAlias():
-                _plain(stmt, {"alias", "variant_cpp", "member_cpp", "is_ptr_variant", "const_ref", "union_extraction"})
+                _plain(stmt, {"alias", "variant_cpp", "member_cpp", "member_pointer", "const_ref", "union_extraction"})
                 member = self.union_extraction(stmt, stmt.union_extraction)
                 reference = isinstance(member, th.THIRBorrowedRecord)
-                _require(stmt, stmt.is_ptr_variant is reference, "union alias form mismatch")
+                _require(stmt, stmt.member_pointer is reference, "union alias form mismatch")
                 fact = stmt.union_extraction
                 source = MIRPlace(self.slot_of(fact.source), (MIRUnionPayload(fact.alternative),))
                 # A scalar payload is aliased in place, readonly: the binding is the payload itself.

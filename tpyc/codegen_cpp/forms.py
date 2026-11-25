@@ -23,7 +23,7 @@ from ..parse.nodes import (TpyExpr, TpyFieldAccess, TpyForEach, TpyName,
 from ..typesys import pointer_repr_optional
 from ..typesys import (
     OwnType, TpyType, TupleType, UnionType,
-    borrow_form_differs, contains_type_kind_param, is_ptr_variant_union,
+    borrow_form_differs, contains_type_kind_param, union_borrow_form,
     property_getter_returns_storage_ref,
     unwrap_qualifiers, unwrap_readonly,
 )
@@ -155,7 +155,7 @@ def is_plain_nonvalue(t: TpyType) -> bool:
         return False
     if pointer_repr_optional(check) is not None:
         return False
-    if is_ptr_variant_union(check):
+    if union_borrow_form(check) is not None:
         return False
     return True
 

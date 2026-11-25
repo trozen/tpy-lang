@@ -57,14 +57,16 @@ class VariantAccess:
     """Codegen helper for emitting std::variant access patterns.
 
     Construct once per access site with the base C++ expression, its
-    TPy type, and the shape flags (`is_ptr_variant`, `is_const`), then
-    call `index_expr()`, `holds(member)`, `get_by_type(member)`, or
-    `get_by_index(idx)` to produce the C++ access string.
+    TPy type, and the member form facts (`member_pointers`, `is_const`),
+    then call `index_expr()`, `holds(member, index)` or
+    `get_by_type(member, index)` to produce the C++ access string.
     """
     base_expr: str              # C++ expression that yields the variant or its wrapper
     typ: TpyType | None         # TPy type of `base_expr`; None disables wrapper indirection
-    is_ptr_variant: bool        # runtime form is `::tpy::Union<T*, U*, ...>`
-    is_const: bool = False      # const propagation for ptr-variant get (`std::get<const T*>(...)`)
+    # Per variant index, whether the variant holds that member by pointer
+    # (`UnionType.member_is_pointer` at its holder).
+    member_pointers: tuple[bool, ...] = ()
+    is_const: bool = False      # const pointees (`std::get<const T*>(...)`)
 
     # --- Access expressions --------------------------------------------
 
@@ -83,36 +85,34 @@ class VariantAccess:
         """`variant.index()` -- for switch dispatch on the active tag."""
         return f"{self.variant_expr}.index()"
 
-    def holds(self, member_cpp: str) -> str:
+    def holds(self, member_cpp: str, index: int | None) -> str:
         """`std::holds_alternative<member>(variant)` -- type test for a
-        specific alternative. Adds `*` suffix for ptr-variant and `const`
-        prefix for const-indirect borrows."""
-        type_arg = self._type_arg(member_cpp)
+        specific alternative. Adds `*` suffix for a member held by pointer
+        and `const` prefix for const-indirect borrows."""
+        type_arg = self._type_arg(member_cpp, index)
         return f"std::holds_alternative<{type_arg}>({self.variant_expr})"
 
-    def get_by_type(self, member_cpp: str, *, lvalue: bool = False) -> str:
+    def get_by_type(self, member_cpp: str, index: int | None, *,
+                    lvalue: bool = False) -> str:
         """`std::get<member>(variant)` extracting the typed alternative.
 
-        For ptr-variant, the result is dereferenced so the form is the
-        same value shape as for value-variant. `lvalue=False` (default)
+        For a member held by pointer, the result is dereferenced so the form
+        is the same value shape as for a member held by value. `lvalue=False` (default)
         wraps in outer parens for safe embedding in larger expressions
         (`(*std::get<T*>(v))`). `lvalue=True` omits the parens, suitable
         for direct binding sites like `auto& local = expr;`."""
-        type_arg = self._type_arg(member_cpp)
-        if self.is_ptr_variant:
+        return self.get_member(member_cpp, self._held_by_pointer(index),
+                               lvalue=lvalue)
+
+    def get_member(self, member_cpp: str, pointer: bool, *,
+                   lvalue: bool = False) -> str:
+        """`get_by_type` for a caller that holds the member's form answer
+        (`UnionType.member_is_pointer`) instead of its variant index."""
+        type_arg = self._pointer_arg(member_cpp) if pointer else member_cpp
+        if pointer:
             inner = f"*std::get<{type_arg}>({self.variant_expr})"
             return inner if lvalue else f"({inner})"
         return f"std::get<{type_arg}>({self.variant_expr})"
-
-    def get_by_index(self, idx: int) -> str:
-        """`std::get<I>(variant)` -- match-arm extraction by tag index.
-
-        For ptr-variant: emits `*std::get<I>(variant)` (without outer
-        parens; match-arm sites consume the expression as an lvalue and
-        bind via `auto&`)."""
-        if self.is_ptr_variant:
-            return f"*std::get<{idx}>({self.variant_expr})"
-        return f"std::get<{idx}>({self.variant_expr})"
 
     # Boundary conversions (`::tpy::to_ptr_variant` / `to_const_ptr_variant`
     # / `to_value_variant`) are not exposed here because every call site
@@ -122,14 +122,20 @@ class VariantAccess:
 
     # --- Internal ------------------------------------------------------
 
-    def _type_arg(self, member_cpp: str) -> str:
+    def _held_by_pointer(self, index: int | None) -> bool:
+        return (index is not None and index < len(self.member_pointers)
+                and self.member_pointers[index])
+
+    def _type_arg(self, member_cpp: str, index: int | None) -> str:
         """Build the template argument for `std::get<...>` /
         `std::holds_alternative<...>`. Adds `*` suffix and `const` prefix
-        when the runtime form is ptr-variant. `std::monostate` (the None
-        tag) is form-invariant -- ptr-variants carry it verbatim as a
-        monostate alternative, not a `std::monostate*` -- so it passes
-        through unchanged."""
-        if self.is_ptr_variant and member_cpp != "std::monostate":
-            const = "const " if self.is_const else ""
-            return f"{const}{member_cpp}*"
+        for a member held by pointer; `std::monostate` (the None tag) never
+        is one. `index` is the member's variant index, None for a type the
+        variant does not list."""
+        if self._held_by_pointer(index):
+            return self._pointer_arg(member_cpp)
         return member_cpp
+
+    def _pointer_arg(self, member_cpp: str) -> str:
+        const = "const " if self.is_const else ""
+        return f"{const}{member_cpp}*"

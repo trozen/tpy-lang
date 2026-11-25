@@ -2908,15 +2908,17 @@ def by_value_optional_payload(typ: 'TpyType | None') -> 'TpyType | None':
     return None
 
 
-def pointer_variant_union(typ: 'TpyType | None') -> 'UnionType | None':
-    """The non-value union lowered to `::tpy::Union<A*, B*>` at a borrow
-    that `typ` has the shape of (`repr_shape`), or None. A recursive-union
-    alias uses a wrapper struct, a value type, so it is not one; an owned
-    union (`Own[A | B]`) is the storage form."""
+def union_borrow_form(typ: 'TpyType | None') -> 'UnionType | None':
+    """The union `typ` has the shape of (`repr_shape`) when a borrow holder
+    renders it in a borrow form distinct from its storage form
+    (`::tpy::Union<A*, B*>` beside `::tpy::Union<A, B>`), or None. Which of
+    its members that form holds by pointer is `UnionType.member_is_pointer`.
+    A recursive-union alias uses a wrapper struct, a value type, so it has
+    none; an owned union (`Own[A | B]`) is the storage form."""
     if not isinstance(typ, TpyType) or _wrapped_by(typ, OwnType):
         return None
     shape = repr_shape(typ)
-    return (shape if isinstance(shape, UnionType) and shape.uses_pointer_repr()
+    return (shape if isinstance(shape, UnionType) and shape._uses_pointer_repr()
             and not shape.needs_wrapper() else None)
 
 
@@ -3375,7 +3377,9 @@ def holds_result_member(local: 'TpyType | None', result: 'TpyType') -> bool:
         return True
     if isinstance(res, OptionalType) and not res.uses_pointer_repr():
         members: 'tuple[TpyType, ...]' = (res.inner,)
-    elif isinstance(res, UnionType) and not res.uses_pointer_repr():
+    elif isinstance(res, UnionType) and res.is_value_type():
+        # A union holding a reference (a recursive-alias wrapper included)
+        # returns by pointer or reference, not by value.
         members = res.members
     else:
         return False
@@ -3776,8 +3780,9 @@ def readonly_protects(t: 'TpyType') -> bool:
     if isinstance(t, TupleType):
         return any(readonly_protects(e) for e in t.element_types)
     if isinstance(t, (OptionalType, UnionType)):
-        return t.uses_pointer_repr() or any(
-            readonly_protects(m) for m in t.inner_types())
+        ptr = (t.uses_pointer_repr() if isinstance(t, OptionalType)
+               else not t.is_value_type())
+        return ptr or any(readonly_protects(m) for m in t.inner_types())
     return not t.is_value_type()
 
 
@@ -4198,7 +4203,8 @@ def return_representation(t: TpyType) -> Representation:
         return Representation.STORAGE
     if isinstance(t, RefType):
         return Representation.REFERENCE
-    if isinstance(t, (OptionalType, UnionType)) and t.uses_pointer_repr():
+    if ((isinstance(t, OptionalType) and t.uses_pointer_repr())
+            or union_borrow_form(t) is not None):
         return Representation.REFERENCE
     if isinstance(t, NominalType) and (td := type_def_of(t)) is not None and td.is_borrowing_view:
         return Representation.VIEW
@@ -5673,6 +5679,11 @@ class RecursiveAliasInstanceType(TpyType):
     def needs_wrapper(self) -> bool:
         return True
 
+    def member_pointers(self, borrow: bool) -> tuple[bool, ...]:
+        # A wrapper's `.value` variant holds every member by value, as
+        # `UnionType.member_pointers` answers for a wrapped union.
+        return ()
+
     def to_cpp(self) -> str:
         # Identity-keyed (qname) lookup is collision-proof: a same-module alias
         # is absent from the map and renders bare via _short(); an imported one
@@ -5834,18 +5845,38 @@ class UnionType(TpyType):
         return all(m.is_sync() for m in self.members)
 
     def is_movable(self) -> bool:
-        # Pointer-variant members are pointers (always movable); a value
+        # A union holding a reference is a borrow form of pointers or a
+        # recursive-alias wrapper moving its heap-held variant; a value
         # variant<...> moves iff every member moves.
-        return True if self.uses_pointer_repr() else all(m.is_movable() for m in self.members)
+        if not self.is_value_type():
+            return True
+        return all(m.is_movable() for m in self.members)
 
-    def uses_pointer_repr(self) -> bool:
-        """Whether this union uses pointer-variant repr for params/returns/locals.
-
-        True when any non-None member is not a value type (e.g. Dog | Cat with records).
-        Pointer variants use ::tpy::Union<Dog*, Cat*> instead of the
-        storage form ::tpy::Union<Dog, Cat>.
-        """
+    def _uses_pointer_repr(self) -> bool:
+        """Any member is a reference type. Private: outside this module a
+        holder asks `union_borrow_form` and a member `member_is_pointer`, so
+        no reader re-derives a member's form from the whole union."""
         return not self.is_value_type()
+
+    def member_is_pointer(self, borrow: bool, m: 'TpyType') -> bool:
+        """Whether member `m` is held as a pointer (`M*`) in this union at a
+        holder that renders the borrow form (`borrow`) or the storage form.
+        The union half of `TupleType._element_is_pointer_repr`. None
+        (`std::monostate`) and a recursive-alias wrapper's members are never
+        pointers; at a borrow every other member of a union holding a
+        reference type is one (the sibling rule)."""
+        if not borrow or is_void_like_type(m) or self.needs_wrapper():
+            return False
+        return self._uses_pointer_repr()
+
+    def member_pointers(self, borrow: bool) -> tuple[bool, ...]:
+        """Per variant index, `member_is_pointer` at a holder rendering the
+        borrow form (`borrow`) or the storage form; empty for a recursive
+        alias's wrapper, whose `.value` variant holds every member by
+        value."""
+        if self.needs_wrapper():
+            return ()
+        return tuple(self.member_is_pointer(borrow, m) for m in self.members)
 
     def to_cpp_ptr_variant(self) -> str:
         """Return the borrow-form type: ::tpy::Union<Dog*, Cat*>.
@@ -5860,7 +5891,8 @@ class UnionType(TpyType):
         """
         cpp_members = [
             "std::monostate" if is_void_like_type(m)
-            else f"{m.to_cpp()}*"
+            else f"{m.to_cpp()}*" if self.member_is_pointer(True, m)
+            else m.to_cpp()
             for m in self.members
         ]
         return f"::tpy::Union<{', '.join(cpp_members)}>"
@@ -5869,7 +5901,8 @@ class UnionType(TpyType):
         """Return the read-borrow form: ::tpy::Union<const Dog*, const Cat*>."""
         cpp_members = [
             "std::monostate" if is_void_like_type(m)
-            else f"const {m.to_cpp()}*"
+            else f"const {m.to_cpp()}*" if self.member_is_pointer(True, m)
+            else m.to_cpp()
             for m in self.members
         ]
         return f"::tpy::Union<{', '.join(cpp_members)}>"
@@ -5881,7 +5914,7 @@ class UnionType(TpyType):
         # before uses_pointer_repr so a wrapper never renders as a ptr-variant.
         if self.needs_wrapper():
             return f"{self.to_cpp()}&"
-        if self.uses_pointer_repr():
+        if union_borrow_form(self) is not None:
             return self.to_cpp_ptr_variant()
         return f"const {self.to_cpp()}&"
 
@@ -5891,7 +5924,7 @@ class UnionType(TpyType):
         if self.needs_wrapper() or (is_protocol_union(self) and not any(
                 is_void_like_type(m) for m in self.members)):
             return ParamPassing.CONST_REF if signature_const else ParamPassing.MUT_REF
-        if self.uses_pointer_repr():
+        if union_borrow_form(self) is not None:
             return ParamPassing.POINTER
         return ParamPassing.CONST_REF
 
@@ -5903,14 +5936,14 @@ class UnionType(TpyType):
     def to_cpp_param(self, name: str) -> str:
         if self.needs_wrapper():
             return f"{self.to_cpp()}& {name}"
-        if self.uses_pointer_repr():
+        if union_borrow_form(self) is not None:
             return f"{self.to_cpp_ptr_variant()} {name}"
         return f"const {self.to_cpp()}& {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
         if self.needs_wrapper():
             return f"const {self.to_cpp()}& {name}"
-        if self.uses_pointer_repr():
+        if union_borrow_form(self) is not None:
             # DEEP const: the const belongs on the pointees. On the by-value
             # borrow union itself it would freeze the union and nothing it
             # points at, and a const-bound source could not reach the slot at
@@ -5940,14 +5973,14 @@ class UnionType(TpyType):
     def return_passing(self) -> ReturnPassing:
         if self.needs_wrapper():
             return ReturnPassing.REFERENCE
-        if self.uses_pointer_repr():
+        if union_borrow_form(self) is not None:
             return ReturnPassing.POINTER
         return ReturnPassing.VALUE
 
     def is_ref_param(self) -> bool:
-        if self.uses_pointer_repr():
-            return False  # pointer variant passed by value
-        return not self.is_value_type()
+        # A union holding a reference passes its pointer variant by value;
+        # every other union is a value type.
+        return False
 
     def param_needs_copy_for_reassign(self) -> bool:
         return False
@@ -6363,7 +6396,7 @@ class TupleType(TpyType):
         # variant: std::variant has no mutable->const converting ctor, so the
         # call-site slot (which uses to_const_ptr_variant) and this param/return
         # form must agree on const pointees regardless of the surrounding const.
-        if isinstance(core, UnionType) and core.uses_pointer_repr():
+        if isinstance(core, UnionType) and not core.is_value_type():
             return t.to_cpp_return_const()
         return t.to_cpp_return_const() if const else t.to_cpp_return()
 
@@ -8009,17 +8042,6 @@ def is_protocol_type(typ: TpyType) -> bool:
     return isinstance(typ, NominalType) and typ.is_protocol
 
 
-def is_ptr_variant_union(t: TpyType) -> bool:
-    """A non-value union lowered to `::tpy::Union<A*, B*>` (pointer variant).
-
-    Pure type query -- `CodeGenContext.is_ptr_variant_union`, the binding
-    classifier and the value-category rules all read this one definition. A
-    recursive-union alias uses a wrapper struct, which is a value type, so it
-    is not a pointer variant. Reads the shape (`pointer_variant_union`).
-    """
-    return pointer_variant_union(t) is not None
-
-
 def property_getter_returns_storage_ref(rt: 'TpyType | None') -> bool:
     """A property GETTER's return convention differs from a plain method's for
     the two pointer-repr shapes: the getter hands back the FIELD'S STORAGE by
@@ -8032,7 +8054,7 @@ def property_getter_returns_storage_ref(rt: 'TpyType | None') -> bool:
     property.
     """
     return (pointer_repr_optional(rt) is not None
-            or pointer_variant_union(rt) is not None)
+            or union_borrow_form(rt) is not None)
 
 
 def is_polymorphic_class_type(typ: TpyType, registry: 'TypeRegistry') -> bool:
@@ -8207,7 +8229,9 @@ def default_needs_call_site_fill(ptype: TpyType) -> bool:
     if isinstance(inner, OptionalType):
         return (own or not inner.uses_pointer_repr()) and _is_record(inner.inner)
     if isinstance(inner, UnionType):
-        if is_protocol_union(inner) or (inner.uses_pointer_repr() and not own):
+        # `Own` renders the storage form, so only an unowned union holding a
+        # reference (borrow form or wrapper) keeps the C++ default.
+        if is_protocol_union(inner) or (not own and not inner.is_value_type()):
             return False
         return any(_is_record(m) for m in inner.members)
     return False

@@ -49,7 +49,7 @@ from ..typesys import (
     PtrType, ReadonlyType, ResolvedBinop, ResolvedUnaryop,
     TpyType, TupleType, TypeParamRef, ValueForm, contains_type_param,
     is_bodyless_binding, is_dyn_protocol,
-    is_readonly_ptr, param_takes_ownership, pointer_repr_optional, pointer_variant_union,
+    is_readonly_ptr, param_takes_ownership, pointer_repr_optional, union_borrow_form,
     signature_only,
     unwrap_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
@@ -193,12 +193,12 @@ def _bare(ptype: TpyType) -> TpyType:
 def pointer_kind(ptype: TpyType | None) -> PointerKind:
     """A `Ptr[T]` parameter passes the pointer by value; an Optional or a
     union of reference types passes its borrow form, a pointer at the
-    caller's storage (`pointer_repr_optional`, `pointer_variant_union`)."""
+    caller's storage (`pointer_repr_optional`, `union_borrow_form`)."""
     if not isinstance(ptype, TpyType):
         return PointerKind.NONE
     if isinstance(_bare(ptype), PtrType):
         return PointerKind.BY_VALUE
-    if pointer_repr_optional(ptype) is not None or pointer_variant_union(ptype) is not None:
+    if pointer_repr_optional(ptype) is not None or union_borrow_form(ptype) is not None:
         return PointerKind.BORROW
     return PointerKind.NONE
 

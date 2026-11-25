@@ -52,7 +52,7 @@ from ...parse.nodes import (
     TpyVarDecl,
 )
 from ...typesys import (owned_payload, peel_binding, pointer_repr_optional,
-                       pointer_variant_union, repr_shape)
+                       union_borrow_form, repr_shape)
 from ...typesys import (
     param_may_be_written,
     ConcreteFrameType, ConcreteGenType,
@@ -3715,7 +3715,7 @@ def copy_construct_source(init: TpyExpr, analyzer,
     conversion (`call.copy_span` / `call.copy_str`). Only the ptr-variant
     union needs saying out loud, and it says it where the binding is known:
     an assign-narrowed ptr-variant local READS as its member record, so
-    `_lower_copy_record` fences it off `ptr_variant_locals` before this
+    `_lower_copy_record` fences it off its binding's borrow form before this
     classifier's record answer can claim it.
 
     Two source forms are excluded here because they own arms whose render is
@@ -4181,7 +4181,7 @@ def _literal_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
         return None
     slot = (unwrap_readonly(unwrap_ref_type(ptype))
             if isinstance(ptype, TpyType) else None)
-    if slot is None or pointer_variant_union(slot) is not None:
+    if slot is None or union_borrow_form(slot) is not None:
         # A pointer variant lends an object: no literal pins its member.
         return None
     if member is not None:
@@ -10172,7 +10172,7 @@ def _borrow_form_at_storage_slot(fi: 'FunctionInfo | None', index: int,
             root.params[index].type)), TypeParamRef):
         return False
     return (pointer_repr_optional(ptype) is not None
-            or pointer_variant_union(ptype) is not None)
+            or union_borrow_form(ptype) is not None)
 
 
 def _landed_member(call: 'MethodCallFacts', index: int,
@@ -12259,7 +12259,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # by-value dispatch local (`auto __match_subject_N = <call>;`);
             # every other consumer of a union result keeps rejecting.
             or (union_subject_ret_ok
-                and pointer_variant_union(ret) is not None
+                and union_borrow_form(ret) is not None
                 and _witness("method.union_subject_ret"))
             # A PROPERTY getter's ptr-variant union result at a
             # RECEIVER/BORROW_BIND sink (`s = c.shape` -- the getter

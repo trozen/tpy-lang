@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
 from ..holders import Holder, IterHolder
 from ..typesys import pending_view_of, protocol_param_alternatives
-from ..typesys import (frame_module_qual, unwrap_qualifiers, bound_as_spelled, contains_reference_type, unwrap_value_own, drop_own_marker, pointer_repr_optional, pointer_variant_union,
+from ..typesys import (frame_module_qual, unwrap_qualifiers, bound_as_spelled, contains_reference_type, unwrap_value_own, drop_own_marker, pointer_repr_optional, union_borrow_form,
                        holds_result_member,
                        ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
                        BASIC_SLICE, SLICE)
@@ -8221,7 +8221,7 @@ class StatementAnalyzer:
             stripped_value = self.ctx.get_expr_type(stmt.value)
             is_compound_ref = (
                 (isinstance(stripped_value, OptionalType) and not stripped_value.inner.is_value_type())
-                or pointer_variant_union(stripped_value) is not None
+                or union_borrow_form(stripped_value) is not None
             )
             # Ptr[T] target takes the address of the source (`_a(&a)`), no copy.
             target_is_ptr = isinstance(unwrap_qualifiers(target_type), PtrType)

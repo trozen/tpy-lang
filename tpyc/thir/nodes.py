@@ -120,9 +120,22 @@ class THIROptionalRead:
 
 @dataclass(frozen=True)
 class THIRUnionLayout:
-    """Alternatives of the original wrapper with their selected payload forms."""
+    """Alternatives of the original wrapper with their selected payload forms,
+    at a holder rendering the borrow form (`borrow`) or the storage form: a
+    member `type.member_is_pointer(borrow, m)` holds by pointer is a
+    borrowed record, any other an inert scalar."""
     type: TpyType
     elements: tuple[TpyType | THIRBorrowedRecord | None, ...]
+    borrow: bool
+
+    def disagrees_with_holder(self) -> bool:
+        """Whether some alternative's payload is not the form its member
+        takes at the layout's holder: a borrowed record exactly where the
+        member is held by pointer. Asked of a union `type` and a bool
+        `borrow`, which the THIR validator and MIR check first."""
+        return any(p is not None and isinstance(p, THIRBorrowedRecord)
+                   != self.type.member_is_pointer(self.borrow, m)
+                   for p, m in zip(self.elements, self.type.members))
 
 
 @dataclass(frozen=True)
@@ -2638,13 +2651,14 @@ class THIRDynIsinstance(THIRExpr):
 class THIRNarrowedRead(THIRExpr):
     """A condition-position read of an isinstance-narrowed subject (F4 U4
     compound conditions): no extraction alias exists yet, so the read renders
-    as the bare get -- `(*std::get<A*>(v))` (pointer variant, parenthesized
-    for member access) / `std::get<T>(v)` (value variant). The expression
-    sibling of `THIRNarrowAlias` (same structural fields); only ever produced
-    inside a compound narrowing condition, after its isinstance leaf."""
+    as the bare get -- `(*std::get<A*>(v))` (a member the subject holds by
+    pointer, `member_pointer`; parenthesized for member access) /
+    `std::get<T>(v)` (a member held by value). The expression sibling of
+    `THIRNarrowAlias` (same structural fields); only ever produced inside a
+    compound narrowing condition, after its isinstance leaf."""
     variant_cpp: str
     member_cpp: str
-    is_ptr_variant: bool
+    member_pointer: bool
     union_extraction: THIRUnionExtraction | None = field(default=None, kw_only=True)
 
 
@@ -3475,19 +3489,20 @@ class THIRNarrowAlias(THIRStmt):
     entry, or -- for the early-return implicit else -- at statement level
     right after the `if`. The variant arm:
 
-        auto& __v = *std::get<A*>(v);        (pointer variant)
-        const auto& __v = std::get<T>(v);    (value variant; const for
-                                              value-type params)
+        auto& __v = *std::get<A*>(v);        (member held by pointer)
+        const auto& __v = std::get<T>(v);    (member held by value; const
+                                              for value-type params)
 
     Reads of the narrowed source inside the alias's scope lower to
     `THIRName(alias)`; the isinstance condition keeps reading the original
     variant. `member_cpp` is the final template arg (const/`*` applied for
-    pointer variants). Never carries a source comment -- the alias is
-    written between the brace and the first statement's comment."""
+    a member held by pointer, `member_pointer`). Never carries a source
+    comment -- the alias is written between the brace and the first
+    statement's comment."""
     alias: str
     variant_cpp: str
     member_cpp: str
-    is_ptr_variant: bool
+    member_pointer: bool
     const_ref: bool
     union_extraction: THIRUnionExtraction | None = field(default=None, kw_only=True)
 
@@ -4588,13 +4603,13 @@ class THIRMatch(THIRStmt):
     # label, N drawing the second per-function counter bump (before the
     # switch head).
     default_goto: bool = False
-    # switch_union: the subject's runtime form -- `*std::get<I>(...)` vs
-    # `std::get<I>(...)` (`_subject_is_ptr_variant` folded at lowering).
-    is_ptr_variant: bool = False
+    # switch_union: per variant index, whether the subject holds that
+    # member by pointer -- `*std::get<I>(...)` vs `std::get<I>(...)`
+    # (`UnionType.member_is_pointer` at the subject's holder).
+    member_pointers: tuple[bool, ...] = ()
     # switch_union: a recursive-alias wrapper subject dispatches through
     # its `.value` variant member (`switch (subj.value.index())`, `std::get`
-    # over `subj.value`); always value-variant, so is_ptr_variant stays
-    # False (is_ptr_variant_union excludes needs_wrapper).
+    # over `subj.value`); it holds no member by pointer.
     wrapper_value: bool = False
     # optional_partition (O1): the optimized-Optional shape over a
     # pointer-repr `Optional[F1-record]` name subject. The None prefix arm
@@ -4971,7 +4986,8 @@ class THIRResumeExtraction:
     pointer, the frame field it reads (a forwarded alias reads its
     parameter's) and whether that field is a `frame_slot`, and, for a
     variant subject, whether a value or wrapper parameter binds the alias
-    const and whether it is a pointer variant with const pointees."""
+    const, the members it holds by pointer and whether those pointees are
+    const."""
     declared: TpyType | None
     # The type of the frame field itself, None for a subject that is no
     # parameter or frame local (the receiver).
@@ -4984,7 +5000,10 @@ class THIRResumeExtraction:
     storage: str
     slot_backed: bool
     param_const: bool
-    ptr_variant: bool
+    # Per narrowed fact a resume state stamps on the subject, whether the
+    # subject holds that member by pointer (`UnionType.member_is_pointer`
+    # at its binding's holder); empty for a subject that is no union.
+    member_pointer: 'Mapping[TpyType, bool]'
     ptr_const: bool
 
 

@@ -40,7 +40,7 @@ from ..parse.nodes import (
 from ..sema.literal_utils import fixed_int_literal_value_from_expr
 from ..sema.registration import receiver_self_type
 from ..type_def_registry import is_fixed_int_type
-from ..typesys import pointer_repr_optional
+from ..typesys import pointer_repr_optional, union_borrow_form
 from ..typesys import (
     AnyType, LiteralType,
     NominalType, OptionalType,
@@ -400,12 +400,11 @@ def emit_isinstance_extractions(
         var_decl_type = subject.slot_type
         is_const = subject.param_const
         qualifier = "const auto&" if is_const else "auto&"
-        # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
-        if subject.ptr_variant:
-            va = VariantAccess(var_ref, None, is_ptr_variant=True, is_const=subject.ptr_const)
-        else:
-            va = VariantAccess(var_ref, var_decl_type, is_ptr_variant=False)
-        out.write(f"{inner_indent}{qualifier} {local_name} = {va.get_by_type(cpp_type, lvalue=True)};\n")
+        # A member held by pointer: *std::get<T*>(var) or *std::get<const T*>(var)
+        va = VariantAccess(var_ref, var_decl_type, is_const=subject.ptr_const)
+        pointer = subject.member_pointer.get(narrowed_type, False)
+        out.write(f"{inner_indent}{qualifier} {local_name} = "
+                  f"{va.get_member(cpp_type, pointer, lvalue=True)};\n")
         saved[var_name] = ctx.narrowed_vars.get(var_name)
         ctx.narrowed_vars[var_name] = local_name
     return saved
@@ -424,7 +423,7 @@ def emit_isinstance_extractions(
 # has a demonstrated MIL-render consumer.
 PARAM_LOCAL_SET_FIELDS = (
     "pointer_locals", "const_indirect_locals", "optional_locals",
-    "ptr_variant_locals", "storage_form_tuple_locals",
+    "storage_form_tuple_locals",
 )
 
 
@@ -471,9 +470,7 @@ def seed_param_locals(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
             ctx.optional_locals.add(pname)
             ctx.var_types[pname] = actual.wrapped
             local_ns.bind_variable(pname, actual.wrapped)
-        # Non-value union params are pointer variants (variant<T*...>)
-        elif ctx.is_ptr_variant_union(actual):
-            ctx.ptr_variant_locals.add(pname)
+        elif union_borrow_form(actual) is not None:
             # Deep-const members (`const T*`) when the param is `readonly[...]`
             # OR the const verdict deep-consts it (readonly fn/method whose
             # param address does not escape). `deep_const_borrow_params` is the
@@ -512,7 +509,7 @@ def seed_param_locals_scoped(
     The sets are CLEARED before seeding, not merely added to: the caller
     runs outside any body scope, so whatever the previously emitted body
     left behind is stale -- a same-named binding from it would flip
-    name-keyed verdicts (`is_ptr_variant_source`, pointer derefs, moves)
+    name-keyed verdicts (pointer derefs, moves)
     inside the window."""
     saved = {f: getattr(ctx, f).copy() for f in PARAM_LOCAL_SET_FIELDS}
     saved_var_types = dict(ctx.var_types)
@@ -570,7 +567,7 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
     ctx.sema_ever_owned_locals = ctx.analyzer.function_ever_owned_locals.get(func, set())
     ctx.sema_stmt_borrow_decls = ctx.analyzer.function_stmt_borrow_decls.get(func, {})
     # Classify params into the pointer-form local sets (pointer_locals,
-    # ptr_variant_locals, optional_locals, ...) that access
+    # optional_locals, ...) that access
     # dispatch consults so `->` vs `.` / move / variant-form are correct.
     seed_param_locals(ctx, protocols, params, local_ns,
                       ctx.deep_const_borrow_params, func)

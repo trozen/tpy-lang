@@ -73,7 +73,7 @@ from ...parse.nodes import (
     TpyVarargPack,
 )
 from ...emitted_members import frame_struct_is_template
-from ...typesys import ANY, binds_runtime_symbol, indirection_referent_readonly, is_readonly_result_type, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
+from ...typesys import ANY, binds_runtime_symbol, indirection_referent_readonly, is_readonly_result_type, pointer_repr_optional, union_borrow_form, repr_shape, ResolvedBinop
 from ...typesys import (
     drop_own_marker, dyn_protocol_borrow_result, make_readonly,
     param_takes_ownership, template_args_cpp)
@@ -338,7 +338,7 @@ from ..nodes import (
     THIRRecordCopy,
     record_rvalue_storage,
 )
-from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
+from ...codegen_cpp.forms import (is_plain_nonvalue,
                                   reads_storage_form_optional)
 from . import binding_shadow
 from . import bindings
@@ -909,7 +909,7 @@ def _lower_copy_record(e: TpyExpr, lc: '_LowerCtx',
     demands the source match `slot_type` nominally."""
     crec = copy_construct_source(e, lc.analyzer, lc.names_with("pointer"))
     if crec is not None and (isinstance(e.args[0], TpyName)
-                             and lc.binding(e.args[0].name).ptr_variant):
+                             and lc.binding(e.args[0].name).union_borrow):
         # An assign-narrowed ptr-variant binding reads as its member
         # record, but its copy is the variant deep copy (to_value_variant,
         # the copy-special ptr-variant arm) -- not the record
@@ -1080,7 +1080,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               # union result consumed whole by the sink's
               # `to_value_variant` lift.
               or (use.admits(SinkForm.UNION_VALUE_LIFT)
-                  and pointer_variant_union(record) is not None
+                  and union_borrow_form(record) is not None
                   and _witness("call.union_value_lift_ret"))
               # The Own[union] ARG slot: a same-union Own[A|B]-returning
               # call rvalue moves through the `&&` slot bare
@@ -1098,7 +1098,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               # by the by-value dispatch local -- the free-call twin of the
               # method gate's union_subject_ret_ok row.
               or (use.admits(SinkForm.UNION_SUBJECT)
-                  and pointer_variant_union(ret) is not None
+                  and union_borrow_form(ret) is not None
                   and _witness("call.union_subject_ret"))
               # A DISCARDED @native record-rvalue call (`open(missing)` for
               # its raise, result unused): the bare call statement -- the
@@ -4677,7 +4677,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             return THIRNarrowedRead(
                 result_type=member, variant_cpp=side.name,
                 union_extraction=_union_extraction(side.name, u, member, lc),
-                member_cpp=member_cpp, is_ptr_variant=is_ptr,
+                member_cpp=member_cpp, member_pointer=is_ptr,
                 form=(Form.BORROW if _is_borrow_form_name(member)
                       else Form.VALUE),
                 loc=getattr(side, "loc", None))
@@ -4958,16 +4958,14 @@ def _opt_bytes_narrowed_concat_operand(e: TpyExpr, lc: '_LowerCtx') -> bool:
     """The bytes-concat flavor: the deref feeds `bytes_concat`."""
     return _opt_viewfam_narrowed_concat_operand(e, lc, _resolved_bytes_value)
 
-def _narrow_subject_is_ptr(var: str, u: UnionType, lc: '_LowerCtx') -> bool:
-    """Whether a narrowing SUBJECT's `std::get` reads the POINTER variant.
-    The verdict is the binding's, not the type's: codegen keys its extraction
-    on codegen's `ptr_variant_locals` (params and pointer-variant local decls), so a
-    ptr-variant-TYPED union reaching a name some other way -- a for-loop
-    element over `list[A | B]`, whose storage form is the value variant --
-    still extracts by value, which is what a False here selects. The verdict
-    is only as good as the mirror: the ptr_variant records must stay complete
-    against codegen's registrations (see its declaration)."""
-    return is_ptr_variant_union(u) and lc.binding(var).ptr_variant
+def _narrow_subject_borrows(var: str, u: UnionType, lc: '_LowerCtx') -> bool:
+    """Whether a narrowing SUBJECT holds its union in the borrow form, the
+    holder `UnionType.member_is_pointer` answers a member's `std::get` for.
+    The verdict is the binding's, not the type's: a union-typed name bound
+    some other way -- a for-loop element over `list[A | B]`, whose storage
+    form is the value variant -- holds the storage form."""
+    return (union_borrow_form(u) is not None
+            and lc.binding(var).union_borrow)
 
 
 def _narrow_subject_const(var: str, lc: '_LowerCtx',
@@ -4989,13 +4987,13 @@ class _IsinSubject(NamedTuple):
     the subject is one. A subject with no key (`var` None) is the operand
     `value`, read once inside the test's own full expression, so the
     temporaries it borrows from outlive the test; `value_type` is its
-    analyzed type, and `ptr_variant` / `const` say how the operand holds
-    it: a reference union is the pointer variant a local of it would be."""
+    analyzed type, and `borrow` / `const` say how the operand holds it: a
+    reference union in the borrow form a local of it would be."""
     var: 'str | None'
     init: 'THIRExpr | None' = None
     value: 'THIRExpr | None' = None
     value_type: 'TpyType | None' = None
-    ptr_variant: bool = False
+    borrow: bool = False
     const: bool = False
 
 
@@ -5003,12 +5001,12 @@ class _SubjectForm(NamedTuple):
     """The C++ form an isinstance subject is read in. `decl` is its
     declared type (a narrowed polymorphic subject anchored to its original
     declaration); `const` whether its pointees are const; `pointer` whether
-    it reads as the pointer a cast takes; `ptr_variant` whether a union
-    subject is the pointer variant; `operand` the subject's read."""
+    it reads as the pointer a cast takes; `borrow` whether a union subject
+    holds the borrow form; `operand` the subject's read."""
     decl: 'TpyType | None'
     const: bool
     pointer: bool
-    ptr_variant: bool
+    borrow: bool
     operand: THIRExpr
 
 
@@ -5031,15 +5029,15 @@ def _subject_form(subj: _IsinSubject, lc: '_LowerCtx',
         return _SubjectForm(
             decl=t, const=subj.const if u is not None else True,
             pointer=polymorphic_source_is_pointer(t),
-            ptr_variant=u is not None and subj.ptr_variant,
+            borrow=u is not None and subj.borrow,
             operand=subj.value)
     rec = lc.binding(var)
     if u is not None:
-        ptr_variant = is_ptr_variant_union(u) and rec.ptr_variant
+        borrow = _narrow_subject_borrows(var, u, lc)
         return _SubjectForm(
             decl=declared.get(var),
-            const=ptr_variant and _narrow_subject_const(var, lc, rec),
-            pointer=False, ptr_variant=ptr_variant,
+            const=borrow and _narrow_subject_const(var, lc, rec),
+            pointer=False, borrow=borrow,
             operand=THIRName(result_type=u, name=var,
                              deref=_narrow_variant_deref(var, lc)))
     var_raw = lc.narrow.poly_source.get(var, declared.get(var, decl))
@@ -5055,7 +5053,7 @@ def _subject_form(subj: _IsinSubject, lc: '_LowerCtx',
         # method's `this` is const, so the cast targets `const Sub*`.
         return _SubjectForm(
             decl=var_raw, const=const or lc.binding("self").const,
-            pointer=lc.self_cpp == "this", ptr_variant=False,
+            pointer=lc.self_cpp == "this", borrow=False,
             operand=THIRSelf(result_type=rtype, form=Form.BORROW,
                              cpp=lc.self_cpp,
                              pointer=lc.self_cpp == "this"))
@@ -5072,7 +5070,7 @@ def _subject_form(subj: _IsinSubject, lc: '_LowerCtx',
                         or (rec.form is BindingForm.POINTER
                             and not rec.rebind_slot))))
     return _SubjectForm(
-        decl=var_raw, const=const, pointer=pointer, ptr_variant=False,
+        decl=var_raw, const=const, pointer=pointer, borrow=False,
         operand=THIRName(result_type=rtype, name=var, form=Form.BORROW,
                          deref=slot))
 
@@ -5291,13 +5289,13 @@ def _narrow_variant_cpp(var: str, u: UnionType, lc: '_LowerCtx') -> str:
 
 def _narrow_member_cpp(var: str, member: TpyType, u: UnionType,
                        lc: '_LowerCtx') -> tuple[str, bool]:
-    """The final `std::get` template arg for a narrowed member read, plus the
-    pointer-variant verdict: the ptr `*` suffix and the const-pointee prefix
-    (`_narrow_subject_const`) applied at lowering. Shared by the extraction
-    alias, the compound-condition inline read, and the assign-narrowed
-    field-receiver read."""
+    """The final `std::get` template arg for a narrowed member read, plus
+    whether the subject holds that member by pointer: the ptr `*` suffix and
+    the const-pointee prefix (`_narrow_subject_const`) applied at lowering.
+    Shared by the extraction alias, the compound-condition inline read, and
+    the assign-narrowed field-receiver read."""
     member_cpp = lc.render_type(member)
-    is_ptr = _narrow_subject_is_ptr(var, u, lc)
+    is_ptr = u.member_is_pointer(_narrow_subject_borrows(var, u, lc), member)
     if is_ptr:
         const = "const " if _narrow_subject_const(var, lc) else ""
         member_cpp = f"{const}{member_cpp}*"
@@ -5319,7 +5317,7 @@ def _union_source_layout(var: str, typ: TpyType, lc: '_LowerCtx',
             and not set(bare.members) <= set(original.type.members)):
         original = None
     layout = union_layout(original.type if original is not None else typ, lc.analyzer,
-                          borrow=rec.ptr_variant,
+                          borrow=rec.union_borrow,
                           readonly=_narrow_subject_const(var, lc, rec))
     if layout is not None:
         lc.narrow.union_layouts[var] = layout
@@ -5370,7 +5368,7 @@ def _union_isinstance(subj: _IsinSubject, u: UnionType, members,
         subject=form.operand,
         wrapper=u.needs_wrapper(),
         member_cpps=tuple(
-            f"{const}{lc.render_type(m)}*" if form.ptr_variant
+            f"{const}{lc.render_type(m)}*" if u.member_is_pointer(form.borrow, m)
             else lc.render_type(m)
             for m in members),
         loc=loc))
@@ -5882,6 +5880,12 @@ def _held_of_form(form: Form) -> Held:
     return Held.VALUE
 
 
+def _borrow_of_held(held: Held) -> bool:
+    """Whether a read held as `held` holds a union in its borrow form: the
+    holder `UnionType.member_is_pointer` answers for."""
+    return held is Held.BORROWED
+
+
 def _viewfam_of(t: 'TpyType | None', analyzer) -> 'TpyType | None':
     return (_resolved_str_value(t, analyzer)
             or _resolved_bytes_value(t, analyzer))
@@ -6045,9 +6049,9 @@ def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
         # target is names, a plain value for a value type.
         return Held.VALUE if t is None or t.is_value_type() else Held.STORAGE
     if isinstance(node, THIRNarrowedRead):
-        # The checked member of the union binding: the member's pointer in
-        # a pointer variant, else the member the variant stores.
-        return Held.BORROWED if node.is_ptr_variant else Held.STORAGE
+        # The checked member of the union binding: the member's pointer
+        # where the binding holds it by pointer, else the member stored.
+        return Held.BORROWED if node.member_pointer else Held.STORAGE
     held = _HELD_BY_KIND.get(type(node))
     assert held is not None, (
         f"Source.held: {type(node).__name__} is not classified")
@@ -6973,7 +6977,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             member_cpp, is_ptr, extraction = inr
             return THIRNarrowedRead(
                 result_type=rtype, variant_cpp=e.name, member_cpp=member_cpp,
-                is_ptr_variant=is_ptr,
+                member_pointer=is_ptr,
                 union_extraction=extraction,
                 form=Form.BORROW if _is_borrow_form_name(rtype) else Form.VALUE,
                 loc=loc)
@@ -7513,7 +7517,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     variant_cpp=_narrow_variant_cpp(e.obj.name, u, lc),
                     member_cpp=member_cpp,
                     union_extraction=_union_extraction(e.obj.name, u, member, lc),
-                    is_ptr_variant=is_ptr, form=Form.BORROW, loc=loc),
+                    member_pointer=is_ptr, form=Form.BORROW, loc=loc),
                 field_cpp=_field_cpp(e),
                 is_arrow=False,
                 narrowed_deref=narrowed_opt,
@@ -12078,7 +12082,7 @@ def _lower_into_any(e: TpyCoerce, lc: '_LowerCtx',
     peeled = copy_call_arg(src, lc.analyzer)
     if peeled is not None:
         pt = lc.analyzer.get_expr_type(peeled)
-        if pt is None or not is_ptr_variant_union(pt):
+        if pt is None or union_borrow_form(pt) is None:
             _witness("coerce.into_any_copy_peel")
             src = peeled
     if isinstance(src, TpyNoneLiteral):
@@ -13184,7 +13188,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         _ebu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_eb)))
                 if _eb is not None else None)
         if isinstance(_ebu, UnionType):
-            if lc.binding(e.name).ptr_variant:
+            if lc.binding(e.name).union_borrow:
                 # The sink is the UNION slot, so the read consumes the WHOLE
                 # variant -- an assign-narrowed read type is immaterial here
                 # (the member-typed-sink miscompile the fence guards cannot
@@ -14874,7 +14878,7 @@ def _lower_isinstance_value(e: TpyCall, lc: '_LowerCtx',
     subject = e.args[0]
     st = lc.analyzer.get_expr_type(subject)
     ptr_u = (None if call_hands_back_value(subject)
-             else pointer_variant_union(st))
+             else union_borrow_form(st))
     # The test finishes inside the subject's full expression (an OPERAND),
     # so a read lending a temporary's storage is still alive where it is
     # tested.
@@ -14904,7 +14908,7 @@ def _lower_isinstance_value(e: TpyCall, lc: '_LowerCtx',
         return THIREvalThen(result_type=rtype, init=operand, value=answer,
                             loc=loc)
     subj = _IsinSubject(None, value=operand, value_type=st,
-                        ptr_variant=ptr_u is not None, const=const)
+                        borrow=ptr_u is not None, const=const)
     test = _isinstance_value_test(e, subj, lc, declared, rtype, loc,
                                   condition=condition)
     if test is not None:
@@ -16637,7 +16641,7 @@ def member_receiver(e: TpyMethodCall, lc: '_LowerCtx',
                 member_cpp=mnu_cpp,
                 union_extraction=_union_extraction(e.obj.name, mnu_u,
                                                    mnu_member, lc),
-                is_ptr_variant=mnu_ptr, form=Form.BORROW,
+                member_pointer=mnu_ptr, form=Form.BORROW,
                 loc=getattr(e.obj, "loc", None))
         else:
             # A call-shaped receiver's own arg temps flush at the enclosing
@@ -17272,8 +17276,10 @@ def _call_arg_result(a: TpyExpr, lc: '_LowerCtx') -> _ExprResultUse:
                 if isinstance(at, TpyType) else None)
         if ((record_like(at, lc.analyzer) and not bare.is_value_type())
                 # A borrow-form Optional / union is its pointer.
-                or (isinstance(bare, (OptionalType, UnionType))
+                or (isinstance(bare, OptionalType)
                     and bare.uses_pointer_repr())
+                or (isinstance(bare, UnionType)
+                    and union_borrow_form(bare) is not None)
                 # A stored tuple is read as the object it is.
                 or (isinstance(bare, TupleType)
                     and not is_rvalue_source(lc.analyzer, a))):
@@ -18539,9 +18545,9 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # out (`push_back(::tpy::to_value_variant<std::variant<A, B>>(p))`).
         # Keyed on the BINDING set, not the type -- a value-variant-bound
         # name (a for-each element) keeps the plain copy machinery below.
-        _ow_u = pointer_variant_union(ow)
+        _ow_u = union_borrow_form(ow)
         if (_ow_u is not None
-                and lc.binding(a.name).ptr_variant
+                and lc.binding(a.name).union_borrow
                 # Defensive, not gate-trusted: a NARROWED name renders the
                 # concrete alternative (no wrap there), so the
                 # lift must never see one even if a future admission arm
@@ -19275,7 +19281,7 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
     stu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
     # The BINDING type, not the read type: an assign-narrowed ptr-variant
     # local reads as its member record, but the copy is still the whole
-    # variant's (keyed on ptr_variant_locals + the binding).
+    # variant's (keyed on the binding's borrow form).
     _cb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         resolve_pending_container(declared[src.name], analyzer)
         or declared[src.name])))
@@ -19286,7 +19292,8 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
         # the copy is binding-keyed, so read the ORIGINAL union from the
         # branch machinery's subject_union store.
         _cb = lc.narrow.subject_union[src.name]
-    if (isinstance(src, TpyName) and lc.binding(src.name).ptr_variant
+    if (isinstance(src, TpyName)
+            and lc.binding(src.name).union_borrow
             and isinstance(_cb, UnionType)
             and src.name not in lc.inline_narrowed):
         stu = _cb
@@ -19297,7 +19304,7 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
         # an assign-narrowed read type is immaterial (the divergent fence's
         # member-typed-sink miscompile cannot arise -- the union field
         # sink's argument). An ISINSTANCE-narrowed name reads the ORIGINAL
-        # binding too (the copy keys on ptr_variant_locals, never the
+        # binding too (the copy keys on the binding's form, never the
         # alias) -- construct the bare name past the rename.
         if src.name in lc.narrow.narrowed:
             _cval: THIRExpr = THIRName(result_type=stu, name=src.name,
@@ -20314,7 +20321,7 @@ def _lower_ptr_union_ternary_arm(arm: TpyExpr, u: 'UnionType',
         bt = declared.get(arm.name)
         bt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
               if bt is not None else None)
-        if (bt == u and lc.binding(arm.name).ptr_variant
+        if (bt == u and lc.binding(arm.name).union_borrow
                 and not lc.binding(arm.name).const
                 and arm.name not in lc.narrow.narrowed):
             return _lower_expr(arm, lc, declared)

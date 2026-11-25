@@ -171,7 +171,7 @@ def test_the_composer_holds_each_value_by_its_role(program: _Program) -> None:
     # An Optional record payload at a slot is a pointer at the record.
     opt = value_shape(OptionalType(p), facts=th.THIROptionalLayout(ref))
     assert (opt.payload.cls, opt.payload.holding) == (MIRClass.RECORD, MIRHolding.POINTER) and opt.record_payload
-    union = value_shape(UnionType((p, INT32)), facts=th.THIRUnionLayout(UnionType((p, INT32)), (ref, None)))
+    union = value_shape(UnionType((p, INT32)), facts=th.THIRUnionLayout(UnionType((p, INT32)), (ref, None), True))
     assert union.alternatives[1] is None and union.alternatives[0].holding is MIRHolding.POINTER
     alias = value_shape(INT32, MIRClass.LEAF, access=True, role=MIRRole.ALIAS)
     assert alias == MIRShape(INT32, MIRClass.LEAF, MIRHolding.ALIAS, True)
@@ -305,7 +305,7 @@ def test_the_shape_check_accepts_what_the_composer_builds(program: _Program) -> 
          TupleType((INT32, ReadonlyType(p)))),
         (value_shape(OptionalType(ReadonlyType(p)), facts=th.THIROptionalLayout(lent)), OptionalType(ReadonlyType(p))),
         (value_shape(UnionType((ReadonlyType(p), NONE)),
-                     facts=th.THIRUnionLayout(UnionType((ReadonlyType(p), NONE)), (lent, None))),
+                     facts=th.THIRUnionLayout(UnionType((ReadonlyType(p), NONE)), (lent, None), True)),
          UnionType((ReadonlyType(p), NONE))),
     ]
     for shape, declared in slots:

@@ -21,7 +21,7 @@ from ...identity_map import IdentityMap
 from ...sema.landings import Boundary, lookup as lookup_landing
 from ...value_category import ElemPath
 from ...prescan import scan_reassigned_vars
-from ...typesys import (contains_type_param, pointer_repr_optional,
+from ...typesys import (contains_type_param, pointer_repr_optional, union_borrow_form,
                         yield_uses_borrow_slot)
 from ...type_def_registry import ParamPassing, has_view_param_form
 from ...typesys import (
@@ -1047,8 +1047,8 @@ def _slot_holds(declared: TpyType, st: TpyType, cls: SlotClass,
         u = unwrap_ref_type(bare)
         return (SlotHolds.POINTER
                 if (element and not stored)
-                or (isinstance(u, (OptionalType, UnionType))
-                    and u.uses_pointer_repr()) else SlotHolds.BORROWS)
+                or (isinstance(u, OptionalType) and u.uses_pointer_repr())
+                or union_borrow_form(u) is not None else SlotHolds.BORROWS)
     if rep is Representation.VIEW:
         return SlotHolds.VALUE
     if cls is SlotClass.UNCLASSIFIED:
@@ -1143,7 +1143,8 @@ def _built_slot(declared: TpyType, st: TpyType,
                         return_representation(e) if by_result
                         else Representation.STORAGE,
                         position, construct, analyzer, placement=placement,
-                        const=const or (by_result and _ptr_variant(e)),
+                        const=const or (by_result and union_borrow_form(
+                            storage_type(e)) is not None),
                         element=True, stored=not by_result,
                         form=form if by_result else None)
             for e in tup.element_types)
@@ -1161,11 +1162,6 @@ def _built_slot(declared: TpyType, st: TpyType,
                 cls=cls, representation=rep or Representation.STORAGE,
                 declared=declared, elems=elems, trait=trait,
                 implicit_move=implicit_move, elements_by_result=by_result)
-
-
-def _ptr_variant(t: TpyType) -> bool:
-    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(storage_type(t))))
-    return isinstance(u, UnionType) and u.uses_pointer_repr()
 
 
 def _lends_result(holds: SlotHolds, elems: 'tuple[Slot, ...] | None'

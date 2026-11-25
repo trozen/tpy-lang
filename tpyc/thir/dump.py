@@ -374,7 +374,7 @@ def _expr(e: THIRExpr) -> str:
         args = ", ".join(_print_arg(a) for a in e.args)
         return f"print_chain({args})"
     if isinstance(e, THIRNarrowedRead):
-        deref = "*" if e.is_ptr_variant else ""
+        deref = "*" if e.member_pointer else ""
         return f"({deref}get<{e.member_cpp}>(%{e.variant_cpp}))"
     if isinstance(e, THIREnumMember):
         return f"enum_member({e.cpp})"
@@ -512,7 +512,7 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
     if isinstance(stmt, THIRStrAppend):
         return [f"{pad}%{stmt.target} += {_expr(stmt.value)}"]
     if isinstance(stmt, THIRNarrowAlias):
-        deref = "*" if stmt.is_ptr_variant else ""
+        deref = "*" if stmt.member_pointer else ""
         cst = "const " if stmt.const_ref else ""
         return [f"{pad}%{stmt.alias} = {cst}&{deref}get<{stmt.member_cpp}>"
                 f"(%{stmt.variant_cpp})"]
@@ -885,7 +885,8 @@ def _resume_extraction_line(var: str, alias: str, sub) -> str:
     facts = [f for f, on in (
         ("receiver", sub.receiver), ("cast-const", sub.cast_const),
         ("indirect", sub.indirect), ("slot", sub.slot_backed),
-        ("param-const", sub.param_const), ("ptr-variant", sub.ptr_variant),
+        ("param-const", sub.param_const),
+        ("ptr-members", any(sub.member_pointer.values())),
         ("ptr-const", sub.ptr_const)) if on]
     decl = _ty(sub.declared) if sub.declared is not None else "?"
     storage = "" if sub.storage == var else f" via {sub.storage}"

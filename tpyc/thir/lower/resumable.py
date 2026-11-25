@@ -43,6 +43,7 @@ from ...identity_map import IdentityMap, IdentitySet
 from ..reject import ThirUnsupported, begin_stmt, note, note_detail
 from ..faces import witness as _witness
 from ..param_contract import param_const
+from ..source import BindingForm
 from ..validate import validate_resumable_leaves, validate_stmts
 from ..nodes import (
     THIRAssign,
@@ -77,7 +78,7 @@ from ...parse.nodes import (
     TpyTupleUnpack,
     TpyVarDecl,
 )
-from ...typesys import generic_opt_trait_type, open_type_param, pointer_variant_union
+from ...typesys import generic_opt_trait_type, open_type_param, repr_shape, union_borrow_form
 from ...typesys import (
     AnyType, unwrap_value_own,
     CallableType,
@@ -1069,7 +1070,15 @@ def _resume_extractions(cfg: 'THIRResumableFrame', lc,
         cast_base = (lc.self_cpp if var == lc.self_receiver
                      else escape_cpp_name(var))
         cast_arg = f"&{cast_base}" if address_of else cast_base
-        ptr_variant = bool(rec is not None and rec.ptr_variant)
+        borrow = rec is not None and rec.union_borrow
+        borrow_union = union_borrow_form(declared)
+        member_pointer: dict[TpyType, bool] = {}
+        if borrow_union is not None:
+            for bb in cfg.blocks.values():
+                fact = bb.entry_narrowings.get(var)
+                if fact is not None:
+                    member_pointer[fact] = borrow_union.member_is_pointer(
+                        borrow, fact)
         out[var] = THIRResumeExtraction(
             declared=declared,
             slot_type=slot_type,
@@ -1081,10 +1090,11 @@ def _resume_extractions(cfg: 'THIRResumableFrame', lc,
             storage=storage,
             slot_backed=cfg.slot_backed(storage),
             param_const=(is_param and slot_type is not None
-                         and (slot_type.is_value_type()
-                              or slot_type.needs_wrapper())),
-            ptr_variant=ptr_variant,
-            ptr_const=ptr_variant and _narrow_subject_const(var, lc, rec),
+                         and isinstance(repr_shape(slot_type), UnionType)
+                         and union_borrow_form(slot_type) is None),
+            member_pointer=member_pointer,
+            ptr_const=(any(member_pointer.values())
+                       and _narrow_subject_const(var, lc, rec)),
         )
     return out
 
@@ -1618,7 +1628,7 @@ def frame_local_class(lname: str, ltype, kind, analyzer,
         # long as the name never registers ptr-variant. A value union
         # takes the VALUE kind instead, where it has no render yet
         # (BUGS.md#resumable-value-union-local-rejects).
-        if pointer_variant_union(lt) is not None:
+        if union_borrow_form(lt) is not None:
             return C.FRAME_SLOT
         return None
     # PROTOCOL (the struct emit raises its user-facing error first on

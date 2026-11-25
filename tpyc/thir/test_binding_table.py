@@ -574,7 +574,7 @@ def test_a_union_slot_of_a_non_pointer_variant_record_is_rejected(
     fn = contracts["ptr_union"]
     decl = _find(fn, th.THIRPtrLocalDecl, "u")
     _rejects(fn, decl, replace(decl, binding=replace(
-        decl.binding, ptr_variant=False)), "non-pointer-variant binding")
+        decl.binding, form=F.POINTER)), "non-pointer-variant binding")
 
 
 def test_an_unpack_needs_one_record_per_target(contracts) -> None:
@@ -1547,7 +1547,7 @@ def g(y: readonly[P | Outer], x: readonly[P | Outer], c: bool) -> int:
     return 1
 ''', "g")
     u = table.declared_by(func.body[0], "u")
-    assert u.ptr_variant and u.const and u.const_source
+    assert u.form is F.POINTER_UNION and u.const and u.const_source
 
 
 def test_two_slots_of_one_name_are_judged_apart() -> None:
@@ -2532,7 +2532,7 @@ def test_a_seeded_record_takes_its_form_from_its_facts() -> None:
     seeded = _bindings._seeded_form
     assert seeded({"optional_storage": True, "pointer": True}) is F.OWNED_SLOT
     assert seeded({"pointer": True}) is F.POINTER
-    assert seeded({"ptr_variant": True}) is F.POINTER_UNION
+    assert seeded({}, ptr_union=True) is F.POINTER_UNION
     assert seeded({"value_opt": ValueOptKind.SCALAR}) is F.VALUE_OPT
     assert seeded({"storage_tuple": True, "movable": True}) is F.STORAGE_TUPLE
     assert seeded({"borrow_tuple_mixed": True}) is F.BORROW_TUPLE

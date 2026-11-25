@@ -28,7 +28,7 @@ from ...parse.nodes import (
     TpyValuePattern,
     TpyWildcardPattern,
 )
-from ...typesys import pointer_repr_optional, pointer_variant_union
+from ...typesys import pointer_repr_optional, union_borrow_form
 from ...typesys import (
     LiteralType,
     NominalType,
@@ -44,7 +44,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...type_def_registry import is_bool_type, is_fixed_int_type
-from ..source import BindingForm, BindingRepr, Held, NameFacts
+from ..source import BindingForm, BindingRepr, NameFacts
 from ...value_category import (call_hands_back_value, call_result_holdable,
                                call_returns_cpp_ref, leaves_hold_no_pointer,
                                lends_from_dying_source, peel_coerce, origin,
@@ -122,7 +122,8 @@ from .expressions import (
     _lower_field_source,
     _lower_subscript_source,
     _lower_truthy,
-    _narrow_subject_is_ptr,
+    _narrow_subject_borrows,
+    _borrow_of_held,
 )
 from .frame_cfg import subject_effect_await
 from . import bindings as _bindings
@@ -1314,7 +1315,7 @@ def _subject_admission(stmt: TpyMatch, kind: 'str | None',
         if t.needs_wrapper():
             return _Subject.BORROW if returns_ref else _Subject.REFUSE
         return (_Subject.SNAPSHOT
-                if not returns_ref and pointer_variant_union(t) is not None
+                if not returns_ref and union_borrow_form(t) is not None
                 else _Subject.REFUSE)
     if lvalue:
         return _Subject.REFUSE
@@ -2555,8 +2556,8 @@ def _lent_variant_subject(subject: THIRExpr) -> bool:
     t = unwrap_readonly(unwrap_ref_type(subject.result_type))
     return (isinstance(subject, THIRSubscript)
             and subject.tuple_index is not None and s is not None
-            and s.held is Held.BORROWED and isinstance(t, UnionType)
-            and t.uses_pointer_repr())
+            and _borrow_of_held(s.held) and isinstance(t, UnionType)
+            and union_borrow_form(t) is not None)
 
 
 def _lower_optional_subject(stmt: TpyMatch, lc: _LowerCtx,
@@ -3379,9 +3380,9 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
     body with subject reads renamed to it (the U3 mechanic) and the
     subject retyped to the fact; `as` binds the alias (or the composed
     get). Or-pattern arms stack index labels over one shared block; `case
-    None:` is the monostate index. `is_ptr_variant` folds the `*std::get`
-    deref (type-level -- the admitted bare-name subjects are exactly the
-    U3 slice's ptr/value split)."""
+    None:` is the monostate index. `member_pointers` folds the `*std::get`
+    deref per variant index (`UnionType.member_is_pointer` at the subject's
+    holder)."""
     u = unwrap_readonly(stmt.subject_type)
     _witness("match.switch_union")
     if u.needs_wrapper():
@@ -3530,18 +3531,17 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
         is_exhaustive=stmt.is_exhaustive,
         emit_unreachable=emit_unreachable,
         synthetic_default=False,
-        # A field/subscript subject stores VALUE-variant regardless of the
-        # type's primary repr (`is_ptr_variant_source`'s field/subscript
-        # arms) -- unless it is a borrow-form tuple's element, held as the
-        # pointer variant. A NAME's verdict is its BINDING's, not its
-        # type's -- the gate above rejected the bindings THIR cannot
-        # classify. An RVALUE call subject materializes the return form,
-        # which for the admitted slice IS the pointer variant (the route
-        # keyed uses_pointer_repr).
-        is_ptr_variant=(_narrow_subject_is_ptr(subj_name, u, lc)
-                        if subj_name is not None
-                        else by_value
-                        or _lent_variant_subject(subject_expr)),
+        # A field/subscript subject stores VALUE-variant whatever
+        # `union_borrow_form` says of its type -- unless it is a borrow-form
+        # tuple's element, held as the pointer variant. A NAME's verdict is
+        # its BINDING's, not its type's -- the gate above rejected the
+        # bindings THIR cannot classify. An RVALUE call subject materializes
+        # the return form, which for the admitted slice IS the pointer
+        # variant (the route keyed its borrow form).
+        member_pointers=u.member_pointers(
+            _narrow_subject_borrows(subj_name, u, lc)
+            if subj_name is not None
+            else by_value or _lent_variant_subject(subject_expr)),
         wrapper_value=u.needs_wrapper(),
         loc=loc,
     )
@@ -3734,13 +3734,14 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
         is_exhaustive=stmt.is_exhaustive,
         emit_unreachable=emit_unreachable,
         synthetic_default=False,
-        # Field/subscript subjects store VALUE-variant (the unguarded
-        # tier's fold -- `is_ptr_variant_source`) but for a borrow-form
-        # tuple's element; a NAME reads its BINDING's verdict, the gate
-        # above having rejected the bindings THIR cannot classify.
-        is_ptr_variant=(_narrow_subject_is_ptr(subj_name, u, lc)
-                        if subj_name is not None
-                        else _lent_variant_subject(subject)),
+        # Field/subscript subjects store VALUE-variant (as in the unguarded
+        # tier) but for a borrow-form tuple's element; a NAME reads its
+        # BINDING's verdict, the gate above having rejected the bindings
+        # THIR cannot classify.
+        member_pointers=u.member_pointers(
+            _narrow_subject_borrows(subj_name, u, lc)
+            if subj_name is not None
+            else _lent_variant_subject(subject)),
         wrapper_value=u.needs_wrapper(),
         loc=loc,
     )

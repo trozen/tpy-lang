@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 
 from ..sema.elem_paths import bare_tuple
 from ..typesys import (OwnType, ReadonlyType, TpyType, TupleType, UnionType,
-                       pointer_variant_union, unwrap_readonly,
+                       union_borrow_form, unwrap_readonly,
                        unwrap_ref_type, unwrap_send_sync)
 
 if TYPE_CHECKING:
@@ -354,8 +354,6 @@ class BindingRepr:
     borrowed_capture: bool = False
     # `T&`.
     ref_alias: bool = False
-    # `::tpy::Union<A*, B*>`.
-    ptr_variant: bool = False
     # A value-repr `std::optional<T>`, by the kind its narrowed deref reads.
     value_opt: 'ValueOptKind | None' = None
     # A storage-form `std::optional<P>` of a pointer-repr Optional.
@@ -482,6 +480,13 @@ class BindingRepr:
     def frame_slot(self) -> bool:
         """A resumable frame's `tpy::frame_slot<T>` field."""
         return self.form is BindingForm.FRAME_SLOT
+
+    @property
+    def union_borrow(self) -> bool:
+        """The binding holds its union in the borrow form
+        (`::tpy::Union<A*, B*>`), the holder `UnionType.member_is_pointer`
+        answers a member for; False where it holds the storage form."""
+        return self.form is BindingForm.POINTER_UNION
 
     @property
     def reads_as_pointer(self) -> bool:
@@ -687,10 +692,10 @@ class Source:
         slot, an owned parameter) -- whatever its assignment-narrowed read
         type says. None for every other expression."""
         b = self.binding
-        if b is None or not (b.ptr_variant
-                             or pointer_variant_union(b.type) is not None):
+        if b is None or not (b.union_borrow
+                             or union_borrow_form(b.type) is not None):
             return None
-        return b.ptr_variant
+        return b.union_borrow
 
     @property
     def deep_const(self) -> bool:
@@ -802,7 +807,7 @@ def elem_borrow_form_differs(et: TpyType) -> bool:
     element of which differs (`TupleType.to_cpp_return` spells both)."""
     core = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
     if isinstance(core, UnionType):
-        return core.uses_pointer_repr()
+        return union_borrow_form(core) is not None
     if isinstance(core, TupleType):
         return any(TupleType._element_is_pointer_repr(e)
                    or TupleType._element_is_val_or_ptr(e)

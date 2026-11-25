@@ -1185,6 +1185,10 @@ by its callee's parameter index, a default expression, ...) plus the
 element path: sema's per-body table rolls back with a trial and settles
 into `SemanticContext.union_landings`, which the THIR conversion and the
 codegen default readers read -- nothing after sema chooses a member.
+A union member's C++ form at a holder has one answer in typesys:
+`union_borrow_form(t)` says whether a holder renders the union's borrow
+form at all, `UnionType.member_is_pointer(borrow, m)` whether that holder
+holds member `m` by pointer; no reader re-derives either from the members.
 `dyn_erasure` decides how a source enters an `Own[@dynamic P]` slot (none,
 `make_unique`, the owning Adapter, the coroutine handle's unwrap) and, at a
 result, publishes it as one coercion per verdict (`into_dyn_*`).

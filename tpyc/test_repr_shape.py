@@ -6,7 +6,7 @@ import pytest
 
 from .typesys import (
     INT32, NominalType, OptionalType, OwnType, ReadonlyType, RefType, SendType,
-    UnionType, pointer_repr_optional, pointer_variant_union, readonly_access,
+    UnionType, pointer_repr_optional, union_borrow_form, readonly_access,
     repr_shape,
 )
 
@@ -39,9 +39,9 @@ def test_shape_under_any_wrapper_order(shape, order):
 @pytest.mark.parametrize("order", _orders(["ref", "readonly", "send"]))
 def test_views_under_any_access_wrapper_order(order):
     assert pointer_repr_optional(_wrap(OPT, order)) == OPT
-    assert pointer_variant_union(_wrap(UNI, order)) == UNI
+    assert union_borrow_form(_wrap(UNI, order)) == UNI
     assert pointer_repr_optional(_wrap(UNI, order)) is None
-    assert pointer_variant_union(_wrap(OPT, order)) is None
+    assert union_borrow_form(_wrap(OPT, order)) is None
 
 
 @pytest.mark.parametrize("order", [o for o in _orders(["ref", "readonly", "own"])
@@ -50,7 +50,7 @@ def test_owned_is_the_storage_form_in_any_order(order):
     # `Own[T | None]` / `Own[A | B]` is `std::optional<T>` / the value
     # variant, wherever the Own sits among the wrappers.
     assert pointer_repr_optional(_wrap(OPT, order)) is None
-    assert pointer_variant_union(_wrap(UNI, order)) is None
+    assert union_borrow_form(_wrap(UNI, order)) is None
 
 
 def test_value_repr_optional_is_not_pointer_repr():

@@ -232,7 +232,7 @@ def test_bad_producer_facts_remain_uncovered(artifacts: Artifacts, name: str, da
     elif damage == "type":
         fact = replace(fact, physical_default=replace(fact.physical_default, value="0"))
     elif damage == "layout":
-        fact = replace(fact, union_layout=th.THIRUnionLayout(INT32, (BOOL, INT32)))
+        fact = replace(fact, union_layout=th.THIRUnionLayout(INT32, (BOOL, INT32), False))
     elif damage == "field":
         # The wrapper's layout in the other wrapper's field.
         layout = fact.optional_layout or fact.union_layout

@@ -780,7 +780,7 @@ def test_a_malformed_wrapper_layout_is_refused(active: _Program) -> None:
     pair, either = _param(active, "pair"), _param(active, "either")
     assert parameter_binding(replace(pair, tuple_layout=th.THIRTupleLayout(pair.tuple_layout.elements[:1]))) == (
         "tuple layout arity")
-    assert parameter_binding(replace(either, union_layout=th.THIRUnionLayout(either.union_layout.type, (INT32,)))) == (
+    assert parameter_binding(replace(either, union_layout=th.THIRUnionLayout(either.union_layout.type, (INT32,), False))) == (
         "unsupported union layout")
 
 

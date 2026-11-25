@@ -23,7 +23,7 @@ from io import StringIO
 #   are emitted.
 MethodEmitMode = Literal["inline", "decl", "def_hpp", "def_cpp"]
 
-from ..typesys import contains_type_param, make_readonly, pointer_repr_optional, readonly_access
+from ..typesys import contains_type_param, make_readonly, pointer_repr_optional, readonly_access, union_borrow_form
 from ..typesys import (
     default_emittable_at, emits_cpp_defaults, none_default_cpp_spelling,
     TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, is_fn_type, CallableType,
@@ -525,7 +525,7 @@ class FunctionGenerator:
                 # Rename param so the body can declare a mutable local with the original name
                 part = ptype.to_cpp_param(f"__param_{cpp_pname}")
             else:
-                is_pvu = self.ctx.is_ptr_variant_union(own)
+                is_pvu = union_borrow_form(own) is not None
                 decision = decide_param_const(
                     ptype,
                     index=i,
@@ -533,7 +533,7 @@ class FunctionGenerator:
                     mutated_params=mutated_params,
                     addr_escapes_params=addr_escapes_params,
                     reassigned_params=reassigned_params,
-                    is_ptr_variant_union=is_pvu,
+                    borrow_union=is_pvu,
                     const_params=const_params,
                 )
                 part = self._emit_param_with_decision(
@@ -651,13 +651,13 @@ class FunctionGenerator:
                         part = f"{const_kw}{base_type}& {cpp_pname}"
                 else:
                     own = unwrap_readonly(ptype)
-                    is_pvu = self.ctx.is_ptr_variant_union(own)
+                    is_pvu = union_borrow_form(own) is not None
                     decision = decide_param_const(
                         ptype,
                         index=i,
                         pname=pname,
                         mutated_params=mutated_params,
-                        is_ptr_variant_union=is_pvu,
+                        borrow_union=is_pvu,
                         const_params=const_params,
                     )
                     part = self._emit_param_with_decision(decision, ptype, cpp_pname)
@@ -754,11 +754,11 @@ class FunctionGenerator:
                 mutated_params=mutated_params,
                 addr_escapes_params=addr_escapes_params,
                 reassigned_params=reassigned_params,
-                is_ptr_variant_union=self.ctx.is_ptr_variant_union(inner),
+                borrow_union=union_borrow_form(inner) is not None,
                 const_params=use_const_params,
             )
             if decision.signature_const and (
-                    inner.is_ref_param() or self.ctx.is_ptr_variant_union(inner)):
+                    inner.is_ref_param() or union_borrow_form(inner) is not None):
                 const_ref.add(pname)
             if decision.deep_borrow_const:
                 deep.add(pname)

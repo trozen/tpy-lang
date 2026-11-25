@@ -15,7 +15,7 @@ from typing import Callable, Iterator, Mapping, TextIO, TYPE_CHECKING
 from ..typesys import pointer_repr_optional, element_access
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, SelfType,
-    IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo,
+    IntLiteralType, TypeParamRef, TupleType, FunctionInfo, ModuleInfo,
     AliasRef, RecursiveUnionInfo, RecordInfo, ModuleVarInfo,
     is_protocol_type, unwrap_readonly, ensure_qualified, unwrap_ref_type,
     param_takes_ownership,
@@ -53,7 +53,6 @@ from ..value_category import (
 from .forms import (
     LoopBinding,
     is_plain_nonvalue as _forms_is_plain_nonvalue,
-    is_ptr_variant_union as _forms_is_ptr_variant_union,
     reads_storage_form_optional as _forms_reads_storage_form_optional,
 )
 
@@ -1241,9 +1240,8 @@ class LocalCppForm(Enum):
     """Coarse C++ representation of a local/param name.
 
     The codegen tracks several parallel `set[str]` fields (`pointer_locals`,
-    `optional_locals`, `ptr_variant_locals`, `storage_form_tuple_locals`,
-    `storage_form_optional_locals`) plus a `current_func_params` lookup
-    for `Own[Union]` params. Every boundary-handling site (call arg,
+    `optional_locals`, `storage_form_tuple_locals`,
+    `storage_form_optional_locals`). Every boundary-handling site (call arg,
     return, var-decl init, rebind, tuple-unpack, etc.) needs to ask
     "what shape is this name?" and route to the right lift / wrap
     helper. `local_cpp_form` is the single classifier those sites consult.
@@ -1263,11 +1261,6 @@ class LocalCppForm(Enum):
         are NOT in `pointer_locals` (their access doesn't route through
         `->`) and may be in `const_storage_form_optional_locals` for
         const-source iteration.
-      * `VALUE_VARIANT` -- `::tpy::Union<A, B>` storage form. `Own[Union nonvalue]`
-        params at the ABI. Lifts via `tpy::to_ptr_variant` when consumed
-        as a pointer-variant slot.
-      * `PTR_VARIANT` -- `::tpy::Union<T*, ...>` borrow form. Non-value
-        union local already in pointer-variant shape; no lift needed.
       * `STORAGE_TUPLE` -- `std::tuple<std::optional<T>, ...>` storage form.
         For-loop variables iterating storage containers, locals initialized
         from another storage-form source, `Own[tuple[T|None, ...]]` params.
@@ -1289,8 +1282,6 @@ class LocalCppForm(Enum):
     POINTER = auto()
     OPTIONAL_STORAGE = auto()
     STORAGE_OPTIONAL = auto()
-    VALUE_VARIANT = auto()
-    PTR_VARIANT = auto()
     STORAGE_TUPLE = auto()
     BORROW_TUPLE = auto()
     OPTIONAL_BORROW_TUPLE = auto()
@@ -1328,7 +1319,6 @@ class LocalScopeSnap:
     local_scope_names: set[str]
     pointer_locals: set[str]
     optional_locals: set[str]
-    ptr_variant_locals: set[str]
     const_indirect_locals: set[str]
     storage_form_tuple_locals: set[str]
     const_storage_form_tuple_locals: set[str]
@@ -1557,9 +1547,6 @@ class CodeGenContext:
     # the emit site that introduced the shadow.
     frame_field_shadows: set[str] = field(default_factory=set)
 
-    # --- Pointer-variant locals (non-value union variables) ---
-    # Variables that are ::tpy::Union<T*...> instead of ::tpy::Union<T...>.
-    ptr_variant_locals: set[str] = field(default_factory=set)
     pointer_globals: set[str] = field(default_factory=set)
     final_globals: set[str] = field(default_factory=set)
     slots: SlotState = field(default_factory=SlotState)
@@ -1824,50 +1811,6 @@ class CodeGenContext:
         walrus borrow arm so their eligibility guards cannot drift."""
         return _forms_is_plain_nonvalue(t)
 
-    def is_ptr_variant_union(self, typ: 'TpyType') -> bool:
-        """Check if a union type uses pointer-variant representation.
-
-        Returns True for non-value unions (e.g. Dog | Cat with records)
-        that are NOT recursive union aliases. Recursive unions use wrapper
-        structs which are value types, so they skip pointer-variant form.
-        """
-        return _forms_is_ptr_variant_union(typ)
-
-    def is_ptr_variant_source(self, expr: TpyExpr) -> bool:
-        """Check if an expression produces a pointer variant (vs value variant).
-
-        Pointer-variant sources: ptr_variant locals, union params, function
-        calls returning non-value unions. Value-variant sources: constructors,
-        Own returns, field access, container subscript, bare alternative values.
-
-        Note: only `ReadonlyType` is unwrapped on params. `OwnType[A | B]`
-        params lower to a value-variant `std::variant<A, B>&&` (the caller
-        gave up ownership), so they should NOT take the ptr-variant path.
-        """
-        if isinstance(expr, TpyCoerce):
-            return self.is_ptr_variant_source(expr.expr)
-        if isinstance(expr, TpyName):
-            if expr.name in self.ptr_variant_locals:
-                return True
-            # Fallback to the param table for any context that set
-            # current_func_params without populating ptr_variant_locals -- so a
-            # union-param source resolves even outside a seeded scope.
-            ptype = self.current_func_params.get(expr.name)
-            if ptype is not None and self.is_ptr_variant_union(unwrap_readonly(ptype)):
-                return True
-            return False
-        if isinstance(expr, (TpyCall, TpyMethodCall)):
-            fi = expr.resolved_function_info
-            if fi is not None and self.is_ptr_variant_union(fi.return_type):
-                return True
-        # A ptr-variant union ternary: the ternary emit normalizes each arm to
-        # variant<A*, B*>, so the ternary itself yields the pointer variant and
-        # must not be re-wrapped by the consuming sink.
-        if isinstance(expr, TpyIfExpr):
-            rt = self.get_expr_type(expr)
-            return rt is not None and self.is_ptr_variant_union(unwrap_readonly(rt))
-        return False
-
     def reset_scope(self) -> None:
         """Reset all per-scope state for a new function/method/module-init body."""
         self.declared_vars = set()
@@ -1877,7 +1820,6 @@ class CodeGenContext:
         self.global_declared_vars = set()
         self.pointer_locals = set()
         self.optional_locals = set()
-        self.ptr_variant_locals = set()
         self.const_indirect_locals = set()
         self.storage_form_tuple_locals = set()
         self.const_storage_form_tuple_locals = set()
@@ -1987,7 +1929,6 @@ class CodeGenContext:
             local_scope_names=self.local_scope_names.copy(),
             pointer_locals=self.pointer_locals.copy(),
             optional_locals=self.optional_locals.copy(),
-            ptr_variant_locals=self.ptr_variant_locals.copy(),
             const_indirect_locals=self.const_indirect_locals.copy(),
             storage_form_tuple_locals=self.storage_form_tuple_locals.copy(),
             const_storage_form_tuple_locals=self.const_storage_form_tuple_locals.copy(),
@@ -2008,7 +1949,6 @@ class CodeGenContext:
         self.local_scope_names = snap.local_scope_names.copy()
         self.pointer_locals = snap.pointer_locals.copy()
         self.optional_locals = snap.optional_locals.copy()
-        self.ptr_variant_locals = snap.ptr_variant_locals.copy()
         self.const_indirect_locals = snap.const_indirect_locals.copy()
         self.storage_form_tuple_locals = snap.storage_form_tuple_locals.copy()
         self.const_storage_form_tuple_locals = snap.const_storage_form_tuple_locals.copy()
@@ -2647,20 +2587,6 @@ class CodeGenContext:
         """
         return call_value_optional(init) is not None
 
-    def is_own_ptr_variant_param(self, name: str) -> bool:
-        """True when `name` is a function parameter typed
-        `Own[UnionType non-value]` (pointer-variant Union, storage form
-        at the param ABI). Mirror of `optional_locals` for unions;
-        consumers needing the `to_ptr_variant` lift check this.
-        """
-        ptype = self.current_func_params.get(name)
-        if ptype is None:
-            return False
-        peeled = unwrap_readonly(ptype)
-        return (isinstance(peeled, OwnType)
-                and isinstance(peeled.wrapped, UnionType)
-                and self.is_ptr_variant_union(peeled.wrapped))
-
     def local_cpp_form(self, name: str) -> LocalCppForm:
         """Classify a name's C++ representation -- see `LocalCppForm`.
 
@@ -2673,9 +2599,6 @@ class CodeGenContext:
         load-bearing -- a same-name shadow between a param and a loop var
         would still resolve consistently because both forms lift the same
         way via `optional_to_ptr`.
-        VALUE_VARIANT (Own[Union] param) is looked up via
-        `current_func_params`, not a set; it precedes PTR_VARIANT
-        because a single name cannot match both.
 
         For arrow-vs-deref field access use `is_pointer_local(expr)`
         instead -- it covers both POINTER and OPTIONAL_STORAGE.
@@ -2684,10 +2607,6 @@ class CodeGenContext:
             return LocalCppForm.OPTIONAL_STORAGE
         if name in self.storage_form_optional_locals:
             return LocalCppForm.STORAGE_OPTIONAL
-        if self.is_own_ptr_variant_param(name):
-            return LocalCppForm.VALUE_VARIANT
-        if name in self.ptr_variant_locals:
-            return LocalCppForm.PTR_VARIANT
         if name in self.storage_form_tuple_locals:
             return LocalCppForm.STORAGE_TUPLE
         if name in self.borrow_form_tuple_locals:
@@ -2728,14 +2647,6 @@ class CodeGenContext:
         also allocate a slot to hold the rvalue and aren't a pure lift.
         """
         return self.local_cpp_form(name) is LocalCppForm.OPTIONAL_STORAGE
-
-    def needs_to_ptr_variant_lift(self, name: str) -> bool:
-        """True when `name` is in `VALUE_VARIANT` form -- an
-        `Own[Union nonvalue]` param whose C++ shape is `std::variant<A, B>`
-        and must be lifted via `tpy::to_ptr_variant` to feed a
-        `::tpy::Union<A*, B*>` slot.
-        """
-        return self.local_cpp_form(name) is LocalCppForm.VALUE_VARIANT
 
     def generator_storage_name(self, name: str) -> str:
         """Resolve a frame-resident name to its backing storage name.

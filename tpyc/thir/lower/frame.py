@@ -68,8 +68,9 @@ from ...typesys import (polymorphic_subclass_into_optional,
 from ...codegen_cpp.context import (CodeGenError, FrameSourceUnnameable, escape_cpp_name,
                                     ternary_iterable_lends_storage)
 from ...codegen_cpp.emit_prims import placeholder_init
-from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
+from ...codegen_cpp.forms import (is_plain_nonvalue,
                                   reads_storage_form_optional)
+from ...typesys import union_borrow_form
 from ...codegen_cpp.frame_names import (recursive_delegation_error,
                                         sub_struct_qualname)
 from ..frame import (
@@ -549,7 +550,7 @@ def frame_capture_const_names(
             continue
         bare = unwrap_readonly(unwrap_ref_type(ptype))
         if ((isinstance(bare, TupleType) and bare.has_pointer_repr_element())
-                or is_ptr_variant_union(bare)):
+                or union_borrow_form(bare) is not None):
             deep.add(pname)
     return const_ref, deep, pack
 

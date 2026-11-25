@@ -1,0 +1,7 @@
+a: [True, False]
+a: param True
+b: ['pet2', 'int3']
+b: param pet1
+c: local 3
+c: both 2
+c: caller 2

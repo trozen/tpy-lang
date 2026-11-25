@@ -488,7 +488,8 @@ class TypeResolver:
         """
         cpp_members = [
             "std::monostate" if is_void_like_type(m)
-            else f"{self.type_to_cpp(m)}*"
+            else f"{self.type_to_cpp(m)}*" if typ.member_is_pointer(True, m)
+            else self.type_to_cpp(m)
             for m in typ.members
         ]
         return f"::tpy::Union<{', '.join(cpp_members)}>"
@@ -497,7 +498,8 @@ class TypeResolver:
         """Return the read-borrow form with qualified member names."""
         cpp_members = [
             "std::monostate" if is_void_like_type(m)
-            else f"const {self.type_to_cpp(m)}*"
+            else f"const {self.type_to_cpp(m)}*" if typ.member_is_pointer(True, m)
+            else self.type_to_cpp(m)
             for m in typ.members
         ]
         return f"::tpy::Union<{', '.join(cpp_members)}>"

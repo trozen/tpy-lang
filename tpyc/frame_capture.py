@@ -13,7 +13,7 @@ from .type_def_registry import is_owned_in_coro_frame
 from .typesys import (
     open_type_param,
     CallableType, OwnType, TupleType, copy_owns_storage,
-    is_fn_type, is_ptr_variant_union, param_takes_ownership,
+    is_fn_type, param_takes_ownership, union_borrow_form,
     pointer_repr_optional, unwrap_readonly, unwrap_ref_type,
 )
 
@@ -78,7 +78,7 @@ def classify_param_kind(
     # question is answered per instantiation, on the substituted slot.
     if pointer_repr_optional(actual) is not None:
         return FrameCaptureKind.POINTER
-    if is_ptr_variant_union(actual):
+    if union_borrow_form(actual) is not None:
         return FrameCaptureKind.POINTER
     # A borrow-form tuple param (std::tuple<..., T*>) is held in the frame
     # by value-of-pointers so it aliases the caller across suspensions; a

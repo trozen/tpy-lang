@@ -154,7 +154,6 @@ from ...codegen_cpp.forms import (
     LocalBinding,
     LoopBinding,
     is_plain_nonvalue,
-    is_ptr_variant_union,
     reads_storage_form_optional,
 )
 from ...codegen_cpp.protocols import (
@@ -173,7 +172,7 @@ from ...prescan import (
     match_is_none,
     scope_bound_names,
 )
-from ...typesys import (NONE, type_arg_cpp, contains_type_param, open_type_param,
+from ...typesys import (NONE, union_borrow_form, type_arg_cpp, contains_type_param, open_type_param,
                         protocol_param_alternatives, type_alternatives)
 from ...typesys import (is_polymorphic_subclass_fact,
                         polymorphic_source_inner,
@@ -380,7 +379,7 @@ from .expressions import (
     _module_var_access_pair, _slice_recv_ok, _slice_index_ok,
     _lower_slice_recv, _constructs_value, _flush_witness, _hoists_arg_temp,
     _deref_loop_source, _lower_isinstance_cond,
-    _narrow_member_cpp, _narrow_subject_is_ptr,
+    _narrow_member_cpp,
     _union_source_layout, _union_extraction, _inline_union_member,
     _narrow_variant_cpp, _poly_casts, _poly_isinstance, _any_isinstance,
     _IsinSubject, _isinstance_subject, _isin_test, _subject_form,
@@ -3185,8 +3184,8 @@ def _error_return_value_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
     # through `to_ptr_variant`, not the bare slot address.
     ptr_rebind = (lc.prior_binding(name).pointer and lc.prior_binding(name).rebind_slot
                   and name in declared
-                  and not is_ptr_variant_union(
-                      unwrap_readonly(unwrap_ref_type(declared[name]))))
+                  and union_borrow_form(
+                      unwrap_readonly(unwrap_ref_type(declared[name]))) is None)
     # A TRY-HOISTED optional local (`std::optional<Point> p;` predecled
     # before the try; reads deref via the pointers machinery) takes the
     # bind arm's default render verbatim (`p = ::tpy::unwrap_ref_move(
@@ -3922,7 +3921,7 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
         # feeding the same value-variant `__slot_N` + lift as any rvalue.
         csrc = copy_call_arg(init, analyzer)
         if (isinstance(csrc, TpyName)
-                and lc.binding(csrc.name).ptr_variant):
+                and lc.binding(csrc.name).union_borrow):
             return PtrSlotKind.UNION_RVALUE
         # An `Own[A | B]`-returning free call: the F1-record type gate of
         # `_record_rvalue_source_shape` cannot apply, so run the
@@ -5380,11 +5379,11 @@ def _make_narrow_alias(alias: str, var: str, member: TpyType, u: UnionType,
     ptu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
            if pt is not None else None)
     const_ref = (var in lc.prescan.param_names
-                 and (u.is_value_type() or u.needs_wrapper()
+                 and (union_borrow_form(u) is None
                       or isinstance(ptu, OwnType)))
     return THIRNarrowAlias(alias=alias, variant_cpp=_narrow_variant_cpp(var, u, lc),
                            member_cpp=member_cpp,
-                           is_ptr_variant=is_ptr, const_ref=const_ref, loc=loc,
+                           member_pointer=is_ptr, const_ref=const_ref, loc=loc,
                            union_extraction=_union_extraction(var, u, member, lc))
 
 def _make_dyn_narrow_alias(alias: str, var: str, member: TpyType,
@@ -6091,7 +6090,7 @@ def _reject_const_narrowed_write_recv(tobj, lc: _LowerCtx, stmt) -> None:
     if (isinstance(tobj, TpyName)
             and (u0 := lc.narrow.subject_union.get(tobj.name)) is not None
             and tobj.name in lc.prescan.param_names
-            and (u0.is_value_type() or u0.needs_wrapper())):
+            and union_borrow_form(u0) is None):
         note_detail("setitem.const_narrowed_recv")
         raise ThirUnsupported(stmt_reject_reason(stmt))
 
@@ -6883,9 +6882,9 @@ def _target_refers(stmt: TpyTupleUnpack, i: int, lc: '_LowerCtx') -> bool:
     """Whether target `i` keeps referring into its element: a reference or
     pointer binding, or a view."""
     rec = _bindings.fresh_record(lc.table, stmt, stmt.targets[i])
-    if rec is not None and rec.form in (BindingForm.REFERENCE,
-                                        BindingForm.POINTER,
-                                        BindingForm.POINTER_UNION):
+    if rec is not None and (rec.form in (BindingForm.REFERENCE,
+                                         BindingForm.POINTER)
+                            or rec.union_borrow):
         return True
     t = _bindings.unpack_target_type(stmt, i, lc.analyzer)
     return holds_borrowing_view(_resolve_pending_view(t, lc.analyzer) or t)
@@ -7047,7 +7046,7 @@ def _fresh_unpack_write(stmt: TpyTupleUnpack, i: int, rec: BindingRepr,
                                   lc.render_type)
     owned = stmt.owns_target(i)
     r = src.read(i)
-    refers = (rec.form in (BindingForm.POINTER, BindingForm.POINTER_UNION)
+    refers = (rec.form is BindingForm.POINTER or rec.union_borrow
               or (rec.form is BindingForm.REFERENCE
                   and not unwrap_readonly(tt).is_value_type()))
     if not owned and refers and not src.refers_into(i):
@@ -7098,7 +7097,7 @@ def _fresh_unpack_write(stmt: TpyTupleUnpack, i: int, rec: BindingRepr,
                            cpp_type=cpp, form=Form.BORROW,
                            cpp_local_representation=LocalBinding.REBIND_SLOT,
                            binding=rec, loc=loc)
-    if rec.form is BindingForm.POINTER_UNION:
+    if rec.union_borrow:
         value = _unpack_convert(r, _unpack_local_slot(stmt, i, tt, rec.form,
                                                SlotConstruct.DIRECT_INIT, lc,
                                                const=rec.const), lc, loc)
@@ -10358,7 +10357,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             _nr_ptr = (_eligible_ptr_union_wide(_nr_u, analyzer)
                        if _nr_u is not None else None)
             if (_nr_ptr is None or stmt.init is None
-                    or not lc.declaring(stmt.name).ptr_variant
+                    or not lc.declaring(stmt.name).union_borrow
                     or _ptr_union_slot_kind(stmt.init, _nr_ptr, declared, lc,
                                             analyzer,
                                             _recorded_member(stmt, lc))
@@ -12360,7 +12359,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                        if _fn_return_type(lc) is not None else None)
                 if (lc.func.is_property_getter
                         or isinstance(rtb, OptionalType)
-                        or (rtb is not None and is_ptr_variant_union(rtb))):
+                        or (rtb is not None and union_borrow_form(rtb) is not None)):
                     note_detail("error_return.ret_slot")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 _witness("er.return_passthrough")

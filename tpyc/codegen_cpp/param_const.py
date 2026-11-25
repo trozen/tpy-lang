@@ -38,10 +38,9 @@ from ..typesys import (
     TpyType, ReadonlyType, OwnType, OptionalType, TupleType, open_type_param,
     FunctionInfo,
     unwrap_readonly, unwrap_ref_type,
-    param_has_mutable_borrow_surface,
+    param_has_mutable_borrow_surface, union_borrow_form,
 )
 from ..type_def_registry import ParamPassing
-from .forms import is_ptr_variant_union as _forms_is_ptr_variant_union
 
 
 @dataclass(frozen=True)
@@ -54,14 +53,6 @@ class ParamConstDecision:
 _NOT_CONST = ParamConstDecision(signature_const=False, deep_borrow_const=False)
 
 
-def _is_ptr_variant_union(ptype: TpyType) -> bool:
-    """Whether `ptype` (after stripping Ref/Readonly) is a non-value union that
-    lowers to `::tpy::Union<A*, B*>`. The unwrapping entry point onto the
-    canonical `forms.is_ptr_variant_union` (a pure type query, no Compiler ctx),
-    so the FunctionInfo verdict can be materialized at Phase-2 time."""
-    return _forms_is_ptr_variant_union(unwrap_readonly(unwrap_ref_type(ptype)))
-
-
 def decide_param_const(
     ptype: TpyType,
     *,
@@ -70,7 +61,7 @@ def decide_param_const(
     mutated_params: 'frozenset[int] | None',
     addr_escapes_params: 'frozenset[int]' = frozenset(),
     reassigned_params: 'AbstractSet[str] | None' = None,
-    is_ptr_variant_union: bool = False,
+    borrow_union: bool = False,
     const_params: bool = False,
 ) -> ParamConstDecision:
     """Compute the const decision for a single param.
@@ -86,9 +77,8 @@ def decide_param_const(
       reassigned_params    : param names rebound in the body. Disqualifies
                              const for types that need a copy-for-reassign
                              rename (str, BigInt, ...).
-      is_ptr_variant_union : whether ptype unwraps to a pointer-variant union.
-                             Carried for callers that key on the family; the
-                             const decision no longer splits on it.
+      borrow_union         : whether ptype unwraps to a union with a borrow
+                             form (`union_borrow_form`).
       const_params         : caller forces const (e.g. const method body, ctor).
 
     Decision rules:
@@ -129,7 +119,7 @@ def decide_param_const(
         # const-inference doesn't apply at the template level.
         return _NOT_CONST
 
-    if not (param_has_mutable_borrow_surface(ptype) or is_ptr_variant_union):
+    if not (param_has_mutable_borrow_surface(ptype) or borrow_union):
         # Pure value type (e.g. int): not a candidate for const-ref shape.
         return _NOT_CONST
 
@@ -167,7 +157,8 @@ def populate_const_borrow_params(fi: FunctionInfo) -> None:
             mutated_params=fi.mutated_params,
             addr_escapes_params=fi.addr_escapes_params,
             reassigned_params=None,  # not tracked on FunctionInfo
-            is_ptr_variant_union=_is_ptr_variant_union(p.type),
+            borrow_union=union_borrow_form(
+                unwrap_readonly(unwrap_ref_type(p.type))) is not None,
         )
         assert decision.signature_const == decision.deep_borrow_const
         if decision.signature_const:

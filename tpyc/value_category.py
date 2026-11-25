@@ -17,7 +17,7 @@ and `registry`. Both the sema `AnalyzerContext` and the codegen
 from enum import Enum, auto
 from typing import Any, Callable, Iterator, NamedTuple, Protocol
 
-from .typesys import element_access, pointer_repr_optional, pointer_variant_union
+from .typesys import element_access, pointer_repr_optional, union_borrow_form
 from .modules.type_resolution import owning_element_slot
 from .typesys import (
     AnyType, FunctionInfo, NominalType, PtrType, ReadonlyType, RefType, TpyType,
@@ -331,7 +331,7 @@ def result_carries_borrow(fi: 'FunctionInfo',
     if holds_reference_by_pointer(t):
         return True
     if pointer_repr_optional(t) is not None or (
-            pointer_variant_union(t) is not None):
+            union_borrow_form(t) is not None):
         return True
     return carries_borrow(t)
 
@@ -713,7 +713,7 @@ def lends_pointer_form_result(analyzer: 'ValueCategoryAnalyzer',
         return False
     t = analyzer.get_expr_type(expr)
     return (pointer_repr_optional(t) is not None
-            or pointer_variant_union(t) is not None)
+            or union_borrow_form(t) is not None)
 
 
 def binds_owned_value(analyzer: 'ValueCategoryAnalyzer',

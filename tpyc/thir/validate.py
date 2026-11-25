@@ -51,7 +51,8 @@ import dataclasses
 from collections.abc import Sequence
 from contextvars import ContextVar
 
-from ..codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
+from ..codegen_cpp.forms import is_plain_nonvalue
+from ..typesys import union_borrow_form
 from ..type_def_registry import (
     ParamPassing,
     is_basic_slice_type, is_bytearray_type, is_bytes_type, is_bytes_view_type,
@@ -115,7 +116,7 @@ from .frame import (
     THIRWithEnter, THIRWithRegion, THIRYieldSuspension, terminator_targets,
 )
 from ..parse.nodes import TpyAwait, TpyStmt
-from .source import UNBOUND
+from .source import UNBOUND, BindingForm
 from .temp_plan import if_chain
 
 
@@ -241,6 +242,10 @@ def _check_union(owner: str, node: object, layout: THIRUnionLayout,
         _fail(owner, node, "invalid union layout")
     if typ is not None and unwrap_readonly(unwrap_ref_type(typ)) != layout.type:
         _fail(owner, node, "union layout disagrees with type")
+    if type(layout.borrow) is not bool:
+        _fail(owner, node, "union layout names no holder form")
+    if layout.disagrees_with_holder():
+        _fail(owner, node, "union layout disagrees with its holder form")
     kinds = set()
     for payload, member in zip(layout.elements, layout.type.members):
         if payload is None:
@@ -469,13 +474,13 @@ def _contract_problem(node: object, rec) -> 'str | None':
     their own conditions, unchecked here."""
     if isinstance(node, THIRPtrLocalDecl):
         if node.kind in _UNION_SLOT_KINDS:
-            if not rec.ptr_variant:
+            if not rec.union_borrow:
                 return f"a {node.kind} declaration of a non-pointer-variant binding"
         elif not rec.pointer:
             return f"a {node.kind} declaration of a non-pointer binding"
     elif isinstance(node, THIRPtrLocalRebind):
         if node.kind in _UNION_SLOT_KINDS:
-            if not rec.ptr_variant:
+            if not rec.union_borrow:
                 return f"a {node.kind} reseat of a non-pointer-variant binding"
         elif not rec.pointer:
             return f"a {node.kind} reseat of a non-pointer binding"
@@ -1135,7 +1140,7 @@ def _pointer_lifted_storage(t) -> bool:
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if pointer_repr_optional(t) is not None:
         return True
-    if is_ptr_variant_union(t):
+    if union_borrow_form(t) is not None:
         return True
     return isinstance(t, TupleType) and t.has_pointer_or_proxy_element()
 
@@ -1969,7 +1974,7 @@ def _validate_leaf_verdicts(owner: str, leaves: THIRResumableLeaves,
     for var, sub in leaves.resume_extractions.items():
         if (not isinstance(sub, THIRResumeExtraction)
                 or sub.receiver and (sub.indirect or leaves.frame.receiver is None)
-                or sub.ptr_const and not sub.ptr_variant
+                or sub.ptr_const and not any(sub.member_pointer.values())
                 or not isinstance(sub.cast_arg, str) or not sub.cast_arg):
             _fail(owner, leaves, f"invalid resume extraction for {var}")
 

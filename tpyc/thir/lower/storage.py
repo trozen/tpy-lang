@@ -7,7 +7,7 @@ from ...symbol_binding import SymbolKind
 from ...type_def_registry import zero_value_of
 
 from ...parse.nodes import TpyFieldAccess, TpyName, TpySubscript, TupleElemCapture
-from ...typesys import pointer_repr_optional
+from ...typesys import pointer_repr_optional, union_borrow_form
 from ...typesys import (
     NominalType, OptionalType, ReadonlyType, TupleType, TpyType,
     UnionType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
@@ -244,13 +244,15 @@ def union_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
         return None
     if len({unwrap_readonly(m) for m in typ.members}) != len(typ.members):
         return None
-    if typ.uses_pointer_repr() != borrow:
+    # A borrow holder of a union with no borrow form holds it by value,
+    # which this layout does not describe.
+    if borrow and union_borrow_form(typ) is None:
         return None
     elements: list[TpyType | THIRBorrowedRecord | None] = []
     for member in typ.members:
         if is_void_like_type(member):
             elements.append(None)
-        elif borrow:
+        elif typ.member_is_pointer(borrow, member):
             if (outer_readonly or isinstance(member, ReadonlyType)) and not readonly:
                 return None
             reference = borrowed_record(member, readonly, analyzer)
@@ -261,7 +263,7 @@ def union_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
             elements.append(member)
         else:
             return None
-    return THIRUnionLayout(typ, tuple(elements))
+    return THIRUnionLayout(typ, tuple(elements), borrow)
 
 
 def union_literal(expr: THIRExpr | None, layout: THIRUnionLayout) -> THIRUnionLiteral | None:
