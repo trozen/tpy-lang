@@ -4605,7 +4605,10 @@ class TypeCompatibility:
         func = self.ctx.func.current_function
         if not self.ctx.in_function_body():
             return
-        ptype = next((t for p, t in func.params if p == name.name), None)
+        binding = (self.ctx.read_bindings.get(name)
+                   or resolve_read(self.ctx, name.name))
+        ptype = (next((t for p, t in func.params if p == name.name), None)
+                 if binding.kind is ReadKind.PARAM else None)
         if ptype is None:
             self.record_owning_read(OwnIterMove(name.name, name, call))
             return

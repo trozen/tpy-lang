@@ -175,8 +175,8 @@ void unpack() {
         auto __end_1 = __rng_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             auto&& __for_tup_1 = *__beg_1;
-            auto&& x = std::move(std::get<0>(__for_tup_1));
-            auto&& y = std::move(std::get<1>(__for_tup_1));
+            auto&& x = std::move(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_1))));
+            auto&& y = std::move(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_1))));
             __result.push_back(std::move(x));
         }
         std::move(__result);

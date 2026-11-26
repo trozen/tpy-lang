@@ -201,9 +201,9 @@ void unpack_head(const ::tpy::ordered_map<std::string, ::tpy::BigInt>& d) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& __for_tup_0 = *__beg_0;
-            std::string k = std::get<0>(__for_tup_0);
+            std::string_view k = std::get<0>(__for_tup_0);
             ::tpy::BigInt ys = std::get<1>(__for_tup_0);
-            __result.insert_or_assign(k, ((ys) * (::tpy::BigInt(2))));
+            __result.insert_or_assign(std::string(k), ((ys) * (::tpy::BigInt(2))));
         }
         std::move(__result);
     });
@@ -326,7 +326,7 @@ void in_lambda(const std::vector<::tpy::BigInt>& rows) {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    std::function<::tpy::BigInt()> f = [rows, ys]() -> ::tpy::BigInt { return ::tpy::BigInt(::tpy::__len__(({
+    std::function<::tpy::BigInt()> f = [rows]() -> ::tpy::BigInt { return ::tpy::BigInt(::tpy::__len__(({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_0 = rows;
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -368,7 +368,7 @@ void nested_def(const std::vector<::tpy::BigInt>& rows) {
     }
     __with_exit_5:
     __ctx_5.__exit__({}, nullptr, {});
-    auto inner = [&rows, &ys]() -> ::tpy::BigInt {
+    auto inner = [&rows]() -> ::tpy::BigInt {
         return ::tpy::BigInt(::tpy::__len__(({
             std::vector<::tpy::BigInt> __result;
             auto& __obj_0 = rows;

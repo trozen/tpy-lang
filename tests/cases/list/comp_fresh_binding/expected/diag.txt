@@ -1,0 +1,33 @@
+part_closures.py:53: warning: lambda at line 53 copies the object 'rows' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_closures.py:69: warning: lambda at line 69 copies the object 'rows' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_closures.py:83: warning: lambda at line 83 copies the object 'rows' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_closures.py:83: warning: lambda at line 83 copies the object 'zs' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_closures.py:115: warning: lambda at line 115 copies the object 'a' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_closures.py:115: warning: 'a' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_closures.py:155: warning: lambda at line 155 copies 'k' when it is created
+part_closures.py:156: warning: lambda at line 156 copies 'k' when it is created
+part_closures.py:155: warning: 'k' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_closures.py:156: warning: 'k' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_closures.py:170: warning: lambda at line 170 copies 'k' when it is created
+part_closures.py:170: warning: 'k' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_closures.py:192: warning: copies R into owned storage; use copy() to make this explicit
+part_closures.py:190: warning: Own[R] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_closures.py:197: warning: copies R into owned storage; use copy() to make this explicit
+part_closures.py:196: warning: Own[R] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_closures.py:204: warning: copies R into owned storage; use copy() to make this explicit
+part_closures.py:201: warning: Own[R] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+part_facts.py:43: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+part_facts.py:152: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+part_facts.py:170: warning: lambda at line 170 copies the object 'xs' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_positions.py:53: warning: lambda at line 53 copies the object 'self' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_positions.py:53: warning: 'self' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_positions.py:120: warning: bound coroutine 'c' is never consumed (never awaited, passed to asyncio.create_task/run, or moved); it will be destroyed without running
+part_positions.py:192: warning: lambda at line 192 copies the object 'a' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_positions.py:192: warning: 'a' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_positions.py:201: warning: lambda at line 201 copies the object 'self' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+part_positions.py:201: warning: 'self' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one
+part_shapes.py:144: warning: may copy T into field if not a value type; use copy() to make this explicit
+part_shapes.py:113: warning: copies Box | None into owned storage (tuple element 1); use copy() to make this explicit
+part_shapes.py:114: warning: copies Box | None into owned storage (tuple element 0); use copy() to make this explicit
+part_shapes.py:115: warning: copies Box | None into owned storage (tuple element 0); use copy() to make this explicit
+part_shapes.py:119: warning: copies Box | None into owned storage (argument 'object' tuple element 0); use copy() to make this explicit ('b' is bound to existing storage at line 118)

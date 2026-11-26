@@ -691,7 +691,7 @@ void Profile::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __write
     auto __beg_5 = __obj_5.begin();
     auto __end_5 = __obj_5.end();
     for (; __beg_5 != __end_5; ++__beg_5) {
-        auto&& __kv_38 = *__beg_5;
+        const auto& __kv_38 = *__beg_5;
         std::string_view __dk = std::get<0>(__kv_38);
         const auto& __dv = std::get<1>(__kv_38);
         __writer.key(__dk);

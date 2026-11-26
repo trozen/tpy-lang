@@ -1758,9 +1758,9 @@ void lc_free(const std::vector<std::vector<::tpy::BigInt>>& grid, const std::vec
             for (; __beg_7 != __end_7; ++__beg_7) {
                 const auto& __for_tup_1 = *__beg_7;
                 ::tpy::BigInt n = std::get<0>(__for_tup_1);
-                std::string s = std::get<1>(__for_tup_1);
+                std::string_view s = std::get<1>(__for_tup_1);
                 if ((n >= k)) {
-                    __result.insert_or_assign(s, ((n) * (::tpy::BigInt(k))));
+                    __result.insert_or_assign(std::string(s), ((n) * (::tpy::BigInt(k))));
                 }
             }
         }
@@ -2139,7 +2139,7 @@ void lc_sources(const std::vector<std::tuple<C, ::tpy::BigInt>>& pairs, const st
             auto __end_3 = __obj_3.end();
             for (; __beg_3 != __end_3; ++__beg_3) {
                 const auto& __for_tup_9 = *__beg_3;
-                std::string k = std::get<0>(__for_tup_9);
+                std::string_view k = std::get<0>(__for_tup_9);
                 ::tpy::BigInt v = std::get<1>(__for_tup_9);
                 __result.push_back((::tpy::str_concat(k, std::string(::tpy::__str__(v)))));
             }

@@ -3229,19 +3229,16 @@ class StatementAnalyzer:
                 # (BigInt, String, tuples with expensive elements). Cheap
                 # primitives (int32_t, bool, double, etc.) are better copied
                 # into a register than referenced through a pointer.
-                # For synthetic tuple-unpack loop vars, skip const binding when
-                # the unpack has elements that need mutable references --
-                # const tuple prevents T& bindings via std::get.
+                # A head's reference targets bind const as the holder does: a
+                # write through one is a write through the binding, and so is
+                # a move out of a step handed over to them, as for a
+                # comprehension head (`_CompClauseFinish`).
                 unwrapped = unwrap_qualifiers(elem_type)
-                needs_mut_unpack = False
-                if stmt.is_tuple_unpack and stmt.body:
-                    first = stmt.body[0]
-                    if isinstance(first, TpyTupleUnpack) and any(first.is_ref):
-                        needs_mut_unpack = True
                 self.ctx.loop_binders.append((stmt, (
                     worth_const_ref(elem_type)
                     and stmt.var not in self.ctx.func.consumed_loop_vars
-                    and not needs_mut_unpack)))
+                    and not (stmt.step_handover
+                             and stmt.head_unpack() is not None))))
                 # Auto-consuming iteration: use consuming __iter__ when the
                 # container is at last use and the loop var is MOVED OUT
                 # (`claim_loop_var_move`: an owning sink at its last use, no
@@ -5943,11 +5940,12 @@ class StatementAnalyzer:
         """Create a pending view type for a new local of the given family.
         `step_owned`: a loop variable over a step handed over to it, which
         owns its buffer as a fresh value's binding does."""
-        var_id = self.ctx.next_view_var_id(family)
-        vars_reg = self.ctx.view_vars(family)
-        var_map = self.ctx.view_var_map(family)
-
         source_pending = pending_view_of(var_type)
+        if source_pending is None and init_expr is None:
+            return self.deduction.step_view(family, name, line,
+                                            owned=step_owned)
+        var_id = self.ctx.next_view_var_id(family)
+
         if source_pending is not None:
             # Alias from another pending view type -- collect ALL leaf sources.
             # For `x = a or b` both a and b are sources; if either resolves to
@@ -5973,9 +5971,7 @@ class StatementAnalyzer:
                                    and self.deduction.has_nonstatic_view_source(init_expr)))
         else:
             # Fresh from owned type (str or bytes)
-            if init_expr is None:
-                is_owned = step_owned
-            elif is_borrowing_view_type(var_type):
+            if is_borrowing_view_type(var_type):
                 # The source's type is already the view, but whether the
                 # local may keep it is the same rule an owned-typed source
                 # answers: a view of a field or a container element owns.
@@ -5995,15 +5991,7 @@ class StatementAnalyzer:
                     info.owns_stored_source = True
                     info.stored_source = storage_spelling(src)
 
-        info.module_body = self.ctx.is_top_level
-        vars_reg[var_id] = info
-        var_map[name] = var_id
-        self.ctx.func.view_ids_by_name.setdefault(name, []).append((family, var_id))
-        # No expression here means the binding site records it itself (a
-        # loop variable, an unpack target); until then it is unknown.
-        self.deduction.note_view_binding(family, var_id, init_expr)
-        self.ctx.view_pending_resolutions(family).append(var_id)
-        return family.pending_type_class(var_id)
+        return self.deduction.register_pending_view(family, info, init_expr)
 
     @staticmethod
     def _step_binding_type(step: TpyType) -> TpyType:

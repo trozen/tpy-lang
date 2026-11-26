@@ -1,8 +1,10 @@
 """Comprehension classification and lowering."""
 
 from __future__ import annotations
-from collections.abc import Set as AbstractSet
+from collections.abc import Iterator, Set as AbstractSet
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
+from typing import TYPE_CHECKING
 from ...parse.nodes import (
     TpyArrayLiteral,
     TpyDictLiteral,
@@ -17,8 +19,11 @@ from ...parse.nodes import (
     TpyMethodCall,
     TpyName,
     TpySetComprehension,
-    collect_name_refs,
 )
+
+if TYPE_CHECKING:
+    from ...parse.nodes import TpyComprehensionGenerator
+    from ...value_category import ValueCategoryAnalyzer
 from ...sema.alias_rebind import leaf_paths
 from ...sema.landings import boundary_of, lookup as lookup_landing
 from ...sema.binding_ownership import CompMove, owned_head_targets
@@ -547,14 +552,17 @@ def _source_route(gen, declared: dict[str, TpyType],
                         iter_protocol=owning)
 
 
-def _clause_bindings(gen, route: _CompRoute) -> list[tuple[str, TpyType]]:
+def _clause_bindings(gen: 'TpyComprehensionGenerator', route: _CompRoute,
+                     analyzer: 'ValueCategoryAnalyzer'
+                     ) -> list[tuple[str, TpyType]]:
     """The names one `for` clause binds, with the types its body reads them
-    at: a head target its record's (`Own` peeled), the variable its element
-    borrowed whatever the source hands over -- `Own` stays the source's
-    fact (`step_handover`), as on a `for` statement's loop variable."""
+    at: a head target the type its head declares it at, as a for head's
+    (`unpack_target_type`), the variable its element borrowed whatever the
+    source hands over -- `Own` stays the source's fact (`step_handover`),
+    as on a `for` statement's loop variable."""
     if route.unpack_types is not None:
-        return [(name, tt) for name, tt in zip(gen.unpack_vars,
-                                               route.unpack_types)
+        return [(name, bindings.unpack_target_type(gen.head, i, analyzer))
+                for i, name in enumerate(gen.unpack_vars)
                 if name is not None]
     return [(gen.var, _unwrap_own(route.et))]
 
@@ -611,14 +619,8 @@ def _clause_route(kind: str, gen, declared: dict[str, TpyType],
             if name is None:
                 types.append(None)
                 continue
-            # A str element target COPIES the stored element (`std::string k =
-            # std::get<i>(tup);` -- the value-type branch over the
-            # tuple's OWNED element spelling), unlike the for-each unpack's
-            # view binding; the owned declared type keeps the target's reads
-            # STORAGE-form (bare inserts). An F1-record target BORROWS with
-            # the ref binding keyed on const_loop_var alone (`auto& r =` /
-            # `const auto& p =` -- the inline tuple unpack spells a ref
-            # binding for every non-value target).
+            # The element families a head target binds: a scalar, a str
+            # (viewed, as a for head's target), a record by reference.
             if not (_eligible_scalar(tt) or _owned_viewfam_elem(tt, analyzer)
                     or record_like(
                         unwrap_readonly(unwrap_send_sync(tt)),
@@ -729,10 +731,8 @@ def _container_family_slot(slot: 'TpyType | None') -> bool:
 
 
 def _comp_result_slots_ok(
-        init, t: TpyType, pointers: AbstractSet[str],
-        rebind_slots: AbstractSet[str],
-        storage_tuple_locals: AbstractSet[str],
-        narrowed: AbstractSet[str], analyzer) -> bool:
+        init: 'TpyListComprehension | TpySetComprehension | TpyDictComprehension',
+        t: TpyType, analyzer: 'ValueCategoryAnalyzer') -> bool:
     """Whether a statement-loop comprehension's result slots and loop
     targets are in the slice. Each clause's source routes while the clause
     lowers, with the names in scope there; this gate reads only the kind
@@ -825,21 +825,11 @@ def _comp_result_slots_ok(
                         is not None))
         if not (is_dict(t) and len(args) == 2 and key_ok and value_ok):
             return False
-    # The comp vars shadow same-named outer locals for the element/filter
-    # walk; a var shadowing a specially-classified local (pointer / rebind /
-    # tuple-alias / narrowed) would need render-state save-restore the slice
-    # does not carry -- reject.
-    special = (pointers | rebind_slots | storage_tuple_locals | narrowed)
-    if any(name in special
-           for gen in init.generators for name in gen.targets):
-        return False
     return True
 
 def _comp_array_route(
         init, t: TpyType, declared: dict[str, TpyType],
-        pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
-        storage_tuple_locals: AbstractSet[str],
-        narrowed: AbstractSet[str], analyzer) -> '_CompRoute | None':
+        analyzer) -> '_CompRoute | None':
     """An Array-demoted comprehension -- the `array_from_index` RANGE arm
     (a filter-less, unpack-less list comp over a literal-proven range;
     sema's _try_comp_array_size did the proving, so the bounds are
@@ -874,16 +864,9 @@ def _comp_array_route(
                     init.element_expr, _mca_b, frozenset(), analyzer)
                 is not None)):
         return None
-    special = (pointers | rebind_slots | storage_tuple_locals | narrowed)
-    if gen.unpack_vars is not None:
-        # Unpack heads ride the SOURCE arm only (the range arm has no tuple
-        # to destructure); the shadow check covers each head var.
-        if any(name is not None and name in special
-               for name in gen.unpack_vars):
-            return None
-    elif gen.var in special:
-        return None
     it = gen.iterable
+    # Unpack heads ride the SOURCE arm only (the range arm has no tuple to
+    # destructure).
     if gen.unpack_vars is None and _is_range_call(it) \
             and len(it.args) in (1, 2, 3):
         counter = _range_counter_type(it, analyzer)
@@ -931,15 +914,14 @@ def _lower_array_comprehension(
     assert counter is not None
     elem_t = _comp_result_type(init.result_elem_type, analyzer)
     args = it.args
-    body_declared = dict(declared)
-    body_declared[gen.var] = counter
-    # The element renders inside the per-index lambda, where the comp var
-    # is a fresh local -- pointer-shadowed globals scrub for that walk
-    # only; the range bounds evaluate in the enclosing scope. allow_temps:
+    # The element renders inside the per-index lambda, in the clause's own
+    # scope; the range bounds evaluate in the enclosing scope. allow_temps:
     # the emit flushes element temps into the lambda body before the
     # `return` (`auto __tmp_N = i;` ahead of `Box(std::move(__tmp_N))`),
     # so the element is a flush position.
-    with bindings.at(lc, gen), bindings.at(lc, init):
+    with comp_clause_scope(lc, gen, declared, at=gen) as body_declared, \
+            bindings.at(lc, init):
+        body_declared[gen.var] = counter
         element = _lower_comp_container_elem(
             init.element_expr, elem_t, lc, body_declared, allow_temps=True)
     return THIRArrayComprehension(
@@ -968,20 +950,25 @@ def _lower_array_source_comprehension(
     it = gen.iterable
     _witness("comp.array_source")
     elem_t = _comp_result_type(init.result_elem_type, analyzer)
-    body_declared = dict(declared)
     head: 'THIRStmt | None' = None
+    # The head's targets, which the element reads in the clause's scope.
+    heads: dict[str, TpyType] = {}
     if route.unpack_types is not None:
         # The clause's head over the indexed element, as a for head over
         # its step.
         _witness("comp.unpack")
-        body_declared[gen.var] = route.et
-        with bindings.at(lc, gen.head), \
+        with comp_clause_scope(lc, gen, declared,
+                               at=gen.head) as head_declared, \
                 lc.placement_scope(SlotPlacement.STATEMENT):
+            head_declared[gen.var] = route.et
+            pre = set(head_declared)
             head = _statements._lower_unpack_stmt(
-                gen.head, _LowerScope(lc, body_declared, in_branch=True))
+                gen.head, _LowerScope(lc, head_declared, in_branch=True))
+            heads = {n: head_declared[n] for n in set(head_declared) - pre}
+            heads[gen.var] = route.et
         binding = None
     else:
-        body_declared[gen.var] = route.et
+        heads = {gen.var: route.et}
         binding = _statements._loop_var_record(gen.var, gen, lc)
         if binding is None or binding.loop_binding is None:
             raise BindingTableError(
@@ -995,7 +982,9 @@ def _lower_array_source_comprehension(
                                            pos=SinkPos.ITER_SOURCE))
     # allow_temps: element temps flush inside the per-index lambda, as
     # the range arm's do.
-    with bindings.at(lc, gen), bindings.at(lc, init):
+    with comp_clause_scope(lc, gen, declared, at=gen) as body_declared, \
+            bindings.at(lc, init):
+        body_declared.update(heads)
         element = _lower_comp_container_elem(
             init.element_expr, elem_t, lc, body_declared, allow_temps=True)
     return THIRArrayComprehension(
@@ -1091,39 +1080,6 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
     _witness("comp.container_value")
     return value
 
-def _comp_pointer_hides(init, lc) -> frozenset:
-    """The comp vars that hide a POINTER binding -- a pointer local or a
-    pointer-slot global -- and so leave the route's special check. Python
-    scopes a comp var in the comp itself and the C++ binds it as a fresh
-    local of the stmt-expr / lambda, so reads of the var inside the walk
-    are bare (its own record, which never carries `pointer`), while the
-    ITERABLE and range bounds evaluate in the OUTER scope and keep the
-    deref.
-
-    SPELLED globals (imported / native, `global_cpp` / `global_write_cpp`)
-    are not hideable -- their read is a fixed qualified name, so the body
-    would read the hidden global -- and stay out of this set (the route's
-    special check keeps rejecting them only if they are also pointers).
-
-    A name the clause-0 ITERABLE itself references (`[x + 1 for x in x]`)
-    stays OUT of the set, so the route's special check keeps rejecting it:
-    the iterable read would land BARE against the outer pointer there
-    (`auto& __obj_N = x;` on a `std::vector<T>*` -- ill-formed C++, see the
-    BUGS.md comprehension self-shadow entry).
-
-    Every clause's vars count; only clause 0's iterable evaluates in the
-    enclosing scope -- an inner one runs inside the walk, where an earlier
-    clause's var is the comp's own (sema rejects a read of a later one)."""
-    names = {n for gen in init.generators for n in gen.targets}
-    it_refs = collect_name_refs(init.generators[0].iterable)
-    return frozenset(
-        n for n in names
-        if n is not None and lc.binding(n).pointer
-        and n not in it_refs
-        and n not in lc.prescan.global_cpp
-        and n not in lc.prescan.global_write_cpp)
-
-
 def _lower_owned_comp_sink(e, slot: 'TpyType | None', lc: '_LowerCtx',
                            body_declared: dict[str, TpyType], gen
                            ) -> 'THIRExpr':
@@ -1153,8 +1109,7 @@ def _lower_owned_comp_sink(e, slot: 'TpyType | None', lc: '_LowerCtx',
 
 def _lower_comprehension(
         init, result_type: 'TpyType | None', lc: '_LowerCtx',
-        declared: dict[str, TpyType],
-        pointers: AbstractSet[str]) -> THIRExpr:
+        declared: dict[str, TpyType]) -> THIRExpr:
     if lc.prelowered is not None and init in lc.prelowered:
         # Held by its statement (`_aug_holds`): read by name, as
         # `_lower_expr` reads it, not built again.
@@ -1162,35 +1117,25 @@ def _lower_comprehension(
     global_scope = lc.global_binding_scope
     lc.global_binding_scope = False
     try:
-        return _lower_comprehension_impl(init, result_type, lc, declared, pointers)
+        return _lower_comprehension_impl(init, result_type, lc, declared)
     finally:
         lc.global_binding_scope = global_scope
 
 
 def _lower_comprehension_impl(
         init, result_type: 'TpyType | None', lc: '_LowerCtx',
-        declared: dict[str, TpyType],
-        pointers: AbstractSet[str]) -> THIRExpr:
+        declared: dict[str, TpyType]) -> THIRExpr:
     """Build the comprehension node from its classified routes. The
     container spelling composes from the node's sema-stamped result types;
     elements/keys/values lower through the S5 per-slot owned-str wrap
     (`_lower_container_elem`), target-typed against the slot."""
     analyzer = lc.analyzer
     loc = getattr(init, "loc", None)
-    ptr_hides = _comp_pointer_hides(init, lc)
-    if ptr_hides:
-        # Every other special class keeps its reject.
-        _witness("comp.pointer_shadow")
-        pointers = pointers - ptr_hides
     if result_type is None:
         raise ThirUnsupported("comp.route", detail=True)
-    # A rebound reference local is a pointer local too: a comp var hiding it
-    # is the pointer hide above.
-    special_args = (pointers, lc.names_with("rebind_slot") - ptr_hides,
-                    lc.names_with("storage_tuple"), lc.narrow.narrowed.keys())
     if is_array(result_type):
         array_route = _comp_array_route(init, result_type, declared,
-                                        *special_args, analyzer)
+                                        analyzer)
         if array_route is None:
             raise ThirUnsupported("comp.route", detail=True)
         if array_route.loop == "array_range":
@@ -1198,7 +1143,7 @@ def _lower_comprehension_impl(
                 init, result_type, array_route, lc, declared)
         return _lower_array_source_comprehension(
             init, result_type, array_route, lc, declared)
-    if not _comp_result_slots_ok(init, result_type, *special_args, analyzer):
+    if not _comp_result_slots_ok(init, result_type, analyzer):
         raise ThirUnsupported("comp.route", detail=True)
     return _build_comprehension_body(init, result_type, lc, declared,
                                      analyzer, loc)
@@ -1214,14 +1159,28 @@ def _clause_witnesses(gen, route: _CompRoute, lc: '_LowerCtx') -> None:
     BUGS.md#comp-storage-opt-const-any-method-recv."""
     analyzer = lc.analyzer
     if (route.unpack_types is None
-            and _foreach_storage_opt_elem(route.et, analyzer)
-            and not lc.prior_binding(gen.var).storage_opt):
+            and _foreach_storage_opt_elem(route.et, analyzer)):
         _cs_src = (gen.iterable.obj
                    if isinstance(gen.iterable, TpyMethodCall)
                    else gen.iterable)
         _witness("comp.storage_opt_elem")
         if _statements._iteration_yields_const(_cs_src, lc, analyzer):
             _witness("comp.storage_opt_const_elem")
+
+
+@contextmanager
+def comp_clause_scope(lc: '_LowerCtx', gen: 'TpyComprehensionGenerator',
+                      declared: dict[str, TpyType], *, at: object) -> Iterator[dict[str, TpyType]]:
+    """A comprehension clause's own scope, as Python gives it: its targets'
+    records (the binding table's node at `at` -- the clause, or its head
+    for the head's unpack) and no by-name fact of a same-named enclosing
+    binding (`shadow_scope`). The clause has no statements of its own: a
+    filter walrus binds the enclosing statement's scope. Yields `declared`
+    without the targets."""
+    with bindings.at(lc, at), \
+            lc.shadow_scope(gen.targets, declared,
+                            own_statements=False) as body_declared:
+        yield body_declared
 
 
 def _build_comprehension_body(init, result_type, lc, declared,
@@ -1328,61 +1287,67 @@ def _build_comprehension_body(init, result_type, lc, declared,
         _witness(f"comp.{route.loop}")
         if len(gens) == 1 and route.sized_reserve:
             _witness("comp.reserve")
-        body_declared = dict(clause_declared)
+        # Read off the clause's source, which the scope outside the clause
+        # resolves.
+        _clause_witnesses(gen, route, lc)
         head: 'THIRStmt | None' = None
-        if route.unpack_types is not None:
-            # The clause's head, as a for head: each target binds as
-            # `x = <element i>` of the step would.
-            _witness("comp.unpack")
-            body_declared[gen.var] = route.et
-            with bindings.at(lc, gen.head), \
-                    lc.placement_scope(SlotPlacement.STATEMENT):
-                head = _statements._lower_unpack_stmt(
-                    gen.head, _LowerScope(lc, body_declared, in_branch=True))
-        else:
-            body_declared.update(_clause_bindings(gen, route))
-        with bindings.at(lc, gen):
-            _clause_witnesses(gen, route, lc)
-            pre = set(body_declared)
-            # Conditions lower before what they guard, in the order
-            # Python evaluates them, so a filter walrus is declared for
-            # the inner sources and the element that read it.
-            with lc.placement_scope(cond_placement):
-                conditions = tuple(
-                    _lower_truthy(c, lc, body_declared, temps_ok=True)
-                    for c in gen.conditions)
-            for name in set(body_declared) - pre:
-                declared[name] = body_declared[name]
-            if any(contains_named_expr(c) for c in gen.conditions):
-                _witness("comp.filter_walrus_leak")
-            with lc.placement_scope(SlotPlacement.STATEMENT):
-                if k + 1 < len(gens):
-                    inner: THIRStmt = clause(k + 1, body_declared)
-                else:
-                    with bindings.at(lc, init):
-                        inner = leaf(body_declared)
-            for cond in reversed(conditions):
-                inner = THIRIf(condition=cond, then_body=(inner,), loc=loc)
-            body: tuple[THIRStmt, ...] = (inner,)
-            if head is not None:
-                body = (head,) + body
-            # A clause's source is the head of its loop: the fresh
-            # arguments it keeps are declared inside the comprehension's
-            # block, before the loop, and live until the loop ends.
-            with lc.placement_scope(SlotPlacement.STATEMENT):
-                if k == 0:
-                    loop = _comprehension_loop(
-                        route, gen, lc, declared, body,
-                        # The trip count is known up front only for one
-                        # clause.
-                        "__result" if kind == "list" and len(gens) == 1
-                        else None, loc, outermost=True)
-                else:
-                    loop = _comprehension_loop(route, gen, lc,
-                                               clause_declared, body, None,
-                                               loc, outermost=False)
-            _statements.stamp_bindings(loop, gen, lc)
-            return loop
+        unpack = route.unpack_types is not None
+        with comp_clause_scope(lc, gen, clause_declared,
+                               at=gen.head if unpack else gen
+                               ) as body_declared:
+            if unpack:
+                # The clause's head, as a for head: each target binds as
+                # `x = <element i>` of the step would.
+                _witness("comp.unpack")
+                body_declared[gen.var] = route.et
+                with lc.placement_scope(SlotPlacement.STATEMENT):
+                    head = _statements._lower_unpack_stmt(
+                        gen.head, _LowerScope(lc, body_declared,
+                                              in_branch=True))
+            else:
+                body_declared.update(_clause_bindings(gen, route, analyzer))
+            with bindings.at(lc, gen):
+                pre = set(body_declared)
+                # Conditions lower before what they guard, in the order
+                # Python evaluates them, so a filter walrus is declared for
+                # the inner sources and the element that read it.
+                with lc.placement_scope(cond_placement):
+                    conditions = tuple(
+                        _lower_truthy(c, lc, body_declared, temps_ok=True)
+                        for c in gen.conditions)
+                for name in set(body_declared) - pre:
+                    declared[name] = body_declared[name]
+                if any(contains_named_expr(c) for c in gen.conditions):
+                    _witness("comp.filter_walrus_leak")
+                with lc.placement_scope(SlotPlacement.STATEMENT):
+                    if k + 1 < len(gens):
+                        inner: THIRStmt = clause(k + 1, body_declared)
+                    else:
+                        with bindings.at(lc, init):
+                            inner = leaf(body_declared)
+        for cond in reversed(conditions):
+            inner = THIRIf(condition=cond, then_body=(inner,), loc=loc)
+        body: tuple[THIRStmt, ...] = (inner,)
+        if head is not None:
+            body = (head,) + body
+        # A clause's source is the head of its loop, read in the scope
+        # outside the clause: the fresh arguments it keeps are declared
+        # inside the comprehension's block, before the loop, and live until
+        # the loop ends.
+        with lc.placement_scope(SlotPlacement.STATEMENT):
+            if k == 0:
+                loop = _comprehension_loop(
+                    route, gen, lc, declared, body,
+                    # The trip count is known up front only for one
+                    # clause.
+                    "__result" if kind == "list" and len(gens) == 1
+                    else None, loc, outermost=True)
+            else:
+                loop = _comprehension_loop(route, gen, lc,
+                                           clause_declared, body, None,
+                                           loc, outermost=False)
+        _statements.stamp_bindings(loop, gen, lc)
+        return loop
 
     _witness("comp.statement_body")
     loop = clause(0, declared)

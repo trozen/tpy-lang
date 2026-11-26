@@ -594,7 +594,7 @@ void comp_shapes() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_13 = *__beg_0;
-            auto& n = std::get<0>(__for_tup_13);
+            auto& n = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_13)));
             int32_t x = std::get<1>(__for_tup_13);
             __result.push_back(n.bump(x));
         }
@@ -621,7 +621,7 @@ void comp_shapes() {
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             auto&& __for_tup_14 = *__beg_2;
-            auto& n = std::get<0>(__for_tup_14);
+            auto& n = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_14)));
             int32_t x = std::get<1>(__for_tup_14);
             __result.push_back(n.bump(x));
         }
@@ -671,7 +671,7 @@ void comp_shapes() {
         auto __end_6 = __obj_6.end();
         for (; __beg_6 != __end_6; ++__beg_6) {
             auto&& __for_tup_15 = *__beg_6;
-            auto& n = std::get<0>(__for_tup_15);
+            auto& n = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_15)));
             int32_t x = std::get<1>(__for_tup_15);
             __result.push_back(n.bump(x));
         }
@@ -685,8 +685,8 @@ void comp_shapes() {
         auto __end_7 = __obj_7.end();
         for (; __beg_7 != __end_7; ++__beg_7) {
             auto&& __for_tup_16 = *__beg_7;
-            auto& n = std::get<0>(__for_tup_16);
-            auto& x = std::get<1>(__for_tup_16);
+            auto& n = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_16)));
+            auto& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_16)));
             __result.push_back(n.bump(x.v));
         }
         std::move(__result);
@@ -700,7 +700,7 @@ void comp_shapes() {
         for (; __beg_8 != __end_8; ++__beg_8) {
             auto&& __for_tup_17 = *__beg_8;
             int32_t i = std::get<0>(__for_tup_17);
-            auto& n = std::get<1>(__for_tup_17);
+            auto& n = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_17)));
             __result.push_back(n.bump(i));
         }
         std::move(__result);
@@ -713,7 +713,7 @@ void comp_shapes() {
         auto __end_9 = __obj_9.end();
         for (; __beg_9 != __end_9; ++__beg_9) {
             auto&& __for_tup_18 = *__beg_9;
-            auto& n = std::get<0>(__for_tup_18);
+            auto& n = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_18)));
             int32_t x = std::get<1>(__for_tup_18);
             __result.push_back(n.bump(x));
         }
@@ -801,7 +801,7 @@ int32_t explicit_ro(std::span<const Cell> cells, const std::vector<int32_t>& ws)
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             auto&& __for_tup_24 = *__beg_2;
-            const auto& c = std::get<0>(__for_tup_24);
+            const auto& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_24)));
             int32_t w = std::get<1>(__for_tup_24);
             __result.push_back((::tpy::add_check<int32_t>(c.val(), w)));
         }

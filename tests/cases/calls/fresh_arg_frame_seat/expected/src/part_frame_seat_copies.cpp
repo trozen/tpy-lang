@@ -209,7 +209,7 @@ __gen_tasks tasks(const Src& s) {
             for (;;) {
                 auto __r_2 = __itr_1.__next__();
                 if (!__r_2.has_value()) break;
-                const auto& x = ::tpy::unwrap_ref(*__r_2);
+                auto&& x = ::tpy::unwrap_ref(*__r_2);
                 (*out).push_back(x);
             }
         }

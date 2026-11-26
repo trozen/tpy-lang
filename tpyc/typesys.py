@@ -4996,7 +4996,11 @@ def owned_element_type(typ: 'TpyType') -> 'TpyType':
     inner = unwrap_readonly(unwrap_ref_type(unwrap_readonly(unwrap_own(typ))))
     if isinstance(inner, PendingViewType):
         return inner.family.owned_type
-    return owned_tuple_storage_type(inner)
+    if isinstance(inner, TupleType):
+        held = TupleType(tuple(owned_element_type(et)
+                               for et in inner.element_types))
+        return held if held != inner else inner
+    return inner
 
 
 @dataclass(frozen=True)

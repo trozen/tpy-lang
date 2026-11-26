@@ -104,6 +104,8 @@ ASYNCIO_CREATE_TASK = "asyncio.create_task"
 COPY = "tpy.copy"
 OWN_ITER = "tpy.own_iter"
 TRY_PARSE = "tpy.try_parse"
+# The builtin `ord`, whose single-char literal call folds to its ordinal.
+ORD = "tpy._builtins._funcs.ord"
 # Compile-time Send/Sync assertions; checked in sema, elided in codegen.
 ASSERT_SEND = "tpy.assert_send"
 ASSERT_SYNC = "tpy.assert_sync"

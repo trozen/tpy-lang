@@ -1,14 +1,14 @@
 # An escaping (Callable) closure copies each capture when it is created; the
 # warnings name every divergence from CPython's late-binding closure, one
 # section per position. Each section mutates or rebinds after creation.
-import asyncio
-from typing import Callable, Iterator, Protocol
-from tpy import int32, Own, ReturnException, auto_readonly, dynamic, error_return
-
-
-class P:
-    def __init__(self, n: int32) -> None:
-        self.n = n
+from typing import Callable
+from tpy import int32, Own
+from fixtures import P
+import part_comp_self
+import part_hedge
+import part_loops
+import part_positions
+import part_tuple
 
 
 class Holder:
@@ -116,245 +116,6 @@ def block(ps: list[P]) -> None:
     print("block:", fs[0](), fs[1](), fs[2](), fs[3]())
 
 
-# block_def: the same loop-body local captured by an escaping nested def
-def block_def(ps: list[P]) -> None:
-    fs: list[Callable[[], int32]] = []
-    for q in ps:
-        snap = q
-
-        def get() -> int32:  # tpyc: warning(/nested function 'get' copies the object 'snap'/) warning(/'snap' is bound again on each iteration; the nested function 'get'/)
-            return snap.n
-        fs.append(get)
-    ps[0].n = 8
-    print("block_def:", fs[0](), fs[1]())
-
-
-# tuple_def: a tuple of records a nested def does not move (a tuple local may
-# be the borrow form, so the wording hedges)
-def tuple_def() -> Callable[[], int32]:
-    t = (P(1), P(2))
-
-    def tget() -> int32:  # tpyc: warning(/nested function 'tget' may keep its own copy of 't'/)
-        return t[0].n
-    t[0].n = 7
-    print("tuple_def:", tget(), t[0].n)
-    return tget
-
-
-# tuple_elem: a tuple local -- an element read off a list, a literal -- may be
-# the borrow form, so its wording hedges; an iteration step over the list
-# holds the element itself
-def tuple_elem(ts: list[tuple[P, P]]) -> None:
-    t = ts[0]
-    u = (P(3), P(4))
-    f: Callable[[], int32] = lambda: t[0].n + u[1].n  # tpyc: warning(/may keep its own copy of 't'/) warning(/may keep its own copy of 'u'/)
-    gs: list[Callable[[], int32]] = []
-    for v in ts:
-        gs.append(lambda: v[1].n)  # tpyc: warning(/copies the object 'v'/) warning(/'v' is bound again/)
-    ts[0][0].n = 20
-    ts[0][1].n = 30
-    u[1].n = 40
-    print("tuple_elem:", f(), gs[0]())
-
-
-# mixed: a tuple of a new record and a borrowed one; only the new one is copied
-def mixed() -> None:
-    p = P(1)
-    t = (P(2), p)
-    f: Callable[[], int32] = lambda: t[0].n + t[1].n  # tpyc: warning(/may keep its own copy of 't'/)
-    p.n = 10
-    t[0].n = 20
-    print("mixed:", f())
-
-
-# gen: a generator's parameter, a frame member the lambda copies
-def gen(xs: list[int32]) -> Iterator[int32]:
-    f: Callable[[], int32] = lambda: len(xs)  # tpyc: warning(/copies the object 'xs'/)
-    yield f()
-    xs.append(9)
-    yield f()
-
-
-# nested: a nested def's own lambda over the def's local
-def nested() -> int32:
-    def inner() -> Callable[[], int32]:
-        ys = [1]
-        r: Callable[[], int32] = lambda: len(ys)  # tpyc: warning(/copies the object 'ys'/)
-        ys.append(2)
-        return r
-    return inner()()
-
-
-# compound: inside with / try / match bodies
-class Ctx:
-    def __enter__(self) -> int32:
-        return 1
-
-    def __exit__(self, et, ev, tb) -> None:
-        pass
-
-
-def compound(code: int32) -> None:
-    xs = [1]
-    fs: list[Callable[[], int32]] = []
-    with Ctx() as _c:
-        fs.append(lambda: len(xs))  # tpyc: warning(/copies the object 'xs'/)
-    try:
-        fs.append(lambda: len(xs) * 10)  # tpyc: warning(/copies the object 'xs'/)
-    finally:
-        pass
-    match code:
-        case 1:
-            fs.append(lambda: len(xs) * 100)  # tpyc: warning(/copies the object 'xs'/)
-        case _:
-            pass
-    xs.append(2)
-    print("compound:", fs[0](), fs[1](), fs[2]())
-
-
-# async: a coroutine's parameter, a frame member the lambda copies
-async def co_body(xs: list[int32]) -> int32:
-    f: Callable[[], int32] = lambda: len(xs)  # tpyc: warning(/copies the object 'xs'/)
-    xs.append(2)
-    await asyncio.sleep(0)
-    return f()
-
-
-# er: a local in an @error_return body is copied; a binding of an
-# @error_return call's result may refer to the callee's storage, so it hedges
-class Fail(Exception, ReturnException):
-    pass
-
-
-@error_return(Fail)
-def er_make(n: int32) -> Own[P]:
-    if n < 0:
-        raise Fail
-    return P(n)
-
-
-@error_return(Fail)
-def er_body(n: int32) -> int32:
-    xs = [n]
-    f: Callable[[], int32] = lambda: len(xs)  # tpyc: warning(/copies the object 'xs'/)
-    q = er_make(n)
-    g: Callable[[], int32] = lambda: q.n  # tpyc: warning(/may keep its own copy of 'q'/)
-    xs.append(2)
-    q.n = 3
-    return f() * 10 + g()
-
-
-# auto_readonly: both bodies of the pair build the lambda; it warns once
-class Bag:
-    items: list[int32]
-
-    def __init__(self) -> None:
-        self.items = [1]
-
-    @auto_readonly
-    def reader(self) -> Callable[[], int32]:
-        xs = [len(self.items)]
-        f: Callable[[], int32] = lambda: len(xs)  # tpyc: warning(/copies the object 'xs'/)
-        xs.append(2)
-        return f
-
-
-# reseat / rebind_after: an outer reference local the loop points at another
-# object, before or after the lambda: each lambda keeps its own pointer
-def reseat(ps: list[P]) -> None:
-    fs: list[Callable[[], int32]] = []
-    p = ps[0]
-    for i in range(len(ps)):
-        p = ps[i]
-        fs.append(lambda: p.n)  # tpyc: warning(/may keep its own copy of 'p'/) warning(/'p' may be bound again/)
-    print("reseat:", fs[0](), fs[1](), fs[2]())
-
-
-def rebind_after() -> None:
-    fs: list[Callable[[], int32]] = []
-    p = P(0)
-    for i in range(3):
-        fs.append(lambda: p.n)  # tpyc: warning(/may keep its own copy of 'p'/) warning(/'p' may be bound again/)
-        if i == 1:
-            p = P(i + 10)
-    print("rebind_after:", fs[0](), fs[1](), fs[2]())
-
-
-# while_unpack: a while loop's local and a tuple-unpacking loop head
-def while_unpack(pairs: list[tuple[int32, int32]]) -> None:
-    fs: list[Callable[[], int32]] = []
-    i = 0
-    while i < 2:
-        k = i * 10
-        fs.append(lambda: k)  # tpyc: warning(/'k' is bound again/)
-        i += 1
-    for a, b in pairs:
-        fs.append(lambda: a + b)  # tpyc: warning(/'a' is bound again/) warning(/'b' is bound again/)
-    print("while_unpack:", fs[0](), fs[1](), fs[2](), fs[3]())
-
-
-# generic: a type holding an open T is not settled here, so the wording hedges
-def keep_t[T](xs: list[T]) -> Callable[[], int32]:
-    return lambda: len(xs)  # tpyc: warning(/may keep its own copy of 'xs'/)
-
-
-# cost: an expensive immutable value (an owned str, an int) is copied
-def cost(k: int) -> Callable[[], int]:
-    s = "v" + str(k)
-    return lambda: k + len(s)  # tpyc: warning(/copies 'k' when it is created/) warning(/copies 's' when it is created/)
-
-
-# rebound_param: an Own parameter the body may rebind; the wording hedges
-def rebound_param(p: Own[P], c: bool) -> None:  # tpyc: warning(/never consumed/)
-    if c:
-        p = P(5)
-    f: Callable[[], int32] = lambda: p.n  # tpyc: warning(/may keep its own copy of 'p'/)
-    p.n = 9
-    print("rebound_param:", f())
-
-
-# dynamic: a @dynamic protocol local is a pointer to its object, so the
-# capture copies the pointer and the hedged warning is spurious
-# (BUGS.md#hedged-capture-copy-unrebound-param)
-@dynamic
-class Shape(Protocol):
-    def area(self) -> int32: ...
-
-
-class Sq:
-    def __init__(self, k: int32) -> None:
-        self.k = k
-
-    def area(self) -> int32:
-        return self.k * self.k
-
-
-def dyn_local(sq: Sq) -> None:
-    s: Shape = sq
-    f: Callable[[], int32] = lambda: s.area()  # tpyc: warning(/may keep its own copy of 's'/)
-    sq.k = 3
-    print("dynamic:", f())
-
-
-# callable_state: a captured Callable copies the callable object it holds,
-# so the calls through the original do not advance the lambda's copy
-class Counter:
-    n: int32
-
-    def __init__(self) -> None:
-        self.n = 0
-
-    def __call__(self, xs: list[int32]) -> int32:
-        self.n += len(xs)
-        return self.n
-
-
-def callable_state() -> None:
-    f: Callable[[list[int32]], int32] = Counter()
-    g: Callable[[list[int32]], int32] = lambda xs: f(xs)  # tpyc: warning(/may keep its own copy of 'f'/)
-    print("callable_state:", f([1]), g([1]), f([1]), g([1]))
-
-
 def main() -> None:
     local()
     ps = [P(1), P(2)]
@@ -382,34 +143,11 @@ def main() -> None:
     zs.append(2)
     print("curried:", inner())
     block([P(1), P(2)])
-    block_def([P(1), P(2)])
-    tget = tuple_def()
-    print("tuple_def:", tget())
-    tuple_elem([(P(1), P(2))])
-    gx = [1]
-    for v in gen(gx):
-        print("gen:", v)
-    print("nested:", nested())
-    compound(1)
-    kx = [1]
-    kf = keep_t(kx)
-    kx.append(2)
-    print("generic:", kf())
-    print("cost:", cost(3)())
-    mixed()
-    print("async:", asyncio.run(co_body([1])))
-    try:
-        print("er:", er_body(1))
-    except Fail:
-        print("er: failed")
-    bag = Bag()
-    print("auto_readonly:", bag.reader()())
-    reseat([P(1), P(2), P(3)])
-    rebind_after()
-    while_unpack([(1, 2), (3, 4)])
-    rebound_param(P(1), True)
-    dyn_local(Sq(2))
-    callable_state()
+    part_loops.main()
+    part_tuple.main()
+    part_positions.main()
+    part_hedge.main()
+    part_comp_self.main()
 
 
 main()

@@ -215,18 +215,17 @@ std::function<int32_t()> make_named_not_called() {
 // def make_lambda_param_shadow() -> Callable[[], int32]:
 //     data = [21]
 //     data.append(22)
-//     def size() -> int32:  # tpyc: warning(/copies local 'data'.*used after closure/)
+//     def size() -> int32:  # tpyc: ok
 //         return len(data)
-//     # the lambda's PARAMETER shadows the local, so its body cannot reach it --
-//     # the other deliberate over-approximation: the scan reads lambda bodies
-//     # without tracking what their parameters bind
+//     # the lambda's PARAMETER shadows the local, so its body cannot reach it:
+//     # the closure is the local's last use and takes it over
 //     step: Callable[[int32], int32] = lambda data: data + 1
 //     print("lambda_param_shadow:", step(1))
 //     return size
 std::function<int32_t()> make_lambda_param_shadow() {
     std::vector<int32_t> data = {21};
     data.push_back(22);
-    auto size = [data]() -> int32_t {
+    auto size = [data = std::move(data)]() -> int32_t {
         return ::tpy::__len__(data);
     };
     std::function<int32_t(int32_t)> step = [](int32_t data) -> int32_t { return (::tpy::add_check<int32_t>(data, 1)); };

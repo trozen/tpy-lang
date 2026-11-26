@@ -1,0 +1,1 @@
+main.py:21: error: 'Base.num(self, ...)' passes a 'self' bound inside this method (a comprehension or lambda variable), not the method's receiver; 'Base.num(...)' takes only the receiver as its first argument

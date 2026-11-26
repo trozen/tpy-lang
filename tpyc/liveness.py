@@ -26,10 +26,8 @@ from .parse import (
     TpyMatch, TpyNestedDef, TpyDelVar, TpyTry, TpyWith, TpyNonlocal,
     TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr, TpyFunction,
     TpyBoolLiteral, TpyAssert, TpyTupleLiteral, TpyLambda,
-    TpyListComprehension, TpySetComprehension, TpyDictComprehension,
-    TpyGeneratorExpression,
 )
-from .parse.nodes import (comp_clause_children, iter_capture_bindings,
+from .parse.nodes import (comp_scope, iter_capture_bindings,
                           stmts_have_any_suspension, sure_walrus_targets,
                           walrus_binding_read,
                           walrus_bindings,
@@ -234,17 +232,12 @@ def collect_closure_captures(stmts: list[TpyStmt]) -> set[str]:
 
 
 def _lambda_captures(expr: TpyExpr) -> set[str]:
-    """What the lambdas in `expr` read from outside themselves (a nested
-    lambda's reads are among its enclosing lambda's)."""
-    out: set[str] = set()
-    stack = [expr]
-    while stack:
-        node = stack.pop()
-        if isinstance(node, TpyLambda):
-            out.update(n.name for n in _lambda_free_reads(node))
-        else:
-            stack.extend(node.children())
-    return out
+    """What the lambdas in `expr` read from the scope `expr` is written in
+    (a nested lambda's reads are among its enclosing lambda's; a
+    comprehension's own variable is not of that scope)."""
+    out: list[TpyName] = []
+    _collect_reads_expr(expr, lambda_reads=out)
+    return {n.name for n in out}
 
 
 def _free_names_approx(func: TpyFunction) -> set[str]:
@@ -1339,15 +1332,17 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
         return
     walruses: list[TpyNamedExpr] = []
     reads: list[TpyName] = []
+    own: list[tuple[TpyName, TpyExpr]] = []
     repeated = IdentitySet()
     for expr in exprs:
-        reads.extend(_collect_reads_expr(expr, None, repeated, walruses))
+        reads.extend(_collect_reads_expr(expr, None, repeated, walruses,
+                                         own))
     if w.carry_loops:
         for node in reads:
             if any(LoopCarry(loop, node.name) in live
                    for loop in w.carry_loops):
                 repeated.add(node)
-    if not reads and not walruses:
+    if not reads and not walruses and not own:
         return
     # A walrus evaluates to a read of its target, after its write: that read
     # is classified as every other (sema analyzes it where the walrus
@@ -1359,33 +1354,17 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
         if wal in repeated:
             repeated.add(read)
     w.repeated_reads |= repeated
+    # Each comprehension's own variables are bindings of their own: neither
+    # the enclosing scope's reads of the same spelling nor what that scope
+    # keeps live, pins or aliases bear on them.
+    by_comp: dict[int, list[TpyName]] = {}
+    for node, comp in own:
+        by_comp.setdefault(id(comp), []).append(node)
+    for comp_reads in by_comp.values():
+        _mark_last_uses(exprs, comp_reads, repeated, set(), w, outer=False)
     written = reads
     reads = reads + implied
-
-    # Count occurrences per variable name in this expression.
-    # If a variable appears multiple times, don't mark any as last use
-    # (C++ argument evaluation order is unspecified).
-    name_counts: dict[str, int] = {}
-    for node in reads:
-        name_counts[node.name] = name_counts.get(node.name, 0) + 1
-    if "super" in name_counts and "self" in name_counts:
-        # `super()` reads `self`.
-        name_counts["self"] += name_counts["super"]
-
-    # Mark single-occurrence reads that are not live (not used later)
-    # and have no live T& aliases (prevents dangling references). A pinned
-    # name is live even where a `return` / `raise` / jump reset the set.
-    for node in reads:
-        if (name_counts[node.name] == 1
-                and node not in repeated
-                and node.name not in w.captured
-                and node.name not in live
-                and node.name not in w.pinned
-                and not _has_live_alias(node.name, live, w.source_aliases,
-                                        w.detached_aliases)):
-            w.last_uses.add(node)
-            _note_same_stmt_aliases(node, name_counts, w)
-    _mark_distinct_field_reads(exprs, reads, name_counts, repeated, live, w)
+    _mark_last_uses(exprs, reads, repeated, live, w)
 
     # The walrus targets the statement surely writes (`sure_walrus_targets`
     # over `sure`, the expressions it always evaluates) are definitions, and
@@ -1397,6 +1376,37 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
         live.discard(name)
         _kill_carry(name, live)
     live.update(_read_names(written))
+
+
+def _mark_last_uses(exprs: list[TpyExpr], reads: list[TpyName],
+                    repeated: IdentitySet, live: set[Holder], w: _Walk, *,
+                    outer: bool = True) -> None:
+    """Mark the last uses among `reads`, all of one statement's
+    expressions `exprs`: a name read once there (C++ argument evaluation
+    order is unspecified), at a read that does not run again, not live
+    after, and with no live `T&` alias (a dangling reference); a pinned
+    name is live even where a `return` / `raise` / jump reset the set. Not
+    `outer`: the reads of one comprehension's own variables, which the
+    enclosing scope's captures, pins and aliases do not reach."""
+    name_counts: dict[str, int] = {}
+    for node in reads:
+        name_counts[node.name] = name_counts.get(node.name, 0) + 1
+    if "super" in name_counts and "self" in name_counts:
+        # `super()` reads `self`.
+        name_counts["self"] += name_counts["super"]
+    for node in reads:
+        if name_counts[node.name] != 1 or node in repeated:
+            continue
+        if outer and (node.name in w.captured or node.name in live
+                      or node.name in w.pinned
+                      or _has_live_alias(node.name, live, w.source_aliases,
+                                         w.detached_aliases)):
+            continue
+        w.last_uses.add(node)
+        if outer:
+            _note_same_stmt_aliases(node, name_counts, w)
+    _mark_distinct_field_reads(exprs, reads, name_counts, repeated, live, w,
+                               outer=outer)
 
 
 def _read_names(reads: list[TpyName]) -> set[str]:
@@ -1411,10 +1421,12 @@ def _read_names(reads: list[TpyName]) -> set[str]:
 def _mark_distinct_field_reads(exprs: list[TpyExpr], reads: list[TpyName],
                                name_counts: dict[str, int],
                                repeated: IdentitySet, live: set[Holder],
-                               w: _Walk) -> None:
+                               w: _Walk, *, outer: bool = True) -> None:
     """`_Walk.distinct_field_reads` for one statement's reads: a name
     read several times, each time as `name.f`, under the conditions a last
-    use takes otherwise. `super()` reads `self` whole."""
+    use takes otherwise. `super()` reads `self` whole. Not `outer`: the
+    reads of one comprehension's own variables, which the enclosing
+    scope's captures, pins and aliases do not reach."""
     fields = IdentityMap()
     stack = list(exprs)
     while stack:
@@ -1431,14 +1443,17 @@ def _mark_distinct_field_reads(exprs: list[TpyExpr], reads: list[TpyName],
     for name, nodes in by_name.items():
         got = [fields.get(n) for n in nodes]
         if (None in got or (name == "self" and "super" in name_counts)
-                or any(n in repeated for n in nodes)
-                or name in w.captured or name in live or name in w.pinned
-                or _has_live_alias(name, live, w.source_aliases,
-                                   w.detached_aliases)):
+                or any(n in repeated for n in nodes)):
+            continue
+        if outer and (name in w.captured or name in live
+                      or name in w.pinned
+                      or _has_live_alias(name, live, w.source_aliases,
+                                         w.detached_aliases)):
             continue
         for n in nodes:
             w.distinct_field_reads[n] = tuple(got)
-            _note_same_stmt_aliases(n, name_counts, w)
+            if outer:
+                _note_same_stmt_aliases(n, name_counts, w)
 
 
 def _note_same_stmt_aliases(node: TpyName, name_counts: dict[str, int],
@@ -1455,6 +1470,8 @@ def _collect_reads_expr(expr: TpyExpr,
                         walrus_defs: set[str] | None = None,
                         repeat_reads: IdentitySet | None = None,
                         walruses: list[TpyNamedExpr] | None = None,
+                        own_reads: 'list[tuple[TpyName, TpyExpr]] | None' = None,
+                        lambda_reads: list[TpyName] | None = None,
                         ) -> list[TpyName]:
     """Collect TpyName nodes read (not defined) in an expression.
 
@@ -1468,15 +1485,29 @@ def _collect_reads_expr(expr: TpyExpr,
     lambda's free-name reads, and a comprehension's reads outside its first
     iterable (the element, the filters and the later iterables run once per
     item) of any name but the clause variables bound once per that item.
+    A read of a comprehension's own variable is no read of the scope `expr`
+    is written in: it is left out, and collected into `own_reads` when
+    given, paired with the comprehension that binds it (a last use of that
+    comprehension's variable). `lambda_reads`, when given, collects the
+    returned reads a lambda makes.
     """
     result: list[TpyName] = []
+    own_out: list[tuple[TpyName, TpyExpr]] = (
+        own_reads if own_reads is not None else [])
     # Each entry carries, inside a comprehension's per-item part, the clause
-    # variables bound there; None outside one.
-    stack: list[tuple[TpyExpr, frozenset[str] | None]] = [(expr, None)]
+    # variables bound there (None outside one), and the names a
+    # comprehension around it binds, each to the innermost such
+    # comprehension: a read of one is a read of that comprehension's own
+    # variable, not of the scope `expr` is written in.
+    stack: list[tuple[TpyExpr, frozenset[str] | None,
+                      dict[str, TpyExpr]]] = [(expr, None, {})]
     while stack:
-        node, bound = stack.pop()
+        node, bound, own = stack.pop()
         if isinstance(node, TpyName):
-            result.append(node)
+            if node.name in own:
+                own_out.append((node, own[node.name]))
+            else:
+                result.append(node)
             if (bound is not None and node.name not in bound
                     and repeat_reads is not None):
                 repeat_reads.add(node)
@@ -1489,28 +1520,27 @@ def _collect_reads_expr(expr: TpyExpr,
                 if bound is not None and repeat_reads is not None:
                     repeat_reads.add(node)
         if isinstance(node, TpyLambda):
-            inner = _lambda_free_reads(node)
-            result.extend(inner)
-            if repeat_reads is not None:
-                for n in inner:
+            for n in _lambda_free_reads(node):
+                if n.name in own:
+                    own_out.append((n, own[n.name]))
+                else:
+                    result.append(n)
+                    if lambda_reads is not None:
+                        lambda_reads.append(n)
+                if repeat_reads is not None:
                     repeat_reads.add(n)
             continue
-        if isinstance(node, (TpyListComprehension, TpySetComprehension,
-                             TpyDictComprehension, TpyGeneratorExpression)):
-            # What runs once per item of clause i (its filters, the next
-            # clause's source, and after the last clause the element) may
-            # take a last use only of what clause i binds.
+        scope = comp_scope(node)
+        if scope is not None:
+            # What runs once per item of clause i may take a last use only
+            # of what clause i binds.
             gens = node.generators
-            stack.append((gens[0].iterable, bound))
-            for i, gen in enumerate(gens):
-                per_item = frozenset(gen.targets)
-                stack.extend((c, per_item) for c in gen.conditions)
-                if i + 1 < len(gens):
-                    stack.append((gens[i + 1].iterable, per_item))
-            elements = node.children()[len(comp_clause_children(gens)):]
-            stack.extend((c, frozenset(gens[-1].targets)) for c in elements)
+            stack.append((scope.outer, bound, own))
+            inner = own | {n: node for n in scope.bound}
+            stack.extend((e, frozenset(gens[i].targets), inner)
+                         for e, i in scope.inner)
             continue
-        stack.extend((c, bound) for c in node.children())
+        stack.extend((c, bound, own) for c in node.children())
     return result
 
 

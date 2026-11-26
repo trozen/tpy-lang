@@ -198,10 +198,10 @@ int32_t count_dirs(std::string_view root, bool follow) {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
+            const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
             std::string_view dp = std::get<0>(__for_tup_1);
-            auto& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_1)));
-            auto& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_1)));
+            const auto& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_1)));
+            const auto& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_1)));
             n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
@@ -267,10 +267,10 @@ bool order_ok(std::string_view root) {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& __for_tup_3 = ::tpy::unwrap_ref(*__r_1);
+            const auto& __for_tup_3 = ::tpy::unwrap_ref(*__r_1);
             std::string_view dp = std::get<0>(__for_tup_3);
-            auto& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_3)));
-            auto& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_3)));
+            const auto& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_3)));
+            const auto& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_3)));
             seen.push_back(std::string(dp));
         }
     }
@@ -339,10 +339,10 @@ void main() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& __for_tup_4 = ::tpy::unwrap_ref(*__r_1);
+            const auto& __for_tup_4 = ::tpy::unwrap_ref(*__r_1);
             std::string_view dp = std::get<0>(__for_tup_4);
-            auto& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_4)));
-            auto& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_4)));
+            const auto& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_4)));
+            const auto& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_4)));
             n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
@@ -355,10 +355,10 @@ void main() {
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
-            auto&& __for_tup_5 = ::tpy::unwrap_ref(*__r_3);
+            const auto& __for_tup_5 = ::tpy::unwrap_ref(*__r_3);
             std::string_view dp = std::get<0>(__for_tup_5);
-            auto& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_5)));
-            auto& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_5)));
+            const auto& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_5)));
+            const auto& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_5)));
             nf = ::tpy::add_check<int32_t>(nf, 1);
         }
     }

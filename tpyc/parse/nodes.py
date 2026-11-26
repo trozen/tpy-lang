@@ -10,7 +10,8 @@ import ast
 import copy
 from dataclasses import dataclass, field, is_dataclass, replace
 from enum import Enum, IntEnum
-from typing import Any, Callable, Iterable, Iterator, Literal, Optional, TYPE_CHECKING
+from typing import (Any, Callable, Iterable, Iterator, Literal, NamedTuple,
+                    Optional, TYPE_CHECKING)
 
 from ..typesys import (
     TpyType, NominalType, FieldInfo, FunctionInfo,
@@ -2989,50 +2990,71 @@ def init_leading_run_end(body: list[TpyStmt]) -> int:
 
 
 def collect_name_refs(expr: TpyExpr, *, into_lambdas: bool = False) -> set[str]:
-    """Collect all name references in an expression tree.
+    """The names `expr` reads from the scope it is written in
+    (`comp_free_reads`): a comprehension's own variables are not such reads.
 
-    Uses TpyExpr.children() for generic traversal. TpyCall.func is a
-    TpyName child, so callable variable names are captured automatically.
-
-    `into_lambdas` also walks a lambda's body, which `children()` withholds
-    because the lambda is its own scope -- for a caller asking which names
-    the expression can READ rather than which ones it binds here. The
-    lambda's own parameters are reported too, so such a caller has to be one
-    that can afford the conservative answer.
+    `into_lambdas` also walks a lambda's body, less its parameters -- for a
+    caller asking which names the expression can READ rather than which
+    ones it reads where it stands (a lambda's body runs later).
     """
-    names: set[str] = set()
-    stack: list[TpyExpr] = [expr]
-    while stack:
-        node = stack.pop()
-        if isinstance(node, TpyName):
-            names.add(node.name)
-        else:
-            # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
-            stack.extend(node.children())
-            if into_lambdas and isinstance(node, TpyLambda):
-                stack.append(node.body)
-    return names
+    return {r.name for r in _free_reads(expr, into_lambdas)}
 
 
 def comp_free_reads(expr: TpyExpr) -> list[TpyName]:
     """The name reads `expr` makes of the scope it is written in: a nested
     comprehension's or lambda's own variables are not such reads (clause 0's
     iterable of a nested comprehension is, it runs outside that scope)."""
+    return _free_reads(expr, True)
+
+
+class CompScope(NamedTuple):
+    """The scope a comprehension (list, set, dict or generator) opens.
+    `outer`, clause 0's iterable, runs in the enclosing scope; each `inner`
+    part runs inside, once per item of the clause it is paired with (a
+    clause's filters and the next clause's iterable; the element after the
+    last clause), in CPython's evaluation order; `bound` is every name the
+    clauses bind."""
+    outer: TpyExpr
+    inner: tuple[tuple[TpyExpr, int], ...]
+    bound: frozenset[str]
+
+
+def comp_scope(expr: TpyExpr) -> CompScope | None:
+    """`expr`'s own scope if it is a comprehension, else None."""
+    if not isinstance(expr, (TpyListComprehension, TpySetComprehension,
+                             TpyDictComprehension, TpyGeneratorExpression)):
+        return None
+    gens = expr.generators
+    inner: list[tuple[TpyExpr, int]] = []
+    for i, gen in enumerate(gens):
+        inner += [(c, i) for c in gen.conditions]
+        if i + 1 < len(gens):
+            inner.append((gens[i + 1].iterable, i))
+    last = len(gens) - 1
+    inner += [(e, last)
+              for e in expr.children()[len(comp_clause_children(gens)):]]
+    return CompScope(gens[0].iterable, tuple(inner),
+                     frozenset(n for gen in gens for n in gen.targets))
+
+
+def _free_reads(expr: TpyExpr, into_lambdas: bool) -> list[TpyName]:
     if isinstance(expr, TpyName):
         return [expr]
     if isinstance(expr, TpyLambda):
+        if not into_lambdas:
+            return []
         params = set(expr.param_names)
-        return [r for r in comp_free_reads(expr.body) if r.name not in params]
-    if isinstance(expr, (TpyListComprehension, TpySetComprehension,
-                         TpyDictComprehension, TpyGeneratorExpression)):
-        gens = expr.generators
-        bound = {n for gen in gens for n in gen.targets}
-        out = comp_free_reads(gens[0].iterable)
-        for e in expr.children():
-            if e is not gens[0].iterable:
-                out += [r for r in comp_free_reads(e) if r.name not in bound]
+        return [r for r in _free_reads(expr.body, into_lambdas)
+                if r.name not in params]
+    scope = comp_scope(expr)
+    if scope is not None:
+        out = _free_reads(scope.outer, into_lambdas)
+        for e, _ in scope.inner:
+            out += [r for r in _free_reads(e, into_lambdas)
+                    if r.name not in scope.bound]
         return out
-    return [r for child in expr.children() for r in comp_free_reads(child)]
+    return [r for child in expr.children()
+            for r in _free_reads(child, into_lambdas)]
 
 
 def comp_sinks(expr: 'TpyListComprehension | TpySetComprehension '

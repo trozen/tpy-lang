@@ -7,4 +7,3 @@ main.py:76: warning: lambda at line 76 copies the object 'data' refers to when i
 main.py:87: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
 main.py:97: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
 main.py:116: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
-main.py:128: warning: Escaping closure 'size' copies local 'data' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit

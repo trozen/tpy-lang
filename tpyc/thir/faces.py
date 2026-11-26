@@ -335,8 +335,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "foreach.narrowed_value_opt_view",  # proven-narrowed str/bytes|None NAME:
                                     # begin/end loop over `(*b)` deref capture
     "comp.narrowed_value_opt_view",  # ... and its comprehension-source twin
-    "comp.pointer_shadow",          # comp var hides a pointer local or
-                                    # pointer-slot global: bare in the walk
     "top_level.global_slot_proto",  # structural-protocol global: static auto
                                     # slot + addr assign / slot-reuse rebind
     "er.discard",                   # expr-stmt `__try_tmp_N` block

@@ -1038,8 +1038,11 @@ def stamp_copy_verdicts(ctx: 'SemanticContext',
     outlive the loop copy -- a variable declared before the loop
     (`hoist_loop_var`, the loop's `if_branch_decls`), a head target bound
     to such a name or to an outer one. A verdict once set stays set."""
-    if isinstance(node, TpyForEach) and node.is_tuple_unpack:
-        head = node.head_unpack()
+    unpacks = (node.is_tuple_unpack if isinstance(node, TpyForEach)
+               else node.unpack_vars is not None)
+    if unpacks:
+        head = (node.head_unpack() if isinstance(node, TpyForEach)
+                else node.head)
         if head is None:
             return
         holder = elem_type is not None and holds_only_values(elem_type)
@@ -1055,9 +1058,6 @@ def stamp_copy_verdicts(ctx: 'SemanticContext',
             copies[i] = True
             ctx.mark_view_source_written(t)
         head.target_copies = copies
-        return
-    if not isinstance(node, TpyForEach) and node.unpack_vars is not None:
-        # An unpack clause copies its value elements out of the holder.
         return
     if outliving_only and not (isinstance(node, TpyForEach) and (
             node.hoist_loop_var

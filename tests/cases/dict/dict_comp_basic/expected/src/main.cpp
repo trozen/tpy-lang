@@ -65,9 +65,9 @@ void main() {
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
             const auto& __for_tup_0 = *__beg_3;
-            std::string k = std::get<0>(__for_tup_0);
+            std::string_view k = std::get<0>(__for_tup_0);
             int32_t v = std::get<1>(__for_tup_0);
-            __result.insert_or_assign(k, v);
+            __result.insert_or_assign(std::string(k), v);
         }
         std::move(__result);
     });

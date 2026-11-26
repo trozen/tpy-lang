@@ -282,7 +282,7 @@ __coro_co_mixed co_mixed(std::tuple<Src, const Src*> p) {
             for (;;) {
                 auto __r_6 = __itr_5.__next__();
                 if (!__r_6.has_value()) break;
-                const auto& x = ::tpy::unwrap_ref(*__r_6);
+                auto&& x = ::tpy::unwrap_ref(*__r_6);
                 (*nested).push_back(std::vector<Src>{x});
             }
         }
@@ -463,7 +463,7 @@ __coro_strs strs() {
                 for (; __beg_0 != __end_0; ++__beg_0) {
                     auto&& __for_tup_0 = *__beg_0;
                     int32_t k = std::get<0>(__for_tup_0);
-                    auto& s = std::get<1>(__for_tup_0);
+                    auto& s = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
                     __result.push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::part_frame_seat_leaves::co_n(k))));
                 }
             }

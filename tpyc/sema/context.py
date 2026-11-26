@@ -1684,7 +1684,7 @@ _DEFAULT_PROVENANCE = BindingProvenance()
 
 class NestedMutationMark(NamedTuple):
     """One mutation mark made inside a nested def, kept for the replay into
-    the enclosing function. `receiver` is `self_names_receiver()`'s answer
+    the enclosing function. `receiver` is `self_site_is_receiver`'s answer
     for a mark on `self`, taken where the mark was made. With a `callee`
     the write happens only if that callee writes through its slot `slot`
     (-1: its receiver): it replays as a call edge on the enclosing
@@ -2566,8 +2566,9 @@ class FunctionTrackingState:
     def binding_site(self, name: str) -> object:
         """The binding site a read of `name` here resolves to
         (`Scope.binders`: a for statement, a comprehension clause, a
-        loop-head unpack, a `with` / `except` / `match` capture), or None
-        for a parameter, a local or the receiver. A loop variable an
+        loop-head unpack, a `with` / `except` / `match` capture; the lambda
+        of a lambda parameter), or None for a parameter, a local or the
+        receiver. A loop variable an
         enclosing function binds is found past a nested def's root: a write
         through the capture writes that binding. A loan names the binding it
         was taken from (`LoanInfo.source_sites`), so nothing asks for a
@@ -2575,7 +2576,12 @@ class FunctionTrackingState:
         scope = self.current_scope
         while scope is not None and name not in scope.bindings:
             scope = scope.parent
-        return scope.binders.get(name) if scope is not None else None
+        if scope is None:
+            return None
+        binder = scope.binders.get(name)
+        # A lambda's parameter is the lambda's binding, never the enclosing
+        # function's same-named parameter.
+        return binder if binder is not None else scope.lambda_node
 
     def __deepcopy__(self, memo: dict) -> 'FunctionTrackingState':
         # A snapshot owns the facts, not the structures the whole compilation
@@ -5044,7 +5050,8 @@ class SemanticContext:
                 return
             out.append(ClimbNode(key, site, through_field, via_element,
                                  loop_elem, handle))
-            if name == "self" and (self_is_root or self.self_names_receiver()):
+            if name == "self" and (self_is_root
+                                   or self.self_site_is_receiver(site)):
                 return
             srcs = (self.loop_var_iterable.get(site)
                     if site is not None else None)
@@ -5188,12 +5195,12 @@ class SemanticContext:
             if root is None:
                 continue
             elem = stepped or node.loop_elem
-            if root == "self" and self.self_names_receiver():
+            if root == "self" and self.self_site_is_receiver(node.site):
                 if fn.in_nested_def:
                     captured[(root, elem)] = (captured.get((root, elem), True)
                                               and node.handle)
                     continue
-                i = self.self_receiver_index()
+                i = -1
             elif self.is_param_node(node):
                 i = idx.get(root)
             else:
@@ -5221,12 +5228,13 @@ class SemanticContext:
         an element step and only across a handle; `lent`: the argument is a
         handle over all of them) is written if `callee` writes through its
         slot `slot` -- replayed onto the enclosing function as a call edge
-        (`_analyze_nested_def`)."""
+        (`_analyze_nested_def`). `write_reach` captures `self` only as the
+        receiver."""
         for name, elem, crossed in names:
             self.func.nested_mutation_marks.append(NestedMutationMark(
                 StorageKey.of_name(name), through_field=False,
                 structural=False, via_element=elem,
-                receiver=name == "self" and self.self_names_receiver(),
+                receiver=name == "self",
                 callee=callee.root, slot=slot, lent=lent or crossed))
 
     def name_read(self, name: str) -> 'NameRead':
@@ -5863,11 +5871,22 @@ class SemanticContext:
         return var_type
 
     def self_names_receiver(self) -> bool:
-        """True when the name `self` here is a method receiver -- this
-        method's, or an enclosing method's read from a nested def -- rather
-        than an ordinary param or capture that happens to be named `self`
-        (a free function's param, a generator expression's capture, a nested
-        def's own param, which shadows the enclosing method's receiver)."""
+        """True when a read of the name `self` here resolves to a method
+        receiver (`self_site_is_receiver` of the binding it resolves to)."""
+        return self.self_site_is_receiver(self.binding_site("self"))
+
+    def self_site_is_receiver(self, site: object) -> bool:
+        """True when `self` bound at `site` (a climb node's, or a read's
+        `binding_site`) is a method receiver -- this method's, or an
+        enclosing method's read from a nested def -- rather than an ordinary
+        binding that happens to be named `self` (a comprehension target, a
+        lambda's or a free function's param, a generator expression's
+        capture, a nested def's own param, which shadows the enclosing
+        method's receiver). The site, not the scope asking, decides: a
+        climb reaches the receiver from inside a scope whose own `self` is
+        another binding."""
+        if site is not None:
+            return False
         own = self.func.current_param_name_to_idx.get("self")
         if own is not None and own >= 0:
             return False
@@ -5951,7 +5970,8 @@ class SemanticContext:
         for node in self.storage_climb(key, through_field=through_field,
                                        via_element=via_element):
             name = node.key.as_name()
-            receiver = name == "self" and self.self_names_receiver()
+            receiver = (name == "self"
+                        and self.self_site_is_receiver(node.site))
             through_protocol = protocol_only and (
                 (not node.via_element and not node.handle)
                 or (alias_of is not None and name == alias_of))
@@ -6009,7 +6029,8 @@ class SemanticContext:
         for node in self.storage_climb(key, borrows=False, members=False,
                                        fallback=False):
             name = node.key.as_name()
-            receiver = name == "self" and self.self_names_receiver()
+            receiver = (name == "self"
+                        and self.self_site_is_receiver(node.site))
             if fn.in_nested_def:
                 fn.nested_mutation_marks.append(NestedMutationMark(
                     node.key, through_field=False, structural=True,

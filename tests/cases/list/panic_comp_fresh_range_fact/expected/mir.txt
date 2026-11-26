@@ -1,0 +1,3 @@
+main::__tpy_init: uncovered (module initialization)
+main::ranged@6:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::main@12:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

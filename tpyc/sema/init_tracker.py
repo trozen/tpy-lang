@@ -9,7 +9,8 @@ would be undefined behavior in generated C++.
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from collections.abc import Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import replace
 from functools import reduce
 
@@ -19,12 +20,13 @@ from .flow_facts import (
 )
 from .value_range import ValueRange
 from ..typesys import is_any_int_type, unwrap_qualifiers
-from ..prescan import FactKills, fact_key_root
+from ..prescan import FactKills, LiteralLocals, fact_key_root
+from .storage_walk import StorageKey
+from .context import NestedMutationMark, OwnSlot
 
 if TYPE_CHECKING:
     from ..holders import Holder
     from ..typesys import TpyType
-    from .storage_walk import StorageKey
     from .context import LoanInfo, SemanticContext
     from .narrowing import NarrowingTracker
 
@@ -105,6 +107,88 @@ class InitTracker:
 
     def remove_loop_var_provenance(self, name: str) -> None:
         self.ctx.func.bp_remove_loop_var_provenance(name)
+
+    @contextmanager
+    def hidden(self, names: 'frozenset[str]',
+               kills: 'Callable[[], FactKills] | None' = None
+               ) -> Iterator[None]:
+        """A scope of its own binding `names` (a comprehension's targets, a
+        lambda's parameters): what the function state knows under those
+        names (`HIDDEN_FIELDS`) is about the enclosing bindings, so it is
+        parked on entry and put back on exit, and what the scope learned
+        under them is dropped there. A range of another name bounded by
+        the length of a hidden one keeps its concrete part inside. `kills`
+        (a comprehension, which runs its body here) gives the body's
+        fact-kill set, collected once the body is analyzed: replayed after
+        the restore, but for what it kills through a hidden name, which is
+        the scope's own binding."""
+        if not names:
+            yield
+            return
+        parked = self._park(names)
+        completed = False
+        try:
+            yield
+            completed = True
+        finally:
+            # Re-read: a trial scope inside restores the function state as a
+            # copy.
+            self._unpark(names, parked)
+            # An unwind's state is the handler's to restore; it runs no
+            # body after the scope.
+            if completed and kills is not None:
+                self.apply_fact_kills(kills().outside(names))
+
+    def _park(self, names: 'frozenset[str]') -> 'dict[str, object]':
+        f = self.ctx.func
+        parked: dict[str, object] = {}
+        for fld in HIDDEN_FIELDS:
+            table = getattr(f, fld)
+            if isinstance(table, LiteralLocals):
+                parked[fld] = table
+                setattr(f, fld, table.without(names))
+            elif isinstance(table, list):
+                # A log: what it held before is history no reader inside the
+                # scope takes; the entries the scope appends are its own.
+                parked[fld] = len(table)
+            else:
+                mine = [k for k in table if _key_rooted_in(k, names)]
+                if isinstance(table, dict):
+                    parked[fld] = {k: table.pop(k) for k in mine}
+                else:
+                    parked[fld] = set(mine)
+                    table.difference_update(mine)
+        bounded = {k: v for k, v in f.value_ranges.items()
+                   if v.hi_len_of is not None
+                   and fact_key_root(v.hi_len_of) in names}
+        for k, v in bounded.items():
+            f.value_ranges[k] = replace(v, hi_len_of=None)
+        parked["bounded"] = bounded
+        return parked
+
+    def _unpark(self, names: 'frozenset[str]',
+                parked: 'dict[str, object]') -> None:
+        f = self.ctx.func
+        for fld in HIDDEN_FIELDS:
+            table = getattr(f, fld)
+            held = parked[fld]
+            if isinstance(held, LiteralLocals):
+                setattr(f, fld, held)
+                continue
+            if isinstance(table, list):
+                assert isinstance(held, int)
+                table[held:] = [k for k in table[held:]
+                                if not _key_rooted_in(k, names)]
+                continue
+            for k in [k for k in table if _key_rooted_in(k, names)]:
+                if isinstance(table, dict):
+                    del table[k]
+                else:
+                    table.discard(k)
+            table.update(held)
+        for k, v in parked["bounded"].items():
+            if k in f.value_ranges:
+                f.value_ranges[k] = v
 
     def apply_fact_kills(self, kills: FactKills, *,
                          keep_steps: bool = False) -> None:
@@ -345,24 +429,21 @@ class InitTracker:
         self.ctx.func.borrow_tracker.restore_from_frozen(merged)
 
 
-def _scoped_to_fork(facts: FlowFacts, fork: FlowFacts,
-                    names: frozenset[str]) -> FlowFacts:
-    """`facts` keeping a fact about one of `names` (keyed on it, or a length
-    range over it) only where `fork` holds the same fact."""
-    def about(entry: str | tuple[str, object]) -> bool:
-        if isinstance(entry, str):
-            return fact_key_root(entry) in names
-        key, value = entry
-        hi = getattr(value, "hi_len_of", None)
-        return (fact_key_root(key) in names
-                or (hi is not None and fact_key_root(hi) in names))
-
-    def keep(mine: frozenset, theirs: frozenset) -> frozenset:
-        return frozenset(e for e in mine if e in theirs or not about(e))
-
-    return replace(facts, **{
-        family: keep(getattr(facts, family), getattr(fork, family))
-        for family in NAME_KEYED_FAMILIES})
+def _key_rooted_in(key: object, names: 'frozenset[str]') -> bool:
+    """Whether a `HIDDEN_FIELDS` entry is about one of `names`: a fact key
+    or name by its root, a storage key by its root name, a consume by its
+    parameter, a nested def's mutation mark by its storage, a pair of names
+    by either."""
+    if isinstance(key, str):
+        return fact_key_root(key) in names
+    if isinstance(key, StorageKey):
+        return key.root in names
+    if isinstance(key, OwnSlot):
+        return key.param in names
+    if isinstance(key, NestedMutationMark):
+        return key.key.root in names
+    assert isinstance(key, tuple), key
+    return any(_key_rooted_in(k, names) for k in key)
 
 
 # The FlowFacts families whose entries are keyed by a variable's name, which
@@ -375,6 +456,129 @@ NAME_KEYED_FAMILIES = (
 )
 UNKEYED_FAMILIES = ("init_terminated", "borrows")
 
+# Every function state field keyed by a variable's name (`_key_rooted_in`),
+# which `InitTracker.hidden` masks for the names a scope of its own binds:
+# the flow facts, and the tables that say what a name's binding is (a loop
+# variable, a closure-written name, a local the deduction tracks, an
+# inferred generic argument, a coroutine not yet consumed, a frame a block
+# closed, a view's source, a consume, a warned alias pair, an `Own`
+# parameter's consume, a nested def's mutation mark). Every field is
+# classified in exactly one of the lists below (a unit test checks).
+HIDDEN_FIELDS = NAME_KEYED_FAMILIES + (
+    "pending_non_null_ptr_vars", "loop_vars", "consumed_loop_vars",
+    "loop_var_iter_roots", "closure_written_names", "closure_mutated_paths",
+    "closure_mutated_receivers", "variable_to_literal",
+    "variable_to_str_var", "variable_to_bytes_var",
+    "inferred_generic_locals", "variable_to_generic_instance",
+    "unread_coro_locals", "started_coro_locals", "block_closed_frames",
+    "str_source_borrows", "bytes_source_borrows", "consume_log",
+    "escape_warned_aliases", "literal_locals",
+    "current_consumed_own_params", "nested_mutation_marks",
+    "view_ids_by_name", "own_consume_aliases",
+)
+# Keyed by a variable's name and left unmasked, each with why.
+UNMASKED_NAME_FIELDS = {
+    "borrow_tracker": "BUGS.md#loan-borrower-keyed-by-name",
+    "genexpr_source_loans": "BUGS.md#loan-borrower-keyed-by-name",
+    # Read only by a `del` in a `finally`, which neither a comprehension nor
+    # a lambda body holds.
+    "pending_return_borrows": "read at a statement no scope of its own holds",
+    # Written at a `break`, a `continue` and a loop body's end.
+    "loop_clause_edges": "written at a statement no scope of its own holds",
+    # The comprehension scopes' own bindings, each read by its scope's depth.
+    "comp_targets": "the scopes' own bindings, resolved by scope depth",
+}
+# Not keyed by a variable's name: the analysis position, pending work lists,
+# node-keyed tables. The test reads what each field's key (a mapping's) or
+# element (a collection's) identifies: no name-derived key
+# (`NAME_DERIVED_KEYS`), directly or through a record holding one, but for
+# the fields in `NAMES_NOT_VARIABLES`, whose `str` is no variable's name.
+NOT_NAME_KEYED_FIELDS = (
+    "current_scope", "current_function", "body_root",
+    "has_protocol_template_param", "current_ns", "loop_depth",
+    "compound_stack", "try_except_error_type",
+    "try_except_error_handled", "in_except_tier", "in_except_has_binding",
+    "in_finally", "in_return_value",
+    "pending_resolutions", "pre_analyzed_method_args",
+    "pending_elem_type_fields", "pending_composite_exprs",
+    "pending_container_exprs", "pending_branch_decl_maps", "arm_decl_sites",
+    "pending_generic_instances",
+    "pending_str_resolutions",
+    "pending_bytes_resolutions", "base_init_calls", "super_del_call",
+    "noted_places",
+    "copies_from", "settled", "teardown_proof", "tuple_sinks",
+    "union_landings", "bind_kinds", "gate_sites",
+    "frame_rebind_sites", "init_terminated", "decided_rewrites",
+    "pending_elem_cids", "pending_unowned_cids",
+    "pending_num_deferred", "after_list_resolution", "awaiting_container",
+    "pending_num_splices", "int_tparam_reads", "in_nested_def",
+    "nested_def_name", "nested_def_first_literal", "outer_self_is_receiver",
+    "nested_def_escapes", "closure_captured_defs",
+    "own_ns", "pending_yield_root_checks",
+    "pending_view_storage_checks",
+    "current_call_edges", "current_self_mutated",
+    "current_self_struct_mutated", "current_awaited_subframes",
+)
+# The annotation spellings of a key derived from a variable's name.
+NAME_DERIVED_KEYS = ("str", "StorageKey", "BorrowTracker", "LiteralLocals")
+NAMES_NOT_VARIABLES = {
+    "try_except_error_type": "an exception type's name",
+    "nested_def_name": "a nested def's name",
+    "base_init_calls": "a base class's name",
+    "pending_elem_type_fields": "an attribute of the node it is keyed by",
+    "arm_decl_sites": "the name its declaring statement binds",
+    "gate_sites": "the names its statement binds",
+}
+# Records whose name-like fields name no variable: the test does not look
+# inside them.
+RECORDS_NOT_NAMING_VARIABLES = {
+    "TpyExpr": "a syntax node, by identity",
+    "TpyStmt": "a syntax node, by identity",
+    "TpyFunction": "a syntax node, by identity",
+    "Scope": "a scope, by identity",
+    "Namespace": "a scope, by identity",
+    "FunctionInfo": "a function's declaration",
+    "TpyType": "a type",
+    "SourceLocation": "a source position",
+}
+# Keyed by a variable's name over the whole body, unmasked: TODO.md "Sema
+# flow facts keyed by binding, not by spelling".
+WHOLE_BODY_NAME_FIELDS = (
+    "pinned_view_aliases", "pending_loop_vars", "var_scope_depth",
+    "hoisted_vars", "escape_hoisted_vars", "owned_locals",
+    "ever_owned_locals", "owned_generator_locals", "stmt_borrow_decls",
+    "nonstmt_bound_names", "nonstmt_borrow_bindings", "nonowning_sites",
+    "move_through_vars", "current_reassigned_vars", "body_bound_names",
+    "local_names", "nested_nonlocal_rebinds", "enclosing_nonlocal_rebinds",
+    "deleted_names", "decl_block_depth", "closure_pinned",
+    "with_target_names", "frame_local_roots",
+    "frame_binding_nodes", "frame_alias_sources", "pass_scoped_frames",
+    "current_fresh_ctor_locals",
+    "tuple_unpack_view_targets", "current_aug_assigned_vars",
+    "current_alias_sources", "current_chain_alias_sources", "head_kills",
+    "constant_locals", "unresolved_none_vars", "write_history",
+    "authoritative_types", "authoritative_type_lines", "pending_num_names",
+    "pending_num_excluded", "pending_num_rebound", "first_bindings",
+    "pending_cell_of", "global_declarations", "outer_scope_locals",
+    "current_nonlocal_names", "enclosing_declared_names",
+    "enclosing_annotation_lines", "enclosing_binding_lines",
+    "enclosing_loop_bound_lines", "enclosing_loop_vars",
+    "enclosing_borrowing_names", "enclosing_nonvalue_params",
+    "nested_def_nodes", "ephemeral_borrow_vars", "consume_causes",
+    "nested_free_names",
+    "var_decl_by_name", "current_param_names", "current_param_name_to_idx",
+    "current_mutated_param_names", "current_nonprotocol_mutated_param_names",
+    "current_receiver_deferred_param_names",
+    "current_representational_params", "current_rebound_params",
+    "current_struct_mutated_param_names",
+    "current_elem_mutated_param_names", "current_returned_param_names",
+    "current_storage_returned_param_names",
+    "current_addr_escape_param_names",
+    "current_readonly_addr_escape_param_names",
+    "current_foreign_addr_escape_param_names", "owning_reads",
+    "in_place_writes",
+)
+
 
 class FlowJoin:
     """The ends of the paths through a construct that joins the way an `if`
@@ -383,7 +587,6 @@ class FlowJoin:
 
     def __init__(self, init: InitTracker):
         self._init = init
-        self._fork = init.save()
         self._ends: list[FlowFacts] = []
 
     def leave(self, state: FlowFacts | None = None) -> None:
@@ -395,13 +598,6 @@ class FlowJoin:
         assert self._ends
         return reduce(FlowFacts.merge, self._ends)
 
-    def close(self, scoped: frozenset[str] = frozenset()) -> None:
-        """Continue after the construct: the merge of every path's end.
-        `scoped` names the variables the paths bound in a scope of their own
-        (a comprehension's targets): what the paths knew under those names
-        was about those, so a fact about them stands only where it already
-        held at the fork."""
-        merged = self.state()
-        if scoped:
-            merged = _scoped_to_fork(merged, self._fork, scoped)
-        self._init.restore(merged)
+    def close(self) -> None:
+        """Continue after the construct: the merge of every path's end."""
+        self._init.restore(self.state())

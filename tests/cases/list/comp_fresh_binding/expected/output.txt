@@ -1,0 +1,155 @@
+module [11, 21, 31] [10, 20, 30, 40] [2, 3] 5 [2, 3] 3 [11, 22]
+module_hooked [5, 6] [5, 6] []
+opt_local 6
+opt_param 5
+opt_capture 7 [4]
+opt_guard False
+opt_capture none
+nested_narrow [[11], [11]]
+param [2, 4] 3
+fn_self_shadow [2, 3] [1, 2, 9]
+imported [2, 3] {2, 3} 70
+nested [[10, 20], [30]]
+nested_filter [[1, 2]]
+nested_after [[1, 2, 5], [3]]
+receiver 104
+bump_all 102 100 2
+pop_all 102 100
+lam_self 103 10
+lam_param_self 104 100 4
+lam_alias_recv 111 101
+recv_field_src 2 1 [[], []]
+lam_writes_capture [13, 22] [1]
+gen_self [7, 8]
+arr_self 104
+unread 5
+consumed_coro 47
+ptr_self_shadow [2, 3] [1, 2, 5]
+stepped 5 A
+ctor [2, 4]
+generator [5, 10]
+async 19
+with [6, 7] 4
+try [7, 8] 1
+finally [5, 6]
+guard 1
+arm [6] 1
+error_return 13
+lambda 2 101
+ptr_tuple_head [5, 7]
+ptr_tuple_after 6
+gen_tuple [1, 2]
+storage_tuple [3, 7] 11 2
+opt_tuple [1, 3] False
+opt_tuple [5] True
+narrowed 10 -1
+narrowed32 10 -1
+dog [2, 3] 1
+dog_after 2
+dog_lambda 2 2
+step_view_tuple [('x1', 1), ('y2', 2)] {1: ('x1', 1), 2: ('y2', 2)} ['x1', 'y2'] [('ab', 1), ('c', 2)]
+step_view_bytes [(b'x1', 1), (b'y2', 2)] [b'x1', b'y2'] [(b'ab', 1), (b'c', 2)]
+view_hoist hello [3, 2]
+rec_self_shadow [1, 2] 2
+opt_tuple_elem [1, 2] [False, True] [False] [False] [1]
+opt_tuple_elem [3] [True] [True] [True] []
+own_opt_tuple_elem [False, True]
+inferred_generic [5] 1 7
+str_param ['a!', 'b!'] s
+ro_param [4] 3 5
+rebound [7, 8] 52
+opt_elem [2, 4]
+str_head ['a!', 'b!'] outer
+items_head [4]
+for_head 4
+dup_head [1, 2]
+dup_two_clauses [4, 5]
+after_heads 9 outer
+set [2, 4] 1
+dict {1: 2, 2: 3} 1
+array_range [0, 3, 6] 1
+array_source [5, 6, 7] 1
+array_unpack [3, 7] 1
+global [2, 4] 8
+nonlocal 5 11
+range [30, 20]
+range_after 10
+hi_len [1] 1
+hi_len [1] 2
+hi_len_div [1] 10
+none caught
+none_after 2
+none [2, 4]
+none_after 2
+div caught
+div_after 5
+div [2]
+div_after 5
+field_fact [True] HELLO
+field_fact_after bye inner
+nested_kill [[True]] HELLO
+nested_kill_outer [[True]] None
+closure_path ['X']
+closure_path_after None
+set_dict_facts [21, 22, 31, 32] {2: 30, 1: 20} 11
+array_facts 20 20 7 8 10
+kill [10, 20]
+kill TypeError
+walrus [2, 3] 3
+lambda_param 14 4 4
+two 1 X
+two_after None b
+lambda_in_comp [True] HELLO
+lambda_in_comp_after None
+lam_param_mut 3 [[1]]
+capture 1 [1, 2, 3]
+nested_def 2 [1, 2, 3]
+source_capture 1
+clause1_capture 4
+demote 1 [10]
+consumed 9 [1, 2]
+own_param 2 2 2
+for_head_move 2 True 13 4 5
+own_param_after 7
+clause1_lambda 2
+clause1_after [3, 7]
+self_consume 2 5
+same_stmt 11
+own_tuple 10 2 2
+lambda_leak 9 2
+inner_take [1, 2] 9
+loop_move [5, 2] [4]
+lambda_param_consumed 2 2 6
+head_view [31, 31]
+bytes_head_view [2, 1]
+head_capture beta-long-key-11111111111111111 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+head_gen_capture [True, True, True] [38, 38, 38] gen-key-222222222222222222222222222222 10
+head_list_view [30, 2]
+temps_elem [9, 2, 3] 3
+temps_filter [2, 3] 3
+temps_clause1 [0, 1, 2, 3, 3, 4] 3
+temps_array 9 2 3 3 70
+temps_array_unpack 5 2 3
+temps_array_range 9 1 2 3
+temps_array_arm 0 2 3 2
+temps_list_arm [0, 2, 3] 2
+ho_aug 12
+ho_mcall 12
+ho_late 210
+ho_lam 12
+ho_walrus 12
+ho_alias 12
+ho_match 12
+ho_nested 12
+ho_comp_mcall [1, 11]
+ho_comp_lam [1, 11]
+ho_ro 11 [0, 11]
+ho_own_iter [3, 4, 5] [3, 4, 5]
+ho_own_read [2, 1]
+ho_clause_shadow [3, 4, 5] [10]
+ho_clause_twin [3, 4, 5] [10]
+ho_clause_after [10, 11]
+ho_union 13 1
+ho_union 14 2
+ho_union_isinst True 1
+ho_union_isinst False 2

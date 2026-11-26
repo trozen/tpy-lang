@@ -1,0 +1,173 @@
+gmod::__tpy_init: uncovered (module initialization)
+main::__tpy_init: uncovered (module initialization)
+main::own_pairs@32:0: uncovered (reference yield)
+main::hooked_pairs@53:0: uncovered (reference yield)
+main::hidden_opt_local@68:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::hidden_opt_param@82:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::hidden_opt_capture@88:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::param_inverse@102:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::self_shadow@108:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::imported@114:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::nested@119:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::nested_narrow@127:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+main::main@132:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
+main::Hooked.__copy__@48:4: uncovered (custom record special member)
+main::OP.__init__@28:4: covered (storage: no_proof_required), summary: known
+main::Hooked.__init__@45:4: uncovered (custom record special member), summary: opaque (custom record special member)
+main::OptN.__init__@78:4: covered (storage: no_proof_required), summary: known
+part_closures::__tpy_init: uncovered (module initialization)
+part_closures::take@16:0: covered (storage: no_proof_required), summary: known
+part_closures::own_gen@20:0: uncovered (reference yield)
+part_closures::pair@25:0: covered (storage: no_proof_required), summary: known
+part_closures::ap@47:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_closures::capture@51:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_closures::nested_def@58:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_closures::source_capture@68:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_closures::clause1_capture@73:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_closures::clause1_lambda@80:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_closures::self_consume@89:0: uncovered (unsupported metadata: presize_if_sized), summary: opaque (unsupported metadata: presize_if_sized)
+part_closures::same_stmt@97:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_closures::own_tuple@103:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+part_closures::lambda_leak@111:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_closures::inner_take@120:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+part_closures::loop_move@127:0: uncovered (unsupported metadata: consuming), summary: opaque (unsupported metadata: consuming)
+part_closures::lambda_param_consumed@137:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
+part_closures::head_capture@146:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_closures::str_pairs@162:0: uncovered (unsupported hoisted value)
+part_closures::head_gen_capture@167:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_closures::demote@180:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_closures::hold@186:0: covered (storage: no_proof_required), summary: known
+part_closures::own_param@190:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+part_closures::own_param_twin@196:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+part_closures::own_alias@201:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
+part_closures::own_opt_pairs@208:0: uncovered (reference yield)
+part_closures::own_rec_pairs@213:0: uncovered (reference yield)
+part_closures::own_member_pairs@218:0: uncovered (reference yield)
+part_closures::for_head_move@222:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_closures::consumed@242:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_closures::main@248:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_closures::B.get@12:4: covered (storage: no_proof_required), summary: known
+part_closures::Bx.finish@43:4: uncovered (owned-leaf move)
+part_closures::B.__init__@9:4: covered (storage: no_proof_required), summary: known
+part_closures::P.__init__@30:4: covered (storage: no_proof_required), summary: known
+part_closures::R.__init__@35:4: covered (storage: no_proof_required), summary: known
+part_closures::Bx.__init__@40:4: covered (storage: no_proof_required), summary: known
+part_facts::__tpy_init: uncovered (module initialization)
+part_facts::ranged@21:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_facts::len_bounded@29:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
+part_facts::none_elem@40:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_facts::div@50:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_facts::field_fact@60:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_facts::use@70:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_facts::lambda_in_comp@74:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_facts::lam_param_mut@84:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_facts::nested_kill@90:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_facts::tick@102:0: covered (storage: no_proof_required), summary: known
+part_facts::closure_path@106:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_facts::set_dict_facts@119:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_facts::array_facts@129:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+part_facts::real_kill@140:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_facts::walrus@158:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_facts::lambda_param@165:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_facts::two_clauses@174:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_facts::global_hidden@186:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_facts::nonlocal_hidden@193:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_facts::main@203:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_facts::N.ready@13:4: covered (storage: no_proof_required), summary: known
+part_facts::N.clear_v@16:4: covered (storage: no_proof_required), summary: known
+part_facts::N.__init__@10:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_handover::__tpy_init: uncovered (module initialization)
+part_handover::g@21:0: uncovered (unsupported hoisted value)
+part_handover::run0@26:0: uncovered (unsupported parameter type)
+part_handover::lam_then@31:0: uncovered (unsupported parameter type)
+part_handover::bumped@36:0: covered (storage: no_proof_required), summary: known
+part_handover::writes@41:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_handover::later@98:0: covered (storage: no_proof_required), summary: known
+part_handover::rows@102:0: uncovered (reference yield)
+part_handover::consumed@107:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_handover::owned_rows@118:0: uncovered (reference yield)
+part_handover::clause_shadow@123:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_handover::unions@143:0: uncovered (reference yield)
+part_handover::value@148:0: covered (storage: no_proof_required), summary: known
+part_handover::union_reads@154:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_handover::main@164:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_handover::B.bump@13:4: covered (storage: no_proof_required), summary: known
+part_handover::B.bumpv@16:4: covered (storage: no_proof_required), summary: known
+part_handover::B.__init__@10:4: covered (storage: no_proof_required), summary: known
+part_handover::UA.__init__@134:4: covered (storage: no_proof_required), summary: known
+part_handover::UB.__init__@139:4: covered (storage: no_proof_required), summary: known
+part_positions::__tpy_init: uncovered (module initialization)
+part_positions::gen_body@104:0: covered (storage: no_facts: storage facts have not been published)
+part_positions::async_body@109:0: uncovered (async body)
+part_positions::work@114:0: uncovered (async body)
+part_positions::unread@118:0: uncovered (async body)
+part_positions::consumed_coro@124:0: uncovered (async body)
+part_positions::ptr_self_shadow@144:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_positions::stepped@153:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_positions::with_try@159:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_positions::matched@169:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_positions::er@182:0: uncovered (error-return body)
+part_positions::lambdas@188:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_positions::free_lam_self@197:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_positions::call0@206:0: uncovered (unsupported parameter type)
+part_positions::call1@210:0: uncovered (unsupported parameter type)
+part_positions::lam_writes_capture@214:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_positions::main@221:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_positions::P.tot@14:4: covered (storage: no_proof_required), summary: known
+part_positions::P.gen@20:4: uncovered (unsupported hoisted value)
+part_positions::P.arr_self@27:4: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
+part_positions::P.bump@33:4: covered (storage: no_proof_required), summary: known
+part_positions::P.bump_all@37:4: covered (storage: no_proof_required), summary: known
+part_positions::P.pop_all@43:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_positions::P.lam_self@47:4: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_positions::P.lam_param_self@57:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+part_positions::P.lam_alias_recv@62:4: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
+part_positions::Bucket.drain@76:4: covered (storage: no_proof_required), summary: known
+part_positions::Bucket.twin@82:4: covered (storage: no_proof_required), summary: known
+part_positions::Ctx.__enter__@97:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+part_positions::Ctx.__exit__@100:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_positions::Hold.__enter__@137:4: covered (storage: no_proof_required), summary: known
+part_positions::Hold.__exit__@140:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_positions::P.__init__@11:4: covered (storage: no_proof_required), summary: known
+part_positions::Bucket.__init__@73:4: covered (storage: no_proof_required), summary: known
+part_positions::C.__init__@91:4: covered (storage: no_proof_required), summary: known
+part_positions::Hold.__init__@134:4: covered (storage: no_proof_required), summary: known
+part_shapes::__tpy_init: uncovered (module initialization)
+part_shapes::storage_tuple@21:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
+part_shapes::opt_tuple@28:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_shapes::narrowed@33:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_shapes::narrowed32@40:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_shapes::dog@48:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_shapes::dog_lambda@55:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_shapes::str_pairs@62:0: uncovered (reference yield)
+part_shapes::bytes_pairs@67:0: uncovered (reference yield)
+part_shapes::step_view_tuple@72:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+part_shapes::view_hoist@89:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
+part_shapes::rec_self_shadow@101:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_shapes::opt_tuple_elem@108:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_shapes::own_box_pairs@125:0: uncovered (reference yield)
+part_shapes::own_opt_tuple_elem@130:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_shapes::inferred_generic@148:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_shapes::str_param@157:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_shapes::ro_param@161:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_shapes::rebound@167:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_shapes::opt_elem@176:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_shapes::heads@181:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
+part_shapes::forms@194:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_shapes::gen_pairs@205:0: uncovered (reference yield)
+part_shapes::tuple_step@210:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_shapes::gen_storage_tuple@214:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_shapes::enum_boxes@219:0: uncovered (generic body)
+part_shapes::pointer_tuple_head@226:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_shapes::main@233:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_shapes::Cell.put@142:4: uncovered (generic body)
+part_shapes::Box.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_shapes::Dog.__init__@17:4: covered (storage: no_proof_required), summary: known
+part_shapes::Cell.__init__@139:4: uncovered (generic constructor)
+part_temps::__tpy_init: uncovered (module initialization)
+part_temps::mk@17:0: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
+part_temps::val@22:0: covered (storage: no_proof_required), summary: known
+part_temps::ids@26:0: uncovered (element write needs a container place)
+part_temps::main@31:0: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
+part_temps::array_temps@48:0: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
+part_temps::Src.__init__@10:4: covered (storage: no_proof_required), summary: known

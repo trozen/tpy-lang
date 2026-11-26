@@ -204,8 +204,8 @@ void main() {
         auto __end_10 = __obj_10.end();
         for (; __beg_10 != __end_10; ++__beg_10) {
             auto&& __for_tup_4 = *__beg_10;
-            auto& p = std::get<0>(__for_tup_4);
-            auto& q = std::get<1>(__for_tup_4);
+            auto& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_4)));
+            auto& q = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_4)));
             __result.push_back(p.bump(q.v));
         }
         std::move(__result);
@@ -242,7 +242,7 @@ void main() {
         for (; __beg_13 != __end_13; ++__beg_13) {
             auto&& __for_tup_5 = *__beg_13;
             int32_t i = std::get<0>(__for_tup_5);
-            auto& r = std::get<1>(__for_tup_5);
+            auto& r = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_5)));
             __result.push_back(r.bump(i));
         }
         std::move(__result);
@@ -291,7 +291,7 @@ void main() {
         for (; __beg_17 != __end_17; ++__beg_17) {
             auto&& __for_tup_6 = *__beg_17;
             int32_t i = std::get<0>(__for_tup_6);
-            auto& n = std::get<1>(__for_tup_6);
+            auto& n = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_6)));
             __result.push_back(n.bump(i));
         }
         std::move(__result);
@@ -305,7 +305,7 @@ void main() {
         auto __end_18 = __obj_18.end();
         for (; __beg_18 != __end_18; ++__beg_18) {
             auto&& __for_tup_7 = *__beg_18;
-            auto& u = std::get<0>(__for_tup_7);
+            auto& u = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_7)));
             int32_t y = std::get<1>(__for_tup_7);
             __result.push_back(u.bump(y));
         }

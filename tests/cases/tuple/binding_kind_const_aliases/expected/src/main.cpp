@@ -38,7 +38,7 @@ namespace tpyapp::main {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& __for_tup_0 = *__beg_0;
+        const auto& __for_tup_0 = *__beg_0;
         const Box* a = ::tpy::optional_to_ptr(std::get<0>(__for_tup_0));
         const auto& n = std::get<1>(__for_tup_0);
         const Box* b = a;
@@ -188,7 +188,7 @@ namespace tpyapp::main {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& __for_tup_2 = *__beg_0;
+        const auto& __for_tup_2 = *__beg_0;
         const auto& a = std::get<0>(__for_tup_2);
         const auto& n = std::get<1>(__for_tup_2);
         const Box& d = a;

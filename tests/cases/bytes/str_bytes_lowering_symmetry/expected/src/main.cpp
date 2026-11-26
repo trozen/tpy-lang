@@ -203,9 +203,9 @@ void comprehensions() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& __for_tup_0 = *__beg_0;
-            std::string k = std::get<0>(__for_tup_0);
+            std::string_view k = std::get<0>(__for_tup_0);
             int32_t v = std::get<1>(__for_tup_0);
-            __result.push_back(k);
+            __result.push_back(std::string(k));
         }
         std::move(__result);
     });
@@ -217,9 +217,9 @@ void comprehensions() {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             const auto& __for_tup_1 = *__beg_1;
-            ::tpy::Bytes k = std::get<0>(__for_tup_1);
+            ::tpy::BytesView k = std::get<0>(__for_tup_1);
             int32_t v = std::get<1>(__for_tup_1);
-            __result.push_back(k);
+            __result.push_back(::tpy::Bytes(k));
         }
         std::move(__result);
     });
@@ -233,9 +233,9 @@ void comprehensions() {
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             const auto& __for_tup_2 = *__beg_2;
-            std::string k = std::get<0>(__for_tup_2);
-            std::string v = std::get<1>(__for_tup_2);
-            __result.push_back(v);
+            std::string_view k = std::get<0>(__for_tup_2);
+            std::string_view v = std::get<1>(__for_tup_2);
+            __result.push_back(std::string(v));
         }
         std::move(__result);
     });
@@ -247,9 +247,9 @@ void comprehensions() {
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
             const auto& __for_tup_3 = *__beg_3;
-            ::tpy::Bytes k = std::get<0>(__for_tup_3);
-            ::tpy::Bytes v = std::get<1>(__for_tup_3);
-            __result.push_back(v);
+            ::tpy::BytesView k = std::get<0>(__for_tup_3);
+            ::tpy::BytesView v = std::get<1>(__for_tup_3);
+            __result.push_back(::tpy::Bytes(v));
         }
         std::move(__result);
     });

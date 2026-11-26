@@ -15,7 +15,8 @@ from ..holders import IterHolder
 from ..identity_map import IdentityMap, IdentitySet
 from ..typesys import canonical_readonly, inner_type_param_names, make_iterable, make_readonly, ElementEffect
 from ..typesys import none_identity_of, pointer_repr_optional, readonly_access, repr_shape
-from ..typesys import own_tuple_target, strip_own_type_args, bare_protocol_param
+from ..typesys import (own_tuple_target, pending_view_of, strip_own_type_args,
+                       view_family_for_type, ViewTypeFamily, bare_protocol_param)
 from ..typesys import binds_runtime_symbol, body_function_info
 from ..typesys import contains_reference_type, loan_class, Loan, classify_result_representation, ResultPosition, ResultRepresentation, bound_as_spelled, is_void_like_type
 from ..typesys import answers_as_call, element_access_getitem, store_slot_type, store_takes_elements
@@ -40,7 +41,8 @@ from ..typesys import (frame_module_qual,
     ConcreteCoroType, make_concrete_gen, is_dyn_protocol,
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse.nodes import (
-    GENEXPR_FUNC_PREFIX, NoneUse, NoneUseKind, TpyVarDecl, op_spelling,
+    GENEXPR_FUNC_PREFIX, NoneUse, NoneUseKind, TpyVarDecl, comp_scope,
+    op_spelling,
     name_path, walk_expr_tree, walrus_binding_read, walrus_binding_statement,
 )
 from ..parse import (
@@ -62,7 +64,7 @@ from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyForEach, TpyWith,
     TpyNestedDef, TpyIf, TpyYield, TpyTry, TpyAugAssign,
     collect_name_refs,
-    comp_free_reads, comp_sinks,
+    comp_sinks,
 )
 from .. import qnames
 from ..type_def_registry import (
@@ -144,7 +146,7 @@ from .storage_walk import Leaf, LeafKind, StorageKey, leaves
 from ..storage_trace import StepKind
 from .call_lends import ContractReturnLend, unrooted_callable_result
 from .nonlocal_binding import enclosing_scope_facts
-from .iter_loans import (keep_head_arguments, _record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage, record_iteration_pull,
+from .iter_loans import (keep_head_arguments, iteration_yields_copies, _record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage, record_iteration_pull,
                          register_iteration_loans)
 from .loop_frames import comp_live_region, decide_copies_var, worth_const_ref
 from .protocols import REPRESENTABLE_PROTOCOL, STRINGABLE_PROTOCOL, text_leaves
@@ -254,12 +256,6 @@ def _comp_clause_body(
     for later in expr.generators[k + 1:]:
         body += [later.iterable, *later.conditions]
     return body + comp_sinks(expr)
-
-
-def _comp_free_names(expr: TpyExpr) -> set[str]:
-    """The names `expr` reads from the scope it is written in
-    (`comp_free_reads`)."""
-    return {r.name for r in comp_free_reads(expr)}
 
 
 def _nested_def_free_names(func: TpyFunction, local_names: Iterable[str],
@@ -5902,13 +5898,15 @@ class ExpressionAnalyzer:
         gens = expr.generators
         if len(gens) < 2:
             return
-        reads_underscore = any("_" in _comp_free_names(e)
+        reads_underscore = any("_" in collect_name_refs(e, into_lambdas=True)
                                for e in expr.children()
                                if e is not gens[0].iterable)
         bound_by: dict[str, int] = {}
         for k, gen in enumerate(gens):
             for name in gen.targets:
-                if name in bound_by and (name != "_" or reads_underscore):
+                # `x, x` in one clause binds one variable twice, as CPython.
+                if (bound_by.get(name, k) != k
+                        and (name != "_" or reads_underscore)):
                     raise self.ctx.error(
                         f"'{name}' is bound by two `for` clauses of this "
                         f"comprehension; rename one", gen.iterable)
@@ -5919,12 +5917,24 @@ class ExpressionAnalyzer:
             if k > 0:
                 reads.insert(0, (gen.iterable, k - 1))
             for e, last_bound in reads:
-                for name in sorted(_comp_free_names(e)):
+                for name in sorted(collect_name_refs(e, into_lambdas=True)):
                     j = bound_by.get(name)
                     if j is not None and j > last_bound:
                         raise self.ctx.error(
                             f"'{name}' is read before the `for` clause that "
                             f"binds it", e)
+
+    def _head_step_view(self, family: ViewTypeFamily, name: str,
+                        line: 'int | None') -> TpyType:
+        """A comprehension head target's view of the step, as a for head's
+        (`step_view`): it lends no view to a local, and is never live
+        across a suspension."""
+        deduction = self.compat.deduction
+        view = deduction.step_view(family, name, line, frame_unsafe=False)
+        pending = pending_view_of(view)
+        assert pending is not None
+        deduction.mark_view_non_lending(family, pending.var_id)
+        return view
 
     def _stamp_comp_source_facts(
         self,
@@ -6701,7 +6711,17 @@ class ExpressionAnalyzer:
         element) in the enclosing scope."""
         assert self.scopes is not None
         clause_types = [elem_type]
-        with self.scopes.comprehension_scope(expr.generators) as inner_scope:
+        # The comprehension's own scope: its targets are fresh names, so
+        # the enclosing bindings' facts are hidden inside it and stand after
+        # it, less what its body kills (`InitTracker.hidden`).
+        scope = comp_scope(expr)
+        assert scope is not None
+        with self.init.hidden(
+                scope.bound,
+                lambda: self.ctx.fact_kills(
+                    [], extra_exprs=[e for e, _ in scope.inner])), \
+                self.scopes.comprehension_scope(
+                    expr.generators) as inner_scope:
             # The clauses are loops: the comprehension is left after zero
             # iterations or wherever an iteration ends, and joined inside
             # the scope, whose end releases the iterators' loans.
@@ -6711,8 +6731,7 @@ class ExpressionAnalyzer:
                 join.leave()
             result = self._enter_comp_clause(expr, 0, elem_type, inner_scope,
                                              hint, clause_types, join=join)
-            join.close(scoped=frozenset(
-                n for g in expr.generators for n in g.targets))
+            join.close()
         self.set_step_route(expr, CompClauseRoute(tuple(clause_types)))
         return result
 
@@ -6729,7 +6748,11 @@ class ExpressionAnalyzer:
         route = self.ctx.analysis_records[expr].route
         assert isinstance(route, CompClauseRoute)
         clause_types = list(route.elem_types)
-        with self.scopes.comprehension_scope(expr.generators) as inner_scope:
+        scope = comp_scope(expr)
+        assert scope is not None
+        with self.init.hidden(scope.bound), \
+                self.scopes.comprehension_scope(
+                    expr.generators) as inner_scope:
             return self._enter_comp_clause(
                 expr, 0, clause_types[0], inner_scope, hint, clause_types,
                 step=True)
@@ -6757,11 +6780,6 @@ class ExpressionAnalyzer:
         # in sema/statements.py.
         names = gen.targets
         if not step:
-            # Clear any prior marks in case an outer scope already used these
-            # names.
-            for n in names:
-                self.ctx.func.consumed_loop_vars.discard(n)
-
             # Clause 0's source is evaluated in the enclosing scope, where a
             # name any clause binds is still the ENCLOSING binding; an inner
             # clause's source reads the comprehension's own variables.
@@ -6829,12 +6847,30 @@ class ExpressionAnalyzer:
         head = TpyTupleUnpack(targets=list(gen.unpack_vars), value=value,
                               is_loop_head=True, loc=gen.iterable.loc)
         head.step_handover = gen.step_handover
-        for rec in unpack_target_records(
+        line = gen.iterable.loc.line if gen.iterable.loc else None
+        # An owning step's str/bytes head target stays owned, so a closure
+        # capturing it keeps no view of the step (TODO.md "Closure capture
+        # is a storage position").
+        it_t = self.ctx.get_expr_type(gen.iterable)
+        owning_step = bool(gen.step_handover) or (
+            it_t is not None and iteration_yields_copies(self.ctx, it_t))
+        for name, rec in zip(gen.unpack_vars, unpack_target_records(
                 self.ctx, value, tup, readonly=readonly, consumed=True,
                 borrowed=frozenset(), rebound=frozenset(),
                 body_rebound=frozenset(),
-                step=gen.step_handover):
-            head.target_types.append(rec.type)
+                step=gen.step_handover)):
+            # A str / bytes element the target does not take over is a view
+            # of the step, as a for head's target is declared.
+            fam = (view_family_for_type(rec.type)
+                   if name is not None and not rec.owned and not owning_step
+                   else None)
+            # A literal element binds at its default type, as a for head's
+            # target does.
+            head.target_types.append(
+                self._head_step_view(fam, name, line)
+                if fam is not None and rec.type == fam.owned_type
+                else resolve_int_literals(rec.type,
+                                          self.ctx.default_int_for_literal))
             head.is_owned.append(rec.owned)
             head.is_ref.append(rec.ref)
             head.is_new.append(True)
@@ -7795,7 +7831,11 @@ class ExpressionAnalyzer:
         outer_locals = set(self.ctx.func.definitely_assigned)
         outer_scope = self.ctx.func.current_scope
 
-        with self.scopes.lambda_scope(expr) as scope:
+        # The parameters are names of the lambda's own scope: the enclosing
+        # bindings' facts are hidden in its body. The body does not run here,
+        # so nothing it kills is replayed.
+        with self.init.hidden(frozenset(expr.param_names)), \
+                self.scopes.lambda_scope(expr) as scope:
             for pname, ptype in zip(expr.param_names, fn_type.param_types):
                 scope.define(pname, ptype)
                 if self.ctx.func.current_ns:
@@ -7818,8 +7858,7 @@ class ExpressionAnalyzer:
         param_set = set(expr.param_names)
         # A nested lambda reads through this one, which must hold what the
         # nested one captures.
-        free_names = collect_name_refs(expr.body) | _comp_free_names(
-            expr.body)
+        free_names = collect_name_refs(expr.body, into_lambdas=True)
         captured = sorted((free_names - param_set) & outer_locals)
         expr.captured_names = captured
         expr.body_captures = (outer_scope.body_reads(captured)
@@ -7834,7 +7873,8 @@ class ExpressionAnalyzer:
         # A captured receiver is by-ref in every mode: codegen captures
         # `this` (an alias), never a copy -- must classify non-Send.
         by_ref = not expr.captures_by_value
-        self_is_receiver = self.ctx.receiver_self_in_scope()
+        self_is_receiver = (self.ctx.receiver_self_in_scope()
+                            and "self" in expr.body_captures)
         expr.frame_type = build_closure_frame([
             (name, self._lookup_capture_type(name),
              by_ref or (name == "self" and self_is_receiver))

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field, fields as dc_fields
+from dataclasses import dataclass, field, fields as dc_fields, replace
 from itertools import chain
 
 from .parse import (
@@ -24,8 +24,9 @@ from .parse import (
     TpyDelVar, TpyDelAttr, TpyDelItem, TpyNonlocal, TpyGlobal, TpyTry,
     TpyLambda, TpyMatch, TpyWhile, TpyAwait, TpyIf,
     TpyPattern, TpyCapturePattern, TpyAsPattern, TpyOrPattern,
+    TpyGeneratorExpression,
 )
-from .parse.nodes import (SourceLocation, as_name_read,
+from .parse.nodes import (SourceLocation, as_name_read, comp_scope,
                           is_property_getter_read,
                           iter_capture_bindings,
                           stmts_have_any_suspension, walk_body_stmts,
@@ -229,6 +230,17 @@ class LiteralLocals:
     def bound_values(self, name: str) -> tuple[LiteralValue, ...] | None:
         """Every value a `literal_only` local may hold."""
         return self.literals[name] if name in self.literal_only else None
+
+    def without(self, names: frozenset[str]) -> 'LiteralLocals':
+        """What this says of every local but `names` (a scope of its own
+        binding them, where they are other variables). Every field is
+        keyed by a local's name."""
+        def drop(v: 'frozenset[str] | dict[str, object]') -> object:
+            if isinstance(v, dict):
+                return {n: x for n, x in v.items() if n not in names}
+            return v - names
+        return replace(self, **{f.name: drop(getattr(self, f.name))
+                                for f in dc_fields(self)})
 
 
 def literal_store_value(e: TpyExpr | None) -> LiteralValue | None:
@@ -1478,6 +1490,22 @@ class FactKills:
         return bool(self.names or self.paths or self.receivers
                     or self.suspends or self.calls)
 
+    def outside(self, names: 'frozenset[str] | set[str]') -> 'FactKills':
+        """These kills without what they kill through one of `names` (the
+        variables a scope of its own binds)."""
+        def out(key: str) -> bool:
+            return fact_key_root(key) not in names
+
+        def keep(v: object) -> object:
+            # A flag (`suspends`, `calls`) is about no name.
+            if isinstance(v, dict):
+                return {k: x for k, x in v.items() if out(k)}
+            if isinstance(v, set):
+                return {k for k in v if out(k)}
+            return v
+        return replace(self, **{f.name: keep(getattr(self, f.name))
+                                for f in dc_fields(self)})
+
     def update(self, other: 'FactKills') -> None:
         self.names |= other.names
         for path, stores in other.paths.items():
@@ -1501,6 +1529,26 @@ def _kills_in_expr(expr: TpyExpr | None, kills: FactKills) -> None:
         _object_leaf_keys(expr.obj, kills.receivers)
     if expr.pull_runs_code:
         kills.calls = True
+    scope = comp_scope(expr)
+    if scope is not None:
+        # Its clauses bind names of its own scope: what its inner parts
+        # kill through them is not the enclosing bindings'.
+        _kills_in_expr(scope.outer, kills)
+        inner = FactKills()
+        for e, _ in scope.inner:
+            _kills_in_expr(e, inner)
+        kills.update(inner.outside(scope.bound))
+        if isinstance(expr, TpyGeneratorExpression):
+            # The frame's creation hands it the enclosing names it captures.
+            _kills_in_expr(expr.frame_creation, kills)
+        return
+    if isinstance(expr, TpyLambda):
+        # Its parameters are names of its own scope, as a comprehension's
+        # targets are.
+        inner = FactKills()
+        _kills_in_expr(expr.body, inner)
+        kills.update(inner.outside(frozenset(expr.param_names)))
+        return
     if isinstance(expr, (TpyCall, TpyMethodCall)):
         # A hidden call (`dunder_call`, a property setter, a `__getattr__`
         # fallback) is a TpyMethodCall field the walk below reaches.

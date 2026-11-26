@@ -5,9 +5,9 @@
 # a sibling `def` written after the closure, one written before it and called
 # after, one in an `if` arm, a lambda, a sibling reached
 # only through another sibling, and one of two same-named defs in an
-# `if`/`else`. The last two sections are the rule's deliberate
-# over-approximations: a sibling that is never called, and a lambda parameter
-# that shadows the local.
+# `if`/`else`. The next section is the rule's deliberate over-approximation,
+# a sibling that is never called; in the last one a lambda parameter shadows
+# the local, which is no read of it, so the closure takes the local over.
 from typing import Callable
 from tpy import int32
 
@@ -125,11 +125,10 @@ def make_named_not_called() -> Callable[[], int32]:
 def make_lambda_param_shadow() -> Callable[[], int32]:
     data = [21]
     data.append(22)
-    def size() -> int32:  # tpyc: warning(/copies local 'data'.*used after closure/)
+    def size() -> int32:  # tpyc: ok
         return len(data)
-    # the lambda's PARAMETER shadows the local, so its body cannot reach it --
-    # the other deliberate over-approximation: the scan reads lambda bodies
-    # without tracking what their parameters bind
+    # the lambda's PARAMETER shadows the local, so its body cannot reach it:
+    # the closure is the local's last use and takes it over
     step: Callable[[int32], int32] = lambda data: data + 1
     print("lambda_param_shadow:", step(1))
     return size

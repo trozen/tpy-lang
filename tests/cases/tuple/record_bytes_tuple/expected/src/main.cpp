@@ -225,8 +225,8 @@ void main() {
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        auto&& __for_tup_0 = *__beg_2;
-        auto& e0 = std::get<0>(__for_tup_0);
+        const auto& __for_tup_0 = *__beg_2;
+        const auto& e0 = std::get<0>(__for_tup_0);
         ::tpy::BytesView e1 = std::get<1>(__for_tup_0);
         std::cout << "container" << " " << e0.n << " " << ::tpy::BytesPrinter(e1) << "\n" << ::tpy::check_signals;
     }
@@ -277,8 +277,8 @@ void main() {
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
-        auto&& __for_tup_1 = *__beg_4;
-        auto& z0 = std::get<0>(__for_tup_1);
+        const auto& __for_tup_1 = *__beg_4;
+        const auto& z0 = std::get<0>(__for_tup_1);
         const auto& z1 = std::get<1>(__for_tup_1);
         std::cout << "string container" << " " << z0.n << " " << z1 << "\n" << ::tpy::check_signals;
     }

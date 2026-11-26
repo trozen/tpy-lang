@@ -422,7 +422,7 @@ std::vector<int32_t> list_comp(std::vector<P>& ps) {
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
             int32_t i = std::get<0>(__for_tup_0);
-            auto& p = std::get<1>(__for_tup_0);
+            auto& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
             __result.insert_or_assign(i, ::tpyapp::main::bumped(p));
         }
         std::move(__result);
@@ -478,8 +478,8 @@ std::vector<int32_t> comp_zip(std::vector<P>& ps, const std::vector<P>& qs) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_1 = *__beg_0;
-            auto& p = std::get<0>(__for_tup_1);
-            auto& q = std::get<1>(__for_tup_1);
+            auto& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_1)));
+            auto& q = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_1)));
             __result.push_back(::tpyapp::main::bumped(p));
         }
         std::move(__result);

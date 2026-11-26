@@ -333,7 +333,7 @@ void main() {
         for (; __beg_11 != __end_11; ++__beg_11) {
             auto&& __for_tup_5 = *__beg_11;
             int32_t i = std::get<0>(__for_tup_5);
-            auto& x = std::get<1>(__for_tup_5);
+            auto& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_5)));
             __result.push_back((::tpy::add_check<int32_t>(x.v, i)));
         }
         std::move(__result);

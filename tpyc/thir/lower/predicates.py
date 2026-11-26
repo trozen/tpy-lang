@@ -194,7 +194,7 @@ from ...codegen_cpp.protocols import (
 )
 from ...sema.dyn_erasure import DynEntry, DynSlotEntry, dyn_entry
 from ...compilation_context import get_current_compiler
-from ...qnames import COPY as COPY_QNAME
+from ...qnames import COPY as COPY_QNAME, ORD as ORD_QNAME
 from ...prescan import literal_constant
 from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
 from ..source import BindingForm, Held, NameFacts
@@ -2115,6 +2115,20 @@ def _bytes_concat_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
 # The value-category module owns the one definition; the private spelling is
 # what the rest of thir/lower imports from here.
 _peel_coerce = peel_coerce
+
+
+def ord_fold_char(e: TpyCall) -> str | None:
+    """The character `ord(...)` folds to a constant over: a call of the
+    builtin `ord` -- not of a variable, parameter or function of the program
+    that the name `ord` names here -- on a single-character literal. None
+    for any other call."""
+    fi = e.resolved_function_info
+    if fi is None or fi.qualified_name != ORD_QNAME or len(e.args) != 1:
+        return None
+    a0 = _peel_coerce(e.args[0])
+    if isinstance(a0, TpyStrLiteral) and len(a0.value) == 1:
+        return a0.value
+    return None
 
 def _str_self_append_rhs(target_name: str, value: TpyExpr) -> 'TpyExpr | None':
     """The `x = x + y` self-append trigger: peel any TpyCoerce wrappers, then
@@ -4137,17 +4151,6 @@ def _storage_optional_return_wide(t: TpyType | None,
             or _value_opt_record(u) is not None):
         return None
     return u if _sp(_unwrap_own(u.inner)) else None
-
-
-def _comp_shadow_pointers(pointers, declared, analyzer) -> 'NameFacts':
-    """The comprehension shadow-check pointer set: every pointer-local name
-    EXCEPT the Optional-ptr-borrow bindings (their loop-var shadowing rules
-    differ). One shared source for the ~7 comprehension call sites -- the
-    hand-copied filter drifted once (an unfiltered set slipped through in a
-    review round), so new call sites must use this."""
-    declared = dict(declared)
-    return NameFacts(lambda n: n in pointers and _optional_ptr_borrow(
-        declared.get(n), analyzer) is None)
 
 
 def _optional_ptr_borrow(t: TpyType | None, analyzer) -> 'OptionalType | None':

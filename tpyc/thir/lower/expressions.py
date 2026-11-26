@@ -348,6 +348,7 @@ from . import bindings
 from .bindings import (_value_opt_kind, form_of, project_held,
                        walrus_owned_slot)
 from .predicates import (
+    ord_fold_char,
     _var_decl_type,
     _any_narrow_info,
     IsinSubjectRead,
@@ -363,7 +364,6 @@ from .predicates import (
     _owned_viewfam_slot,
     _viewfam_return_slots,
     _wrap_view_owned_sink,
-    _comp_shadow_pointers,
     _btuple_owning_call_init,
     _empty_instantiation_family,
     _tuple_opt_elem_subscript,
@@ -4998,8 +4998,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             from .comprehensions import _lower_comprehension
             _witness("binop.comprehension_operand")
             return _lower_comprehension(
-                side, comp_c, lc, declared,
-                _comp_shadow_pointers(lc.names_with("pointer"), declared, analyzer))
+                side, comp_c, lc, declared)
 
         left_pin, right_pin = _operator_literal_pins(
             e.resolved_binop, e.left, e.right, lc, declared, holder=e)
@@ -7190,7 +7189,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             deref=lc.self_is_pointer and not pointer_slot,
                             pointer=lc.self_is_pointer,
                             loc=loc)
-        gcpp = lc.prescan.global_cpp.get(e.name)
+        # The global's qualified spelling is its record's: a binding that
+        # hides the global (a comprehension variable) has none.
+        gcpp = rec.global_cpp
         if gcpp is None and lc.top_level_scope:
             # Module init reads an imported name that this module REDEFINES
             # later: statements before the redefinition still see the import
@@ -9284,10 +9285,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     move=True)
             elif isinstance(e.value, TpyListComprehension):
                 from .comprehensions import _lower_comprehension
-                comp_ptrs = _comp_shadow_pointers(lc.names_with("pointer"),
-                                                  declared, analyzer)
                 lowered_value = _lower_comprehension(
-                    e.value, vtu, lc, declared, comp_ptrs)
+                    e.value, vtu, lc, declared)
             else:
                 lowered_value = _lower_expr(
                     e.value, lc, declared,
@@ -9487,15 +9486,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
     if isinstance(e, TpyCall):
         if not isinstance(e.func, TpyName):
             return _lower_computed_call(e, e.func, rtype, lc, declared, use)
-        if (e.func.name == "ord"
-                and len(e.args) == 1
-                and isinstance(e.args[0], TpyStrLiteral)
-                and len(e.args[0].value) == 1):
+        if (ch := ord_fold_char(e)) is not None:
             # ord("X") over a single-char literal folds to its constant
             # ordinal -- a bare int in every position (the runtime `ord(s)`
             # rides the native arm).
             _witness("call.ord_fold")
-            return _lower_int_literal(ord(e.args[0].value), rtype, lc, loc)
+            return _lower_int_literal(ord(ch), rtype, lc, loc)
         if e.isinstance_type is not None and e.macro_expansion is None:
             # Every isinstance this far tests without narrowing (a value
             # position, or a subject with no narrowing key): one builder.
@@ -13346,10 +13342,14 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         if isinstance(su, TupleType) and len(e.elements) == len(su.element_types):
             members = []
             for member, mt in zip(e.elements, su.element_types):
+                whole = _ptr_opt_name_whole(
+                    member, unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(mt))), lc, declared)
                 # No grant: a member temporary would run before the members
                 # to its left (BUGS.md#subexpression-right-to-left-eval).
-                members.append(_lower_container_elem(
-                    member, mt, lc, declared, tuple_elem=True))
+                members.append(whole if whole is not None
+                               else _lower_container_elem(
+                                   member, mt, lc, declared, tuple_elem=True))
             inner = THIRTupleLiteral(
                 result_type=su, elements=tuple(members),
                 loc=getattr(e, "loc", None))
@@ -13376,9 +13376,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
                 raise ThirUnsupported("expr.container_literal")
             _witness("comp.union_member_source")
             su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(member)))
-        pointers = _comp_shadow_pointers(lc.names_with("pointer"), declared,
-                                         lc.analyzer)
-        comp = _lower_comprehension(e, su, lc, declared, pointers)
+        comp = _lower_comprehension(e, su, lc, declared)
         _witness("comp.nested")
         return comp
     su_elem = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))) \
@@ -13828,6 +13826,28 @@ def lower_through_read(e: TpyExpr, lc: '_LowerCtx',
     return _lower_expr(e, lc, declared).with_read(lower(read))
 
 
+def _ptr_opt_name_whole(member: TpyExpr, bare: TpyType, lc: '_LowerCtx',
+                        declared: dict[str, TpyType]) -> 'THIRExpr | None':
+    """An un-narrowed pointer-repr Optional NAME at a tuple element slot of
+    its own type lands in the element's `std::optional<P>` storage WHOLE,
+    through the field write's lift (`ptr_to_optional`) -- a deref would
+    read through a null. None for any other member."""
+    if not (isinstance(bare, OptionalType) and bare.uses_pointer_repr()
+            and isinstance(member, TpyName)
+            and member.name not in lc.narrow.narrowed
+            and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                declared.get(member.name)))) == bare):
+        return None
+    from . import field_write as _field_write  # cycle
+    whole = _lower_expr(member, lc, declared, use=_ExprUse(
+        forms=frozenset({SinkForm.PTR_OPT_LIFT})),
+        allow_unrouted_name=True, allow_whole_optional=True)
+    return _field_write._converted(
+        whole, _field_write.field_slot_use(
+            bare, SlotConstruct.ASSIGN, lc.analyzer, lc.placement),
+        lc)
+
+
 def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                          lc: '_LowerCtx',
                          declared: dict[str, TpyType], *,
@@ -13880,23 +13900,9 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                     forms=frozenset({SinkForm.RECORD_COPY}))),
                 result_type=payload, form=Form.STORAGE,
                 loc=getattr(member, "loc", None))
-        if (isinstance(bare, OptionalType) and bare.uses_pointer_repr()
-                and isinstance(member, TpyName)
-                and member.name not in lc.narrow.narrowed
-                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    declared.get(member.name)))) == bare):
-            # An un-narrowed pointer-repr Optional NAME lands in the
-            # element's `std::optional<P>` storage WHOLE, through the field
-            # write's lift (`ptr_to_optional`) -- a deref would read through
-            # a null.
-            from . import field_write as _field_write  # cycle
-            whole = _lower_expr(member, lc, declared, use=_ExprUse(
-                forms=frozenset({SinkForm.PTR_OPT_LIFT})),
-                allow_unrouted_name=True, allow_whole_optional=True)
-            return _field_write._converted(
-                whole, _field_write.field_slot_use(
-                    bare, SlotConstruct.ASSIGN, lc.analyzer, lc.placement),
-                lc)
+        whole = _ptr_opt_name_whole(member, bare, lc, declared)
+        if whole is not None:
+            return whole
         if isinstance(bare, TupleType):
             _witness("ret.tuple_nested_elem")
         elif isinstance(bare, OwnType):
@@ -15476,10 +15482,8 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             # slot takes the stmt-expr INLINE, target-typed by the
             # comprehension's own container rather than the protocol slot.
             from .comprehensions import _lower_comprehension
-            pointers = _comp_shadow_pointers(lc.names_with("pointer"), declared,
-                                             lc.analyzer)
             _witness("arg.native_comprehension")
-            return _lower_comprehension(a, comp_c, lc, declared, pointers)
+            return _lower_comprehension(a, comp_c, lc, declared)
     if (plain_kind and _wrapper_ref_tuple_elem_arg(a, ptype, declared,
                                                    lc.analyzer)):
         # The wrapper element off a REFERENCE-element tuple binding: the
@@ -16747,9 +16751,7 @@ def _container_literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
                          TpyDictComprehension)):
         from .comprehensions import _lower_comprehension
         return _lower_comprehension(
-            a, st, lc, declared,
-            _comp_shadow_pointers(lc.names_with("pointer"), declared,
-                                  lc.analyzer))
+            a, st, lc, declared)
     if isinstance(a, TpyListRepeat):
         return _lower_expr(a, lc, declared, use=_ExprUse(slot_target=st))
     if not isinstance(bare, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
@@ -17635,9 +17637,7 @@ def _literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
                           TpyDictComprehension)):
             from .comprehensions import _lower_comprehension
             return _lower_comprehension(
-                a, slot.type, lc, declared,
-                _comp_shadow_pointers(lc.names_with("pointer"), declared,
-                                      lc.analyzer))
+                a, slot.type, lc, declared)
     slot_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
     if isinstance(a, TpyNoneLiteral):
         if (slot.holds is SlotHolds.POINTER
@@ -17897,8 +17897,7 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # (`_x_comp_slot_const`), so a mutated `T&` slot never reaches here.
         from .comprehensions import _lower_comprehension
         comp_slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-        comp_ptrs = _comp_shadow_pointers(lc.names_with("pointer"), declared, lc.analyzer)
-        return _lower_comprehension(a, comp_slot, lc, declared, comp_ptrs)
+        return _lower_comprehension(a, comp_slot, lc, declared)
     if method_arg_stub:
         _stub_comp_c = _stub_comp_target(a, ptype, lc.analyzer)
         if _stub_comp_c is not None:
@@ -17908,11 +17907,8 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # stmt-expr renders inline, target-typed by the comprehension's
             # OWN container -- the free-call loop's native/template row.
             from .comprehensions import _lower_comprehension
-            _stub_ptrs = _comp_shadow_pointers(lc.names_with("pointer"), declared,
-                                               lc.analyzer)
             _witness("arg.native_comprehension")
-            return _lower_comprehension(a, _stub_comp_c, lc, declared,
-                                        _stub_ptrs)
+            return _lower_comprehension(a, _stub_comp_c, lc, declared)
     if _own_container_comp_arg(a, ptype, lc.analyzer):
         # A comprehension into an `Own[container]` slot: the stmt-expr
         # prvalue IS the slot's container, so it moves into the by-value
@@ -17920,9 +17916,8 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # own_container_literal row's comprehension twin).
         from .comprehensions import _lower_comprehension
         own_c = _own_container_comp_slot(ptype, lc.analyzer)
-        own_ptrs = _comp_shadow_pointers(lc.names_with("pointer"), declared, lc.analyzer)
         _witness("arg.own_container_comp")
-        return _lower_comprehension(a, own_c, lc, declared, own_ptrs)
+        return _lower_comprehension(a, own_c, lc, declared)
     if (isinstance(a, TpyFieldAccess)
             and _container_module_var_arg(a, ptype, declared, lc.analyzer)):
         # A module-variable container at a plain container ref slot
@@ -18598,12 +18593,10 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 raise ThirUnsupported(
                     "protocol arg-temp outside a flush position")
             from .comprehensions import _lower_comprehension
-            pointers = _comp_shadow_pointers(lc.names_with("pointer"),
-                                             declared, lc.analyzer)
             _witness("argtemp.comprehension_proto")
             return held_temp(THIRArgTemp(
                 result_type=proto, cpp_type=None,
-                init=_lower_comprehension(a, comp_c, lc, declared, pointers),
+                init=_lower_comprehension(a, comp_c, lc, declared),
                 form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
         at = lc.analyzer.get_expr_type(a)
         if isinstance(a, (TpyArrayLiteral, TpyName)):
@@ -20899,8 +20892,7 @@ def _lower_fresh_ref_value(arm: TpyExpr, rec_t: 'TpyType', lc: '_LowerCtx',
             return None
         from .comprehensions import _lower_comprehension
         lowered = _lower_comprehension(
-            arm, rec_t, lc, declared,
-            _comp_shadow_pointers(lc.names_with("pointer"), declared, analyzer))
+            arm, rec_t, lc, declared)
     elif isinstance(arm, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
         lowered = _lower_expr(arm, lc, declared,
                               use=_ExprUse(slot_target=rec_t))

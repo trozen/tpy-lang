@@ -30,10 +30,10 @@ std::vector<std::string> walk_rows(std::string_view root) {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+            const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
             std::string_view dirpath = std::get<0>(__for_tup_0);
-            auto& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
-            auto& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_0)));
+            const auto& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
+            const auto& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_0)));
             std::string rel = std::string(::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt}));
             if ((::tpy::__len__(rel) == 0)) {
                 rel = ".";
@@ -78,10 +78,10 @@ bool order_ok(std::string_view root) {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
+            const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
             std::string_view dp = std::get<0>(__for_tup_1);
-            auto& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_1)));
-            auto& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_1)));
+            const auto& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_1)));
+            const auto& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_1)));
             seen.push_back(std::string(dp));
         }
     }
@@ -120,10 +120,10 @@ bool order_ok(std::string_view root) {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_1);
+            const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_1);
             std::string_view dirpath = std::get<0>(__for_tup_2);
-            auto& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_2)));
-            auto& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_2)));
+            const auto& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_2)));
+            const auto& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_2)));
             n = ::tpy::add_check<int32_t>(n, 1);
         }
     }

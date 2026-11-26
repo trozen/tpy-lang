@@ -46,7 +46,7 @@ main::closure_alias_receiver@383:0: uncovered (unsupported statement), summary: 
 main::closure_alias_arg@391:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::outer_alias_nested@401:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::local_source@410:0: covered (storage: no_proof_required), summary: known
-main::comp_shadow@419:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
+main::comp_shadow@419:0: covered (storage: no_proof_required), summary: known
 main::comp_shadow_alias@425:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::loop_shadow_alias@434:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::reused_loop_name@451:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)

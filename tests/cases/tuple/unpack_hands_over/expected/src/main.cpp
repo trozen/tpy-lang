@@ -1561,7 +1561,7 @@ void comp_combinators(std::vector<A>& ys, const std::vector<int32_t>& ns, ::tpy:
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_34 = *__beg_0;
             int32_t i = std::get<0>(__for_tup_34);
-            auto& y = std::get<1>(__for_tup_34);
+            auto& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_34)));
             __result.push_back(::tpyapp::main::bump(y, i));
         }
         std::move(__result);
@@ -1573,7 +1573,7 @@ void comp_combinators(std::vector<A>& ys, const std::vector<int32_t>& ns, ::tpy:
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             auto&& __for_tup_35 = *__beg_1;
-            auto& y = std::get<0>(__for_tup_35);
+            auto& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_35)));
             int32_t n = std::get<1>(__for_tup_35);
             __result.push_back(::tpyapp::main::bump(y, n));
         }
@@ -1587,7 +1587,7 @@ void comp_combinators(std::vector<A>& ys, const std::vector<int32_t>& ns, ::tpy:
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             auto&& __for_tup_36 = *__beg_2;
-            std::string k = std::get<0>(__for_tup_36);
+            std::string_view k = std::get<0>(__for_tup_36);
             auto& v = std::get<1>(__for_tup_36);
             __result.push_back(::tpyapp::main::bump(v, ::tpy::__len__(k)));
         }
@@ -1610,9 +1610,9 @@ void comp_optional(std::vector<std::tuple<std::optional<A>, int32_t>>& xs) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_37 = *__beg_0;
-            auto& o = std::get<0>(__for_tup_37);
+            A* o = ::tpy::optional_to_ptr(std::get<0>(__for_tup_37));
             int32_t n = std::get<1>(__for_tup_37);
-            __result.push_back(::tpyapp::main::opt_bump(::tpy::optional_to_ptr(o), n));
+            __result.push_back(::tpyapp::main::opt_bump(o, n));
         }
         std::move(__result);
     });
@@ -1624,9 +1624,9 @@ void comp_optional(std::vector<std::tuple<std::optional<A>, int32_t>>& xs) {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             auto&& __for_tup_38 = *__beg_1;
-            auto& o = std::get<0>(__for_tup_38);
+            A* o = ::tpy::optional_to_ptr(std::get<0>(__for_tup_38));
             int32_t n = std::get<1>(__for_tup_38);
-            __result.push_back(::tpyapp::main::opt_bump(::tpy::optional_to_ptr(o), 0));
+            __result.push_back(::tpyapp::main::opt_bump(o, 0));
         }
         std::move(__result);
     });
@@ -1659,7 +1659,7 @@ void comp_values(const std::vector<std::tuple<std::string, int32_t>>& ps) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& __for_tup_39 = *__beg_0;
-            std::string k = std::get<0>(__for_tup_39);
+            std::string_view k = std::get<0>(__for_tup_39);
             int32_t n = std::get<1>(__for_tup_39);
             __result.push_back((::tpy::str_concat(k, (::tpy::str_repeat("!", n)))));
         }
@@ -1912,10 +1912,10 @@ void comp_owned_optional() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             std::tuple<std::optional<A>, int32_t> __for_tup_49(::tpy::take_elem(__beg_0));
-            auto&& a = std::move(std::get<0>(__for_tup_49));
+            A* a = ::tpy::optional_to_ptr(std::get<0>(__for_tup_49));
             int32_t n = std::get<1>(__for_tup_49);
-            if ((a.has_value())) {
-                __result.push_back((::tpy::add_check<int32_t>((*a).v, n)));
+            if ((a != nullptr)) {
+                __result.push_back((::tpy::add_check<int32_t>(a->v, n)));
             }
         }
         std::move(__result);
@@ -1927,9 +1927,9 @@ void comp_owned_optional() {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             std::tuple<std::optional<A>, int32_t> __for_tup_50(::tpy::take_elem(__beg_1));
-            auto&& a = std::move(std::get<0>(__for_tup_50));
+            A* a = ::tpy::optional_to_ptr(std::get<0>(__for_tup_50));
             int32_t n = std::get<1>(__for_tup_50);
-            __result.push_back(::tpyapp::main::opt_bump(::tpy::optional_to_ptr(a), n));
+            __result.push_back(::tpyapp::main::opt_bump(a, n));
         }
         std::move(__result);
     });

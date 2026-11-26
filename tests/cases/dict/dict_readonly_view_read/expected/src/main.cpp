@@ -17,7 +17,7 @@ int32_t total(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& __for_tup_0 = *__beg_0;
+        const auto& __for_tup_0 = *__beg_0;
         std::string_view k = std::get<0>(__for_tup_0);
         const auto& v = std::get<1>(__for_tup_0);
         n = (::tpy::add_check<int32_t>(n, ::tpy::__len__(v)));

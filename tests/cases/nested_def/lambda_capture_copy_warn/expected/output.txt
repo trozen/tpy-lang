@@ -10,24 +10,25 @@ comp: 1 2
 curried: 1
 block: 101 1 202 2
 block_def: 1 2
+reseat: 1 2 3
+rebind_after: 0 0 11
+while_unpack: 0 10 3 7
 tuple_def: 1 7
 tuple_def: 1
 tuple_elem: 5 2
+mixed: 12
 gen: 1
 gen: 1
 nested: 1
 compound: 1 10 100
-generic: 1
-cost: 5
-mixed: 12
 async: 1
 er: 11
 auto_readonly: 1
-reseat: 1 2 3
-rebind_after: 0 0 11
-while_unpack: 0 10 3 7
+generic: 1
+cost: 5
 rebound_param: 5
 dynamic: 9
 callable_state: 1 1 2 2
+comp_self: 2 50
 module: 0 1 1 1
 module_block: 0 1 0 10 1

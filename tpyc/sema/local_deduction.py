@@ -2159,6 +2159,37 @@ class LocalTypeDeduction:
             out |= sub_roots
         return out
 
+    def register_pending_view(self, family: ViewTypeFamily,
+                              info: ViewVarInfo,
+                              init_expr: 'TpyExpr | None') -> TpyType:
+        """Register the pending view of a new local's binding (`info`) and
+        return its pending type."""
+        info.module_body = self.ctx.is_top_level
+        self.ctx.view_vars(family)[info.var_id] = info
+        self.ctx.view_var_map(family)[info.variable_name] = info.var_id
+        self.ctx.func.view_ids_by_name.setdefault(
+            info.variable_name, []).append((family, info.var_id))
+        # No expression here means the binding site records it itself (a
+        # loop variable, an unpack target); until then it is unknown.
+        self.note_view_binding(family, info.var_id, init_expr)
+        self.ctx.view_pending_resolutions(family).append(info.var_id)
+        return family.pending_type_class(info.var_id)
+
+    def step_view(self, family: ViewTypeFamily, name: str,
+                  line: 'int | None', *, owned: bool = False,
+                  frame_unsafe: bool = True) -> TpyType:
+        """The pending view of a binding a step gives a `str` / `bytes`
+        element with no expression of its own (a for or comprehension
+        head's target, a tuple unpack's): a view of the step, unless the
+        step is handed over to it (`owned`). `frame_unsafe`: the binding
+        may be live across a suspension, where the step's storage is not
+        (a comprehension holds no `await`)."""
+        info = ViewVarInfo(var_id=self.ctx.next_view_var_id(family),
+                           variable_name=name, decl_line=line,
+                           initialized_from_owned=owned,
+                           frame_unsafe_source=frame_unsafe and not owned)
+        return self.register_pending_view(family, info, None)
+
     def note_view_binding(self, family: ViewTypeFamily, var_id: int,
                           expr: 'TpyExpr | None', *,
                           roots: 'set[str] | None' = None,

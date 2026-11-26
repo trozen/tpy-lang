@@ -114,21 +114,21 @@ part_plan_reads_kinds::__tpy_init: uncovered (module initialization)
 part_plan_reads_kinds::co@18:0: uncovered (async body)
 part_plan_reads_kinds::gen@23:0: covered (storage: no_facts: storage facts have not been published)
 part_plan_reads_kinds::pairs@30:0: uncovered (reference yield)
-part_plan_reads_kinds::chained@37:0: uncovered (async body)
-part_plan_reads_kinds::walrus@45:0: uncovered (unsupported hoisted value)
-part_plan_reads_kinds::via_call@58:0: uncovered (argument held across a suspension)
-part_plan_reads_kinds::via_setter@80:0: uncovered (async body)
-part_plan_reads_kinds::gen_make@87:0: uncovered (unsupported parameter type)
-part_plan_reads_kinds::class_callable@94:0: uncovered (container source needs a place)
-part_plan_reads_kinds::aug@100:0: uncovered (async body)
-part_plan_reads_kinds::drain@107:0: uncovered (async body)
-part_plan_reads_kinds::unpack_clause@112:0: uncovered (async body)
-part_plan_reads_kinds::main@117:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
-part_plan_reads_kinds::Maker.__call__@54:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
-part_plan_reads_kinds::Slot.val@72:4: covered (storage: no_proof_required), summary: known
-part_plan_reads_kinds::Slot.val@76:4: covered (storage: no_proof_required), summary: known
+part_plan_reads_kinds::chained@36:0: uncovered (async body)
+part_plan_reads_kinds::walrus@44:0: uncovered (unsupported hoisted value)
+part_plan_reads_kinds::via_call@57:0: uncovered (argument held across a suspension)
+part_plan_reads_kinds::via_setter@79:0: uncovered (async body)
+part_plan_reads_kinds::gen_make@86:0: uncovered (unsupported parameter type)
+part_plan_reads_kinds::class_callable@93:0: uncovered (container source needs a place)
+part_plan_reads_kinds::aug@99:0: uncovered (async body)
+part_plan_reads_kinds::drain@106:0: uncovered (async body)
+part_plan_reads_kinds::unpack_clause@111:0: uncovered (async body)
+part_plan_reads_kinds::main@116:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+part_plan_reads_kinds::Maker.__call__@53:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+part_plan_reads_kinds::Slot.val@71:4: covered (storage: no_proof_required), summary: known
+part_plan_reads_kinds::Slot.val@75:4: covered (storage: no_proof_required), summary: known
 part_plan_reads_kinds::Src.__init__@14:4: covered (storage: no_proof_required), summary: known
-part_plan_reads_kinds::Slot.__init__@68:4: covered (storage: no_proof_required), summary: known
+part_plan_reads_kinds::Slot.__init__@67:4: covered (storage: no_proof_required), summary: known
 part_plan_reads_more::__tpy_init: uncovered (module initialization)
 part_plan_reads_more::mks@11:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 part_plan_reads_more::id_view@15:0: covered (storage: no_proof_required), summary: known

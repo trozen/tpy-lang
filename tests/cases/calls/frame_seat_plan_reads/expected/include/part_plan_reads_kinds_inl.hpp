@@ -32,10 +32,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 // def pairs(s: Src) -> Iterator[tuple[int32, int32]]:
-//     # int pairs: a record element is BUGS.md#comp-unpack-pointer-tuple-skips-deref
-//     yield (1, s.n)                                                                  # -> S_RESUME_0
+//     yield (1, s.n)                                   # -> S_RESUME_0
 //     s.n += 5
-//     yield (2, s.n)                                                                  # -> S_RESUME_1
+//     yield (2, s.n)                                   # -> S_RESUME_1
 inline std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry

@@ -184,6 +184,7 @@ from ..nodes import (
     THIRTupleLayout,
 )
 from .predicates import (
+    ord_fold_char,
     structural_protocol,
     _method_member_cpp,
     _deref_member_call_ok,
@@ -3861,11 +3862,9 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
     if fi.qualified_name in _SPECIAL_BUILTIN_QNAMES or e.func_name == "print":
         note_detail("call.builtin_special")
         return None
-    if e.func_name == "ord" and len(e.args) == 1:
-        a0 = _peel_coerce(e.args[0])
-        if isinstance(a0, TpyStrLiteral) and len(a0.value) == 1:
-            note_detail("call.builtin_special")
-            return None
+    if ord_fold_char(e) is not None:
+        note_detail("call.builtin_special")
+        return None
     # The error_return guard keeps fallible callees out of every face that
     # does not render the unwrap; `error_return_ok` is set only by the
     # free-call lowering arm, whose tail wraps the call in
@@ -4610,10 +4609,11 @@ def _lambda_reject_reason(a: TpyLambda, analyzer, *,
     reject. The single source of truth for both the arg-admission
     gate and the lowering arm (they must agree, else the gate admits a
     shape lowering then rejects)."""
-    # A captured `self` needs a receiver HANDLE the closure can copy --
+    # A captured `self` of the creating body (not a comprehension's or a
+    # lambda's around it) needs a receiver HANDLE the closure can copy --
     # admitted only where the caller confirmed the enclosing body holds one
     # (a plain method or a frame's `__self`).
-    if "self" in a.captured_names and not self_capturable:
+    if "self" in a.body_captures and not self_capturable:
         return "lambda.self_capture"
     rt = a.inferred_return_type
     if rt is None:

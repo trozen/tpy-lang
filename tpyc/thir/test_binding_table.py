@@ -295,7 +295,7 @@ def lens(xs: list[int], names: list[str], qs: list[tuple[str, Q]]) -> int:
         # or owned str and an unpack target its element's type. An unpack
         # clause's head declares its targets, as a for head does.
         site = gen.head if gen.unpack_vars is not None else gen
-        for name, t in _clause_bindings(gen, route):
+        for name, t in _clause_bindings(gen, route, an):
             rec = table.visible(gen, name)
             assert rec is not None and rec.site is site
             assert rec.type == t
@@ -1903,11 +1903,12 @@ def comps(pairs: list[tuple[P, int]], opts: list[tuple[P | None, int]]
     # subject only.
     ("captures", {"q": (("match", F.REFERENCE, None), True),
                   "z": (("match", F.REFERENCE, None), False)}),
-    # A record or Optional element of a comprehension's unpack is a
-    # reference, const as the clause's loop variable; a value its copy.
+    # A comprehension's unpack binds as a for head's: a record element by
+    # reference and a pointer-repr Optional element by its pointer, const
+    # as the clause's loop variable; a value its copy.
     ("comps", {"a": (("comp", F.REFERENCE, None), True),
                "n": (("comp", F.VALUE, None), False),
-               "b": (("comp", F.STORAGE_OPT, None), True)}),
+               "b": (("comp", F.POINTER, None), True)}),
 ])
 def test_each_statement_binding_is_the_kind_its_site_declares(
         func_name, expected) -> None:
@@ -3194,10 +3195,10 @@ def test_more_rows_name_their_reason() -> None:
                                     rec.move_forced, rec.movable)
     func, table = _plan(_ROWS_PROGRAM_2, "comps")
     w = _rec(table, "w", "comp")
-    # The clause variable moves only at its sinks; it inherits the move of
-    # the owned local it shadows (inert: the region decides there).
+    # The clause variable moves only at its sinks; a binding of its own
+    # scope, it inherits nothing of the owned local it hides.
     assert (w.move_exception, w.move_forced, w.movable) == (
-        M.COMP_CLAUSE, M.INHERITED_OUTER, True)
+        M.COMP_CLAUSE, None, False)
 
 
 _ROWS_PROGRAM_4 = _PRELUDE + '''

@@ -133,7 +133,7 @@ std::vector<Box> borrowed(std::vector<Box>& ws) {
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
             int32_t i = std::get<0>(__for_tup_0);
-            auto& b = std::get<1>(__for_tup_0);
+            auto& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
             __result.insert_or_assign(i, Box(b).finish());
         }
         std::move(__result);
@@ -195,15 +195,15 @@ void shadow_local(std::vector<Box>& ws) {
 // def consumed_outer(ws: list[Box]) -> Own[list[Box]]:
 //     ws.append(Box(5))
 //     b = Box(9)
-//     # Copies too: the comprehension's `b` counts as a later read (BUGS.md#comp-var-read-extends-enclosing-local).
-//     old = b.finish()  # tpyc: warning(/copies Box into owned storage/)
+//     # Moves: the comprehension's `b` is its own binding, no later read.
+//     old = b.finish()  # tpyc: ok
 //     rs = [b.finish() for b in ws]  # tpyc: warning(/copies Box into owned storage/)
 //     rs.append(old)
 //     return rs
 std::vector<Box> consumed_outer(std::vector<Box>& ws) {
     ws.push_back(Box(5));
     Box b = Box(9);
-    Box old = Box(b).finish();
+    Box old = std::move(b).finish();
     std::vector<Box> rs = ({
         std::vector<Box> __result;
         auto& __obj_0 = ws;

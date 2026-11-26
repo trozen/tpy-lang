@@ -89,9 +89,9 @@ void main() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
-            auto& p = std::get<0>(__for_tup_0);
+            P* p = ::tpy::optional_to_ptr(std::get<0>(__for_tup_0));
             int32_t n = std::get<1>(__for_tup_0);
-            __result.push_back(::tpyapp::main::borrow(::tpy::optional_to_ptr(p)));
+            __result.push_back(::tpyapp::main::borrow(p));
         }
         std::move(__result);
     });

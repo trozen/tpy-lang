@@ -8,5 +8,5 @@ main::make_transitive_sibling@80:0: uncovered (unsupported return type), summary
 main::make_two_arms_same_name@94:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::make_named_not_called@112:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::make_lambda_param_shadow@125:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::main@137:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
+main::main@136:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::Config.__init__@16:4: covered (storage: no_proof_required), summary: known

@@ -28,7 +28,6 @@ def gen(s: Src) -> Iterator[int32]:
 
 
 def pairs(s: Src) -> Iterator[tuple[int32, int32]]:
-    # int pairs: a record element is BUGS.md#comp-unpack-pointer-tuple-skips-deref
     yield (1, s.n)
     s.n += 5
     yield (2, s.n)

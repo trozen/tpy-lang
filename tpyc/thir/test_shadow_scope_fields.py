@@ -51,3 +51,32 @@ def test_every_field_classified_once(owner: str) -> None:
     for f in sorted(counts.keys() - actual):
         problems.append(f"{owner}.{f} is classified but is not a field")
     assert not problems, "\n".join(problems) + "\n" + _WHY
+
+
+def _bare_ctx() -> 'ctx._LowerCtx':
+    """A `_LowerCtx` holding only what `shadow_scope` reads."""
+    lc = object.__new__(ctx._LowerCtx)
+    for a in ctx._SHADOWED_LC_STATE:
+        setattr(lc, a, frozenset())
+    prescan = object.__new__(ctx._Prescan)
+    for a in ctx._SHADOWED_PRESCAN_FACTS:
+        setattr(prescan, a, frozenset())
+    lc.prescan = prescan
+    lc.params = ()
+    lc.narrow = ctx._NarrowScope()
+    lc.self_receiver = None
+    lc.member_self = False
+    lc.stmt_entry = ctx.StmtEntry(None)
+    return lc
+
+
+@pytest.mark.parametrize("own_statements", [True, False])
+def test_scope_without_statements_keeps_the_statement(
+        own_statements: bool) -> None:
+    # A comprehension's scope has no statements of its own: a filter walrus
+    # binds the statement it is lowered in.
+    lc = _bare_ctx()
+    entry = lc.stmt_entry
+    with lc.shadow_scope({"x"}, own_statements=own_statements):
+        assert (lc.stmt_entry is entry) is (not own_statements)
+    assert lc.stmt_entry is entry

@@ -129,8 +129,8 @@ def shadow_local(ws: list[Box]) -> None:
 def consumed_outer(ws: list[Box]) -> Own[list[Box]]:
     ws.append(Box(5))
     b = Box(9)
-    # Copies too: the comprehension's `b` counts as a later read (BUGS.md#comp-var-read-extends-enclosing-local).
-    old = b.finish()  # tpyc: warning(/copies Box into owned storage/)
+    # Moves: the comprehension's `b` is its own binding, no later read.
+    old = b.finish()  # tpyc: ok
     rs = [b.finish() for b in ws]  # tpyc: warning(/copies Box into owned storage/)
     rs.append(old)
     return rs

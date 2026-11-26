@@ -25,9 +25,9 @@ void main() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& __for_tup_0 = *__beg_0;
+        const auto& __for_tup_0 = *__beg_0;
         std::string_view name = std::get<0>(__for_tup_0);
-        auto& pt = std::get<1>(__for_tup_0);
+        const auto& pt = std::get<1>(__for_tup_0);
         std::cout << name << " " << pt << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<::tpy::BigInt, Point>> pairs = {std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(1), Point(10, 20)}, std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(2), Point(30, 40)}};
@@ -35,9 +35,9 @@ void main() {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        auto&& __for_tup_1 = *__beg_1;
+        const auto& __for_tup_1 = *__beg_1;
         const auto& n = std::get<0>(__for_tup_1);
-        auto& pt = std::get<1>(__for_tup_1);
+        const auto& pt = std::get<1>(__for_tup_1);
         std::cout << n << " " << pt << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<Point, Point>> segments = {std::tuple<Point, Point>{Point(0, 0), Point(1, 1)}, std::tuple<Point, Point>{Point(2, 2), Point(3, 3)}};

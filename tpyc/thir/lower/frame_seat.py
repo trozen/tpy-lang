@@ -1131,22 +1131,65 @@ def loop_target_hands_out(stmt: TpyForEach, escaping: 'frozenset[str]',
         loop_target_refers(stmt, analyzer), escaping)
 
 
+class IterStep(NamedTuple):
+    """What an iteration binds its variable from, a `for` statement's or a
+    comprehension clause's: the one place that states how a clause
+    differs -- it never hoists its variable or consumes its source, its
+    const is its own verdict (`const_loop_var`) and its element is the one
+    its route resolved."""
+    node: 'TpyForEach | TpyComprehensionGenerator'
+    iterable: 'TpyExpr'
+    # The element as the source yields it, and the one the variable binds
+    # (an `Own` element the step does not hand over is its container's,
+    # which the variable refers to).
+    elem_type: 'TpyType | None'
+    bound: 'TpyType | None'
+    const: bool
+    hoisted: bool
+    # None: unknown before the body is lowered, the part the statement's
+    # own facts decide (`for_consuming_shape`).
+    consuming: 'bool | None'
+    handed_over: bool
+    copies: bool
+    # The variable is the holder a head unpacks.
+    unpack: bool
+
+
+def iter_step(node: 'TpyForEach | TpyComprehensionGenerator',
+              analyzer: 'ValueCategoryAnalyzer', *,
+              elem: 'TpyType | None' = None) -> IterStep:
+    """The step a `for` statement or a comprehension clause binds its
+    variable from; `elem` is a clause's element as its route resolved
+    it."""
+    if isinstance(node, TpyForEach):
+        et = (node.enum_iterable if node.enum_iterable is not None
+              else resolved_loop_elem_type(node, analyzer))
+        return IterStep(node, node.iterable, node.elem_type,
+                        _bound_element(et, node), node.const_loop_var,
+                        node.hoist_loop_var, None,
+                        binds_handed_over_step(node), node.copies_var,
+                        node.is_tuple_unpack)
+    et = elem if elem is not None else loop_element_type(node.iterable,
+                                                         analyzer)
+    return IterStep(node, node.iterable, et, _bound_element(et, node),
+                    bool(node.const_loop_var), False, False, False,
+                    node.copies_var, node.unpack_vars is not None)
+
+
+def _bound_element(et: 'TpyType | None',
+                   node: 'TpyForEach | TpyComprehensionGenerator'
+                   ) -> 'TpyType | None':
+    if isinstance(et, OwnType) and not node.step_handover:
+        return et.wrapped
+    return et
+
+
 def loop_bound_element(node: 'TpyForEach | TpyComprehensionGenerator',
                        analyzer: 'ValueCategoryAnalyzer', *,
                        elem: 'TpyType | None' = None) -> 'TpyType | None':
     """The element a `for` statement or a comprehension clause binds its
-    variable to: an enum's member, the resolved element (`elem`, a
-    clause's as its route resolved it); an `Own` element the step does
-    not hand over is its container's, which the variable refers to."""
-    if isinstance(node, TpyForEach):
-        et = (node.enum_iterable if node.enum_iterable is not None
-              else resolved_loop_elem_type(node, analyzer))
-    else:
-        et = elem if elem is not None else loop_element_type(
-            node.iterable, analyzer)
-    if isinstance(et, OwnType) and not node.step_handover:
-        et = et.wrapped
-    return et
+    variable to (`iter_step`)."""
+    return iter_step(node, analyzer, elem=elem).bound
 
 
 def loop_binding_of(node: 'TpyForEach | TpyComprehensionGenerator',
@@ -1155,26 +1198,29 @@ def loop_binding_of(node: 'TpyForEach | TpyComprehensionGenerator',
                     consuming: 'bool | None' = None
                     ) -> 'LoopBinding | None':
     """How a `for` statement or a comprehension clause binds its variable
-    (`loop_binding_kind`), from the facts the binding planner reads: the
-    element (`loop_bound_element`), the const, hoist and copy verdicts
-    and the consuming route -- `consuming`, which, unknown before the body
-    is lowered, is the part the statement's own facts decide
-    (`for_consuming_shape`)."""
-    et = loop_bound_element(node, analyzer, elem=elem)
-    if et is None:
+    (`loop_binding_kind`), from its step (`iter_step`): the element, the
+    const, hoist and copy verdicts and the consuming route -- `consuming`,
+    which, unknown before the body is lowered, is the part the statement's
+    own facts decide (`for_consuming_shape`)."""
+    return step_binding(iter_step(node, analyzer, elem=elem), analyzer,
+                        consuming=consuming)
+
+
+def step_binding(step: IterStep, analyzer: 'ValueCategoryAnalyzer', *,
+                 consuming: 'bool | None' = None) -> 'LoopBinding | None':
+    """`loop_binding_of` over a step already built."""
+    node = step.node
+    if step.bound is None:
         return None
-    if isinstance(node, TpyForEach):
-        if consuming is None:
-            # Whether the body already declares the variable is a lowering
-            # fact sema records nothing of: read as consuming, it refers.
-            consuming = for_consuming_shape(node, analyzer)
-        const, hoisted = node.const_loop_var, node.hoist_loop_var
-        handed_over = binds_handed_over_step(node)
-    else:
-        consuming, const, hoisted = False, bool(node.const_loop_var), False
-        handed_over = False
-    return loop_binding_kind(et, const, hoisted=hoisted, consuming=consuming,
-                             copies=node.copies_var, handed_over=handed_over)
+    if consuming is None:
+        consuming = step.consuming
+    if consuming is None:
+        # Whether the body already declares the variable is a lowering
+        # fact sema records nothing of: read as consuming, it refers.
+        consuming = for_consuming_shape(node, analyzer)
+    return loop_binding_kind(step.bound, step.const, hoisted=step.hoisted,
+                             consuming=consuming, copies=step.copies,
+                             handed_over=step.handed_over)
 
 
 def loop_target_refers(node: 'TpyForEach | TpyComprehensionGenerator',

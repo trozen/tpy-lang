@@ -250,7 +250,7 @@ __coro_drain drain(std::vector<::tpystd::asyncio::_executor::Task<std::string>>&
                 for (; __beg_1 != __end_1; ++__beg_1) {
                     const auto& __for_tup_0 = *__beg_1;
                     std::string k = std::get<0>(__for_tup_0);
-                    const auto& s = std::get<1>(__for_tup_0);
+                    const auto& s = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
                     __result.push_back(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::part_frame_seat_owned_params::co_s(k))));
                 }
             }
@@ -264,9 +264,9 @@ __coro_drain drain(std::vector<::tpystd::asyncio::_executor::Task<std::string>>&
             for (;;) {
                 auto __r_3 = __itr_2.__next__();
                 if (!__r_3.has_value()) break;
-                auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
+                const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
                 std::string k = std::get<0>(__for_tup_1);
-                auto& s = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_1)));
+                const auto& s = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_1)));
                 (*ts).push_back(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::part_frame_seat_owned_params::co_s(k))));
             }
         }
@@ -302,8 +302,8 @@ __coro_drain drain(std::vector<::tpystd::asyncio::_executor::Task<std::string>>&
             for (;;) {
                 auto __r_8 = __itr_7.__next__();
                 if (!__r_8.has_value()) break;
-                auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_8);
-                auto& r = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_2)));
+                const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_8);
+                const auto& r = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_2)));
                 std::string v = std::get<1>(__for_tup_2);
                 (*ts).push_back(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::part_frame_seat_owned_params::co_s(v))));
             }

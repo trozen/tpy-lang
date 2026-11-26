@@ -235,7 +235,7 @@ from .predicates import (for_consuming_shape, resolved_loop_elem_type,
     _alias_call_source_ok, _call_storage_optional_return,
     receiver_is_const, _expr_is_const_source, _call_arm_variant, copy_call_arg,
     _storage_family_ok, _narrow_alias_name, _fresh_narrow_local,
-    _generic_value_tuple_return, _comp_shadow_pointers, structural_protocol,
+    _generic_value_tuple_return, structural_protocol,
     _tuple_name_elem_subscript, _container_del_recv, _slot_free_ptr_reseat_ok,
     _module_var_recv, _post_if_narrow_plan, _opt_view_arg_shim,
     _container_enum_spell, _container_scalar_read, _dict_view_iterable_ok,
@@ -2487,8 +2487,7 @@ def _lower_storage_value(init: TpyExpr, slot_t: TpyType, lc: '_LowerCtx',
     if type(init) in _comprehensions._COMP_KINDS:
         _witness("reseat.rvalue_comp")
         return _comprehensions._lower_comprehension(
-            init, slot_t, lc, declared,
-            _comp_shadow_pointers(lc.names_with("pointer"), declared, lc.analyzer))
+            init, slot_t, lc, declared)
     # This adapter keeps the payload type; sinks needing a declared result
     # type pass slot_type to the same copy helper.
     value = _lower_copy_record(init, lc, declared, loc=loc)
@@ -4481,8 +4480,7 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
             # slot line (`static std::vector<T> __global_slot_N = ({...});`)
             # -- the frame-emplace comp branch's top-level twin.
             init = _comprehensions._lower_comprehension(
-                stmt.init, slot_t, lc, declared,
-                _comp_shadow_pointers(lc.names_with("pointer"), declared, lc.analyzer))
+                stmt.init, slot_t, lc, declared)
             _witness("top_level.global_slot_comp")
         else:
             init = _lower_expr(
@@ -6324,8 +6322,7 @@ def _lower_container_elem_value(stmt: TpyAssign, eu: TpyType,
             and _container_comp_arg(v, eu)):
         _witness("setitem.container_comp")
         return _comprehensions._lower_comprehension(
-            v, eu, lc, declared,
-            _comp_shadow_pointers(lc.names_with("pointer"), declared, analyzer))
+            v, eu, lc, declared)
     if not isinstance(v, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
         note_detail("setitem.container_value_shape")
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -6775,7 +6772,7 @@ def _result_value_rows(v: TpyExpr, slot: 'Slot', lc: '_LowerCtx',
         # A comprehension renders the decl-init arm's stmt-expr,
         # target-typed by the storage slot.
         comp = _comprehensions._lower_comprehension(
-            v, rec_storage, lc, declared, scope.admission_pointers())
+            v, rec_storage, lc, declared)
         _witness("ret.container_comp")
         return comp
     ret_ow = _own_wrapper_return(rdecl, analyzer)
@@ -7144,19 +7141,6 @@ def _fresh_unpack_write(stmt: TpyTupleUnpack, i: int, rec: BindingRepr,
                            form=Form.BORROW, is_const=const,
                            cpp_local_representation=LocalBinding.REF_ALIAS,
                            binding=rec, loc=loc)
-    if rec.form is BindingForm.STORAGE_OPT:
-        # A comprehension clause's pointer-repr Optional element binds the
-        # storage optional by reference, as the clause's scalar variable
-        # over such elements does.
-        value = _unpack_convert(r, _unpack_local_slot(stmt, i, tt, rec.form,
-                                               SlotConstruct.DIRECT_INIT, lc,
-                                               const=rec.const), lc, loc)
-        declared[name] = tt
-        return THIRVarDecl(name=name, resolved_type=tt, init=value,
-                           cpp_type="auto", form=Form.STORAGE,
-                           is_const=rec.const,
-                           cpp_local_representation=LocalBinding.REF_ALIAS,
-                           binding=rec, loc=loc)
     if rec.form is not BindingForm.VALUE:
         note_detail("tuple_unpack.target_form")
         raise ThirUnsupported("stmt.tuple_unpack", loc=loc)
@@ -7342,10 +7326,9 @@ def _lower_unpack_stmt(stmt: TpyTupleUnpack, scope: '_LowerScope'
             targets[i] = None
             records.append(None)
             continue
-        # A comprehension clause's targets are its own, never an outer
-        # binding of the name.
+        # A comprehension clause's targets are its own: its scope strips
+        # any outer binding of the name from `declared`.
         if (rec is not None and stmt.is_loop_head and name in declared
-                and rec.site_kind != "comp"
                 and _bindings.head_target_writes_outer(
                     stmt, i, _bindings.unpack_target_type(stmt, i, an),
                     lc.prior_binding(name), an, walk_declared=True)):
@@ -7919,8 +7902,7 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
         if stmt.name in lc.prescan.move_through:
             raise ThirUnsupported(stmt_reject_reason(stmt))
         value = _comprehensions._lower_comprehension(
-            init, declared[stmt.name], lc, declared,
-            _comp_shadow_pointers(lc.names_with("pointer"), declared, lc.analyzer))
+            init, declared[stmt.name], lc, declared)
         _witness("res.frame_comp_write")
     else:
         # The emplace is a statement position: arg temps (the ptr-opt ctor
@@ -9254,7 +9236,7 @@ def _decl_comprehension(stmt, vtype, rec, scope, loc):
             or stmt.name in lc.prescan.move_through):
         raise ThirUnsupported(stmt_reject_reason(stmt))
     comp = _comprehensions._lower_comprehension(
-        stmt.init, vtype, lc, declared, scope.admission_pointers())
+        stmt.init, vtype, lc, declared)
     declared[stmt.name] = vtype
     return THIRVarDecl(name=stmt.name, resolved_type=vtype, init=comp,
                        loc=loc)
@@ -9719,8 +9701,7 @@ def _lower_existing_binding(stmt: 'TpyVarDecl | BindingSource',
                 target=THIRName(result_type=target_t, name=stmt.name,
                                 loc=loc),
                 value=_comprehensions._lower_comprehension(
-                    stmt.init, target_t, lc, declared,
-                    scope.admission_pointers()),
+                    stmt.init, target_t, lc, declared),
                 loc=loc)
         move = _move_through_source(stmt, target_t, lc)
         # The optional stands at the block head, where the predecl
@@ -14420,7 +14401,7 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
                 "dict": PrintForm.DICT}[_comprehensions._COMP_KINDS[type(a)]]
         return THIRPrintArg(
             _comprehensions._lower_comprehension(
-                a, lc.analyzer.get_expr_type(a), lc, declared, pointers), form)
+                a, lc.analyzer.get_expr_type(a), lc, declared), form)
     if isinstance(a, TpyStrLiteral):
         return THIRPrintArg(
             THIRStrLiteral(value=a.value, result_type=lc.analyzer.get_expr_type(a)),

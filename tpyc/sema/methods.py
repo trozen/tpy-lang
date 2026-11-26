@@ -1368,8 +1368,8 @@ class MethodAnalyzer:
         Rules:
         - The enclosing context must be an instance method (self in scope).
         - ClassName must be a strict ancestor of the current record.
-        - First arg must syntactically be the name `self` -- arbitrary unbound
-          calls (e.g. `Named.describe(other_instance)`) are rejected.
+        - First arg must be the name `self` read as the receiver -- arbitrary
+          unbound calls (e.g. `Named.describe(other_instance)`) are rejected.
         """
         parent_name = record_info.display_name
         method_name = expr.method
@@ -1425,11 +1425,23 @@ class MethodAnalyzer:
                 expr,
             )
 
-        # First arg must be the literal name 'self'.
+        # First arg must be the name `self` reading the receiver: a
+        # comprehension target or lambda parameter named `self` is another
+        # object, which the base-qualified call on `this` would not see.
         written = source_view(expr)
-        if not written.positional or not (
-                isinstance(written.positional[0], TpyName)
-                and written.positional[0].name == "self"):
+        names_self = bool(written.positional) and (
+            isinstance(written.positional[0], TpyName)
+            and written.positional[0].name == "self")
+        if names_self and not self.ctx.self_names_receiver():
+            raise self.ctx.error(
+                f"'{parent_name}.{method_name}(self, ...)' passes a 'self' "
+                f"bound inside this method (a comprehension or lambda "
+                f"variable), not the method's receiver; "
+                f"'{parent_name}.{method_name}(...)' takes only the receiver "
+                f"as its first argument",
+                expr,
+            )
+        if not names_self:
             raise self.ctx.error(
                 f"'{parent_name}.{method_name}(...)' must pass 'self' as the first "
                 f"argument (e.g. '{parent_name}.{method_name}(self, ...)')",

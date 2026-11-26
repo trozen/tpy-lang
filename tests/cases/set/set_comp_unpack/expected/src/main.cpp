@@ -28,8 +28,8 @@ void main() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& __for_tup_0 = *__beg_0;
-            std::string k = std::get<0>(__for_tup_0);
-            __result.insert(k);
+            std::string_view k = std::get<0>(__for_tup_0);
+            __result.insert(std::string(k));
         }
         std::move(__result);
     });

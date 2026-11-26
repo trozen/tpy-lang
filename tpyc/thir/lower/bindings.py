@@ -100,7 +100,8 @@ from . import predicates as _p
 from ..frame import frame_ptr_slot_name
 from .frame_cfg import collect_frame_nested_defs
 from ...sema.call_lends import MayLend
-from .frame_seat import loop_binding_of, loop_bound_element
+from .frame_seat import (IterStep, iter_step,
+                         loop_bound_element, step_binding)
 from .context import (BindingTableError,
                       FrameLocalClass, ValueOptKind, _LowerCtx,
                       binding_source_sites, names_with, nested_def_prescan,
@@ -753,6 +754,10 @@ class _Site:
     # it (the iteration source's scope).
     loop: TpyForEach | None = None
     loop_visible: object | None = None
+    # The binding opens a scope of its own (a comprehension clause's
+    # targets, a lambda's or a nested def's parameters): no fact of a
+    # same-named enclosing binding reaches it.
+    own_scope: bool = False
     # The storage policy's verdict for the name (`first_binding_storage`)
     # and what the binding owns (`sema.binding_ownership`), filled by
     # `classify_binding` before the rows run.
@@ -811,7 +816,8 @@ def classify_binding(site: _Site, name: str, typ: TpyType | None,
     own = _ownership(site, name, typ, inp)
     site = replace(site, storage=first_binding_storage(
         site.kind, typ, rebound=name in _scope_rebinds(site, pre),
-        hoisted=name in pre.escape_hoisted), ownership=own)
+        hoisted=not site.own_scope and name in pre.escape_hoisted),
+        ownership=own)
     rec = None
     for row in _ROWS.get(site.kind, ()):
         rec = row(site, name, typ, inp, visible)
@@ -842,9 +848,10 @@ def classify_binding(site: _Site, name: str, typ: TpyType | None,
         if holds_open_result(ctx, owner, name, typ):
             rec = replace(rec, open_result=True,
                           open_owning=open_owning_local(ctx, owner, name))
-    # A lambda's parameters live in the lambda's scope, never the frame's.
+    # A binding of a scope of its own (a lambda's parameter, a
+    # comprehension variable) is never the frame's.
     if (inp.frame is not None and name in inp.frame.const_bindings
-            and site.kind != "lambda"
+            and not site.own_scope
             and (site.func is None or site.func is inp.func)):
         rec = replace(rec, frame_const=True)
     rec = with_movable(rec, own)
@@ -2527,19 +2534,38 @@ def owned_optional_step(et: 'TpyType | None',
             and pointer_repr_optional(unwrap_readonly(u.wrapped)) is not None)
 
 
+def _iter_step(site: '_Site', inp: 'PlanInputs') -> 'IterStep | None':
+    """The step a loop site binds its variable from: a for statement's, or
+    a comprehension clause's over the element its route resolved; None for
+    any other node (a clause head's unpack) and a clause the lowering
+    rejects."""
+    node = site.node
+    if isinstance(node, TpyForEach):
+        return iter_step(node, inp.analyzer)
+    if isinstance(node, TpyComprehensionGenerator) and site.route is not None:
+        return iter_step(node, inp.analyzer, elem=site.route.et)
+    return None
+
+
 def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
-    """A for-each loop variable (`_lower_stmt_dispatch`'s for-each arm): a
-    fresh C++ binding of the body."""
+    """An iteration variable -- a for-each loop's (`_lower_stmt_dispatch`'s
+    for-each arm) or a comprehension clause's -- a fresh C++ binding of the
+    body. A clause's scope is its own (`own_scope`): it inherits nothing
+    from a same-named outer binding."""
     from . import statements as _st
+    it = _iter_step(site, inp)
+    if it is None:
+        return None
     an = inp.analyzer
-    stmt = site.node
-    ctx = _PlanCtx(inp, visible, site.func or inp.func, (stmt.iterable,))
+    stmt = it.node
+    ctx = _PlanCtx(inp, visible, site.func or inp.func, (it.iterable,))
     f: dict = {}
-    yields_const = _st._iteration_yields_const(stmt.iterable, ctx, an)
-    consuming = (_st._for_consuming_route(stmt, an, ctx.declared_view)
+    yields_const = _st._iteration_yields_const(it.iterable, ctx, an)
+    consuming = (it.consuming if it.consuming is not None
+                 else _st._for_consuming_route(stmt, an, ctx.declared_view)
                  is not None)
-    elem = loop_bound_element(stmt, an)
-    kind = loop_binding_of(stmt, an, consuming=consuming)
+    elem = it.bound
+    kind = step_binding(it, an, consuming=consuming)
     if kind is not None:
         f["loop_binding"] = kind
         # A reference over a const iteration deduces const (`auto&&`); a
@@ -2548,10 +2574,10 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
             kind in (LoopBinding.CONST_REFERENCE,
                      LoopBinding.CONST_TYPED_REFERENCE)
             or (kind is LoopBinding.REFERENCE and yields_const))
-    outer = visible(name)
-    et = stmt.elem_type
+    outer = None if site.own_scope else visible(name)
+    et = it.elem_type
     etu = _uw(unwrap_ref_type(et)) if isinstance(et, TpyType) else None
-    it_t = an.get_expr_type(stmt.iterable)
+    it_t = an.get_expr_type(it.iterable)
     # A container's element, or the step a consuming loop moves out of
     # its container, is the stored tuple itself.
     storage_tuple = (isinstance(etu, TupleType)
@@ -2560,10 +2586,11 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
                      and (consuming
                           or is_native_iterable(unwrap_readonly(it_t),
                                                 an.registry))
-                     and not (outer is not None and outer.storage_tuple)
-                     and _p._borrow_tuple_local_type(
-                         name, ctx.declared_view, ctx.names_with("storage_tuple"))
-                     is None)
+                     and not (outer is not None and (
+                         outer.storage_tuple
+                         or _p._borrow_tuple_local_type(
+                             name, ctx.declared_view,
+                             ctx.names_with("storage_tuple")) is not None)))
     if storage_tuple:
         f["storage_tuple"] = True
         f["const_storage_tuple"] = yields_const
@@ -2578,7 +2605,7 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
         # refuses a loop rebinding of another type, so the type carries.
         f["is_param"] = True
         f["param_type"] = outer.param_type
-    if stmt.is_tuple_unpack:
+    if it.unpack:
         # The head's step: its targets take, element by element, what the
         # loop owns.
         return _mk(site, name, typ, _loop_form(f.get("loop_binding")), None,
@@ -2587,8 +2614,8 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
         f["value_opt"] = ValueOptKind.SCALAR
     elif _p._foreach_storage_opt_elem(et, an):
         f["storage_opt"] = True
-        src = (stmt.iterable.obj if isinstance(stmt.iterable, TpyMethodCall)
-               else stmt.iterable)
+        src = (it.iterable.obj if isinstance(it.iterable, TpyMethodCall)
+               else it.iterable)
         f["const_storage_opt"] = _st._iteration_yields_const(src, ctx, an)
     elif owned_optional_step(et, f.get("loop_binding")):
         f["storage_opt"] = True
@@ -2597,7 +2624,7 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     # pass slot the loop writes, unless a consuming loop hands it over; a
     # copied step that does not allocate moves as it copies.
     acq = site.ownership.acquired
-    if stmt.hoist_loop_var and acq is not Acquired.CONSUMING_LOOP:
+    if it.hoisted and acq is not Acquired.CONSUMING_LOOP:
         f["move_exception"] = M.PASS_SLOT
     elif (acq is Acquired.COPIED_STEP
           and not (elem is not None and elem.is_expensive_copy())):
@@ -2799,9 +2826,12 @@ def _unpack_row(site, name, typ, inp: 'PlanInputs', visible):
     """A fresh tuple-unpack target (a statement's, a for head's): its form,
     and its facts over those of the same-named outer binding a loop head's
     fresh target shadows (`_inherit_outer`); the const of a head pointer or
-    reference is the iteration's, never the outer name's."""
+    reference is the iteration's, never the outer name's. A clause head's
+    targets live in the clause's own scope (`own_scope`)."""
+    if not isinstance(site.node, TpyTupleUnpack):
+        return None
     rec, shape = _unpack_target(site, name, typ, inp, visible)
-    outer = visible(name)
+    outer = None if site.own_scope else visible(name)
     if not site.node.is_loop_head or outer is None:
         return rec
     own = {fld: getattr(rec, fld) for fld in REPR_FIELDS}
@@ -2829,7 +2859,10 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
     """A fresh tuple-unpack target's record and its shape."""
     an = inp.analyzer
     stmt = site.node
-    i = stmt.targets.index(name)
+    # `x, x`: a statement's first target declares the name and the second
+    # writes it again; a clause head binds only the last (`_lower_unpack_stmt`).
+    i = (len(stmt.targets) - 1 - stmt.targets[::-1].index(name)
+         if site.own_scope else stmt.targets.index(name))
     flag = (lambda xs: bool(xs[i]) if i < len(xs) else False)
     is_ref = flag(stmt.is_ref)
     tt = unwrap_ref_type(typ) if isinstance(typ, TpyType) else None
@@ -2837,11 +2870,12 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
     shape = _unpack_target_shape(stmt, i, tt, an)
     # The statement's rvalue holder, or a loop head's step, is an owned
     # target's first storage; a module's names are module storage, which no
-    # init temporary is.
+    # init temporary is -- but a comprehension's own scope holds none.
     in_holder = (shape.owned
                  and (stmt.is_loop_head or unpack_holder_is_rvalue(stmt))
-                 and not (inp.top_level
-                          and (site.func or inp.func) is inp.func))
+                 and (site.own_scope
+                      or not (inp.top_level
+                              and (site.func or inp.func) is inp.func)))
     f: dict = {}
     if in_holder and storage.pointer and not storage.hoisted:
         # Storage standing before a loop outlives the holder, so a hoisted
@@ -2974,106 +3008,18 @@ def _unpack_source_const(site, i: int, inp: 'PlanInputs', visible) -> bool:
     if unpack_target_elem_readonly(stmt, i):
         return True
     if stmt.is_loop_head:
-        loop = site.loop
+        # The loop's (or the clause's) source: a reference over a const
+        # iteration is const, and so is one the body never writes through
+        # (the loop's const verdict).
+        loop = site.loop if site.loop is not None else site.clause
         if loop is None:
             return False
         ctx = _PlanCtx(inp, site.loop_visible, site.func or inp.func,
                        (loop.iterable,))
-        return _st._iteration_yields_const(loop.iterable, ctx, an)
+        return (bool(loop.const_loop_var)
+                or _st._iteration_yields_const(loop.iterable, ctx, an))
     ctx = _PlanCtx(inp, visible, site.func or inp.func, (stmt.value,))
     return _p._walrus_src_is_const(stmt.value, ctx)
-
-
-# A comprehension variable is never the pointer its same-named outer binding
-# may be. The route refuses a variable hiding a rebind slot, a storage tuple
-# or a narrowed name; every other fact in REPR_FIELDS is inherited, which is
-# wrong for a value Optional (BUGS.md#comp-loop-var-shadows-optional-ptr-param).
-# A frame member's `frame_class`, and the frame slot it decides, is not.
-_COMP_SCRUBBED = frozenset({"pointer"})
-
-
-def _comp_row(site, name, typ, inp: 'PlanInputs', visible):
-    """A comprehension variable: the facts its clause decides over those of
-    the same-named outer binding it shadows (`_inherit_outer`)."""
-    rec = _comp_clause_row(site, name, typ, inp, visible)
-    outer = visible(name)
-    if outer is None:
-        return rec
-    if rec is None:
-        rec = _mk(site, name, typ, F.NONE, None)
-    own = {fld: getattr(rec, fld) for fld in REPR_FIELDS}
-    return replace(rec, **_inherit_outer(own, outer, _COMP_SCRUBBED))
-
-
-def _comp_clause_row(site, name, typ, inp: 'PlanInputs', visible):
-    """The facts a comprehension clause decides for its variable, from the
-    clause's route (`_clause_route`), and for its head's targets from the
-    head's per-target record."""
-    from . import statements as _st
-    an = inp.analyzer
-    gen, route = site.clause or site.node, site.route
-    if route is None:
-        return None
-    if route.unpack_types is not None and name != gen.var:
-        # A target the step hands its element to holds it in place in the
-        # step, as an owned head target does; a record element and a
-        # pointer-repr Optional element (its storage optional) bind a
-        # reference into the element, const as the clause's loop variable;
-        # any other element its value.
-        # `x, x`: the last target of a name is the one bound.
-        i = len(gen.unpack_vars) - 1 - gen.unpack_vars[::-1].index(name)
-        tt = route.unpack_types[i]
-        const = bool(gen.const_loop_var)
-        if gen.head.is_owned[i]:
-            # An owned pointer-repr Optional holds the storage optional, as
-            # the clause variable of an owned Optional step does.
-            return _mk(site, name, typ, _loop_form(LoopBinding.OWNED), None,
-                       loop_binding=LoopBinding.OWNED,
-                       storage_opt=_p._optional_ptr_borrow(tt, an)
-                       is not None)
-        if _p._optional_ptr_borrow(tt, an) is not None:
-            return _mk(site, name, typ, F.STORAGE_OPT, None, storage_opt=True,
-                       const=const)
-        if _p.record_like(unwrap_readonly(unwrap_send_sync(tt)), an):
-            return _mk(site, name, typ, F.REFERENCE, None, const=const)
-        return _mk(site, name, typ, F.VALUE, None)
-    # The clause's loop binds its variable (an unpack clause, its holder)
-    # as the for statement's loop binds an element of the same type.
-    loop = (loop_binding_of(gen, an, elem=route.et)
-            if route.et is not None else None)
-    # A container's element is its stored tuple; a generator's step is the
-    # form it is yielded in.
-    it_t = route.it_type
-    step = tuple_step_facts(
-        route.et, loop,
-        stored=(it_t is not None and is_native_iterable(
-            unwrap_readonly(it_t), an.registry)))
-    if step.inline_elems is not None:
-        return _mk(site, name, typ, _loop_form(loop), None,
-                   loop_binding=loop, inline_elems=step.inline_elems)
-    if step.borrow_tuple_mixed:
-        return _mk(site, name, typ, _loop_form(loop), None,
-                   loop_binding=loop, borrow_tuple_mixed=True)
-    if owned_optional_step(route.et, loop):
-        return _mk(site, name, typ, _loop_form(loop), None,
-                   loop_binding=loop, storage_opt=True)
-    etp = unwrap_readonly(route.et) if route.et is not None else None
-    if isinstance(etp, TupleType) and etp.has_pointer_repr_element():
-        return _mk(site, name, typ, F.STORAGE_TUPLE, None, storage_tuple=True,
-                   loop_binding=loop)
-    if _p._foreach_storage_opt_elem(route.et, an):
-        ctx = _PlanCtx(inp, visible, site.func or inp.func)
-        src = (gen.iterable.obj if isinstance(gen.iterable, TpyMethodCall)
-               else gen.iterable)
-        return _mk(site, name, typ, F.STORAGE_OPT, None, storage_opt=True,
-                   const_storage_opt=_st._iteration_yields_const(src, ctx,
-                                                                 an),
-                   loop_binding=loop)
-    # An unpack clause's variable is the step its head reads, in the form
-    # its loop binds it.
-    return _mk(site, name, typ,
-               _loop_form(loop) if route.unpack_types is not None else F.NONE,
-               None, loop_binding=loop)
 
 
 @dataclass(frozen=True)
@@ -3233,7 +3179,10 @@ _ROWS: dict[str, tuple] = {
     "with": (_copied_value(_with_row),),
     "walrus": (_walrus_row,),
     "unpack": (_unpack_row,),
-    "comp": (_excepted(_comp_row, M.COMP_CLAUSE),),
+    # A comprehension clause's variable and its head's targets: the for
+    # statement's rows over the clause's own scope.
+    "comp": (_excepted(_loop_row, M.COMP_CLAUSE),
+             _excepted(_unpack_row, M.COMP_CLAUSE)),
     "def": (_def_row,),
     "match": (_copied_value(_match_row),),
     "nested_param": (_nested_param_row,),
@@ -3246,7 +3195,7 @@ def lambda_param_records(lam: TpyLambda,
                          inp: PlanInputs) -> dict[str, BindingRepr]:
     """A lambda's parameter records, at the types it was analyzed at."""
     types = list(lam.inferred_param_types)
-    return {n: classify_binding(_Site("lambda", lam), n,
+    return {n: classify_binding(_Site("lambda", lam, own_scope=True), n,
                                 types[i] if i < len(types) else None, inp,
                                 None)
             for i, n in enumerate(lam.param_names)}
@@ -3282,15 +3231,16 @@ class _Planner:
     def _record(self, site: _Site, name: str, typ, node: ScopeNode
                 ) -> BindingRepr:
         rec = self._fresh(classify_binding(site, name, typ, self.inp,
-                                           node.lookup), site.func)
+                                           node.lookup),
+                          own_scope=site.own_scope, func=site.func)
         self._key(site.node, rec)
         return rec
 
-    def _fresh(self, rec: BindingRepr, func: TpyFunction | None
-               ) -> BindingRepr:
-        """`rec` with `fresh_only` from the scope of `func` that binds it
-        (`_non_fresh_names`, once per function)."""
-        if rec.site_kind in ("comp", "lambda"):
+    def _fresh(self, rec: BindingRepr, *, own_scope: bool = False,
+               func=None) -> BindingRepr:
+        """`rec` with `fresh_only` from the scope of the function `func`
+        that binds it (`_non_fresh_names`, once per function)."""
+        if own_scope:
             # A comprehension clause's or a lambda's own scope: never the
             # target of a `del`.
             return rec
@@ -3595,7 +3545,7 @@ class _Planner:
                         - set(nonlocal_names))
         outer_pre = self.prescan or self.inp.prescan
         site = _Site("nested_param", in_branch=self.in_branch, func=func,
-                     prescan=outer_pre, nested=True)
+                     prescan=outer_pre, nested=True, own_scope=True)
         recs = {n: classify_binding(site, n, t, self.inp, parent.lookup)
                 for n, t in func.params}
         # The nested body's prescan carries no pointer-slot globals
@@ -3644,7 +3594,8 @@ class _Planner:
                 self.expr(gen.iterable, cur)
                 route = self._clause_route(e, gen, cur)
                 site = replace(self._site("comp", gen), route=route,
-                               comp=e)
+                               comp=e, own_scope=True,
+                               loop_visible=cur.lookup)
                 recs: dict[str, BindingRepr] = {}
                 tsite = site
                 if route is not None and route.unpack_types is not None:
@@ -3737,7 +3688,7 @@ def _clause_types(comp, gen: TpyComprehensionGenerator, route, analyzer
         rt = analyzer.get_expr_type(comp)
         if rt is not None and is_array(rt):
             return [(gen.var, route.et)]
-    return _clause_bindings(gen, route)
+    return _clause_bindings(gen, route, analyzer)
 
 
 def plan_bindings(inp: PlanInputs, body: list[TpyStmt]) -> BindingTable:
@@ -4042,7 +3993,7 @@ def _plan_once(inp: PlanInputs, body: list[TpyStmt]) -> BindingTable:
     planner = _Planner(inp, table)
     for name, rec in root_recs.items():
         if rec.site_kind != "receiver":
-            root_recs[name] = planner._fresh(rec, inp.func)
+            root_recs[name] = planner._fresh(rec)
     table.frame_members = tuple(n for n, rec in root_recs.items()
                                 if rec.frame_class is not None)
     planner.block(body, root, branch=False)

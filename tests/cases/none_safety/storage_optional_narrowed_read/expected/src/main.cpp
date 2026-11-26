@@ -378,8 +378,8 @@ void comp_unpack() {
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
             int32_t i = std::get<0>(__for_tup_0);
-            auto& x = std::get<1>(__for_tup_0);
-            if ((x.has_value())) {
+            R* x = ::tpy::optional_to_ptr(std::get<1>(__for_tup_0));
+            if ((x != nullptr)) {
                 __result.push_back(::tpyapp::main::plain((*x)));
             }
         }
@@ -394,8 +394,8 @@ void comp_unpack() {
         for (; __beg_1 != __end_1; ++__beg_1) {
             auto&& __for_tup_1 = *__beg_1;
             int32_t i = std::get<0>(__for_tup_1);
-            auto& x = std::get<1>(__for_tup_1);
-            __result.push_back((::tpy::add_check<int32_t>(::tpyapp::main::opt_param(::tpy::optional_to_ptr(x)), i)));
+            R* x = ::tpy::optional_to_ptr(std::get<1>(__for_tup_1));
+            __result.push_back((::tpy::add_check<int32_t>(::tpyapp::main::opt_param(x), i)));
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;

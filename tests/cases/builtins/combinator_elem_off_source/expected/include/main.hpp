@@ -403,7 +403,7 @@ inline int32_t Bag::comp_total(const std::vector<int32_t>& ws) const {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_21 = *__beg_0;
-            auto& c = std::get<0>(__for_tup_21);
+            auto& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_21)));
             int32_t w = std::get<1>(__for_tup_21);
             __result.push_back((::tpy::mul_check<int32_t>(c.v, w)));
         }

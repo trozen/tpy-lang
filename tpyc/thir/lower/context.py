@@ -2726,10 +2726,14 @@ class _LowerCtx:
 
     @contextmanager
     def shadow_scope(self, names: AbstractSet[str],
-                     declared: 'dict[str, TpyType] | None' = None):
-        """For an inner scope (nested def, lambda) binding `names`, strip them
-        from every inherited per-name fact until exit; yields `declared`
-        minus `names` as a new dict (None when not passed)."""
+                     declared: 'dict[str, TpyType] | None' = None, *,
+                     own_statements: bool = True):
+        """For an inner scope (nested def, lambda, comprehension clause)
+        binding `names`, strip them from every inherited per-name fact until
+        exit; yields `declared` minus `names` as a new dict (None when not
+        passed). A scope without statements of its own (`own_statements`
+        False: a comprehension, whose filter walrus binds the enclosing
+        statement's scope) keeps the statement it is lowered in."""
         names = frozenset(names)
         prescan = self.prescan
         saved_lc = [getattr(self, a) for a in _SHADOWED_LC_STATE]
@@ -2758,7 +2762,8 @@ class _LowerCtx:
         if "self" in names:
             self.member_self = False
         # The inner scope's statements are its own (a lambda body has none).
-        self.stmt_entry = None
+        if own_statements:
+            self.stmt_entry = None
         try:
             yield (None if declared is None
                    else _without_names(declared, names))

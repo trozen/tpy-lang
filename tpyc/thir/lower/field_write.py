@@ -95,7 +95,6 @@ from .checks import (
 )
 from .predicates import (
     tuple_stores_into,
-    _comp_shadow_pointers,
     _eligible_char,
     _eligible_ptr_union,
     _eligible_scalar,
@@ -536,8 +535,7 @@ def _storage_literal(stmt: TpyAssign, plan: _StoragePlan, slot: _ExprUse,
         _witness("field_write.opt_container_comp" if opt_inner is not None
                  else "field_write.container_comp")
         return _comprehensions._lower_comprehension(
-            v, lit_t, lc, declared,
-            _comp_shadow_pointers(lc.names_with("pointer"), declared, analyzer))
+            v, lit_t, lc, declared)
     if isinstance(v, TpyTupleLiteral):
         return _storage_tuple_literal(v, st, lc, declared,
                                       stmt_reject_reason(stmt))
