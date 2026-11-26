@@ -206,10 +206,9 @@ void int_widen_or() {
 //     z = 0 if c else 10000000000  # tpyc: warning(/outside default int32 range; inferring int/)
 //     print("int_literal_pair:", x, y, z)
 void int_literal_pair(bool c) {
-    auto&& __tmp_1 = 0;
-    ::tpy::BigInt x = (__tmp_1 ? ::tpy::BigInt(__tmp_1) : static_cast<int64_t>(10000000000));
-    auto&& __tmp_2 = static_cast<int64_t>(10000000000);
-    ::tpy::BigInt y = (__tmp_2 ? __tmp_2 : ::tpy::BigInt(0));
+    ::tpy::BigInt x = (0 ? ::tpy::BigInt(0) : static_cast<int64_t>(10000000000));
+    auto&& __tmp_1 = static_cast<int64_t>(10000000000);
+    ::tpy::BigInt y = (__tmp_1 ? __tmp_1 : ::tpy::BigInt(0));
     ::tpy::BigInt z = ((c) ? (::tpy::BigInt(0)) : (::tpy::BigInt(static_cast<int64_t>(10000000000LL))));
     std::cout << "int_literal_pair:" << " " << x << " " << y << " " << z << "\n" << ::tpy::check_signals;
 }

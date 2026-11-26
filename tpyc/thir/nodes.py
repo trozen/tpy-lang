@@ -14,7 +14,10 @@ the form-carrying nodes slot in without reshaping the hierarchy.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+import dataclasses
+import functools
+import re
 from dataclasses import dataclass, field, fields as dc_fields, replace
 from enum import Enum, auto
 from typing import TYPE_CHECKING, NamedTuple
@@ -201,11 +204,34 @@ class THIRRecordLayout:
     ancestors: tuple[NominalType, ...] = ()
 
 
+# A `@cpp_template` pattern naming any of these may leave the function it
+# expands in. Matched as whole words anywhere -- comments, literals and
+# lambda bodies included: a false positive only keeps the expansion out of
+# a lambda, where a missed jump would break the build.
+_LEAVING_TOKEN = re.compile(
+    r"\b(?:return|goto|break|continue|co_return|co_yield|co_await|throw)\b")
+
+
+@functools.cache
+def template_leaves_function(pattern: str | None) -> bool:
+    """Whether a `@cpp_template` pattern, read before any argument is
+    substituted into it, may leave the function it expands in: a return,
+    jump or throw of its own, so its expansion cannot sit in a lambda."""
+    return pattern is not None and _LEAVING_TOKEN.search(pattern) is not None
+
+
 @dataclass(frozen=True)
 class THIRNode:
     # kw_only so subclasses can declare required positional fields after it
     # (base-class defaults would otherwise force every later field to default).
     loc: SourceLocation | None = field(default=None, kw_only=True)
+
+    @property
+    def leaves_function(self) -> bool:
+        """Whether the node's own C++ may leave the function it sits in
+        (`template_leaves_function`), so it cannot be read inside a lambda.
+        A node carrying a template pattern reads it off that pattern."""
+        return False
 
 
 @dataclass(frozen=True)
@@ -751,6 +777,11 @@ class THIRBinOp(THIRExpr):
     # target-resolved cpp_template over the bare operands -- no wrappers,
     # no parens (`::tpy::add_check<int64_t>(l, r)`).
     template_override: 'str | None' = None
+    @property
+    def leaves_function(self) -> bool:
+        return any(template_leaves_function(t) for t in (
+            self.template_override,
+            self.resolved.method.cpp_template if self.resolved else None))
 
     @property
     def promoted_operand(self) -> int | None:
@@ -818,9 +849,8 @@ class THIRValueSelect(THIRExpr):
     `and`, where `t` is the truthiness of the (once-evaluated) LHS and the
     RHS sits lazily inside the ternary branch (short-circuit preserved).
 
-    `lhs_temp_cpp` non-None hoists a non-name LHS into a `__tmp_N` off the
-    shared counter (`auto&&`, or `std::string_view` for a str literal),
-    reused by the truthy test and the lhs branch. `truthy_mode` selects
+    A non-name LHS is held once in an argument temp, read by the truthy
+    test (`lhs`) and again by the lhs branch (`lhs_held`). `truthy_mode` selects
     the LHS truthiness render: NONEMPTY -> `(!ref.empty())` (str family),
     RECORD_LEN -> `(::tpy::__len__(ref) != 0)` (containers),
     ALWAYS_TRUE -> the folded bare `true` (an always-truthy record LHS --
@@ -840,7 +870,10 @@ class THIRValueSelect(THIRExpr):
     rhs: 'THIRExpr'
     op: str
     truthy_mode: 'TruthinessMode | None' = None
-    lhs_temp_cpp: 'str | None' = None
+    # The chosen arm's read (`THIRTempRead`) of the argument temp `lhs`
+    # holds the left operand in once (`held_operand`); `lhs` itself is the
+    # truthy test's read, which fills it.
+    lhs_held: 'THIRExpr | None' = None
     lhs_move: bool = False
     lhs_cast: 'str | None' = None
     rhs_cast: 'str | None' = None
@@ -903,6 +936,10 @@ class THIRChainedCompareStmtExpr(THIRExpr):
     inits: tuple['THIRExpr | None', ...]
     pairs: tuple[THIRBinOp, ...]
     by_value: tuple[bool, ...] = ()
+    # Per operand, the fresh objects its init reads (`mk()` under
+    # `mk().ch.p`), bound `auto&& __rI` (then `__rI_1`, ...) just before
+    # `_cmpI`.
+    roots: tuple[tuple['THIRExpr', ...], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1090,6 +1127,9 @@ class THIRTupleMembership(THIRExpr):
     elements: tuple[THIRExpr, ...]
     negate: bool = False
     need_temp: bool = False
+    # The fresh objects the bound needle reads, bound `auto&& __in_root`
+    # (then `__in_root_1`, ...) just before `__in_lhs`.
+    left_roots: tuple['THIRExpr', ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1116,6 +1156,9 @@ class THIRUnaryArith(THIRExpr):
     cpp_template: str
     operand: THIRExpr
     resolved: ResolvedUnaryop | None = None
+    @property
+    def leaves_function(self) -> bool:
+        return template_leaves_function(self.cpp_template)
 
     @property
     def certified_op(self) -> bool:
@@ -1227,6 +1270,9 @@ class THIRBoundCall:
     method_cpp: str
     native_function_name: str | None = None
     cpp_template: str | None = None
+    @property
+    def leaves_function(self) -> bool:
+        return template_leaves_function(self.cpp_template)
 
 
 @dataclass(frozen=True)
@@ -1339,6 +1385,9 @@ class THIRCall(THIRExpr):
     # An `Own[R]` result materialized for its full expression (a field
     # receiver, a discarded statement); as on THIRCtorCall.
     full_expression_storage: THIROwnedRecord | None = None
+    @property
+    def leaves_function(self) -> bool:
+        return template_leaves_function(self.cpp_template)
 
     @property
     def _spells_its_argument(self) -> bool:
@@ -1457,13 +1506,12 @@ class THIRVarargPack(THIRExpr):
       `::tpy::varargs<E>(inner)` for a spanlike source (`span_fn` None), or
       `::tpy::varargs<E>(::tpy::as_span(inner))` / `as_mut_span` for a
       non-span container (`span_fn` set) -- `star_source` is the lowered inner.
-    - Otherwise the per-arg array: value elements land bare in
-      `std::array<E, N>`; reference elements as `E*` in `std::array<E*, N>`
-      (`is_ref`), an lvalue element address-taken in place (`&x`,
-      `ref_lvalue[i]` True) and an rvalue element hoisted into its own
-      `E __tmp = <rvalue>;` decl first (`ref_lvalue[i]` False). The array
-      temp flushes before the enclosing statement (admitted only under
-      `temp_args`).
+    - Otherwise the per-arg array (`array`): an argument temp holding the
+      `THIRVarargArray` of the elements, `std::array<E, N>` of value
+      elements or `std::array<E*, N>` of reference ones (`is_ref`). Like
+      any argument temp it is declared before the statement, banked where
+      the pack is evaluated under a condition, or seated where the keep
+      plan says.
 
     `elem_cpp` is the `varargs<...>` element spelling (`const T` for a
     readonly slot). Element exprs render position-blind (no target is
@@ -1471,10 +1519,20 @@ class THIRVarargPack(THIRExpr):
     slot consumes."""
     elem_cpp: str
     is_ref: bool = False
-    args: tuple[THIRExpr, ...] = ()
-    ref_lvalue: tuple[bool, ...] = ()
     star_source: 'THIRExpr | None' = None
     span_fn: str | None = None
+    # The argument temp holding the per-arg array (`THIRVarargArray`).
+    array: 'THIRExpr | None' = None
+
+
+@dataclass(frozen=True)
+class THIRVarargArray(THIRExpr):
+    """The per-arg array of a `*args` pack (`THIRVarargPack.array`), the
+    initializer of the argument temp that holds it: its elements in brace
+    order, value elements bare, reference elements (`is_ref`) as addresses
+    (`&x`) of lvalues or of the argument temps holding fresh ones."""
+    is_ref: bool = False
+    elements: tuple[THIRExpr, ...] = ()
 
 
 class SeatLifetime(Enum):
@@ -1548,14 +1606,44 @@ class THIRArgTemp(THIRExpr):
     # The keep plan's lifetime for the argument it holds (`held_temp`);
     # None for storage no argument's value borrows.
     lifetime: 'SeatLifetime | None' = None
-    # A seat of a value that cannot move: banked into a conditional region,
-    # it is built in place from a callable returning its initializer
-    # (`::tpy::detail::elided_slot<T>`, `fill([&]() -> T { return init; })`).
+    # A seat of a value built in place: banked into a conditional region,
+    # it is constructed in the storage of a `::tpy::elided_slot<T>`
+    # with its initializer written in place (`in_place_fill`).
     fills_in_place: bool = False
+    # An operand its statement reads again (`held_operand`): bound
+    # `auto&& t = init;` where its statement always evaluates it (which
+    # extends a prvalue and names an lvalue) and wherever it does not fill
+    # in place -- every temp `init` holds declared before the statement
+    # with it; banked into a conditional region, held in a slot of the type
+    # and value category C++ deduces (`deduces_type`), unless `cpp_type`
+    # names the type.
+    held: bool = False
+    # Storage a statement-bound operand rule declares, where no temp stood
+    # before those rules: the seat of a fresh object an operand reads
+    # (`seated_operand`), a value select's held left operand
+    # (`hold_lowered`), a `*args` pack's array. The frame tuple-unpack
+    # alias gate (`_hoists_arg_temp`) does not count it
+    # (BUGS.md#tuple-literal-arg-unpack-borrow-dangles).
+    operand_storage: bool = False
 
     def with_held(self, convert: 'Callable[[THIRExpr], THIRExpr]'
                   ) -> 'THIRExpr | None':
         return replace(self, init=convert(self.init))
+
+    @property
+    def deduces_type(self) -> bool:
+        """Whether, banked, its slot takes the type and value category C++
+        deduces for `init` (`deduced_slot`): over `init`'s own text, or
+        over the call alone where `init` is an `@error_return` unwrap
+        (`::tpy::unwrapped_t_of`)."""
+        return self.held and self.fills_in_place and self.cpp_type is None
+
+    @property
+    def binds_eagerly(self) -> bool:
+        """Whether a held operand is bound before its statement with every
+        temp it holds, banked or not -- one its region cannot bank
+        (BUGS.md#held-operand-nested-unwrap-eager)."""
+        return self.held and not self.would_bank()
 
     def would_bank(self) -> bool:
         """Will the conditional-operand machinery BANK this temp into the
@@ -1566,8 +1654,8 @@ class THIRArgTemp(THIRExpr):
         row emits `movable=False`) and the slot spelling (a `None`
         cpp_type is the `auto` row, which no `std::optional` can name); a
         seat built in place (`fills_in_place`) banks whatever it is."""
-        return banks_in_region(self.cpp_type or "auto",
-                               bool(self.movable) or self.fills_in_place)
+        return self.fills_in_place or banks_in_region(self.cpp_type or "auto",
+                                                      bool(self.movable))
 
 
 @dataclass(frozen=True)
@@ -1809,6 +1897,9 @@ class THIRMethodCall(THIRExpr):
     # An `Own[R]` result materialized for its full expression; as on
     # THIRCtorCall. Analysis only: no render reads it.
     full_expression_storage: THIROwnedRecord | None = None
+    @property
+    def leaves_function(self) -> bool:
+        return template_leaves_function(self.cpp_template)
 
     def __post_init__(self) -> None:
         checked = isinstance(self.receiver, THIRNoneCheck)
@@ -2065,8 +2156,7 @@ class THIRArrayComprehension(THIRExpr):
                <binding of var | unpack targets off __obj_N[__i_N]>
                return <element>; }); })
 
-    The range arm's element flushes its temps inside the lambda, before the
-    `return`; the source arm's element has no flush."""
+    The element flushes its temps inside the lambda, before the `return`."""
     arm: str = ""                         # "range" | "source"
     var: str = ""                         # loop var (source name)
     array_elem_cpp: str = ""              # the array element spelling
@@ -2497,6 +2587,11 @@ class THIRSubscript(THIRExpr):
         return (self.tuple_index is not None and self.elem_pointer
                 and not self.deref)
 
+    @property
+    def leaves_function(self) -> bool:
+        return any(b is not None and b.leaves_function
+                   for b in (self.bound_getitem, self.unchecked_getitem))
+
     def __post_init__(self) -> None:
         self._restamp_reads()
 
@@ -2572,6 +2667,9 @@ class THIRStrSlice(THIRExpr):
     step: THIRExpr | None = None
     stepped: bool = False
     index: THIRExpr | None = None
+    @property
+    def leaves_function(self) -> bool:
+        return template_leaves_function(self.cpp_template)
 
 
 @dataclass(frozen=True)
@@ -4315,6 +4413,11 @@ class THIRErrorReturnUnwrap(THIRExpr):
     call: THIRExpr
     value_form: bool = True
 
+    @property
+    def leaves_function(self) -> bool:
+        # Its check returns, or jumps to a handler.
+        return True
+
 
 @dataclass(frozen=True)
 class THIRErrorReturnBind(THIRStmt):
@@ -5116,15 +5219,11 @@ def constructor_signature(ctor: THIRConstructor) -> THIRCallableSignature:
 
 def hoists_declaration(node: THIRNode) -> bool:
     """Whether `node`'s render declares something before its enclosing
-    statement: an arg temp, a slot emplace, a
-    `*args` pack's element array, an `and` / `or` operand held once, or a
-    walrus target. The one definition the lowering's factory (`_hoisted`)
-    and the validator's no-statement checks share."""
+    statement: an arg temp, a slot emplace, or a walrus target. The one
+    definition the lowering's factory (`_hoisted`) and the validator's
+    no-statement checks share."""
     return (isinstance(node, (THIRSlotEmplace, THIRWalrus))
-            or (isinstance(node, THIRArgTemp) and node.frame_holder is None)
-            or (isinstance(node, THIRValueSelect)
-                and node.lhs_temp_cpp is not None)
-            or (isinstance(node, THIRVarargPack) and bool(node.args)))
+            or (isinstance(node, THIRArgTemp) and node.frame_holder is None))
 
 
 def replaced_node(root: THIRNode, old: THIRNode, new: THIRNode) -> THIRNode:
@@ -5147,6 +5246,55 @@ def replaced_node(root: THIRNode, old: THIRNode, new: THIRNode) -> THIRNode:
             if any(a is not b for a, b in zip(items, v)):
                 changes[f.name] = items
     return replace(root, **changes) if changes else root
+
+
+def iter_children(node: THIRNode) -> Iterator[THIRNode]:
+    """The THIR nodes `node` holds directly, in field order -- through a
+    sequence nested in a sequence too (a chained comparison's per-operand
+    root tuples)."""
+    for f in dc_fields(node):
+        v = getattr(node, f.name)
+        if isinstance(v, THIRNode):
+            yield v
+        elif isinstance(v, (list, tuple)):
+            yield from _sequence_children(v)
+
+
+def subtree_has(node: THIRNode, pred: 'Callable[[THIRNode], bool]') -> bool:
+    """Whether `pred` holds for `node` or any node inside it
+    (`iter_children`)."""
+    stack: list[THIRNode] = [node]
+    while stack:
+        n = stack.pop()
+        if pred(n):
+            return True
+        stack.extend(iter_children(n))
+    return False
+
+
+def may_leave_function(node: THIRNode) -> bool:
+    """Whether any node in `node`'s subtree may leave the function it sits
+    in (`THIRNode.leaves_function`): what neither a never-called lambda nor
+    a declaration ahead of a later one may hold."""
+    return subtree_has(node, lambda n: n.leaves_function)
+
+
+def _sequence_children(items: 'list | tuple') -> Iterator[THIRNode]:
+    for item in items:
+        if isinstance(item, THIRNode):
+            yield item
+        elif isinstance(item, (list, tuple)):
+            yield from _sequence_children(item)
+        elif dataclasses.is_dataclass(item) and not isinstance(item, type):
+            # MIL/base-init cells (THIRMilInit / THIRBaseInit) are
+            # plain dataclasses holding THIR exprs.
+            yield from iter_children(item)
+
+
+def bound_root_name(name: str, k: int) -> str:
+    """The name the `k`-th fresh root an operand reads is bound to in the
+    statement expression binding the operand (`name`, `name_1`, ...)."""
+    return name if k == 0 else f"{name}_{k}"
 
 
 def declares_temporaries(heads: 'tuple[THIRExpr | None, ...]') -> bool:

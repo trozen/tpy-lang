@@ -43,29 +43,29 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_pack_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::optional<std::vector<int32_t>> __tmp_1;
+        ::tpy::elided_slot<std::vector<int32_t>> __tmp_1;
         std::optional<std::array<const std::vector<int32_t>*, 1>> __tmp_2;
         __state = S_RESUME_0;
-        return ((c) ? (5) : (__tmp_1.emplace(std::vector<int32_t>{1, 2, 3}), __tmp_2.emplace(std::array<const std::vector<int32_t>*, 1>{&(*__tmp_1)}), ::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_2)))));
+        return ((c) ? (5) : (TPY_SLOT_FILL(__tmp_1, std::vector<int32_t>{1, 2, 3}), __tmp_2.emplace(std::array<const std::vector<int32_t>*, 1>{&(*__tmp_1)}), ::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_2)))));
     }
     case S_RESUME_0: {  // after: yield 5 if c else sl([1, 2, 3])  # tpyc: ok
-        std::optional<std::vector<int32_t>> __tmp_3;
+        ::tpy::elided_slot<std::vector<int32_t>> __tmp_3;
         std::optional<std::array<const std::vector<int32_t>*, 1>> __tmp_4;
         __state = S_RESUME_1;
-        return ((c) ? (8) : (__tmp_3.emplace(::tpyapp::part_plan_reads_restored::mk(1)), __tmp_4.emplace(std::array<const std::vector<int32_t>*, 1>{&(*__tmp_3)}), ::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_4)))));
+        return ((c) ? (8) : (TPY_SLOT_FILL(__tmp_3, ::tpyapp::part_plan_reads_restored::mk(1)), __tmp_4.emplace(std::array<const std::vector<int32_t>*, 1>{&(*__tmp_3)}), ::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_4)))));
     }
     case S_RESUME_1: {  // after: yield 8 if c else sl(mk(1))
-        std::optional<::tpy::ordered_map<std::string, int32_t>> __tmp_5;
+        ::tpy::elided_slot<::tpy::ordered_map<std::string, int32_t>> __tmp_5;
         std::optional<std::array<const ::tpy::ordered_map<std::string, int32_t>*, 1>> __tmp_6;
         __state = S_RESUME_2;
-        return ((c) ? (5) : (__tmp_5.emplace(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})), __tmp_6.emplace(std::array<const ::tpy::ordered_map<std::string, int32_t>*, 1>{&(*__tmp_5)}), ::tpyapp::part_plan_reads_restored::sd(::tpy::varargs<const ::tpy::ordered_map<std::string, int32_t>>((*__tmp_6)))));
+        return ((c) ? (5) : (TPY_SLOT_FILL(__tmp_5, ::tpy::ordered_map<std::string, int32_t>({{"a", 1}})), __tmp_6.emplace(std::array<const ::tpy::ordered_map<std::string, int32_t>*, 1>{&(*__tmp_5)}), ::tpyapp::part_plan_reads_restored::sd(::tpy::varargs<const ::tpy::ordered_map<std::string, int32_t>>((*__tmp_6)))));
     }
     case S_RESUME_2: {  // after: yield 5 if c else sd({"a": 1})  # tpyc: ok
-        std::optional<P> __tmp_7;
-        std::optional<P> __tmp_8;
+        ::tpy::elided_slot<P> __tmp_7;
+        ::tpy::elided_slot<P> __tmp_8;
         std::optional<std::array<const P*, 2>> __tmp_9;
         __state = S_RESUME_3;
-        return ((c) ? (6) : (__tmp_7.emplace(P(4)), __tmp_8.emplace(P(5)), __tmp_9.emplace(std::array<const P*, 2>{&(*__tmp_7), &(*__tmp_8)}), ::tpyapp::part_plan_reads_restored::sp(::tpy::varargs<const P>((*__tmp_9)))));
+        return ((c) ? (6) : (TPY_SLOT_FILL(__tmp_7, P(4)), TPY_SLOT_FILL(__tmp_8, P(5)), __tmp_9.emplace(std::array<const P*, 2>{&(*__tmp_7), &(*__tmp_8)}), ::tpyapp::part_plan_reads_restored::sp(::tpy::varargs<const P>((*__tmp_9)))));
     }
     case S_RESUME_3: {  // after: yield 6 if c else sp(P(4), P(5))  # tpyc: ok
         __state = S_DONE;

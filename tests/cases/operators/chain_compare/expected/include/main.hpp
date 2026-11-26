@@ -187,7 +187,7 @@ inline bool P::__lt__(const P& other) const {
 //     return 0 < b.take().v < 10  # tpyc: ok
 inline bool Holder::check() const {
     ::tpystd::tplib::box::Box<N> b = ::tpystd::tplib::box::Box<N>(N(4));
-    return ({ auto&& _cmp1 = std::move(b).take().v; (0 < _cmp1) && (_cmp1 < 10); });
+    return ({ auto&& __r1 = std::move(b).take(); auto&& _cmp1 = __r1.v; (0 < _cmp1) && (_cmp1 < 10); });
 }
 void __tpy_init();
 } // namespace tpyapp::main

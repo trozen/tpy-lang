@@ -19,9 +19,10 @@ from .frame import (
     stmt_slots, terminator_slots,
 )
 from .reject import is_bodyless_binding
-from .validate import _iter_children
+from .nodes import iter_children
 from .lower import iter_module_callables, iter_module_constructors
 from .nodes import (
+    bound_root_name,
     Form, body_header,
     TruthinessMode,
     THIRArgTemp,
@@ -141,6 +142,7 @@ from .nodes import (
     THIRTry,
     THIRTupleLiteral,
     THIRTupleMembership,
+    THIRVarargArray,
     THIRVarargPack,
 )
 
@@ -208,9 +210,9 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRBinOp):
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
     if isinstance(e, THIRValueSelect):
-        temp = (f" [lhs_temp {e.lhs_temp_cpp}"
+        temp = (f" [lhs_held"
                 f"{', moved' if e.lhs_move else ''}]"
-                if e.lhs_temp_cpp is not None else "")
+                if e.lhs_held is not None else "")
         return (f"value_select({_expr(e.lhs)}, {e.op}, {_expr(e.rhs)}"
                 f"{temp})")
     if isinstance(e, THIRUnaryNot):
@@ -430,8 +432,10 @@ def _expr(e: THIRExpr) -> str:
         return _membership(e)
     if isinstance(e, THIRChainedCompareStmtExpr):
         # The temps it binds, then the pairs over them.
-        binds = [f"_cmp{i}{' [value]' if e.by_value and e.by_value[i] else ''}"
-                 f" = {_expr(init)}" for i, init in enumerate(e.inits)
+        binds = ["".join(f"{bound_root_name(f'__r{i}', k)} = {_expr(r)}; "
+                         for k, r in enumerate(e.roots[i] if e.roots else ()))
+                 + f"_cmp{i}{' [value]' if e.by_value and e.by_value[i] else ''}"
+                 + f" = {_expr(init)}" for i, init in enumerate(e.inits)
                  if init is not None]
         pairs = " && ".join(_expr(p) for p in e.pairs)
         return f"chained_compare({'; '.join(binds + [pairs])})"
@@ -445,7 +449,10 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRVarargPack):
         star = "" if e.star_source is None else f", *{_expr(e.star_source)}"
         ref = " [ref]" if e.is_ref else ""
-        return f"vararg_pack<{e.elem_cpp}>({_exprs(e.args)}{star}){ref}"
+        array = "" if e.array is None else _expr(e.array)
+        return f"vararg_pack<{e.elem_cpp}>({array}{star}){ref}"
+    if isinstance(e, THIRVarargArray):
+        return f"vararg_array({_exprs(e.elements)})"
     if type(e) in _UNDUMPED:
         return f"<{type(e).__name__}>"
     raise AssertionError(
@@ -466,7 +473,10 @@ def _membership(e: THIRExpr) -> str:
         return f"str_{neg}({_expr(e.needle)}, {_expr(e.receiver)}){sv}"
     if isinstance(e, THIRTupleMembership):
         tmp = " [temp]" if e.need_temp else ""
-        return f"tuple_{neg}({_expr(e.left)}, [{_exprs(e.elements)}]){tmp}"
+        root = "".join(f"{bound_root_name('__in_root', k)} = {_expr(r)}; "
+                       for k, r in enumerate(e.left_roots))
+        return (f"tuple_{neg}({root}{_expr(e.left)}, [{_exprs(e.elements)}])"
+                f"{tmp}")
     how = ("free" if e.free_function
            else "method")
     return (f"{neg}[{how}]({_expr(e.needle)}, {_expr(e.receiver)}"
@@ -823,7 +833,7 @@ def _callee_facts(e: THIRCall | THIRMethodCall) -> str | None:
 
 def _walk(node: object) -> Iterable[object]:
     yield node
-    for child in _iter_children(node):
+    for child in iter_children(node):
         yield from _walk(child)
 
 

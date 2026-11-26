@@ -62,7 +62,7 @@ from ..nodes import (THIRAssign, THIRCallableSignature, THIRErrorReturnBind, THI
                      THIRWalrus)
 from .frame_seat import EMPTY_PLAN, BoundScope, Hand, KeepPlan, plan_keeps
 from ..param_contract import Materializer, ParamContract, PointerKind
-from ..validate import _iter_children
+from ..nodes import iter_children
 from .captures import CaptureSites
 from .predicates import (
     _callable_value,
@@ -1829,7 +1829,7 @@ def _iter_thir(roots):
     while stack:
         node = stack.pop()
         yield node
-        stack.extend(_iter_children(node))
+        stack.extend(iter_children(node))
 
 
 def _filled_slots(stmt: THIRStmt) -> list[THIRRebindSlot]:
@@ -1846,7 +1846,7 @@ def _filled_slots(stmt: THIRStmt) -> list[THIRRebindSlot]:
             if slot is not None:
                 out[slot] = None
         # Pre-order, so sites without a loc keep the order they emit in.
-        stack.extend(reversed(list(_iter_children(node))))
+        stack.extend(reversed(list(iter_children(node))))
     return list(out)
 
 

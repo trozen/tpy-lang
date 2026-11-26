@@ -254,9 +254,9 @@ __coro_awaited awaited() {
 //         print("fresh_cond", v)
 void cond_head(bool flag) {
     {
-        ::tpy::detail::elided_slot<Pinned> __tmp_1;
-        ::tpy::detail::elided_slot<Pinned> __tmp_2;
-        auto __src_0 = ((flag) ? (__tmp_1.fill([&]() -> Pinned { return Pinned(1); }), ::tpyapp::part_fresh_element::each((*__tmp_1)[0])) : (__tmp_2.fill([&]() -> Pinned { return Pinned(3); }), ::tpyapp::part_fresh_element::each((*__tmp_2)[0])));
+        ::tpy::elided_slot<Pinned> __tmp_1;
+        ::tpy::elided_slot<Pinned> __tmp_2;
+        auto __src_0 = ((flag) ? (TPY_SLOT_FILL(__tmp_1, Pinned(1)), ::tpyapp::part_fresh_element::each((*__tmp_1)[0])) : (TPY_SLOT_FILL(__tmp_2, Pinned(3)), ::tpyapp::part_fresh_element::each((*__tmp_2)[0])));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -295,9 +295,9 @@ void cond_movable(bool flag) {
         }
     }
     {
-        ::tpy::detail::elided_slot<Loose> __tmp_3;
-        ::tpy::detail::elided_slot<Loose> __tmp_4;
-        auto __src_2 = ((flag) ? (__tmp_3.fill([&]() -> Loose { return ::tpyapp::part_fresh_element::make_loose(5); }), ::tpyapp::part_fresh_element::each((*__tmp_3)[0])) : (__tmp_4.fill([&]() -> Loose { return ::tpyapp::part_fresh_element::make_loose(7); }), ::tpyapp::part_fresh_element::each((*__tmp_4)[0])));
+        ::tpy::elided_slot<Loose> __tmp_3;
+        ::tpy::elided_slot<Loose> __tmp_4;
+        auto __src_2 = ((flag) ? (TPY_SLOT_FILL(__tmp_3, ::tpyapp::part_fresh_element::make_loose(5)), ::tpyapp::part_fresh_element::each((*__tmp_3)[0])) : (TPY_SLOT_FILL(__tmp_4, ::tpyapp::part_fresh_element::make_loose(7)), ::tpyapp::part_fresh_element::each((*__tmp_4)[0])));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -307,9 +307,9 @@ void cond_movable(bool flag) {
         }
     }
     {
-        ::tpy::detail::elided_slot<Nested> __tmp_5;
-        ::tpy::detail::elided_slot<Pinned> __tmp_6;
-        auto __src_4 = ((flag) ? (__tmp_5.fill([&]() -> Nested { return ::tpyapp::part_fresh_element::make_nested(9); }), ::tpyapp::part_fresh_element::each((*__tmp_5)[0])) : (__tmp_6.fill([&]() -> Pinned { return ::tpyapp::part_fresh_element::make_pinned(11); }), ::tpyapp::part_fresh_element::each((*__tmp_6)[0])));
+        ::tpy::elided_slot<Nested> __tmp_5;
+        ::tpy::elided_slot<Pinned> __tmp_6;
+        auto __src_4 = ((flag) ? (TPY_SLOT_FILL(__tmp_5, ::tpyapp::part_fresh_element::make_nested(9)), ::tpyapp::part_fresh_element::each((*__tmp_5)[0])) : (TPY_SLOT_FILL(__tmp_6, ::tpyapp::part_fresh_element::make_pinned(11)), ::tpyapp::part_fresh_element::each((*__tmp_6)[0])));
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -347,11 +347,11 @@ int32_t mark(int32_t x) {
 //         print("fresh_nested_args", v)
 void cond_head_args(bool flag) {
     {
-        std::array<const int32_t, 1> __tmp_1{21};
-        ::tpy::detail::elided_slot<Pinned> __tmp_2;
-        std::array<const int32_t, 1> __tmp_3{23};
-        ::tpy::detail::elided_slot<Pinned> __tmp_4;
-        auto __src_0 = ((flag) ? (__tmp_2.fill([&]() -> Pinned { return Pinned(::tpyapp::part_fresh_element::tick(::tpy::varargs<const int32_t>(__tmp_1))); }), ::tpyapp::part_fresh_element::each((*__tmp_2)[0])) : (__tmp_4.fill([&]() -> Pinned { return Pinned(::tpyapp::part_fresh_element::tick(::tpy::varargs<const int32_t>(__tmp_3))); }), ::tpyapp::part_fresh_element::each((*__tmp_4)[0])));
+        ::tpy::elided_slot<std::array<const int32_t, 1>> __tmp_1;
+        ::tpy::elided_slot<Pinned> __tmp_2;
+        ::tpy::elided_slot<std::array<const int32_t, 1>> __tmp_3;
+        ::tpy::elided_slot<Pinned> __tmp_4;
+        auto __src_0 = ((flag) ? (TPY_SLOT_FILL(__tmp_1, std::array<const int32_t, 1>{21}), TPY_SLOT_FILL(__tmp_2, Pinned(::tpyapp::part_fresh_element::tick(::tpy::varargs<const int32_t>((*__tmp_1))))), ::tpyapp::part_fresh_element::each((*__tmp_2)[0])) : (TPY_SLOT_FILL(__tmp_3, std::array<const int32_t, 1>{23}), TPY_SLOT_FILL(__tmp_4, Pinned(::tpyapp::part_fresh_element::tick(::tpy::varargs<const int32_t>((*__tmp_3))))), ::tpyapp::part_fresh_element::each((*__tmp_4)[0])));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

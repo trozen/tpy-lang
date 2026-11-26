@@ -122,6 +122,7 @@ from .expressions import (
     _lower_field_source,
     _lower_subscript_source,
     _lower_truthy,
+    _check_cond_eager_temps,
     _narrow_subject_borrows,
     _borrow_of_held,
 )
@@ -1532,7 +1533,11 @@ def _lower_match_guard(guard: TpyExpr, lc: _LowerCtx,
         return _lower_isinstance_cond(ginfo, guard, lc, declared)
     # Every guard renders through the truthiness path, so a non-bool guard
     # takes its type's truthiness wrap rather than rejecting.
-    lowered = _lower_truthy(guard, lc, declared)
+    # The emit declares a guard's temps before the `if` testing it, banked
+    # where it runs behind another test: none may be one the bank cannot
+    # hold.
+    lowered = _lower_truthy(guard, lc, declared, temps_ok=True)
+    _check_cond_eager_temps(lowered)
     # A guard sema decided statically (e.g. `isinstance` against a non-union
     # subject) folds to a bare bool literal whose result_type never got filled
     # in; the render needs no type, so the bool value alone carries the arm.

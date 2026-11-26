@@ -6,7 +6,7 @@ only from the node arm being lowered.
 
 from __future__ import annotations
 from collections.abc import Callable, Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from typing import NamedTuple, NoReturn, TypeVar
 from dataclasses import MISSING, field, fields as dataclass_fields, replace
 from enum import Enum, auto
@@ -207,6 +207,7 @@ from ...value_category import (
     is_rvalue_source, lends_pointer_form_result, OwningArg,
     borrowing_view_result, frame_temp_arg_source, method_owner_type,
     may_hold_pointer, protocol_twin_slot, origin_shared,
+    select_arms,
 )
 from ..reject import (ThirUnsupported, call_reject_reason, current_detail,
                       expr_kind_tag, replace_detail,
@@ -218,7 +219,8 @@ from ..param_contract import (Adapts, HandleUse, Materializer, ParamContract, ar
                               instantiation_storage, pack_element_contract, param_const, param_contract,
                               instantiated_param, protocol_slot)
 from ...sema.call_lends import (Retention, TempLend, callee_retains_arg,
-                                fresh_receiver_root, peel_reading_coercions)
+                                fresh_receiver_root, peel_reading_coercions,
+                                fresh_operand_roots)
 from ...sema.own_copy import contains_reference_type
 from ...typesys import (TypeParamKind, contains_type_kind_param,
                         type_arg_cpp)
@@ -327,7 +329,8 @@ from ..nodes import (
     THIRUnaryNot,
     THIRUnaryArith,
     THIRUnionArgLift,
-    THIRVarargPack,
+    THIRVarargArray, THIRVarargPack, bound_root_name, may_leave_function,
+    subtree_has,
     THIRAnyIsinstance,
     THIRArrayComprehension,
     THIRComprehensionBlock,
@@ -2911,6 +2914,60 @@ def held_temp(node: THIRArgTemp, lc: '_LowerCtx',
     return _hoisted(node, lc)
 
 
+def held_value(init: THIRExpr, result_type: 'TpyType | None',
+               cpp_type: 'str | None', lc: '_LowerCtx',
+               source: 'TpyExpr | None', *,
+               form: Form = Form.VALUE, movable: bool = True,
+               fills_in_place: bool = False, brace_init: bool = False,
+               held: bool = False, operand_storage: bool = False,
+               read_id: 'int | None' = None,
+               stamp: 'Source | None' = None, in_place: bool = False,
+               loc: 'SourceLocation | None' = None) -> THIRExpr:
+    """THE argument temp holding a value a statement seats -- a fresh root
+    (`seated_root`), an operand read twice (`hold_lowered`), a `*args`
+    array or the fresh element it points at, a select's fresh operand --
+    as `cpp_type` (None: the type C++ deduces), where `held_temp` places
+    it."""
+    return held_temp(THIRArgTemp(
+        result_type=result_type, cpp_type=cpp_type, init=init, form=form,
+        movable=movable, fills_in_place=fills_in_place,
+        brace_init=brace_init, held=held,
+        operand_storage=operand_storage,
+        read_id=read_id, source=stamp,
+        loc=loc if loc is not None else init.loc), lc, source,
+        in_place=in_place)
+
+
+def _kept_by_frame(source: TpyExpr, lc: '_LowerCtx') -> bool:
+    """Whether the keep plan keeps `source` in the enclosing resumable
+    body's frame."""
+    return (lc.bound_roots.plan.covers(source)
+            and planned(source, lc).lifetime is SeatLifetime.FRAME)
+
+
+def _framed_by_plan(root: TpyExpr, lc: '_LowerCtx', by_value: bool) -> bool:
+    """Whether the frame holds an operand's fresh `root` in a seat of its
+    own, without the operand rules: where the keep plan's FRAME seat for it
+    is a frame holder of its own (`Keep.frame_holder`), and a `*args` value
+    element's root (`by_value`) wherever the plan keeps it on the frame."""
+    return _kept_by_frame(root, lc) and (
+        by_value or planned(root, lc).frame_holder)
+
+
+def _operand_root_seat(root: TpyExpr, lc: '_LowerCtx',
+                       by_value: bool) -> 'tuple[bool, TpyExpr | None]':
+    """Whether an operand's fresh root (`seated_operand`) is seated here,
+    and the source its seat is planned by (`held_temp`). A root the frame
+    holds anyway is left to that seat; one the plan would keep on the frame
+    otherwise is a temp of its statement, so a resumable body's frame is the
+    one it has without the operand rules."""
+    if _framed_by_plan(root, lc, by_value):
+        return False, None
+    if _kept_by_frame(root, lc):
+        return lc.may_hoist, None
+    return seat_available(root, lc), root
+
+
 def seat_available(source: TpyExpr, lc: '_LowerCtx') -> bool:
     """Whether this position can give `source` its planned seat
     (`held_temp`): a frame holder or an enclosing slot anywhere, a
@@ -2937,13 +2994,172 @@ def _held_arg_temp(arg: THIRExpr, lc: '_LowerCtx') -> 'THIRExpr | None':
     return arg.init
 
 
-def _operand_temp_cpp(left: TpyExpr, spelled: str) -> 'str | None':
-    """The temp an `and` / `or` holds its left operand in, so it is
-    evaluated once for both the test and the chosen value: none for a
-    name, which is read twice in place. The select node that carries it
-    is created through `_hoisted` (`_hoisted_select`), since the temp is
-    declared before the enclosing statement whatever the use grants."""
-    return None if isinstance(left, TpyName) else spelled
+class HeldOperand(NamedTuple):
+    """An operand held once in an argument temp (`held_operand`): the
+    temp, which its first read renders, and a second read of it."""
+    temp: THIRExpr
+    again: THIRExpr
+
+
+def held_operand(operand: TpyExpr, lc: '_LowerCtx',
+                 declared: dict[str, TpyType], lower: Callable[[], THIRExpr],
+                 typed_cpp: str) -> HeldOperand:
+    """An operand the lowering reads twice inside its statement (a value
+    select's left operand: its truthy test and its chosen arm), held in an
+    argument temp after the fresh objects it reads are seated
+    (`seated_operand`), so nothing it reads dies at a declaration's end.
+    It is a temp of its statement: declared before it where it is always
+    evaluated, banked into the conditional region it is evaluated under."""
+    with seated_operand(operand, lc, declared):
+        return hold_lowered(lower(), typed_cpp, lc)
+
+
+def operand_roots(operand: TpyExpr, lc: '_LowerCtx', *,
+                  by_value: bool = False) -> 'tuple[TpyExpr, ...]':
+    """THE fresh objects a statement-bound operand reads apart from itself
+    (`fresh_operand_roots`: through member reads, every operand a lending
+    call's result may point into and a conversion its position renders
+    bare -- a `str` argument's view of a string builds nothing), in
+    evaluation order: what must be seated or bound on its own so it lives
+    as long as the operand's binding. Empty where the binding keeps
+    everything it reads -- a prvalue holding no pointer (`_renders_fresh`),
+    extended by `auto&&`, or a value copied out (`by_value`: a `*args`
+    array element) that carries no borrow. An object is not seated where
+    the operand is that object itself or a conversion of it (unless the
+    conversion views an object holding no borrow: a `char` as a view), where
+    it is a view, a literal over static storage or a container literal
+    (built in the spelling its consumer asks), or where an enclosing member
+    already seated it. A root carrying a borrow is seated too: what the
+    operand reads of it may be its own storage (a method lending a field),
+    and what its borrow views outlives it or dangles inline as well
+    (BUGS.md#record-view-field-escapes-local-buffer)."""
+    analyzer = lc.analyzer
+    t = analyzer.get_expr_type(operand)
+    if (_renders_fresh(operand, analyzer)
+            or (by_value and (t is None or not carries_borrow(t)))):
+        return ()
+
+    def builds_nothing(c: TpyCoerce) -> bool:
+        return _coerce_disposition(c) == "identity"
+
+    roots: list[TpyExpr] = []
+    for found in fresh_operand_roots(operand, analyzer.ctx, builds_nothing):
+        found_t = analyzer.get_expr_type(found)
+        if (found_t is None or is_view_value(found, analyzer)
+                or isinstance(_peel_coerce(found), (TpyStrLiteral,
+                                                    TpyBytesLiteral,
+                                                    *CONTAINER_LITERAL_NODES))
+                or (lc.prelowered is not None and found in lc.prelowered)):
+            continue
+        views_it = (t is not None and carries_borrow(t)
+                    and not carries_borrow(found_t))
+        if found is operand or (found is _peel_coerce(operand)
+                                and not views_it):
+            continue
+        roots.append(found)
+    return tuple(roots)
+
+
+@contextmanager
+def seated_operand(operand: TpyExpr, lc: '_LowerCtx',
+                   declared: dict[str, TpyType], *, by_value: bool = False,
+                   bound_name: 'str | None' = None
+                   ) -> 'Iterator[tuple[THIRExpr, ...]]':
+    """Lower a statement-bound operand (inside the region) over the
+    storage of the fresh objects it reads (`operand_roots`), in order: each
+    seated as an argument temp of its own (`seated_root`), or bound by name
+    in the statement expression that binds the operand (`bound_name`, then
+    `bound_name_1`, ...: `auto&& name = root;`, the values yielded for the
+    caller to bind) -- or, for a select reading none, the fresh objects
+    each arm reads, seated inside its arm where it is evaluated."""
+    with ExitStack() as stack:
+        bound: list[THIRExpr] = []
+        found = operand_roots(operand, lc, by_value=by_value)
+        for root in found:
+            if bound_name is not None:
+                if _framed_by_plan(root, lc, by_value):
+                    continue
+                value = root_value(root, lc, declared, as_value=True)
+                _witness("arg.head_kept")
+                name = bound_root_name(bound_name, len(bound))
+                recv_t = unwrap_readonly(lc.analyzer.get_expr_type(root))
+                stack.enter_context(lc.prelowering(root, stamped(THIRName(
+                    result_type=recv_t, name=name, cpp=name,
+                    form=root_read_form(recv_t, value), loc=value.loc), lc,
+                    record_of=root)))
+                bound.append(value)
+            else:
+                seats, source = _operand_root_seat(root, lc, by_value)
+                if seats:
+                    stack.enter_context(lc.prelowering(*_seated_operand_root(
+                        root, source, lc, declared)))
+        if not found:
+            for arm in select_arms(_peel_coerce(operand), leaves=True) or ():
+                for arm_root in operand_roots(arm, lc, by_value=by_value):
+                    seats, source = _operand_root_seat(arm_root, lc, by_value)
+                    if seats:
+                        stack.enter_context(lc.prelowering(
+                            *_seated_operand_root(arm_root, source, lc,
+                                                  declared)))
+        yield tuple(bound)
+
+
+def _seated_operand_root(found: TpyExpr, source: 'TpyExpr | None',
+                         lc: '_LowerCtx', declared: dict[str, TpyType]
+                         ) -> 'tuple[TpyExpr | None, THIRExpr | None]':
+    """`seated_root` of an operand's fresh root (`operand_roots`), read as
+    the value it is, its seat planned by `source` (`_operand_root_seat`).
+    A root whose lowered value may leave the function (`may_leave_function`:
+    an `@error_return` check, explicit or through a dunder) is not seated:
+    its jump would cross the seats declared after it in a `try` body
+    (BUGS.md#try-error-return-goto-crosses-temp), so its value stands
+    inline where it is read, as an operand holding a nested unwrap does
+    (BUGS.md#held-operand-nested-unwrap-eager)."""
+    if lc.prelowered is not None and found in lc.prelowered:
+        return None, None
+    lowered = root_value(found, lc, declared, as_value=True)
+    if may_leave_function(lowered):
+        return found, lowered
+    seat = root_seat(found, lowered, lc, as_value=True, seat_source=source)
+    return found, stamped(seat, lc, record_of=found)
+
+
+def hold_lowered(lowered: THIRExpr, typed_cpp: str,
+                 lc: '_LowerCtx') -> HeldOperand:
+    """`held_operand`'s temp over the operand already lowered, and a second
+    read of it. Where its statement always evaluates it, it is bound
+    `auto&& t = init;`, which extends a prvalue and names an lvalue;
+    banked into a conditional region, the C++ compiler decides the slot's
+    type and value category (`THIRArgTemp.deduces_type`): an lvalue is held
+    by its address, any other value built in place. A str literal's char
+    array is held as `typed_cpp` (its view type). An operand that type
+    query cannot read (`_type_queryable`) is bound before its statement
+    with every temp it holds, banked or not
+    (BUGS.md#held-operand-nested-unwrap-eager)."""
+    lowered = stamped(lowered, lc)
+    t = lowered.result_type
+    read_id = next(lc.temp_read_ids)
+    # Either read names the temp: an lvalue.
+    named = replace(lowered.source, prvalue=False)
+    literal = isinstance(lowered, THIRStrLiteral) and not lowered.static_view
+    return HeldOperand(
+        held_value(lowered, t, typed_cpp if literal else None, lc, None,
+                   form=lowered.form,
+                   fills_in_place=not literal and _type_queryable(lowered),
+                   held=not literal, operand_storage=True, read_id=read_id,
+                   stamp=named),
+        stamped(THIRTempRead(result_type=t, read_id=read_id, source=named,
+                             loc=lowered.loc), lc))
+
+
+def _type_queryable(node: THIRExpr) -> bool:
+    """Whether a never-called lambda can read the type of the value `node`
+    renders (`THIRArgTemp.deduces_type`): over its own text, where no node
+    in it may leave the function (`THIRNode.leaves_function`); over the
+    call alone for an `@error_return` unwrap whose call has none that may."""
+    if isinstance(node, THIRErrorReturnUnwrap):
+        node = node.call
+    return not may_leave_function(node)
 
 
 def _select_result(held: Held, e: 'TpyExpr | None', lc: '_LowerCtx', *,
@@ -2965,16 +3181,10 @@ def _select_fresh_seat(arm: TpyExpr, fresh: THIRExpr, rec_t: 'TpyType',
     """The seat of a select's fresh reference operand `arm` (lowered as
     `fresh`) beside an lvalue one, emplaced when its operand is chosen so
     the select stays an lvalue (`held_temp`, in place)."""
-    return held_temp(THIRArgTemp(
-        result_type=rec_t, cpp_type=lc.render_type(rec_t),
-        movable=unwrap_ref_type(rec_t).is_movable(), init=fresh,
-        form=Form.BORROW, loc=loc), lc, arm, in_place=True)
-
-
-def _hoisted_select(node: THIRValueSelect, lc: '_LowerCtx') -> THIRValueSelect:
-    """A select holding its left operand in a temp hoists a declaration;
-    one reading a name in place does not."""
-    return _hoisted(node, lc) if node.lhs_temp_cpp is not None else node
+    return held_value(fresh, rec_t, lc.render_type(rec_t), lc, arm,
+                      form=Form.BORROW,
+                      movable=unwrap_ref_type(rec_t).is_movable(),
+                      in_place=True, loc=loc)
 
 
 def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
@@ -3035,31 +3245,17 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
             or (truthy_mode is None
                 and not _resolved_scalar(lt_res, analyzer))):
         rej("valuesel.lhs_truthy")
-    lowered_lhs = _lower_expr(e.left, lc, declared,
-                              use=_ExprUse(pos=SinkPos.OPERAND))
-    lhs_temp_cpp = _operand_temp_cpp(
-        e.left, ("std::string_view"
-                 if l_str is not None and isinstance(e.left, TpyStrLiteral)
-                 else "auto&&"))
-    # The RHS evaluates only in its branch: the conditional-operand right
-    # (audited temps defer through the emit's ValueSelect region, unaudited
-    # would-defer ones reject at the exit check), gated on the enclosing
-    # flush right like every other grant site.
-    lowered_rhs = _lower_expr(e.right, lc, declared,
-                              use=_ExprUse(pos=SinkPos.OPERAND,
-                                           allow_temps=temps_ok),
-                              cond_eager=temps_ok)
     r_str = _resolved_str_value(rt_res, analyzer)
     rhs_sv = (not isinstance(e.right, TpyName) and r_str is not None
               and isinstance(e.right, TpyStrLiteral))
     # The mixed-operand conversion wraps: compare the two sides' runtime
     # C++ spellings.
-    def _cmp_cpp(side: TpyExpr, st: 'TpyType | None',
-                 s_str) -> str:
-        stu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
-               if st is not None else None)
-        if stu is None:
+    def _bare(st: 'TpyType | None') -> 'TpyType':
+        if st is None:
             rej("valuesel.operand_type")
+        return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
+
+    def _cmp_cpp(side: TpyExpr, stu: 'TpyType', s_str) -> str:
         # A view-family operand's binding stays the family's PENDING view type
         # until the resolver runs, which has no C++ spelling of its own --
         # compare at the RESOLVED view/owned type, corrected by the
@@ -3076,8 +3272,33 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
         stu = resolve_int_literals(stu, analyzer.ctx.default_int_for_literal)
         return lc.render_type(stu)
 
-    lhs_cmp = _cmp_cpp(e.left, lt_res, l_str)
-    rhs_cmp = _cmp_cpp(e.right, rt_res, r_str)
+    l_bare = _bare(lt_res)
+    lhs_cmp = _cmp_cpp(e.left, l_bare, l_str)
+    rhs_cmp = _cmp_cpp(e.right, _bare(rt_res), r_str)
+    # The LHS evaluates whenever the select does: it takes the select's
+    # flush right.
+    lhs_use = _ExprUse(pos=SinkPos.OPERAND, allow_temps=temps_ok)
+    lhs_held = None
+    # A name or a C++ number literal is read twice in place; any other
+    # operand (an `int` literal builds a BigInt) is held once.
+    if (isinstance(e.left, TpyName)
+            or (isinstance(e.left, (TpyIntLiteral, TpyFloatLiteral,
+                                    TpyBoolLiteral))
+                and not is_big_int_type(resolve_int_literals(
+                    l_bare, analyzer.ctx.default_int_for_literal)))):
+        lowered_lhs = _lower_expr(e.left, lc, declared, use=lhs_use)
+    else:
+        lowered_lhs, lhs_held = held_operand(
+            e.left, lc, declared,
+            lambda: _lower_expr(e.left, lc, declared, use=lhs_use), lhs_cmp)
+    # The RHS evaluates only in its branch: the conditional-operand right
+    # (audited temps defer through the emit's ValueSelect region, unaudited
+    # would-defer ones reject at the exit check), gated on the enclosing
+    # flush right like every other grant site.
+    lowered_rhs = _lower_expr(e.right, lc, declared,
+                              use=_ExprUse(pos=SinkPos.OPERAND,
+                                           allow_temps=temps_ok),
+                              cond_eager=temps_ok)
     lhs_cast = rhs_cast = None
     if (lhs_cmp != rhs_cmp
             and (_resolved_bytes_value(lt_res, analyzer) is not None
@@ -3123,13 +3344,12 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
         if res_span:
             _witness("binop.value_select_span")
     _witness("binop.value_select")
-    return _hoisted_select(THIRValueSelect(
+    return THIRValueSelect(
         result_type=rtype, lhs=lowered_lhs, rhs=lowered_rhs, op=e.op,
-        truthy_mode=truthy_mode,
-        lhs_temp_cpp=lhs_temp_cpp,
+        truthy_mode=truthy_mode, lhs_held=lhs_held,
         lhs_cast=lhs_cast, rhs_cast=rhs_cast, rhs_sv=rhs_sv,
         form=form, normalized=_select_result(_held_of_form(form), e, lc),
-        loc=loc), lc)
+        loc=loc)
 
 
 def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
@@ -3217,8 +3437,13 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
             or (not rhs_rvalue
                 and lc.render_type(rt) != lc.render_type(rtu)):
         rej("valuesel.ref_mixed")
-    lowered_lhs = _lower_operand(e.left, lt)
-    lhs_temp_cpp = _operand_temp_cpp(e.left, "auto&&")
+    lhs_held = None
+    if isinstance(e.left, TpyName):
+        lowered_lhs = _lower_operand(e.left, lt)
+    else:
+        lowered_lhs, lhs_held = held_operand(
+            e.left, lc, declared, lambda: _lower_operand(e.left, lt),
+            lc.render_type(lt))
     lowered_rhs = _lower_operand(e.right, rt)
     if rhs_rvalue:
         lowered_rhs = _select_fresh_seat(e.right, lowered_rhs, rtu, lc, loc)
@@ -3227,11 +3452,11 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
         _witness("binop.select_bool_dunder")
     # An lvalue aliasing the chosen operand (or the slot a fresh RHS is
     # emplaced into).
-    return _hoisted_select(THIRValueSelect(
+    return THIRValueSelect(
         result_type=rtu, lhs=lowered_lhs, rhs=lowered_rhs, op=e.op,
-        truthy_mode=truthy_mode, lhs_temp_cpp=lhs_temp_cpp,
+        truthy_mode=truthy_mode, lhs_held=lhs_held,
         form=Form.BORROW,
-        normalized=_select_result(Held.BORROWED, e, lc), loc=loc), lc)
+        normalized=_select_result(Held.BORROWED, e, lc), loc=loc)
 
 
 def _lower_container_select_prvalue(e: TpyBinOp, rtu: 'TpyType',
@@ -3257,9 +3482,9 @@ def _lower_container_select_prvalue(e: TpyBinOp, rtu: 'TpyType',
             or lc.render_type(rt) != lc.render_type(rtu)):
         rej("valuesel.ref_mixed")
     lhs_move = False
+    lhs_held = None
     if isinstance(e.left, TpyName):
         lowered_lhs = lower_operand(e.left, lt)
-        lhs_temp_cpp = None
     elif lhs_fresh:
         if not temps_ok:
             # The LHS temp is declared at the enclosing statement's flush,
@@ -3269,16 +3494,21 @@ def _lower_container_select_prvalue(e: TpyBinOp, rtu: 'TpyType',
             # The chosen LHS leaves its temp by a move, which a `@nomove`
             # type does not have.
             rej("valuesel.nomove_fresh_lhs")
-        lowered_lhs = _lower_fresh_ref_value(e.left, rtu, lc, declared)
-        if lowered_lhs is None:
-            rej("valuesel.ref_fresh_operand")
-        lhs_temp_cpp = _operand_temp_cpp(e.left, "auto&&")
+
+        def _fresh_lhs() -> THIRExpr:
+            fresh = _lower_fresh_ref_value(e.left, rtu, lc, declared)
+            if fresh is None:
+                rej("valuesel.ref_fresh_operand")
+            return fresh
+        lowered_lhs, lhs_held = held_operand(
+            e.left, lc, declared, _fresh_lhs, lc.render_type(rtu))
         lhs_move = True
     elif isinstance(e.left, TpyBinOp) and e.left.op in ("&&", "||"):
         # A nested LVALUE select: its chosen operand is existing storage,
         # which the `?:` copies.
-        lowered_lhs = lower_operand(e.left, lt)
-        lhs_temp_cpp = _operand_temp_cpp(e.left, "auto&&")
+        lowered_lhs, lhs_held = held_operand(
+            e.left, lc, declared, lambda: lower_operand(e.left, lt),
+            lc.render_type(lt))
     else:
         rej("valuesel.ref_shape")
     if rhs_fresh:
@@ -3296,14 +3526,14 @@ def _lower_container_select_prvalue(e: TpyBinOp, rtu: 'TpyType',
     # object itself, read as a value that dies with the statement -- or,
     # with a NAME operand, a copy of that existing object, which the slot
     # takes through the copy sema declared for it (`copy_permitted`).
-    return _hoisted_select(THIRValueSelect(
+    return THIRValueSelect(
         result_type=rtu, lhs=lowered_lhs, rhs=lowered_rhs, op=e.op,
-        truthy_mode=truthy_mode, lhs_temp_cpp=lhs_temp_cpp,
+        truthy_mode=truthy_mode, lhs_held=lhs_held,
         lhs_move=lhs_move, form=Form.VALUE,
         normalized=(_select_result(Held.VALUE, e, lc, temporary=True)
                     if lhs_fresh and rhs_fresh
                     else _select_result(Held.STORAGE, e, lc)),
-        loc=loc), lc)
+        loc=loc)
 
 
 def _operand_lend(e: 'TpyBinOp | TpyUnaryOp | TpyAugAssign', side: TpyExpr,
@@ -4188,9 +4418,19 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         needle_use = (_ExprUse(slot_target=member_slot) if need_temp
                       else _operand_use_of(e, e.left, analyzer,
                                            slot_target=member_slot))
+        # The needle's binding reads the fresh object it is reached
+        # through, bound just before it (`seated_operand`).
+        left_roots: tuple[THIRExpr, ...] = ()
+        if need_temp:
+            with seated_operand(e.left, lc, declared,
+                                bound_name="__in_root") as left_roots:
+                left = _lower_expr(e.left, lc, declared, use=needle_use)
+        else:
+            left = _lower_expr(e.left, lc, declared, use=needle_use)
         return THIRTupleMembership(
             result_type=rtype,
-            left=_lower_expr(e.left, lc, declared, use=needle_use),
+            left=left,
+            left_roots=left_roots,
             elements=tuple(_lower_expr(el, lc, declared,
                                        use=_operand_use_of(
                                            e, el, analyzer,
@@ -6085,7 +6325,8 @@ _HELD_BY_KIND: dict[type, Held] = {
     # Built in place (literal construction, the compiler-support
     # exception): read as the value it builds; its elements carry their
     # own facts.
-    **dict.fromkeys((*_BUILT_IN_PLACE, THIRVarargPack), Held.VALUE),
+    **dict.fromkeys((*_BUILT_IN_PLACE, THIRVarargPack, THIRVarargArray),
+                    Held.VALUE),
     # A checked unwrap of an Optional: the value it hands back.
     THIRNoneCheck: Held.VALUE,
     # An owned value a conversion built.
@@ -6398,7 +6639,7 @@ def _temporary(e: 'TpyExpr | None', node: THIRExpr,
                lc: '_LowerCtx') -> 'bool | None':
     """`Source.temporary`. A select's is its lowering's decision; with a
     parse node it is the value-category answer; without one, a binding
-    read is durable, a value built in place (a literal, a comprehension)
+    read and an argument temp are durable, a value built in place (a literal, a comprehension)
     dies with its statement, a member / element / coerce is what it reads,
     and any other node is unknown (None)."""
     select = node.select_result
@@ -6420,9 +6661,10 @@ def _temporary(e: 'TpyExpr | None', node: THIRExpr,
             if root is not None and root is not peeled:
                 return False
         return place_dies(lc.analyzer, e)
-    if isinstance(node, (THIRName, THIRSelf, THIRTempRead)):
+    if isinstance(node, (THIRName, THIRSelf, THIRTempRead, THIRArgTemp)):
         # A temp read with no source of its creator's is a loop's step, an
-        # element of the source the loop holds.
+        # element of the source the loop holds; an argument temp is storage
+        # its statement declares.
         return False
     if isinstance(node, _BUILT_IN_PLACE):
         return True
@@ -6576,10 +6818,13 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
         const = const or _step_const(lowered.receiver, lc)
     elif isinstance(lowered, THIRCoerce):
         const = const or _step_const(lowered.expr, lc)
-    elif isinstance(lowered, THIRIfExpr):
+    elif isinstance(lowered, (THIRIfExpr, THIRValueSelect)):
         # A select hands back one of its arms: const where either is.
-        const = const or any(stamped(a, lc).source.const
-                             for a in (lowered.then, lowered.orelse))
+        const = const or any(
+            stamped(a, lc).source.const
+            for a in ((lowered.then, lowered.orelse)
+                      if isinstance(lowered, THIRIfExpr)
+                      else (lowered.lhs, lowered.rhs)))
     elif isinstance(lowered, THIRNoneCheck):
         # The checked value's referent, const where the value is.
         const = const or _step_const(lowered.value, lc)
@@ -14450,33 +14695,87 @@ def _lower_chained_compare_stmtexpr(e, rtype, lc: '_LowerCtx',
     _pair_use = _ExprUse(allow_temps=temps_ok)
     operands = [e.left] + e.comparators
     n = len(e.pairs)
+    bound = [0 < i < n or (i == 0 and not emit_prims.is_duplicable_expr(operands[0]))
+             for i in range(n + 1)]
+    by_value = [bound[i] and _chained_operand_by_value(operands[i], lc)
+                for i in range(n + 1)]
+    # The fresh object a bound operand is reached through is bound first,
+    # by name in the same statement expression (`seated_operand`), so it
+    # lives as long as the operand's own binding.
+    roots: list[tuple[THIRExpr, ...]] = [()] * (n + 1)
     # What each pair lowered each of its two operands to, so a pair's
     # conversions apply over the temp while the operand's own (a checked
     # `cast`) stay in the init, evaluated once.
     written: list[IdentityMap] = []
     pairs: list[THIRExpr] = []
     saved_capture = lc.lowered_capture
-    try:
-        for j, p in enumerate(e.pairs):
-            lc.lowered_capture = IdentityMap(
-                (o, []) for o in (operands[j], operands[j + 1]))
-            pairs.append(_lower_expr(p, lc, declared) if j == 0 else
-                         _lower_expr(p, lc, declared, use=_pair_use,
-                                     cond_eager=temps_ok))
-            written.append(lc.lowered_capture)
-    finally:
-        lc.lowered_capture = saved_capture
-    bound = [0 < i < n or (i == 0 and not emit_prims.is_duplicable_expr(operands[0]))
-             for i in range(n + 1)]
+    with ExitStack() as seated:
+        for i in range(n + 1):
+            if bound[i] and not by_value[i]:
+                roots[i] = seated.enter_context(seated_operand(
+                    operands[i], lc, declared, bound_name=f"__r{i}"))
+        try:
+            for j, p in enumerate(e.pairs):
+                lc.lowered_capture = IdentityMap(
+                    (o, []) for o in (operands[j], operands[j + 1]))
+                pairs.append(_lower_expr(p, lc, declared) if j == 0 else
+                             _lower_expr(p, lc, declared, use=_pair_use,
+                                         cond_eager=temps_ok))
+                written.append(lc.lowered_capture)
+        finally:
+            lc.lowered_capture = saved_capture
+        inits, temps = _chain_inits(e, operands, pairs, written, bound, lc,
+                                    declared, loc, _pair_use, temps_ok)
+    pin_sides = [_pair_pin_side(p, lc) for p in e.pairs]
+    rendered = []
+    for j, (src, low) in enumerate(zip(e.pairs, pairs)):
+        sides = [low.left, low.right]
+        for s, i in ((0, j), (1, j + 1)):
+            temp = temps[i]
+            if temp is None:
+                continue
+            if pin_sides[j] == s:
+                rb = src.resolved_binop
+                sides[s] = _pinned_literal_arg(
+                    (src.left, src.right)[s], rb.method.params[0].type,
+                    rb.method, lc, declared, evaluated=temp,
+                    boundary=boundary_of(src, _SIDES[s]))
+            else:
+                sides[s] = _over_written(sides[s],
+                                         written[j][operands[i]], temp)
+        if src.resolved_binop is not None:
+            sides[0], sides[1] = _landed_operands(
+                src.resolved_binop, sides[0], sides[1], src, lc, defer=False,
+                pinned=pin_sides[j] is not None)
+        rendered.append(replace(low, left=sides[0], right=sides[1]))
+    return THIRChainedCompareStmtExpr(
+        result_type=rtype,
+        inits=tuple(inits),
+        roots=tuple(roots),
+        pairs=tuple(rendered),
+        by_value=tuple(by_value),
+        form=Form.VALUE,
+        loc=loc,
+    )
+
+
+def _chain_inits(e: TpyChainedCompare, operands: list[TpyExpr],
+                 pairs: list[THIRExpr], written: list[IdentityMap],
+                 bound: list[bool], lc: '_LowerCtx',
+                 declared: dict[str, TpyType],
+                 loc: 'SourceLocation | None',
+                 _pair_use: '_ExprUse', temps_ok: bool
+                 ) -> 'tuple[list[THIRExpr | None], list[THIRExpr | None]]':
+    """Each bound operand's init and the read of its `_cmpI` binding
+    (`_lower_chained_compare_stmtexpr`)."""
+    n = len(e.pairs)
     pin_sides = [_pair_pin_side(p, lc) for p in e.pairs]
     # Operand i is pair i-1's right (side 1) and pair i's left (side 0).
     readers = [[(j, s) for j, s in ((i - 1, 1), (i, 0)) if 0 <= j < n]
                for i in range(n + 1)]
     inits: list[THIRExpr | None] = []
     temps: list[THIRName | None] = []
-    by_value: list[bool] = []
     for i in range(n + 1):
-        by_value.append(bound[i] and _chained_operand_by_value(operands[i], lc))
         if not bound[i]:
             inits.append(None)
             temps.append(None)
@@ -14508,35 +14807,7 @@ def _lower_chained_compare_stmtexpr(e, rtype, lc: '_LowerCtx',
         temps.append(stamped(THIRName(result_type=init.result_type,
                                       name=f"_cmp{i}", cpp=f"_cmp{i}",
                                       form=init.form, loc=loc), lc))
-    rendered = []
-    for j, (src, low) in enumerate(zip(e.pairs, pairs)):
-        sides = [low.left, low.right]
-        for s, i in ((0, j), (1, j + 1)):
-            temp = temps[i]
-            if temp is None:
-                continue
-            if pin_sides[j] == s:
-                rb = src.resolved_binop
-                sides[s] = _pinned_literal_arg(
-                    (src.left, src.right)[s], rb.method.params[0].type,
-                    rb.method, lc, declared, evaluated=temp,
-                    boundary=boundary_of(src, _SIDES[s]))
-            else:
-                sides[s] = _over_written(sides[s],
-                                         written[j][operands[i]], temp)
-        if src.resolved_binop is not None:
-            sides[0], sides[1] = _landed_operands(
-                src.resolved_binop, sides[0], sides[1], src, lc, defer=False,
-                pinned=pin_sides[j] is not None)
-        rendered.append(replace(low, left=sides[0], right=sides[1]))
-    return THIRChainedCompareStmtExpr(
-        result_type=rtype,
-        inits=tuple(inits),
-        pairs=tuple(rendered),
-        by_value=tuple(by_value),
-        form=Form.VALUE,
-        loc=loc,
-    )
+    return inits, temps
 
 
 def _chained_operand_by_value(operand: TpyExpr, lc: '_LowerCtx') -> bool:
@@ -15697,29 +15968,29 @@ def _lower_vararg_pack(pack: TpyVarargPack, ptype: 'TpyType | None',
         raise ThirUnsupported("call.vararg_pack_flush")
 
     lowered: list[THIRExpr] = []
-    ref_lvalue: list[bool] = []
     for k, a in enumerate(pack.args):
         if isinstance(a, TpyStarUnpack):
             # Sema forbids mixing *expr with other varargs; defense in depth.
             raise ThirUnsupported("call.vararg_star_mixed")
-        if is_ref:
-            bare = a
-            while isinstance(bare, TpyCoerce):
-                bare = bare.expr
-            ref_lvalue.append(
-                isinstance(bare, (TpyName, TpyFieldAccess, TpySubscript)))
-        else:
-            ref_lvalue.append(True)
+        if not is_ref:
             # A value element is storage of the pack's array: it converts at
-            # that slot like any argument at its parameter.
-            routed = converted_arg(a, elem_type, lc, declared,
-                                   callee_fi=None, arg_index=-1, temps=True,
-                                   lifetime_checked=True,
-                                   contract=pack_element_contract(keep),
-                                   boundary=boundary_of(pack, "elements", k))
-            if routed is not None:
-                lowered.append(routed)
-                continue
+            # that slot like any argument at its parameter. A view element
+            # views the fresh object it is reached through (`name + "x"`),
+            # which an argument temp of its own holds as long as the array
+            # (`seated_operand`).
+            with seated_operand(a, lc, declared, by_value=True):
+                routed = converted_arg(a, elem_type, lc, declared,
+                                       callee_fi=None, arg_index=-1,
+                                       temps=True, lifetime_checked=True,
+                                       contract=pack_element_contract(keep),
+                                       boundary=boundary_of(pack, "elements",
+                                                            k))
+                if routed is None:
+                    # A tuple value element, which `converted_arg` does
+                    # not take, lowers as it reads.
+                    routed = _lower_expr(a, lc, declared)
+            lowered.append(routed)
+            continue
         # A REF pack element is an ADDRESS-OF lvalue (`&::tpy::__getitem__(
         # items, 0)`): a record-element subscript reads its `T&` at the
         # borrow consumer, so thread BORROW_BIND for the lvalue shapes.
@@ -15727,30 +15998,44 @@ def _lower_vararg_pack(pack: TpyVarargPack, ptype: 'TpyType | None',
         # (F1-record pointees / record subscript elements); a
         # pointer-repr container NAME here is the `&xs` T** shape, which is
         # broken (see BUGS.md) and caught by the toolchain.
-        # A tuple value element, which `converted_arg` does not take, lowers
-        # as it reads.
+        bare = _peel_coerce(a)
+        lvalue = isinstance(bare, (TpyName, TpyFieldAccess, TpySubscript))
         elem = _lower_expr(a, lc, declared,
                            use=(_ExprUse(result=_ExprResultUse.BORROW_BIND)
-                                if is_ref and ref_lvalue[-1]
-                                else _ExprUse()))
-        if is_ref and not ref_lvalue[-1]:
+                                if lvalue else _ExprUse()))
+        if not lvalue:
             # A fresh element the pack points at is held where the keep
             # plan says (`held_temp`), and the pack names it. The holder is
             # the element's own object, spelled without the pack's const:
-            # a banked holder builds it as an expression (`T{...}`).
-            elem_t = unwrap_readonly(lc.analyzer.get_expr_type(a))
-            elem = held_temp(THIRArgTemp(
-                result_type=elem_t,
-                cpp_type=varargs_elem_cpp(bare_elem, lc.render_type),
-                init=elem,
-                form=Form.BORROW, movable=unwrap_ref_type(elem_t).is_movable(),
-                loc=getattr(a, "loc", None)), lc, a)
-            ref_lvalue[-1] = True
+            # a banked holder builds it in place as an expression
+            # (`T{...}`).
+            elem = held_value(
+                elem, unwrap_readonly(lc.analyzer.get_expr_type(a)),
+                varargs_elem_cpp(bare_elem, lc.render_type), lc, a,
+                form=Form.BORROW, fills_in_place=True,
+                loc=getattr(a, "loc", None))
         lowered.append(elem)
     _witness("vararg.pack_ref" if is_ref else "vararg.pack_value")
-    return _hoisted(THIRVarargPack(result_type=ptype, elem_cpp=elem_cpp, is_ref=is_ref,
-                                   args=tuple(lowered), ref_lvalue=tuple(ref_lvalue),
-                                   form=Form.VALUE, loc=getattr(pack, "loc", None)), lc)
+    # The array is an argument temp: seated where the keep plan says,
+    # declared before the statement or banked where it is evaluated under
+    # a condition. A banked value array is built in place: its
+    # `std::array<const T, N>` cannot move, and a value array would copy its
+    # elements into an optional; a pointer array is emplaced.
+    loc = getattr(pack, "loc", None)
+    n = len(lowered)
+    array_cpp = (f"std::array<{elem_cpp}*, {n}>" if is_ref
+                 else f"std::array<{elem_cpp}, {n}>")
+    return THIRVarargPack(
+        result_type=ptype, elem_cpp=elem_cpp, is_ref=is_ref, form=Form.VALUE,
+        array=held_value(
+            THIRVarargArray(result_type=ptype, is_ref=is_ref,
+                            elements=tuple(lowered), loc=loc),
+            ptype, array_cpp, lc,
+            # The frame holds no pack's array: one the plan would keep
+            # there is a temp of its statement.
+            None if _kept_by_frame(pack, lc) else pack, brace_init=True,
+            fills_in_place=not is_ref, operand_storage=True, loc=loc),
+        loc=loc)
 
 
 def _lower_range_object(call, lc: '_LowerCtx',
@@ -16554,29 +16839,60 @@ _ROOT_SEAT_USE = _ExprUse(result=_ExprResultUse.BORROW_BIND,
                           forms=_LEND_OK)
 
 
+def root_value(root: TpyExpr, lc: '_LowerCtx',
+               declared: dict[str, TpyType], *, as_value: bool = False
+               ) -> THIRExpr:
+    """Fresh `root` of a receiver or read object lowered for its seat: an
+    operand's tuple root (`as_value`) as the value it is."""
+    recv_t = unwrap_readonly(lc.analyzer.get_expr_type(root))
+    lowered = _lower_expr(root, lc, declared,
+                          use=(_ExprUse(allow_temps=True)
+                               if as_value and recv_t.is_value_type()
+                               else _ROOT_SEAT_USE))
+    return lowered
+
+
 def seated_root(root: 'TpyExpr | None', lc: '_LowerCtx',
-                declared: dict[str, TpyType]
+                declared: dict[str, TpyType], *, as_value: bool = False,
+                seat_source: 'TpyExpr | None | type[MISSING]' = MISSING
                 ) -> 'tuple[TpyExpr | None, THIRExpr | None]':
     """Fresh `root` of a receiver or read object (`fresh_seat_root`) and
-    its seat (`held_temp`), for the caller to build the object on
+    its seat (`held_temp`, planned by `seat_source`, the root unless the
+    caller says), for the caller to build the object on
     (`lc.prelowering`). Nothing for no root, or one an enclosing member
     seated."""
     if root is None or (lc.prelowered is not None
                         and root in lc.prelowered):
         return None, None
-    recv_t = unwrap_readonly(lc.analyzer.get_expr_type(root))
-    lowered = _lower_expr(root, lc, declared, use=_ROOT_SEAT_USE)
+    return root, root_seat(root, root_value(root, lc, declared,
+                                            as_value=as_value),
+                           lc, as_value=as_value, seat_source=seat_source)
+
+
+def root_seat(root: TpyExpr, lowered: THIRExpr, lc: '_LowerCtx', *,
+              as_value: bool,
+              seat_source: 'TpyExpr | None | type[MISSING]' = MISSING
+              ) -> THIRExpr:
+    """`seated_root`'s seat over the root already lowered (`root_value`)."""
     _witness("arg.head_kept")
+    recv_t = unwrap_readonly(lc.analyzer.get_expr_type(root))
     # A seat under a condition is filled there, never ahead of it: a value
-    # that cannot move is built in place.
+    # that cannot move -- and an operand's root (`as_value`), whatever it
+    # is -- is built in place.
     movable = unwrap_ref_type(recv_t).is_movable()
-    return root, held_temp(THIRArgTemp(
-        result_type=recv_t, cpp_type=lc.render_type(recv_t),
-        movable=movable,
-        init=lowered,
-        form=(lowered.form if recv_t.is_value_type() else Form.BORROW),
-        fills_in_place=not movable,
-        loc=getattr(root, "loc", None)), lc, root)
+    return held_value(lowered, recv_t, lc.render_type(recv_t), lc,
+                      root if seat_source is MISSING else seat_source,
+                      form=root_read_form(recv_t, lowered),
+                      movable=movable or as_value,
+                      fills_in_place=as_value or not movable,
+                      operand_storage=as_value,
+                      loc=getattr(root, "loc", None))
+
+
+def root_read_form(recv_t: 'TpyType', value: THIRExpr) -> Form:
+    """The form a read of a fresh root's storage takes: a value type's as
+    its value is, a reference type's the object borrowed."""
+    return value.form if recv_t.is_value_type() else Form.BORROW
 
 
 class MemberReceiver(NamedTuple):
@@ -18922,22 +19238,6 @@ def _flush_witness(pos: str, value: THIRExpr) -> THIRExpr:
     return value
 
 
-def _holds_node(node: THIRNode, pred: Callable[[THIRNode], bool]) -> bool:
-    """Whether `pred` holds for `node` or any node inside it."""
-    if pred(node):
-        return True
-    for f in dataclass_fields(node):
-        v = getattr(node, f.name)
-        if isinstance(v, THIRNode):
-            if _holds_node(v, pred):
-                return True
-        elif isinstance(v, tuple):
-            if any(isinstance(item, THIRNode) and _holds_node(item, pred)
-                   for item in v):
-                return True
-    return False
-
-
 def _block_scoped_temp(node: THIRNode) -> bool:
     """An arg temp or a temp-bearing union lift: an object that lives only
     as long as the block its statement sits in."""
@@ -18947,9 +19247,12 @@ def _block_scoped_temp(node: THIRNode) -> bool:
 
 def _hoists_arg_temp(node: THIRNode) -> bool:
     """Whether a lowered expression holds a block-scoped temp anywhere
-    inside it. Other temp-declaring nodes (a `*args` pack, a slot emplace)
-    are not recognized: BUGS.md#tuple-literal-arg-unpack-borrow-dangles."""
-    return _holds_node(node, _block_scoped_temp)
+    inside it. Other temp-declaring storage is not recognized: a slot
+    emplace and the storage a statement-bound operand rule declares
+    (`THIRArgTemp.operand_storage`;
+    BUGS.md#tuple-literal-arg-unpack-borrow-dangles)."""
+    return subtree_has(node, lambda n: _block_scoped_temp(n) and not (
+        isinstance(n, THIRArgTemp) and n.operand_storage))
 
 
 def _constructs_value(value: THIRExpr) -> bool:
@@ -19537,8 +19840,17 @@ def _cond_mixed_walrus_temps(cond: THIRExpr, *,
             has_walrus = True
             if walrus_nested_ok:
                 inside_walrus = True
+        # A held operand's own temp does not count. One holding the walrus
+        # evaluates it in its own initializer; one banked into a region is
+        # filled where the operand is evaluated, after any walrus to its
+        # left. One bound before its statement (unguarded, or
+        # `THIRArgTemp.binds_eagerly`) reads a walrus target assigned to
+        # its left before the assignment
+        # (BUGS.md#cond-walrus-before-hoisted-temp). The temps it holds
+        # still count.
         if not (inside_walrus and walrus_nested_ok) and (
-                isinstance(n, (THIRArgTemp, THIRVarargPack))):
+                isinstance(n, (THIRArgTemp, THIRVarargPack))
+                and not (isinstance(n, THIRArgTemp) and n.held)):
             has_temp = True
         for f in dataclass_fields(n):
             v = getattr(n, f.name)

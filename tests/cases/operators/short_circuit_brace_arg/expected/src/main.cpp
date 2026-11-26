@@ -102,8 +102,7 @@ int64_t free_call(bool flag) {
 // def user_ctor() -> int64:
 //     return 0 or Holder([1, 2, 3]).n  # tpyc: ok
 int64_t user_ctor() {
-    auto&& __tmp_1 = 0;
-    return (__tmp_1 ? int64_t(__tmp_1) : Holder(::tpy::as_mut_lvalue(std::vector<int64_t>{1, 2, 3})).n);
+    return (0 ? int64_t(0) : Holder(::tpy::as_mut_lvalue(std::vector<int64_t>{1, 2, 3})).n);
 }
 
 // def generic_ctor(flag: bool) -> int64:

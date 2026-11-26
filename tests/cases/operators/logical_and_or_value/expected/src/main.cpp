@@ -358,17 +358,13 @@ void test_annotated() {
 //     yi: int = 3 and 0  # tpyc: type(int)
 //     print(yi)
 void test_literal_or_literal() {
-    auto&& __tmp_1 = 0;
-    int32_t x = (__tmp_1 ? __tmp_1 : 1);
+    int32_t x = (0 ? 0 : 1);
     std::cout << x << "\n" << ::tpy::check_signals;
-    auto&& __tmp_2 = 3;
-    int32_t y = (__tmp_2 ? 0 : __tmp_2);
+    int32_t y = (3 ? 0 : 3);
     std::cout << y << "\n" << ::tpy::check_signals;
-    auto&& __tmp_3 = 0;
-    ::tpy::BigInt xi = ::tpy::BigInt((__tmp_3 ? __tmp_3 : 1));
+    ::tpy::BigInt xi = ::tpy::BigInt((0 ? 0 : 1));
     std::cout << xi << "\n" << ::tpy::check_signals;
-    auto&& __tmp_4 = 3;
-    ::tpy::BigInt yi = ::tpy::BigInt((__tmp_4 ? 0 : __tmp_4));
+    ::tpy::BigInt yi = ::tpy::BigInt((3 ? 0 : 3));
     std::cout << yi << "\n" << ::tpy::check_signals;
 }
 
@@ -392,23 +388,19 @@ void test_literal_or_literal() {
 //     h: int = 123456789012345678901234567890 or big
 //     print("free:", h)
 void test_literal_lhs_free(double a) {
-    auto&& __tmp_1 = 0;
-    double w = (__tmp_1 ? double(__tmp_1) : a);
+    double w = (0 ? double(0) : a);
     std::cout << "free:" << " " << ::tpy::print_float(w) << "\n" << ::tpy::check_signals;
     int32_t n = 5;
-    auto&& __tmp_2 = 0;
-    int32_t k = (__tmp_2 ? n : __tmp_2);
+    int32_t k = (0 ? n : 0);
     std::cout << "free:" << " " << k << "\n" << ::tpy::check_signals;
-    auto&& __tmp_3 = 0.0;
-    double f = (__tmp_3 ? __tmp_3 : a);
-    auto&& __tmp_4 = -1;
-    int32_t m = (__tmp_4 ? n : __tmp_4);
+    double f = (0.0 ? 0.0 : a);
+    auto&& __tmp_1 = -1;
+    int32_t m = (__tmp_1 ? n : __tmp_1);
     ::tpy::BigInt big = ::tpy::BigInt(7);
-    auto&& __tmp_5 = 0;
-    ::tpy::BigInt s = (__tmp_5 ? ::tpy::BigInt(__tmp_5) : big);
+    ::tpy::BigInt s = (0 ? ::tpy::BigInt(0) : big);
     std::cout << "free:" << " " << ::tpy::print_float(f) << " " << m << " " << s << "\n" << ::tpy::check_signals;
-    auto&& __tmp_6 = ::tpy::BigInt::from_str("123456789012345678901234567890");
-    ::tpy::BigInt h = (__tmp_6 ? __tmp_6 : big);
+    auto&& __tmp_2 = ::tpy::BigInt::from_str("123456789012345678901234567890");
+    ::tpy::BigInt h = (__tmp_2 ? __tmp_2 : big);
     std::cout << "free:" << " " << h << "\n" << ::tpy::check_signals;
 }
 

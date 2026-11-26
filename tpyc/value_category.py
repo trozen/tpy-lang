@@ -2195,7 +2195,7 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
     if (isinstance(src, (TpyStrLiteral, TpyBytesLiteral))
             and (_view_slot(bare) or is_protocol_type(bare))):
         return None
-    arms = _select_arms(src)
+    arms = select_arms(src)
     if arms is not None:
         # A select is the arm it picks: a temporary only where some arm is
         # one (a select of existing views or of literals binds in place).
@@ -2206,13 +2206,22 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
     return src
 
 
-def _select_arms(e: TpyExpr) -> 'tuple[TpyExpr, ...] | None':
-    """The operands a ternary or an `and` / `or` may evaluate to."""
+def select_arms(e: TpyExpr, *, leaves: bool = False
+                ) -> 'tuple[TpyExpr, ...] | None':
+    """The operands a ternary or an `and` / `or` may evaluate to; with
+    `leaves`, through nested selects (and conversions of them) down to the
+    operands that are none. None for an expression that is no select."""
     if isinstance(e, TpyIfExpr):
-        return (e.then_expr, e.else_expr)
-    if isinstance(e, TpyBinOp) and e.op in ("&&", "||"):
-        return (e.left, e.right)
-    return None
+        arms = (e.then_expr, e.else_expr)
+    elif isinstance(e, TpyBinOp) and e.op in ("&&", "||"):
+        arms = (e.left, e.right)
+    else:
+        return None
+    if not leaves:
+        return arms
+    return tuple(leaf for arm in arms
+                 for leaf in (select_arms(peel_coerce(arm), leaves=True)
+                              or (arm,)))
 
 
 def _frame_twin(a: TpyExpr, ptype: 'TpyType | None',

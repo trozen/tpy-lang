@@ -111,19 +111,19 @@ std::vector<int32_t> mk(int32_t n) {
 //     e = 5 if c else sl(mk(2))
 //     return a * 1000 + b * 100 + d * 10 + e
 int32_t pack_tern(bool c) {
-    std::optional<std::vector<int32_t>> __tmp_1;
+    ::tpy::elided_slot<std::vector<int32_t>> __tmp_1;
     std::optional<std::array<const std::vector<int32_t>*, 1>> __tmp_2;
-    int32_t a = ((c) ? (5) : (__tmp_1.emplace(std::vector<int32_t>{1, 2, 3}), __tmp_2.emplace(std::array<const std::vector<int32_t>*, 1>{&(*__tmp_1)}), ::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_2)))));
-    std::optional<::tpy::ordered_map<std::string, int32_t>> __tmp_3;
+    int32_t a = ((c) ? (5) : (TPY_SLOT_FILL(__tmp_1, std::vector<int32_t>{1, 2, 3}), __tmp_2.emplace(std::array<const std::vector<int32_t>*, 1>{&(*__tmp_1)}), ::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_2)))));
+    ::tpy::elided_slot<::tpy::ordered_map<std::string, int32_t>> __tmp_3;
     std::optional<std::array<const ::tpy::ordered_map<std::string, int32_t>*, 1>> __tmp_4;
-    int32_t b = ((c) ? (5) : (__tmp_3.emplace(::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}})), __tmp_4.emplace(std::array<const ::tpy::ordered_map<std::string, int32_t>*, 1>{&(*__tmp_3)}), ::tpyapp::part_plan_reads_restored::sd(::tpy::varargs<const ::tpy::ordered_map<std::string, int32_t>>((*__tmp_4)))));
-    std::optional<P> __tmp_5;
-    std::optional<P> __tmp_6;
+    int32_t b = ((c) ? (5) : (TPY_SLOT_FILL(__tmp_3, ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}})), __tmp_4.emplace(std::array<const ::tpy::ordered_map<std::string, int32_t>*, 1>{&(*__tmp_3)}), ::tpyapp::part_plan_reads_restored::sd(::tpy::varargs<const ::tpy::ordered_map<std::string, int32_t>>((*__tmp_4)))));
+    ::tpy::elided_slot<P> __tmp_5;
+    ::tpy::elided_slot<P> __tmp_6;
     std::optional<std::array<const P*, 2>> __tmp_7;
-    int32_t d = ((c) ? (5) : (__tmp_5.emplace(P(4)), __tmp_6.emplace(P(5)), __tmp_7.emplace(std::array<const P*, 2>{&(*__tmp_5), &(*__tmp_6)}), ::tpyapp::part_plan_reads_restored::sp(::tpy::varargs<const P>((*__tmp_7)))));
-    std::optional<std::vector<int32_t>> __tmp_8;
+    int32_t d = ((c) ? (5) : (TPY_SLOT_FILL(__tmp_5, P(4)), TPY_SLOT_FILL(__tmp_6, P(5)), __tmp_7.emplace(std::array<const P*, 2>{&(*__tmp_5), &(*__tmp_6)}), ::tpyapp::part_plan_reads_restored::sp(::tpy::varargs<const P>((*__tmp_7)))));
+    ::tpy::elided_slot<std::vector<int32_t>> __tmp_8;
     std::optional<std::array<const std::vector<int32_t>*, 1>> __tmp_9;
-    int32_t e = ((c) ? (5) : (__tmp_8.emplace(::tpyapp::part_plan_reads_restored::mk(2)), __tmp_9.emplace(std::array<const std::vector<int32_t>*, 1>{&(*__tmp_8)}), ::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_9)))));
+    int32_t e = ((c) ? (5) : (TPY_SLOT_FILL(__tmp_8, ::tpyapp::part_plan_reads_restored::mk(2)), __tmp_9.emplace(std::array<const std::vector<int32_t>*, 1>{&(*__tmp_8)}), ::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_9)))));
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(a, 1000)), (::tpy::mul_check<int32_t>(b, 100)))), (::tpy::mul_check<int32_t>(d, 10)))), e));
 }
 
@@ -134,15 +134,15 @@ int32_t pack_tern(bool c) {
 //     w = c or sl(mk(3)) > 0
 //     return x and y and w
 bool pack_short(bool c) {
-    std::optional<std::vector<int32_t>> __tmp_1;
+    ::tpy::elided_slot<std::vector<int32_t>> __tmp_1;
     std::optional<std::array<const std::vector<int32_t>*, 1>> __tmp_2;
-    bool x = (c && (__tmp_1.emplace(std::vector<int32_t>{1, 2}), __tmp_2.emplace(std::array<const std::vector<int32_t>*, 1>{&(*__tmp_1)}), (::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_2))) > 1)));
-    std::optional<::tpy::ordered_map<std::string, int32_t>> __tmp_3;
+    bool x = (c && (TPY_SLOT_FILL(__tmp_1, std::vector<int32_t>{1, 2}), __tmp_2.emplace(std::array<const std::vector<int32_t>*, 1>{&(*__tmp_1)}), (::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_2))) > 1)));
+    ::tpy::elided_slot<::tpy::ordered_map<std::string, int32_t>> __tmp_3;
     std::optional<std::array<const ::tpy::ordered_map<std::string, int32_t>*, 1>> __tmp_4;
-    bool y = (c || (__tmp_3.emplace(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})), __tmp_4.emplace(std::array<const ::tpy::ordered_map<std::string, int32_t>*, 1>{&(*__tmp_3)}), (::tpyapp::part_plan_reads_restored::sd(::tpy::varargs<const ::tpy::ordered_map<std::string, int32_t>>((*__tmp_4))) > 0)));
-    std::optional<std::vector<int32_t>> __tmp_5;
+    bool y = (c || (TPY_SLOT_FILL(__tmp_3, ::tpy::ordered_map<std::string, int32_t>({{"a", 1}})), __tmp_4.emplace(std::array<const ::tpy::ordered_map<std::string, int32_t>*, 1>{&(*__tmp_3)}), (::tpyapp::part_plan_reads_restored::sd(::tpy::varargs<const ::tpy::ordered_map<std::string, int32_t>>((*__tmp_4))) > 0)));
+    ::tpy::elided_slot<std::vector<int32_t>> __tmp_5;
     std::optional<std::array<const std::vector<int32_t>*, 1>> __tmp_6;
-    bool w = (c || (__tmp_5.emplace(::tpyapp::part_plan_reads_restored::mk(3)), __tmp_6.emplace(std::array<const std::vector<int32_t>*, 1>{&(*__tmp_5)}), (::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_6))) > 0)));
+    bool w = (c || (TPY_SLOT_FILL(__tmp_5, ::tpyapp::part_plan_reads_restored::mk(3)), __tmp_6.emplace(std::array<const std::vector<int32_t>*, 1>{&(*__tmp_5)}), (::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_6))) > 0)));
     return ((x && y) && w);
 }
 
@@ -174,10 +174,10 @@ __gen_pack_gen pack_gen(bool c) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::optional<std::vector<int32_t>> __tmp_1;
-        std::optional<std::vector<int32_t>> __tmp_2;
+        ::tpy::elided_slot<std::vector<int32_t>> __tmp_1;
+        ::tpy::elided_slot<std::vector<int32_t>> __tmp_2;
         std::optional<std::array<const std::vector<int32_t>*, 2>> __tmp_3;
-        a = ((c) ? (5) : (__tmp_1.emplace(std::vector<int32_t>{1, 2, 3}), __tmp_2.emplace(::tpyapp::part_plan_reads_restored::mk(2)), __tmp_3.emplace(std::array<const std::vector<int32_t>*, 2>{&(*__tmp_1), &(*__tmp_2)}), ::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_3)))));
+        a = ((c) ? (5) : (TPY_SLOT_FILL(__tmp_1, std::vector<int32_t>{1, 2, 3}), TPY_SLOT_FILL(__tmp_2, ::tpyapp::part_plan_reads_restored::mk(2)), __tmp_3.emplace(std::array<const std::vector<int32_t>*, 2>{&(*__tmp_1), &(*__tmp_2)}), ::tpyapp::part_plan_reads_restored::sl(::tpy::varargs<const std::vector<int32_t>>((*__tmp_3)))));
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_1;
         continue;
@@ -187,13 +187,13 @@ __gen_pack_gen pack_gen(bool c) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        std::optional<::tpy::ordered_map<std::string, int32_t>> __tmp_4;
+        ::tpy::elided_slot<::tpy::ordered_map<std::string, int32_t>> __tmp_4;
         std::optional<std::array<const ::tpy::ordered_map<std::string, int32_t>*, 1>> __tmp_5;
-        b = ((c) ? (5) : (__tmp_4.emplace(::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}})), __tmp_5.emplace(std::array<const ::tpy::ordered_map<std::string, int32_t>*, 1>{&(*__tmp_4)}), ::tpyapp::part_plan_reads_restored::sd(::tpy::varargs<const ::tpy::ordered_map<std::string, int32_t>>((*__tmp_5)))));
-        std::optional<P> __tmp_6;
-        std::optional<P> __tmp_7;
+        b = ((c) ? (5) : (TPY_SLOT_FILL(__tmp_4, ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}})), __tmp_5.emplace(std::array<const ::tpy::ordered_map<std::string, int32_t>*, 1>{&(*__tmp_4)}), ::tpyapp::part_plan_reads_restored::sd(::tpy::varargs<const ::tpy::ordered_map<std::string, int32_t>>((*__tmp_5)))));
+        ::tpy::elided_slot<P> __tmp_6;
+        ::tpy::elided_slot<P> __tmp_7;
         std::optional<std::array<const P*, 2>> __tmp_8;
-        d = ((c) ? (5) : (__tmp_6.emplace(P(4)), __tmp_7.emplace(P(5)), __tmp_8.emplace(std::array<const P*, 2>{&(*__tmp_6), &(*__tmp_7)}), ::tpyapp::part_plan_reads_restored::sp(::tpy::varargs<const P>((*__tmp_8)))));
+        d = ((c) ? (5) : (TPY_SLOT_FILL(__tmp_6, P(4)), TPY_SLOT_FILL(__tmp_7, P(5)), __tmp_8.emplace(std::array<const P*, 2>{&(*__tmp_6), &(*__tmp_7)}), ::tpyapp::part_plan_reads_restored::sp(::tpy::varargs<const P>((*__tmp_8)))));
         __sub_2.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_2;
         continue;

@@ -27,6 +27,7 @@ from .nodes import (Form, HoistDecl, SeatLifetime, THIRArgTemp, THIRInlineTemp, 
     THIRResumableReturn, THIRReturn,
     THIRSelf, THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleLiteral,
     THIRTupleUnpack, THIRUnionArgLift, THIREvalThen, THIRIsinstance,
+    THIRErrorReturnUnwrap,
     THIRUnionLayout, THIRUnionTest, THIRDynIsinstanceMulti, THIRWhile,
     THIRMatch, THIRMatchArm, THIRMatchArmEntry)
 from . import validate as _validate
@@ -999,3 +1000,28 @@ class TestHeldArgumentKeepPlan:
                                 field_cpp="n", form=Form.BORROW)
         with pytest.raises(THIRValidationError, match="fresh object"):
             validate_stmts("f", self._stmt(self._held(field, Form.BORROW)))
+
+    def test_held_operand_borrow_out_of_a_leaving_fresh_call_passes(self):
+        # A held operand is master's `auto&& t = X;`: a fresh object the
+        # operand rule leaves inline because its value may leave the
+        # function dangles as on master, for MIR to warn.
+        unwrap = THIRErrorReturnUnwrap(
+            result_type=INT32,
+            call=THIRCall(result_type=INT32, callee="er", args=()))
+        call = THIRCall(result_type=self._REC, callee="mk", args=(unwrap,),
+                        form=Form.STORAGE)
+        field = THIRFieldAccess(result_type=INT32, receiver=call,
+                                field_cpp="n", form=Form.BORROW)
+        temp = dataclasses.replace(self._held(field, Form.BORROW), held=True)
+        validate_stmts("f", self._stmt(temp))
+
+    def test_held_operand_borrow_out_of_a_fresh_call_raises(self):
+        # The operand rule seats every fresh object that cannot leave the
+        # function: one left inline is a malformed tree.
+        call = THIRCall(result_type=self._REC, callee="mk", args=(),
+                        form=Form.STORAGE)
+        field = THIRFieldAccess(result_type=INT32, receiver=call,
+                                field_cpp="n", form=Form.BORROW)
+        temp = dataclasses.replace(self._held(field, Form.BORROW), held=True)
+        with pytest.raises(THIRValidationError, match="fresh object"):
+            validate_stmts("f", self._stmt(temp))

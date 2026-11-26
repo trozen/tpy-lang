@@ -178,7 +178,7 @@ def _resumable_lines(name: str, leaves) -> list[str]:
     from tpyc.thir.dump import _expr, _exprs, _signature_facts, _stmt_lines
     from tpyc.thir.frame import LeafRole
     from tpyc.thir.nodes import THIRResumableReturn
-    from tpyc.thir.validate import _iter_children
+    from tpyc.thir.nodes import iter_children
 
     def of(*roles):
         return [leaf for slot, leaf in leaves.leaves.items()
@@ -187,7 +187,7 @@ def _resumable_lines(name: str, leaves) -> list[str]:
     def nested_returns(node, out):
         if isinstance(node, THIRResumableReturn):
             out.append(node)
-        for child in _iter_children(node):
+        for child in iter_children(node):
             nested_returns(child, out)
 
     nested: list = []

@@ -47,7 +47,6 @@ body of the module.
 
 from __future__ import annotations
 
-import dataclasses
 from collections.abc import Sequence
 from contextvars import ContextVar
 
@@ -73,9 +72,10 @@ from .scalar_leaves import (
     holds_elements, leaf_constant, leaf_global, modeled_ancestors, native_container_subject, native_container_type,
     optional_record_field, owned_leaf, storage_leaf,
 )
-from .nodes import (UNION_MEMBER_COERCION,
+from .nodes import (UNION_MEMBER_COERCION, iter_children,
+    may_leave_function,
     FLUSHING_REBIND_KINDS, Form, OpenTSink, SeatLifetime,
-    THIRArgTemp, THIRAssign, THIRInlineTemp, THIRVarargPack,
+    THIRArgTemp, THIRAssign, THIRInlineTemp, THIRVarargArray, THIRVarargPack,
     THIRCall, THIRChainedCompareStmtExpr, THIRCoerce, THIRConstructor,
     THIRMove, THIRCtorCall, THIRDelItem, THIRErrorReturnBind,
     THIRErrorReturnDiscard, THIRErrorReturnUnwrap, THIRExprStmt,
@@ -87,7 +87,8 @@ from .nodes import (UNION_MEMBER_COERCION,
     THIRSliceAssign, THIRFinallyDeferredReturn, DeferredPartKind,
     THIRStrSlice, THIRSubscript, THIRTempRead, BOUND_SOURCE_READ,
     THIRTupleUnpack,
-    THIRCoroHandleMove, THIRMatch, THIRMatchBinding,
+    THIRCoroHandleMove, THIRMatch, THIRMatchArmEntry, THIRMatchBinding,
+    THIRAssert,
     THIRWith, THIRWithItem, WithTargetArm, THIRFrameSlotWrite, TupleElemBind,
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableLeaves,
     THIRResumableReturn, THIRResumeExtraction, THIRStmt, THIRLent, THIRSelf,
@@ -178,20 +179,6 @@ def _check_tuple(owner: str, node: object, layout: THIRTupleLayout, typ: TpyType
         if not isinstance(node, (THIRVarDecl, THIRTupleLiteral)):
             _fail(owner, node, "owned tuple fact needs local constructor literal")
 
-
-def _iter_children(node: THIRNode):
-    for f in dataclasses.fields(node):
-        v = getattr(node, f.name)
-        if isinstance(v, THIRNode):
-            yield v
-        elif isinstance(v, (list, tuple)):
-            for item in v:
-                if isinstance(item, THIRNode):
-                    yield item
-                elif dataclasses.is_dataclass(item) and not isinstance(item, type):
-                    # MIL/base-init cells (THIRMilInit / THIRBaseInit) are
-                    # plain dataclasses holding THIR exprs.
-                    yield from _iter_children(item)
 
 
 def _deferred_leaf_parts(parts):
@@ -628,8 +615,7 @@ def _check_node(owner: str, node: THIRNode) -> None:
         if node.orelse if node.decided else node.body:
             _fail(owner, node, "decided while keeps its ruled-out arm")
     if isinstance(node, THIRMatch):
-        for entry in (*(e for arm in node.arms for e in arm.entries),
-                      *node.str_guarded, *node.str_trailing):
+        for entry in _match_entries(node):
             if entry.decided is False and (entry.body or entry.guard is None):
                 _fail(owner, node, "decided match guard keeps its ruled-out arm")
     if isinstance(node, THIRIf):
@@ -1186,7 +1172,13 @@ def _check_held_init(owner: str, temp: THIRArgTemp) -> None:
     the held value is neither the address of such a temporary nor a borrow
     out of a fresh object built inside it (a field or method of a
     construction or of a call's fresh result), which would dangle once
-    that expression ends."""
+    that expression ends. The one exception is a held operand
+    (`THIRArgTemp.held`, master's `auto&& t = X;`) over a fresh object
+    whose value may leave the function (`may_leave_function`): the
+    operand rule leaves that object inline rather than seat it, read as
+    master reads it, dangling as there
+    (BUGS.md#held-operand-nested-unwrap-eager), a lifetime fact MIR is to
+    warn on, not a malformed tree."""
     if temp.lifetime is SeatLifetime.FRAME and temp.frame_holder is None:
         _fail(owner, temp, "a temporary the keep plan keeps on the frame "
                            "declared before its statement instead")
@@ -1204,7 +1196,7 @@ def _check_held_init(owner: str, temp: THIRArgTemp) -> None:
                 and n.lifetime is not SeatLifetime.FULL_EXPRESSION):
             _fail(owner, n, "a temporary inside a held argument the keep "
                             "plan did not leave to its full expression")
-        stack.extend(_iter_children(n))
+        stack.extend(iter_children(n))
     held = temp.init
     while isinstance(held, THIRCoerce) and held.form is held.expr.form:
         held = held.expr
@@ -1217,8 +1209,9 @@ def _check_held_init(owner: str, temp: THIRArgTemp) -> None:
         root = held.receiver
         while isinstance(root, THIRFieldAccess):
             root = root.receiver
-        if isinstance(root, THIRCtorCall) or (
-                isinstance(root, THIRCall) and root.form is Form.STORAGE):
+        if ((isinstance(root, THIRCtorCall) or (
+                isinstance(root, THIRCall) and root.form is Form.STORAGE))
+                and not (temp.held and may_leave_function(root))):
             _fail(owner, held, "a held argument borrows a fresh object "
                                "built inside it")
 
@@ -1313,9 +1306,10 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     tuple-unpack source) -- the only
     region where a THIRArgTemp may appear, and there only under call-arg
     nesting (the flush right rides through call-shaped args / receivers /
-    operands). If and while CONDITIONS are also flushable: the emit places
-    their temps (pre-`if` flush, the nested-elif block, the restructured
-    `while (true)` loop head -- never a pre-loop stale snapshot), and so are
+    operands). If, while and assert CONDITIONS and match guards are also
+    flushable: the emit places their temps (pre-`if` flush, the nested-elif
+    block, the restructured `while (true)` loop head -- never a pre-loop
+    stale snapshot -- before the assert's or the guard's test), and so are
     for-loop sources and range bounds. Anywhere else (a MIL cell) a temp has
     no flush point at all, so reaching one is a lowering bug.
 
@@ -1344,11 +1338,17 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # A `*args` pack is built at its call's position: an element it
         # points at is an argument temp flushed as the call's own are.
         _check_node(owner, node)
+        if node.array is not None:
+            _walk_arg_list(owner, [node.array], return_type,
+                           argtemp_ok=argtemp_ok, eager_only=eager_only)
         if node.star_source is not None:
             _walk(owner, node.star_source, return_type, argtemp_ok=argtemp_ok,
                   eager_only=eager_only)
-        _walk_arg_list(owner, node.args, return_type, argtemp_ok=argtemp_ok,
-                       eager_only=eager_only)
+        return
+    if isinstance(node, THIRVarargArray):
+        _check_node(owner, node)
+        _walk_arg_list(owner, node.elements, return_type,
+                       argtemp_ok=argtemp_ok, eager_only=eager_only)
         return
     if isinstance(node, (THIRCall, THIRMethodCall, THIRCtorCall)):
         # A ctor call carries a temp only for its mutated-ref-slot record
@@ -1373,7 +1373,7 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
             and isinstance(node.receiver, THIRArgTemp)):
         _walk_receiver(owner, node.receiver, return_type,
                        argtemp_ok=argtemp_ok, eager_only=eager_only)
-        for child in _iter_children(node):
+        for child in iter_children(node):
             if child is not node.receiver:
                 _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
                       eager_only=eager_only)
@@ -1404,12 +1404,13 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         if node.source_expr is not None:
             _walk(owner, node.source_expr, return_type, argtemp_ok=True)
         return
-    if isinstance(node, (THIRIf, THIRWhile)):
+    if isinstance(node, (THIRIf, THIRWhile, THIRAssert)):
         # Conditions are flushable: _emit_if flushes before the `if (` /
         # inside the nested-elif block, _emit_while restructures the loop
-        # head (`while (true) { <temps> if (!cond) break;`).
+        # head (`while (true) { <temps> if (!cond) break;`), an assert
+        # flushes before its test.
         _walk(owner, node.condition, return_type, argtemp_ok=True)
-        for child in _iter_children(node):
+        for child in iter_children(node):
             if child is not node.condition:
                 _walk(owner, child, return_type)
         return
@@ -1423,7 +1424,7 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         sources = _loop_sources(node)
         for child in sources:
             _walk(owner, child, return_type, argtemp_ok=True)
-        for child in _iter_children(node):
+        for child in iter_children(node):
             if not any(child is c for c in sources):
                 _walk(owner, child, return_type)
         return
@@ -1529,16 +1530,17 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # A manager's temps flush before its `__ctx_N` line (a fresh
         # argument of the head lives for the whole statement).
         managers = [item.ctx_expr for item in node.items]
-        for child in _iter_children(node):
+        for child in iter_children(node):
             _walk(owner, child, return_type,
                   argtemp_ok=any(child is m for m in managers))
         return
-    if isinstance(node, THIRMatch) and node.subject is not None:
-        # The subject's temps flush before its bind line.
-        _walk(owner, node.subject, return_type, argtemp_ok=True)
-        for child in _iter_children(node):
-            if child is not node.subject:
-                _walk(owner, child, return_type)
+    if isinstance(node, THIRMatch):
+        # The subject's temps flush before its bind line, a guard's before
+        # the test reading it (`_match_guard`).
+        flushed = [node.subject, *(e.guard for e in _match_entries(node))]
+        for child in iter_children(node):
+            _walk(owner, child, return_type,
+                  argtemp_ok=any(child is f for f in flushed))
         return
     if isinstance(node, THIRComprehensionBlock):
         # Every statement of the body flushes its own temps inside the
@@ -1555,14 +1557,14 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                 _walk(owner, child, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRArrayComprehension):
-        # The range arm's element flushes its temps inside the per-index
-        # lambda, so it is a flushable position whatever the comprehension
-        # sits in. The source arm's element and its source, and the range
-        # bounds, have no flush of their own: they keep the enclosing right.
+        # The element flushes its temps inside the per-index lambda, so it
+        # is a flushable position whatever the comprehension sits in. The
+        # source arm's source and the range bounds have no flush of their
+        # own: they keep the enclosing right.
         own_flush = _own_flush_children(node)
         for child in own_flush:
             _walk(owner, child, return_type, argtemp_ok=True)
-        for child in _iter_children(node):
+        for child in iter_children(node):
             if not any(child is c for c in own_flush):
                 _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
                       eager_only=eager_only)
@@ -1574,7 +1576,7 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # CONDITION evaluates exactly once unconditionally, so it inherits
         # the enclosing flush right (`Gate __tmp_1 = Gate(true);` hoists
         # before `((check(__tmp_1)) ? (1) : (0))`).
-        for child in _iter_children(node):
+        for child in iter_children(node):
             if child is node.cond:
                 _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
                       eager_only=eager_only)
@@ -1589,9 +1591,13 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # emit renders, so it is the same conditional-operand position as a
         # logical THIRBinOp's right (which lowering grants cond_eager from
         # the same site). The LHS evaluates once, unconditionally.
-        for child in _iter_children(node):
-            _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
-                  eager_only=(True if child is node.rhs else eager_only))
+        # A held LHS is the argument temp it is read from, declared
+        # wherever the lowering found a statement (`_hoisted`).
+        for child in iter_children(node):
+            held = node.lhs_held is not None and child is node.lhs
+            _walk(owner, child, return_type, argtemp_ok=argtemp_ok or held,
+                  eager_only=(True if child is node.rhs else eager_only),
+                  via_transparent=held)
         return
     if isinstance(node, THIRChainedCompareStmtExpr):
         # Operands 0 and 1 always evaluate; every later one sits behind a
@@ -1600,9 +1606,10 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # ternary-arm rule again (the lowering-time cond_eager check is
         # the primary gate; this keeps the structural net symmetric).
         for idx, init in enumerate(node.inits):
-            if init is not None:
-                _walk(owner, init, return_type, argtemp_ok=argtemp_ok,
-                      eager_only=(True if idx >= 2 else eager_only))
+            for part in (*(node.roots[idx] if node.roots else ()), init):
+                if part is not None:
+                    _walk(owner, part, return_type, argtemp_ok=argtemp_ok,
+                          eager_only=(True if idx >= 2 else eager_only))
         for idx, pair in enumerate(node.pairs):
             _walk(owner, pair, return_type, argtemp_ok=argtemp_ok,
                   eager_only=(True if idx >= 1 else eager_only))
@@ -1614,7 +1621,7 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # lowering bug). The LHS always evaluates: it keeps the plain
         # inherited right (its temp hoists at the statement or banks into
         # an enclosing region).
-        for child in _iter_children(node):
+        for child in iter_children(node):
             _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
                   eager_only=(True if child is node.right else eager_only))
         return
@@ -1622,7 +1629,7 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     # coerce wraps, ...): every sub-position of a flushable value expression
     # flushes at the same statement. Statement nodes reset it
     # -- each statement handler above grants the right per position.
-    for child in _iter_children(node):
+    for child in iter_children(node):
         _walk(owner, child, return_type,
               argtemp_ok=argtemp_ok and isinstance(node, THIRExpr),
               eager_only=eager_only and isinstance(node, THIRExpr),
@@ -1737,6 +1744,13 @@ def _validate_function(fn: THIRFunction) -> None:
         _walk(fn.name, stmt, fn.return_type)
 
 
+def _match_entries(node: THIRMatch) -> 'tuple[THIRMatchArmEntry, ...]':
+    """Every case entry of `node`, its str dispatch's guarded and trailing
+    ones included."""
+    return (*(e for arm in node.arms for e in arm.entries),
+            *node.str_guarded, *node.str_trailing)
+
+
 def _loop_sources(node: 'THIRForEach | THIRForIterProto | THIRForRange'
                   ) -> 'tuple[THIRNode, ...]':
     if isinstance(node, THIRForRange):
@@ -1747,17 +1761,14 @@ def _loop_sources(node: 'THIRForEach | THIRForIterProto | THIRForRange'
 
 def _own_flush_children(node: THIRNode) -> 'tuple[THIRNode, ...]':
     """The children of `node` that flush their own temps: every statement of
-    a comprehension's body, an Array range comprehension's element (flushed
+    a comprehension's body, an Array comprehension's element (flushed
     inside its per-index lambda) and an Array source comprehension's
     head -- a comprehension's first loop source included."""
     if isinstance(node, THIRComprehensionBlock):
         return node.body
-    if (isinstance(node, THIRArrayComprehension) and node.arm == "range"
-            and node.element is not None):
-        return (node.element,)
-    if isinstance(node, THIRArrayComprehension) and node.head is not None:
+    if isinstance(node, THIRArrayComprehension):
         # The source arm's unpack head is a statement of the lambda body.
-        return (node.head,)
+        return tuple(c for c in (node.element, node.head) if c is not None)
     return ()
 
 
@@ -1801,7 +1812,7 @@ def _check_no_statement_temp(owner: str, node: THIRNode) -> None:
     if hoists_declaration(node):
         _fail(owner, node, "statement temp in a member-init / base-init cell")
     skip = _own_flush_children(node)
-    for child in _iter_children(node):
+    for child in iter_children(node):
         if not any(child is c for c in skip):
             _check_no_statement_temp(owner, child)
 

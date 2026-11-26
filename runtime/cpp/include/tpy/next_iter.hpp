@@ -12,6 +12,7 @@
 
 #include "core.hpp"
 
+#include <exception>
 #include <expected>
 #include <memory>
 #include <tuple>
@@ -81,7 +82,28 @@ auto unwrap_ref_move(std::tuple<Ts...>& t) {
     return unwrap_tuple_refs(t, std::index_sequence_for<Ts...>{});
 }
 
+// The value an `@error_return` call's unwrap yields, as that unwrap renders
+// it: a payload held by value is moved out as a value (`unwrap_ref_move`), a
+// `val_or_ref` over a reference payload is the `X&` it points at
+// (`unwrap_ref`), const where `X` is. Named over the call alone in the type
+// query of a slot holding the unwrap (a never-called lambda, which the
+// unwrap's own error `return` cannot sit in), so C++ decides the type -- an
+// odr-use there, hence defined.
+template<typename V>
+struct unwrapped_of {
+    using type = std::remove_cvref_t<decltype(::tpy::unwrap_ref_move(std::declval<V&>()))>;
+};
+template<typename X>
+    requires (!val_or_ref<X>::is_val)
+struct unwrapped_of<val_or_ref<X>> {
+    using type = X&;
+};
+template<typename R>
+typename unwrapped_of<typename std::remove_cvref_t<R>::value_type>::type
+unwrapped_t_of(R&&) { std::terminate(); }
+
 namespace detail {
+
 // Whether an iterator step holds its value rather than lending an element its
 // source keeps: a `val_or_ref` over a value payload, or a plain value.
 template<typename V>

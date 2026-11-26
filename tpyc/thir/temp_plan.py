@@ -110,7 +110,13 @@ class _Planner:
             self.seen.add(expr)
         match expr:
             case th.THIRArgTemp():
-                self.expr(expr.init)
+                if expr.binds_eagerly:
+                    # Declared before the statement with every temp it
+                    # holds (`THIRArgTemp.held`).
+                    with self.queue.eager():
+                        self.expr(expr.init)
+                else:
+                    self.expr(expr.init)
                 self.queue.register(expr, expr.would_bank())
                 if expr.read_id is not None:
                     self.read_ids.add(expr.read_id)
@@ -151,8 +157,11 @@ class _Planner:
                 else:
                     self.expr(expr.right)
             case th.THIRValueSelect():
-                _plain(expr, {"lhs", "rhs", "op", "truthy_mode", "lhs_cast", "rhs_cast", "rhs_sv"})
+                _plain(expr, {"lhs", "rhs", "op", "truthy_mode", "lhs_cast", "rhs_cast", "rhs_sv",
+                              "lhs_held"})
                 self.expr(expr.lhs)
+                if expr.lhs_held is not None:
+                    self.expr(expr.lhs_held)
                 self.lazy(expr.rhs)
             case th.THIRIfExpr():
                 self.expr(expr.cond)

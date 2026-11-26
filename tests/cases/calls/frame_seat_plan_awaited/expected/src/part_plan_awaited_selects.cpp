@@ -52,11 +52,13 @@ __gen_sel_gen sel_gen(bool c, std::string_view p) {
 //     u = p if c else ((p if d else "q") or "zz")  # tpyc: ok
 //     return v + w + u
 std::string sel_fresh(bool c, bool d, std::string_view p) {
-    auto&& __tmp_1 = std::format("{}?", p);
-    std::string v = ((c) ? (std::string(p)) : (((!__tmp_1.empty()) ? __tmp_1 : std::string(std::string_view("zz")))));
+    TPY_SLOT_TYPE(__tmp_1_d, std::format("{}?", p));
+    ::tpy::elided_slot<__tmp_1_d> __tmp_1;
+    std::string v = ((c) ? (std::string(p)) : (TPY_SLOT_FILL(__tmp_1, std::format("{}?", p)), ((!(*__tmp_1).empty()) ? (*__tmp_1) : std::string(std::string_view("zz")))));
     std::string w = ((c) ? (std::string(p)) : (((!p.empty()) ? std::string(p) : ((d) ? ("a") : (std::format("{}!", p))))));
-    auto&& __tmp_2 = ((d) ? (p) : (std::string_view("q")));
-    std::string_view u = ((c) ? (p) : (((!__tmp_2.empty()) ? __tmp_2 : std::string_view("zz"))));
+    TPY_SLOT_TYPE(__tmp_2_d, ((d) ? (p) : (std::string_view("q"))));
+    ::tpy::elided_slot<__tmp_2_d> __tmp_2;
+    std::string_view u = ((c) ? (p) : (TPY_SLOT_FILL(__tmp_2, ((d) ? (p) : (std::string_view("q")))), ((!(*__tmp_2).empty()) ? (*__tmp_2) : std::string_view("zz"))));
     return (::tpy::str_concat((::tpy::str_concat(v, w)), u));
 }
 

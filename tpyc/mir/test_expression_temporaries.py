@@ -249,7 +249,7 @@ def test_value_select_hoist_does_not_inherit_inline_lifetime(
     flag = th.THIRName(BOOL, "flag")
     expr = th.THIRValueSelect(BOOL, comparison if side == "lhs" else flag,
                              flag if side == "lhs" else comparison, "||",
-                             lhs_temp_cpp="auto&&" if hoist else None)
+                             lhs_held=th.THIRTempRead(BOOL, read_id=1) if hoist else None)
     fn = function(expr)
     if hoist and side == "lhs":
         result = lower_function(fn, MIRBodyId("hoist", "select"),

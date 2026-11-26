@@ -4429,19 +4429,17 @@ class _Lowering:
                 operand = self.value(expr.operand)
                 result = f.leaf(typ, MIROp(expr.resolved.method.name, (f.splice(operand),), may_raise=True), loc)
             case th.THIRValueSelect():
-                _plain(expr, {"lhs", "rhs", "op", "lhs_temp_cpp"})
+                _plain(expr, {"lhs", "rhs", "op", "lhs_held"})
                 _require(expr, expr.op in ("&&", "||") and typ == BOOL, "unsupported value select")
                 before = len(self.mir.active_temporaries or ())
                 lhs = self.expr(expr.lhs)
                 _require(expr, lhs.shape_of().type == BOOL, "unsupported value select")
                 # A hoisted LHS has its own full expression and may extend a subobject's lifetime.
-                _require(expr, expr.lhs_temp_cpp is None or len(self.mir.active_temporaries or ()) == before,
+                _require(expr, expr.lhs_held is None or len(self.mir.active_temporaries or ()) == before,
                          "temporary in hoisted select operand")
                 rhs = self.expr(expr.rhs)
                 _require(expr, rhs.shape_of().type == BOOL,
                          "unsupported value select")
-                # A pure bool select never needs a representation-changing temp.
-                _require(expr, expr.lhs_temp_cpp in (None, "auto&&"), "unsupported select temporary")
                 result = self.logical(f, expr.op, lhs, self.anchored(expr.rhs, rhs), loc)
             case th.THIRIfExpr():
                 _plain(expr, {"cond", "then", "orelse"})

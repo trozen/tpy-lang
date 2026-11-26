@@ -73,7 +73,8 @@ from .nodes import (deref_hops_cpp, THIRRebindSlot, THIRStoragePlacement, Form, 
     THIRStrSlice, THIRSubscript, THIRBoundCall, THIRTry, THIRRecordCopy,
     THIRBorrowTupleLiteral, THIRTupleLiteral, THIRTupleUnpack, TupleElemBind,
     THIRTruthy, THIROptViewArg, THIROwnOptRebuild, THIRUnaryNot,
-    THIRUnaryArith, THIRUnionArgLift, THIRVarDecl, THIRVarargPack, THIRWhile,
+    THIRUnaryArith, THIRUnionArgLift, THIRVarDecl, THIRVarargArray, THIRVarargPack,
+    THIRWhile, bound_root_name,
     THIRWith, WithTargetArm, OpenTSink, open_local_last_cpp)
 from .faces import witness as _witness
 from .temp_plan import THIRTempPlan, THIRTempPlacement, if_chain, validate_plan
@@ -167,12 +168,14 @@ class TempSink:
 
     def create(self, cpp_type: str, init_expr: str, *,
                brace_init: bool = False, movable: bool = False,
-               fills_in_place: bool = False) -> str:
+               fills_in_place: bool = False, held: bool = False,
+               query: str | None = None) -> str:
         assert self.plan is None, "unplanned temporary producer"
         return self._ctx.temps.create_typed(cpp_type, init_expr,
                                             brace_init=brace_init,
                                             movable=movable,
-                                            fills_in_place=fills_in_place)
+                                            fills_in_place=fills_in_place,
+                                            held=held, query=query)
 
     @contextmanager
     def conditional_region(self, anchor: THIRExpr | None = None) -> Iterator[CondRegion]:
@@ -189,11 +192,21 @@ class TempSink:
                 assert placement.index not in self._initialized
                 self._initialized.add(placement.index)
 
-    def argument(self, expr: THIRArgTemp, init: str, plan: THIRTempPlan | None) -> str:
+    @contextmanager
+    def eager(self) -> Iterator[None]:
+        """Temps registered inside are declared before the statement
+        whatever region is open (`TempQueue.eager`): what an operand
+        evaluated there holds."""
+        with self._planned.eager(), self._ctx.temps.eager():
+            yield
+
+    def argument(self, expr: THIRArgTemp, init: str, plan: THIRTempPlan | None,
+                 query: str | None = None) -> str:
         if plan is None:
             name = self.create(expr.cpp_type or "auto", init, brace_init=expr.brace_init,
                                movable=expr.would_bank(),
-                               fills_in_place=expr.fills_in_place)
+                               fills_in_place=expr.fills_in_place,
+                               held=expr.held, query=query)
         else:
             placement = plan.placement(expr)
             assert self.plan is plan and isinstance(placement.node, THIRArgTemp)
@@ -202,7 +215,8 @@ class TempSink:
             name = self._ctx.temps.create_typed(expr.cpp_type or "auto", init,
                                                 brace_init=expr.brace_init, movable=bool(expr.movable),
                                                 planned_optional=placement.optional,
-                                                fills_in_place=expr.fills_in_place)
+                                                fills_in_place=expr.fills_in_place,
+                                                held=expr.held, query=query)
         if expr.read_id is not None:
             self._read_names[expr.read_id] = name
         return name
@@ -316,9 +330,12 @@ class UnevaluatedTemps(TempSink):
 
     def create(self, cpp_type: str, init_expr: str, *,
                brace_init: bool = False, movable: bool = False,
-               fills_in_place: bool = False) -> str:
+               fills_in_place: bool = False, held: bool = False,
+               query: str | None = None) -> str:
         # A deduced declaration names no type to stand in for: spell what
         # it would deduce from its initializer (`auto` decays an array).
+        if held:
+            cpp_type = "auto&&"
         if cpp_type == "auto&&":
             cpp_type = f"std::remove_reference_t<decltype(({init_expr}))>"
         elif cpp_type == "auto":
@@ -640,6 +657,24 @@ def _subject_atom(subject: THIRExpr, cpp: str) -> str:
     return cpp if isinstance(subject, (THIRName, THIRSelf)) else f"({cpp})"
 
 
+def _conditional(render: 'Callable[[], str]', state: _EmitState) -> str:
+    """`render()` of an operand evaluated only behind another test: the
+    argument temps it creates bank into a region of their own, filled where
+    it is evaluated (spliced before it)."""
+    with state.temps.conditional_region() as region:
+        code = render()
+    return f"({region.prefix}{code})" if region.prefix else code
+
+
+def _chain_operand(init: THIRExpr, i: int, state: _EmitState) -> str:
+    """A chained comparison's operand `i` init (or a root it reads).
+    Operands 0 and 1 always run; every later one sits behind a passed
+    compare (`_conditional`)."""
+    if i < 2:
+        return _emit_expr(init, state)
+    return _conditional(lambda: _emit_expr(init, state), state)
+
+
 def _emit_chained_compare_stmtexpr(e: THIRChainedCompareStmtExpr,
                                    state: _EmitState) -> str:
     # Bind each non-simple operand to an `auto&& _cmpI` temp, then interleave
@@ -652,27 +687,19 @@ def _emit_chained_compare_stmtexpr(e: THIRChainedCompareStmtExpr,
         if init is None:
             binds.append(None)
             continue
-        # Operands 0 and 1 always run; every later one sits behind a passed
-        # compare, so its deferred temps bank into a region and splice at
-        # the operand.
-        if i >= 2:
-            with state.temps.conditional_region() as _region:
-                code = _emit_expr(init, state)
-            if _region.prefix:
-                code = f"({_region.prefix}{code})"
-        else:
-            code = _emit_expr(init, state)
-        binds.append(_bind_once(f"_cmp{i}", code,
-                                by_value=bool(e.by_value and e.by_value[i])))
+        roots = [_bind_once(bound_root_name(f"__r{i}", k),
+                            _chain_operand(root, i, state))
+                 for k, root in enumerate(e.roots[i] if e.roots else ())]
+        code = _chain_operand(init, i, state)
+        binds.append(" ".join([*roots, _bind_once(
+            f"_cmp{i}", code, by_value=bool(e.by_value and e.by_value[i]))]))
 
     def render_pair(i: int) -> str:
         if i == 0:
             return _emit_binop(e.pairs[0], state)
         # The last operand renders inline in its pair, behind a passed
         # compare too.
-        with state.temps.conditional_region() as _region:
-            code = _emit_binop(e.pairs[i], state)
-        return f"({_region.prefix}{code})" if _region.prefix else code
+        return _conditional(lambda: _emit_binop(e.pairs[i], state), state)
 
     inner = render_pair(n - 1)
     for i in range(n - 2, 0, -1):
@@ -859,6 +886,18 @@ def _emit_bound_call(b: THIRBoundCall, recv: str, args: list[str], *,
             f"{b.method_cpp}{mtargs}({', '.join(args)})")
 
 
+def _emit_index_return(buf: io.StringIO, element: 'THIRExpr',
+                       state: _EmitState, ind: str) -> None:
+    """An Array comprehension's per-index lambda returning `element`, the
+    temps it registers declared in the lambda before the `return`, so each
+    index builds and destroys its own (`auto __tmp_N = i;` ahead of
+    `Box(std::move(__tmp_N))`)."""
+    cp_el = state.temps.checkpoint()
+    elem_s = _emit_expr(element, state)
+    state.temps.flush_since(buf, cp_el, ind)
+    buf.write(f"{ind}return {elem_s};\n")
+
+
 def _emit_array_comprehension(e: 'THIRArrayComprehension',
                               state: _EmitState) -> str:
     """The Array-demoted comprehension: a `::tpy::array_from_index` call, no
@@ -871,9 +910,7 @@ def _emit_array_comprehension(e: 'THIRArrayComprehension',
     if e.arm == "range":
         # Sema proved literal bounds, so start/step inline as index
         # arithmetic inside the per-index lambda; no `({` prelude, no
-        # reserve. Element temps flush into the lambda before the `return`
-        # (per-iteration: `auto __tmp_N = i;` ahead of
-        # `Box(std::move(__tmp_N))`).
+        # reserve.
         n = state.next_loop_index()
         idx = f"{e.counter_cpp}(__i_{n})"
         if e.range_start is None:
@@ -888,10 +925,7 @@ def _emit_array_comprehension(e: 'THIRArrayComprehension',
                   f"{e.array_size_cpp}>("
                   f"[&](std::size_t __i_{n}) -> {e.array_elem_cpp} {{\n")
         buf.write(f"{ind1}{e.counter_cpp} {cpp_var} = {var_init};\n")
-        cp_el = state.temps.checkpoint()
-        elem_s = _emit_expr(e.element, state)
-        state.temps.flush_since(buf, cp_el, ind1)
-        buf.write(f"{ind1}return {elem_s};\n")
+        _emit_index_return(buf, e.element, state, ind1)
         buf.write(f"{stmt_ind}}})")
         return buf.getvalue()
     assert e.arm == "source", e.arm
@@ -930,7 +964,7 @@ def _emit_array_comprehension(e: 'THIRArrayComprehension',
                                      elem)
         for line in lines:
             buf.write(f"{ind2}{line}\n")
-    buf.write(f"{ind2}return {_emit_expr(e.element, state)};\n")
+    _emit_index_return(buf, e.element, state, ind2)
     buf.write(f"{ind1}}});\n")
     buf.write(f"{stmt_ind}}})")
     return buf.getvalue()
@@ -1000,36 +1034,21 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
 def _emit_vararg_pack(e: 'THIRVarargPack', state: _EmitState) -> str:
     # A sole `*expr` unpack forwards the container directly (span source) or
     # through a borrowed span, the empty pack takes the nullary ctor, and the
-    # per-arg form hoists a std::array temp (element temps first, then the
-    # array).
+    # per-arg form reads the argument temp holding its array.
     if e.star_source is not None:
         inner = _emit_expr(e.star_source, state)
         if e.span_fn is None:
             return f"::tpy::varargs<{e.elem_cpp}>({inner})"
         return f"::tpy::varargs<{e.elem_cpp}>(::tpy::{e.span_fn}({inner}))"
-    if not e.args:
+    if e.array is None:
         return f"::tpy::varargs<{e.elem_cpp}>()"
-    subs = []
-    for i, a in enumerate(e.args):
-        rendered = _emit_expr(a, state)
-        if e.is_ref:
-            if e.ref_lvalue[i]:
-                subs.append(f"&{rendered}")
-            else:
-                tmp = state.temps.create(e.elem_cpp, rendered)
-                subs.append(f"&{tmp}")
-        else:
-            subs.append(rendered)
-    n = len(subs)
-    init = ", ".join(subs)
-    array_cpp = (f"std::array<{e.elem_cpp}*, {n}>" if e.is_ref
-                 else f"std::array<{e.elem_cpp}, {n}>")
-    # A pointer array is built where its elements are: under a conditional
-    # operand it is emplaced in that arm, after the elements it points at
-    # (a value array would copy its elements into the optional).
-    temp = state.temps.create(array_cpp, init, brace_init=True,
-                              movable=e.is_ref)
-    return f"::tpy::varargs<{e.elem_cpp}>({temp})"
+    return f"::tpy::varargs<{e.elem_cpp}>({_emit_expr(e.array, state)})"
+
+
+def _emit_vararg_array(e: THIRVarargArray, state: _EmitState) -> str:
+    # The brace initializer of the temp holding the array.
+    return ", ".join(f"&{_emit_expr(a, state)}" if e.is_ref
+                     else _emit_expr(a, state) for a in e.elements)
 
 
 def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
@@ -1952,7 +1971,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         if e.need_temp:
             joined = " || ".join(f"(__in_lhs == {el})" for el in elems)
             body = f"!({joined})" if e.negate else joined
-            return f"({{ auto&& __in_lhs = {left}; {body}; }})"
+            roots = "".join(
+                _bind_once(bound_root_name("__in_root", k), _emit_expr(r, state))
+                + " " for k, r in enumerate(e.left_roots))
+            return f"({{ {roots}auto&& __in_lhs = {left}; {body}; }})"
         conditions = [f"({left} == {el})" for el in elems]
         joined = " || ".join(conditions) if conditions else "false"
         if e.negate:
@@ -1964,8 +1986,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # branch (its EVALUATION is lazy at runtime -- an RHS-nested temp would
         # hoist above the ternary, but no admitted RHS shape carries one).
         lhs_r = _emit_expr(e.lhs, state)
-        if e.lhs_temp_cpp is not None:
-            lhs_r = state.temps.create(e.lhs_temp_cpp, lhs_r)
+        # The truthy test reads the held operand first, the chosen arm
+        # again (`lhs_held`).
+        lhs_again = (lhs_r if e.lhs_held is None
+                     else _emit_expr(e.lhs_held, state))
         if e.truthy_mode is TruthinessMode.RECORD_LEN:
             truthy = f"(::tpy::__len__({lhs_r}) != 0)"
         elif e.truthy_mode is TruthinessMode.RECORD_BOOL:
@@ -1985,7 +2009,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             rhs_r = _emit_expr(e.rhs, state)
         if e.rhs_sv:
             rhs_r = f"std::string_view({rhs_r})"
-        lhs_b = f"{e.lhs_cast}({lhs_r})" if e.lhs_cast else lhs_r
+        lhs_b = f"{e.lhs_cast}({lhs_again})" if e.lhs_cast else lhs_again
         if e.lhs_move:
             lhs_b = f"std::move({lhs_b})"
         rhs_b = f"{e.rhs_cast}({rhs_r})" if e.rhs_cast else rhs_r
@@ -2089,6 +2113,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return _emit_ctor_call(e, state)
     if isinstance(e, THIRVarargPack):
         return _emit_vararg_pack(e, state)
+    if isinstance(e, THIRVarargArray):
+        return _emit_vararg_array(e, state)
     if isinstance(e, THIRRootSlot):
         if (isinstance(e.value, THIRCtorCall) and not e.value.brace_init
                 and not e.build_first):
@@ -2106,14 +2132,29 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # Register the hoisted decl with the sink and read the real __tmp_N
         # here; args render left-to-right, so temps are created in argument
         # order. The pending decl flushes before the statement line.
-        init_cpp = _emit_expr(e.init, state)
+        query = None
+        if e.deduces_type and isinstance(e.init, THIRErrorReturnUnwrap):
+            # The unwrap's error `return` cannot sit in the type query's
+            # lambda: the query reads the call alone.
+            call_cpp = _emit_expr(e.init.call, state)
+            init_cpp = _er_unwrap_cpp(e.init, call_cpp, state)
+            query = f"::tpy::unwrapped_t_of({call_cpp})"
+        elif e.binds_eagerly:
+            # Declared before its statement, it holds every temp it reads
+            # there too, never one banked into the region it sits in.
+            with state.temps.eager():
+                init_cpp = _emit_expr(e.init, state)
+        else:
+            init_cpp = _emit_expr(e.init, state)
+            if e.deduces_type:
+                query = init_cpp
         if (e.frame_holder is not None
                 and not isinstance(state.temps, UnevaluatedTemps)):
             # A frame holder is filled where the argument is evaluated.
             name = (f"{e.frame_holder.name}.emplace("
                     f"{typed_init_expression(e.frame_holder.cpp_type, init_cpp, e.brace_init)})")
         else:
-            name = state.temps.argument(e, init_cpp, state.temp_plan)
+            name = state.temps.argument(e, init_cpp, state.temp_plan, query)
         if e.move:
             return f"std::move({name})"
         return f"&({name})" if e.addr_of else name
@@ -2221,22 +2262,27 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return e.wrap.format(inner)
         return inner
     if isinstance(e, THIRErrorReturnUnwrap):
-        # The call renders first, THEN the counter draws, so nested unwraps
-        # in arguments number lower than their host.
-        call_cpp = _emit_expr(e.call, state)
-        tmp = f"__er_{state.try_counter.next()}"
-        check = _er_check_inline(tmp, state)
-        if e.value_form:
-            _witness("er.unwrap")
-            return (f"({{ auto {tmp} = {call_cpp}; {check} "
-                    f"::tpy::unwrap_ref_move(*{tmp}); }})")
-        # Non-value result: return a pointer from the statement expression
-        # (points at the original object via val_or_ref), deref outside for
-        # an lvalue.
-        _witness("er.unwrap_ptr")
-        return (f"(*({{ auto {tmp} = {call_cpp}; {check} "
-                f"&::tpy::unwrap_ref(*{tmp}); }}))")
+        return _er_unwrap_cpp(e, _emit_expr(e.call, state), state)
     raise THIRCodeGenError(f"unhandled THIR expr: {type(e).__name__}")
+
+
+def _er_unwrap_cpp(e: THIRErrorReturnUnwrap, call_cpp: str,
+                   state: _EmitState) -> str:
+    """The unwrap `e` over its rendered call. The call renders first, THEN
+    the counter draws, so nested unwraps in arguments number lower than
+    their host."""
+    tmp = f"__er_{state.try_counter.next()}"
+    check = _er_check_inline(tmp, state)
+    if e.value_form:
+        _witness("er.unwrap")
+        return (f"({{ auto {tmp} = {call_cpp}; {check} "
+                f"::tpy::unwrap_ref_move(*{tmp}); }})")
+    # Non-value result: return a pointer from the statement expression
+    # (points at the original object via val_or_ref), deref outside for
+    # an lvalue.
+    _witness("er.unwrap_ptr")
+    return (f"(*({{ auto {tmp} = {call_cpp}; {check} "
+            f"&::tpy::unwrap_ref(*{tmp}); }}))")
 
 
 # --- statements ---
@@ -3604,13 +3650,18 @@ def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
                     _emit_match_binding(out, b, subject, inner)
                     emitted.add(b.name)
             has_unguarded = any(e.guard is None for e in arm.entries)
+            # Every guard of the chain is tested before its `if` opens:
+            # the first whenever the arm is reached, the rest behind it.
+            guards = [_match_guard(out, e.guard, state, inner,
+                                   behind=k > 0)
+                      for k, e in enumerate(e for e in arm.entries
+                                            if e.guard is not None)]
             if_opened = False
             for entry in arm.entries:
                 if entry.guard is not None:
                     keyword = "if" if not if_opened else "} else if"
                     if_opened = True
-                    out.write(f"{inner}{keyword} "
-                              f"({_emit_expr(entry.guard, state)}) {{\n")
+                    out.write(f"{inner}{keyword} ({guards.pop(0)}) {{\n")
                 else:
                     out.write(f"{inner}}} else {{\n")
                 _emit_match_arm_body(out, entry, indent_level + 2, state)
@@ -3759,7 +3810,9 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
                 cond_parts = [f"{pre}{alias}{suf}"
                               for pre, suf in entry.field_conds]
                 if entry.guard is not None:
-                    cond_parts.append(_emit_expr(entry.guard, state))
+                    cond_parts.append(_match_guard(
+                        out, entry.guard, state, bind_indent,
+                        behind=bool(cond_parts)))
                 out.write(f"{bind_indent}if "
                           f"({' && '.join(cond_parts)}) {{\n")
                 lvl = indent_level + (3 if use_scope else 2)
@@ -3859,7 +3912,8 @@ def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
             cond_parts = [f"{p}{entry.case_alias}{s}"
                           for p, s in entry.field_conds]
             if entry.guard is not None:
-                cond_parts.append(_emit_expr(entry.guard, state))
+                cond_parts.append(_match_guard(out, entry.guard, state, inner,
+                                               behind=bool(cond_parts)))
             if cond_parts:
                 out.write(f"{inner}if ({' && '.join(cond_parts)}) {{\n")
                 _emit_stmts(out, entry.body, indent_level + 2, state)
@@ -3873,7 +3927,9 @@ def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
             cond = " || ".join(f"{p}{subject}{s}"
                                for p, s in entry.poly_or_conds)
             if entry.guard is not None:
-                cond = f"({cond}) && {_emit_expr(entry.guard, state)}"
+                guard = _match_guard(out, entry.guard, state, indent,
+                                     behind=True)
+                cond = f"({cond}) && {guard}"
             out.write(f"{indent}if ({cond}) {{\n")
             _emit_poly_whole_binding(out, entry, subject, inner)
             _emit_stmts(out, entry.body, indent_level + 1, state)
@@ -3882,8 +3938,9 @@ def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
         else:
             _emit_poly_whole_binding(out, entry, subject, indent)
             if entry.guard is not None:
-                out.write(f"{indent}if ({_emit_expr(entry.guard, state)}) "
-                          f"{{\n")
+                cond = _match_guard(out, entry.guard, state, indent,
+                                    behind=False)
+                out.write(f"{indent}if ({cond}) {{\n")
                 _emit_stmts(out, entry.body, indent_level + 1, state)
                 end.goto(out, inner, entry)
                 out.write(f"{indent}}}\n")
@@ -3988,6 +4045,19 @@ def _emit_match_if_elif_optional(out: TextIO, stmt: THIRMatch,
         out.write(f"{indent}}}\n")
 
 
+def _match_guard(out: TextIO, guard: THIRExpr, state: _EmitState,
+                 indent: str, *, behind: bool) -> str:
+    """A match guard's test. Its argument temps are declared before the
+    `if` that tests it (at `indent`), as an `if` condition's are -- banked
+    where the guard runs only behind another test (`behind`: a pattern's
+    condition it is `&&`-joined to, an earlier arm's `if` of a chain), so
+    they are evaluated only when it is."""
+    cond = (_conditional(lambda: _emit_expr(guard, state), state) if behind
+            else _emit_expr(guard, state))
+    state.temps.flush(out, indent)
+    return cond
+
+
 def _emit_match_goto_tail(out: TextIO, entry, indent_level: int,
                           state: _EmitState, end: '_MatchEnd') -> None:
     # The guarded arm tail: inside an opened arm block (bindings already
@@ -3996,7 +4066,8 @@ def _emit_match_goto_tail(out: TextIO, entry, indent_level: int,
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     if entry.guard is not None:
-        out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
+        cond = _match_guard(out, entry.guard, state, inner, behind=False)
+        out.write(f"{inner}if ({cond}) {{\n")
         _emit_match_arm_body(out, entry, indent_level + 2, state)
         end.goto(out, INDENT * (indent_level + 2), entry)
         out.write(f"{inner}}}\n")
@@ -4101,6 +4172,12 @@ def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
     # exits the loop directly like any if body.
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
+    # Each guard runs behind its arm's test, and is tested before the
+    # chain opens.
+    guards = [None if arm.entries[0].guard is None or not arm.labels
+              else _match_guard(out, arm.entries[0].guard, state, indent,
+                                behind=True)
+              for arm in stmt.arms]
     for i, arm in enumerate(stmt.arms):
         entry = arm.entries[0]
         if not arm.labels:
@@ -4120,7 +4197,7 @@ def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
                 # even where the bare join is the tier's spelling -- `&&`
                 # binds tighter than `||`.
                 gated = f"({joined})" if len(conds) > 1 else cond
-                cond = f"{gated} && {_emit_expr(entry.guard, state)}"
+                cond = f"{gated} && {guards[i]}"
             keyword = "if" if i == 0 else "} else if"
             out.write(f"{indent}{keyword} ({cond}) {{\n")
         _emit_match_whole_bindings(out, entry, subject, inner)
@@ -4152,7 +4229,8 @@ def _emit_match_if_elif_guarded(out: TextIO, stmt: THIRMatch,
             out.write(f"{indent}if ({cond}) {{\n")
         _emit_match_whole_bindings(out, entry, subject, inner)
         if entry.guard is not None:
-            out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
+            cond = _match_guard(out, entry.guard, state, inner, behind=False)
+            out.write(f"{inner}if ({cond}) {{\n")
             _emit_match_arm_body(out, entry, indent_level + 2, state)
             end.goto(out, INDENT * (indent_level + 2), entry)
             out.write(f"{inner}}}\n")
@@ -4237,11 +4315,14 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
             if entry.or_conds:
                 cond = _record_or_cond(entry.or_conds, subject)
                 if entry.guard is not None:
-                    cond = f"({cond}) && {_emit_expr(entry.guard, state)}"
+                    guard = _match_guard(out, entry.guard, state, indent,
+                                         behind=True)
+                    cond = f"({cond}) && {guard}"
                 out.write(f"{indent}if ({cond}) {{\n")
             elif entry.guard is not None:
-                out.write(f"{indent}if "
-                          f"({_emit_expr(entry.guard, state)}) {{\n")
+                cond = _match_guard(out, entry.guard, state, indent,
+                                    behind=False)
+                out.write(f"{indent}if ({cond}) {{\n")
             else:
                 out.write(f"{indent}{{\n")
             _emit_match_whole_bindings(out, entry, subject, inner)
@@ -4259,7 +4340,8 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
             _emit_match_binding(out, fb, subject, inner, bases)
         _emit_match_whole_bindings(out, entry, subject, inner)
         if entry.guard is not None:
-            out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
+            cond = _match_guard(out, entry.guard, state, inner, behind=False)
+            out.write(f"{inner}if ({cond}) {{\n")
             _emit_match_arm_body(out, entry, indent_level + 2, state)
             end.goto(out, INDENT * (indent_level + 2), entry)
             out.write(f"{inner}}}\n")
@@ -4575,11 +4657,15 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
                          f"{_emit_expr(stmt.message, state)})")
                 state.temps.flush(out, indent)
             out.write(f"{indent}{throw};\n")
-        elif throw is not None:
-            out.write(
-                f"{indent}if (!({_emit_expr(stmt.condition, state)})) {throw};\n")
         else:
-            out.write(f"{indent}if (!({_emit_expr(stmt.condition, state)})) {{\n")
+            # The condition's argument temps (an operand it holds once)
+            # are declared before the test, as an `if` condition's are.
+            cond = _emit_expr(stmt.condition, state)
+            state.temps.flush(out, indent)
+            if throw is not None:
+                out.write(f"{indent}if (!({cond})) {throw};\n")
+                return
+            out.write(f"{indent}if (!({cond})) {{\n")
             inner = indent + INDENT
             message = _emit_expr(stmt.message, state)
             state.temps.flush(out, inner)

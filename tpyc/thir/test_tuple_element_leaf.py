@@ -12,7 +12,7 @@ from . import nodes as th
 from .lower.convert import layout_tuple
 from .source import tuple_elems
 from .testutil import lower_bodies
-from .validate import _iter_children
+from .nodes import iter_children
 
 _SRC = '''
 from typing import Iterator
@@ -120,7 +120,7 @@ def _walk(node):
                 if isinstance(x, th.THIRNode):
                     yield from _walk(x)
         return
-    for child in _iter_children(node):
+    for child in iter_children(node):
         yield from _walk(child)
 
 

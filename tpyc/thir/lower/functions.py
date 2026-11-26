@@ -1337,7 +1337,7 @@ def _rejects_global_slot(node) -> bool:
     lowering where its slot is decided -- the second such site is the
     borrow-tuple shared-slot refusal in `_borrow_tuple_hoist_entry`
     (statements.py). The traversal is
-    generic (`validate._iter_children` walks dataclass fields), so only this
+    generic (`nodes.iter_children` walks dataclass fields), so only this
     predicate needs maintaining; inverting it to an allowlist would make the
     failure mode a spurious reject instead of a dangling pointer."""
     if isinstance(node, THIRPtrLocalDecl):

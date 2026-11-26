@@ -9,7 +9,7 @@ from types import MappingProxyType
 
 from ..compilation_context import activate_compiler, get_current_compiler
 from ..thir import nodes as th
-from ..thir.validate import _iter_children
+from ..thir.nodes import iter_children
 from ..thir.scalar_leaves import (
     MIRClass, chain_fields, element_record_member, holds_loan, loan_free, modeled_chain,
     modeled_field, value_class, view_compatible, walk_stored,
@@ -632,14 +632,14 @@ def body_calls(fn: th.THIRFunction | th.THIRConstructor, definitions: MIRDefinit
     # A base initializer is a plain cell the THIR walk only looks through, so
     # a constructor's walk starts from its parts, the base inits as calls.
     pending: list[object] = ([*fn.base_inits, *(m.value for m in fn.mil_inits), *fn.body]
-                             if isinstance(fn, th.THIRConstructor) else list(_iter_children(fn)))
+                             if isinstance(fn, th.THIRConstructor) else list(iter_children(fn)))
     while pending:
         node = pending.pop()
         if isinstance(node, (th.THIRCall, th.THIRMethodCall, th.THIRCtorCall, th.THIRBaseInit)):
             callee, _ = invocation_callee(node, definitions)
             if callee is not None:
                 yield node, callee
-        pending.extend(_iter_children(node))
+        pending.extend(iter_children(node))
 
 
 def _read_records(ctor: th.THIRConstructor) -> list[NominalType]:

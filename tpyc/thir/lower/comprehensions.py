@@ -993,9 +993,11 @@ def _lower_array_source_comprehension(
         iterable = _lower_expr(
             it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE,
                                            pos=SinkPos.ITER_SOURCE))
+    # allow_temps: element temps flush inside the per-index lambda, as
+    # the range arm's do.
     with bindings.at(lc, gen), bindings.at(lc, init):
         element = _lower_comp_container_elem(
-            init.element_expr, elem_t, lc, body_declared)
+            init.element_expr, elem_t, lc, body_declared, allow_temps=True)
     return THIRArrayComprehension(
         result_type=result_type,
         arm="source",

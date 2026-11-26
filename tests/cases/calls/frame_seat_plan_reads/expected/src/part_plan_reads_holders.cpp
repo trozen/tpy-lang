@@ -391,10 +391,10 @@ std::vector<int32_t> mk(int32_t n) {
 //     # a `*args` pack of fresh elements, built only when its arm runs
 //     return 5 if c else size_all(mk(1), mk(2))  # tpyc: ok
 int32_t pick(bool c) {
-    std::optional<std::vector<int32_t>> __tmp_1;
-    std::optional<std::vector<int32_t>> __tmp_2;
+    ::tpy::elided_slot<std::vector<int32_t>> __tmp_1;
+    ::tpy::elided_slot<std::vector<int32_t>> __tmp_2;
     std::optional<std::array<const std::vector<int32_t>*, 2>> __tmp_3;
-    return ((c) ? (5) : (__tmp_1.emplace(::tpyapp::part_plan_reads_holders::mk(1)), __tmp_2.emplace(::tpyapp::part_plan_reads_holders::mk(2)), __tmp_3.emplace(std::array<const std::vector<int32_t>*, 2>{&(*__tmp_1), &(*__tmp_2)}), ::tpyapp::part_plan_reads_holders::size_all(::tpy::varargs<const std::vector<int32_t>>((*__tmp_3)))));
+    return ((c) ? (5) : (TPY_SLOT_FILL(__tmp_1, ::tpyapp::part_plan_reads_holders::mk(1)), TPY_SLOT_FILL(__tmp_2, ::tpyapp::part_plan_reads_holders::mk(2)), __tmp_3.emplace(std::array<const std::vector<int32_t>*, 2>{&(*__tmp_1), &(*__tmp_2)}), ::tpyapp::part_plan_reads_holders::size_all(::tpy::varargs<const std::vector<int32_t>>((*__tmp_3)))));
 }
 
 // def main() -> None:

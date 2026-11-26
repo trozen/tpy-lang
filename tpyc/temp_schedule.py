@@ -1,5 +1,7 @@
 """Shared pending-declaration and conditional-initialization scheduling."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 import re
 from typing import Generic, TypeVar
@@ -41,6 +43,17 @@ class TempQueue(Generic[T]):
         for entry in deferred:
             entry.deferred = True
         return deferred
+
+    @contextmanager
+    def eager(self) -> Iterator[None]:
+        """No region is open inside: an entry registered there is declared
+        before its statement, whatever region encloses it. A region opened
+        inside still banks what it holds."""
+        outer, self.regions = self.regions, []
+        try:
+            yield
+        finally:
+            self.regions = outer
 
     def register(self, value: T, bankable: bool) -> TempEntry[T]:
         entry = TempEntry(value, bool(self.regions) and bankable)

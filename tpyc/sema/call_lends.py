@@ -1561,17 +1561,56 @@ def fresh_receiver_root(obj: TpyExpr,
     the same for every type. None where the chain reaches storage that
     outlives the statement (a reference the policy places in no operand),
     or a pointer, which names its object."""
+    found: list[TpyExpr] = []
+    _walk_fresh(obj, ctx, found, None)
+    return found[0] if found else None
+
+
+def fresh_operand_roots(obj: TpyExpr, ctx: 'SemanticContext',
+                        builds_nothing: 'Callable[[TpyCoerce], bool]'
+                        ) -> 'tuple[TpyExpr, ...]':
+    """Every fresh object `obj` reads, by `fresh_receiver_root`'s walk,
+    which here also passes a call whose result materializes nothing into
+    each operand it may point into -- its receiver and every argument the
+    call policy names, in evaluation order (`head(s + "x")` of a
+    `-> StrView` head lending its parameter, `pick2(a + "x", b + "y")`) --
+    and a conversion that builds nothing at its position
+    (`builds_nothing`: a `str` argument's view of a string) into its
+    operand."""
+    found: list[TpyExpr] = []
+    _walk_fresh(obj, ctx, found, builds_nothing)
+    return tuple(found)
+
+
+def _lent_arguments(srcs: 'list[LendSource] | None') -> 'list[TpyExpr]':
+    """The arguments among a call's lend sources, in argument order."""
+    lent = {id(s.expr): (s.idx, s.expr) for s in srcs or ()
+            if s.idx >= 0 and not s.temp_backed}
+    return [e for _, e in sorted(lent.values(), key=lambda p: p[0])]
+
+
+def _walk_fresh(n: TpyExpr, ctx: 'SemanticContext', found: 'list[TpyExpr]',
+                builds_nothing: 'Callable[[TpyCoerce], bool] | None') -> None:
+    """The fresh objects `n` reads, appended to `found`; `builds_nothing`
+    None walks `fresh_receiver_root`'s one chain."""
+    through_operands = builds_nothing is not None
     policy = MayLend(ctx)
-    n = obj
     while True:
         peeled = peel_reading_coercions(n)
+        while (through_operands and isinstance(peeled, TpyCoerce)
+               and builds_nothing(peeled)):
+            peeled = peel_reading_coercions(peeled.expr)
         if any(t is not None and t.is_pointer()
                for t in (ctx.get_expr_type(n), ctx.get_expr_type(peeled))):
             # A deref of a `Ptr` reads storage the pointer names.
-            return None
+            return
         n = peeled
         ops = call_operands(n) if isinstance(
             n, (TpySubscript, TpyMethodCall)) else None
+        if isinstance(n, TpyFieldAccess) and n.class_constant_owner is not None:
+            # A class constant is a static: it reads no storage of its
+            # receiver.
+            return
         if isinstance(n, TpyFieldAccess) or (isinstance(n, TpySubscript)
                                              and ops is None):
             # No callee: a tuple element or a TypedDict field.
@@ -1580,9 +1619,22 @@ def fresh_receiver_root(obj: TpyExpr,
         if ops is not None and ops.obj is not None:
             srcs = policy.at_call(n, (), Ask.LIFETIME)
             if srcs and any(s.idx == -1 for s in srcs):
+                if through_operands:
+                    _walk_fresh(ops.obj, ctx, found, builds_nothing)
+                    for a in _lent_arguments(srcs):
+                        _walk_fresh(a, ctx, found, builds_nothing)
+                    return
                 n = ops.obj
                 continue
-        return n if materializing_temp_source(n, ctx) else None
+        if materializing_temp_source(n, ctx):
+            found.append(n)
+            return
+        if through_operands and isinstance(n, (TpyCall, TpyMethodCall)):
+            srcs = policy.at_call(n, (), Ask.LIFETIME)
+            if srcs and all(s.idx >= 0 for s in srcs):
+                for a in _lent_arguments(srcs):
+                    _walk_fresh(a, ctx, found, builds_nothing)
+        return
 
 
 def _handed_frames(call: TpyExpr) -> list[LendSource]:

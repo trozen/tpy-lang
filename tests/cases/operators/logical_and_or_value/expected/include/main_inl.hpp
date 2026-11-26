@@ -14,13 +14,11 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_literal_lhs::__nex
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        auto&& __tmp_1 = 7;
         __state = S_RESUME_0;
-        return (__tmp_1 ? v : __tmp_1);
+        return (7 ? v : 7);
     }
     case S_RESUME_0: {  // after: yield 7 and v  # tpyc: ok
-        auto&& __tmp_2 = 0;
-        w = (__tmp_2 ? __tmp_2 : v);
+        w = (0 ? 0 : v);
         __state = S_RESUME_1;
         return w;
     }

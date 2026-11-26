@@ -1,0 +1,537 @@
+module-pack gl 2
+module-pack gl-tail-long-heap-string-0123456789 35
+mk module
+module-in True
+side module
+module-guard True
+pack ab 2
+pack ab-tail-long-heap-string-0123456789 35
+lent ab-lent-long-heap-string-0123456789 35
+selpack ab-sel-long-heap-string-0123456789 34
+valpack 2000000000000000000000000000001
+valpack-skip False
+strpack 5
+char a 1
+char ab 2
+pack ab 2
+pack ab-tail-long-heap-string-0123456789 35
+lent ab-lent-long-heap-string-0123456789 35
+selpack ab 2
+valpack 0
+valpack-skip True
+strpack 0
+char a 1
+char ab 2
+side L
+guard-and True
+guard-skip False
+tern 3
+refpack True [1, 1] [0]
+refpack-skip False [1, 1] [0]
+mk NM 1
+mk NM 2
+nomove True
+nomove-skip 5
+guard-and False
+side skipped
+guard-skip True
+side arm
+tern 4
+refpack False [1] []
+refpack-skip True [1, 1] [0]
+nomove False
+mk NM 10
+mk NM 20
+nomove-skip 30
+mk in
+in True
+mk chain
+chain True
+mk c3
+chain3 False
+mk c3a
+mk c3b
+chain3-pass True
+mk same
+in-lent True
+in-strip True
+in-sel True
+mk first
+sel-lent 3
+sel-head ab-or-long-heap-string-0123456789 33
+method rn 2
+method rn-tail-long-heap-string-0123456789 35
+side method
+method-guard True
+mk method
+method-in True
+method rn 2
+method rn-tail-long-heap-string-0123456789 35
+method-guard False
+mk method
+method-in True
+comp [5, 5]
+mk comp
+mk comp
+mk comp
+comp-filter [1]
+side dict
+side dict
+side dict
+dict-filter {0: 0, 2: 4}
+er-guard True
+mk er
+error_return 2 35
+error_return raised 1
+er-guard False
+mk er
+error_return 0 0
+guard 1 1
+mk guard-sel
+guard 7 2
+mk guard-sel
+mk guard-chain
+guard 43 3
+mk guard-sel
+mk guard-chain
+guard 5 4
+elif 0 0
+mk elif-sel
+elif 7 1
+mk elif-sel
+mk elif-in
+elif 11 5
+mk elif-sel
+elif 9 2
+side while
+side while
+side while
+while 3
+mk assert
+assert ok
+assert-tuple 1
+side ctor
+ctor 5
+side with-item
+side with-body
+with-pack ab 2
+with-pack ab-tail-long-heap-string-0123456789 35
+with 5 6
+side try
+try 7
+side finally
+fin-pack ab 2
+fin-pack ab-fin-long-heap-string-0123456789 34
+finally 8
+side with-item
+side with-body
+with-pack ab 2
+with-pack ab-tail-long-heap-string-0123456789 35
+with 5 6
+side try
+try 7
+side finally
+fin-pack ab 2
+fin-pack ab-fin-long-heap-string-0123456789 34
+finally 8
+try caught
+arrcomp init D 1
+arrcomp del D d-long-heap-string-0123456789abcdef-1
+arrcomp init D 2
+arrcomp del D d-long-heap-string-0123456789abcdef-2
+arrcomp True [True, True] [2, 3]
+arrcomp init D 3
+arrcomp del D d-long-heap-string-0123456789abcdef-3
+arrcomp init D 7
+arrcomp del D d-long-heap-string-0123456789abcdef-7
+arrcomp-unpack True [True, True]
+ctor 0
+with-pack ab 2
+with-pack ab-tail-long-heap-string-0123456789 35
+with 0 0
+try 0
+fin-pack ab 2
+fin-pack ab-fin-long-heap-string-0123456789 34
+finally 0
+with-pack ab 2
+with-pack ab-tail-long-heap-string-0123456789 35
+with 0 0
+try 0
+fin-pack ab 2
+fin-pack ab-fin-long-heap-string-0123456789 34
+finally 0
+try caught
+arrcomp False [False, False] [0, 0]
+arrcomp-unpack False [False, False]
+gen start
+gen gngngngngngngngngngngngngngngngngngngngn
+gen gngngngngngngngngngngngngngngngngngngngn
+gen-empty start
+gen-empty fallback
+gen-empty fallback
+nested 9
+nested 2
+side unpack
+gen-unpack 3
+gen-unpack 11
+gen-unpack-skip 0
+gen-unpack-skip 21
+gen-unpack-alias 21
+gen-opt param-long-heap-string-0123456789abcdefp
+gen-opt param-long-heap-string-0123456789abcdefp
+gen-opt eleme
+gen-opt eleme
+async-opt param-long-heap-0123456789p eleme
+async hello fresh-lhs-long-string-1
+gather 6
+side async
+async-guard True
+mk async
+async-in True 7
+async fresh-rhs-long-string-2 fresh-lhs-long-string-2
+gather 6
+side async
+async-guard True
+mk async
+async-in True 2
+roots-sub 7
+roots-sub-in True
+roots-head2 ab-twice-long-heap-string-0123 30
+roots-head2-sel ab-sel-long-heap-string-012345
+roots-head2-in False
+roots-two ab-a-long-heap-string-0123456789 32
+roots-two-sel ab-c-long-heap-string-0123456789
+roots-recv ab-d-long-heap-string-0123456789 32
+roots-recv-sel ab-e-long-heap-string-0123456789
+roots-recv-own hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+roots-owner ab-owned-long-heap-string-0123456789 36
+roots-owner-in True
+roots-owner-m ab-owned-long-heap-string-0123456789 36
+roots-owner-m-sel ab-owned-long-heap-string-0123456789
+roots-owner-m-in True
+roots-owner-f ab-owned-long-heap-string-0123456789 36
+roots-owner-f-sel ab-owned-long-heap-string-0123456789
+roots-two cd-b-long-heap-string-0123456789 32
+roots-two-sel cd-c-long-heap-string-0123456789
+roots-recv cd-d-long-heap-string-0123456789 32
+roots-recv-sel cd-e-long-heap-string-0123456789
+roots-recv-own hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+roots-owner cd-owned-long-heap-string-0123456789 36
+roots-owner-in True
+roots-owner-m cd-owned-long-heap-string-0123456789 36
+roots-owner-m-sel cd-owned-long-heap-string-0123456789
+roots-owner-m-in True
+roots-owner-f cd-owned-long-heap-string-0123456789 36
+roots-owner-f-sel cd-owned-long-heap-string-0123456789
+roots-bump 6 6
+roots-bump-q 10 2
+guards-wide True
+guards-wide False
+guards-if-pack
+guards-arm-pack True
+guards-match-pack
+guards-if-pack
+guards-arm-pack True
+guards-match-other
+guards-packs 10 20
+guards-mk A 0
+guards-mk A 3
+guards-mg-frame 1
+guards-mg-comp 11
+guards-assert-comp 21
+guards-mk A 5
+guards-mk A 3
+guards-mg-frame-other 6
+guards-mg-comp-other 16
+guards-assert-comp 26
+guards-mk A 0
+guards-mg-frame-other 0
+guards-mg-comp-other 0
+guards-assert-comp 10
+guards-mk A 2
+guards-capture 2
+guards-mk A 0
+guards-capture-other 0
+guards-mk A 4
+guards-capture-gen 4
+guards-mk A 0
+guards-capture-gen -1
+guards-literal-split True True
+guards-literal-split False False
+guards-seated-lvalue 0 3
+guards-seated-lvalue 4 4
+er_str 2
+checks-str vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+checks 0 True 2
+er_big 2
+checks-big 1000000000000000000000000000002
+checks 1 True 2
+er_big 2
+er_big -1
+checks raised 2 True 2
+er_int 2
+mk Pin 2
+checks-pin True
+checks 3 True 2
+er_int 2
+mk Pin 3
+checks-op True
+checks 4 True 2
+mk Pin 3
+checks-call True
+checks 5 True 2
+mk Pin 2
+mk Pin 3
+checks-two True
+checks 6 True 2
+mk Pin 2
+checks-arm True
+checks 7 True 2
+mk Pin 2
+checks raised 8 True 2
+er_p 2
+checks-chain 1
+checks 9 True 2
+checks-str skip
+checks 0 False -1
+checks-big 0
+checks 1 False -1
+checks-big2 0
+checks 2 False -1
+checks-pin False
+checks 3 False -1
+checks-op False
+checks 4 False -1
+checks-call False
+checks 5 False -1
+checks-two False
+checks 6 False -1
+checks-arm False
+checks 7 False -1
+checks-half False
+checks 8 False -1
+checks-chain 0
+checks 9 False -1
+er_str -1
+checks raised 0 True -1
+er_big -1
+checks raised 1 True -1
+er_big -1
+checks raised 2 True -1
+er_int -1
+checks raised 3 True -1
+er_int -1
+checks raised 4 True -1
+checks raised 5 True -1
+checks raised 6 True -1
+checks raised 7 True -1
+checks raised 8 True -1
+er_p -1
+checks raised 9 True -1
+er_str 5
+checks-str vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+checks 0 True 5
+er_big 5
+checks-big 1000000000000000000000000000005
+checks 1 True 5
+er_big 5
+er_big 2
+checks-big2 2000000000000000000000000000007
+checks 2 True 5
+er_int 5
+mk Pin 5
+checks-pin True
+checks 3 True 5
+er_int 5
+mk Pin 6
+checks-op True
+checks 4 True 5
+mk Pin 6
+checks-call True
+checks 5 True 5
+mk Pin 5
+mk Pin 6
+checks-two True
+checks 6 True 5
+mk Pin 5
+checks-arm True
+checks 7 True 5
+mk Pin 5
+checks raised 8 True 5
+er_p 5
+checks-chain 1
+checks 9 True 5
+er_str 0
+checks-str fallback
+checks 0 True 0
+mk Pin 3
+checks-arm True
+checks 7 True 0
+lowered-gen names zlong-heap-string-0123456789abcdefgh
+lowered-gen names zlong-heap-string-0123456789abcdefgh
+lowered-gen tern elem-long-heap-string-0123456789abcdefghp
+lowered-gen tern elem-long-heap-string-0123456789abcdefghp
+lowered-plain-tern param-long-heap-string-0123456789abcdef
+lowered-gen tern param-long-heap-string-0123456789abcdefp
+lowered-gen tern param-long-heap-string-0123456789abcdefp
+lowered-plain-tern elem-long-heap-string-0123456789abcdefgh
+lowered-widen 1 3 0
+lowered-captured param none
+lowered-narrowed param-long-heap-string-0123456789abcdef
+lowered-narrowed none
+lowered-narrowed none
+lowered-wide 123456789012345678901234567890 0
+unwraps er_i 1
+unwraps-c 0 1 1
+unwraps-c 1 1 4
+unwraps er_i 1
+unwraps-c 2 1 1
+unwraps-c 3 1 2
+unwraps er_i 1
+unwraps-c 4 1 d
+unwraps-c 5 1 123456789012345678901234
+unwraps-c 6 1 5
+unwraps er_i 1
+unwraps-c 7 1 1
+unwraps er_i 1
+unwraps-c 8 1 0
+unwraps er_i 0
+unwraps-c 9 1 1
+unwraps er_i 1
+unwraps-c 10 1 7
+unwraps er_i 1
+unwraps er_i 1
+unwraps-c 11 1 1
+unwraps er_i 1
+unwraps-c 12 1 1
+unwraps er_i -1
+unwraps-c raised 0 -1
+unwraps-c 1 -1 4
+unwraps er_i -1
+unwraps-c raised 2 -1
+unwraps er_i -1
+unwraps-c raised 3 -1
+unwraps er_i -1
+unwraps-c raised 4 -1
+unwraps-c raised 5 -1
+unwraps-c raised 6 -1
+unwraps er_i -1
+unwraps-c raised 7 -1
+unwraps er_i -1
+unwraps-c raised 8 -1
+unwraps-c 9 -1 42
+unwraps er_i -1
+unwraps-c raised 10 -1
+unwraps er_i -1
+unwraps-c raised 11 -1
+unwraps er_i 1
+unwraps-c 12 -1 1
+unwraps er_i 0
+unwraps-c 0 0 7
+unwraps-c 1 0 4
+unwraps er_i 0
+unwraps-c 2 0 5
+unwraps-c 3 0 1
+unwraps er_i 0
+unwraps-c 4 0 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+unwraps-c 5 0 4
+unwraps-c 6 0 6
+unwraps er_i 0
+unwraps-c 7 0 42
+unwraps er_i 0
+unwraps-c 8 0 1
+unwraps-c 9 0 42
+unwraps er_i 0
+unwraps-c 10 0 8
+unwraps er_i 0
+unwraps er_i 0
+unwraps-c 11 0 5
+unwraps er_i 0
+unwraps-c 12 0 5
+unwraps-c nested skip 1
+unwraps-c tpl 9 3 9 3 18 3
+side held-member
+held-member True False
+held-rebound two-rebound-long-heap-string-0123456789 z
+held-captured two-captured-long-heap-string-0123456789 skipped
+held-subscripts 16 0
+held-widen-64 1 3 0
+held-widen 1 3.0 0.0
+held-widen-big 1 3 0
+held-big 123456789012345678901234 123456789012345678901234 4
+held-big-id 123456789012345678901234 5 4
+held-literals s|s u|lit z|z
+held-gen one
+held-gen one
+held-gen z
+held-gen z
+held-gen two
+held-gen two
+held-gen-len 2
+held-counter 0 0
+held-dict 0
+held-walrus 0 -1 0
+held-counter 5 1
+held-dict 5
+held-walrus 4 4 2
+held-template 2 0
+held-mk K
+held-mk K
+held-const nm 7
+held-const t 0
+held-mutate [1, 9] [2] [3]
+held-mutate [] [2, 9] [3]
+held-mutate [] [] [3, 9]
+held-mutate [1] [2] [3, 9]
+held-xvalue True True 123456789012345678901234567891 ab-xvalue-long-heap-string-0123456789
+held-xvalue True True 6 ab-xvalue-long-heap-string-0123456789
+held-xvalue-param True True 123456789012345678901234
+unwraps er_i 2
+unwraps-b int 2
+unwraps er_s 2
+unwraps-b str s-heap-string-0123456789s-heap-string-0123456789
+unwraps ident 2
+unwraps-b gen 4
+unwraps count 2
+unwraps label 2
+unwraps-b const 2/h-
+unwraps er_i 96
+unwraps-b arg 96
+unwraps-b int 0
+unwraps-b str e
+unwraps-b gen 1
+unwraps-b const 0/e
+unwraps-b arg 0
+unwraps er_i -1
+unwraps-b int raised True -1
+unwraps er_s -1
+unwraps-b str raised True -1
+unwraps ident -1
+unwraps-b gen raised True -1
+unwraps count -1
+unwraps-b const raised True -1
+unwraps er_i -1
+unwraps-b arg raised True -1
+unwraps er_i 0
+unwraps-b int 5
+unwraps er_s 0
+unwraps-b str d
+unwraps ident 0
+unwraps-b gen 4
+unwraps count 0
+unwraps label 0
+unwraps-b const 5/d
+unwraps er_i 0
+unwraps-b arg 5
+unwraps shout 0
+unwraps-a goto 3 9
+unwraps er_i 2
+mk unwraps-root
+unwraps-root 35
+unwraps er_i -1
+unwraps-root raised -1
+unwraps contains 2
+mk unwraps-dunder
+unwraps-dunder 35
+unwraps contains -1
+unwraps-dunder raised -1

@@ -14,7 +14,7 @@ inline std::expected<bool, ::tpy::StopIteration> __gen_consume_middle_gen::__nex
         __state = S_DONE;  // until a yield sets where to resume
         b.emplace(::tpystd::tplib::box::Box<N>(N(5)));
         __state = S_RESUME_0;
-        return ({ auto&& _cmp1 = std::move((*b)).take().v; (0 < _cmp1) && (_cmp1 < 10); });
+        return ({ auto&& __r1 = std::move((*b)).take(); auto&& _cmp1 = __r1.v; (0 < _cmp1) && (_cmp1 < 10); });
     }
     case S_RESUME_0: {  // after: yield 0 < b.take().v < 10  # tpyc: ok
         __state = S_DONE;

@@ -14,12 +14,13 @@ from ..typesys import BOOL, FLOAT, INT32, INT64
 from . import nodes as th
 from .lower.captures import CaptureSites
 from .testutil import _compile, _entry
-from .validate import THIRValidationError, _iter_children, validate_function
+from .validate import THIRValidationError, validate_function
+from .nodes import iter_children
 
 
 def walk(node: th.THIRNode) -> Iterator[th.THIRNode]:
     yield node
-    for child in _iter_children(node):
+    for child in iter_children(node):
         yield from walk(child)
 
 

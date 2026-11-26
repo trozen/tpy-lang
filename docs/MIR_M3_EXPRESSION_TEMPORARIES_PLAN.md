@@ -40,8 +40,8 @@ materialization sites. A constructor used to initialize a named record is
 not automatically such a site. Missing facts mean MIR not covered, never a
 new frontend rejection. General named `THIRArgTemp` declarations and deferred
 optional argument storage have different lifetimes and remain excluded.
-Likewise, a constructor-bearing `THIRValueSelect` left operand with
-`lhs_temp_cpp` is uncovered: its hoisted declaration introduces a separate
+Likewise, a constructor-bearing `THIRValueSelect` left operand held in an
+argument temp (`lhs_held`) is uncovered: its hoisted declaration introduces a separate
 full expression and can extend a subobject's lifetime. Inline bool operators
 and lazy right operands do not acquire that declaration boundary.
 

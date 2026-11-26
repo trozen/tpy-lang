@@ -36,7 +36,7 @@ from .source import (UNBOUND, BindingForm, BindingRepr, Held, Source,
                      copy_permitted,
                      TraitAbi)
 from .testutil import _compile, _entry, lower_bodies
-from .validate import _iter_children
+from .nodes import iter_children
 
 _REC = NominalType("P")
 
@@ -232,7 +232,7 @@ def test_every_literal_is_held_as_it_renders() -> None:
 
     def walk(node):
         yield node
-        for child in _iter_children(node):
+        for child in iter_children(node):
             yield from walk(child)
     # A print argument's literal is built beside the stamp and carries none.
     lits = [n for stmt in fn.body for n in walk(stmt)
@@ -322,7 +322,7 @@ def nested(p: P) -> int:
 def _thir_names(fn) -> list[THIRName]:
     def walk(node):
         yield node
-        for child in _iter_children(node):
+        for child in iter_children(node):
             yield from walk(child)
     return [n for stmt in fn.body for n in walk(stmt)
             if isinstance(n, THIRName) and n.cpp is None]

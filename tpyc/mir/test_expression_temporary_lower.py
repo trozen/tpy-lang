@@ -9,7 +9,7 @@ from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.storage_facts import collect_storage_facts
 from ..thir.testutil import _compile, _entry
-from ..thir.validate import _iter_children
+from ..thir.nodes import iter_children
 from .testutil import dump_compiled_mir
 from .call_contract import MIRSummaryResult
 from .definitions import MIRDefinitions
@@ -271,7 +271,7 @@ def generic() -> int32:
             node = pending.pop()
             if isinstance(node, th.THIRCtorCall):
                 assert node.full_expression_storage is None
-            pending.extend(_iter_children(node))
+            pending.extend(iter_children(node))
         bound = certify_thir_storage(MIRStorageRequest(fn, MIRBodyId("broader", fn.name),
                                                       MIRBodyKind.FREE_FUNCTION, definitions, {}))
         assert bound.verdict is MIRStorageVerdict.NOT_COVERED

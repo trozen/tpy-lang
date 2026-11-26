@@ -13,7 +13,7 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
-from ..thir.validate import _iter_children
+from ..thir.nodes import iter_children
 from ..type_def_registry import ParamPassing
 from ..typesys import (
     BIGINT, INT32, STR, ReadonlyType, RefType, Representation, TupleType, VoidType, return_representation,
@@ -277,7 +277,7 @@ def _thir_calls(fn: th.THIRFunction) -> list[th.THIRCall]:
         node = pending.pop(0)
         if isinstance(node, th.THIRCall):
             found.append(node)
-        pending.extend(_iter_children(node))
+        pending.extend(iter_children(node))
     return found
 
 
@@ -422,7 +422,7 @@ def _method_stub(fn: th.THIRFunction) -> th.THIRStubCallee:
         node = pending.pop(0)
         if isinstance(node, th.THIRMethodCall) and node.stub_callee is not None:
             found.append(node.stub_callee)
-        pending.extend(_iter_children(node))
+        pending.extend(iter_children(node))
     callee, = found
     return callee
 
@@ -747,7 +747,7 @@ def _method_stubs(fn: th.THIRFunction) -> dict[str, list[th.THIRStubCallee]]:
         stub = getattr(node, "stub_callee", None) if isinstance(node, (th.THIRMethodCall, th.THIRSetItem)) else None
         if stub is not None:
             found.setdefault(stub.identity.qualified_name.rsplit(".", 1)[-1], []).append(stub)
-        pending.extend(_iter_children(node))
+        pending.extend(iter_children(node))
     return found
 
 

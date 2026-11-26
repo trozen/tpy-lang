@@ -169,8 +169,7 @@ inline LiteralLhs::LiteralLhs(int32_t v) : v(v) {}
 //     # method: literal LHS against a field
 //     return 0 or self.v  # tpyc: ok
 inline int32_t LiteralLhs::pick() const {
-    auto&& __tmp_1 = 0;
-    return (__tmp_1 ? __tmp_1 : this->v);
+    return (0 ? 0 : this->v);
 }
 void __tpy_init();
 } // namespace tpyapp::main

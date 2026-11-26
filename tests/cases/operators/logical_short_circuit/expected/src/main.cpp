@@ -34,8 +34,7 @@ namespace tpyapp::main {
 //     z = 7 or logged(log, 1)  # 7 truthy -> logged() must NOT run
 //     return z
 ::tpy::BigInt or_skips_side_effect(std::vector<::tpy::BigInt>& log) {
-    auto&& __tmp_1 = 7;
-    ::tpy::BigInt z = (__tmp_1 ? ::tpy::BigInt(__tmp_1) : ::tpyapp::main::logged(log, ::tpy::BigInt(1)));
+    ::tpy::BigInt z = (7 ? ::tpy::BigInt(7) : ::tpyapp::main::logged(log, ::tpy::BigInt(1)));
     return z;
 }
 
@@ -43,8 +42,7 @@ namespace tpyapp::main {
 //     z = 0 and logged(log, 1)  # 0 falsy -> logged() must NOT run
 //     return z
 ::tpy::BigInt and_skips_side_effect(std::vector<::tpy::BigInt>& log) {
-    auto&& __tmp_1 = 0;
-    ::tpy::BigInt z = (__tmp_1 ? ::tpyapp::main::logged(log, ::tpy::BigInt(1)) : ::tpy::BigInt(__tmp_1));
+    ::tpy::BigInt z = (0 ? ::tpyapp::main::logged(log, ::tpy::BigInt(1)) : ::tpy::BigInt(0));
     return z;
 }
 
@@ -52,8 +50,7 @@ namespace tpyapp::main {
 //     z = 7 and logged(log, 9)  # 7 truthy -> `and` returns RHS, logged() DOES run
 //     return z
 ::tpy::BigInt and_runs_rhs_when_truthy(std::vector<::tpy::BigInt>& log) {
-    auto&& __tmp_1 = 7;
-    ::tpy::BigInt z = (__tmp_1 ? ::tpyapp::main::logged(log, ::tpy::BigInt(9)) : ::tpy::BigInt(__tmp_1));
+    ::tpy::BigInt z = (7 ? ::tpyapp::main::logged(log, ::tpy::BigInt(9)) : ::tpy::BigInt(7));
     return z;
 }
 

@@ -20,7 +20,8 @@ from ..typesys import (
 from . import nodes as th
 from .lower.callables import resolved_callee
 from .testutil import _compile, _entry
-from .validate import THIRValidationError, _iter_children, validate_function
+from .validate import THIRValidationError, validate_function
+from .nodes import iter_children
 
 
 Artifacts = tuple[dict[str, th.THIRFunction], th.THIRFunction, SemanticAnalyzer,
@@ -29,7 +30,7 @@ Artifacts = tuple[dict[str, th.THIRFunction], th.THIRFunction, SemanticAnalyzer,
 
 def walk(node: th.THIRNode) -> Iterator[th.THIRNode]:
     yield node
-    for child in _iter_children(node):
+    for child in iter_children(node):
         yield from walk(child)
 
 

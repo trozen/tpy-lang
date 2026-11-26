@@ -48,25 +48,84 @@ template<typename C>
 concept consumed_user_iterable =
     is_tpy_record_v<C> && !std::is_reference_v<C> && hands_over_v<C, C>;
 
+} // namespace detail
+
+// What an `elided_slot<D>` stores, `D` being the type and value category
+// C++ gives the held expression (`decltype` of a never-called lambda's
+// `decltype(auto)` return): the value itself for a prvalue `D` (non-const,
+// so the slot can destroy it), or the address of the object a reference `D`
+// names -- an lvalue (`U&`) built from an lvalue of exactly U only, an
+// xvalue (`U&&`) from an rvalue of exactly U only, so the slot binds where
+// `auto&& t = x;` would, never moves from its source and never holds the
+// address of a converted temporary.
+template<typename D>
+struct slot_value { using type = std::remove_const_t<D>; };
+template<typename U>
+struct slot_value<U&> {
+    struct type {
+        U* ptr;
+        template<typename A> requires std::same_as<A, U&>
+        type(A&& ref) noexcept : ptr(std::addressof(ref)) {}
+    };
+};
+template<typename U>
+struct slot_value<U&&> {
+    struct type {
+        U* ptr;
+        template<typename A> requires std::same_as<A, U>
+        type(A&& ref) noexcept : ptr(std::addressof(ref)) {}
+    };
+};
+template<typename D>
+using slot_value_t = typename slot_value<D>::type;
+
+// Around the never-called lambda whose `decltype(auto)` return gives a slot
+// its type: a member of a temporary it returns is dead code, never a dangle.
+#if defined(__clang__)
+#define TPY_SLOT_QUERY_BEGIN _Pragma("clang diagnostic push") \
+    _Pragma("clang diagnostic ignored \"-Wreturn-stack-address\"")
+#define TPY_SLOT_QUERY_END _Pragma("clang diagnostic pop")
+#else
+#define TPY_SLOT_QUERY_BEGIN _Pragma("GCC diagnostic push") \
+    _Pragma("GCC diagnostic ignored \"-Wreturn-local-addr\"")
+#define TPY_SLOT_QUERY_END _Pragma("GCC diagnostic pop")
+#endif
+
+// Declares `name` as the type and value category C++ gives the expression:
+// U for a prvalue, U& / U&& otherwise. Variadic: braces do not protect commas.
+#define TPY_SLOT_TYPE(name, ...) \
+    TPY_SLOT_QUERY_BEGIN auto name##_q = [&]() -> decltype(auto) { return (__VA_ARGS__); }; \
+    TPY_SLOT_QUERY_END using name = decltype(name##_q())
+
+// Builds a slot's value in its storage straight from the initializer, then
+// engages it. Only a new-expression initializes from a prvalue with no move
+// and leaves a `return` in the initializer (an `@error_return` check) where
+// it is evaluated.
+#define TPY_SLOT_FILL(slot, ...) \
+    (::new ((slot).storage()) \
+         typename std::remove_reference_t<decltype(slot)>::value_type(__VA_ARGS__), \
+     (slot).engage())
+
 // Storage a value is built INTO, straight from the prvalue that makes it, so a
 // move-only or immovable T works. `std::optional::emplace` cannot do that (it
 // constructs from its arguments, and an argument wrapper with a conversion
 // operator loses overload resolution to any converting ctor template on T).
 template<typename T>
 class elided_slot {
-    union { T value_; };
+    using U = std::remove_const_t<T>;
+    union { U value_; };
+public:
+    using value_type = U;
+private:
     bool has_ = false;
 public:
     elided_slot() {}
-    // Built at its declaration from `make()`, as `fill` builds it later.
-    template<typename F>
-    elided_slot(std::in_place_t, F&& make) { fill(std::forward<F>(make)); }
-    ~elided_slot() { if (has_) value_.~T(); }
+    ~elided_slot() { if (has_) value_.~U(); }
 
-    elided_slot(elided_slot&& o) noexcept(std::is_nothrow_move_constructible_v<T>)
-        requires std::move_constructible<T> {
+    elided_slot(elided_slot&& o) noexcept(std::is_nothrow_move_constructible_v<U>)
+        requires std::move_constructible<U> {
         if (o.has_) {
-            ::new (static_cast<void*>(std::addressof(value_))) T(std::move(o.value_));
+            ::new (static_cast<void*>(std::addressof(value_))) U(std::move(o.value_));
             has_ = true;
         }
     }
@@ -76,12 +135,46 @@ public:
     // `make()` returns T, by value or as a reference to copy from.
     template<typename F>
     void fill(F&& make) {
-        ::new (static_cast<void*>(std::addressof(value_))) T(make());
+        ::new (static_cast<void*>(std::addressof(value_))) U(make());
         has_ = true;
     }
+    // Built by `TPY_SLOT_FILL` (`engage()` is void: no `operator,` binds).
+    void* storage() { return static_cast<void*>(std::addressof(value_)); }
+    void engage() { has_ = true; }
     T* operator->() { return std::addressof(value_); }
     T& operator*() { return value_; }
 };
+
+// A reference held where it is: the slot names the object, never a copy. Read
+// as an lvalue, as a named `auto&&` binding is.
+template<typename D>
+class address_slot {
+    using U = std::remove_reference_t<D>;
+    union { slot_value_t<D> value_; };
+public:
+    using value_type = slot_value_t<D>;
+private:
+    bool has_ = false;
+public:
+    address_slot() {}
+    address_slot(address_slot&& o) noexcept : has_(o.has_) {
+        if (o.has_) ::new (static_cast<void*>(std::addressof(value_))) slot_value_t<D>(o.value_);
+    }
+    address_slot& operator=(address_slot&&) = delete;
+
+    bool has() const { return has_; }
+    void* storage() { return static_cast<void*>(std::addressof(value_)); }
+    void engage() { has_ = true; }
+    U* operator->() { return value_.ptr; }
+    U& operator*() { return *value_.ptr; }
+};
+template<typename T>
+class elided_slot<T&> : public address_slot<T&> {};
+template<typename T>
+class elided_slot<T&&> : public address_slot<T&&> {};
+
+namespace detail {
+
 
 // The iterator a non-self source's __iter__() handed back, held in the form it
 // came in. A non-const reference is ALIASED: that iterator lives in the source

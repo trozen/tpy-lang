@@ -125,6 +125,12 @@ class Keep(NamedTuple):
     # whose frame holds it (`held_temp`): not one that leaves the frame
     # with a `return` / `yield` value (`Hand.leaves`).
     taken: bool = False
+    # Its FRAME seat is a frame holder of its own whatever reads it: it is
+    # kept, taken, or a call's own argument (`_own_call_argument`). A FRAME
+    # entry without one that only an operand rule seats (a held operand's
+    # fresh root) is a temp of its statement, so a resumable body's frame
+    # is the one it has without those rules.
+    frame_holder: bool = False
 
 
 class KeepPlan:
@@ -236,11 +242,13 @@ def plan_keeps(plan: KeepPlan, roots: 'tuple[Hand, ...]',
                     if awaited and not enclosed
                     and _captured_as_is(hand, analyzer)
                     else _lifetime(hand, kept, in_frame, cross, enclosed))
+        taken = in_frame and not escapes and _direct_frame_operand(hand)
         plan.entries[peel_coerce(n)] = Keep(
             lifetime, kept,
             n in head_borrows or peel_coerce(n) in head_borrows,
-            hand.taker, awaited,
-            in_frame and not escapes and _direct_frame_operand(hand))
+            hand.taker, awaited, taken,
+            lifetime is SeatLifetime.FRAME and (
+                kept or taken or _own_call_argument(hand)))
 
 
 def _own_argument(hand: Hand) -> bool:
@@ -248,6 +256,13 @@ def _own_argument(hand: Hand) -> bool:
     taker's own argument)."""
     return (hand.taker is not None
             and peel_coerce(hand.taker[2]) is peel_coerce(hand.node))
+
+
+def _own_call_argument(hand: Hand) -> bool:
+    """Whether `hand` is an argument its call is handed as it is, at a
+    parameter (not the receiver)."""
+    return (_own_argument(hand) and hand.taker[1] is not None
+            and hand.taker[1] >= 0)
 
 
 def _direct_frame_operand(hand: Hand) -> bool:

@@ -8,7 +8,7 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry, force_in_place
-from ..thir.validate import _iter_children
+from ..thir.nodes import iter_children
 from .testutil import dump_compiled_mir
 from .definitions import MIRDefinitions
 from .testutil import lower_constructor, lower_function
@@ -148,7 +148,7 @@ IN_PLACE_SITES = {"replaced": None, "optional": None, "twice": None,
 
 def nodes(root: th.THIRNode) -> Iterator[th.THIRNode]:
     yield root
-    for child in _iter_children(root):
+    for child in iter_children(root):
         yield from nodes(child)
 
 

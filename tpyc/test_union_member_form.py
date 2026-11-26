@@ -17,7 +17,7 @@ from .thir import nodes as th
 from .thir import testutil
 from .thir.lower import bindings
 from .thir.lower.expressions import _borrow_of_held
-from .thir.validate import _iter_children
+from .thir.nodes import iter_children
 from .typesys import (
     INT32, NONE, STR, NominalType, OptionalType, OwnType, ReadonlyType,
     TupleType, TypeParamRef, UnionType, repr_shape, union_borrow_form,
@@ -161,7 +161,7 @@ def _nodes(body) -> list:
 
     def walk(n):
         out.append(n)
-        for c in _iter_children(n):
+        for c in iter_children(n):
             walk(c)
     for st in body.body:
         walk(st)

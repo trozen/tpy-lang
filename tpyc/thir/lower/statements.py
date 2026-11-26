@@ -13144,7 +13144,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     and not _optional_narrow_facts_ok(
                         stmt.then_type_facts, declared, analyzer)):
                 raise ThirUnsupported("stmt.assert")
-            cond = _lower_truthy(stmt.condition, lc, declared)
+            # The emit declares the condition's temps before its test.
+            cond = _lower_truthy(stmt.condition, lc, declared, temps_ok=True)
         return THIRAssert(condition=cond, message=msg, loc=loc)
     if isinstance(stmt, TpyTupleUnpack):
         return _lower_unpack_stmt(stmt, scope)

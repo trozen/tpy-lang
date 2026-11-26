@@ -9,7 +9,8 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
-from ..thir.validate import THIRValidationError, _iter_children, validate_function as validate_thir
+from ..thir.validate import THIRValidationError, validate_function as validate_thir
+from ..thir.nodes import iter_children
 from ..typesys import BOOL, INT32
 from .dump import dump_function
 from .testutil import lower_constructor, lower_function
@@ -173,7 +174,7 @@ def test_globals_need_explicit_loads_before_value_operations(artifacts: Artifact
 
 def walk(node: th.THIRNode) -> Iterator[th.THIRNode]:
     yield node
-    for child in _iter_children(node):
+    for child in iter_children(node):
         yield from walk(child)
 
 

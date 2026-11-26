@@ -864,7 +864,8 @@ class CondRegion:
         self.prefix: str = ""
 
 
-def typed_init_expression(type_cpp: str, init_expr: str, brace_init: bool) -> str:
+def typed_init_expression(type_cpp: str, init_expr: str, brace_init: bool,
+                          *, name_plain: bool = False) -> str:
     """Render an initializer as a standalone expression of type `type_cpp`.
 
     A temp's initializer is authored for a copy-initialized declaration
@@ -875,22 +876,63 @@ def typed_init_expression(type_cpp: str, init_expr: str, brace_init: bool) -> st
     `std::optional` has no initializer-list constructor. Naming the type
     closes both holes. Whether the render is braced is decided deep in the
     array-literal target-type cascade, so it cannot be re-derived from the
-    string by the callers that produce it.
+    string by the callers that produce it. `name_plain` names the type
+    around a plain initializer too (`T(init)`), as a new-expression must.
     """
     if brace_init:
         return f"{type_cpp}{{{init_expr}}}"
     if init_expr.startswith("{"):
         return f"{type_cpp}{init_expr}"
-    return init_expr
+    return f"{type_cpp}({init_expr})" if name_plain else init_expr
+
+
+def in_place_fill(slot: str, type_cpp: str, init_expr: str,
+                  brace_init: bool) -> str:
+    """The expression building `elided_slot` `slot`'s value in its storage
+    from `init_expr`, written in place: a prvalue initializer is elided
+    into the slot (an immovable value works), and with no callable around
+    it an initializer that leaves the function (an `@error_return` check)
+    does so where it is evaluated, under its guard. The slot is engaged
+    once the value is built."""
+    # The slot's own value type converts a plain initializer; a braced one
+    # is passed already typed, a prvalue of that type, which stays elided.
+    built = typed_init_expression(type_cpp, init_expr, brace_init)
+    return f"TPY_SLOT_FILL({slot}, {built})"
+
+
+def deduced_slot(slot: str, init_expr: str,
+                 query_expr: str) -> tuple[tuple[str, ...], str, str]:
+    """The `elided_slot` `slot` holding `init_expr` as the type and value
+    category C++ gives it: an lvalue or an xvalue held by its address (no
+    move from its source), a prvalue built in place. The type is read off
+    the `decltype(auto)` return of a lambda that is never called, over
+    `query_expr` -- the initializer's own text, or for an `@error_return`
+    unwrap (whose check `return`s, which a lambda cannot) its call under
+    `::tpy::unwrapped_t_of`. Its body is an evaluated context, so
+    a statement expression, an assignment or a nested fill is legal there;
+    the dangling-return warning a member of a temporary would raise there
+    is off around it (`TPY_SLOT_TYPE`). Returns the declarations
+    before the slot's, the slot's type and the expression filling it."""
+    alias = f"{slot}_d"
+    prelude = (f"TPY_SLOT_TYPE({alias}, {query_expr});",)
+    fill = in_place_fill(slot, f"::tpy::slot_value_t<{alias}>", init_expr,
+                         False)
+    return prelude, f"::tpy::elided_slot<{alias}>", fill
+
+
+# A pending temp's row: (name, cpp_type, init, brace_init, fill, prelude).
+_TempRow = tuple[str, str, "str | None", bool, "str | None", tuple[str, ...]]
 
 
 class TempState:
     """Manages temporary variables for array literals passed to mutable reference params."""
 
     def __init__(self):
-        # (name, cpp_type, init, brace_init, fill): `fill` is the call a
-        # banked temp's region makes to build it, None for `name.emplace(init)`.
-        self._queue: TempQueue[tuple[str, str, str | None, bool, str | None]] = TempQueue()
+        # (name, cpp_type, init, brace_init, fill, prelude): `fill` is the
+        # expression a banked in-place temp is built by (`in_place_fill`,
+        # `deduced_slot`), None for `name.emplace(init)`; `prelude` the
+        # declarations written before the temp's.
+        self._queue: TempQueue[_TempRow] = TempQueue()
         # (name, cpp_type, init, declarator suffix)
         self._pending_named: list[tuple[str, str, str | None, str]] = []
         # Names minted by `declare_named_auto` (a select's slot): a
@@ -989,31 +1031,46 @@ class TempState:
                  if entry.value[4] is None else f"{entry.value[4]}, ")
                 for entry in deferred)
 
+    @contextmanager
+    def eager(self) -> Iterator[None]:
+        """Temps created inside are declared before the statement whatever
+        region is open (`TempQueue.eager`)."""
+        with self._queue.eager():
+            yield
+
     def _register(self, temp_name: str, type_cpp: str,
                   init_expr: str, brace_init: bool, movable: bool,
                   planned_optional: bool | None = None,
-                  fills_in_place: bool = False) -> str:
-        entry = self._queue.register((temp_name, type_cpp, init_expr, brace_init, None),
-                                     banks_in_region(type_cpp, movable) if planned_optional is None else planned_optional)
+                  fills_in_place: bool = False, held: bool = False,
+                  query: str | None = None) -> str:
+        bankable = fills_in_place or banks_in_region(type_cpp, movable)
+        entry = self._queue.register((temp_name, type_cpp, init_expr, brace_init, None, ()),
+                                     bankable if planned_optional is None else planned_optional)
         assert planned_optional is None or entry.optional == planned_optional
         if not entry.optional:
+            if held:
+                entry.value = (temp_name, "auto&&", init_expr, False, None, ())
             return temp_name
         if not fills_in_place:
             entry.value = (temp_name, f"std::optional<{type_cpp}>",
-                           typed_init_expression(type_cpp, init_expr, brace_init), False, None)
+                           typed_init_expression(type_cpp, init_expr, brace_init), False, None, ())
+        elif query is not None:
+            prelude, slot_cpp, fill = deduced_slot(temp_name, init_expr, query)
+            entry.value = (temp_name, slot_cpp, None, False, fill, prelude)
         else:
-            # A value that cannot move is built in place from a callable
-            # (guaranteed elision), deferred or not.
-            make = (f"[&]() -> {type_cpp} {{ return "
-                    f"{typed_init_expression(type_cpp, init_expr, brace_init)}; }}")
-            entry.value = (temp_name, f"::tpy::detail::elided_slot<{type_cpp}>",
-                           f"std::in_place, {make}", True, f"{temp_name}.fill({make})")
+            entry.value = (temp_name, f"::tpy::elided_slot<{type_cpp}>",
+                           None, False,
+                           in_place_fill(temp_name, type_cpp, init_expr, brace_init), ())
         return f"(*{temp_name})"
 
     @staticmethod
-    def _rows(entries: tuple) -> list[tuple[str, str, str | None, bool]]:
-        return [(name, typ, None if entry.deferred else init, brace)
-                for entry in entries for name, typ, init, brace, _ in (entry.value,)]
+    def _rows(entries: tuple) -> list[_TempRow]:
+        # An in-place slot flushed before its region closed is built by
+        # its fill, run as a statement after the empty slot's declaration.
+        return [(name, typ, None if entry.deferred else init, brace,
+                 None if entry.deferred else fill, prelude)
+                for entry in entries
+                for name, typ, init, brace, fill, prelude in (entry.value,)]
 
     def create(self, param_type: TpyType, init_expr: str) -> str:
         """Create a temp variable and return its name for use in the call."""
@@ -1027,7 +1084,8 @@ class TempState:
     def create_typed(self, cpp_type: str, init_expr: str, *,
                      brace_init: bool = False, movable: bool = False,
                      planned_optional: bool | None = None,
-                     fills_in_place: bool = False) -> str:
+                     fills_in_place: bool = False,
+                     held: bool = False, query: str | None = None) -> str:
         """Create a temp variable with an explicit C++ type.
 
         `movable` gates deferral into an open conditional region and defaults
@@ -1035,13 +1093,17 @@ class TempState:
         emplaces the temp, and `emplace(T(...))` needs a move ctor that the
         eager `T t = T(...);` form does not (it gets guaranteed elision). A
         caller holding the TpyType can opt back in with `type.is_movable()`.
-        `fills_in_place`: a banked temp is built in place from a callable
-        returning its initializer (`::tpy::detail::elided_slot`), for a value that
-        cannot move.
+        `fills_in_place`: a banked temp is built in its slot's storage with
+        its initializer written in place (`in_place_fill`).
+        `held`: an operand its statement reads again -- left unbanked it is
+        declared `auto&& t = init;`, read by its name.
+        `query`: banked in place, the slot takes the type C++ deduces for
+        this text (`deduced_slot`) rather than `cpp_type`.
         """
         temp_name = f"__tmp_{self._draw()}"
         return self._register(temp_name, cpp_type, init_expr, brace_init,
-                              movable, planned_optional, fills_in_place)
+                              movable, planned_optional, fills_in_place,
+                              held, query)
 
     def declare_named_auto(self, prefix: str, cpp_type: str, *, init: str | None = None) -> str:
         """Register a uniquely-named hoisted declaration and return its name.
@@ -1129,17 +1191,21 @@ class TempState:
     @staticmethod
     def _render(out: TextIO, indent: str,
                 named: list[tuple[str, str, str | None, str]],
-                pending: list[tuple[str, str, str | None, bool]]) -> None:
+                pending: list[_TempRow]) -> None:
         for name, cpp_type, init_val, suffix in named:
             if init_val is not None:
                 out.write(f"{indent}{cpp_type} {name} = {init_val};\n")
             else:
                 out.write(f"{indent}{cpp_type} {name}{suffix};\n")
-        for temp_name, type_cpp, init_expr, brace_init in pending:
+        for temp_name, type_cpp, init_expr, brace_init, fill, prelude in pending:
+            for line in prelude:
+                out.write(f"{indent}{line}\n")
             if init_expr is None:
                 # A conditional-region slot: the initializer moved into the
                 # operand as an emplace, so only the empty slot is declared.
                 out.write(f"{indent}{type_cpp} {temp_name};\n")
+                if fill is not None:
+                    out.write(f"{indent}{fill};\n")
             elif brace_init:
                 out.write(f"{indent}{type_cpp} {temp_name}{{{init_expr}}};\n")
             else:

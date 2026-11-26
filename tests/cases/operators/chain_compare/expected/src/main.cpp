@@ -207,7 +207,7 @@ void test_triple_short_circuit() {
 //     print("free", 0 < b.take().v < 10)  # tpyc: ok
 void consume_middle_free() {
     ::tpystd::tplib::box::Box<N> b = ::tpystd::tplib::box::Box<N>(N(3));
-    std::cout << "free" << " " << ::tpy::print_bool(({ auto&& _cmp1 = std::move(b).take().v; (0 < _cmp1) && (_cmp1 < 10); })) << "\n" << ::tpy::check_signals;
+    std::cout << "free" << " " << ::tpy::print_bool(({ auto&& __r1 = std::move(b).take(); auto&& _cmp1 = __r1.v; (0 < _cmp1) && (_cmp1 < 10); })) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -226,7 +226,7 @@ __gen_consume_middle_gen consume_middle_gen() {
         __state = S_DONE;  // until a yield sets where to resume
         b.emplace(::tpystd::tplib::box::Box<N>(N(6)));
         __state = S_DONE;
-        bool __tpy_async_ret = ({ auto&& _cmp1 = std::move((*b)).take().v; (0 < _cmp1) && (_cmp1 < 3); });
+        bool __tpy_async_ret = ({ auto&& __r1 = std::move((*b)).take(); auto&& _cmp1 = __r1.v; (0 < _cmp1) && (_cmp1 < 3); });
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -245,7 +245,7 @@ __coro_consume_middle_async consume_middle_async() {
 void consume_middle_comp() {
     std::cout << "comp" << " " << ::tpy::ListPrinter(::tpy::array_from_index<bool, 3>([&](std::size_t __i_0) -> bool {
         int32_t i = int32_t(__i_0);
-        return ({ auto&& _cmp1 = ::tpystd::tplib::box::Box<N>(N(i)).take().v; (0 < _cmp1) && (_cmp1 < 2); });
+        return ({ auto&& __r1 = ::tpystd::tplib::box::Box<N>(N(i)).take(); auto&& _cmp1 = __r1.v; (0 < _cmp1) && (_cmp1 < 2); });
     })) << "\n" << ::tpy::check_signals;
 }
 
@@ -259,7 +259,7 @@ void consume_middle_try() {
     ::tpystd::tplib::box::Box<N> b = ::tpystd::tplib::box::Box<N>(N(7));
     {
         try {
-            std::cout << "try" << " " << ::tpy::print_bool(({ auto&& _cmp1 = std::move(b).take().v; (0 < _cmp1) && (_cmp1 < 10); })) << "\n" << ::tpy::check_signals;
+            std::cout << "try" << " " << ::tpy::print_bool(({ auto&& __r1 = std::move(b).take(); auto&& _cmp1 = __r1.v; (0 < _cmp1) && (_cmp1 < 10); })) << "\n" << ::tpy::check_signals;
         } catch (...) {
             std::cout << "finally" << "\n" << ::tpy::check_signals;
             throw;
