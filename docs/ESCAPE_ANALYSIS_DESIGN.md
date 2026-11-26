@@ -325,27 +325,28 @@ A **borrow conflict** occurs when:
 **Value types** (`int32`, `bool`, `float`, `char`, `float32`) are exempt -- they copy
 on assignment, so no aliasing occurs.
 
-#### Where a borrow may be HANDED OUT: one row per sink
+#### Transient positions: one row per sink
 
-The rule above says when a borrow conflicts. The lowering needs the dual: at
-which POSITION a value that borrows storage the statement is about to kill may
-be used at all. That is decided in one place and in one shape -- `SinkPos` names
-every position a lowered expression can land in (a local decl, a call argument,
-a container element, a field write, a return, a `with` manager, a match subject,
-a print argument, an operand, ...), and `_POS_FORMS` (`tpyc/thir/lower/
-context.py`) gives each position exactly one row saying which `SinkForm`s it
-admits. A position that BINDS the value past the full expression refuses
-`DYING_SOURCE_LEND`; a position that reads it inside the expression admits it.
-A lowering site never decides this for itself: it names its sink and takes the
-row's verdict.
-
-The ARGUMENT is the one position whose answer is not the position's. Whether an
-argument may hold such a borrow depends on what the CALLEE does with it, so the
-argument sink asks the callee's own retention facts (`arg_retention`) instead of
-reading a row -- `len(mk().data)` reads the argument during the call and is
-admitted, `reversed(mk().data)` hands back a lazy view of it and is refused.
-That is a question about a function, not about a position, which is why it is
-the exception rather than a second kind of row. Its limits are filed as
+The lowering does not refuse an accessor read off a temporary receiver for
+the storage the statement is about to kill (`p = mk().items`, getter or
+method spelling): whether that borrow outlives its storage is a lifetime
+question, warned by sema's *Result borrows from temporary* warning and by MIR.
+Two lifetime refusals stay, in every spelling: a chained-comparison operand
+that is not a free-to-copy scalar (`unspecified.lends_from_temporary`), and a
+view argument a callee keeps a copy of, viewing a temporary's storage
+(`arg.lends_from_temporary`).
+What the lowering does keep per POSITION is whether the consumer is TRANSIENT
+-- it finishes inside the full expression and binds or holds nothing past it.
+`SinkPos` names every position a lowered expression can land in (a local decl,
+a call argument, a container element, a field write, a return, a `with`
+manager, a match subject, a print argument, an operand, ...), and `_POS_FORMS`
+(`tpyc/thir/lower/context.py`) gives each position exactly one row saying which
+`SinkForm`s it admits; `SinkForm.TRANSIENT` marks the transient ones. A
+select's fresh operand may be emplaced into a hoisted slot for such a consumer
+(`_select_slot_admits`). The ARGUMENT is the one position whose answer is not
+the position's: it asks the CALLEE's retention facts (`arg_retention`) --
+`len(xs if c else make())` reads the argument during the call and is
+transient; an argument a callee keeps is not. Its limits are filed as
 `BUGS.md#native-stub-declares-no-param-retention`.
 
 ### What Falls Out of This

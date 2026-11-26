@@ -630,9 +630,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "array_i__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "array_i__mut__temp_accessor__static": [
   "ok",
@@ -1350,9 +1350,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "array_i__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "array_i__ro__temp_accessor__static": [
   "ok",
@@ -3230,9 +3230,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "bytearray__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "bytearray__mut__temp_accessor__static": [
   "ok",
@@ -4230,9 +4230,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "bytearray__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "bytearray__ro__temp_accessor__static": [
   "ok",
@@ -6710,9 +6710,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "deref_list__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_list__mut__temp_accessor__static": [
   "ok",
@@ -7630,9 +7630,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "deref_list__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_list__ro__temp_accessor__static": [
   "ok",
@@ -8550,9 +8550,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "deref_rec__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_rec__mut__temp_accessor__static": [
   "ok",
@@ -9470,9 +9470,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "deref_rec__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_rec__ro__temp_accessor__static": [
   "ok",
@@ -10390,9 +10390,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "dict_si__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "dict_si__mut__temp_accessor__static": [
   "ok",
@@ -11310,9 +11310,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "dict_si__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "dict_si__ro__temp_accessor__static": [
   "ok",
@@ -12110,9 +12110,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "gen_rec__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "gen_rec__mut__temp_accessor__static": [
   "ok",
@@ -12910,9 +12910,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "gen_rec__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "gen_rec__ro__temp_accessor__static": [
   "ok",
@@ -14830,9 +14830,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "list_i__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "list_i__mut__temp_accessor__static": [
   "ok",
@@ -15830,9 +15830,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "list_i__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "list_i__ro__temp_accessor__static": [
   "ok",
@@ -16830,9 +16830,9 @@
   ""
  ],
  "list_i_own__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){method_call(call(mk_b, []), v, [])}])"
  ],
  "list_i_own__mut__temp_accessor__static": [
   "ok",
@@ -17830,9 +17830,9 @@
   ""
  ],
  "list_i_own__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){method_call(call(mk_b, []), v, [])}])"
  ],
  "list_i_own__ro__temp_accessor__static": [
   "ok",
@@ -18830,9 +18830,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "list_i_ro__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "list_i_ro__ro__temp_accessor__static": [
   "ok",
@@ -19750,9 +19750,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "list_r__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "list_r__mut__temp_accessor__static": [
   "ok",
@@ -20670,9 +20670,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "list_r__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "list_r__ro__temp_accessor__static": [
   "ok",
@@ -21840,7 +21840,7 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "proto_p__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "reject:expr.method_call:method.protocol.arg_shape",
   "",
   ""
  ],
@@ -22800,9 +22800,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "rec__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec__mut__temp_accessor__static": [
   "ok",
@@ -23760,9 +23760,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "rec__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec__ro__temp_accessor__static": [
   "ok",
@@ -24560,9 +24560,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [optptr{optional_to_ptr(method_call(call(mk_b, []), v, []))}]) -> Own[DynP])])]) print("
  ],
  "rec_opt__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [optptr{optional_to_ptr(method_call(call(mk_b, []), v, []))}])"
  ],
  "rec_opt__ro__temp_accessor__static": [
   "ok",
@@ -25520,9 +25520,9 @@
   ""
  ],
  "rec_own__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){method_call(call(mk_b, []), v, [])}])"
  ],
  "rec_own__mut__temp_accessor__static": [
   "ok",
@@ -26480,9 +26480,9 @@
   ""
  ],
  "rec_own__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){method_call(call(mk_b, []), v, [])}])"
  ],
  "rec_own__ro__temp_accessor__static": [
   "ok",
@@ -27440,9 +27440,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "rec_ro__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec_ro__ro__temp_accessor__static": [
   "ok",
@@ -28680,9 +28680,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "set_i__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "set_i__mut__temp_accessor__static": [
   "ok",
@@ -29640,9 +29640,9 @@
   "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "set_i__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "set_i__ro__temp_accessor__static": [
   "ok",
@@ -30640,7 +30640,7 @@
   ""
  ],
  "span_i__mut__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -31640,7 +31640,7 @@
   ""
  ],
  "span_i__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -37640,7 +37640,7 @@
   ""
  ],
  "uni_rec__ro__temp_accessor__proto": [
-  "reject:expr.call:arg.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],

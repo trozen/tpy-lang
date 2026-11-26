@@ -688,9 +688,9 @@ def _storage_decl_src(init: TpyExpr, analyzer) -> bool:
     spelled twin); and a container SLICE read (`sub = items[a:b:c]`, an
     owned `list[T]` out of list_slice).
 
-    A borrow of storage that dies with the statement is refused earlier, at
-    the sink channel (`SinkForm.DYING_SOURCE_LEND`), so this rule does not
-    re-derive it.
+    A borrow of storage that dies with the statement is not minted: the
+    result borrows it, and sema warns the dangle (*Result borrows from
+    temporary ...*).
     """
     if isinstance(init, (TpyCall, TpyMethodCall)):
         return True

@@ -1627,16 +1627,17 @@ class TestSinkVocabulary:
     def test_unspecified_admits_nothing(self):
         """UNSPECIFIED is not a sink, it is the row every unnamed site
         inherits -- and binding sites are among them. So it admits NO form,
-        the dying-source lend included: a transient read that wants one names
+        the transient verdict included: a transient read that wants one names
         its sink."""
         assert _POS_FORMS[SinkPos.UNSPECIFIED] == frozenset()
         assert not any(_ExprUse().admits(f) for f in SinkForm)
 
-    def test_no_binding_sink_admits_a_dying_source_lend(self):
+    def test_no_binding_sink_is_transient(self):
         """The rule, as a table: a sink that BINDS or HOLDS its value past
-        the full expression can hold no borrow of storage that expression
-        kills. Stated here so a sink added without a considered row fails
-        rather than silently admitting one."""
+        the full expression is not transient, so a select's fresh operand
+        is not emplaced into a hoisted slot for it on that verdict. Stated
+        here so a sink added without a considered row fails rather than
+        silently admitting one."""
         binding = {
             # Not a binding sink but the unnamed row, which binding sites
             # inherit -- it fails closed with them.
@@ -1652,22 +1653,19 @@ class TestSinkVocabulary:
         }
         transient = set(SinkPos) - binding
         for pos in binding:
-            assert SinkForm.DYING_SOURCE_LEND not in _POS_FORMS[pos], pos
+            assert SinkForm.TRANSIENT not in _POS_FORMS[pos], pos
         for pos in transient:
-            assert SinkForm.DYING_SOURCE_LEND in _POS_FORMS[pos], pos
+            assert SinkForm.TRANSIENT in _POS_FORMS[pos], pos
 
-    def test_no_forms_site_readmits_the_lend_at_a_binding_sink(self):
+    def test_no_forms_site_readmits_transient_at_a_binding_sink(self):
         """`forms=` REPLACES a sink's row, so a site can hand itself a verdict
         its sink refuses. The partition test above reads `_POS_FORMS` alone
-        and is blind to exactly that: two sites once spelled
-        `forms=_LEND_OK` at CALL_ARG, a binding sink, and one of them admitted
-        `reversed(mk().items)`. Both are gone -- the argument sink's verdict
-        comes from `arg_retention` now -- which is why the exception below is
-        spelled as the predicate's name and not as a site's.
+        and is blind to exactly that. The one sanctioned exception is spelled
+        as the predicate's name, not as a site's.
 
         So this is a SOURCE scan rather than a table read: every
         `_ExprUse(...)` / `replace(...)` group in `tpyc/thir/lower` whose
-        `forms=` can mention the lend must name a TRANSIENT sink, spelled as
+        `forms=` can mention the verdict must name a TRANSIENT sink, spelled as
         a literal `pos=SinkPos.X` in the same group -- unless the verdict came
         from `arg_retention`, which is the one sanctioned way an argument admits
         it (it asks the CALLEE's retention facts, not the position; see
@@ -1675,9 +1673,9 @@ class TestSinkVocabulary:
         `BUGS.md#native-stub-declares-no-param-retention`).
 
         "Can mention" and "spelled as a literal" are both wider than they read.
-        A `forms=` that calls a context.py helper whose body names the lend
+        A `forms=` that calls a context.py helper whose body names it
         (`_recv_forms`) counts, or the check would be blind to a verdict that
-        arrives one call away. And a group that hands out the lend while
+        arrives one call away. And a group that hands it out while
         INHERITING its `pos` from a replaced base, or naming it through a
         variable, is an offender in itself: the sink cannot be read at the
         site, so the verdict cannot be checked there at all. No such group
@@ -1689,20 +1687,35 @@ class TestSinkVocabulary:
         import tokenize
         lowering = pathlib.Path(__file__).resolve().parent / "lower"
         binding = {p.name for p in SinkPos
-                   if SinkForm.DYING_SOURCE_LEND not in _POS_FORMS[p]}
+                   if SinkForm.TRANSIENT not in _POS_FORMS[p]}
         # The names a `forms=` value may mention to mean "the argument sink's
-        # verdict, taken from the callee" -- `_lend_forms` is the local
+        # verdict, taken from the callee" -- `_transient_forms` is the local
         # `_lower_free_call_arg` computes from `arg_retention` once and hands to
         # each of its arms.
-        VIA_PREDICATE = {"arg_retention", "_lend_forms"}
-        LEND = {"_LEND_OK", "DYING_SOURCE_LEND"}
-        # ... plus any context.py helper whose own body can return the lend:
-        # `forms=_recv_forms(..)` hands it out just as `forms=_LEND_OK` does.
+        VIA_PREDICATE = {"arg_retention", "_transient_forms"}
+        LEND = {"_ONLY_TRANSIENT", "TRANSIENT"}
+        # ... plus any context.py form set built from it (`_TRANSIENT_OK`
+        # includes `_ONLY_TRANSIENT`) and any helper whose own body can return
+        # it: `forms=_recv_forms(..)` hands it out as `_ONLY_TRANSIENT` does.
+        # `_POS_FORMS[pos]` is a sink's own row, which the partition test reads.
         ctx_src = (lowering / "context.py").read_text()
+        defs = {}
+        for m in re.finditer(
+                r"^(_\w+)\s*:\s*frozenset\[SinkForm\]\s*=(.*?)(?=^\S)",
+                ctx_src, re.M | re.S):
+            defs[m.group(1)] = m.group(2)
         for helper in re.findall(r"^def (_\w+)\(", ctx_src, re.M):
-            body = ctx_src.split(f"def {helper}(", 1)[1].split("\ndef ", 1)[0]
-            if any(name in body for name in LEND):
-                LEND.add(helper)
+            defs[helper] = ctx_src.split(f"def {helper}(", 1)[1].split(
+                "\ndef ", 1)[0]
+        grew = True
+        while grew:
+            grew = False
+            for name, body in defs.items():
+                if name not in LEND and any(
+                        re.search(rf"\b{n}\b", body) for n in LEND):
+                    LEND.add(name)
+                    grew = True
+        assert "_TRANSIENT_OK" in LEND, LEND
         offenders = []
         for f in sorted(lowering.glob("*.py")):
             if f.name == "context.py":
@@ -1752,7 +1765,7 @@ class TestSinkVocabulary:
                         offenders.append(f"{f.name}:{toks[i].start[0]} "
                                          f"pos=SinkPos.{pos_name}")
         assert not offenders, (
-            "a `forms=` site re-admits SinkForm.DYING_SOURCE_LEND at a sink "
+            "a `forms=` site re-admits SinkForm.TRANSIENT at a sink "
             "whose row refuses it, or at one it does not name; the verdict at "
             "an argument belongs to `arg_retention`, and at any other binding "
             "sink there is no verdict to hand out: " + "; ".join(offenders))

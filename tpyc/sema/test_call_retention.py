@@ -449,6 +449,9 @@ class Sink:
     @native("push_all")
     def stash_all(self, *xs: StrView) -> None: ...
 
+    @native("push_back")
+    def stash(self, text: StrView) -> None: ...
+
     @native("push_ptr")
     def stash_ptr(self, p: Ptr[readonly[ValSub]]) -> None: ...
 
@@ -478,6 +481,10 @@ class H:
     def ch(self) -> Child:
         return self.child
 
+    @property
+    def t(self) -> StrView:
+        return self.text
+
 
 def mk() -> Own[H]:
     return H()
@@ -493,16 +500,23 @@ def main() -> None:
 @pytest.mark.parametrize("stmt", [
     # A method's `*args` pack: the element views the temporary's field.
     "sink.stash_all(name, StrView(mk().text))",
-    # A kept `Ptr` to a ValueType field read through a getter off a
-    # temporary: the coercion takes the field's address.
-    "sink.stash_ptr(mk().ch.vsub)",
     # A store's and a delete's key are the dunder call's argument.
     "sink[mk().text] = 1",
     "del sink[mk().text]",
+    # A getter's view of the temporary's storage at a keeping binding: the
+    # view slot refuses it, getter or not.
+    "sink.stash(mk().t)",
 ])
 def test_kept_argument_refuses_a_temporary_at_lowering(stmt: str) -> None:
     err, _reasons = _strict_reject(_LOWERED_SRC.replace("{stmt}", stmt))
     assert "arg.lends_from_temporary" in str(err), str(err)
+
+
+def test_kept_ptr_through_getter_off_temporary_lowers() -> None:
+    # A borrow of a getter's storage is no view slot: like its method
+    # spelling it lowers, silently (BUGS.md#getter-off-temporary-kept-silently).
+    _assert_byte_identical(_LOWERED_SRC.replace(
+        "{stmt}", "sink.stash_ptr(mk().ch.vsub)"))
 
 
 def test_kept_argument_admits_storage_that_outlives_it() -> None:

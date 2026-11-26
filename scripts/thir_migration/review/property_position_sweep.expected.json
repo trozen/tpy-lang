@@ -636,7 +636,7 @@
   ""
  ],
  "decl__items__prop__temp": [
-  "expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end"
  ],
  "decl__n__meth__named": [
@@ -668,7 +668,7 @@
   ""
  ],
  "decl__name__prop__temp": [
-  "expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   ""
  ],
  "decl__opt__meth__named": [
@@ -684,7 +684,7 @@
   ""
  ],
  "decl__opt__prop__temp": [
-  "expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end"
  ],
  "decl__own__meth__named": [
@@ -716,7 +716,7 @@
   ""
  ],
  "decl__rec__prop__temp": [
-  "expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end"
  ],
  "decl__text__meth__named": [
@@ -1020,7 +1020,7 @@
   ""
  ],
  "genexp_iter__items__prop__temp": [
-  "expr.genexpr",
+  "ok",
   ""
  ],
  "genexp_iter__own__meth__named": [
@@ -1244,7 +1244,7 @@
   ""
  ],
  "list_elem_targeted__name__prop__temp": [
-  "expr.method_call:container_elem.lends_from_temporary",
+  "ok",
   ""
  ],
  "list_elem_targeted__text__meth__named": [
@@ -1788,7 +1788,7 @@
   ""
  ],
  "module_level__name__prop__temp": [
-  "expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   ""
  ],
  "module_level__text__meth__named": [
@@ -2060,7 +2060,7 @@
   ""
  ],
  "reversed_arg__items__prop__temp": [
-  "expr.call:arg.lends_from_temporary",
+  "ok",
   ""
  ],
  "reversed_arg__own__meth__named": [
@@ -2684,7 +2684,7 @@
   ""
  ],
  "ternary__name__prop__temp": [
-  "expr.method_call:if_expr_arm.lends_from_temporary",
+  "ok",
   ""
  ],
  "ternary__text__meth__named": [

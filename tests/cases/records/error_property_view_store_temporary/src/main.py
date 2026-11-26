@@ -3,8 +3,8 @@
 # question rightly calls it an rvalue while the lifetime question must still say
 # it borrows -- asking the category alone is how this compiled to
 # `this->v = mk().view();` and kept a dangling `string_view` in the record.
-# The sibling positions and their tags are listed in
-# docs/PROPERTY_DESIGN.md, the temporary-receiver sink table.
+# The sibling positions are in docs/PROPERTY_DESIGN.md, "Read off a
+# TEMPORARY receiver".
 # WORKAROUND: bind the receiver first, or have the getter return `str`.
 from tpy import Own, StrView, int32
 

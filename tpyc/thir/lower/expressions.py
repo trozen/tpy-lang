@@ -200,7 +200,6 @@ from ...compilation_context import get_current_compiler
 from ...value_category import (
     CONTAINER_LITERAL_NODES, frame_param_lends, place_dies,
     returns_open_type_param,
-    lends_from_dying_source,
     property_access_returns_cpp_ref,
     call_hands_back_value, call_result_is_reference, carries_borrow,
     call_returns_cpp_ref,
@@ -669,7 +668,7 @@ from .context import (ParamSlotClass, Slot, SlotHolds, at_boundary,
 from .context import (FrameLocalClass, _call_arg_forms,
                       _ExprResultUse, _ExprUse, _LowerCtx, _LowerScope,
                       SlotConstruct,
-                      _recv_forms, _NO_FORMS, _LEND_OK, _TRANSIENT_OK,
+                      _recv_forms, _NO_FORMS, _ONLY_TRANSIENT, _TRANSIENT_OK,
                       _ONLY_BORROW_RET_PASSTHROUGH, _ONLY_BTUPLE_SLOT,
                       _ONLY_FRAME_FACTORY,
                       _ONLY_FIELD_RECV_BORROW, _ONLY_INDIRECT_READ,
@@ -698,7 +697,7 @@ _RECORD_TEMP_USE = _ExprUse(record_ctor=_RecordCtorUse.RECORD_TEMP)
 # A membership HAYSTACK: the receiver `__contains__` is taken off, read inside
 # the test expression. `forms=` rather than the RECEIVER row because the
 # haystack is not a member-read receiver -- the row's indirect-name deref is
-# not its verdict, while the dying-source lend is.
+# not its verdict, while the transient one is.
 _MEMBERSHIP_RECV = _ExprUse(pos=SinkPos.RECEIVER,
                             forms=_TRANSIENT_OK)
 
@@ -3536,11 +3535,11 @@ def _lower_container_select_prvalue(e: TpyBinOp, rtu: 'TpyType',
         loc=loc)
 
 
-def _operand_lend(e: 'TpyBinOp | TpyUnaryOp | TpyAugAssign', side: TpyExpr,
-                  analyzer) -> frozenset[SinkForm]:
-    """Whether operand `side` of operator `e` may be a borrow of storage
-    dying with the statement: the operator reads it inside the full
-    expression, so it may unless the dunder it resolved to keeps it
+def _operand_transient(e: 'TpyBinOp | TpyUnaryOp | TpyAugAssign',
+                       side: TpyExpr, analyzer) -> frozenset[SinkForm]:
+    """Whether operand `side` of operator `e` is a transient use: the
+    operator reads it inside the full expression, unless the dunder it
+    resolved to keeps it
     (`operand_retention` -- a dunder returning or storing its operand).
     The receiver is the one sema ran the dunder on (`receiver_of`); an
     augmented assignment's operands are its target and value."""
@@ -3553,47 +3552,48 @@ def _operand_lend(e: 'TpyBinOp | TpyUnaryOp | TpyAugAssign', side: TpyExpr,
         recv = (left if resolved is None
                 else resolved.receiver_of(left, right))
     keep = operand_retention(resolved, side, recv, analyzer)
-    return _LEND_OK if keep is None else _NO_FORMS
+    return _ONLY_TRANSIENT if keep is None else _NO_FORMS
 
 
 def _operand_position(*, temps_ok: bool, slot: 'TpyType | None',
-                      lend: frozenset[SinkForm]) -> _ExprUse:
+                      transient: frozenset[SinkForm]) -> _ExprUse:
     """The OPERAND position every operator operand row derives its use
-    from: `lend` is the operand's own dying-source verdict
-    (`_operand_lend`)."""
+    from: `transient` is the operand's own transient verdict
+    (`_operand_transient`)."""
     return _ExprUse(allow_temps=temps_ok, slot_target=slot,
-                    pos=SinkPos.OPERAND, forms=lend)
+                    pos=SinkPos.OPERAND, forms=transient)
 
 
 def _operand_use_of(e: 'TpyBinOp | TpyUnaryOp | TpyAugAssign',
                     side: TpyExpr, analyzer, **arm) -> _ExprUse:
     """The OPERAND position of `side` in operator `e` under its own
-    dying-source verdict, for an arm whose render needs no operator-row
+    transient verdict, for an arm whose render needs no operator-row
     deref; `arm` is what the arm's render sets beside it (a result use, a
     slot, a flush right)."""
-    return replace(_operand_position(temps_ok=False, slot=None,
-                                     lend=_operand_lend(e, side, analyzer)),
-                   **arm)
+    return replace(_operand_position(
+        temps_ok=False, slot=None,
+        transient=_operand_transient(e, side, analyzer)), **arm)
 
 
 def _operator_operand_use(*, temps_ok: bool, slot: 'TpyType | None',
                           also: frozenset[SinkForm],
-                          lend: frozenset[SinkForm]) -> _ExprUse:
+                          transient: frozenset[SinkForm]) -> _ExprUse:
     """The use a PLAIN operator operand takes -- the default row of both the
     arithmetic and the compare arm. It reads through a full deref, so a
     pointer-bound RECORD name derefs (`((*v)) + (inc)`, `((*p)) < (other)`)
     rather than taking the bare arrow-receiver form its other consumers want.
-    `also` is what the arm admits beside the deref and the operand's `lend`
-    verdict: a `forms=` REPLACES the sink's row, and the compare arm keeps
-    the OPERAND row's borrow-return passthrough, which the arithmetic arm
-    does not take."""
-    return replace(_operand_position(temps_ok=temps_ok, slot=slot, lend=lend),
-                   forms=_ONLY_INDIRECT_READ | also | lend)
+    `also` is what the arm admits beside the deref and the operand's
+    `transient` verdict: a `forms=` REPLACES the sink's row, and the
+    compare arm keeps the OPERAND row's borrow-return passthrough, which
+    the arithmetic arm does not take."""
+    return replace(_operand_position(temps_ok=temps_ok, slot=slot,
+                                     transient=transient),
+                   forms=_ONLY_INDIRECT_READ | also | transient)
 
 
 def _arith_operand_use(side: TpyExpr, analyzer, *, temps_ok: bool,
                        slot: 'TpyType | None',
-                       lend: frozenset[SinkForm]) -> _ExprUse:
+                       transient: frozenset[SinkForm]) -> _ExprUse:
     """The use an ARITHMETIC operand takes -- shared by the binop arm and the
     unary-dunder arm, which read their operand the same way.
 
@@ -3605,8 +3605,9 @@ def _arith_operand_use(side: TpyExpr, analyzer, *, temps_ok: bool,
 
     Everything else is the plain operand (`_operator_operand_use`). Only
     NAME reads read its deref, so the two shape-guarded rows above cannot
-    need it. Every row carries the operand's `lend` verdict."""
-    position = _operand_position(temps_ok=temps_ok, slot=slot, lend=lend)
+    need it. Every row carries the operand's `transient` verdict."""
+    position = _operand_position(temps_ok=temps_ok, slot=slot,
+                                 transient=transient)
     if _record_call_rvalue_operand(side, analyzer):
         return replace(position, result=_ExprResultUse.BORROW_BIND)
     if isinstance(side, TpyFieldAccess):
@@ -3615,7 +3616,7 @@ def _arith_operand_use(side: TpyExpr, analyzer, *, temps_ok: bool,
         if record_like(st, analyzer):
             return replace(position, result=_ExprResultUse.BORROW_BIND)
     return _operator_operand_use(temps_ok=temps_ok, slot=slot,
-                                 also=_NO_FORMS, lend=lend)
+                                 also=_NO_FORMS, transient=transient)
 
 
 def _lower_identity(e: TpyBinOp, lc: '_LowerCtx',
@@ -4878,10 +4879,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # -- operator== over the prvalue) rides BORROW_BIND so the
             # call's rvalue record result is admitted; every other operand
             # keeps the default value use. Every row carries the
-            # operand's own dying-source verdict (`_operand_lend`).
-            lend = _operand_lend(e, side, analyzer)
+            # operand's own transient verdict (`_operand_transient`).
+            transient = _operand_transient(e, side, analyzer)
             position = _operand_position(temps_ok=temps_ok, slot=None,
-                                         lend=lend)
+                                         transient=transient)
             if _record_call_rvalue_operand(side, analyzer):
                 return replace(position, result=_ExprResultUse.BORROW_BIND)
             # An F1-record FIELD operand (`r.headers == other`) renders the
@@ -4903,7 +4904,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # rides the deref.
             return _operator_operand_use(
                 temps_ok=temps_ok, slot=None,
-                also=_ONLY_BORROW_RET_PASSTHROUGH, lend=lend)
+                also=_ONLY_BORROW_RET_PASSTHROUGH, transient=transient)
 
         def _narrowed_union_read(side: TpyExpr, nu) -> 'THIRExpr | None':
             # The condition-scope-narrowed union NAME operand: the inline
@@ -4983,7 +4984,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         def _binop_operand_use(side: TpyExpr) -> _ExprUse:
             return _arith_operand_use(side, analyzer, temps_ok=temps_ok,
                                       slot=_operand_slot(side),
-                                      lend=_operand_lend(e, side, analyzer))
+                                      transient=_operand_transient(
+                                          e, side, analyzer))
 
         def _comp_operand(side: TpyExpr) -> 'THIRExpr | None':
             # The comprehension operand the container gate admitted: the
@@ -5781,34 +5783,6 @@ def _lower_computed_call(
         loc=e.loc)
 
 
-# The sinks whose tag is NOT `<sink>.lends_from_temporary`: they had a tag
-# before the row existed and keep it, so the diagnostics they pin did not move.
-# The element sinks are deliberately absent -- the element lowerer refuses an
-# accessor's borrow by the wider rule (named receiver included) before a use
-# reaches them, so a row for them would name a tag nothing can emit.
-_LEND_REJECT_TAGS: dict[SinkPos, str] = {
-    SinkPos.CALL_ARG: "arg.lends_from_temporary",
-    SinkPos.FIELD_WRITE: "assign.field_write_lends_from_temporary",
-}
-
-
-def _lend_reject_detail(use: _ExprUse) -> str:
-    """Name the SINK that refused a borrow of dying storage.
-
-    One tag family, `<sink>.lends_from_temporary`, so a reader learns which
-    position they were writing rather than which predicate said no. The two
-    sinks in `_LEND_REJECT_TAGS` keep the tag they had before the row existed;
-    every other sink spells its own name. A compound statement's head (an
-    iteration source, a `with` manager, a `match` subject) keeps the fresh
-    root of a receiver chain for the statement (`receiver_kept`), so no
-    head reaches this.
-    """
-    named = _LEND_REJECT_TAGS.get(use.pos)
-    if named is not None:
-        return named
-    return f"{use.pos.name.lower()}.lends_from_temporary"
-
-
 def _method_fi_reject_detail(e: TpyMethodCall, fi, use: _ExprUse) -> str:
     """Name the CONSTRUCT a refused method call sits in, not the gate.
 
@@ -5944,15 +5918,6 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
     scalar arms, chained comparators i>=2) need no per-row threading."""
     if lc.prelowered is not None and e in lc.prelowered:
         return lc.prelowered[e]
-    if (isinstance(_peel_coerce(e), (TpyFieldAccess, TpySubscript))
-            and lends_from_dying_source(lc.analyzer, e)
-            and not use.admits(SinkForm.DYING_SOURCE_LEND)):
-        # The getter node's check (`_lower_expr_impl`), one read over: a
-        # field or element read still pointing into a getter's dying
-        # storage is refused by the same `_POS_FORMS` row -- asked at its
-        # coercion too, which may take the read's address.
-        note_detail(_lend_reject_detail(use))
-        raise ThirUnsupported(call_reject_reason(expr_kind_tag(e)))
     with _bound_entry(e, lc):
         # An element or slice read borrows its object: the fresh object it
         # lives in, where the keep plan keeps it, is held in its seat, as a
@@ -7824,7 +7789,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 receiver=_lower_expr(
                     e.obj, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.RECEIVER,
-                                 pos=SinkPos.RECEIVER, forms=_LEND_OK)),
+                                 pos=SinkPos.RECEIVER, forms=_ONLY_TRANSIENT)),
                 field_cpp=_field_cpp(e),
                 is_arrow=_name_recv_is_arrow(e.obj, lc),
                 deref_chain=e.deref_depth,
@@ -7843,7 +7808,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 use=_ExprUse(result=_ExprResultUse.RECEIVER,
                              allow_temps=use.allow_temps,
                              pos=SinkPos.RECEIVER,
-                             forms=_ONLY_FIELD_RECV_BORROW | _LEND_OK),
+                             forms=(_ONLY_FIELD_RECV_BORROW
+                                    | _ONLY_TRANSIENT)),
                 subscript_prechecked=isinstance(e.obj, TpySubscript))
         receiver = full_expression_record(receiver, analyzer)
         return _self_recv_positioned(THIRFieldAccess(
@@ -8770,7 +8736,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                               # holds it past the statement.
                               use=_ExprUse(
                                   allow_temps=use.allow_temps,
-                                  pos=SinkPos.OPERAND, forms=_LEND_OK,
+                                  pos=SinkPos.OPERAND, forms=_ONLY_TRANSIENT,
                                   slot_target=(
                                       key_view if key_view is not None
                                       and is_bytes_view_type(key_view)
@@ -8851,7 +8817,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 part_use = _ExprUse(
                     pos=SinkPos.FSTRING_INTERP,
                     forms=(None if isinstance(part.expr, TpyFieldAccess)
-                           else _LEND_OK))
+                           else _ONLY_TRANSIENT))
                 if _fstring_container_call_arg(part.expr, analyzer):
                     _witness("fstr.container_call_arg")
                     part_use = replace(part_use,
@@ -8940,7 +8906,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         use=_arith_operand_use(
                             e.operand, analyzer,
                             temps_ok=use.allow_temps, slot=None,
-                            lend=_operand_lend(e, e.operand, analyzer)))
+                            transient=_operand_transient(
+                                e, e.operand, analyzer)))
                 return THIRUnaryArith(
                     result_type=rtype,
                     cpp_template=resolved.method.cpp_template,
@@ -10362,10 +10329,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # arm below renders the argument.
                 _ctor_keep = arg_retention(template_fi, _ctor_i, e, analyzer,
                                            a)
-                _lend_forms = _LEND_OK if _ctor_keep is None else _NO_FORMS
+                _transient_forms = (_ONLY_TRANSIENT if _ctor_keep is None
+                               else _NO_FORMS)
                 _ctor_arg_use = _ExprUse(
                     result=_ExprResultUse.BORROW_BIND, pos=SinkPos.CALL_ARG,
-                    forms=_lend_forms)
+                    forms=_transient_forms)
                 # The from_str overload (`int32(tok)` on a str token ->
                 # `::tpy::from_str_check<int32_t>(tok)`): the resolved
                 # __init__'s own @cpp_template carries the parse render, so
@@ -11419,19 +11387,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         args=(), loc=loc))
                 note_detail("method.fi_kind")
                 raise ThirUnsupported(call_reject_reason("expr.method_call"))
-            if (lends_from_dying_source(analyzer, e)
-                    and not use.admits(SinkForm.DYING_SOURCE_LEND)
-                    # A receiver seated for its compound statement lives
-                    # as long as the statement.
-                    and not receiver_kept(e, lc)):
-                # THE check. The accessor lends storage its RECEIVER owns and
-                # the receiver dies at the end of this full expression, so
-                # only a sink that finishes inside it may read the result.
-                # Which sinks those are is the `_POS_FORMS` row, enumerated
-                # over every SinkPos by construction -- the reason this is one
-                # check and not a subtraction per consumer.
-                note_detail(_lend_reject_detail(use))
-                raise ThirUnsupported(call_reject_reason("expr.method_call"))
             if not _plain_method_fi_ok(
                     fi,
                     # A getter returning a storage-ref OPTIONAL hands back
@@ -11758,9 +11713,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # bare read. The flush right rides THROUGH the coerce like
                 # every other expression nesting (a wrapped call's arg temps
                 # flush at the same statement).
-                # `_LEND_OK` rides both verdicts: a coercion is applied inside
-                # the full expression, which is the COERCE_INNER row's own
-                # answer -- spelled here because a `forms=` REPLACES the row.
+                # `_ONLY_TRANSIENT` rides both verdicts: a coercion is applied
+                # inside the full expression, which is the COERCE_INNER row's
+                # own answer -- spelled here because a `forms=` REPLACES the
+                # row.
                 # A coercion to the bytes view reads its inner through it
                 # (`bv: BytesView = b"hello"` -- a literal takes the static
                 # span).
@@ -11768,7 +11724,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                              forms=(
                                  None
                                  if _derefs_indirect_inner(e.coercion)
-                                 else _LEND_OK),
+                                 else _ONLY_TRANSIENT),
                              allow_temps=use.allow_temps,
                              slot_target=(
                                  rtype if rtype is not None
@@ -13199,9 +13155,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         # whose payload points elsewhere, and an element slot takes it exactly
         # as it takes the field spelling and the method twin -- `[b.name]`
         # into `list[str]` renders `{std::string(b.name())}`, an owning copy
-        # of an immutable value, with nothing to decide. The dying-source row
-        # is a third question again: it asks whether the RECEIVER survives the
-        # expression, and it answers for every sink, not this one.
+        # of an immutable value, with nothing to decide.
         note_detail("container_elem.accessor_lends_storage")
         raise ThirUnsupported(call_reject_reason("expr.container_literal"))
     if (isinstance(e, TpyName)
@@ -14847,7 +14801,7 @@ def _chained_operand_by_value(operand: TpyExpr, lc: '_LowerCtx') -> bool:
         if (isinstance(t, (IntLiteralType, FloatLiteralType))
                 or is_free_copy_scalar(t)):
             return True
-    note_detail(_lend_reject_detail(_ExprUse()))
+    note_detail("unspecified.lends_from_temporary")
     raise ThirUnsupported(call_reject_reason(expr_kind_tag(operand)))
 
 
@@ -15370,10 +15324,10 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
     # separate test: its frame's own storage is what `return_borrows_from`
     # records at registration.
     _keep = arg_retention(_callee_fi, arg_index, e, analyzer, a)
-    _lend_ok = _keep is None
-    _lend_forms = _LEND_OK if _lend_ok else _NO_FORMS
+    _is_transient = _keep is None
+    _transient_forms = _ONLY_TRANSIENT if _is_transient else _NO_FORMS
     # The position every arm below derives its use from.
-    _arg_position = _ExprUse(pos=SinkPos.CALL_ARG, forms=_lend_forms)
+    _arg_position = _ExprUse(pos=SinkPos.CALL_ARG, forms=_transient_forms)
     if isinstance(a, TpyVarargPack):
         # Kind-blind: the pack renders (`std::array` temp +
         # `::tpy::varargs<T>(__tmp_N)`) the same way for a @native callee,
@@ -15453,12 +15407,12 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         # print wrap-call path's twin. `allow_temps` rides through: every
         # nested arg temp flushes at the enclosing statement, so a
         # flushable position's right extends into the inner call's args.
-        # `_lend_forms` is the verdict this function already took; the arm
+        # `_transient_forms` is the verdict this function already took; the arm
         # carries it rather than judging the slot for itself.
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.STORAGE,
                                         pos=SinkPos.CALL_ARG,
-                                        forms=_lend_forms,
+                                        forms=_transient_forms,
                                         allow_temps=temp_args))
     if (kind is not None and kind[0] in ("native", "native_c", "template")
             and isinstance(a, TpyFieldAccess)
@@ -15592,7 +15546,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         pos=SinkPos.CALL_ARG,
-                                        forms=_lend_forms,
+                                        forms=_transient_forms,
                                         allow_temps=temp_args))
     if (kind is not None and kind[0] in ("native", "native_c", "template")
             and _native_protocol_field_arg(a, ptype, analyzer)):
@@ -15609,11 +15563,11 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                 or is_dict(tb)):
             return _lower_expr(a, lc, declared, allow_whole_optional=True,
                                use=_ExprUse(pos=SinkPos.CALL_ARG,
-                                            forms=_lend_forms))
+                                            forms=_transient_forms))
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         pos=SinkPos.CALL_ARG,
-                                        forms=_lend_forms))
+                                        forms=_transient_forms))
     if kind is not None and kind[0] in ("native", "native_c", "template"):
         iterable = _native_iterable_rvalue_arg(a, ptype, lc, declared,
                                                allow_temps=temp_args)
@@ -16417,12 +16371,12 @@ def _converted_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     tail; the plain free call's by default). A `contract` given is the
     slot's own (a pack element's, `pack_element_contract`). The contract's
     retention -- asked of `call`, or of receiver `recv` where no call node
-    states it -- decides whether the argument may lend storage dying with
-    the statement. `site_retention` is the verdict of a call the slot's
-    contract does not name: an owned local seated for a frame's argument
+    states it -- decides whether the argument is a transient use.
+    `site_retention` is the verdict of a call the slot's contract does not
+    name: an owned local seated for a frame's argument
     holds what the frame's call keeps, and a legacy-sink site
     (`_lower_call_arg`) asks it of a callee it does not hand as the slot's.
-    `lifetime_checked` says the site already refused a dying argument
+    `lifetime_checked` says the site already asked the view-slot gate
     under it (`_refuse_dying_arg`). `signature` is the one the call's
     callee publishes, resolved where its node is built."""
     if (not isinstance(ptype, TpyType) or isinstance(a, TpyVarargPack)
@@ -16838,7 +16792,7 @@ def _receiver_seat_root(e: TpyMethodCall,
 _ROOT_SEAT_USE = _ExprUse(result=_ExprResultUse.BORROW_BIND,
                           record_ctor=_RecordCtorUse.RECORD_TEMP,
                           allow_temps=True, pos=SinkPos.RECEIVER,
-                          forms=_LEND_OK)
+                          forms=_ONLY_TRANSIENT)
 
 
 def root_value(root: TpyExpr, lc: '_LowerCtx',
@@ -17276,7 +17230,7 @@ def _arg_converted(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
     # seats it (`_frame_temp_arg`): the seat direct-initializes storage of
     # its own, as a frame slot write does.
     seated = frame_held and not frame_kept
-    read_forms = ((_NO_FORMS if keep is not None else _LEND_OK)
+    read_forms = ((_NO_FORMS if keep is not None else _ONLY_TRANSIENT)
                   | (_ONLY_SELECT_FRESH_PRVALUE if seated else _NO_FORMS))
     reference = cls is ParamSlotClass.REFERENCE
     if reference:
@@ -17296,7 +17250,7 @@ def _arg_converted(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
                 return read
             if read is None:
                 read = _arg_read(a, slot, ptype, lc, declared, temps=temps,
-                                 lend_forms=read_forms)
+                                 transient_forms=read_forms)
             else:
                 read = stamped(read, lc, record_of=a)
         except ThirUnsupported as exc:
@@ -17348,7 +17302,7 @@ def _arg_converted(a: TpyExpr, slot: Slot, ptype: TpyType, inst: TpyType,
         pass
     elif read is None:
         read = _arg_read(a, slot, ptype, lc, declared, temps=temps,
-                         lend_forms=read_forms)
+                         transient_forms=read_forms)
     else:
         read = stamped(read, lc, record_of=a)
     # The object a reference or a pointer parameter binds.
@@ -17526,7 +17480,7 @@ def _mut_lvalue(expr: THIRExpr, t: TpyType, lc: '_LowerCtx',
 
 def _arg_read(a: TpyExpr, slot: Slot, ptype: TpyType, lc: '_LowerCtx',
               declared: dict[str, TpyType], *, temps: bool,
-              lend_forms: frozenset) -> THIRExpr:
+              transient_forms: frozenset) -> THIRExpr:
     """An argument read as the source it is, before its parameter's
     conversion. A source naming storage of the slot's own Optional / union
     is read whole (`landing`), flow narrowing notwithstanding."""
@@ -17563,7 +17517,8 @@ def _arg_read(a: TpyExpr, slot: Slot, ptype: TpyType, lc: '_LowerCtx',
                     forms=((_ONLY_PTR_OPT_PASSTHROUGH
                             if pointer_repr_optional(st) is not None
                             else _NO_FORMS if isinstance(st, OptionalType)
-                            else _POS_FORMS[SinkPos.CALL_ARG]) | lend_forms
+                            else _POS_FORMS[SinkPos.CALL_ARG])
+                           | transient_forms
                            | (_ONLY_SELECT_PRVALUE
                               if param_takes_ownership(ptype)
                               else _NO_FORMS)),
@@ -17704,12 +17659,6 @@ def _literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
     return _slot_literal_retype(lowered, ptype, lc)
 
 
-class _DyingArgRefusal(ThirUnsupported):
-    """The argument sink's lifetime refusal (`_refuse_dying_arg`): its own
-    class, so a site that retries a refused argument with another render
-    lets it through."""
-
-
 class _NoTempHostRefusal(ThirUnsupported):
     """The argument sink's refusal of storage it asks for (`storage`) where
     no statement hosts a temporary: its own class, so a form that cannot
@@ -17722,38 +17671,36 @@ class _NoTempHostRefusal(ThirUnsupported):
 
 def _refuse_dying_arg(a: TpyExpr, ptype: 'TpyType | None',
                       keep: 'Retention | None', analyzer) -> None:
-    """THE argument sink's lifetime gate: refuse `a` when the callee keeps
-    it (`keep`, its `arg_retention`) and it holds storage dying with the
-    statement (`_arg_holds_dying`)."""
+    """The argument sink's view-slot gate: refuse `a` when the callee keeps
+    a copy of it (`keep`, its `arg_retention`) and it is a view of storage
+    dying with the statement (`_arg_holds_dying`)."""
     if _arg_holds_dying(a, ptype, keep, analyzer):
         note_detail("arg.lends_from_temporary")
-        raise _DyingArgRefusal(call_reject_reason("expr.call"))
+        raise ThirUnsupported(call_reject_reason("expr.call"))
 
 
 def _arg_holds_dying(a: TpyExpr, ptype: 'TpyType | None',
                      keep: 'Retention | None', analyzer) -> bool:
-    """Whether argument `a` would hand a callee that keeps it (`keep`, its
-    `arg_retention`) storage dying with the statement: a borrow of a
-    getter's dying storage (`lends_from_dying_source`), or a view slot a
-    binding may keep a copy of, given a source sema calls temporary
-    (`view_slot_source_is_temporary`, the rule a `StrView` local binds by)
-    -- whatever its result keeps besides. A bodied callee's frame hoists
-    such a view."""
-    if keep is None:
+    """Whether argument `a` would hand a callee that keeps a copy of it
+    (`keep`, its `arg_retention`) a view slot whose source sema calls
+    temporary (`view_slot_source_is_temporary`, the rule a `StrView` local
+    binds by) -- whatever its result keeps besides. A bodied callee's frame
+    hoists such a view. A borrow of a getter's dying storage is not asked:
+    that lifetime is the lifetime checkers' to warn, as for its method
+    spelling."""
+    if keep is None or Retention.COPIES not in keep:
         return False
     if ptype is not None and is_varargs(unwrap_qualifiers(ptype)):
         # The pack's array is the call's own storage, never kept: what a
         # binding may keep are its elements, each at the element slot. A
         # spread source's elements are copies of what it holds -- views
         # inside a value, BUGS.md#value-carried-view-of-temporary-kept --
-        # so only a borrow of dying storage is asked of it.
+        # so nothing is asked of it.
         elem = unwrap_qualifiers(ptype).type_args[0]
-        return any(_arg_holds_dying(x, None if spread else elem, keep,
-                                    analyzer)
+        return any(not spread and _arg_holds_dying(x, elem, keep, analyzer)
                    for x, spread in pack_operands(a))
-    return (lends_from_dying_source(analyzer, a)
-            or (Retention.COPIES in keep and ptype is not None
-                and view_slot_source_is_temporary(analyzer.ctx, ptype, a)))
+    return (ptype is not None
+            and view_slot_source_is_temporary(analyzer.ctx, ptype, a))
 
 
 @contextmanager
@@ -17832,7 +17779,7 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     # guard admits only bare names and literals, which never
                     # lend.
                     retention: 'Retention | None',
-                    # The site already refused a dying argument at this
+                    # The site already asked the view-slot gate at this
                     # slot with the same verdict (`_refuse_dying_arg`), so
                     # the entry does not ask it again.
                     lifetime_checked: bool = False,
@@ -17855,10 +17802,10 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # Carried to every arm below: the gate and the renders must never ask it
     # twice, because a second answer is a second chance to disagree.
     _keep = retention
-    _lend_ok = _keep is None
-    _lend_forms = _LEND_OK if _lend_ok else _NO_FORMS
+    _is_transient = _keep is None
+    _transient_forms = _ONLY_TRANSIENT if _is_transient else _NO_FORMS
     # The position every arm below derives its use from.
-    _arg_position = _ExprUse(pos=SinkPos.CALL_ARG, forms=_lend_forms)
+    _arg_position = _ExprUse(pos=SinkPos.CALL_ARG, forms=_transient_forms)
     # A slot taking its argument by ownership direct-initializes storage of
     # its own, so a reference ternary takes its prvalue `?:` here rather than
     # the lvalue render.
@@ -17956,7 +17903,7 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.ITERABLE,
                                         pos=SinkPos.CALL_ARG,
-                                        forms=_lend_forms,
+                                        forms=_transient_forms,
                                         allow_temps=temp_args or nested_temps))
     if method_arg_stub:
         iterable = _native_iterable_rvalue_arg(
@@ -17988,7 +17935,7 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.STORAGE,
                                         pos=SinkPos.CALL_ARG,
-                                        forms=_lend_forms,
+                                        forms=_transient_forms,
                                         allow_temps=nested_temps))
     if (_own_proto_container_slot(a, ptype, lc.analyzer, declared)
             is not None):
@@ -18666,7 +18613,7 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                                pos=SinkPos.CALL_ARG,
                                                forms=_POS_FORMS[
                                                    SinkPos.CALL_ARG]
-                                               | _lend_forms
+                                               | _transient_forms
                                                | (_ONLY_SELECT_FRESH_PRVALUE
                                                   if seated else _NO_FORMS),
                                                result=(
@@ -18720,7 +18667,7 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         pos=SinkPos.CALL_ARG,
-                                        forms=_lend_forms,
+                                        forms=_transient_forms,
                                         allow_temps=temp_args))
     # A checked container-element read at a record ref slot
     # (`Player(things[0])`, `bag.take(things[0])`): the element lvalue
@@ -19029,7 +18976,7 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         pos=SinkPos.CALL_ARG,
-                                        forms=_lend_forms,
+                                        forms=_transient_forms,
                                         allow_temps=temp_args))
     # The pointer-repr Optional slot faces (must run BEFORE the pointer-local
     # deref retag: an already-pointer name passes BARE into the `T*` slot).
@@ -19169,7 +19116,7 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                       # took, carried to the render: one
                                       # predicate, read twice, never decided
                                       # twice.
-                                      forms=_lend_forms | _own_slot_forms,
+                                      forms=_transient_forms | _own_slot_forms,
                                       # The param threads into a
                                       # FREE-call/ctor arg render, so a
                                       # both-literal binop arg never folds
@@ -20180,8 +20127,8 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             e, lc, declared,
             use=_ExprUse(result=_ExprResultUse.TRUTHY, allow_temps=temps_ok,
                          pos=SinkPos.TRUTHINESS_OPERAND,
-                         # Every mode admits the dying-source lend -- the
-                         # test runs inside the condition expression -- but
+                         # Every mode is transient -- the test runs
+                         # inside the condition expression -- but
                          # only ALWAYS_TRUE discards its render.
                          forms=(None
                                 if mode is TruthinessMode.ALWAYS_TRUE
@@ -20815,7 +20762,7 @@ def _select_slot_ok(use: _ExprUse, lc: '_LowerCtx') -> bool:
     Two facts. LIFETIME: the slot lives until the end of that statement's
     block, so the consumer must be proven not to hold the result longer --
     a local binding that aliases it (`SELECT_SLOT`), or a transient
-    consumer (one that may even borrow dying storage; a method receiver
+    consumer (`TRANSIENT`; a method receiver
     additionally asks the callee, `method.recv.select_slot_lend`). A
     direct-init of owned storage takes no slot at all: the select renders
     as a prvalue there (`_select_prvalue_ok`), its fresh operand built
@@ -20846,7 +20793,7 @@ def _select_slot_admits(use: _ExprUse, lc: '_LowerCtx') -> bool:
             or use.pos is SinkPos.COERCE_INNER):
         return False
     return (use.admits(SinkForm.SELECT_SLOT)
-            or use.admits(SinkForm.DYING_SOURCE_LEND))
+            or use.admits(SinkForm.TRANSIENT))
 
 
 def _select_prvalue_ok(e: TpyExpr, use: _ExprUse, analyzer) -> bool:

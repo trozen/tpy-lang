@@ -353,7 +353,7 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan,
                        declared: dict[str, TpyType], loc) -> THIRExpr:
     # The `forms=_NO_FORMS` beside the `pos=` below is the position's OWN
     # row restated, not a narrowing of it: a field write keeps the value
-    # past the statement, so the dying-source lend is refused here on
+    # past the statement, so the transient verdict is withheld here on
     # purpose. Every name's read is routed here, the unrouted Own payloads
     # included: the conversion reads the node's move facts, so a last use
     # moves and any other read copies.
@@ -643,8 +643,8 @@ def stored_use(dest: Slot, member_t: TpyType, analyzer, *,
     A reference / pointer slot binds the object the source names
     (BORROW_BIND); an owning slot takes a by-value call result whole
     (STORAGE). The slot keeps
-    what it is handed past the statement, so the dying-source lend stays
-    refused; a temporary may be hoisted before the statement (`allow_temps`,
+    what it is handed past the statement, so it takes no transient
+    verdict; a temporary may be hoisted before the statement (`allow_temps`,
     the sink's grant)."""
     ptr_opt = pointer_repr_optional(member_t) is not None
     ptr_union = _eligible_ptr_union(member_t, analyzer) is not None

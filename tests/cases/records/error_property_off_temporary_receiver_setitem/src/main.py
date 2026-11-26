@@ -3,8 +3,8 @@
 # statement kills into a container that outlives it, losing every later
 # mutation CPython shows through the alias. The read is a borrow, as its
 # bound twin `h = mk(); d[1] = h.items` is, and the twin's value-shape gate
-# refuses both first (BUGS.md#getter-result-slot-shape-rejects); the sink
-# table is in docs/PROPERTY_DESIGN.md.
+# refuses both first (BUGS.md#getter-result-slot-shape-rejects); the other
+# positions are in docs/PROPERTY_DESIGN.md.
 from typing import Iterator
 from tpy import Own, int32
 

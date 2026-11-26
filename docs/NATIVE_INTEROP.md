@@ -845,9 +845,9 @@ touches no process state".
 ### What a binding keeps of its arguments
 
 A binding without a body has no code the compiler can read, so whether it
-keeps an argument past the call -- which decides whether a borrow of storage
-the statement kills (`mk().data`, a `@property` read off a temporary) may be
-handed to it -- is read off its SIGNATURE and the binding keywords above,
+keeps an argument past the call -- which decides whether a VIEW of storage
+the statement kills may be handed to it (below) and whether the argument is
+a transient use -- is read off its SIGNATURE and the binding keywords above,
 never off its name. Three channels:
 
 - **The result.** What `result=` "borrow" / "element" declare (a declared borrow
@@ -892,12 +892,16 @@ a global and a literal. A subscript key is the dunder call's argument, so
 `sink[mk().text]` at `__getitem__(self, text: StrView)` is refused as
 `sink.__getitem__(mk().text)` is.
 
-A kept `Ptr[T]` parameter keeps the address it is handed, so a pointer to a
-field of a temporary is refused the same way: `s.stash_ptr(mk().ch.vsub)` at
+Only a VIEW slot is refused. A kept `Ptr[T]` parameter keeps the address it
+is handed, and a pointer to a field of a temporary compiles there with no
+diagnostic: `s.stash_ptr(mk().ch.vsub)` at
 `stash_ptr(self, p: Ptr[readonly[ValSub]])`, where `vsub` is a `ValueType`
-field read through a getter, as `p: Ptr[readonly[ValSub]] = mk().ch.vsub` is.
-A value copy (`v = mk().ch.vsub`) and a bodied callee that keeps nothing of
-its `Ptr` parameter are accepted. A view held INSIDE a `ValueType` is not
+field read through a getter, as `p: Ptr[readonly[ValSub]] = mk().ch.vsub`
+does and as both did in their method spelling already
+(BUGS.md#getter-off-temporary-kept-silently: lifetime is MIR's to warn, never
+a refusal); so does a getter's borrow at a keeping argument
+(`vs.extend(mk().vw)` for a getter returning `list[StrView]`). A view held
+INSIDE a `ValueType` is not
 followed through the value (BUGS.md#value-carried-view-of-temporary-kept).
 
 A `*args` pack is the call's own storage and is never kept; its ELEMENTS

@@ -1038,26 +1038,13 @@ def lends_from_dying_source(analyzer: 'ValueCategoryAnalyzer',
     """`expr` hands back a BORROW of storage that dies at the end of the
     statement -- an accessor read off a temporary receiver.
 
-    A minted result may be OWNED by the binding. A borrow of dying storage
-    may not: what the callee lends can OUTLIVE its receiver (a global, a
-    longer-lived object), CPython aliases it, and owning a copy would lose
-    every later mutation silently -- nor may it be bound as a reference,
-    which would dangle. WHICH positions those are is not this predicate's
-    to say: it reports the FACT, and `_POS_FORMS` (`tpyc/thir/lower/
-    context.py`) holds the verdict as one row per sink -- `SinkForm.
-    DYING_SOURCE_LEND`, admitted by the transient sinks and by no sink that
-    binds or holds a value past the full expression. An ARGUMENT is the one
-    sink whose row is not the whole answer: it asks the CALLEE's own
-    retention facts (`arg_retention`).
-
-    The ACCESSOR spelling only, and that line is INTERIM: a spelled method
-    borrowing from a temporary receiver stays on the conceded
-    warn-and-emit tier (`BUGS.md#readonly-borrow-of-temporary-receiver`,
-    pinned by `tests/cases/list/warn_insert_temp_receiver_borrow` and its
-    siblings), so widening the fact to it would turn those warnings into
-    rejects -- that entry's decision, not this predicate's. When the
-    temporary-receiver tier is decided, `property_getter_of` is what gets
-    widened; the fact itself is spelling-blind.
+    A minted result may be OWNED by the binding; a borrow of dying storage
+    may not, since what the callee lends can OUTLIVE its receiver (a
+    global, a longer-lived object) and CPython aliases it. The predicate
+    reports the FACT (a `match` subject's place root reads it); whether the
+    borrow outlives the storage is the lifetime checkers' to warn -- sema's
+    *Result borrows from temporary* warning, MIR -- as for the spelled
+    method twin, never a refusal.
 
     The reads that keep pointing into such storage lend it too: a field or
     element read through one (`mk().ch.sub`) whose type may hold a pointer

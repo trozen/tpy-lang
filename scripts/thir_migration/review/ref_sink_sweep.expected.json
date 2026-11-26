@@ -595,9 +595,9 @@
   ""
  ],
  "array_i__ctor__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: Array = method_call(call(mk_b, []), v, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__ctor__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -605,9 +605,9 @@
   ""
  ],
  "array_i__ctor__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies Array[int32, 2] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__ctor__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -1050,9 +1050,9 @@
   ""
  ],
  "array_i__fn__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: Array = method_call(call(mk_b, []), v, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__fn__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -1060,9 +1060,9 @@
   ""
  ],
  "array_i__fn__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies Array[int32, 2] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__fn__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -1750,9 +1750,9 @@
   ""
  ],
  "array_i__meth__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: Array = method_call(call(mk_b, []), v, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__meth__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -1760,9 +1760,9 @@
   ""
  ],
  "array_i__meth__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies Array[int32, 2] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__meth__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -2185,9 +2185,9 @@
   ""
  ],
  "array_i__nested__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: Array = method_call(call(mk_b, []), v, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "array_i__nested__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -2195,9 +2195,9 @@
   ""
  ],
  "array_i__nested__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies Array[int32, 2] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -3005,9 +3005,9 @@
   ""
  ],
  "bytearray__ctor__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: bytearray = method_call(call(mk_b, []), v, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -3015,9 +3015,9 @@
   ""
  ],
  "bytearray__ctor__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies bytearray into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__ctor__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -3595,9 +3595,9 @@
   ""
  ],
  "bytearray__fn__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: bytearray = method_call(call(mk_b, []), v, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__fn__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -3605,9 +3605,9 @@
   ""
  ],
  "bytearray__fn__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies bytearray into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__fn__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -4465,9 +4465,9 @@
   ""
  ],
  "bytearray__meth__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: bytearray = method_call(call(mk_b, []), v, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__meth__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -4475,9 +4475,9 @@
   ""
  ],
  "bytearray__meth__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies bytearray into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__meth__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -5035,9 +5035,9 @@
   ""
  ],
  "bytearray__nested__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: bytearray = method_call(call(mk_b, []), v, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "bytearray__nested__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -5045,9 +5045,9 @@
   ""
  ],
  "bytearray__nested__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies bytearray into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -5855,9 +5855,9 @@
   ""
  ],
  "deref_list__ctor__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: DL = method_call(call(mk_b, []), v, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__ctor__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -5865,9 +5865,9 @@
   ""
  ],
  "deref_list__ctor__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__ctor__temp_accessor__match_capture": [
   "reject:stmt.match",
@@ -6445,9 +6445,9 @@
   ""
  ],
  "deref_list__fn__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: DL = method_call(call(mk_b, []), v, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__fn__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -6455,9 +6455,9 @@
   ""
  ],
  "deref_list__fn__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__fn__temp_accessor__match_capture": [
   "reject:stmt.match",
@@ -7315,9 +7315,9 @@
   ""
  ],
  "deref_list__meth__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: DL = method_call(call(mk_b, []), v, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__meth__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -7325,9 +7325,9 @@
   ""
  ],
  "deref_list__meth__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__meth__temp_accessor__match_capture": [
   "reject:stmt.match",
@@ -7885,9 +7885,9 @@
   ""
  ],
  "deref_list__nested__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: DL = method_call(call(mk_b, []), v, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "deref_list__nested__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -7895,9 +7895,9 @@
   ""
  ],
  "deref_list__nested__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__temp_accessor__match_capture": [
   "reject:stmt.match",
@@ -8705,9 +8705,9 @@
   "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x ["
  ],
  "deref_rec__ctor__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: DR = method_call(call(mk_b, []), v, []) %x.x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__ctor__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -8715,9 +8715,9 @@
   ""
  ],
  "deref_rec__ctor__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__ctor__temp_accessor__match_capture": [
   "reject:stmt.match",
@@ -9295,9 +9295,9 @@
   "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x ["
  ],
  "deref_rec__fn__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: DR = method_call(call(mk_b, []), v, []) %x.x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__fn__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -9305,9 +9305,9 @@
   ""
  ],
  "deref_rec__fn__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__fn__temp_accessor__match_capture": [
   "reject:stmt.match",
@@ -10165,9 +10165,9 @@
   "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x ["
  ],
  "deref_rec__meth__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: DR = method_call(call(mk_b, []), v, []) %x.x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__meth__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -10175,9 +10175,9 @@
   ""
  ],
  "deref_rec__meth__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__meth__temp_accessor__match_capture": [
   "reject:stmt.match",
@@ -10735,9 +10735,9 @@
   "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x ["
  ],
  "deref_rec__nested__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: DR = method_call(call(mk_b, []), v, []) %x.x = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "deref_rec__nested__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -10745,9 +10745,9 @@
   ""
  ],
  "deref_rec__nested__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__temp_accessor__match_capture": [
   "reject:stmt.match",
@@ -11495,9 +11495,9 @@
   "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow][str('z')] = coerce(lit("
  ],
  "dict_si__ctor__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: dict = method_call(call(mk_b, []), v, []) %x[str('z')] = coerce(lit(9) -> int32)"
  ],
  "dict_si__ctor__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -11505,9 +11505,9 @@
   ""
  ],
  "dict_si__ctor__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__ctor__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12015,9 +12015,9 @@
   "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow][str('z')] = coerce(lit("
  ],
  "dict_si__fn__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: dict = method_call(call(mk_b, []), v, []) %x[str('z')] = coerce(lit(9) -> int32)"
  ],
  "dict_si__fn__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -12025,9 +12025,9 @@
   ""
  ],
  "dict_si__fn__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__fn__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12815,9 +12815,9 @@
   "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow][str('z')] = coerce(lit("
  ],
  "dict_si__meth__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: dict = method_call(call(mk_b, []), v, []) %x[str('z')] = coerce(lit(9) -> int32)"
  ],
  "dict_si__meth__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -12825,9 +12825,9 @@
   ""
  ],
  "dict_si__meth__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__meth__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -13315,9 +13315,9 @@
   "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow][str('z')] = coerce(lit("
  ],
  "dict_si__nested__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: dict = method_call(call(mk_b, []), v, []) %x[str('z')] = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "dict_si__nested__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -13325,9 +13325,9 @@
   ""
  ],
  "dict_si__nested__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -14105,9 +14105,9 @@
   ""
  ],
  "gen_rec__ctor__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: Box = method_call(call(mk_b, []), v, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -14660,9 +14660,9 @@
   ""
  ],
  "gen_rec__fn__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: Box = method_call(call(mk_b, []), v, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -15495,9 +15495,9 @@
   ""
  ],
  "gen_rec__meth__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: Box = method_call(call(mk_b, []), v, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -16030,9 +16030,9 @@
   ""
  ],
  "gen_rec__nested__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: Box = method_call(call(mk_b, []), v, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -16820,9 +16820,9 @@
   ""
  ],
  "list_i__ctor__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: list = method_call(call(mk_b, []), v, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__ctor__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -16830,9 +16830,9 @@
   ""
  ],
  "list_i__ctor__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__ctor__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -17375,9 +17375,9 @@
   ""
  ],
  "list_i__fn__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: list = method_call(call(mk_b, []), v, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__fn__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -17385,9 +17385,9 @@
   ""
  ],
  "list_i__fn__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__fn__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -18210,9 +18210,9 @@
   ""
  ],
  "list_i__meth__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: list = method_call(call(mk_b, []), v, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__meth__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -18220,9 +18220,9 @@
   ""
  ],
  "list_i__meth__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__meth__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -18745,9 +18745,9 @@
   ""
  ],
  "list_i__nested__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: list = method_call(call(mk_b, []), v, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "list_i__nested__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -18755,9 +18755,9 @@
   ""
  ],
  "list_i__nested__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -19440,9 +19440,9 @@
   ""
  ],
  "list_r__ctor__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: list = method_call(call(mk_b, []), v, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__ctor__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -19450,9 +19450,9 @@
   ""
  ],
  "list_r__ctor__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies list[R] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_r__ctor__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -19930,9 +19930,9 @@
   ""
  ],
  "list_r__fn__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: list = method_call(call(mk_b, []), v, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__fn__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -19940,9 +19940,9 @@
   ""
  ],
  "list_r__fn__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies list[R] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_r__fn__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -20665,9 +20665,9 @@
   ""
  ],
  "list_r__meth__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: list = method_call(call(mk_b, []), v, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__meth__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -20675,9 +20675,9 @@
   ""
  ],
  "list_r__meth__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies list[R] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_r__meth__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -21135,9 +21135,9 @@
   ""
  ],
  "list_r__nested__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: list = method_call(call(mk_b, []), v, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) call(nested_inner, [])"
  ],
  "list_r__nested__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -21145,9 +21145,9 @@
   ""
  ],
  "list_r__nested__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies list[R] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_r__nested__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -21985,9 +21985,9 @@
   "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] ["
  ],
  "rec__ctor__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: R = method_call(call(mk_b, []), v, []) %x.x = binop(%x.x, +, lit(1))"
  ],
  "rec__ctor__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -21995,9 +21995,9 @@
   ""
  ],
  "rec__ctor__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(%h.f [storage].x [raw])"
  ],
  "rec__ctor__temp_accessor__match_capture": [
   "reject:stmt.match",
@@ -22605,9 +22605,9 @@
   "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] ["
  ],
  "rec__fn__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: R = method_call(call(mk_b, []), v, []) %x.x = binop(%x.x, +, lit(1))"
  ],
  "rec__fn__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -22615,9 +22615,9 @@
   ""
  ],
  "rec__fn__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(%h.f [storage].x [raw])"
  ],
  "rec__fn__temp_accessor__match_capture": [
   "reject:stmt.match",
@@ -23505,9 +23505,9 @@
   "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] ["
  ],
  "rec__meth__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: R = method_call(call(mk_b, []), v, []) %x.x = binop(%x.x, +, lit(1))"
  ],
  "rec__meth__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -23515,9 +23515,9 @@
   ""
  ],
  "rec__meth__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(%h.f [storage].x [raw])"
  ],
  "rec__meth__temp_accessor__match_capture": [
   "reject:stmt.match",
@@ -24105,9 +24105,9 @@
   "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] ["
  ],
  "rec__nested__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: R = method_call(call(mk_b, []), v, []) %x.x = binop(%x.x, +, lit(1)) call(nested_inner, [])"
  ],
  "rec__nested__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -24115,9 +24115,9 @@
   ""
  ],
  "rec__nested__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__temp_accessor__match_capture": [
   "reject:stmt.match",
@@ -25130,9 +25130,9 @@
   ""
  ],
  "set_i__ctor__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: set = method_call(call(mk_b, []), v, []) method_call(%x, insert, [coerce(lit(9) -> int32)])"
  ],
  "set_i__ctor__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -25140,9 +25140,9 @@
   ""
  ],
  "set_i__ctor__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__ctor__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25685,9 +25685,9 @@
   ""
  ],
  "set_i__fn__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: set = method_call(call(mk_b, []), v, []) method_call(%x, insert, [coerce(lit(9) -> int32)])"
  ],
  "set_i__fn__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -25695,9 +25695,9 @@
   ""
  ],
  "set_i__fn__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__fn__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26520,9 +26520,9 @@
   ""
  ],
  "set_i__meth__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: set = method_call(call(mk_b, []), v, []) method_call(%x, insert, [coerce(lit(9) -> int32)])"
  ],
  "set_i__meth__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -26530,9 +26530,9 @@
   ""
  ],
  "set_i__meth__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__meth__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -27055,9 +27055,9 @@
   ""
  ],
  "set_i__nested__temp_accessor__decl_alias": [
-  "reject:expr.method_call:local_decl.lends_from_temporary",
+  "ok",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
-  ""
+  "%x: set = method_call(call(mk_b, []), v, []) method_call(%x, insert, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "set_i__nested__temp_accessor__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -27065,9 +27065,9 @@
   ""
  ],
  "set_i__nested__temp_accessor__field_write": [
-  "reject:expr.method_call:assign.field_write_lends_from_temporary",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = method_call(call(mk_b, []), v, []) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__temp_accessor__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",

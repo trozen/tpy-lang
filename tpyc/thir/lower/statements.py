@@ -306,7 +306,7 @@ from .context import (
     _decl_slot_forms,
     _ONLY_PTR_OPT_PASSTHROUGH,
     _ExprResultUse,
-    _LEND_OK,
+    _ONLY_TRANSIENT,
     _NO_FORMS,
     _ONLY_ADDR_CALL,
     _ONLY_FIELD_RECV_BORROW,
@@ -8712,7 +8712,8 @@ def _aug_holds(stmt: TpyAugAssign, lc: '_LowerCtx',
                 # as a member read off it is.
                 use = (_ExprUse(result=_ExprResultUse.RECEIVER,
                                 allow_temps=True, pos=SinkPos.RECEIVER,
-                                forms=_ONLY_FIELD_RECV_BORROW | _LEND_OK)
+                                forms=(_ONLY_FIELD_RECV_BORROW
+                                       | _ONLY_TRANSIENT))
                        if isinstance(e, (TpyCall, TpyMethodCall))
                        else _ExprUse(pos=SinkPos.RECEIVER,
                                      forms=_recv_forms(False, False)))
@@ -8792,7 +8793,7 @@ def _aug_subscript_operands(stmt: TpyAugAssign, lc: '_LowerCtx',
             # the read's key.
             set_key = _lower_expr(sub.setitem_index, lc, declared,
                                   use=_ExprUse(pos=SinkPos.OPERAND,
-                                               forms=_LEND_OK),
+                                               forms=_ONLY_TRANSIENT),
                                   field_owned_str_ok=isinstance(
                                       sub.setitem_index, TpyFieldAccess))
     return _AugSubscript(read, receiver,
@@ -12130,7 +12131,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     # the statement -- the OPERAND row, like the list extend.
                     value=_lower_expr(stmt.value, lc, declared,
                                       use=_ExprUse(pos=SinkPos.OPERAND,
-                                                   forms=_LEND_OK)),
+                                                   forms=_ONLY_TRANSIENT)),
                     loc=loc)
             if isinstance(stmt.target, TpyFieldAccess):
                 return THIRStrAppend(
@@ -12140,7 +12141,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         field_prechecked=True),
                     value=_lower_expr(stmt.value, lc, declared,
                                       use=_ExprUse(pos=SinkPos.OPERAND,
-                                                   forms=_LEND_OK)),
+                                                   forms=_ONLY_TRANSIENT)),
                     loc=loc)
         # `target OP= value` lowers to `target = (target OP value)` -- the
         # scalar branch -- and so does the bytes concat-and-assign
@@ -14502,14 +14503,13 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         at = lc.analyzer.get_expr_type(a)
         atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
                if at is not None else None)
-        # `forms=_LEND_OK` is the sink's verdict, not the row's: the printer
-        # wrap reads the container inside the print expression, so a result
-        # lending a dying receiver's storage is still alive where it streams.
+        # `forms=_ONLY_TRANSIENT` is the sink's verdict, not the row's:
+        # the printer wrap reads the container inside the print expression.
         arg_use = (_ExprUse(result=_ExprResultUse.ITERABLE,
-                            pos=SinkPos.PRINT_ARG, forms=_LEND_OK)
+                            pos=SinkPos.PRINT_ARG, forms=_ONLY_TRANSIENT)
                    if atu is not None and is_dict_view(atu)
                    else _ExprUse(result=_ExprResultUse.STORAGE,
-                                 pos=SinkPos.PRINT_ARG, forms=_LEND_OK,
+                                 pos=SinkPos.PRINT_ARG, forms=_ONLY_TRANSIENT,
                                  allow_temps=temps_ok))
         return THIRPrintArg(
             _lower_expr(a, lc, declared, use=arg_use),
@@ -14569,14 +14569,14 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         # A `forms=` replaces the sink's row, so the print sink's own lend
         # verdict is restated on every row: the printer reads the value
         # inside the statement.
-        print_position = _ExprUse(pos=SinkPos.PRINT_ARG, forms=_LEND_OK,
+        print_position = _ExprUse(pos=SinkPos.PRINT_ARG, forms=_ONLY_TRANSIENT,
                                   allow_temps=temps_ok)
         if wrap is PrintForm.TUPLE and isinstance(a, TpySubscript):
             wrap_use = replace(print_position,
                                result=_ExprResultUse.BORROW_BIND)
         else:
             wrap_use = replace(print_position, pos=SinkPos.PRINT_ARG,
-                               forms=_ONLY_INDIRECT_READ | _LEND_OK)
+                               forms=_ONLY_INDIRECT_READ | _ONLY_TRANSIENT)
         # The union STR row is DECLARED-type keyed (`::tpy::__str__(a)`
         # consumes the whole variant), so an assign-narrowed divergent
         # read is safe here -- the sink never sees the member type.
@@ -14616,9 +14616,9 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     # fine while the two shapes stay mutually exclusive (a record-call arg
     # is never a both-literal int binop); revisit if that ever changes.
     # A print argument is streamed inside the print statement, so every one of
-    # these arms carries the dying-source admission on top of its own verdict.
+    # these arms carries the transient verdict on top of its own.
     use = _ExprUse(allow_temps=temps_ok, pos=SinkPos.PRINT_ARG,
-                   forms=_LEND_OK)
+                   forms=_ONLY_TRANSIENT)
     if _print_tuple_record_elem(a, declared, lc.analyzer):
         # A pointer element read hands back the POINTER and print is a
         # value position, so the referent streams; an inline one already

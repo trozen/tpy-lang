@@ -1,0 +1,10 @@
+part_copies.py:42: warning: copies list[int32] into field; use copy() to make this explicit
+part_copies.py:51: warning: copies Rec into owned storage; use copy() to make this explicit
+part_copies.py:56: warning: copies Rec into owned storage; use copy() to make this explicit
+part_warn.py:67: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+part_warn.py:70: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+part_warn.py:73: warning: Result borrows from temporary argument 'r'; the temporary is destroyed at end-of-statement
+part_warn.py:77: warning: Result borrows from temporary argument 'o'; the temporary is destroyed at end-of-statement
+part_warn.py:80: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+part_warn.py:83: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+part_warn.py:91: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement

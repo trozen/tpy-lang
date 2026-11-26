@@ -1,0 +1,31 @@
+global_slot: 3
+decl: 4
+hoisted_decl: 5
+return: 6
+field_read: 99
+reversed_global: 2
+reversed_global: 1
+reversed_self: 8
+reversed_self: 7
+zip: 7 1
+zip: 8 2
+enumerate: 0 7
+enumerate: 1 8
+gen_factory: 7
+gen_factory: 8
+genexpr: 3
+field_write: 3
+return_own: 5
+yield_own: 5
+kept_field: 5
+enum_prop: BLUE
+lambda_key: [3, 1, 2]
+through_arg: 11
+gprop_decl: 12
+decl
+field_read
+kept_arg
+operand
+mixed
+chain
+hoisted

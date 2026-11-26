@@ -39,72 +39,60 @@ is explained.
 | No `@override` on properties | Properties are inherited but not overridable |
 | Optional[non-value] narrowing | Pre-existing: `if obj.node is not None: obj.node.val` generates invalid C++ for non-value Optional. Affects both fields and properties |
 | `str` / `BigInt` return by value | General method return convention -- not property-specific. Use `-> StrView` for zero-copy str |
-| Read off a TEMPORARY receiver: every BINDING position | `v = mk().items`, a field or element read through it that is not a scalar copied out (`z = mk().ch.sub`; `a = mk().ch.x` compiles), and the same at an argument the callee keeps, a `return`, a field write, a `d[k] = ...` value, a module global or frame slot, a generator expression's source, a ternary arm and the constructor member-init list, are located rejects (`<sink>.lends_from_temporary`). In the HEAD of a compound statement -- a for-each or comprehension iterable, a `with` manager, a `match` subject -- the statement keeps the receiver until it ends, so the read compiles and reads the getter's storage live. What the getter lends can OUTLIVE the receiver -- a global, a longer-lived object -- and CPython aliases it, so owning a copy loses every later mutation and binding a reference dangles. TRANSIENT reads stay admitted: `print(len(mk().items))`, `mk().items[0]`, `f"{mk().name}"`, a `+=` source, a dict key, a membership needle. Workaround: bind the receiver first, `h = mk()` then `v = h.items`. The spelled-method twin keeps its conceded warn-and-emit tier (`BUGS.md#readonly-borrow-of-temporary-receiver`). Pinned by the `records/error_property_off_temporary_receiver*` family, whose `_arg` header carries the tag table |
-| An ARGUMENT asks the CALLEE, not the position | A reference-returning getter read off a temporary is a borrow, as its bound twin `h = mk(); h.items` is, and an argument the callee does not keep takes it as the twin does: `acc += mk().data`, `acc.extend(mk().data)` and `list(mk().data)` copy the elements with the twin's warning, `"-".join(mk().names)`, `ss.update(mk().s)` and `len(mk().items)` read it in place. One verdict says whether the callee keeps an argument (`callee_retains_arg`, `tpyc/sema/call_lends.py`): a callee with a body by what sema measured (`return_borrows_from`, `addr_escapes_params`), a body-less binding by its signature -- its result, and the copies it may keep of a value holding a pointer (docs/NATIVE_INTEROP.md, "What a binding keeps of its arguments"). `reversed`, `enumerate`, `zip`, `map`, `filter`, `itertools.islice`, every generator or coro factory and `list[StrView].extend` keep what they are given and reject. The TPy-body gap is `BUGS.md#native-stub-declares-no-param-retention`. Pinned by `records/stub_arg_off_temporary` and `records/error_property_off_temporary_receiver_retaining_builtin` |
+| Read off a TEMPORARY receiver: the method twin's tier | `v = mk().items`, a field or element read through it that still points into it (`z = mk().ch.sub`), an argument a bodied callee hands back (`r = keep(mk().rec)`) and an operand a user dunder returns (`y = b + mk().ch.rec`) compile with sema's *Result borrows from temporary ...* warning and dangle when the name is read after the statement -- exactly as the spelled method `mk().get_items()` does (`BUGS.md#readonly-borrow-of-temporary-receiver`). A getter lending a global aliases it as CPython does; an owning position (a field write, an `Own[T]` return or yield) copies with the copy warning. A few positions keep the borrow with NO diagnostic, in both spellings: a `Ptr` taken of a field read through the getter, a stub / native callee keeping the argument, a module global slot (`BUGS.md#getter-off-temporary-kept-silently`), for MIR to warn. No lifetime refusal is specific to the getter; the two that stay apply to every spelling: a chained-comparison operand that is not a free-to-copy scalar (`unspecified.lends_from_temporary`), and a view argument a callee keeps a copy of (`arg.lends_from_temporary`, row below). Workaround: bind the receiver first, `h = mk()` then `v = h.items`. Pinned by `records/property_off_temporary` (`part_warn` warned; the other parts safe and copying positions) |
+| An ARGUMENT asks the CALLEE, not the position | A reference-returning getter read off a temporary is a borrow, as its bound twin `h = mk(); h.items` is, and an argument takes it as the twin does: `acc += mk().data`, `acc.extend(mk().data)` and `list(mk().data)` copy the elements with the twin's warning, `"-".join(mk().names)`, `ss.update(mk().s)` and `len(mk().items)` read it in place. Whether the callee keeps an argument is one verdict (`callee_retains_arg`, `tpyc/sema/call_lends.py`): a callee with a body by what sema measured (`return_borrows_from`, `addr_escapes_params`), a body-less binding by its signature -- its result, and the copies it may keep of a value holding a pointer (docs/NATIVE_INTEROP.md, "What a binding keeps of its arguments"). A callee that keeps it (`reversed`, `enumerate`, a generator factory, `list[StrView].extend`) takes the borrow as the method twin does; in a compound statement's head the statement keeps the receiver (`for x in reversed(mk().items)` is safe). The one refusal left at an argument is not about getters: a VIEW a callee keeps a copy of may not view a temporary's storage (`sink.stash(mk().text)`, `arg.lends_from_temporary`, `records/error_native_stash_view_of_temporary`). The TPy-body gap is `BUGS.md#native-stub-declares-no-param-retention`. Pinned by `records/stub_arg_off_temporary` and `records/property_off_temporary` |
 | Aggregate ELEMENT slot, even off a NAMED receiver | `t = (b.rec, 1)`, `[b.rec for i in range(1)]`, a dict key or value, a set element: a getter whose read renders as a C++ lvalue REFERENCE has no element render, because the slot must pick between STORAGE (a copy, where CPython aliases) and BORROW (a `Rec&` element, which no C++ container can hold). A VIEW getter is not affected when the element slot OWNS -- `xs: list[str] = [b.name]` renders `{std::string(b.name())}`, as the field spelling and the method twin do. The unannotated `xs = [b.name]` infers `list[StrView]` and rejects like every other source at a view-typed element slot (`BUGS.md#view-element-slot-admits-no-source`). Pinned by `records/error_property_elem_lends_storage` |
 | Computed pointer-repr Optional getter | The Phase-5 "storage type" getter-return convention (row above) holds only when the body returns a stored optional FIELD; a computed `-> Rec \| None` (returning a plain field or `None`) emits uncompilable C++. Toolchain-caught. See the BUGS.md `@property` pointer-repr `Optional` entry |
 
-### A read off a TEMPORARY receiver: the sink table
+### A read off a TEMPORARY receiver: no getter lifetime refusal
 
-One fact (`lends_from_dying_source`) and one verdict per POSITION. `SinkForm.
-DYING_SOURCE_LEND` has a row per sink in `_POS_FORMS`
-(`tpyc/thir/lower/context.py`), and no sink that BINDS or HOLDS its value past
-the full expression admits it -- so this is the table of sinks, not a list of
-positions someone remembered. The tag names the sink, and each row is pinned by
-a case under `tests/cases/records/`:
+The lowering has no lifetime refusal specific to a getter read off a temporary
+receiver: the property spelling renders what its method twin renders, and the
+lifetime is warned -- by sema's *Result borrows from temporary* warning today,
+by MIR as its coverage grows. Two lifetime refusals stay, and they apply to
+every spelling, not to getters: a chained-comparison operand that is not a
+free-to-copy scalar (row below), and a view a callee keeps a copy of viewing a
+temporary's storage (`arg.lends_from_temporary`, the kept view argument).
+`lends_from_dying_source`
+(`tpyc/value_category.py`) still states the fact (a `match` subject's place
+root reads it); `SinkForm.TRANSIENT` in `_POS_FORMS`
+(`tpyc/thir/lower/context.py`) marks the positions that finish inside the full
+expression, which a select's slot hoist reads.
 
-| sink | tag | case suffix |
-|------|-----|-------------|
-| local decl | `local_decl.lends_from_temporary` | (the base case) |
-| branch-first decl | `local_decl.lends_from_temporary` | `_hoisted_decl` |
-| argument the callee keeps | `arg.lends_from_temporary` | `_retaining_builtin`, `error_stub_arg_keeps_view_of_temporary`, `error_native_stash_view_of_temporary` |
-| field / element read through the read | the sink's own tag (`local_decl.lends_from_temporary` at a decl) | `error_property_off_temporary_field_read` |
-| for-each / comprehension | compiles: the head keeps the receiver; a generator expression's source stops at `expr.genexpr` | `calls/fresh_arg_statement_lifetime` (`part_head_receivers`), `_comp` |
-| field store | `assign.field_write_lends_from_temporary`; a VIEW field answers first in sema (`Cannot bind ... to a temporary view source`) | `error_property_view_store_temporary` |
-| setitem value | the bound twin's value-shape gate refuses first (`setitem.container_value_shape`, `setitem.record_value_shape`, `setitem.optional_value_shape`: BUGS.md#getter-result-slot-shape-rejects), and a tuple element (`d[1] = (mk().ch, 1)`) is refused at the element as `unspecified.lends_from_temporary`; since a reference getter read is a borrow, no shape reaches `setitem_value.lends_from_temporary` | `_setitem` |
-| `with` manager | compiles: the head keeps the receiver | `calls/fresh_arg_statement_lifetime` (`part_head_receivers`) |
-| return | `return.lends_from_temporary` | `_return` |
-| match subject | compiles: the head keeps the receiver | `calls/fresh_arg_statement_lifetime` (`part_head_receivers`) |
-| global slot | `global_slot_write.lends_from_temporary` | `_global` |
-| frame slot | a record or container stops at the twin's `res.alias_bind`; a view field (`v = mk().ch.s`) is refused at the read as `unspecified.lends_from_temporary`; no shape reaches `frame_slot_write.lends_from_temporary` | `_frame` |
+| position | render | diagnostic | case |
+|------|-----|-----|-----|
+| local decl | `std::vector<int32_t>& p = mk().items();` | dangle warning (none when the getter lends a global) | `property_off_temporary` (`part_warn`, `main`) |
+| branch-first decl | `std::vector<int32_t>* v; ... v = &(mk().items());` | dangle warning (none when the getter lends a global) | `property_off_temporary` (`part_warn`, `main`) |
+| field / element read through the read | `Rec& z = mk().ch().rec;` | dangle warning | `property_off_temporary` (`part_warn`) |
+| argument a bodied callee hands back | `Rec& r = keep(mk().ch().rec);` | dangle warning | `property_off_temporary` (`part_warn`) |
+| operand a dunder hands back | `const Rec& y = ((b) + (mk().ch().rec));` | dangle warning | `property_off_temporary` (`part_warn`) |
+| chained-comparison operand (not a free-to-copy scalar) | refused, every spelling (method, field, select) | `unspecified.lends_from_temporary` | `error_property_off_temporary_chained_compare`, `error_select_off_temporary_chained_compare` |
+| return | `return mk().items();` | none when the getter lends a global; sema refuses a borrow of `self` (`Cannot return local or temporary as reference`) | `property_off_temporary` |
+| module global slot | `SLOT = &(mk().items());` | none (silent with a self-lending getter: `BUGS.md#getter-off-temporary-kept-silently`) | `property_off_temporary` |
+| field write, `Own[T]` return / yield | a copy | copy warning | `property_off_temporary` |
+| for-each / comprehension source, `with` manager, `match` subject | the head keeps the receiver | none (safe) | `property_off_temporary`, `calls/fresh_arg_head_keep` (`part_head_receivers`) |
+| generator expression passed to a call that finishes in the expression (`sum(x for x in mk().items)`) | the source is read before the statement ends | none (safe, transient) | `property_off_temporary` (`part_loops`) |
+| loop head over a NESTED generator expression (`for i, x in enumerate(x for x in mk().items)`) | `auto __src_0 = ::tpy::builtin_enumerate(__genexpr_main_1(mk().items()));` -- the head keeps nothing | none (silent, `BUGS.md#getter-off-temporary-kept-silently`) | -- |
+| `Ptr` of a field read through the read, a stub / native callee keeping it | `const V* p = &mk().ch().vsub;` | none (`BUGS.md#getter-off-temporary-kept-silently`) | -- |
 
-A free-call argument at a parameter the callee does not retain is no such
-sink: the parameter holds the getter's reference for the call only, so it binds
-it in place (`grow(mk().items)` passes `mk().items()`, and the callee's write
-reaches what the getter lent) -- `calls/argument_sink`, section
-`property_temp_receiver`. A callee that keeps it takes the kept-argument row's tag.
-
-One label to know about: an ANNOTATED module global (`SLOT: list[int32] =
-mk().items`) takes the global-slot row, while an INFERRED one (`v = mk().name`)
-reports `local_decl.lends_from_temporary` -- a module-level binding without an
-annotation shares the LOCAL decl lowering. Both reject, correctly; the split is
-in the module-level decl routing and predates this rule.
-
-Three more sinks refuse the lend by construction but are reached through a
-different tag, because a shape gate answers first: a ternary arm at
-`ifexpr.getter_arm_const_source`, a walrus at `expr.walrus`, and the constructor
-member-init list at `mil_init.lends_from_temporary` (a VIEW field there, as at
-any field store, is refused first by sema's temporary-view rule). An aggregate ELEMENT slot
-is refused one step earlier and by a WIDER rule
+Positions still refused by a SHAPE gate the bound twin shares, not by a
+lifetime rule: a setitem value (`setitem.container_value_shape`, ...:
+BUGS.md#getter-result-slot-shape-rejects;
+`records/error_property_off_temporary_receiver_setitem`), a generator frame
+slot (`res.alias_bind`; `records/error_property_off_temporary_receiver_frame`), a ternary arm (`ifexpr.getter_arm_const_source`,
+where the method twin compiles: BUGS.md#getter-source-const-not-tracked), a
+walrus (`expr.walrus`). An aggregate ELEMENT slot is refused by a WIDER rule
 (`container_elem.accessor_lends_storage`, which holds off a NAMED receiver too).
 
-An ARGUMENT is the one position that asks the CALLEE rather than the sink; see
-the Known Limitations row above.
-
-THE METHOD TWIN: the fact is the accessor spelling's only, so wherever the twin
-compiles it keeps its conceded warn-and-emit tier
-(`BUGS.md#readonly-borrow-of-temporary-receiver`). Where the callee keeps
-nothing, the free-call argument (`mutate(mk().items)`) and the stub-method
-argument (`acc.append(mk().items)`, its copy warned) compile as the bound twin
-`h.items` does (`calls/argument_sink`, sections `property_temp_receiver` and
-`property_temp_receiver_insert`); the shapes the twin still refuses are
-`BUGS.md#getter-result-slot-shape-rejects`. The whole
-matrix of
-accessor-vs-twin verdicts is the committed table beside
+A free-call argument at a parameter the callee does not retain binds the
+getter's reference in place (`grow(mk().items)` passes `mk().items()`, and the
+callee's write reaches what the getter lent) -- `calls/argument_sink`, section
+`property_temp_receiver`. The whole matrix of accessor-vs-twin verdicts is the
+committed table beside
 `scripts/thir_migration/review/property_position_sweep.py`.
 
-WORKAROUND at every row: bind the receiver first -- `h = mk()` then
-`mutate(h.items)`.
+WORKAROUND for a warned dangle: bind the receiver first -- `h = mk()` then
+`v = h.items`.
 
 ### Future Extensions
 

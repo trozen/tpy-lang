@@ -1,15 +1,15 @@
-# The TRANSIENT reads of a @property getter off a TEMPORARY receiver -- the
-# half of the dying-source rule that must keep COMPILING. Each section finishes
-# inside its own full expression, so the `mk()` temporary is still alive where
-# the borrow is read; the BINDING positions, which are not, are pinned by the
-# records/error_property_off_temporary_receiver* family (its `_arg` case holds
-# the tag table).
-# The argument sections are the ones with a second question: an argument is
-# admitted only when the CALLEE provably reads it during the call, so `len`,
-# `str()` and a user function taking a view are here while `reversed`,
-# `enumerate`, `zip`, `map` and `filter` are rejects (their `Iterator[T]`
-# return is a lazy view of the argument, pinned by
-# error_property_off_temporary_receiver_retaining_builtin).
+# The TRANSIENT reads of a @property getter off a TEMPORARY receiver. Each
+# section finishes inside its own full expression, so the `mk()` temporary is
+# still alive where the borrow is read. The BINDING positions compile too: the
+# safe ones are pinned by records/property_off_temporary, and the ones whose
+# name dangles carry sema's *Result borrows from temporary* warning, pinned by
+# its part_warn.
+# The argument sections are the ones with a second question: the CALLEE reads
+# them during the call -- `len`, `str()` and a user function taking a view.
+# `reversed`, `enumerate`, `zip`, `map` and `filter` keep their argument
+# instead (their `Iterator[T]` return is a lazy view of it); the statement
+# keeps the receiver for the loop that walks one (`reversed`, `zip` and
+# `enumerate` heads are pinned by records/property_off_temporary).
 # Nothing binds here, so there is no copy-vs-alias boundary to force: what the
 # `live` section forces instead is that the read reaches the LIVE storage --
 # it mutates the global the getter lends BEFORE reading, and both languages

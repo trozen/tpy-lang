@@ -37,13 +37,6 @@ vs-alias is the corpus cases' job (they mutate after the boundary and
 observe); this table's job is that no cell's verdict or warning moves
 without someone saying so.
 
-One label in the table is not the sink you would guess:
-`module_level__*__prop__temp` reports `local_decl.lends_from_temporary`,
-because a module-level binding WITHOUT an annotation shares the local decl
-lowering, where an annotated module global takes `global_slot_write`. Both
-reject and both are right; the split is in the module-level decl routing and
-predates the rule the tag names.
-
   python scripts/thir_migration/review/property_position_sweep.py          # check
   python scripts/thir_migration/review/property_position_sweep.py --update # rewrite
   python scripts/thir_migration/review/property_position_sweep.py --exec   # + build/run
@@ -346,9 +339,9 @@ POS: list[tuple[str, list[str], list[str], list[str] | None]] = [
      ["    k = 1", "    match k:", "        case 1:", "            print(@E@)",
       "        case _:", "            print(0)"]),
     ("module_level", SCAL, [], None),
-    # A USER-record METHOD's argument. Its own body decides whether the
-    # argument may hold a borrow of dying storage, so this row and the free
-    # `call_arg` row above can legitimately differ.
+    # A USER-record METHOD's argument. Its own body decides what it keeps of
+    # the argument (a kept view of a temporary is refused), so this row and
+    # the free `call_arg` row above may differ.
     ("meth_arg", ["n", "name", "text", "items", "own", "rec"], [],
      ["    t = Taker()", "    print(t.@SINK@(@E@))"]),
     # ... and a user CONSTRUCTOR's argument, the same question at the ctor.

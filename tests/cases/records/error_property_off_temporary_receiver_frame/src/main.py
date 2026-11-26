@@ -4,8 +4,8 @@
 # storage the header statement kills -- silently, where CPython keeps the
 # alias. The read is a borrow, as its bound twin `h = mk(); v = h.items` is,
 # and the frame's alias binding refuses both first
-# (BUGS.md#getter-result-slot-shape-rejects). The sink table is in
-# docs/PROPERTY_DESIGN.md.
+# (BUGS.md#getter-result-slot-shape-rejects). The other positions are in
+# docs/PROPERTY_DESIGN.md, "Read off a TEMPORARY receiver".
 from typing import Iterator
 from tpy import Own, int32
 

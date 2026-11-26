@@ -1,0 +1,65 @@
+main::__tpy_init: uncovered (module initialization)
+main::mk@45:0: covered (storage: no_proof_required), summary: known
+main::borrow@55:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::decl@60:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::hoisted_decl@67:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+main::field_read@77:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
+main::main@84:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::H.items@37:4: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::H.items@37:4#2: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::H.gch@41:4: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::H.gch@41:4#2: uncovered (unknown reference source), summary: opaque (unknown reference source)
+main::Box.__init__@16:4: covered (storage: no_proof_required), summary: known
+main::Rec.__init__@23:4: covered (storage: no_proof_required), summary: known
+main::H.__init__@33:4: covered (storage: no_proof_required), summary: known
+part_copies::__tpy_init: uncovered (module initialization)
+part_copies::mk@33:0: covered (storage: no_proof_required), summary: known
+part_copies::keep@45:0: certified, summary: known
+part_copies::give@49:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
+part_copies::gen@54:0: uncovered (reference yield)
+part_copies::main@59:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_copies::H.items@25:4: covered (storage: no_proof_required), summary: known
+part_copies::H.items@25:4#2: covered (storage: no_proof_required), summary: known
+part_copies::H.rec@29:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_copies::H.rec@29:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_copies::Rec.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_copies::H.__init__@20:4: covered (storage: no_proof_required), summary: known
+part_copies::Keeper.__init__@40:4: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
+part_global::__tpy_init: uncovered (module initialization)
+part_global::get@16:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+part_global::mk@47:0: covered (storage: no_proof_required), summary: known
+part_global::main@51:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
+part_global::Color.nm@12:4: uncovered (unsupported view source)
+part_global::Inner.__lt__@26:4: covered (storage: no_proof_required)
+part_global::H.gprop@40:4: uncovered (unknown reference source), summary: opaque (unknown reference source)
+part_global::H.gprop@40:4#2: uncovered (unknown reference source), summary: opaque (unknown reference source)
+part_global::H.through@43:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_global::Inner.__init__@23:4: covered (storage: no_proof_required), summary: known
+part_global::H.__init__@36:4: covered (storage: no_proof_required), summary: known
+part_loops::__tpy_init: uncovered (module initialization)
+part_loops::mk@24:0: covered (storage: no_proof_required), summary: known
+part_loops::walk@28:0: incomplete (suspension: loan of caller storage held across a suspension)
+part_loops::main@33:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_loops::<genexpr>@49:25: uncovered (unsupported parameter type)
+part_loops::H.items@16:4: uncovered (unknown reference source), summary: opaque (unknown reference source)
+part_loops::H.items@16:4#2: uncovered (unknown reference source), summary: opaque (unknown reference source)
+part_loops::H.own_items@20:4: covered (storage: no_proof_required), summary: known
+part_loops::H.own_items@20:4#2: covered (storage: no_proof_required), summary: known
+part_loops::H.__init__@12:4: covered (storage: no_proof_required), summary: known
+part_warn::__tpy_init: uncovered (module initialization)
+part_warn::mk@52:0: covered (storage: no_proof_required), summary: known
+part_warn::keep@56:0: certified, summary: known
+part_warn::main@65:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
+part_warn::hoisted@88:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
+part_warn::Child.data@25:4: covered (storage: no_proof_required), summary: known
+part_warn::Child.data@25:4#2: covered (storage: no_proof_required), summary: known
+part_warn::H.items@38:4: covered (storage: no_proof_required), summary: known
+part_warn::H.items@38:4#2: covered (storage: no_proof_required), summary: known
+part_warn::H.ch@42:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_warn::H.ch@42:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_warn::H.mixed@46:4: uncovered (unknown reference source), summary: opaque (stub protocol argument is not a builtin leaf)
+part_warn::H.mixed@46:4#2: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+part_warn::Bag.__add__@61:4: covered (storage: no_proof_required)
+part_warn::Rec.__init__@9:4: covered (storage: no_proof_required), summary: known
+part_warn::Child.__init__@20:4: covered (storage: no_proof_required), summary: known
+part_warn::H.__init__@33:4: covered (storage: no_proof_required), summary: known
