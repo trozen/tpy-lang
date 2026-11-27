@@ -35,8 +35,13 @@ class BuildInfoHook(BuildHookInterface):
             linked = {"tpy"}
             if (Path(self.root) / "lib" / "cpy" / "tplib").exists():
                 linked.add("tplib")
+            # tpyc/_data is never read from an editable install
+            # (_resolve_data_dir finds runtime/ and lib/ next to tpyc/
+            # first), and copying it puts ~20MB into uv's cache for every
+            # worktree that syncs.
             editable = {src: dst for src, dst in self.build_config.force_include.items()
-                        if dst.split("/", 1)[0] not in linked}
+                        if dst.split("/", 1)[0] not in linked
+                        and not dst.startswith("tpyc/_data/")}
             editable.update(force_include)
             build_data["force_include_editable"] = editable
 
