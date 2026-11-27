@@ -320,14 +320,17 @@ def test_print_reads_its_leaf_arguments(artifacts) -> None:
     assert output == [(1, 2.5, "c", True, 3, 0.5, 1, 2.5)]
 
 
-def test_raising_bodies_summarize_their_exit_and_printing_stays_opaque(artifacts) -> None:
+def test_raising_bodies_summarize_their_exit_and_printing_reads_its_arguments(artifacts) -> None:
     _, bodies, summaries = artifacts
     assert summaries["pure"].state is MIRSummaryState.KNOWN and summaries["pure"].summary.normal_return_only
     # A checked operation may raise: the summary says so rather than going opaque.
     assert summaries["arithmetic"].state is MIRSummaryState.KNOWN
     assert summaries["arithmetic"].summary.normal_return_only is False
     assert bodies["arithmetic"].exceptional_exits and not bodies["pure"].exceptional_exits
-    assert summaries["prints"].reason == "summary output effect"
+    # A print writes no storage: its summary reads its arguments and may raise.
+    assert summaries["prints"].state is MIRSummaryState.KNOWN, summaries["prints"].reason
+    assert summaries["prints"].summary.reads == frozenset(range(6)) and not summaries["prints"].summary.writes
+    assert summaries["prints"].summary.normal_return_only is False
     # Formatting allocates, so a print is a possible exceptional exit.
     assert bodies["prints"].exceptional_exits is True
     with pytest.raises(MIRValidationError, match="exceptional exit fact mismatch"):

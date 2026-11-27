@@ -5,11 +5,13 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "helpers.hpp"
+#include "part_printing.hpp"
 #include "part_tuple_member.hpp"
 
 namespace tpyapp::main {
 
 inline auto& gtr = ::tpyapp::helpers::grow_then_read;
+inline auto& printing_main = ::tpyapp::part_printing::main;
 inline auto& tuple_member_main = ::tpyapp::part_tuple_member::main;
 
 struct H;

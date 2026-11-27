@@ -6,7 +6,7 @@ main::f8@41:0: covered (storage: no_proof_required), summary: known
 main::g8@45:0: covered (storage: no_proof_required), summary: known
 main::take64@49:0: covered (storage: no_proof_required), summary: known
 main::apply@53:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::free_fn@92:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::free_fn@92:0: covered (storage: no_proof_required), summary: known
 main::gen@100:0: covered (storage: no_facts: storage facts have not been published)
 main::async_fn@108:0: uncovered (async body)
 main::comp@119:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
@@ -18,30 +18,30 @@ main::match_arm@188:0: uncovered (unsupported statement), summary: opaque (unsup
 main::mixed_widths@205:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::slice_bound@213:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::accumulate@221:0: covered (storage: no_proof_required), summary: known
-main::derived@229:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::unsigned_store@239:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::negative_seed@246:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::wide_literal@254:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::wide_literal_operand@264:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::derived@229:0: covered (storage: no_proof_required), summary: known
+main::unsigned_store@239:0: covered (storage: no_proof_required), summary: known
+main::negative_seed@246:0: covered (storage: no_proof_required), summary: known
+main::wide_literal@254:0: covered (storage: no_proof_required), summary: known
+main::wide_literal_operand@264:0: covered (storage: no_proof_required), summary: known
 main::apply_one@278:0: uncovered (no body to lower)
 main::apply_one@283:0: uncovered (no body to lower)
 main::overload_trial@290:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::uses@302:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
-main::declared_aug@319:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::declared_aug@319:0: covered (storage: no_proof_required), summary: known
 main::float_literal@332:0: uncovered (name type mismatch), summary: opaque (name type mismatch)
 main::w16@351:0: covered (storage: no_proof_required), summary: known
 main::first_declares@359:0: uncovered (name type mismatch), summary: opaque (name type mismatch)
-main::first_use_before@371:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::first_value@380:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::first_use_before@371:0: covered (storage: no_proof_required), summary: known
+main::first_value@380:0: covered (storage: no_proof_required), summary: known
 main::arm_join@391:0: uncovered (name type mismatch), summary: opaque (name type mismatch)
 main::arm_gen@438:0: covered (storage: no_facts: storage facts have not been published)
 main::arm_match@447:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::risky@459:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::arm_try@466:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::first_accum@476:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
-main::first_annotation@485:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::first_annotation@485:0: covered (storage: no_proof_required), summary: known
 main::first_unchanged@492:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
-main::first_float_explicit@506:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::first_float_explicit@506:0: covered (storage: no_proof_required), summary: known
 main::first_gen@514:0: covered (storage: no_facts: storage facts have not been published)
 main::first_async@522:0: uncovered (async body)
 main::first_comp@532:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
@@ -51,12 +51,12 @@ main::first_try@560:0: uncovered (unsupported statement), summary: opaque (unsup
 main::first_er@571:0: uncovered (error-return body)
 main::first_match@582:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::gen_yield@594:0: covered (storage: no_facts: storage facts have not been published)
-main::literal_only@602:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::main@609:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::literal_only@602:0: covered (storage: no_proof_required), summary: known
+main::main@609:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::<genexpr>@145:11: uncovered (unsupported parameter type)
 main::Ctx.__enter__@22:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
 main::Ctx.__exit__@25:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::Box.run@76:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::Box.first_method@83:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::ArmBox.arm_method@429:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::Box.__init__@61:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Box.run@76:4: covered (storage: no_proof_required), summary: known
+main::Box.first_method@83:4: covered (storage: no_proof_required), summary: known
+main::ArmBox.arm_method@429:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
+main::Box.__init__@61:4: covered (storage: no_proof_required), summary: known

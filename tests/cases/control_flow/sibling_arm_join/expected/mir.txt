@@ -3,7 +3,7 @@ main::parse_digit@13:0: uncovered (error-return body)
 main::match_arms@30:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::try_handlers@40:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::try_error_return@52:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::none_if@62:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::none_if@62:0: covered (storage: no_proof_required), summary: known
 main::widen_existing@73:0: uncovered (name type mismatch), summary: opaque (name type mismatch)
 main::capture_types@83:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::capture_or_stmt@92:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

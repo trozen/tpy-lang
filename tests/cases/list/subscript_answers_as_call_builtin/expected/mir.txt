@@ -21,15 +21,15 @@ main::receivers@234:0: uncovered (unsupported local type or form)
 main::proven@256:0: uncovered (unsupported parameter type)
 main::bump@287:0: covered (storage: no_proof_required), summary: known
 main::bump_proven@291:0: covered (storage: no_proof_required), summary: known
-main::proven_mutation@300:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::proven_mutation@300:0: covered (storage: no_proof_required), summary: known
 main::own_first@306:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::first_ro@312:0: certified, summary: known
 main::opt_reads@319:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::generic_store@324:0: uncovered (generic body)
 main::references@330:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::recv@355:0: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
-main::k@361:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::v@366:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::k@361:0: covered (storage: no_proof_required), summary: known
+main::v@366:0: covered (storage: no_proof_required), summary: known
 main::side_effects@371:0: uncovered (unsupported metadata: held), summary: opaque (unsupported metadata: held)
 main::nested@381:0: uncovered (uncertified element read), summary: opaque (uncertified element read)
 main::pending@391:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)

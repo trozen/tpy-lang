@@ -3,7 +3,7 @@ main::take@16:0: covered (storage: no_proof_required), summary: known
 main::call_source@20:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
 main::ternary_source@30:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
 main::sink@53:0: covered (storage: no_proof_required), summary: known
-main::owned_still_moves@57:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::owned_still_moves@57:0: covered (storage: no_proof_required), summary: known
 main::Bag.itself@12:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Bag.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::Token.__init__@49:4: covered (storage: no_proof_required), summary: known

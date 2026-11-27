@@ -17,7 +17,7 @@ main::copy_hook@214:0: uncovered (custom record special member), summary: opaque
 main::generic_copy_hook@226:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::append_copy@236:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::alias_used_later@246:0: uncovered (alias source mismatch), summary: opaque (alias source mismatch)
-main::same_class@257:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::same_class@257:0: covered (storage: no_proof_required), summary: known
 main::two_arm@266:0: uncovered (record initializer type mismatch), summary: opaque (record initializer type mismatch)
 main::main@274:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::HDer.__copy__@38:4: uncovered (custom record special member)

@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::accept_opt@28:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::accept_opt@28:0: covered (storage: no_proof_required), summary: known
 main::main@32:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::Point.sum@12:4: covered (storage: no_proof_required), summary: known
 main::Container.get@23:4: uncovered (generic body)

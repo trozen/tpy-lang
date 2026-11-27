@@ -1,16 +1,16 @@
 main::__tpy_init: uncovered (module initialization)
 main::drops@62:0: uncovered (unsupported stub result type), summary: opaque (unsupported stub result type)
-main::free_alias@91:0: certified, summary: opaque (summary output effect)
+main::free_alias@91:0: certified, summary: known
 main::free_drop@100:0: uncovered (custom record special member), summary: opaque (custom record special member)
-main::second_rebind@109:0: certified, summary: opaque (summary output effect)
-main::field_chain@119:0: certified, summary: opaque (summary output effect)
-main::element_loan@128:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::second_rebind@109:0: certified, summary: known
+main::field_chain@119:0: certified, summary: known
+main::element_loan@128:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
 main::ptr_copy@137:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::dead_alias@150:0: uncovered (custom record special member), summary: opaque (custom record special member)
-main::after_branch@161:0: certified, summary: opaque (summary output effect)
-main::after_loop@173:0: certified, summary: opaque (summary output effect)
-main::loan_before_loop@185:0: certified, summary: opaque (summary output effect)
-main::borrow_call@197:0: certified, summary: opaque (summary output effect)
+main::after_branch@161:0: certified, summary: known
+main::after_loop@173:0: certified, summary: known
+main::loan_before_loop@185:0: certified, summary: known
+main::borrow_call@197:0: certified, summary: known
 main::ptr_escapes_into_record@207:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 main::generator_holds_receiver@217:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::gen_section@251:0: uncovered (unsupported hoisted value)
@@ -29,7 +29,7 @@ main::Holder.peek@29:4: covered (storage: not_covered: borrow evidence: demanded
 main::Noisy.__del__@44:4: uncovered (missing receiver fact)
 main::Counted.__del__@58:4: uncovered (unsupported metadata: is_arrow)
 main::Walker.walk@85:4: covered (storage: no_facts: storage facts have not been published)
-main::Runner.run@241:4: certified, summary: opaque (summary output effect)
+main::Runner.run@241:4: certified, summary: opaque (summary record: missing constructor definition)
 main::Guard.__enter__@298:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Guard.__exit__@301:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Point.__init__@16:4: covered (storage: no_proof_required), summary: known

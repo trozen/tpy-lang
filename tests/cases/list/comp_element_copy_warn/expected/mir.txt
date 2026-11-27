@@ -1,9 +1,9 @@
 main::__tpy_init: uncovered (module initialization)
-main::list_scalar@16:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::list_scalar@16:0: covered (storage: no_proof_required), summary: known
 main::list_tuple_member@21:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::dict_value@26:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::exempt_fresh@31:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::exempt_copy@36:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::exempt_value@41:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::exempt_fresh@31:0: covered (storage: no_proof_required), summary: known
+main::exempt_copy@36:0: covered (storage: no_proof_required), summary: known
+main::exempt_value@41:0: covered (storage: no_proof_required), summary: known
 main::main@46:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Cell.__init__@12:4: covered (storage: no_proof_required), summary: known

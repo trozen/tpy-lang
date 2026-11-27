@@ -10,7 +10,7 @@ main::dict_comp@103:0: uncovered (print argument needs a scalar leaf), summary: 
 main::set_comp@111:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::str_elems@117:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::tuple_elems@123:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
-main::record_elems@129:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::record_elems@129:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
 main::closure@138:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::with_body@149:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::try_finally@156:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

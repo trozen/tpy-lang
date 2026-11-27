@@ -140,7 +140,7 @@ def walk(xs: list[int]) -> None:
         print("via_global:", y)
 
 
-def two(a: list[int], b: list[int]) -> None:
+def two(a: list[int], b: list[int]) -> None:  # tpyc: mir(conflict /alias_obligation/)
     for y in a:
         b[0] = 50  # b may be a: two(x, x)
         print("via_alias:", y)

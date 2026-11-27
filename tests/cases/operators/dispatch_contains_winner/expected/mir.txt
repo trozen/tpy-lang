@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::mark@156:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::mark@156:0: covered (storage: no_proof_required), summary: known
 main::value@188:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::negated@197:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::literal@205:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
@@ -9,21 +9,21 @@ main::generic_function@228:0: uncovered (unsupported metadata: template_args_cpp
 main::strings@234:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::method_field@245:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::comprehension@251:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
-main::optional_slot@259:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::optional_slot@259:0: covered (storage: no_proof_required), summary: known
 main::owned_str@272:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
-main::bigint_needle@280:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::bigint_needle@280:0: covered (storage: no_proof_required), summary: known
 main::record_needle@289:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
 main::optional_check@299:0: covered (storage: no_proof_required), summary: known
-main::optional_record@305:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::optional_record@305:0: covered (storage: no_proof_required), summary: known
 main::identity_check@310:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::identity@319:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::pending_list@324:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::pending_list@324:0: covered (storage: no_proof_required), summary: known
 main::temp_comprehension@333:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::temp_logic@340:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::temp_while@353:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::temp_gen@362:0: uncovered (unsupported hoisted value)
 main::temp_async@370:0: uncovered (async body)
-main::tuple_needle@379:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::tuple_needle@379:0: covered (storage: no_proof_required), summary: known
 main::via_t@386:0: uncovered (generic body)
 main::generic_needle@391:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::main@395:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

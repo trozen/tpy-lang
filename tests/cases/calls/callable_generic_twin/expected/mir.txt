@@ -102,9 +102,9 @@ part_paths::walrus_once@48:0: uncovered (generic body)
 part_paths::unpacked@54:0: uncovered (generic body)
 part_paths::via_method@61:0: uncovered (generic body)
 part_paths::lit@69:0: uncovered (generic body)
-part_paths::show@74:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_paths::own@79:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_paths::main@84:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_paths::show@74:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_paths::own@79:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_paths::main@84:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 part_paths::Relay.relay@9:4: uncovered (generic body)
 part_red::__tpy_init: uncovered (module initialization)
 part_red::red@8:0: uncovered (generic body)

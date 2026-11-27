@@ -1,8 +1,8 @@
 main::__tpy_init: uncovered (module initialization)
 main::bump@25:0: covered (storage: no_proof_required), summary: known
 main::nop@29:0: covered (storage: no_proof_required), summary: known
-main::show@33:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::show_n@37:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::show@33:0: covered (storage: no_proof_required), summary: known
+main::show_n@37:0: covered (storage: no_proof_required), summary: known
 main::ident@41:0: covered (storage: no_proof_required), summary: known
 main::mk@45:0: uncovered (generic body)
 main::mk_own@49:0: uncovered (generic body)

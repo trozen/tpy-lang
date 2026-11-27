@@ -3,4 +3,4 @@ main::checked@6:0: covered (storage: no_proof_required), summary: known
 main::boom@11:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::dead@15:0: covered (storage: no_proof_required), summary: known
 main::spin@21:0: covered (storage: no_proof_required), summary: known
-main::main@27:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@27:0: covered (storage: no_proof_required), summary: known

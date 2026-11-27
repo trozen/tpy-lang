@@ -10,7 +10,7 @@ main::element@76:0: uncovered (unsupported native container element), summary: o
 main::adopts@84:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::writes@91:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::compared@104:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::stored@113:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::stored@113:0: covered (storage: no_proof_required), summary: known
 main::main@120:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Ring.__iter__@22:4: uncovered (no body to lower)
 main::Ring.push@25:4: uncovered (no body to lower)

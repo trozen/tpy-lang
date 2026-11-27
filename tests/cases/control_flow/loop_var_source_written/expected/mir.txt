@@ -1,13 +1,13 @@
 main::__tpy_init: uncovered (module initialization)
-main::for_big@16:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::for_str@22:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-main::for_bytes@28:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::for_big@16:0: covered (storage: no_proof_required), summary: known
+main::for_str@22:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a global against the caller's arguments)
+main::for_bytes@28:0: covered (storage: no_proof_required), summary: known
 main::for_tuple@34:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::for_union@40:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::for_unpack@49:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::dict_items@55:0: uncovered (missing or invalid native iteration facts), summary: opaque (missing or invalid native iteration facts)
-main::dict_values@61:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-main::array_source@67:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::dict_values@61:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a global against the caller's arguments)
+main::array_source@67:0: covered (storage: no_proof_required), summary: known
 main::poke@73:0: covered (storage: no_proof_required), summary: known
 main::poke_arr@78:0: covered (storage: no_proof_required), summary: known
 main::comps@83:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
@@ -16,12 +16,12 @@ main::via_callee@104:0: uncovered (unsupported expression type), summary: opaque
 main::via_nested_def@110:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::reset_global@133:0: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
 main::walk@137:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::two@143:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-main::alias_target@149:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::nested_grid@159:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::two@143:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+main::alias_target@149:0: covered (storage: no_proof_required), summary: known
+main::nested_grid@159:0: covered (storage: no_proof_required), summary: known
 main::keep_owned_target@167:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-main::keep_read_only@174:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::keep_unrelated@185:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::keep_read_only@174:0: covered (storage: no_proof_required), summary: known
+main::keep_unrelated@185:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::keep_enumerate@192:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::in_closure@209:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::in_try@217:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -33,16 +33,16 @@ main::dunder_eq@273:0: uncovered (container source needs a place), summary: opaq
 main::dunder_fstr@279:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::dunder_sorted@285:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::eq_array_comp@300:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::via_setter@321:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::del_item@327:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::aug_item@336:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::via_setter@321:0: covered (storage: no_proof_required), summary: known
+main::del_item@327:0: covered (storage: no_proof_required), summary: known
+main::aug_item@336:0: covered (storage: no_proof_required), summary: known
 main::span_local@342:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
-main::slice_source@349:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::slice_source@349:0: covered (storage: no_proof_required), summary: known
 main::add_nine@357:0: uncovered (unsupported owned-leaf expression type), summary: opaque (unsupported owned-leaf expression type)
 main::generic_touch@361:0: uncovered (generic body)
 main::keep_isinstance@366:0: uncovered (wrapper loop variable needs local payload), summary: opaque (wrapper loop variable needs local payload)
 main::pure_len@375:0: covered (storage: no_proof_required), summary: known
-main::keep_pure@379:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::keep_pure@379:0: covered (storage: no_proof_required), summary: known
 main::keep_generic_prod@385:0: uncovered (unsupported parameter type)
 main::hash_display@423:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::dict_key@431:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
@@ -58,14 +58,14 @@ main::call_param@519:0: uncovered (unsupported parameter type), summary: opaque 
 main::set_g2@525:0: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
 main::del_record@539:0: uncovered (custom record special member), summary: opaque (custom record special member)
 main::field_replace@556:0: uncovered (custom record special member), summary: opaque (custom record special member)
-main::span_param@563:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::span_param@563:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::span_call@579:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::span_write@586:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
 main::loop_in_with@604:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::loop_in_error_return@616:0: uncovered (error-return body)
 main::comp_condition@625:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::dict_comp@631:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
-main::keep_cast@637:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::keep_cast@637:0: covered (storage: no_proof_required), summary: known
 main::via_getter@656:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::keep_inert_ops@662:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::post_loop_str@685:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
@@ -85,7 +85,7 @@ main::getitem_ref_writes@834:0: uncovered (container source needs a place), summ
 main::main@840:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::<genexpr>@765:16: uncovered (unsupported parameter type)
 main::Holder.reset@124:4: covered (storage: no_proof_required), summary: known
-main::Holder.run@127:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Holder.run@127:4: covered (storage: no_proof_required), summary: known
 main::K.__eq__@254:4: uncovered (element write needs a container place)
 main::K.__lt__@258:4: uncovered (element write needs a container place)
 main::K.__str__@262:4: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
@@ -112,7 +112,7 @@ main::Sink.take@796:4: covered (storage: no_proof_required), summary: known
 main::Rows.__getitem__@827:4: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
 main::Rows.__getitem__@827:4#2: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
 main::Holder.__init__@121:4: covered (storage: no_proof_required), summary: known
-main::InCtor.__init__@201:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::InCtor.__init__@201:4: covered (storage: no_proof_required), summary: known
 main::K.__init__@251:4: covered (storage: no_proof_required), summary: known
 main::KA.__init__@292:4: covered (storage: no_proof_required), summary: known
 main::Bag.__init__@309:4: covered (storage: no_proof_required), summary: known

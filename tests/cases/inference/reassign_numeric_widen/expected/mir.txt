@@ -1,10 +1,10 @@
 main::__tpy_init: uncovered (module initialization)
-main::test_int_widen@10:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_float_stays_float@15:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_bigint_absorbs_fixedint@20:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_unsigned_joins_default@25:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_order_free_join@31:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_branch_int_widen@38:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_int_widen@10:0: covered (storage: no_proof_required), summary: known
+main::test_float_stays_float@15:0: covered (storage: no_proof_required), summary: known
+main::test_bigint_absorbs_fixedint@20:0: covered (storage: no_proof_required), summary: known
+main::test_unsigned_joins_default@25:0: covered (storage: no_proof_required), summary: known
+main::test_order_free_join@31:0: covered (storage: no_proof_required), summary: known
+main::test_branch_int_widen@38:0: covered (storage: no_proof_required), summary: known
 main::test_declared_float_local@45:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
 main::test_declared_float_param@53:0: uncovered (unsupported metadata: wrap), summary: opaque (unsupported metadata: wrap)
 main::test_declared_float_nonlocal@58:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -18,5 +18,5 @@ main::empty_list@107:0: uncovered (generic body)
 main::test_hint_generic_call@111:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::make_groups@118:0: covered (storage: no_proof_required), summary: known
 main::test_hint_nested_empty@121:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-main::test_float_seed@128:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_float_seed@128:0: covered (storage: no_proof_required), summary: known
 main::test_captured_none_seed@137:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

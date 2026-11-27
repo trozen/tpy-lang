@@ -130,6 +130,12 @@ def global_reader() -> int32:
 def reads_through_callee() -> int32:
     return global_reader()
 
+def prints_global() -> None:
+    print(global_value)
+
+def calls_printing_global() -> None:
+    prints_global()
+
 def global_writer() -> int32:
     global global_value
     global_value = 4
@@ -170,8 +176,9 @@ def one_branch_absent(cell: Cell | None) -> int32:
     return 0
 
 def noisy(cell: Cell) -> int32:
+    global global_value
     before = read(cell)
-    print(before)
+    global_value = before
     return read(cell)
 
 def grow(xs: list[int32]) -> None:
@@ -223,6 +230,10 @@ def compiled():
 
 @pytest.fixture(scope="module")
 def artifacts(compiled) -> Artifacts:
+    return _artifacts(compiled)
+
+
+def _artifacts(compiled) -> Artifacts:
     compiler, modules = compiled
     with activate_compiler(compiler):
         entry = _entry(modules)
@@ -306,10 +317,10 @@ def test_conditional_call_is_only_on_selected_arm(artifacts: Artifacts) -> None:
 
 def test_covered_caller_need_not_have_usable_summary(artifacts: Artifacts) -> None:
     _, workspace, _, _, _ = artifacts
-    # An output effect keeps `noisy` opaque although its body and its calls lower.
+    # A global write keeps `noisy` opaque although its body and its calls lower.
     assert len(calls(body_named(workspace, "noisy"))) == 2
     result = workspace.summaries[th.THIRFunctionIdentity("main", "noisy")]
-    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary output effect"
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary global access"
     # A record temporary lent to `read` is the caller's private storage, not an unproven effect.
     result = workspace.summaries[th.THIRFunctionIdentity("main", "temporary")]
     assert result.state is MIRSummaryState.KNOWN and not result.summary.writes and not result.summary.returns
@@ -567,6 +578,11 @@ def test_global_reads_union_through_consumed_summaries(artifacts: Artifacts) -> 
         assert result.summary.global_reads == frozenset({MIRGlobalId("main", "global_value")})
     caller = dump.split("::reads_through_callee@", 1)[1].split("\nfn ", 1)[0]
     assert "global-reads={main::global_value}" in caller
+    # A print of a global is a read like any other: it reaches the caller's summary.
+    for name in ("prints_global", "calls_printing_global"):
+        result = workspace.summaries[th.THIRFunctionIdentity("main", name)]
+        assert result.state is MIRSummaryState.KNOWN, result.reason
+        assert result.summary.global_reads == frozenset({MIRGlobalId("main", "global_value")})
     # A global write keeps the writer opaque, and so every caller of it.
     writer = workspace.summaries[th.THIRFunctionIdentity("main", "global_writer")]
     assert writer.state is MIRSummaryState.OPAQUE and writer.reason == "summary global access"
@@ -634,3 +650,42 @@ def test_ordinary_method_and_constructor_tail_share_call_consumer(artifacts: Art
     ctor = out.split("::Caller.__init__@", 1)[1].split("\nfn ", 1)[0]
     assert "call main::read" in method and "<uncovered (" not in method
     assert "call main::identity" in ctor and "<uncovered (" not in ctor
+
+
+SIGNAL_SOURCE = '''import signal
+from types import FrameType
+from tpy import int32
+from _bindings.posix_signal import request_signal
+
+items = [1]
+
+def grow(signum: int, frame: FrameType | None) -> None:
+    items.append(2)
+
+def checkpoint() -> None:
+    print()
+
+def observe(xs: list[int32]) -> int:
+    before = len(xs)
+    checkpoint()
+    return len(xs) - before
+
+def run() -> None:
+    signal.signal(signal.SIGUSR1, grow)
+    request_signal(signal.SIGUSR1)
+    changed = observe(items)
+    print("length change:", changed)
+'''
+
+
+def test_print_check_point_omits_signal_handler_writes() -> None:
+    # A filed limitation (BUGS.md#signal-handler-writes-unchecked-at-check-points):
+    # `grow` may run at print's check point and grow `items`, yet the summary of a
+    # printing body publishes no write, so `observe` is covered with `xs` unchanged.
+    # This pins the verdict only; that a handler runs at print's check point is
+    # pinned at runtime by tests/cases/stdlib/signal_handlers_order.
+    _, workspace, _, _, _ = _artifacts(_compile(SIGNAL_SOURCE))
+    result = workspace.summaries[th.THIRFunctionIdentity("main", "checkpoint")]
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    assert not (result.summary.writes or result.summary.invalidates or result.summary.transfers)
+    assert isinstance(body_named(workspace, "observe"), MIRFunction)

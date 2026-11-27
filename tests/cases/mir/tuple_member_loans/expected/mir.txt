@@ -13,7 +13,7 @@ main::tup_arg@27:0: covered (storage: no_proof_required), summary: opaque (summa
 main::loop_member@62:0: certified, summary: known
 main::reseat@73:0: certified, summary: known
 main::readonly_member@81:0: certified, summary: known
-main::tup_borrowed@89:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::tup_borrowed@89:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
 main::opt_arg@101:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
 main::sub_arg@108:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)
 main::copied@115:0: covered (storage: no_proof_required), summary: opaque (summary storage or value shape)

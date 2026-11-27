@@ -27,16 +27,16 @@ part_alias::callee@41:0: covered (storage: not_covered: borrow evidence: demande
 part_alias::main@50:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
 part_elements::__tpy_init: uncovered (module initialization)
 part_elements::clears@16:0: covered (storage: no_proof_required), summary: known
-part_elements::clear_view@21:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_elements::callee_clear@28:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_elements::dict_set@35:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_elements::clear_view@21:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_elements::callee_clear@28:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_elements::dict_set@35:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_elements::list_set@42:0: covered (storage: no_proof_required), summary: known
 part_elements::comprehension@47:0: covered (storage: no_proof_required), summary: known
 part_elements::dict_comprehension@53:0: covered (storage: no_proof_required), summary: known
-part_elements::comprehension_clear@59:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_elements::comprehension_clear@59:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_elements::scalar_literal@67:0: covered (storage: no_proof_required), summary: known
 part_elements::records@73:0: certified, summary: known
-part_elements::list_view_set@80:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_elements::list_view_set@80:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_elements::set_opts@95:0: covered (storage: no_proof_required), summary: known
 part_elements::set_engaged@101:0: covered (storage: no_proof_required), summary: known
 part_elements::set_opts_call@106:0: covered (storage: no_proof_required), summary: known
@@ -61,10 +61,10 @@ part_payload::set_field@62:0: covered (storage: no_proof_required), conflicts: a
 part_payload::payload_return_warning@68:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: argument_alias, summary: known
 part_payload::payload_write@76:0: covered (storage: no_proof_required), summary: known
 part_payload::ro_read@82:0: covered (storage: no_proof_required), summary: known
-part_payload::local@89:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_payload::local@89:0: covered (storage: no_proof_required), summary: known
 part_payload::local_forms@97:0: covered (storage: no_proof_required), summary: known
 part_payload::built_forms@106:0: covered (storage: no_proof_required), summary: known
-part_payload::local_temporary@115:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_payload::local_temporary@115:0: covered (storage: no_proof_required), summary: known
 part_payload::main@121:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 part_presence::__tpy_init: uncovered (module initialization)
 part_presence::fresh@7:0: uncovered (unproven optional field read), summary: opaque (unproven optional field read)
@@ -126,16 +126,16 @@ part_sums::S.__init__@14:4: covered (storage: no_proof_required), summary: known
 part_sums::F.__init__@94:4: covered (storage: no_proof_required), summary: known
 part_tuple::__tpy_init: uncovered (module initialization)
 part_tuple::refill@29:0: covered (storage: no_proof_required), summary: known
-part_tuple::view_write@34:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_tuple::view_callee@41:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_tuple::view_write@34:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_tuple::view_callee@41:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_tuple::cross_copy@48:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 part_tuple::cross_copy_call@55:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
-part_tuple::inner_scope@60:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
+part_tuple::inner_scope@60:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
 part_tuple::kill_member@70:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 part_tuple::kill_str@76:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 part_tuple::kill_str_call@82:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 part_tuple::member_view@87:0: covered (storage: no_proof_required), summary: known
-part_tuple::member_view_call@92:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_tuple::member_view_call@92:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_tuple::eat@98:0: covered (storage: no_proof_required), summary: known
 part_tuple::eat_scalar@102:0: covered (storage: no_proof_required), summary: known
 part_tuple::order_tuple@108:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)

@@ -5,7 +5,7 @@ main::try_error_return@67:0: uncovered (unsupported statement), summary: opaque 
 main::while_error_return@79:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::for_error_return@94:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::with_error_return@107:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::while_reseat@120:0: certified, summary: opaque (summary output effect)
+main::while_reseat@120:0: certified, summary: known
 main::try_reseat@133:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::with_reseat@147:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::for_reseat@159:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
@@ -20,7 +20,7 @@ main::bt_while@235:0: uncovered (unsupported metadata: spelled), summary: opaque
 main::bt_with@243:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::pick@250:0: certified, summary: known
 main::cr_try@257:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::cr_while@267:0: certified, summary: opaque (summary output effect)
+main::cr_while@267:0: certified, summary: known
 main::cr_with@276:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::cr_for@284:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
 main::make_pair@292:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
@@ -32,7 +32,7 @@ main::addr_for@336:0: uncovered (missing or inconsistent hoisted binding facts),
 main::addr_while@356:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::addr_with@377:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::addr_try@395:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::addr_if@415:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::addr_if@415:0: covered (storage: no_proof_required), summary: known
 main::own_opt_elem@426:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::ret_opt@439:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::field_opt@454:0: uncovered (move needs fixed movable owned local), summary: opaque (move needs fixed movable owned local)

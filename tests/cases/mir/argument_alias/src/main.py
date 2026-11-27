@@ -340,9 +340,11 @@ def main() -> None:
     named = [Named("a"), Named("b")]
     print("touch", touch(named, "abc"), named[0].s, named[1].s)
     tuple_member_main()
+    printing_main()
 
 
 # Imported here, not at the top, so the pinned lines above keep their numbers.
+from part_printing import main as printing_main
 from part_tuple_member import main as tuple_member_main
 
 main()

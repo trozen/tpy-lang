@@ -24,7 +24,7 @@ main::mixed_literal@224:0: uncovered (custom record special member), summary: op
 main::lift_one@234:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::lift_one_copy@241:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::lift_dict@247:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::key@253:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::key@253:0: covered (storage: no_proof_required), summary: known
 main::lift_dict_running@258:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::count_list@265:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::lift_arg@269:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

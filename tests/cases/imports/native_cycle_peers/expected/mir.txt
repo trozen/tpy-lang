@@ -30,7 +30,7 @@ main::regular_native@23:0: uncovered (unsupported local type or form), summary: 
 main::regular_native_field@34:0: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::regular_native_base@40:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
 main::through_native@45:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::self_reexport@52:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::self_reexport@52:0: covered (storage: no_proof_required), summary: known
 main::native_enum@57:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
 main::native_enum_dep@65:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::main@68:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

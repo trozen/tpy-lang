@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@4:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@4:0: covered (storage: no_proof_required), summary: known
 outer::__tpy_init: uncovered (module initialization)
 outer.inner::__tpy_init: uncovered (module initialization)
 outer.inner.consumer::__tpy_init: uncovered (module initialization)

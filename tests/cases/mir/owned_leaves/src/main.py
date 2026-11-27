@@ -67,12 +67,12 @@ def global_read() -> int:  # tpyc: mir(covered) mir_summary(known)
     return x + N
 
 
-def global_print() -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
+def global_print() -> None:  # tpyc: mir(covered) mir_summary(known)
     print(G, N, B)
 
 
 # free function: print reads owned leaves through holders
-def prints(s: str, n: int, b: bytes) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
+def prints(s: str, n: int, b: bytes) -> None:  # tpyc: mir(covered) mir_summary(known)
     print(s, n, b, "lit")
 
 
@@ -220,7 +220,7 @@ def overlap_write(s: str) -> bool:  # tpyc: mir(covered) mir_summary(opaque /^su
 
 
 # free function: the storage-form literal is a temporary of the print call's full expression
-def bytes_print() -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
+def bytes_print() -> None:  # tpyc: mir(covered) mir_summary(known)
     print(b"xy")
 
 
@@ -230,7 +230,7 @@ def expression_arguments(x: float, n: int) -> int32:  # tpyc: mir(covered) mir_s
 
 
 # free function: the call's owned result is a temporary of the print call's full expression
-def print_call(s: str) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
+def print_call(s: str) -> None:  # tpyc: mir(covered) mir_summary(known)
     print(ret_copy(s), end="")
 
 

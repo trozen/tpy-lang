@@ -15,8 +15,8 @@ main::cells@200:0: uncovered (reference yield)
 main::batches@207:0: uncovered (unsupported hoisted value)
 main::shelves@222:0: uncovered (unsupported hoisted value)
 main::grow_cs@230:0: covered (storage: no_proof_required), summary: known
-main::keep@235:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::inner_src@240:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::keep@235:0: covered (storage: no_proof_required), summary: known
+main::inner_src@240:0: covered (storage: no_proof_required), summary: known
 main::lc_free@245:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::lc_walrus_source@288:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 main::lc_holder_names@304:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
@@ -24,7 +24,7 @@ main::lc_sources@317:0: uncovered (print argument needs a scalar leaf), summary:
 main::grow@331:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::lc_src_temps@337:0: uncovered (named argument needs complete temporary plan), summary: opaque (named argument needs complete temporary plan)
 main::lc_walrus_values@363:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
-main::loud@377:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::loud@377:0: covered (storage: no_proof_required), summary: known
 main::lc_range_bounds@382:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
 main::lc_gen_src@399:0: uncovered (unsupported hoisted value)
 main::lc_async_src@407:0: uncovered (async body)

@@ -19,7 +19,7 @@ part_holders::__tpy_init: uncovered (module initialization)
 part_holders::payload_of@8:0: certified, summary: known
 part_holders::ret_then_clear@17:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
 part_holders::ret_then_call@23:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
-part_holders::view_refill@46:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_holders::view_refill@46:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_holders::read_ro@55:0: covered (storage: no_proof_required), summary: known
 part_holders::local_rec@63:0: covered (storage: no_proof_required), summary: known
 part_holders::local_clear@72:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
@@ -29,7 +29,7 @@ part_holders::not_aliased@99:0: covered (storage: not_covered: storage evidence:
 part_holders::empty_then_fill_two@118:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 part_holders::either_field@125:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
 part_holders::local_refill_held@141:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-part_holders::main@155:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_holders::main@155:0: covered (storage: no_proof_required), summary: known
 part_holders::S.__init__@32:4: covered (storage: no_proof_required), summary: known
 part_holders::SH.__init__@39:4: covered (storage: no_proof_required), summary: known
 part_holders::W2.__init__@113:4: covered (storage: no_proof_required), summary: known
@@ -38,7 +38,7 @@ part_local_holder::held_clear@8:0: covered (storage: not_covered: borrow evidenc
 part_local_holder::held_refill@17:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
 part_local_holder::held_none@27:0: uncovered (unproven pointer field read), summary: opaque (unproven pointer field read)
 part_local_holder::held_assign@36:0: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), conflicts: replacement, summary: known
-part_local_holder::main@44:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_local_holder::main@44:0: covered (storage: no_proof_required), summary: known
 part_positions::__tpy_init: uncovered (module initialization)
 part_positions::loop_body@33:0: covered (storage: no_proof_required), summary: known
 part_positions::while_arm@44:0: covered (storage: no_proof_required), summary: known

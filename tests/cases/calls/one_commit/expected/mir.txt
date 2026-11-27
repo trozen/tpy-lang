@@ -41,7 +41,7 @@ main::Wipe.put@125:4: uncovered (generic body)
 main::WipeKw.put@137:4: uncovered (generic body)
 main::Dropper.drop@250:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::KwC.put@283:4: uncovered (generic body)
-main::Maker.go@414:4: certified, summary: opaque (summary output effect)
+main::Maker.go@414:4: certified, summary: known
 main::P.__init__@16:4: covered (storage: no_proof_required), summary: known
 main::G.__init__@25:4: uncovered (generic constructor)
 main::K.__init__@37:4: uncovered (unmodeled record), summary: opaque (unmodeled record)

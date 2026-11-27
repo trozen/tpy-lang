@@ -86,7 +86,7 @@ void via_nested_def(std::vector<::tpy::BigInt>& a);
 void reset_global();
 // def walk(xs: list[int]) -> None:
 void walk(const std::vector<::tpy::BigInt>& xs);
-// def two(a: list[int], b: list[int]) -> None:
+// def two(a: list[int], b: list[int]) -> None:  # tpyc: mir(conflict /alias_obligation/)
 void two(const std::vector<::tpy::BigInt>& a, std::vector<::tpy::BigInt>& b);
 // def alias_target(xs: list[str]) -> None:
 void alias_target(std::vector<std::string>& xs);

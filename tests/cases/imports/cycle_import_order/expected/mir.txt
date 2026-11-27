@@ -7,7 +7,7 @@ b::quoted_leaf@14:0: covered (storage: no_proof_required), summary: known
 b::bound_early@18:0: covered (storage: no_proof_required), summary: known
 b::show@29:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)
 fb::__tpy_init: uncovered (module initialization)
-fb::show@7:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+fb::show@7:0: covered (storage: no_proof_required), summary: known
 fb::tag_value@20:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 fb::Tag.__init__@16:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)

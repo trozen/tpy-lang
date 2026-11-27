@@ -21,7 +21,7 @@ main::other_len_total@304:0: uncovered (unsupported native container element), s
 main::plain@312:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::plain_total@317:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::plain_store@325:0: covered (storage: no_proof_required), summary: known
-main::plain_read@332:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::plain_read@332:0: covered (storage: no_proof_required), summary: known
 main::keys_del@340:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::keys_read_store@347:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::keys_of@355:0: uncovered (unsupported return type), summary: opaque (unsupported return type)

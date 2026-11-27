@@ -3,7 +3,7 @@ main::make_mixed@17:0: uncovered (unsupported return type), summary: opaque (uns
 main::pick@21:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::identity@25:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::mixed_in_place@88:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::borrowed_names@101:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::borrowed_names@101:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
 main::borrowing_call@111:0: uncovered (unsupported tuple expression), summary: opaque (unsupported tuple expression)
 main::unpack_borrowed@121:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::frame_literal@131:0: uncovered (unsupported hoisted value)

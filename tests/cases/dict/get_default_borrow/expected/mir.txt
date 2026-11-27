@@ -17,7 +17,7 @@ main::generic_opt@169:0: uncovered (generic body)
 main::read_int@184:0: covered (storage: no_proof_required), summary: known
 main::read_p@188:0: covered (storage: no_proof_required), summary: known
 main::generic_opt_use@192:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
-main::values@202:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::values@202:0: covered (storage: no_proof_required), summary: known
 main::walrus@214:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::try_hit@223:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::ro_branches@234:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)

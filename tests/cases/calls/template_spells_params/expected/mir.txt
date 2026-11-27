@@ -1,6 +1,6 @@
 fixtures::__tpy_init: uncovered (module initialization)
-fixtures::mark@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-fixtures::mark_i@10:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+fixtures::mark@5:0: covered (storage: no_proof_required), summary: known
+fixtures::mark_i@10:0: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
 main::pick@14:0: uncovered (no body to lower)
 main::zero@18:0: uncovered (no body to lower)
@@ -37,7 +37,7 @@ part_defaults::D.__init__@43:4: covered (storage: no_proof_required), summary: k
 part_defaults::Named.__init__@72:4: covered (storage: no_proof_required), summary: known
 part_defaults::VBox.__init__@87:4: uncovered (missing record layout)
 part_methods::__tpy_init: uncovered (module initialization)
-part_methods::make_picker@22:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_methods::make_picker@22:0: covered (storage: no_proof_required), summary: known
 part_methods::make_vec@80:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 part_methods::const_recv@85:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 part_methods::mut_recv@90:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
@@ -58,7 +58,7 @@ part_methods::Picker.__init__@10:4: covered (storage: no_proof_required), summar
 part_methods::Halver.__init__@72:4: covered (storage: no_proof_required), summary: known
 part_protocols::__tpy_init: uncovered (module initialization)
 part_protocols::subscript@20:0: uncovered (unsupported parameter type)
-part_protocols::main@25:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_protocols::main@25:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 part_protocols::Impl.__getitem__@16:4: covered (storage: no_proof_required), summary: known
 part_protocols::Impl.__init__@13:4: covered (storage: no_proof_required), summary: known
 part_slots::__tpy_init: uncovered (module initialization)

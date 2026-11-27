@@ -1,6 +1,6 @@
 main::__tpy_init: uncovered (module initialization)
 main::test_unary@81:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::test_contains@90:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_contains@90:0: covered (storage: no_proof_required), summary: known
 main::test_sub_mul@98:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::test_iadd@108:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::test_isub@114:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)

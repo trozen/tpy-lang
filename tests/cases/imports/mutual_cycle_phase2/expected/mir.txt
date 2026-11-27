@@ -36,7 +36,7 @@ item::__tpy_init: uncovered (module initialization)
 item::Item.__init__@7:4: covered (storage: no_proof_required), summary: known
 item::Bag.__init__@14:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
-main::const_section@22:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::const_section@22:0: covered (storage: no_proof_required), summary: known
 main::borrow_section@31:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::genexpr_section@35:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::receiver_section@43:0: uncovered (unsupported metadata: constructs), summary: opaque (unsupported metadata: constructs)

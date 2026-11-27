@@ -5,5 +5,5 @@ main::add@10:0: covered (storage: no_proof_required), summary: known
 main::apply@13:0: uncovered (unsupported parameter type)
 main::apply2@16:0: uncovered (unsupported parameter type)
 main::run_void@19:0: uncovered (unsupported parameter type)
-main::print_val@22:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::print_val@22:0: covered (storage: no_proof_required), summary: known
 main::main@25:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)

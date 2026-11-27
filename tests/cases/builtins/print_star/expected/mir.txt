@@ -1,11 +1,11 @@
 main::__tpy_init: uncovered (module initialization)
-main::tag@17:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::tag@17:0: covered (storage: no_proof_required), summary: known
 main::countdown@21:0: covered (storage: no_facts: storage facts have not been published)
-main::free_function@28:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::free_function@28:0: uncovered (unsupported metadata: star_elem), summary: opaque (unsupported metadata: star_elem)
 main::loop_body@91:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
-main::gen_body@99:0: uncovered (call needs finalized known summary)
+main::gen_body@99:0: uncovered (unsupported metadata: star_elem)
 main::main@105:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::P.__str__@13:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
-main::Shelf.show@81:4: uncovered (call needs finalized known summary)
+main::Shelf.show@81:4: uncovered (unsupported metadata: star_elem)
 main::P.__init__@10:4: covered (storage: no_proof_required), summary: known
 main::Shelf.__init__@78:4: covered (storage: no_proof_required), summary: known

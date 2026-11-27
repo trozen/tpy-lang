@@ -40,7 +40,7 @@ main::head_own@394:0: uncovered (unsupported statement), summary: opaque (unsupp
 main::nocopy_list@403:0: uncovered (unsupported container element), summary: opaque (unsupported container element)
 main::mk_pair@410:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::live_unpack@414:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
-main::show@423:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::show@423:0: covered (storage: no_proof_required), summary: opaque (summary record: custom record special member)
 main::mk_nbox@434:0: covered (storage: no_proof_required), summary: known
 main::nocopy_temp_member@438:0: uncovered (reference needs local name), summary: opaque (reference needs local name)
 main::mk_aw@450:0: uncovered (member definition: custom record special member), summary: opaque (member definition: custom record special member)

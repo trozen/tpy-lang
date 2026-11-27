@@ -4,7 +4,7 @@ qa::__tpy_init: uncovered (module initialization)
 qa::E.__init__@8:4: covered (storage: no_proof_required), summary: known
 qb::__tpy_init: uncovered (module initialization)
 qb::E@3:0: covered (storage: no_proof_required), summary: known
-qb::main@10:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+qb::main@10:0: covered (storage: no_proof_required), summary: known
 wa::__tpy_init: uncovered (module initialization)
 wb::__tpy_init: uncovered (module initialization)
 wb::f@8:0: uncovered (unsupported metadata: cpp), summary: opaque (unsupported metadata: cpp)

@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::select_hoist@39:0: certified, summary: opaque (summary output effect)
+main::select_hoist@39:0: certified, summary: known
 main::opt_elem@49:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
 main::opt_select@61:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
 main::prop_loop@81:0: uncovered (optional capture needs local name), summary: opaque (optional capture needs local name)
@@ -12,10 +12,10 @@ main::union_member@201:0: uncovered (unsupported expression form), summary: opaq
 main::der_call@215:0: uncovered (reference type mismatch), summary: opaque (reference type mismatch)
 main::dunder_self@233:0: uncovered (unsupported borrowed expression form), summary: opaque (unsupported borrowed expression form)
 main::pick_pair@243:0: certified, summary: known
-main::tuple_lend@247:0: certified, summary: opaque (summary output effect)
-main::narrowed_field@256:0: certified, summary: opaque (summary output effect)
+main::tuple_lend@247:0: certified, summary: known
+main::narrowed_field@256:0: certified, summary: known
 main::narrowed_assert@264:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::engaged@289:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::engaged@289:0: covered (storage: no_proof_required), summary: known
 main::gen@301:0: uncovered (unsupported hoisted value)
 main::co@315:0: uncovered (async body)
 main::pick@343:0: certified, summary: known
@@ -26,12 +26,12 @@ main::main@382:0: uncovered (call needs finalized known summary), summary: opaqu
 main::H.der@34:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::P.pa@77:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::P.pa@77:4#2: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::M.go@111:4: certified, summary: opaque (summary output effect)
+main::M.go@111:4: certified, summary: known
 main::Ctx.__enter__@132:4: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
 main::Ctx.__exit__@135:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::EH.get_b@171:4: uncovered (error-return body)
 main::S.__add__@229:4: covered (storage: no_proof_required)
-main::NH.bump@280:4: certified, summary: opaque (summary output effect)
+main::NH.bump@280:4: certified, summary: known
 main::K.ret@368:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary record: missing constructor definition)
 main::A.__init__@9:4: covered (storage: no_proof_required), summary: known
 main::Der.__init__@14:4: covered (storage: no_proof_required), summary: known

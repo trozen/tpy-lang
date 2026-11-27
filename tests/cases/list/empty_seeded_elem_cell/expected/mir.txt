@@ -15,7 +15,7 @@ main::er_pos@165:0: uncovered (error-return body)
 main::match_pos@175:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::alias_seed_through_alias@188:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::alias_seed_through_first@198:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-main::loop_pos@207:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::loop_pos@207:0: covered (storage: no_proof_required), summary: known
 main::extend_pos@216:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::rebind_pos@237:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
 main::ctor_pos@245:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)

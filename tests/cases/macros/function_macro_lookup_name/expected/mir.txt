@@ -3,5 +3,5 @@ lampmod::Lamp.__init__@7:4: covered (storage: no_proof_required), summary: known
 lampmod::Switch.__init__@16:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
 main::check@24:0: covered (storage: no_proof_required), summary: known
-main::main@29:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@29:0: covered (storage: no_proof_required), summary: known
 main::Gate.__init__@19:4: covered (storage: no_proof_required), summary: known

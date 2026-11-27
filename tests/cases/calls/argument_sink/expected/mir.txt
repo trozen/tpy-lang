@@ -1,9 +1,9 @@
 main::__tpy_init: uncovered (module initialization)
 main::mkh@25:0: covered (storage: no_proof_required), summary: known
 main::ref@29:0: covered (storage: no_proof_required), summary: known
-main::two@33:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::two@33:0: covered (storage: no_proof_required), summary: known
 main::bump@38:0: covered (storage: no_proof_required), summary: known
-main::os_@43:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::os_@43:0: covered (storage: no_proof_required), summary: known
 main::ns@47:0: covered (storage: no_proof_required), summary: known
 main::eats@51:0: covered (storage: no_proof_required), summary: known
 main::mkstr@55:0: covered (storage: no_proof_required), summary: known
@@ -81,7 +81,7 @@ main::once@1082:0: uncovered (call needs finalized known summary), summary: opaq
 main::tree_v@1130:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::method_slot_args@1146:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
 main::aug_key@1180:0: uncovered (missing constructor definition), summary: opaque (missing constructor definition)
-main::main@1193:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::main@1193:0: uncovered (constructor argument type), summary: opaque (constructor argument type)
 main::E.take@60:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Cell.bump@91:4: covered (storage: no_proof_required), summary: known
 main::Holder.borrow@101:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known

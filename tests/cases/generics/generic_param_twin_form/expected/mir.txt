@@ -8,9 +8,9 @@ fixtures::C.__init__@40:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
 main::after_field@26:0: uncovered (generic body)
 main::after_global@33:0: uncovered (generic body)
-main::show_int@40:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::field_face@44:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::global_face@63:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::show_int@40:0: covered (storage: no_proof_required), summary: known
+main::field_face@44:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
+main::global_face@63:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::bump@73:0: uncovered (generic body)
 main::class_aliases@78:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::main@86:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

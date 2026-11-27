@@ -151,9 +151,9 @@ def test_source_facts_and_verified_constructor_are_required(artifacts: Artifacts
         access = replace(access, receiver=replace(access.receiver, full_expression_storage=None))
     summaries = dict(constructor_summaries(definitions))
     if mutation == "effectful_constructor":
-        # A constructor whose body has an effect has no summary a caller applies.
+        # A constructor whose body writes a global has no summary a caller applies.
         callee = definitions.records[access.receiver.result_type].callee.identity
-        summaries[callee] = MIRSummaryResult.opaque("summary output effect")
+        summaries[callee] = MIRSummaryResult.opaque("summary global access")
     rhs = replace(rhs, left=access)
     expr = replace(expr, **({"rhs": rhs} if isinstance(expr, th.THIRValueSelect) else {"right": rhs}))
     fn = replace(fn, body=(replace(fn.body[0], value=expr),))

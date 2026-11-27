@@ -4,4 +4,4 @@ b::__tpy_init: uncovered (module initialization)
 b::bar@3:0: covered (storage: no_proof_required), summary: known
 b::relay@6:0: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
-main::main@11:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@11:0: covered (storage: no_proof_required), summary: known

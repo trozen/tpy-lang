@@ -6,7 +6,7 @@ main::pick@84:0: uncovered (no body to lower)
 main::pick@88:0: uncovered (no body to lower)
 main::pick_ro@99:0: uncovered (no body to lower)
 main::pick_ro@103:0: uncovered (no body to lower)
-main::show@113:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::show@113:0: covered (storage: no_proof_required), summary: known
 main::in_try@117:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::in_with@129:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::param_in_with@137:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

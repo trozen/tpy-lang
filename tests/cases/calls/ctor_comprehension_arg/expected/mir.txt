@@ -1,9 +1,9 @@
 main::__tpy_init: uncovered (module initialization)
 main::take_own@61:0: covered (storage: no_proof_required), summary: known
 main::use_flat@66:0: covered (storage: no_proof_required), summary: known
-main::ctor_borrow@71:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::ctor_borrow@71:0: covered (storage: no_proof_required), summary: known
 main::ctor_mutated_slot@78:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::ctor_set_dict@84:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::ctor_set_dict@84:0: covered (storage: no_proof_required), summary: known
 main::ctor_nested_call@90:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::make@95:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 main::ctor_element_and_condition@100:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)

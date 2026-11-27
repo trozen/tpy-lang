@@ -12,9 +12,9 @@ main::gen_adopt@102:0: uncovered (unsupported hoisted value)
 main::main@108:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::<genexpr>@178:34: incomplete (suspension: loan of caller storage held across a suspension)
 main::P.__copy__@13:4: uncovered (custom record special member)
-main::Cur.__iter__@54:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
+main::Cur.__iter__@54:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Cur.__next__@58:4: uncovered (error-return body)
-main::Noisy.__iter__@71:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Noisy.__iter__@71:4: covered (storage: no_proof_required), summary: known
 main::Holder.get@82:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::P.__init__@10:4: uncovered (custom record special member), summary: opaque (custom record special member)
 main::Cur.__init__@50:4: covered (storage: no_proof_required), summary: known

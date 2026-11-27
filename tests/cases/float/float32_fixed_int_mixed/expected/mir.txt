@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::forward@6:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::reverse@17:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::augmented@28:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::main@36:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::forward@6:0: covered (storage: no_proof_required), summary: known
+main::reverse@17:0: covered (storage: no_proof_required), summary: known
+main::augmented@28:0: covered (storage: no_proof_required), summary: known
+main::main@36:0: covered (storage: no_proof_required), summary: known

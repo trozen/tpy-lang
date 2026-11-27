@@ -11,8 +11,8 @@ fixtures::P.__init__@31:4: covered (storage: no_proof_required), summary: known
 fixtures::Hs.__init__@52:4: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
 main::first@9:0: covered (storage: no_proof_required), summary: known
-main::local_buf@14:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-main::local_buf_named@23:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::local_buf@14:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::local_buf_named@23:0: covered (storage: no_proof_required), summary: known
 main::kept@58:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
 main::block_view@68:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
 main::block_view_outer@77:0: covered (storage: no_proof_required), summary: known
@@ -29,8 +29,8 @@ main::Bag.grow@39:4: covered (storage: no_proof_required), conflicts: replacemen
 main::Bag.grow_copy@48:4: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::Holder.view@135:4: covered (storage: no_proof_required), summary: known
 main::Holder.view@140:4: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
-main::Holder.twin@146:4: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-main::Holder.twin@146:4#2: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::Holder.twin@146:4: covered (storage: no_proof_required), conflicts: replacement, summary: known
+main::Holder.twin@146:4#2: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::Bag.__init__@35:4: covered (storage: no_proof_required), summary: known
 main::C.__init__@113:4: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary stores a loan of the body's storage)
 main::Holder.__init__@131:4: covered (storage: no_proof_required), summary: known
@@ -40,13 +40,13 @@ part_elements::other_element@9:0: covered (storage: not_covered: storage evidenc
 part_elements::loop_var_overwrite@17:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_elements::link@27:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_elements::other_row@34:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-part_elements::str_view@40:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_elements::str_loop@49:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_elements::str_view@40:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_elements::str_loop@49:0: covered (storage: no_proof_required), summary: known
 part_elements::scale@56:0: covered (storage: no_proof_required), summary: known
 part_elements::span_scale@64:0: covered (storage: no_proof_required), summary: known
 part_elements::dict_scale@72:0: covered (storage: no_proof_required), summary: known
 part_elements::inner_ref@78:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
-part_elements::tok_view@86:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_elements::tok_view@86:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_elements::clob@92:0: covered (storage: no_proof_required), summary: known
 part_elements::callee_loop@97:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_elements::store_then_grow@106:0: covered (storage: no_proof_required), summary: known
@@ -59,84 +59,84 @@ part_elements::main@149:0: uncovered (order-sensitive eager operands), summary: 
 part_loop_resets::__tpy_init: uncovered (module initialization)
 part_loop_resets::mk@17:0: covered (storage: no_proof_required), summary: known
 part_loop_resets::clear_tok@21:0: covered (storage: no_proof_required), summary: known
-part_loop_resets::same_iter@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-part_loop_resets::reset_in_body@34:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-part_loop_resets::outer_buf@45:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-part_loop_resets::alias_reset@54:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: store_escape, summary: opaque (summary output effect)
-part_loop_resets::alias_reset_break@65:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: store_escape, summary: opaque (summary output effect)
-part_loop_resets::call_reset@78:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary output effect)
-part_loop_resets::with_continue@89:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loop_resets::with_continue_reset@101:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-part_loop_resets::overkill@119:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: scope_end, replacement, summary: opaque (summary output effect)
-part_loop_resets::defkill@135:0: covered (storage: no_proof_required), conflicts: scope_end, replacement, summary: opaque (summary output effect)
-part_loop_resets::own_weak_reset@152:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: opaque (summary output effect)
-part_loop_resets::own_direct_reset@168:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: opaque (summary output effect)
-part_loop_resets::two_object_cycle@185:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: opaque (summary output effect)
-part_loop_resets::nested_reset@199:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_loop_resets::safe_source_copy@210:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary output effect)
-part_loop_resets::nested_live_reset@223:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary output effect)
-part_loop_resets::next_iter@237:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loop_resets::alternation@247:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
+part_loop_resets::same_iter@26:0: covered (storage: no_proof_required), summary: known
+part_loop_resets::reset_in_body@34:0: covered (storage: no_proof_required), summary: known
+part_loop_resets::outer_buf@45:0: covered (storage: no_proof_required), summary: known
+part_loop_resets::alias_reset@54:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
+part_loop_resets::alias_reset_break@65:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
+part_loop_resets::call_reset@78:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary stores a loan of the body's storage)
+part_loop_resets::with_continue@89:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loop_resets::with_continue_reset@101:0: covered (storage: no_proof_required), summary: known
+part_loop_resets::overkill@119:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: scope_end, replacement, alias_obligation, summary: known
+part_loop_resets::defkill@135:0: covered (storage: no_proof_required), conflicts: scope_end, replacement, summary: known
+part_loop_resets::own_weak_reset@152:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, alias_obligation, summary: known
+part_loop_resets::own_direct_reset@168:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
+part_loop_resets::two_object_cycle@185:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, alias_obligation, summary: known
+part_loop_resets::nested_reset@199:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_loop_resets::safe_source_copy@210:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary stores a loan of the body's storage)
+part_loop_resets::nested_live_reset@223:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary stores a loan of the body's storage)
+part_loop_resets::next_iter@237:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loop_resets::alternation@247:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
 part_loop_resets::main@258:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 part_loop_resets::Tok.__init__@12:4: covered (storage: no_proof_required), summary: known
 part_loops::__tpy_init: uncovered (module initialization)
 part_loops::mk@15:0: covered (storage: no_proof_required), summary: known
-part_loops::after_for@20:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::after_while@29:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::inner_loop@40:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::view_local@50:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::cond_store@59:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::field_store@69:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::loop_var@78:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::temp_in_loop@86:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::store_break@94:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::second_exit@105:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::both_arms@117:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::read_old_after_reentry@130:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::family_reused@141:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::family_reused_after_end@158:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::external_loop@182:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_loops::external_once@191:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_loops::local_field_loop@199:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_loops::external_loop_reset@209:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-part_loops::cursor_inner@219:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_loops::cursor_joined@230:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: opaque (summary output effect)
+part_loops::after_for@20:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::after_while@29:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::inner_loop@40:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::view_local@50:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::cond_store@59:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::field_store@69:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::loop_var@78:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::temp_in_loop@86:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::store_break@94:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::second_exit@105:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::both_arms@117:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::read_old_after_reentry@130:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::family_reused@141:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::family_reused_after_end@158:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::external_loop@182:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_loops::external_once@191:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_loops::local_field_loop@199:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_loops::external_loop_reset@209:0: covered (storage: no_proof_required), summary: known
+part_loops::cursor_inner@219:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_loops::cursor_joined@230:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, alias_obligation, summary: known
 part_loops::span_loop@242:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-part_loops::spin_then_read@251:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_loops::main@262:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_loops::spin_then_read@251:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_loops::main@262:0: covered (storage: no_proof_required), summary: known
 part_loops::Tok.__init__@10:4: covered (storage: no_proof_required), summary: known
 part_loops::Buf.__init__@176:4: covered (storage: no_proof_required), summary: known
 part_may::__tpy_init: uncovered (module initialization)
 part_may::mk_list@14:0: covered (storage: no_proof_required), summary: known
-part_may::b_ctor@22:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_may::b_ctor_else@32:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_may::h_field@43:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_may::store_break@76:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_may::cursor_join@87:0: covered (storage: conflict), conflicts: replacement, summary: opaque (summary output effect)
-part_may::field_cursor@100:0: covered (storage: conflict), conflicts: replacement, summary: opaque (summary output effect)
-part_may::leaf_cursor@112:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_may::may_rebind@126:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: scope_end, summary: opaque (summary output effect)
+part_may::b_ctor@22:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_may::b_ctor_else@32:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_may::h_field@43:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_may::store_break@76:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_may::cursor_join@87:0: covered (storage: conflict), conflicts: replacement, summary: known
+part_may::field_cursor@100:0: covered (storage: conflict), conflicts: replacement, summary: known
+part_may::leaf_cursor@112:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_may::may_rebind@126:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: scope_end, summary: known
 part_may::span_join@139:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
-part_may::restore_field@150:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: replacement, summary: opaque (summary output effect)
-part_may::callee_may_reset@165:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: replacement, summary: opaque (summary output effect)
-part_may::g_notc@179:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_may::g_rebind@190:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-part_may::g_rebind_field@201:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-part_may::main@211:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-part_may::Sites.run@56:4: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
+part_may::restore_field@150:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: replacement, summary: known
+part_may::callee_may_reset@165:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: replacement, summary: known
+part_may::g_notc@179:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_may::g_rebind@190:0: covered (storage: no_proof_required), summary: known
+part_may::g_rebind_field@201:0: covered (storage: no_proof_required), summary: known
+part_may::main@211:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
+part_may::Sites.run@56:4: covered (storage: no_proof_required), conflicts: scope_end, summary: known
 part_may::Hl.__init__@10:4: covered (storage: no_proof_required), summary: known
-part_may::Sites.__init__@65:4: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
+part_may::Sites.__init__@65:4: covered (storage: no_proof_required), conflicts: scope_end, summary: known
 part_may_known::__tpy_init: uncovered (module initialization)
-part_may_known::value_element@10:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-part_may_known::values_existing_key@17:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-part_may_known::alias_reset_read@25:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: replacement, summary: opaque (summary output effect)
-part_may_known::alias_copy_read@37:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: replacement, summary: opaque (summary output effect)
+part_may_known::value_element@10:0: covered (storage: no_proof_required), summary: known
+part_may_known::values_existing_key@17:0: covered (storage: no_proof_required), summary: known
+part_may_known::alias_reset_read@25:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: replacement, summary: known
+part_may_known::alias_copy_read@37:0: covered (storage: not_covered: storage evidence: lifetime conflict outside the required origins), conflicts: replacement, summary: known
 part_may_known::correlated_scope_rebind@50:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
-part_may_known::may_after_raise@62:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_may_known::g_samef@73:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_may_known::g_samef_ctor@84:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
-part_may_known::two@105:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_may_known::two_loop@115:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary output effect)
+part_may_known::may_after_raise@62:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_may_known::g_samef@73:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_may_known::g_samef_ctor@84:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
+part_may_known::two@105:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary transfer source is a member or element)
+part_may_known::two_loop@115:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary stores a loan of the body's storage)
 part_may_known::main@123:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 part_may_known::R.__init__@98:4: covered (storage: no_proof_required), summary: known
 part_records::__tpy_init: uncovered (module initialization)
@@ -147,12 +147,12 @@ part_records::record_field@65:0: covered (storage: not_covered: storage evidence
 part_records::items_of@73:0: covered (storage: no_proof_required), summary: known
 part_records::lent_list_object@78:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
 part_records::record_alias@86:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
-part_records::after_raise@95:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_records::attribution_fields@107:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_records::attribution_fields_swapped@119:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_records::attribution_branch@132:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_records::attribution_loop@146:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
-part_records::overwritten@160:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+part_records::after_raise@95:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
+part_records::attribution_fields@107:0: covered (storage: no_proof_required), conflicts: replacement, alias_obligation, summary: known
+part_records::attribution_fields_swapped@119:0: covered (storage: no_proof_required), conflicts: replacement, alias_obligation, summary: known
+part_records::attribution_branch@132:0: covered (storage: no_proof_required), conflicts: replacement, alias_obligation, summary: known
+part_records::attribution_loop@146:0: covered (storage: no_proof_required), conflicts: replacement, alias_obligation, summary: known
+part_records::overwritten@160:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 part_records::restore@169:0: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
 part_records::main@176:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 part_records::Named.__init__@11:4: covered (storage: no_proof_required), summary: known
@@ -168,8 +168,8 @@ part_returns::r_held@50:0: covered (storage: no_proof_required), conflicts: stor
 part_returns::r_lit@59:0: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
 part_returns::s_held@68:0: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
 part_returns::two_returns@77:0: covered (storage: no_proof_required), conflicts: store_escape, summary: opaque (summary stores a loan of the body's storage)
-part_returns::returned_maybe@87:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary output effect)
-part_returns::returned@96:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
+part_returns::returned_maybe@87:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary stores a loan of the body's storage)
+part_returns::returned@96:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
 part_returns::through_param@105:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a stored loan the caller chooses)
 part_returns::dict_insert@111:0: covered (storage: no_proof_required), summary: known
 part_returns::drop_and_read@129:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary retention: a stored loan the caller chooses)
@@ -178,7 +178,7 @@ part_returns::replace_and_read@152:0: covered (storage: no_proof_required), conf
 part_returns::replace_and_read_call@158:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 part_returns::one_object@172:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: replacement, summary: known
 part_returns::grow_keep@180:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-part_returns::summary_inverse_call@185:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_returns::summary_inverse_call@185:0: covered (storage: no_proof_required), summary: known
 part_returns::main@194:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 part_returns::Hv.__init__@123:4: covered (storage: no_proof_required), summary: known
 part_returns::Rb.__init__@146:4: covered (storage: no_proof_required), summary: known

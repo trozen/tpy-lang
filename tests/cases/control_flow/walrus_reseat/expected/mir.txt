@@ -3,7 +3,7 @@ fixtures::show@115:0: covered (storage: no_proof_required), summary: known
 fixtures::bump@121:0: covered (storage: no_proof_required), summary: known
 fixtures::steps@128:0: uncovered (reference yield)
 fixtures::make_pair@133:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-fixtures::take@137:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+fixtures::take@137:0: covered (storage: no_proof_required), summary: known
 fixtures::take_list@141:0: covered (storage: no_proof_required), summary: known
 fixtures::size@145:0: covered (storage: no_proof_required), summary: known
 fixtures::A.bump@13:4: covered (storage: no_proof_required), summary: known
@@ -96,7 +96,7 @@ part_values::value_locals@10:0: uncovered (order-sensitive eager operands), summ
 part_values::value_opt_return@20:0: uncovered (unsupported metadata: write), summary: opaque (unsupported metadata: write)
 part_values::str_append@28:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 part_values::read_elsewhere@36:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
-part_values::live_self@45:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_values::live_self@45:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 part_values::slot_hint@52:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 part_values::nonlocal_none@65:0: uncovered (unsupported metadata: optional_read), summary: opaque (unsupported metadata: optional_read)
 part_values::main@78:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

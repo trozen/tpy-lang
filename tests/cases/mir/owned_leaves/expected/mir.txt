@@ -5,8 +5,8 @@ main::local@48:0: covered (storage: no_proof_required), summary: known
 main::temporary@55:0: covered (storage: no_proof_required), summary: known
 main::ret_copy@60:0: covered (storage: no_proof_required), summary: known
 main::global_read@65:0: covered (storage: no_proof_required), summary: known
-main::global_print@70:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::prints@75:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::global_print@70:0: covered (storage: no_proof_required), summary: known
+main::prints@75:0: covered (storage: no_proof_required), summary: known
 main::element@80:0: covered (storage: no_proof_required), summary: known
 main::param_copy@86:0: covered (storage: no_proof_required), summary: known
 main::append@92:0: covered (storage: no_proof_required), summary: known
@@ -35,9 +35,9 @@ main::result_local@200:0: covered (storage: no_proof_required), summary: known
 main::global_arguments@206:0: covered (storage: no_proof_required), summary: known
 main::overlap@211:0: covered (storage: no_proof_required), summary: known
 main::overlap_write@216:0: covered (storage: no_proof_required), summary: opaque (summary global access)
-main::bytes_print@223:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::bytes_print@223:0: covered (storage: no_proof_required), summary: known
 main::expression_arguments@228:0: covered (storage: no_proof_required), summary: known
-main::print_call@233:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::print_call@233:0: covered (storage: no_proof_required), summary: known
 main::bytes_literal@238:0: covered (storage: no_proof_required), summary: known
 main::take_point@243:0: covered (storage: no_proof_required), summary: known
 main::rvalue_temp@248:0: covered (storage: no_proof_required), summary: known
@@ -56,7 +56,7 @@ main::make@338:0: covered (storage: no_proof_required), summary: known
 main::temp_ctor_bump@343:0: covered (storage: no_proof_required), summary: known
 main::temp_call_bump@348:0: covered (storage: no_proof_required), summary: known
 main::temp_ctor_read@353:0: uncovered (call receiver access disagrees with its binding), summary: opaque (call receiver access disagrees with its binding)
-main::conditional_hoist@358:0: covered (storage: conflict), conflicts: replacement, summary: opaque (summary output effect)
+main::conditional_hoist@358:0: covered (storage: conflict), conflicts: replacement, summary: known
 main::view_local@368:0: covered (storage: no_proof_required), summary: known
 main::str_field@374:0: covered (storage: no_proof_required), summary: known
 main::str_field_write@379:0: covered (storage: no_proof_required), summary: known

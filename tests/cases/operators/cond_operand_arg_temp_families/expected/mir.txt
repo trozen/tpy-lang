@@ -1,13 +1,13 @@
 main::__tpy_init: uncovered (module initialization)
-main::sized@89:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sized@89:0: covered (storage: no_proof_required), summary: known
 main::shaped@94:0: uncovered (unsupported parameter type)
 main::anyslot@99:0: uncovered (generic body)
 main::listslot@104:0: uncovered (generic body)
 main::show@109:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
 main::leaf_count@124:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)
 main::make_leaf@136:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::held@141:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::comprehension@146:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::held@141:0: covered (storage: no_proof_required), summary: known
+main::comprehension@146:0: covered (storage: no_proof_required), summary: known
 main::covariant@152:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::generic_ref_slot@159:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::generic_container_literal@164:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
@@ -17,11 +17,11 @@ main::ru_wrapper_literal@180:0: uncovered (call needs finalized known summary), 
 main::ru_wrapper_ctor@185:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
 main::ru_wrapper_call@190:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
 main::ctor_mut_rvalue@196:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::gen_recv_temp@201:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::shown@225:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::gen_recv_temp@201:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
+main::shown@225:0: covered (storage: no_proof_required), summary: known
 main::bump@230:0: covered (storage: no_proof_required), summary: known
-main::deref_or_rhs@235:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::deref_ternary@243:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::deref_or_rhs@235:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
+main::deref_ternary@243:0: uncovered (call needs borrowed record name), summary: opaque (call needs borrowed record name)
 main::main@249:0: uncovered (call needs finalized known summary), summary: opaque (recursive or recursion-dependent call)
 main::Circle.area@26:4: covered (storage: no_proof_required)
 main::Sink.take@48:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

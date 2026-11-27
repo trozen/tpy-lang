@@ -33,9 +33,9 @@ bool temporary(const ::tpy::BigInt& a, const ::tpy::BigInt& b);
 std::string ret_copy(std::string_view s);
 // def global_read() -> int:  # tpyc: mir(covered) mir_summary(known)
 ::tpy::BigInt global_read();
-// def global_print() -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
+// def global_print() -> None:  # tpyc: mir(covered) mir_summary(known)
 void global_print();
-// def prints(s: str, n: int, b: bytes) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
+// def prints(s: str, n: int, b: bytes) -> None:  # tpyc: mir(covered) mir_summary(known)
 void prints(std::string_view s, const ::tpy::BigInt& n, ::tpy::BytesView b);
 // def element(s: str, b: bytes, i: int32) -> bool:  # tpyc: mir(covered) mir_summary(known)
 bool element(std::string_view s, ::tpy::BytesView b, int32_t i);
@@ -93,11 +93,11 @@ int32_t global_arguments();
 bool overlap(std::string_view s);
 // def overlap_write(s: str) -> bool:  # tpyc: mir(covered) mir_summary(opaque /^summary global access$/)
 bool overlap_write(std::string_view s);
-// def bytes_print() -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
+// def bytes_print() -> None:  # tpyc: mir(covered) mir_summary(known)
 void bytes_print();
 // def expression_arguments(x: float, n: int) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t expression_arguments(double x, const ::tpy::BigInt& n);
-// def print_call(s: str) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
+// def print_call(s: str) -> None:  # tpyc: mir(covered) mir_summary(known)
 void print_call(std::string_view s);
 // def bytes_literal() -> bytes:  # tpyc: mir(covered) mir_summary(known)
 ::tpy::Bytes bytes_literal();

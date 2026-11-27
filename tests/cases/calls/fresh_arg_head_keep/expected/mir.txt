@@ -10,7 +10,7 @@ part_head_async::mk@41:0: uncovered (call needs finalized known summary), summar
 part_head_async::body@45:0: uncovered (async body)
 part_head_async::main@59:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 part_head_async::Src.items@15:4: covered (storage: no_proof_required), summary: known
-part_head_async::CM.__enter__@25:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
+part_head_async::CM.__enter__@25:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 part_head_async::CM.__exit__@29:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 part_head_async::Src.__init__@11:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
 part_head_async::CM.__init__@22:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,6 +1,6 @@
 fixtures::__tpy_init: uncovered (module initialization)
-fixtures::mk@35:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-fixtures::side@40:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+fixtures::mk@35:0: covered (storage: no_proof_required), summary: known
+fixtures::side@40:0: covered (storage: no_proof_required), summary: known
 fixtures::first@45:0: certified, summary: known
 fixtures::same@49:0: certified, summary: known
 fixtures::head@53:0: covered (storage: no_proof_required), summary: known
@@ -60,7 +60,7 @@ part_guards::main@127:0: uncovered (call needs finalized known summary), summary
 part_guards::A.__init__@13:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
 part_guards::C.__init__@21:4: covered (storage: no_proof_required), summary: known
 part_held::__tpy_init: uncovered (module initialization)
-part_held::mkk@21:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_held::mkk@21:0: covered (storage: no_proof_required), summary: known
 part_held::counted@28:0: uncovered (element write needs a container place), summary: opaque (element write needs a container place)
 part_held::square@34:0: uncovered (no body to lower)
 part_held::rebound@37:0: uncovered (unsupported form conversion), summary: opaque (unsupported form conversion)
@@ -86,7 +86,7 @@ part_held::xvalue_param@161:0: uncovered (unsupported owned-leaf expression), su
 part_held::p_n@167:0: uncovered (no body to lower)
 part_held::member_of_fresh@170:0: uncovered (unsupported value select), summary: opaque (unsupported value select)
 part_held::main@178:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-part_held::K.__init__@17:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_held::K.__init__@17:4: covered (storage: no_proof_required), summary: known
 part_lowered::__tpy_init: uncovered (module initialization)
 part_lowered::sub@15:0: uncovered (by-value capture of a borrowed parameter)
 part_lowered::junk@21:0: covered (storage: no_proof_required), summary: known
@@ -167,7 +167,7 @@ part_unwraps::er_i@14:0: uncovered (error-return body)
 part_unwraps::er_s@22:0: uncovered (error-return body)
 part_unwraps::ident@30:0: uncovered (generic body)
 part_unwraps::word@60:0: covered (storage: no_proof_required), summary: known
-part_unwraps::shout@64:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_unwraps::shout@64:0: covered (storage: no_proof_required), summary: known
 part_unwraps::b_int@72:0: uncovered (error-return body)
 part_unwraps::b_str@77:0: uncovered (error-return body)
 part_unwraps::b_gen@82:0: uncovered (error-return body)

@@ -22,7 +22,7 @@ main::nested_three_deep@137:0: uncovered (read before definite assignment), summ
 main::nested_outer_bind_inner_rebind@148:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
 main::while_two_arms@160:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
 main::while_rebind_after@172:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
-main::while_true_break@188:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::while_true_break@188:0: covered (storage: no_proof_required), summary: known
 main::while_in_for@200:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
 main::for_in_while@210:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
 main::while_unpack@222:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

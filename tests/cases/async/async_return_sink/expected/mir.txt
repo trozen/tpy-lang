@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::mk@51:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::mk@51:0: covered (storage: no_proof_required), summary: known
 main::poke@56:0: covered (storage: no_proof_required), summary: known
 main::field_of@62:0: uncovered (async body)
 main::element_of@67:0: uncovered (async body)

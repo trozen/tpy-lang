@@ -47,7 +47,7 @@ def test_wrong_annotations_in_a_sibling_are_reported_against_its_own_facts(tmp_p
         "part.py: Line 3: expected type 'float' for 'n' but got 'int32'",
         "part.py: Line 5: expected 'n' divisor to be div_checked but zero check is skipped (proven non-zero)",
         "part.py: Line 1: expected mir(conflict /nothing/) for 'main' but MIR says covered "
-        "(storage: no_proof_required), summary: opaque (summary output effect)",
+        "(storage: no_proof_required), summary: known",
     ]
 
 

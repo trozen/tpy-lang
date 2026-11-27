@@ -39,7 +39,7 @@ main::drop_handled@501:0: uncovered (missing constructor definition), summary: o
 main::del_handler@507:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::main@516:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Loud.__del__@24:4: uncovered (missing receiver fact)
-main::Helped.report@62:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Helped.report@62:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Helped.__del__@65:4: uncovered (call needs finalized known summary)
 main::Calls.__del__@85:4: uncovered (unsupported local type or form)
 main::Sleepy.__del__@106:4: uncovered (stub declares no contract)
@@ -53,7 +53,7 @@ main::Mover.__move__@205:4: uncovered (custom record special member)
 main::Walker.__del__@243:4: uncovered (unsupported statement)
 main::Runner.__del__@287:4: uncovered (unsupported expression type)
 main::Writer.__del__@307:4: uncovered (unsupported stub receiver)
-main::Gauge.level@331:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Gauge.level@331:4: covered (storage: no_proof_required), summary: known
 main::Reader.__del__@344:4: uncovered (missing receiver fact)
 main::Countdown.__iter__@369:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Countdown.__next__@372:4: uncovered (error-return body)

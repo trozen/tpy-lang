@@ -8,6 +8,6 @@ main::nested@75:0: uncovered (unsupported statement), summary: opaque (unsupport
 main::mixed@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::term_body@97:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::main@104:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::CM.__enter__@14:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::CM.__enter__@14:4: covered (storage: no_proof_required), summary: known
 main::CM.__exit__@18:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::CM.__init__@11:4: covered (storage: no_proof_required), summary: known

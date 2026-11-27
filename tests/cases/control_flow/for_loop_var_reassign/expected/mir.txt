@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::original@9:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::original@9:0: covered (storage: no_proof_required), summary: known
 main::steps32@17:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
 main::steps64@66:0: uncovered (range needs int32 unit step), summary: opaque (range needs int32 unit step)
 main::steps_big@115:0: uncovered (range needs int32 unit step), summary: opaque (range needs int32 unit step)

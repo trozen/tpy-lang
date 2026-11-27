@@ -14,10 +14,10 @@ main::printing@149:0: uncovered (async body)
 main::async_body@158:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::worker_thread@173:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::main@183:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Echo.write@99:4: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::Echo.write@99:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::Echo.flush@106:4: covered (storage: no_proof_required), summary: known
 main::Record.write@128:4: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::Record.flush@132:4: covered (storage: no_proof_required), summary: known
-main::Worker.run@166:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Worker.run@166:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Echo.__init__@96:4: covered (storage: no_proof_required), summary: known
 main::Record.__init__@125:4: covered (storage: no_proof_required), summary: known

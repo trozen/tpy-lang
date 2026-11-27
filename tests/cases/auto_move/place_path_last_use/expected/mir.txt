@@ -8,9 +8,9 @@ main::mkc@230:0: uncovered (unsupported record fields), summary: opaque (unsuppo
 main::eat_a@234:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::eat_b@240:0: uncovered (unsupported container element), summary: opaque (unsupported container element)
 main::eat_nb@245:0: covered (storage: no_proof_required), summary: known
-main::eat_s@249:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::eat_l@253:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::eat_l2@260:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::eat_s@249:0: covered (storage: no_proof_required), summary: known
+main::eat_l@253:0: covered (storage: no_proof_required), summary: known
+main::eat_l2@260:0: covered (storage: no_proof_required), summary: known
 main::sink_a@266:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::two@271:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::two_a@276:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
@@ -93,7 +93,7 @@ main::HN.__del__@138:4: uncovered (missing receiver fact)
 main::Nest.take@151:4: uncovered (reference needs local name)
 main::KL.keep@171:4: covered (storage: no_proof_required), summary: known
 main::Slot.put@188:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
-main::Keeper.eat@205:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Keeper.eat@205:4: covered (storage: no_proof_required), summary: known
 main::Pair.take@213:4: uncovered (reference needs local name)
 main::NB.__init__@10:4: covered (storage: no_proof_required), summary: known
 main::M.__init__@16:4: covered (storage: no_proof_required), summary: known

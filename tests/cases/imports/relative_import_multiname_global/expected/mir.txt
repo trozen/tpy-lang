@@ -5,4 +5,4 @@ pkg.amod::a_first@6:0: covered (storage: no_proof_required), summary: known
 pkg.bmod::__tpy_init: uncovered (module initialization)
 pkg.bmod::b_first@6:0: covered (storage: no_proof_required), summary: known
 pkg.consumer::__tpy_init: uncovered (module initialization)
-pkg.consumer::check@6:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+pkg.consumer::check@6:0: covered (storage: no_proof_required), summary: known

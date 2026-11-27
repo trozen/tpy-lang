@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::concat_literal@44:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::concat_literal@44:0: covered (storage: no_proof_required), summary: known
 main::aug_setitem@54:0: uncovered (element write needs a stub contract), summary: opaque (element write needs a stub contract)
 main::set_methods@67:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::union_elem@91:0: uncovered (unsupported union scalar), summary: opaque (unsupported union scalar)

@@ -73,7 +73,7 @@ part_values::apply_u@126:0: uncovered (unsupported parameter type), summary: opa
 part_values::apply_opt@131:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 part_values::references@138:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
 part_values::tuple_literal@149:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
-part_values::make_val@168:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_values::make_val@168:0: covered (storage: no_proof_required), summary: known
 part_values::operands@175:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 part_values::aug_result@197:0: uncovered (unmodeled record), summary: opaque (unmodeled record)
 part_values::main@203:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

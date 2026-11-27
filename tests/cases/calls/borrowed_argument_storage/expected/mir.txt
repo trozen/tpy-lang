@@ -1,11 +1,11 @@
 main::__tpy_init: uncovered (module initialization)
 main::observe@34:0: certified, summary: known
 main::choose@39:0: certified, summary: known
-main::payload@43:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::fixed@48:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::external@54:0: certified, summary: opaque (summary output effect)
-main::loops@63:0: certified, summary: opaque (summary output effect)
-main::main@77:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::payload@43:0: covered (storage: no_proof_required), summary: known
+main::fixed@48:0: certified, summary: known
+main::external@54:0: certified, summary: known
+main::loops@63:0: certified, summary: known
+main::main@77:0: covered (storage: no_proof_required), summary: known
 main::Cell.inspect@16:4: certified, summary: known
 main::Cell.__init__@13:4: covered (storage: no_proof_required), summary: known
 main::Caller.__init__@26:4: certified, summary: known

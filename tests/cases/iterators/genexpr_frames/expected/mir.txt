@@ -26,7 +26,7 @@ main::count_readonly@269:0: uncovered (stub protocol argument is not a builtin l
 main::pairs_of@274:0: uncovered (reference yield)
 main::narrowed_rebound@281:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::scores@291:0: covered (storage: no_facts: storage facts have not been published)
-main::bound@298:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::bound@298:0: covered (storage: no_proof_required), summary: known
 main::walk@303:0: uncovered (unsupported hoisted value)
 main::aio@312:0: uncovered (async body)
 main::by_match@319:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -113,7 +113,7 @@ main::<genexpr>@504:16: uncovered (unsupported capture of an enclosing local)
 main::<genexpr>@506:41: uncovered (unsupported capture of an enclosing local)
 main::<genexpr>@509:13: covered (storage: no_facts: storage facts have not been published)
 main::Node.bump@22:4: covered (storage: no_proof_required), summary: known
-main::Noisy.__iter__@33:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Noisy.__iter__@33:4: covered (storage: no_proof_required), summary: known
 main::Cur.__iter__@46:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Cur.__next__@49:4: uncovered (error-return body)
 main::Acc.tot@67:4: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)

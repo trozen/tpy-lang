@@ -9,7 +9,7 @@ main::count@75:0: covered (storage: no_proof_required), summary: known
 main::maybe@79:0: covered (storage: no_proof_required), summary: known
 main::maybe_s@83:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::ret8@87:0: covered (storage: no_proof_required), summary: known
-main::shout@91:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::shout@91:0: covered (storage: no_proof_required), summary: known
 main::getv@96:0: covered (storage: no_proof_required), summary: known
 main::ask@100:0: uncovered (unsupported parameter type)
 main::pet_speak@122:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

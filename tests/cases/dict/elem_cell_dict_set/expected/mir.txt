@@ -39,7 +39,7 @@ main::optional_param_pos@387:0: uncovered (call needs finalized known summary), 
 main::alias_pos@402:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::setdefault_key_pos@412:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
 main::narrow_lookup_pos@420:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-main::dict_of_sets_pos@431:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::dict_of_sets_pos@431:0: covered (storage: no_proof_required), summary: known
 main::first_evidence_pos@439:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
 main::del_lookup_pos@450:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::narrow_in_pos@459:0: uncovered (unsupported expression), summary: opaque (unsupported expression)

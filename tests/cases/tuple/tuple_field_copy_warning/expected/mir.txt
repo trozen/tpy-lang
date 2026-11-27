@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@25:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@25:0: covered (storage: no_proof_required), summary: known
 main::Container.__repr__@15:4: covered (storage: no_proof_required), summary: known
 main::ContainerOk.__repr__@22:4: covered (storage: no_proof_required), summary: known
 main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

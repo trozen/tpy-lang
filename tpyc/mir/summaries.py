@@ -480,8 +480,10 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                 # Private storage built empty: it holds no record yet.
                 continue
             if isinstance(stmt, MIRPrint):
-                # Output is an effect outside every parameter-rooted summary.
-                return MIRSummaryResult.opaque("summary output effect")
+                # Its argument reads and its raise are already the summary's, and it
+                # writes no TPy storage; a signal handler run at its check point is
+                # BUGS.md#signal-handler-writes-unchecked-at-check-points.
+                continue
             if isinstance(stmt, MIRSuspend):
                 # What a suspension hands its caller is the caller's handle's to summarize.
                 return MIRSummaryResult.opaque("summary suspension")

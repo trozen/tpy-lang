@@ -10,5 +10,5 @@ main::write_via_mutating_call@59:0: certified, summary: known
 main::write_via_alias@65:0: certified, summary: known
 main::read_nested@74:0: certified, summary: known
 main::write_nested@80:0: certified, summary: known
-main::main@86:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@86:0: covered (storage: no_proof_required), summary: known
 main::Point.__init__@9:4: covered (storage: no_proof_required), summary: known

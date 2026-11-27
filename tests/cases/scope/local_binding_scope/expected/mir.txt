@@ -1,12 +1,12 @@
 main::__tpy_init: uncovered (module initialization)
 main::helper@23:0: covered (storage: no_proof_required), summary: known
-main::read_after@33:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::branch@39:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::read_after@33:0: covered (storage: no_proof_required), summary: known
+main::branch@39:0: covered (storage: no_proof_required), summary: known
 main::with_global@46:0: covered (storage: no_proof_required), summary: opaque (summary global access)
 main::with_nonlocal@53:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::comprehension_only@65:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::walrus@71:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
-main::param@77:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::param@77:0: covered (storage: no_proof_required), summary: known
 main::inner_fresh_local@83:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::closure_after_binding@95:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::gen@110:0: uncovered (non-local name)
@@ -22,7 +22,7 @@ main::user_len_total@207:0: uncovered (unsupported range bound), summary: opaque
 main::isinstance_class@215:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::except_and_del@220:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::alias_shadow@259:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::isinstance_builtin@266:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::isinstance_builtin@266:0: covered (storage: no_proof_required), summary: known
 main::param_capture@271:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::imported_types@279:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::rebound_after@294:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -34,7 +34,7 @@ main::aliased_range_in_gen@342:0: covered (storage: no_facts: storage facts have
 main::aliased_len_cond@361:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::dotted_range@373:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::reexported_len@386:0: uncovered (unsupported range bound), summary: opaque (unsupported range bound)
-main::aliased_len_views@394:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::aliased_len_views@394:0: covered (storage: no_proof_required), summary: known
 main::main@399:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::<genexpr>@335:29: covered (storage: no_facts: storage facts have not been published)
 main::<genexpr>@336:36: covered (storage: no_facts: storage facts have not been published)

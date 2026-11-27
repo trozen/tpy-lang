@@ -1,8 +1,8 @@
 main::__tpy_init: uncovered (module initialization)
-main::view_from_param@16:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::view_from_param@16:0: covered (storage: no_proof_required), summary: known
 main::view_from_borrowing_call@21:0: uncovered (unsupported view source), summary: opaque (unsupported view source)
-main::bytes_view_from_param@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::view_reassigned_from_view@31:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::bytes_view_from_param@26:0: covered (storage: no_proof_required), summary: known
+main::view_reassigned_from_view@31:0: covered (storage: no_proof_required), summary: known
 main::mutated_stays_owned@37:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
 main::owned_return_still_copies@43:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
 main::hoisted_branch@47:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)

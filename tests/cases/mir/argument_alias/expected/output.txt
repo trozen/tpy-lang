@@ -17,3 +17,24 @@ container_select pick b again: 9 3
 touch 3 x x
 tuple_member replace_then 2 5
 tuple_member clear_then 4 0
+printing two: 3
+printing two: 4
+printing alias_call: 3 5
+printing two_set: 1
+printing two_set: 2
+printing set_call: 50 2
+printing two: 6
+printing mid: 2 8
+printing two_set: 1
+printing two_set: 2
+printing fwd_set_call: 3 50 9
+printing global: 7
+printing init: 4
+printing say: 4
+printing shown: 1
+printing shown: 9
+printing mutable_shown: 9 9
+printing custom_sep:|1
+printing Named
+printing ro_two: 2
+printing ro_two_caller: 3

@@ -11,15 +11,15 @@ main::twice@70:0: covered (storage: no_proof_required), summary: known
 main::both@76:0: covered (storage: no_proof_required), summary: known
 main::dict_get_value@83:0: covered (storage: no_proof_required), summary: known
 main::record_len@89:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
-main::builtin_ctors@100:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::append_while_iterating@114:0: covered (storage: no_proof_required), conflicts: replacement, summary: opaque (summary output effect)
+main::builtin_ctors@100:0: covered (storage: no_proof_required), summary: known
+main::append_while_iterating@114:0: covered (storage: no_proof_required), conflicts: replacement, summary: known
 main::mutate_and_read@129:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::clear_and_len@134:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::fresh_str@140:0: covered (storage: no_proof_required), summary: known
 main::fresh_bytes@145:0: covered (storage: no_proof_required), summary: known
 main::set_and_read@149:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 main::identity_argument@156:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
-main::float32_from_int@161:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::float32_from_int@161:0: covered (storage: no_proof_required), summary: known
 main::str_key_aug@168:0: covered (storage: no_proof_required), summary: known
 main::grow@172:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::held_len_key@178:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
@@ -32,8 +32,8 @@ main::Box.__init__@124:4: covered (storage: no_proof_required), summary: known
 part_origin::__tpy_init: uncovered (module initialization)
 part_origin::set_v@16:0: covered (storage: no_proof_required), summary: known
 part_origin::set_and_read@25:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
-part_origin::repr_dangle@31:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary output effect)
-part_origin::repr_bound@37:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_origin::repr_dangle@31:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary stores a loan of the body's storage)
+part_origin::repr_bound@37:0: covered (storage: no_proof_required), summary: known
 part_origin::min_alias@59:0: covered (storage: no_proof_required), conflicts: argument_alias, alias_obligation, summary: known
 part_origin::round_alias@64:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
 part_origin::abs_fresh@69:0: covered (storage: no_proof_required), summary: known
@@ -44,17 +44,17 @@ part_origin::same_alias@92:0: covered (storage: no_proof_required), conflicts: a
 part_origin::same_s@100:0: uncovered (no body to lower)
 part_origin::set_and_len@108:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 part_origin::same_s_alias@113:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
-part_origin::same_s_view@118:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_origin::same_s_view@118:0: covered (storage: no_proof_required), summary: known
 part_origin::smin@128:0: uncovered (no body to lower)
 part_origin::set_and_len2@137:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 part_origin::native_min_alias@142:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
-part_origin::get_dangle@147:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary output effect)
+part_origin::get_dangle@147:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary stores a loan of the body's storage)
 part_origin::pick@156:0: uncovered (no body to lower)
-part_origin::pick_dangle@159:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary output effect)
+part_origin::pick_dangle@159:0: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary stores a loan of the body's storage)
 part_origin::os_readlink@165:0: covered (storage: no_proof_required), summary: known
 part_origin::os_realpath@170:0: covered (storage: no_proof_required), summary: known
-part_origin::main@174:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-part_origin::Keeper.keep@51:4: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary output effect)
+part_origin::main@174:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
+part_origin::Keeper.keep@51:4: covered (storage: no_proof_required), conflicts: scope_end, store_escape, summary: opaque (summary stores a loan of the body's storage)
 part_origin::H.__init__@12:4: covered (storage: no_proof_required), summary: known
 part_origin::Box.__init__@21:4: covered (storage: no_proof_required), summary: known
 part_origin::Keeper.__init__@47:4: covered (storage: no_proof_required), summary: known
@@ -66,13 +66,13 @@ part_os::probe_exists@22:0: covered (storage: no_proof_required), summary: known
 part_os::drop_dir@27:0: covered (storage: no_proof_required), summary: known
 part_os::elapsed_nonneg@32:0: covered (storage: no_proof_required), summary: known
 part_os::rotate@38:0: covered (storage: no_proof_required), summary: known
-part_os::cwd_dangle@43:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
+part_os::cwd_dangle@43:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
 part_os::cwd_bound@50:0: covered (storage: no_proof_required), summary: known
 part_os::nap@58:0: uncovered (stub declares no contract), summary: opaque (stub declares no contract)
 part_os::link_target@63:0: covered (storage: no_proof_required), summary: known
 part_os::duplicate@69:0: uncovered (no body to lower)
 part_os::grow@72:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 part_os::fresh_safe@78:0: covered (storage: no_proof_required), summary: known
-part_os::fresh_dangling@84:0: covered (storage: no_proof_required), conflicts: scope_end, summary: opaque (summary output effect)
+part_os::fresh_dangling@84:0: covered (storage: no_proof_required), conflicts: scope_end, summary: known
 part_os::main@90:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 part_os::Holder.__init__@13:4: covered (storage: no_proof_required), summary: known

@@ -1,11 +1,11 @@
 ka::__tpy_init: uncovered (module initialization)
 ka::f@6:0: covered (storage: no_proof_required), summary: known
 kb::__tpy_init: uncovered (module initialization)
-kb::main@7:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+kb::main@7:0: covered (storage: no_proof_required), summary: known
 la::__tpy_init: uncovered (module initialization)
 la::f@5:0: covered (storage: no_proof_required), summary: known
 lb::__tpy_init: uncovered (module initialization)
-lb::main@5:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+lb::main@5:0: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
 main::main@16:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 pa::__tpy_init: uncovered (module initialization)

@@ -20,7 +20,7 @@ main::capture_field_alias@255:0: covered (storage: not_covered: THIRVarDecl: bor
 main::gen_capture_alias@264:0: uncovered (unsupported hoisted value)
 main::main@272:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::H.meth@22:4: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
-main::O.capture_self_alias@50:4: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::O.capture_self_alias@50:4: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
 main::Cm.__enter__@59:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Cm.__exit__@62:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Box.__init__@9:4: covered (storage: no_proof_required), summary: known

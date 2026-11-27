@@ -3,8 +3,8 @@ main::holder_writes@179:0: uncovered (unsupported parameter type), summary: opaq
 main::make_buf@230:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::make_list@234:0: covered (storage: no_proof_required), summary: known
 main::make_res@238:0: uncovered (custom record special member), summary: opaque (custom record special member)
-main::show_cb@242:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::pick@246:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::show_cb@242:0: covered (storage: no_proof_required), summary: known
+main::pick@246:0: covered (storage: no_proof_required), summary: known
 main::count@316:0: covered (storage: no_proof_required), summary: known
 main::mk@320:0: covered (storage: no_proof_required), summary: known
 main::union_tag@338:0: covered (storage: no_proof_required), summary: known
@@ -49,7 +49,7 @@ main::Placed.__init__@352:4: uncovered (incomplete constructor initialization), 
 main::Pt.__init__@384:4: uncovered (missing record layout)
 main::Closed.__init__@401:4: uncovered (unsupported record fields), summary: opaque (unsupported record fields)
 main::Base.__init__@430:4: covered (storage: no_proof_required), summary: known
-main::Derived.__init__@440:4: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+main::Derived.__init__@440:4: covered (storage: no_proof_required), summary: known
 main::Q0.__init__@455:4: uncovered (incomplete constructor initialization), summary: opaque (incomplete constructor initialization)
 main::BasedOrder.__init__@465:4: uncovered (member definition: custom record special member), summary: opaque (member definition: custom record special member)
 main::ViewSlots.__init__@479:4: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)

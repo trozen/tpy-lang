@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::test@28:0: certified, summary: opaque (summary output effect)
+main::test@28:0: certified, summary: known
 main::Inner.mutate@11:4: covered (storage: no_proof_required), summary: known
 main::Holder.get@21:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Holder.get_ro@24:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known

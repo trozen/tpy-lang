@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::greet@19:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::greet@19:0: covered (storage: no_proof_required), summary: known
 main::main@22:0: uncovered (record initializer type mismatch), summary: opaque (record initializer type mismatch)
 main::Animal.__init__@4:4: covered (storage: no_proof_required), summary: known
 main::Dog.__init__@9:4: covered (storage: no_proof_required), summary: known

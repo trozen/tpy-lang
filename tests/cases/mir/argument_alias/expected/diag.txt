@@ -1,3 +1,6 @@
+part_printing.py:21: warning: 'x' is passed as both 'a' and 'b' of 'two', which modifies it through 'b' while it still uses 'a'; pass a copy ('copy(x)') or restructure so the call does not hand over both
+part_printing.py:44: warning: 'xs' is passed as both 'a' and 'b' of 'forward', which modifies it through 'b' while it still uses 'a'; pass a copy ('copy(xs)') or restructure so the call does not hand over both
+part_printing.py:167: warning: argument 'b' contains 'b.items', which 'ro_two' modifies through parameter 'h' while it still uses 'ro'; pass a copy ('copy(b)') or restructure so the call does not hand over both
 part_tuple_member.py:34: warning: argument 't[0]' is what 'replace_then' modifies through parameter 'h' while it still uses 'q'; pass a copy ('copy(t[0])') or restructure so the call does not hand over both
 part_tuple_member.py:40: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
 part_tuple_member.py:40: warning: argument 't[0]' points into 'xs', which 'clear_then' modifies through parameter 'xs' while it still uses 'q'; pass a copy ('copy(t[0])') or restructure so the call does not hand over both

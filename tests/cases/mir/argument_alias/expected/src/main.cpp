@@ -353,6 +353,7 @@ int32_t element_field(std::vector<Named>& ps) {
 //     named = [Named("a"), Named("b")]
 //     print("touch", touch(named, "abc"), named[0].s, named[1].s)
 //     tuple_member_main()
+//     printing_main()
 void main() {
     std::cout << "other_int" << " " << ::tpyapp::main::other_int(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{1}), {2}) << "\n" << ::tpy::check_signals;
     std::cout << "local_copy" << " " << ::tpyapp::main::local_copy(::tpy::as_mut_lvalue(std::vector<::tpy::BigInt>{3})) << "\n" << ::tpy::check_signals;
@@ -384,11 +385,13 @@ void main() {
     std::vector<Named> named = {Named("a"), Named("b")};
     std::cout << "touch" << " " << ::tpyapp::main::touch(named, "abc") << " " << ::tpy::__getitem__(named, 0).s << " " << ::tpy::__getitem__(named, 1).s << "\n" << ::tpy::check_signals;
     ::tpyapp::part_tuple_member::main();
+    ::tpyapp::part_printing::main();
 }
 
 // from helpers import grow_then_read as gtr
 //
 // # Imported here, not at the top, so the pinned lines above keep their numbers.
+// from part_printing import main as printing_main
 // from part_tuple_member import main as tuple_member_main
 //
 // main()
@@ -397,6 +400,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    ::tpyapp::part_printing::__tpy_init();
     ::tpyapp::main::main();
 }
 

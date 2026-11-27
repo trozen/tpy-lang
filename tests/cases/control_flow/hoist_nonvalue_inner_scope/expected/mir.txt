@@ -1,16 +1,16 @@
 main::__tpy_init: uncovered (module initialization)
 main::make_list@61:0: covered (storage: no_proof_required), summary: known
-main::for_record@66:0: certified, summary: opaque (summary output effect)
+main::for_record@66:0: certified, summary: known
 main::for_list@79:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::for_own_call@90:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
-main::while_one_arm@101:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::nested_if@114:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::sibling_decl@127:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::post_loop_redecl@143:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::while_one_arm@101:0: covered (storage: no_proof_required), summary: known
+main::nested_if@114:0: covered (storage: no_proof_required), summary: known
+main::sibling_decl@127:0: covered (storage: no_proof_required), summary: known
+main::post_loop_redecl@143:0: covered (storage: no_proof_required), summary: known
 main::dyn_protocol@157:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
 main::optional_both_arms@167:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
-main::optional_slot_loop@181:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::optional_rvalue_init@197:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::optional_slot_loop@181:0: covered (storage: no_proof_required), summary: known
+main::optional_rvalue_init@197:0: covered (storage: no_proof_required), summary: known
 main::optional_list_init@206:0: uncovered (missing alias binding), summary: opaque (missing alias binding)
 main::optional_redecl_post_loop@216:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
 main::with_body@257:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

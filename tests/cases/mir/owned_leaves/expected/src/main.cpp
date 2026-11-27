@@ -57,14 +57,14 @@ std::string ret_copy(std::string_view s) {
     return ((x) + (N));
 }
 
-// def global_print() -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
+// def global_print() -> None:  # tpyc: mir(covered) mir_summary(known)
 //     print(G, N, B)
 void global_print() {
     std::cout << G << " " << N << " " << ::tpy::BytesPrinter(B) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: print reads owned leaves through holders
-// def prints(s: str, n: int, b: bytes) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
+// def prints(s: str, n: int, b: bytes) -> None:  # tpyc: mir(covered) mir_summary(known)
 //     print(s, n, b, "lit")
 void prints(std::string_view s, const ::tpy::BigInt& n, ::tpy::BytesView b) {
     std::cout << s << " " << n << " " << ::tpy::BytesPrinter(b) << " " << "lit" << "\n" << ::tpy::check_signals;
@@ -283,7 +283,7 @@ bool overlap_write(std::string_view s) {
 }
 
 // # free function: the storage-form literal is a temporary of the print call's full expression
-// def bytes_print() -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
+// def bytes_print() -> None:  # tpyc: mir(covered) mir_summary(known)
 //     print(b"xy")
 void bytes_print() {
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_literal_owned("xy", 2)) << "\n" << ::tpy::check_signals;
@@ -297,7 +297,7 @@ int32_t expression_arguments(double x, const ::tpy::BigInt& n) {
 }
 
 // # free function: the call's owned result is a temporary of the print call's full expression
-// def print_call(s: str) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
+// def print_call(s: str) -> None:  # tpyc: mir(covered) mir_summary(known)
 //     print(ret_copy(s), end="")
 void print_call(std::string_view s) {
     std::cout << ::tpyapp::main::ret_copy(s) << ::tpy::check_signals;

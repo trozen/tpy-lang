@@ -1,16 +1,16 @@
 main::__tpy_init: uncovered (module initialization)
 main::pick@57:0: certified, summary: known
-main::alias_survives_rebind@61:0: certified, summary: opaque (summary output effect)
-main::rebind_in_loop@69:0: certified, summary: opaque (summary output effect)
-main::borrow_call_rebind@80:0: certified, summary: opaque (summary output effect)
+main::alias_survives_rebind@61:0: certified, summary: known
+main::rebind_in_loop@69:0: certified, summary: known
+main::borrow_call_rebind@80:0: certified, summary: known
 main::none_reassign@90:0: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
-main::scalar_deep@171:0: certified, summary: opaque (summary output effect)
-main::self_view@181:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::scalar_deep@171:0: certified, summary: known
+main::self_view@181:0: covered (storage: no_proof_required), summary: known
 main::with_scalar@189:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::constructor_escape@198:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 main::setter_escape@208:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
 main::getitem_escape@219:0: uncovered (record member holds a borrow), summary: opaque (record member holds a borrow)
-main::nested_list_root@244:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::nested_list_root@244:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
 main::gen_nested_list_root@256:0: uncovered (unsupported hoisted value)
 main::list_root@268:0: uncovered (unsupported metadata: is_arrow), summary: opaque (unsupported metadata: is_arrow)
 main::gen_list_root@279:0: uncovered (unsupported hoisted value)
@@ -20,19 +20,19 @@ main::hoisted_loop@315:0: uncovered (read before definite assignment), summary: 
 main::hoisted_if@328:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
 main::hoisted_nested_if@359:0: uncovered (read before definite assignment), summary: opaque (read before definite assignment)
 main::make_counter@376:0: uncovered (error-return body)
-main::block_nested_if@384:0: certified, summary: opaque (summary output effect)
+main::block_nested_if@384:0: certified, summary: known
 main::block_try_loop@401:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::block_er@418:0: uncovered (error-return body)
 main::block_finally@433:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::block_arm_rebind@453:0: certified, summary: opaque (summary output effect)
+main::block_arm_rebind@453:0: certified, summary: known
 main::block_er_nested@469:0: uncovered (error-return body)
 main::lend_counter@482:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::block_unpack_borrow@489:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::block_borrow_first@502:0: certified, summary: opaque (summary output effect)
-main::block_alias_rebind@529:0: certified, summary: opaque (summary output effect)
+main::block_borrow_first@502:0: certified, summary: known
+main::block_alias_rebind@529:0: certified, summary: known
 main::arm_alias_rebind_try@544:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::arm_alias_rebind_match@560:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::arm_alias_rebind_else@577:0: certified, summary: opaque (summary output effect)
+main::arm_alias_rebind_else@577:0: certified, summary: known
 main::arm_alias_rebind_optional@593:0: uncovered (unsupported metadata: optional_read), summary: opaque (unsupported metadata: optional_read)
 main::make_tagged_pair@606:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::block_unpack_own@612:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

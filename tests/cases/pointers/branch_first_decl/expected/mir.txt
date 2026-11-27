@@ -2,9 +2,9 @@ main::__tpy_init: uncovered (module initialization)
 main::value_type_branches@13:0: covered (storage: no_proof_required), summary: known
 main::else_returns@22:0: covered (storage: no_proof_required), summary: known
 main::multi_var@31:0: covered (storage: no_proof_required), summary: known
-main::rvalue_branch@42:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::reassign_after@51:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::rvalue_branch@42:0: covered (storage: no_proof_required), summary: known
+main::reassign_after@51:0: covered (storage: no_proof_required), summary: known
 main::nested_if@61:0: covered (storage: no_proof_required), summary: known
-main::param_branch@74:0: certified, summary: opaque (summary output effect)
-main::mixed_init@83:0: certified, summary: opaque (summary output effect)
+main::param_branch@74:0: certified, summary: known
+main::mixed_init@83:0: certified, summary: known
 main::Point.__init__@7:4: covered (storage: no_proof_required), summary: known

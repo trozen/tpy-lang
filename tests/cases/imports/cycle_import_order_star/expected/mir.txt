@@ -1,5 +1,5 @@
 ka::__tpy_init: uncovered (module initialization)
-ka::main@6:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+ka::main@6:0: covered (storage: no_proof_required), summary: known
 kb::__tpy_init: uncovered (module initialization)
 kb::bump@4:0: covered (storage: no_proof_required), summary: known
 kc::__tpy_init: uncovered (module initialization)

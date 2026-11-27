@@ -12,8 +12,8 @@ main::comp_target_shadow@101:0: uncovered (unsupported expression type), summary
 main::message@107:0: uncovered (unsupported form conversion), summary: opaque (unsupported form conversion)
 main::assert_message@113:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::match_guard@124:0: uncovered (missing or inconsistent optional read), summary: opaque (missing or inconsistent optional read)
-main::ternary_both_arms@134:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::ternary_range@142:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::ternary_both_arms@134:0: covered (storage: no_proof_required), summary: known
+main::ternary_range@142:0: covered (storage: no_proof_required), summary: known
 main::rotate@168:0: covered (storage: no_proof_required), summary: known
 main::and_receiver@175:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::ternary_receiver@180:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
@@ -40,8 +40,8 @@ main::break_exit@356:0: uncovered (unsupported parameter type), summary: opaque 
 main::break_finally@364:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::step_up@376:0: covered (storage: no_proof_required), summary: known
 main::step_up_spelled@386:0: covered (storage: no_proof_required), summary: known
-main::step_down@396:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::step_mixed@406:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::step_down@396:0: covered (storage: no_proof_required), summary: known
+main::step_mixed@406:0: covered (storage: no_proof_required), summary: known
 main::step_closure@419:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::step_rebind@436:0: covered (storage: no_proof_required), summary: known
 main::finally_step@448:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -52,10 +52,10 @@ main::with_exit_loop@507:0: uncovered (unsupported statement), summary: opaque (
 main::break_two_finally@520:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::finally_around@535:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::for_break_finally@549:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::step_neg_literal@561:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::step_walrus@573:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::step_neg_literal@561:0: covered (storage: no_proof_required), summary: known
+main::step_walrus@573:0: covered (storage: no_proof_required), summary: known
 main::step_suspends@582:0: covered (storage: no_facts: storage facts have not been published)
-main::for_target_kill@590:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::for_target_kill@590:0: covered (storage: no_proof_required), summary: known
 main::terminating_else@600:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::terminating_else_inner@613:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::for_else_assert@628:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

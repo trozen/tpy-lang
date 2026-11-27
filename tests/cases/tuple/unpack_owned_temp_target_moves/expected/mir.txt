@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
-main::sink@25:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::sinka@31:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::sinkn@37:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::sink@25:0: covered (storage: no_proof_required), summary: known
+main::sinka@31:0: covered (storage: no_proof_required), summary: known
+main::sinkn@37:0: covered (storage: no_proof_required), summary: known
 main::mk@43:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::mk_elem@47:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::mkn@51:0: uncovered (unsupported return type), summary: opaque (unsupported return type)

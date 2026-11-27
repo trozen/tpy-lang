@@ -2,8 +2,8 @@ gmod::__tpy_init: uncovered (module initialization)
 main::__tpy_init: uncovered (module initialization)
 main::own_pairs@32:0: uncovered (reference yield)
 main::hooked_pairs@53:0: uncovered (reference yield)
-main::hidden_opt_local@68:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::hidden_opt_param@82:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::hidden_opt_local@68:0: covered (storage: no_proof_required), summary: known
+main::hidden_opt_param@82:0: covered (storage: no_proof_required), summary: known
 main::hidden_opt_capture@88:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::param_inverse@102:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::self_shadow@108:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
@@ -26,7 +26,7 @@ part_closures::source_capture@68:0: uncovered (unsupported local type or form), 
 part_closures::clause1_capture@73:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 part_closures::clause1_lambda@80:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 part_closures::self_consume@89:0: uncovered (unsupported metadata: presize_if_sized), summary: opaque (unsupported metadata: presize_if_sized)
-part_closures::same_stmt@97:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_closures::same_stmt@97:0: covered (storage: no_proof_required), summary: known
 part_closures::own_tuple@103:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 part_closures::lambda_leak@111:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 part_closures::inner_take@120:0: uncovered (container source needs a place), summary: opaque (container source needs a place)

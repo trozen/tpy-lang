@@ -371,7 +371,7 @@ def test_unsupported_select_producers_stay_uncovered(artifacts: Artifacts, mutat
                                                        else {"custom_destructor": True}))
         definitions = MIRDefinitions((replace(constructor, record_layout=layout),))
     elif mutation == "effect":
-        # A constructor whose body has an effect has no summary a caller applies.
+        # A constructor whose body writes a global has an opaque summary no caller applies.
         opaque = definitions.records[node.result_type].callee.identity
     elif mutation == "unstable_operand":
         # Pure field reads are outside the stable scalar operand contract for named storage.
@@ -384,7 +384,7 @@ def test_unsupported_select_producers_stay_uncovered(artifacts: Artifacts, mutat
     request = replace(_request(artifacts, source), definitions=definitions)
     if mutation == "effect":
         request = replace(request, summaries=MappingProxyType({
-            **request.summaries, opaque: MIRSummaryResult.opaque("summary output effect")}))
+            **request.summaries, opaque: MIRSummaryResult.opaque("summary global access")}))
     result = certify_thir_storage(request)
     assert result.requires_proof and result.verdict is MIRStorageVerdict.NOT_COVERED
 

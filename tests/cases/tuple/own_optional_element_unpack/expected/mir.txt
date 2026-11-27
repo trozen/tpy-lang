@@ -7,7 +7,7 @@ main::mkw@37:0: uncovered (unsupported return type), summary: opaque (unsupporte
 main::mkw0@41:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::mkp@45:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::mkq@49:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::show@53:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::show@53:0: covered (storage: no_proof_required), summary: known
 main::bump@60:0: covered (storage: no_proof_required), summary: known
 main::take@67:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::free_fn@104:0: uncovered (unsupported statement), summary: opaque (unsupported statement)

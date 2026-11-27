@@ -1,14 +1,14 @@
 main::__tpy_init: uncovered (module initialization)
-main::test_basic@7:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_variables@12:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_basic@7:0: covered (storage: no_proof_required), summary: known
+main::test_variables@12:0: covered (storage: no_proof_required), summary: known
 main::test_mixed_ops@17:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::test_equality@21:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
-main::test_triple@27:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_triple@27:0: covered (storage: no_proof_required), summary: known
 main::test_descending@31:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
-main::test_short_circuit@35:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_float@42:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_in_condition@46:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_as_expression@53:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_short_circuit@35:0: covered (storage: no_proof_required), summary: known
+main::test_float@42:0: covered (storage: no_proof_required), summary: known
+main::test_in_condition@46:0: covered (storage: no_proof_required), summary: known
+main::test_as_expression@53:0: covered (storage: no_proof_required), summary: known
 main::get_mid@61:0: covered (storage: no_proof_required), summary: opaque (summary global access)
 main::get_high@66:0: covered (storage: no_proof_required), summary: opaque (summary global access)
 main::get_top@71:0: covered (storage: no_proof_required), summary: opaque (summary global access)

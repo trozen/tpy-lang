@@ -56,6 +56,39 @@ main::Log.__init__@203:4: covered (storage: no_proof_required), summary: known
 main::Stack.__init__@229:4: covered (storage: no_proof_required), summary: known
 main::Cell.__init__@259:4: covered (storage: no_proof_required), summary: known
 main::Named.__init__@280:4: covered (storage: no_proof_required), summary: known
+part_printing::__tpy_init: uncovered (module initialization)
+part_printing::two@12:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_printing::alias_call@20:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+part_printing::two_set@25:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_printing::set_call@32:0: covered (storage: no_proof_required), summary: known
+part_printing::forward@38:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_printing::mid@43:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+part_printing::forward_set@48:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
+part_printing::fwd_set_call@53:0: covered (storage: no_proof_required), summary: known
+part_printing::show_global@58:0: covered (storage: no_proof_required), summary: known
+part_printing::global_caller@62:0: covered (storage: no_proof_required), summary: known
+part_printing::method_caller@79:0: covered (storage: no_proof_required), summary: known
+part_printing::mutable_shown@98:0: certified, summary: known
+part_printing::readonly_shown@104:0: certified, summary: known
+part_printing::custom_sep@110:0: uncovered (unsupported metadata: sep_expr), summary: opaque (unsupported metadata: sep_expr)
+part_printing::sep_caller@114:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_printing::to_stderr@119:0: uncovered (unsupported metadata: sink_expr), summary: opaque (unsupported metadata: sink_expr)
+part_printing::stderr_caller@123:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_printing::show_named@138:0: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
+part_printing::named_caller@142:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_printing::ro_two@158:0: covered (storage: not_covered: storage evidence: replacement of external storage retained by a live holder), conflicts: alias_obligation, summary: known
+part_printing::ro_two_caller@165:0: covered (storage: no_proof_required), conflicts: argument_alias, summary: known
+part_printing::main@172:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_printing::Loud.say@75:4: covered (storage: no_proof_required), summary: known
+part_printing::Tally.shown@92:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_printing::Tally.shown@92:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_printing::Named.__str__@133:4: covered (storage: no_proof_required), summary: known
+part_printing::Box.last@153:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_printing::Box.last@153:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+part_printing::Loud.__init__@70:4: covered (storage: no_proof_required), summary: known
+part_printing::Tally.__init__@87:4: covered (storage: no_proof_required), summary: known
+part_printing::Named.__init__@130:4: covered (storage: no_proof_required), summary: known
+part_printing::Box.__init__@149:4: covered (storage: no_proof_required), summary: known
 part_tuple_member::__tpy_init: uncovered (module initialization)
 part_tuple_member::replace_then@21:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known
 part_tuple_member::clear_then@26:0: covered (storage: no_proof_required), conflicts: alias_obligation, summary: known

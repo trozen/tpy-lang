@@ -17,13 +17,13 @@ part_containers::main@32:0: uncovered (unsupported union scalar), summary: opaqu
 part_containers::Seq.__iter__@28:4: uncovered (reference yield)
 part_containers::Seq.__init__@25:4: covered (storage: no_proof_required), summary: known
 part_defaults::__tpy_init: uncovered (module initialization)
-part_defaults::exact_default@20:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-part_defaults::zero_default@24:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-part_defaults::narrow_default@28:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_defaults::exact_default@20:0: covered (storage: no_proof_required), summary: known
+part_defaults::zero_default@24:0: covered (storage: no_proof_required), summary: known
+part_defaults::narrow_default@28:0: covered (storage: no_proof_required), summary: known
 part_defaults::bytes_default@32:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 part_defaults::empty_bytes_default@36:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 part_defaults::enum_default@40:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
-part_defaults::constant_default@44:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_defaults::constant_default@44:0: covered (storage: no_proof_required), summary: known
 part_defaults::pick@68:0: uncovered (no body to lower)
 part_defaults::pick@70:0: uncovered (no body to lower)
 part_defaults::main@75:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
@@ -124,13 +124,13 @@ part_operators::big@118:0: covered (storage: no_proof_required), summary: known
 part_operators::small@122:0: covered (storage: no_proof_required), summary: known
 part_operators::chains@151:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
 part_operators::aug_fallbacks@164:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-part_operators::stores@177:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_operators::stores@177:0: uncovered (union literal needs its literal fact), summary: opaque (union literal needs its literal fact)
 part_operators::main@185:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 part_operators::Box.__add__@16:4: covered (storage: no_proof_required)
 part_operators::Box.__sub__@19:4: covered (storage: no_proof_required)
 part_operators::Box.__eq__@22:4: covered (storage: no_proof_required)
 part_operators::Box.__lt__@25:4: covered (storage: no_proof_required)
-part_operators::Box.__iadd__@28:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
+part_operators::Box.__iadd__@28:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 part_operators::Pinned.__add__@38:4: uncovered (no body to lower)
 part_operators::Pinned.__add__@40:4: uncovered (no body to lower)
 part_operators::Pinned.__sub__@45:4: uncovered (no body to lower)
@@ -143,7 +143,7 @@ part_operators::Wide.__lt__@85:4: uncovered (unsupported parameter type)
 part_operators::Gt.__gt__@93:4: uncovered (unsupported parameter type)
 part_operators::Gt64.__gt__@102:4: uncovered (unsupported parameter type)
 part_operators::Keyed.__getitem__@111:4: covered (storage: no_proof_required), summary: known
-part_operators::Keyed.__setitem__@114:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_operators::Keyed.__setitem__@114:4: covered (storage: no_proof_required), summary: known
 part_operators::Acc.__add__@130:4: covered (storage: no_proof_required)
 part_operators::R.__radd__@146:4: uncovered (unsupported return type)
 part_operators::Box.__init__@13:4: covered (storage: no_proof_required), summary: known
@@ -165,7 +165,7 @@ part_positions::property_setter@51:0: uncovered (container element type mismatch
 part_positions::pick@58:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 part_positions::walk@62:0: uncovered (by-value capture of a borrowed parameter)
 part_positions::for_head@67:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-part_positions::params@85:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_positions::params@85:0: uncovered (union literal needs its literal fact), summary: opaque (union literal needs its literal fact)
 part_positions::narrowed_decl@93:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 part_positions::narrowed_reassign@99:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 part_positions::narrowed_return@106:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
@@ -176,23 +176,23 @@ part_positions::M.__getitem__@17:4: uncovered (unsupported parameter type), summ
 part_positions::M.__setitem__@20:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 part_positions::P.v@42:4: uncovered (unsupported return type), summary: opaque (unsupported return type)
 part_positions::P.v@46:4: covered (storage: no_proof_required), summary: known
-part_positions::Q.m@76:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_positions::Q.m@76:4: covered (storage: no_proof_required), summary: known
 part_positions::M.__init__@14:4: covered (storage: no_proof_required), summary: known
 part_positions::P.__init__@38:4: covered (storage: no_proof_required), summary: known
-part_positions::Q.__init__@73:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_positions::Q.__init__@73:4: covered (storage: no_proof_required), summary: known
 part_positions::RA.__init__@122:4: covered (storage: no_proof_required), summary: known
 part_records::__tpy_init: uncovered (module initialization)
 part_records::bump@28:0: covered (storage: no_proof_required), summary: known
 part_records::local_chain@36:0: uncovered (unsupported union declaration), summary: opaque (unsupported union declaration)
 part_records::arg_chain@44:0: uncovered (payload copy type or access mismatch), summary: opaque (payload copy type or access mismatch)
-part_records::dominant@71:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_records::dominant@71:0: covered (storage: no_proof_required), summary: known
 part_records::operators@120:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 part_records::stores@135:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 part_records::needle@171:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 part_records::main@178:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 part_records::Pen.has_cat@95:4: uncovered (unsupported expression form), summary: opaque (unsupported expression form)
 part_records::Acc.__add__@107:4: covered (storage: no_proof_required)
-part_records::Acc.__iadd__@112:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
+part_records::Acc.__iadd__@112:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 part_records::EqBase.__eq__@156:4: covered (storage: no_proof_required)
 part_records::Base.__init__@14:4: covered (storage: no_proof_required), summary: known
 part_records::Mid.__init__@19:4: covered (storage: no_proof_required), summary: known
@@ -230,7 +230,7 @@ part_shapes::narrow_make@131:0: uncovered (unsupported return type), summary: op
 part_shapes::narrow@145:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 part_shapes::pack@153:0: uncovered (container name type mismatch)
 part_shapes::star@159:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
-part_shapes::float_exact@164:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_shapes::float_exact@164:0: covered (storage: no_proof_required), summary: known
 part_shapes::shares@169:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 part_shapes::shared_alternative@176:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 part_shapes::main@180:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

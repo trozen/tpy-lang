@@ -2185,9 +2185,13 @@ as the corpus grows).
 - **Exception rule** (superseded by the B2 contract's exit rule). The
   primitive contract admits raising (checked overflow, a zero divisor), so
   every `MIROp` is `may_raise`. Under B1 a body containing one had an
-  OPAQUE summary; B2 summarizes it with `normal_return_only=False`. A body
-  that prints is OPAQUE ("summary output effect"): output is no
-  parameter-rooted effect.
+  OPAQUE summary; B2 summarizes it with `normal_return_only=False`. A
+  `MIRPrint` no longer makes a summary opaque (since 2026-11-27): a printing
+  body is KNOWN unless something else refuses it. A `MIRPrint` reads its
+  arguments and may raise, which the summary's reads and exits already
+  state, and writes no TPy storage -- the effect a `transient=True` stub
+  has. A `signal.signal` handler run at print's check point is
+  BUGS.md#signal-handler-writes-unchecked-at-check-points.
 - **Deferred (not covered).** User ValueType records as opaque kinds;
   certifying operations on whole aggregates; enum operations and enum print
   (no enum TypeDef carries the primitive contract); formatter resolution for

@@ -8,7 +8,7 @@ main::optional@15:0: uncovered (async body)
 main::identity@20:0: uncovered (async body)
 main::chained@46:0: uncovered (async body)
 main::cleanup@52:0: uncovered (async body)
-main::main@59:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@59:0: covered (storage: no_proof_required), summary: known
 main::Worker.compute@26:4: uncovered (async body)
 main::Outer.Inner.compute@32:8: uncovered (async body)
 main::Gate.__aenter__@38:4: uncovered (async body)

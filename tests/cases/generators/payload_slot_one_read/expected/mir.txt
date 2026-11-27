@@ -59,7 +59,7 @@ main::gen_expr_section@504:0: uncovered (unsupported statement), summary: opaque
 main::view_section@512:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::main@521:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::<genexpr>@507:14: uncovered (reference yield)
-main::Ctx.__enter__@31:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Ctx.__enter__@31:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Ctx.__exit__@35:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Holder.relay@59:4: uncovered (reference yield)
 main::W.each@72:4: uncovered (reference yield)

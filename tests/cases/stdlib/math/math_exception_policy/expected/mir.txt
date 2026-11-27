@@ -22,6 +22,6 @@ main::evaluation@383:0: uncovered (unsupported statement), summary: opaque (unsu
 main::positions@420:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::main@533:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Roots.get@267:4: covered (storage: no_proof_required), summary: known
-main::Unwind.__enter__@309:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Unwind.__enter__@309:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Unwind.__exit__@313:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Roots.__init__@263:4: covered (storage: no_proof_required), summary: known

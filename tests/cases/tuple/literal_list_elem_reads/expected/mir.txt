@@ -12,7 +12,7 @@ main::closure_reads@106:0: uncovered (unsupported statement), summary: opaque (u
 main::comp_reads@117:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::match_reads@124:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::gen_reads@137:0: uncovered (unsupported hoisted value)
-main::scalar_read@152:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::scalar_read@152:0: covered (storage: no_proof_required), summary: known
 main::dict_read@159:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::main@166:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Reader.read@77:4: uncovered (unsupported statement), summary: opaque (unsupported statement)

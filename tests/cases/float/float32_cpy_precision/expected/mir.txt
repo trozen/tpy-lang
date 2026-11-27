@@ -1,9 +1,9 @@
 main::__tpy_init: uncovered (module initialization)
-main::ops@8:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::reflected@20:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::unary@31:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::accumulate@38:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::method@56:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::ops@8:0: covered (storage: no_proof_required), summary: known
+main::reflected@20:0: covered (storage: no_proof_required), summary: known
+main::unary@31:0: covered (storage: no_proof_required), summary: known
+main::accumulate@38:0: covered (storage: no_proof_required), summary: known
+main::method@56:0: covered (storage: no_proof_required), summary: known
 main::comprehension@64:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
 main::union_literal@70:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::union_value@81:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)

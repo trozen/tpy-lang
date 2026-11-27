@@ -2,4 +2,4 @@ geo::__tpy_init: uncovered (module initialization)
 geo.codec::__tpy_init: uncovered (module initialization)
 geo.codec::hi_nibble@6:0: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
-main::main@6:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@6:0: covered (storage: no_proof_required), summary: known

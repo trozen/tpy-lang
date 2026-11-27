@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::takes_str@6:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::takes_str@6:0: covered (storage: no_proof_required), summary: known
 main::takes_str_opt@9:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::takes_strview_opt@15:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::returns_view@21:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)

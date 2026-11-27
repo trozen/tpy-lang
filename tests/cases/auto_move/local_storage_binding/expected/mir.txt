@@ -12,8 +12,8 @@ main::matched@165:0: uncovered (unsupported statement), summary: opaque (unsuppo
 main::propagated@177:0: uncovered (error-return body)
 main::containers@217:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::hoisted_containers@239:0: uncovered (missing or inconsistent hoisted binding facts), summary: opaque (missing or inconsistent hoisted binding facts)
-main::aliases@259:0: certified, summary: opaque (summary output effect)
-main::copies@274:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::aliases@259:0: certified, summary: known
+main::copies@274:0: covered (storage: no_proof_required), summary: known
 main::escape_copy@294:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::position_aliases@305:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::closure_controls@347:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -21,9 +21,9 @@ main::frame_aliases@369:0: uncovered (unsupported hoisted value)
 main::resumed_value@385:0: uncovered (async body)
 main::async_aliases@389:0: uncovered (async body)
 main::take_cell@405:0: covered (storage: no_proof_required), summary: known
-main::downstream_moves@417:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::downstream_moves@417:0: covered (storage: no_proof_required), summary: known
 main::caught_alias@438:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::escape_move@449:0: certified, summary: opaque (summary output effect)
+main::escape_move@449:0: certified, summary: known
 main::binding_controls@460:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::main@472:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Manager.__enter__@41:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)

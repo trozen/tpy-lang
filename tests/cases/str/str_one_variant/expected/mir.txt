@@ -8,8 +8,8 @@ main::first_text@70:0: covered (storage: no_proof_required), summary: known
 main::first_repr@75:0: covered (storage: no_proof_required), summary: known
 main::loop_text@80:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::bool_elements@88:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
-main::temporaries@102:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::literals@108:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::temporaries@102:0: covered (storage: no_proof_required), summary: known
+main::literals@108:0: covered (storage: no_proof_required), summary: known
 main::callables@117:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::user_class@129:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::main@135:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -2,5 +2,5 @@ main::__tpy_init: uncovered (module initialization)
 main::first@17:0: certified, summary: known
 main::take@21:0: covered (storage: no_proof_required), summary: known
 main::take_copy@27:0: covered (storage: no_proof_required), summary: known
-main::main@31:0: certified, summary: opaque (summary output effect)
+main::main@31:0: certified, summary: known
 main::Payload.__init__@13:4: covered (storage: no_proof_required), summary: known

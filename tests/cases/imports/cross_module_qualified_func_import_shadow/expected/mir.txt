@@ -3,4 +3,4 @@ fa::make@1:0: covered (storage: no_proof_required), summary: known
 fb::__tpy_init: uncovered (module initialization)
 fb::make@1:0: covered (storage: no_proof_required), summary: known
 main::__tpy_init: uncovered (module initialization)
-main::main@6:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@6:0: covered (storage: no_proof_required), summary: known

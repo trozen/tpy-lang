@@ -1,4 +1,4 @@
 main::__tpy_init: uncovered (module initialization)
-main::main@13:0: certified, summary: opaque (summary output effect)
+main::main@13:0: certified, summary: known
 main::pick@21:0: certified, summary: known
 main::P.__init__@9:4: covered (storage: no_proof_required), summary: known

@@ -43,14 +43,14 @@ main::mkn@347:0: uncovered (unsupported return type), summary: opaque (unsupport
 main::sinkn@351:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::mixed_last@355:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
 main::mixed_ins@362:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
-main::first_n@386:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::first_n@386:0: covered (storage: no_proof_required), summary: known
 main::read_loud@391:0: covered (storage: no_proof_required), summary: known
 main::read_mortal@395:0: covered (storage: no_proof_required), summary: opaque (summary record: custom record special member)
 main::read_a@399:0: covered (storage: no_proof_required), summary: known
 main::read_opt@403:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::read_uni@407:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::mk_loud@411:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::held_ix@424:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::held_ix@424:0: covered (storage: no_proof_required), summary: known
 main::held_grow@429:0: uncovered (stub parameter is not a readonly leaf), summary: opaque (stub parameter is not a readonly leaf)
 main::held_order@435:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
 main::held_cond@441:0: uncovered (unsupported metadata: spelled), summary: opaque (unsupported metadata: spelled)

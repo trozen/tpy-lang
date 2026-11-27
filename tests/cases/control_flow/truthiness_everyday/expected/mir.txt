@@ -6,7 +6,7 @@ main::moded_shapes@56:0: uncovered (unsupported expression), summary: opaque (un
 main::operand_positions@72:0: uncovered (unsupported boolean operation), summary: opaque (unsupported boolean operation)
 main::guard_shapes@86:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::drain@104:0: uncovered (condition requires bool), summary: opaque (condition requires bool)
-main::mutate_through_field@112:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::mutate_through_field@112:0: covered (storage: no_proof_required), summary: known
 main::main@120:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Holder.size@19:4: covered (storage: no_proof_required), summary: known
 main::Holder.__init__@13:4: covered (storage: no_proof_required), summary: known

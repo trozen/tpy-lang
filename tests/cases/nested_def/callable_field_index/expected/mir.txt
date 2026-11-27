@@ -1,7 +1,7 @@
 main::__tpy_init: uncovered (module initialization)
 main::inc@17:0: covered (storage: no_proof_required), summary: known
 main::touch@21:0: covered (storage: no_proof_required), summary: known
-main::notify@26:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::notify@26:0: covered (storage: no_proof_required), summary: known
 main::make_values@30:0: covered (storage: no_proof_required), summary: known
 main::key@34:0: covered (storage: no_proof_required), summary: known
 main::arg@39:0: covered (storage: no_proof_required), summary: known

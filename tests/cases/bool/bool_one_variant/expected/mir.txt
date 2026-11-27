@@ -6,7 +6,7 @@ main::first@72:0: covered (storage: no_proof_required), summary: known
 main::loop_truth@77:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::bool_elements@85:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
 main::user_classes@99:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
-main::literals@107:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::literals@107:0: covered (storage: no_proof_required), summary: known
 main::callables@114:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::main@124:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Flag.__bool__@13:4: covered (storage: no_proof_required), summary: known

@@ -152,7 +152,7 @@ main::none_gen@1384:0: uncovered (match across a suspension)
 main::none_guard@1393:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::none_guard_call@1401:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::none_print@1412:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::none_print_no_arm@1418:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::none_print_no_arm@1418:0: covered (storage: no_proof_required), summary: known
 main::none_chk@1426:0: uncovered (error-return body)
 main::none_er@1435:0: uncovered (error-return body)
 main::none_er_no_arm@1442:0: uncovered (error-return body)

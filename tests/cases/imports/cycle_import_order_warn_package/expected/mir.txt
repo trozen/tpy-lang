@@ -4,7 +4,7 @@ main::__tpy_init: uncovered (module initialization)
 main::main@9:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 pkg::__tpy_init: uncovered (module initialization)
 pkg.a::__tpy_init: uncovered (module initialization)
-pkg.a::main@11:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+pkg.a::main@11:0: covered (storage: no_proof_required), summary: known
 pkg.a::Item.__init__@4:4: covered (storage: no_proof_required), summary: known
 pkg.b::__tpy_init: uncovered (module initialization)
 pkg.b::grow@4:0: covered (storage: no_proof_required), summary: known

@@ -925,7 +925,10 @@ def test_print_arguments_share_one_full_expression_region(lowered_active) -> Non
     call, printed = (next(i for i, line in enumerate(lines) if marker in line)
                      for marker in ("call main::ret_copy(", "print ("))
     assert call < printed
-    assert lowered_active.summaries["print_call"].reason == "summary output effect"
+    # The print writes nothing the summary has to publish.
+    summary = lowered_active.summaries["print_call"]
+    assert summary.state is MIRSummaryState.KNOWN, summary.reason
+    assert not summary.summary.writes and not summary.summary.normal_return_only
 
 
 def test_loop_temporaries_initialize_per_activation(lowered_active) -> None:

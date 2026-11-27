@@ -1,15 +1,15 @@
 main::__tpy_init: uncovered (module initialization)
-main::show_assign@8:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::show_assign@8:0: covered (storage: no_proof_required), summary: known
 main::walrus_comprehension_fn@54:0: uncovered (unsupported record initializer), summary: opaque (unsupported record initializer)
-main::show_views@125:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::show_views@125:0: covered (storage: no_proof_required), summary: known
 main::walrus_comprehension_first_fn@151:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
 main::literal_seed_fn@181:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
-main::show_loop_rebind@238:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::show_loop_rebind@238:0: covered (storage: no_proof_required), summary: known
 main::loop_rebind_view_fn@259:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
 main::loop_rebind_param@278:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
 main::loop_rebind_elem@289:0: uncovered (unsupported native target binding), summary: opaque (unsupported native target binding)
 main::loop_rebind_gen@301:0: uncovered (unsupported hoisted value)
-main::loop_widen_after_fn@326:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::loop_widen_after_fn@326:0: covered (storage: no_proof_required), summary: known
 main::genexpr_walrus_fn@346:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
 main::genexpr_walrus_shadow@359:0: covered (storage: no_proof_required), summary: known
 main::genexpr_walrus_sibling_fn@369:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
@@ -18,11 +18,11 @@ main::genexpr_walrus_write_only_fn@394:0: uncovered (stub protocol argument is n
 main::walrus_global_fn@407:0: uncovered (order-sensitive eager operands), summary: opaque (order-sensitive eager operands)
 main::walrus_shadow_fn@422:0: uncovered (unsupported metadata: cpp_type), summary: opaque (unsupported metadata: cpp_type)
 main::mk_strs@435:0: covered (storage: no_proof_required), summary: known
-main::show_loop_rebind_temp@447:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::show_loop_rebind_temp@447:0: covered (storage: no_proof_required), summary: known
 main::loop_rebind_temp_fn@455:0: uncovered (container source needs a place), summary: opaque (container source needs a place)
 main::mk_bytes@468:0: covered (storage: no_proof_required), summary: known
-main::show_loop_rebind_temp_bytes@480:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::show_unpack_name_str@494:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::show_loop_rebind_temp_bytes@480:0: covered (storage: no_proof_required), summary: known
+main::show_unpack_name_str@494:0: covered (storage: no_proof_required), summary: known
 main::<genexpr>@339:11: uncovered (uncertified binary operation)
 main::<genexpr>@341:11: covered (storage: no_facts: storage facts have not been published)
 main::<genexpr>@356:13: uncovered (unsupported parameter type)

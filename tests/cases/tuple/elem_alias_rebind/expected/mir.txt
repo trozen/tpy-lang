@@ -1,26 +1,26 @@
 main::__tpy_init: uncovered (module initialization)
 main::first@59:0: uncovered (generic body)
-main::tuple_local@64:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
-main::param_rebind@74:0: certified, summary: opaque (summary output effect)
+main::tuple_local@64:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::param_rebind@74:0: certified, summary: known
 main::inline_elem@83:0: certified, summary: opaque (summary storage or value shape)
 main::own_param@93:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
-main::elem_reseat@102:0: certified, summary: opaque (summary output effect)
-main::readonly_reseat@111:0: certified, summary: opaque (summary output effect)
+main::elem_reseat@102:0: certified, summary: known
+main::readonly_reseat@111:0: certified, summary: known
 main::closure@120:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::match_arm@133:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::loop_body@148:0: certified, summary: opaque (summary output effect)
+main::loop_body@148:0: certified, summary: known
 main::gen@158:0: uncovered (unsupported pointer capture)
 main::try_finally@169:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::del_own_then_borrow@180:0: certified, summary: opaque (summary output effect)
+main::del_own_then_borrow@180:0: certified, summary: known
 main::del_unpack@189:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::del_list_elem@199:0: certified, summary: opaque (summary output effect)
-main::del_borrow_call@208:0: certified, summary: opaque (summary output effect)
+main::del_list_elem@199:0: certified, summary: known
+main::del_borrow_call@208:0: certified, summary: known
 main::del_max_min@216:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::del_generic@224:0: uncovered (unsupported metadata: template_args_cpp), summary: opaque (unsupported metadata: template_args_cpp)
-main::del_tuple_elem@232:0: certified, summary: opaque (summary output effect)
+main::del_tuple_elem@232:0: certified, summary: known
 main::del_nonlocal@243:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::del_fresh_only@255:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::del_alias@264:0: certified, summary: opaque (summary output effect)
+main::del_alias@264:0: certified, summary: known
 main::del_keep@274:0: uncovered (unsupported container element), summary: opaque (unsupported container element)
 main::del_nested_record@285:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::del_nested_elem@296:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
@@ -32,15 +32,15 @@ main::coro@344:0: uncovered (async body)
 main::gen_del@357:0: uncovered (unsupported pointer capture)
 main::gen_except@372:0: uncovered (try across a suspension)
 main::opt_reseat@382:0: uncovered (unsupported optional reseat), summary: opaque (unsupported optional reseat)
-main::single@393:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
-main::scalar_twin@401:0: certified, summary: opaque (summary output effect)
+main::single@393:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
+main::scalar_twin@401:0: certified, summary: known
 main::main@409:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Box.__iadd__@16:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Box.__enter__@20:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Box.__exit__@23:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::H.get_b@43:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::H.get_c@46:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
-main::H.rebind@50:4: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::H.rebind@50:4: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
 main::Box.__init__@12:4: covered (storage: no_proof_required), summary: known
 main::BoxErr.__init__@30:4: uncovered (missing record layout)
 main::H.__init__@39:4: covered (storage: no_proof_required), summary: known

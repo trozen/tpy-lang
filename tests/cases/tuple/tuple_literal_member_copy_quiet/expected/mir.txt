@@ -9,7 +9,7 @@ main::arg_quiet@57:0: uncovered (call needs finalized known summary), summary: o
 main::setitem_quiet@62:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
 main::show@75:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::field_quiet@81:0: uncovered (unsupported container element), summary: opaque (unsupported container element)
-main::local_alias@90:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: opaque (summary output effect)
+main::local_alias@90:0: covered (storage: not_covered: THIRVarDecl: borrowed operation has no MIR correspondence), summary: known
 main::walrus_alias@98:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
 main::main@106:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::C.__init__@14:4: covered (storage: no_proof_required), summary: known

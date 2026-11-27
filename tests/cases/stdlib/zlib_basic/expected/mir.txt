@@ -9,7 +9,7 @@ main::chunks_of@185:0: uncovered (unsupported hoisted value)
 main::generator_body@193:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::comprehension@200:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
 main::with_body@206:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::constants@214:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::constants@214:0: covered (storage: no_proof_required), summary: known
 main::main@222:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::Unpacker.feed@90:4: uncovered (unsupported owned-leaf expression), summary: opaque (unsupported owned-leaf expression)
 main::Unpacker.__init__@86:4: uncovered (member definition: missing constructor definition), summary: opaque (member definition: missing constructor definition)

@@ -57,7 +57,7 @@ main::Pick.__or__@284:4: uncovered (no body to lower)
 main::Pick.__or__@288:4: uncovered (no body to lower)
 main::Base.__add__@296:4: covered (storage: no_proof_required)
 main::Base.__contains__@299:4: covered (storage: no_proof_required), summary: known
-main::Base.__iadd__@302:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
+main::Base.__iadd__@302:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Base.__neg__@306:4: covered (storage: no_proof_required)
 main::GBase.__add__@319:4: uncovered (generic body)
 main::GBase.__contains__@322:4: uncovered (generic body)

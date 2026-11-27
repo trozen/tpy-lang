@@ -107,7 +107,7 @@ part_record_consumers::combinators@135:0: uncovered (print argument needs a scal
 part_record_consumers::callees@141:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 part_record_consumers::arrays_and_iterators@151:0: uncovered (call needs resolved ordinary callee), summary: opaque (call needs resolved ordinary callee)
 part_record_consumers::main@162:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-part_record_consumers::Steps.__iter__@17:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
+part_record_consumers::Steps.__iter__@17:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 part_record_consumers::Steps.__next__@21:4: uncovered (error-return body)
 part_record_consumers::Source.__iter__@29:4: covered (storage: no_proof_required)
 part_record_consumers::NamedSteps.begin@37:4: covered (storage: no_proof_required), summary: known
@@ -137,7 +137,7 @@ part_record_frames::Counts.__iter__@31:4: uncovered (unsupported owned_value cap
 part_record_frames::GenCounts.__iter__@44:4: uncovered (generic body)
 part_record_frames::SizedIter.__iter__@101:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 part_record_frames::SizedIter.__next__@104:4: uncovered (error-return body)
-part_record_frames::SizedIter.size@109:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+part_record_frames::SizedIter.size@109:4: covered (storage: no_proof_required), summary: known
 part_record_frames::SizedBag.__iter__@115:4: covered (storage: no_proof_required)
 part_record_frames::Pairs.__init__@16:4: covered (storage: no_proof_required), summary: known
 part_record_frames::Counts.__init__@27:4: covered (storage: no_proof_required), summary: known

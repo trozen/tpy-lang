@@ -353,14 +353,15 @@ def test_owned_and_self_alias_method_bodies(body: str) -> None:
     # The constructor's own body refuses, or summarizes no known effects: a
     # caller has no summary to apply.
     ("value: int32 = 5", "pass", "call needs finalized known summary"),
-    ("value: int32", "self.value = value\n        print(value)", "call needs finalized known summary"),
+    ("value: int32", "self.value = value\n        global seen\n        seen = value",
+     "call needs finalized known summary"),
     ("value: tuple[tuple[int32, int32], int32]", "self.value = ((value, value), value)", "unsupported record fields"),
     ("value: tuple[int32, int32] | None", "self.value = (value, value)", "unsupported record fields"),
 ])
 def test_real_constructor_effects_and_sibling_shapes_remain_uncovered(
     declaration: str, assignment: str, reason: str,
 ) -> None:
-    source = ("from tpy import int32\nclass Record:\n    " + declaration
+    source = ("from tpy import int32\nseen = 0\nclass Record:\n    " + declaration
               + "\n    def __init__(self, value: int32):\n        " + assignment
               + "\ndef build() -> int32:\n    record = Record(1)\n    return 0\n")
     compiler, modules = _compile(source)

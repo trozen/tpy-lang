@@ -26,6 +26,8 @@ from .prepare import validate_function
 SOURCE = """\
 from tpy import int32, Own, String
 
+effect_seen = 0
+
 
 class Base:
     n: int32
@@ -110,8 +112,9 @@ class Effect:
     n: int32
 
     def __init__(self, n: int32) -> None:
+        global effect_seen
         self.n = n
-        print(n)
+        effect_seen = n
 
 
 class EffectSub(Effect):
@@ -447,6 +450,7 @@ def test_base_initializer_refusals(program: _Program) -> None:
                     definitions) == "base constructor called twice"
     # A base whose constructor has no usable summary refuses the derived body's call.
     assert program.verdicts["EffectSub.__init__"].reason == "call needs finalized known summary"
+    assert program.verdicts["Effect.__init__"].summary.reason == "summary global access"
     assert _refusal(sub, MIRDefinitions()) == "base definition: missing constructor definition"
 
 
@@ -483,6 +487,8 @@ def test_inherited_constructor_shape_refusals(program: _Program, change: str) ->
 BASE_CALLS = """\
 from tpy import int32
 
+loud_seen = 0
+
 
 class Empty:
     def __init__(self) -> None:
@@ -499,7 +505,8 @@ class AfterEmpty(Empty):
 
 class Loud:
     def __init__(self, n: int32 = 7) -> None:
-        print(n)
+        global loud_seen
+        loud_seen = n
 
 
 class SkipsLoud(Loud):
@@ -541,9 +548,9 @@ def test_a_base_call_initializing_no_field_reads_nothing() -> None:
 
 def test_a_skipped_base_with_defaulted_parameters_is_its_call() -> None:
     verdicts = _base_call_verdicts()
-    # C++ runs `Loud(7)`, which prints: the derived summary never drops it as normal-return.
-    # The skipped base is a call of `Loud.__init__`, whose output effect leaves it no known summary.
+    # C++ runs `Loud(7)`, which writes a global: the derived body never drops the call.
+    # The skipped base is a call of `Loud.__init__`, whose global write leaves it no known summary.
     assert verdicts["SkipsLoud.__init__"].reason == "call needs finalized known summary"
-    assert verdicts["Loud.__init__"].summary.reason == "summary output effect"
+    assert verdicts["Loud.__init__"].summary.reason == "summary global access"
     # A call omitting a defaulted argument binds no value for it, as at any call.
     assert verdicts["SkipsQuiet.__init__"].reason == "incomplete constructor arguments"

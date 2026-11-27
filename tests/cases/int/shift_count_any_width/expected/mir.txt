@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::free_fn@41:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::free_fn@41:0: covered (storage: no_proof_required), summary: known
 main::gen@60:0: incomplete (suspension: loan of caller storage held across a suspension)
 main::async_fn@66:0: uncovered (async body)
 main::comp@73:0: covered (storage: no_proof_required), summary: known
@@ -8,8 +8,8 @@ main::cm_body@85:0: uncovered (unsupported statement), summary: opaque (unsuppor
 main::try_finally@92:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::er_body@102:0: uncovered (error-return body)
 main::match_arm@109:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::aug_local@121:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::pending@130:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::aug_local@121:0: covered (storage: no_proof_required), summary: known
+main::pending@130:0: covered (storage: no_proof_required), summary: known
 main::negative@141:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::wrap@156:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
 main::main@160:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -63,7 +63,7 @@ main::walk@150:0: uncovered (unsupported parameter type)
 main::same@294:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::differ@298:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
 main::takes@358:0: covered (storage: no_proof_required), summary: known
-main::note@362:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::note@362:0: covered (storage: no_proof_required), summary: known
 main::tenfold@366:0: covered (storage: no_proof_required), summary: known
 main::count_to@370:0: covered (storage: no_facts: storage facts have not been published)
 main::count_leaves@377:0: uncovered (unsupported parameter type), summary: opaque (recursive or recursion-dependent call)

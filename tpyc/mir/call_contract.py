@@ -427,6 +427,8 @@ class MIRCallSummary:
 
     Only parameter-rooted effects are representable. Other roots require an
     explicit contract, not interpreting an absent root as an empty effect.
+    What is no TPy storage (standard output, the file system) is no root: a
+    print or a `transient=True` stub publishes nothing for it.
     Every effect is promised over ALL exits: the possible writes cover a
     prefix of the body ending in a throw, a raising nested call included,
     and the loans the callee may store in objects the caller reaches are

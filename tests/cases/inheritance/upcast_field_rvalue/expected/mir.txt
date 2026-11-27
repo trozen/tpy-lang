@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
-main::show@49:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::show@49:0: covered (storage: no_proof_required), summary: known
 main::free_position@56:0: uncovered (unsupported metadata: move), summary: opaque (unsupported metadata: move)
 main::method_position@64:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 main::ctor_position@70:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

@@ -1,12 +1,12 @@
 main::__tpy_init: uncovered (module initialization)
 main::mutate_point@45:0: covered (storage: no_proof_required), summary: known
 main::read_point@48:0: covered (storage: no_proof_required), summary: known
-main::test_read_only_loop@51:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_non_readonly_method_loop@59:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_field_mutate_loop@66:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_nested_field_mutate_loop@73:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_nested_loop_mutate@80:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_nested_loop_read@92:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_read_only_loop@51:0: covered (storage: no_proof_required), summary: known
+main::test_non_readonly_method_loop@59:0: covered (storage: no_proof_required), summary: known
+main::test_field_mutate_loop@66:0: covered (storage: no_proof_required), summary: known
+main::test_nested_field_mutate_loop@73:0: covered (storage: no_proof_required), summary: known
+main::test_nested_loop_mutate@80:0: covered (storage: no_proof_required), summary: known
+main::test_nested_loop_read@92:0: covered (storage: no_proof_required), summary: known
 main::bump_field_nested@101:0: covered (storage: no_proof_required), summary: known
 main::bump_param_subscript@109:0: covered (storage: no_proof_required), summary: known
 main::read_param_subscript@114:0: covered (storage: no_proof_required), summary: known
@@ -28,15 +28,15 @@ main::bump_in_try@297:0: uncovered (unsupported statement), summary: opaque (uns
 main::bump_in_match@308:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::bump_in_closure@317:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::test_chain_source_loops@324:0: uncovered (unsupported native container element), summary: opaque (unsupported native container element)
-main::test_assign_to_local_loop@363:0: certified, summary: opaque (summary output effect)
+main::test_assign_to_local_loop@363:0: certified, summary: known
 main::find_point@371:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
-main::test_pass_to_mutating_func@378:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_pass_to_readonly_func@385:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_pass_to_mutating_func@378:0: covered (storage: no_proof_required), summary: known
+main::test_pass_to_readonly_func@385:0: covered (storage: no_proof_required), summary: known
 main::test_ptr_from_loop_var@393:0: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
-main::test_value_type_loop@401:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_sequential_loops_same_var@409:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_bigint_const_ref@419:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
-main::test_bigint_mutated@427:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::test_value_type_loop@401:0: covered (storage: no_proof_required), summary: known
+main::test_sequential_loops_same_var@409:0: covered (storage: no_proof_required), summary: known
+main::test_bigint_const_ref@419:0: covered (storage: no_proof_required), summary: known
+main::test_bigint_mutated@427:0: covered (storage: no_proof_required), summary: known
 main::Point.value@25:4: covered (storage: no_proof_required), summary: known
 main::Grid.bump_own@38:4: covered (storage: no_proof_required), summary: known
 main::Shelf.bump_row@186:4: covered (storage: no_proof_required), summary: known

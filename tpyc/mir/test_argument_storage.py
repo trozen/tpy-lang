@@ -250,14 +250,16 @@ def rejected(seed: Cell) -> int32:
         return c
     return 0
 ''', "summary record: custom record special member", "ignore_hook"),
-    ('''def noisy(cell: readonly[Cell]) -> int32:
-    print(cell.value)
+    ('''last_value = 0
+def noisy(cell: readonly[Cell]) -> int32:
+    global last_value
+    last_value = cell.value
     return cell.value
 def rejected(seed: Cell) -> int32:
     for c in two(noisy(Cell(1)), seed):
         return c
     return 0
-''', "call needs finalized known summary", None),
+''', "summary global access", "noisy"),
     ('''global_value = 1
 def rejected() -> int32:
     for c in items(Cell(global_value)):

@@ -22,7 +22,7 @@ main::tuple_local@251:0: uncovered (try across a suspension)
 main::main@259:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::Counter.gen_method@37:4: uncovered (try across a suspension)
 main::Counter.async_method@46:4: uncovered (async body)
-main::Guard.__enter__@233:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Guard.__enter__@233:4: covered (storage: no_proof_required), summary: known
 main::Guard.__exit__@237:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Box.__init__@10:4: covered (storage: no_proof_required), summary: known
 main::Counter.__init__@33:4: covered (storage: no_proof_required), summary: known

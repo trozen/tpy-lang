@@ -1,12 +1,12 @@
 main::__tpy_init: uncovered (module initialization)
 main::main@9:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
 pkg::__tpy_init: uncovered (module initialization)
-pkg::main@11:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+pkg::main@11:0: covered (storage: no_proof_required), summary: known
 pkg::X.__init__@4:4: covered (storage: no_proof_required), summary: known
 pkg.sub::__tpy_init: uncovered (module initialization)
 pkg.sub::grow@4:0: covered (storage: no_proof_required), summary: known
 rpk::__tpy_init: uncovered (module initialization)
-rpk::main@10:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+rpk::main@10:0: covered (storage: no_proof_required), summary: known
 rpk::X.__init__@3:4: covered (storage: no_proof_required), summary: known
 rpk.sub::__tpy_init: uncovered (module initialization)
 rpk.sub::grow@4:0: covered (storage: no_proof_required), summary: known

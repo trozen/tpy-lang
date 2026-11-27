@@ -1,13 +1,13 @@
 main::__tpy_init: uncovered (module initialization)
-main::ordinary_aliases@142:0: certified, summary: opaque (summary output effect)
+main::ordinary_aliases@142:0: certified, summary: known
 main::main@153:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Cell.mutate@19:4: certified, summary: opaque (summary output effect)
+main::Cell.mutate@19:4: certified, summary: known
 main::Cell.read@27:4: certified, summary: known
 main::Cell.inferred_read@32:4: certified, summary: known
 main::Cell.nested@37:4: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::Cell.generic@51:4: uncovered (generic body)
 main::Cell.concrete@57:4: certified, summary: known
-main::Cell.reassign@62:4: certified, summary: opaque (summary output effect)
+main::Cell.reassign@62:4: certified, summary: known
 main::Cell.steps@73:4: uncovered (unsupported hoisted value)
 main::Cell.rebound_steps@81:4: uncovered (unsupported hoisted value)
 main::Cell.readonly_steps@91:4: uncovered (unsupported hoisted value)

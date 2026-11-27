@@ -451,7 +451,7 @@ def test_live_annotation_checks_follow_update_mode(update, tmp_path, servers):
         assert forked.annotation_errors == [
             "main.py: Line 2: expected type 'str' for 'x' but got 'int32'",
             "main.py: Line 1: expected mir(conflict /nothing/) for 'main' but MIR says covered "
-            "(storage: no_proof_required), summary: opaque (summary output effect)",
+            "(storage: no_proof_required), summary: known",
             "main.py: Line 3: expected mir_owned(y) in 'main' but MIR writes y as scalar"]
 
 

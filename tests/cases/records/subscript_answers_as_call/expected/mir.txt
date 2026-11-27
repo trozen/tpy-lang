@@ -1,12 +1,12 @@
 main::__tpy_init: uncovered (module initialization)
-main::key_of@274:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::key_of@274:0: covered (storage: no_proof_required), summary: known
 main::wrap@279:0: certified, summary: known
 main::held_rec@286:0: uncovered (unknown reference source), summary: opaque (unknown reference source)
 main::long_key@291:0: covered (storage: no_proof_required), summary: known
 main::view@295:0: uncovered (unsupported metadata: materialize), summary: opaque (unsupported metadata: materialize)
-main::trace@300:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::trace@300:0: covered (storage: no_proof_required), summary: known
 main::label@305:0: covered (storage: no_proof_required), summary: known
-main::pick@309:0: certified, summary: opaque (summary output effect)
+main::pick@309:0: certified, summary: known
 main::make_token@325:0: covered (storage: no_proof_required), summary: known
 main::spend@330:0: covered (storage: no_proof_required), summary: known
 main::tail@334:0: covered (storage: no_proof_required), summary: known
@@ -86,10 +86,10 @@ main::Stages.__getitem__@201:4: uncovered (no body to lower)
 main::Stages.__getitem__@206:4: uncovered (no body to lower)
 main::OwnKeys.__getitem__@216:4: covered (storage: no_proof_required), summary: known
 main::OwnKeys.__setitem__@219:4: covered (storage: no_proof_required), summary: known
-main::Props.rec@239:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
-main::Props.rec@239:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
-main::Props.rec_m@243:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
-main::Props.index@248:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Props.rec@239:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Props.rec@239:4#2: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Props.rec_m@243:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
+main::Props.index@248:4: covered (storage: no_proof_required), summary: known
 main::Grid.__getitem__@262:4: covered (storage: no_proof_required), summary: known
 main::Token.use@321:4: uncovered (missing receiver fact)
 main::Shelf.get@366:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known

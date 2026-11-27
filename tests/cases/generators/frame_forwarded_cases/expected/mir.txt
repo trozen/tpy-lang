@@ -11,6 +11,6 @@ main::async_loop@110:0: uncovered (async body)
 main::async_try_loop@120:0: uncovered (async body)
 main::take_first@132:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::main@138:0: uncovered (unsupported metadata: cpp_template), summary: opaque (unsupported metadata: cpp_template)
-main::Ctx.__enter__@14:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: opaque (summary output effect)
+main::Ctx.__enter__@14:4: covered (storage: not_covered: borrow evidence: demanded operation is not a supported record borrow), summary: known
 main::Ctx.__exit__@18:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Ctx.__init__@11:4: covered (storage: no_proof_required), summary: known

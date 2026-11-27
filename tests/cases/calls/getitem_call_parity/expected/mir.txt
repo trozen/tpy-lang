@@ -36,7 +36,7 @@ main::Builder.add@197:4: covered (storage: not_covered: borrow evidence: demande
 main::Picker.__getitem__@221:4: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::Picker.__getitem__@221:4#2: uncovered (unsupported local type or form), summary: opaque (unsupported local type or form)
 main::Shell.size@235:4: covered (storage: no_proof_required), summary: known
-main::Shell.size@239:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Shell.size@239:4: covered (storage: no_proof_required), summary: known
 main::Item.__init__@14:4: covered (storage: no_proof_required), summary: known
 main::Bag.__init__@21:4: covered (storage: no_proof_required), summary: known
 main::Other.__init__@58:4: covered (storage: no_proof_required), summary: known

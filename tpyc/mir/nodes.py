@@ -475,9 +475,10 @@ class MIRCallStmt:
 
 @dataclass(frozen=True)
 class MIRPrint:
-    """Write inert leaves to standard output through the runtime's scalar
-    formatter: a read of each argument, and an effect outside every
-    parameter-rooted summary."""
+    """Write scalar and owned leaves (str, bytes, String, int and their
+    views) to standard output through the runtime's formatter: a read of each
+    argument and a possible exceptional exit; it writes no TPy storage, so a
+    summary publishes nothing more for it."""
     arguments: tuple[MIRSlotId, ...]
     loc: SourceLocation | None = None
 

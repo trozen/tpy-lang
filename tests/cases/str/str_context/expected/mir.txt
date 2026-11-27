@@ -1,5 +1,5 @@
 main::__tpy_init: uncovered (module initialization)
 main::greet@4:0: covered (storage: no_proof_required), summary: known
 main::get_name@7:0: covered (storage: no_proof_required), summary: known
-main::main@16:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::main@16:0: covered (storage: no_proof_required), summary: known
 main::Person.__init__@13:4: covered (storage: no_proof_required), summary: known

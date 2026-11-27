@@ -39,7 +39,7 @@ main::power@292:0: uncovered (no body to lower)
 main::power@294:0: uncovered (no body to lower)
 main::flag@301:0: uncovered (no body to lower)
 main::flag@303:0: uncovered (no body to lower)
-main::plain_flag@309:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::plain_flag@309:0: covered (storage: no_proof_required), summary: known
 main::kshort@337:0: uncovered (no body to lower)
 main::kshort@339:0: uncovered (no body to lower)
 main::named@361:0: uncovered (no body to lower)
@@ -72,7 +72,7 @@ main::effect@618:0: uncovered (no body to lower)
 main::effect@620:0: uncovered (no body to lower)
 main::pre@629:0: uncovered (no body to lower)
 main::pre@631:0: uncovered (no body to lower)
-main::log@643:0: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::log@643:0: covered (storage: no_proof_required), summary: known
 main::walrus@649:0: uncovered (no body to lower)
 main::walrus@651:0: uncovered (no body to lower)
 main::weigh@694:0: covered (storage: no_proof_required), summary: known

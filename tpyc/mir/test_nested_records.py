@@ -45,6 +45,8 @@ from .reach import reaches, storage_destination, storage_exclusions
 SOURCE = """\
 from tpy import int32, Own, ValueType, copy, readonly
 
+effect_seen = 0
+
 
 class Point:
     x: int32
@@ -249,8 +251,9 @@ class Effect:
     n: int32
 
     def __init__(self, n: int32) -> None:
+        global effect_seen
         self.n = n
-        print(n)
+        effect_seen = n
 
 
 class HasEffect:
@@ -779,9 +782,10 @@ def test_a_definition_composes_its_members(program: _Program, name: str, reason:
 
 def test_a_member_constructor_with_effects_is_a_call_of_no_known_summary(program: _Program) -> None:
     # The record's storage verifies; its constructor's body calls `Effect(n)`,
-    # whose summary its print leaves unknown.
+    # whose summary its global write leaves unknown.
     assert isinstance(_definition(program, "HasEffect"), MIRConstructorDefinition)
     assert _refusal(program, "HasEffect.__init__") == "call needs finalized known summary"
+    assert program.verdicts["Effect.__init__"].summary.reason == "summary global access"
 
 
 def test_a_missing_member_definition_refuses_by_member(program: _Program) -> None:

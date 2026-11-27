@@ -17,7 +17,7 @@ main::in_match@152:0: uncovered (unsupported statement), summary: opaque (unsupp
 main::in_error_return@164:0: uncovered (error-return body)
 main::ret_param_unpack@174:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::ret_param_data_unpack@179:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
-main::swap_records@185:0: certified, summary: opaque (summary output effect)
+main::swap_records@185:0: certified, summary: known
 main::reverse_liveness@194:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::value_targets@209:0: uncovered (missing or invalid layout fact), summary: opaque (missing or invalid layout fact)
 main::optional_elem@228:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)

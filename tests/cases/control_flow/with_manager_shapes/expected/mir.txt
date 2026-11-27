@@ -7,7 +7,7 @@ main::deref_manager@78:0: uncovered (unsupported statement), summary: opaque (un
 main::loop_exits@91:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::ret_through@102:0: uncovered (unsupported statement), summary: opaque (unsupported statement)
 main::main@107:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
-main::Gate.__enter__@13:4: covered (storage: no_proof_required), summary: opaque (summary output effect)
+main::Gate.__enter__@13:4: covered (storage: no_proof_required), summary: known
 main::Gate.__exit__@17:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
 main::Sup.__enter__@22:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)
 main::Sup.__exit__@25:4: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
