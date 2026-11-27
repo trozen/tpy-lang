@@ -18874,8 +18874,8 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                allow_whole_optional=True)
     it_pb = _protocol_binding(ptype)
     # An owning element slot's argument is `_owning_slot_arg`'s (through
-    # `converted_arg`); these two rows bind a container bare at a slot that
-    # only borrows (`sum(xs)`, `a.extend(make_nodes())` at an `Iterable[T]`).
+    # `converted_arg`); this row binds a container name bare at a slot that
+    # only borrows (`sum(xs)` at an `Iterable[T]`).
     borrowing_it = (it_pb is not None
                     and it_pb.name in ("Iterable", "Sequence")
                     and not _own_element_slot(ptype, lc))
@@ -18888,17 +18888,6 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             and _native_iterable_source(unwrap_readonly(unwrap_ref_type(
                 unwrap_send_sync(declared.get(a.name)))))):
         return _lower_expr(a, lc, declared)
-    if (borrowing_it
-            and isinstance(a, (TpyCall, TpyMethodCall))
-            and _native_iterable_source(unwrap_readonly(unwrap_ref_type(
-                unwrap_send_sync(lc.analyzer.get_expr_type(a)))))):
-        # A container-returning call rvalue bound bare by the Iterable slot
-        # (`a.extend(copy(b))` / `a.extend(make_nodes())`): STORAGE use so
-        # the inner call's result gate admits the container. `allow_temps`
-        # rides through (the statement flush covers nested args).
-        return _lower_expr(a, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                        allow_temps=temp_args))
     if (isinstance(a, TpyCall)
             and _own_container_instantiation_arg(a, ptype, lc.analyzer)):
         # The @dataclass default_factory fill (`Foo(std::vector<int32_t>(),
