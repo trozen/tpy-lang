@@ -1,0 +1,35 @@
+free range 10
+free comp 6 6
+free literal 6 6
+free record 6 6
+free proto 5 5
+free cond comp 3
+method range 8
+method comp 18 18
+method record 3 3
+method proto 7 7
+init 6 3 3 5 3
+super range 6
+super comp 30
+gen body [3, 6, 3, 5]
+gen with [6, 6, 6]
+comp range [0, 0, 1, 3]
+comp list [0, 2, 4, 6] [0, 2, 4, 6]
+comp record [2, 3, 4, 5]
+const comp 3 3
+async 8
+qual callee 3 3
+qual callee comp 3
+qual producer 0 0
+qual producer cond 0
+copy 6 6 6
+copy source [1, 2, 3, 10]
+pop 9 7
+pop source {8: [9]}
+set dict 6 3 5
+split 2 3
+concat slice 32 4
+recv literal 9
+recv comp 6
+cond repeat 4
+cond repeat 0

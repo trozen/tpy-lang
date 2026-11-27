@@ -9,10 +9,8 @@ namespace tpyapp::main {
 //     drain(Nothing())
 //     print("done")
 void main() {
-    auto __tmp_1 = Int32One();
-    std::cout << ::tpyapp::main::drain<int32_t>(__tmp_1) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = Nothing();
-    ::tpyapp::main::drain<std::monostate>(__tmp_2);
+    std::cout << ::tpyapp::main::drain<int32_t>(::tpy::as_mut_lvalue(Int32One())) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::drain<std::monostate>(::tpy::as_mut_lvalue(Nothing()));
     std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 

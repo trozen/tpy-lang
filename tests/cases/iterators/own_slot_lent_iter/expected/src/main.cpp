@@ -165,7 +165,7 @@ void free_function() {
     ob.push(std::move(e));
     ::tpyapp::main::bump("free Own type arg", ob);
     std::cout << "free Own type arg ob" << " " << ::tpy::__len__(ob.items) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = View();
+    View __tmp_3 = View();
     ::tpyapp::main::bump("free clones_own", ::tpyapp::main::clones_own<std::vector<int32_t>>(__tmp_3));
     std::cout << "free clones_own G" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> cl = {{15}};

@@ -224,7 +224,7 @@ void main() {
     }
     int32_t total = 0;
     {
-        auto __tmp_1 = std::array<int32_t, 3>{1, 2, 3};
+        std::array<int32_t, 3> __tmp_1 = std::array<int32_t, 3>{1, 2, 3};
         auto __src_6 = ::tpyapp::main::each<int32_t>(__tmp_1);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
@@ -236,7 +236,7 @@ void main() {
     }
     std::cout << "value" << " " << total << "\n" << ::tpy::check_signals;
     {
-        auto __tmp_2 = std::array<std::string, 2>{"a", "bb"};
+        std::array<std::string, 2> __tmp_2 = std::array<std::string, 2>{"a", "bb"};
         auto __src_8 = ::tpyapp::main::each<std::string>(__tmp_2);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {

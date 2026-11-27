@@ -453,8 +453,7 @@ void int_width(bool c, double v, int32_t n) {
     s = static_cast<int64_t>(::tpy::builtin_sum<int32_t>(std::array<int32_t, 2>{n, 2}));
     std::cout << "sum" << " " << s << "\n" << ::tpy::check_signals;
     int64_t r = 0;
-    auto __tmp_1 = std::array<int32_t, 2>{n, 2};
-    r = static_cast<int64_t>(::tpystd::math::prod__Iterable_int32__int32(__tmp_1, 1));
+    r = static_cast<int64_t>(::tpystd::math::prod__Iterable_int32__int32(::tpy::as_mut_lvalue(std::array<int32_t, 2>{n, 2}), 1));
     std::cout << "prod" << " " << r << "\n" << ::tpy::check_signals;
     int64_t t = 0;
     t = (::tpy::round_to<int64_t>(v));

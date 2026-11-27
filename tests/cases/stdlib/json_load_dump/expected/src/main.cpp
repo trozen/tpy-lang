@@ -91,8 +91,7 @@ void file_roundtrip() {
 void load_malformed() {
     {
         try {
-            auto __tmp_1 = ::tpystd::io::StringIO("{not valid");
-            ::tpystd::json::load(__tmp_1);
+            ::tpystd::json::load(::tpy::as_mut_lvalue(::tpystd::io::StringIO("{not valid")));
             std::cout << "FAIL: expected JSONDecodeError" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::json::JSONDecodeError& e) {
             std::cout << "decode error at:" << " " << e.lineno << " " << e.colno << "\n" << ::tpy::check_signals;

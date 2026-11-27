@@ -77,7 +77,7 @@ from ..parse.nodes import bound_callee, name_path
 from .literal_utils import (enriched_literal, is_char_literal_init,
                             ranks_literals)
 from ..diagnostics import SemanticError
-from ..value_category import (declared_result_is_value, frame_factory_callee, is_rvalue_source,
+from ..value_category import (protocol_binding, declared_result_is_value, frame_factory_callee, is_rvalue_source,
                               consuming_iter_of,
                               is_iterator_protocol,
                               protocol_slot, protocol_twin_slot,
@@ -4605,7 +4605,7 @@ class CallAnalyzer:
         twin = protocol_twin_slot(
             slot, arg, self.ctx, self.ctx.declared_type,
             frame=fi.is_async or frame_factory_callee(fi),
-            writes=True)
+            writes=True, binding=protocol_binding(fi))
         if twin is slot or twin is None:
             return None
         members = self.protocols.protocol_members_on(

@@ -1,0 +1,1 @@
+A @cpp_template producer has no CPython body (it must be `...`).

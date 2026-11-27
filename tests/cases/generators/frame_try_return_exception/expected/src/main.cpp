@@ -245,7 +245,7 @@ void main() {
     std::vector<Node> nodes_empty = ::tpyapp::main::fresh();
     int32_t empty_seen = 0;
     {
-        auto __tmp_1 = Indices(0);
+        Indices __tmp_1 = Indices(0);
         auto __src_2 = ::tpyapp::main::head(nodes_empty, __tmp_1);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
@@ -283,7 +283,7 @@ void main() {
     std::cout << "dead_pass" << " " << ::tpy::__getitem__(dead_nodes, 0).v << " " << ::tpy::__getitem__(dead_nodes, 1).v << "\n" << ::tpy::check_signals;
     std::vector<Node> nested_nodes = ::tpyapp::main::fresh();
     {
-        auto __tmp_2 = Indices(1);
+        Indices __tmp_2 = Indices(1);
         auto __src_8 = ::tpyapp::main::nested(nested_nodes, __tmp_2);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {

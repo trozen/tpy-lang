@@ -202,14 +202,10 @@ void main() {
     std::cout << ::tpy::print_bool(::tpystd::math::isclose(0.0, 1e-10, 1e-09, 1e-08)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpystd::math::isclose(::tpystd::math::inf, ::tpystd::math::inf, 1e-09, 0.0)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpystd::math::isclose(::tpystd::math::inf, -(::tpystd::math::inf), 1e-09, 0.0)) << "\n" << ::tpy::check_signals;
-    auto __tmp_13 = std::array<double, 3>{2.0, 3.0, 4.0};
-    std::cout << ::tpy::print_float(::tpystd::math::prod__Iterable_float__float(__tmp_13, 1.0)) << "\n" << ::tpy::check_signals;
-    auto __tmp_14 = std::array<double, 3>{1.0, 2.0, 3.0};
-    std::cout << ::tpy::print_float(::tpystd::math::prod__Iterable_float__float(__tmp_14, 10.0)) << "\n" << ::tpy::check_signals;
-    auto __tmp_15 = std::vector<double>{};
-    std::cout << ::tpy::print_float(::tpystd::math::prod__Iterable_float__float(__tmp_15, 1.0)) << "\n" << ::tpy::check_signals;
-    auto __tmp_16 = std::array<double, 10>{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
-    double t = ::tpystd::math::fsum(__tmp_16);
+    std::cout << ::tpy::print_float(::tpystd::math::prod__Iterable_float__float(::tpy::as_mut_lvalue(std::array<double, 3>{2.0, 3.0, 4.0}), 1.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpystd::math::prod__Iterable_float__float(::tpy::as_mut_lvalue(std::array<double, 3>{1.0, 2.0, 3.0}), 10.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpystd::math::prod__Iterable_float__float(::tpy::as_mut_lvalue(std::vector<double>{}), 1.0)) << "\n" << ::tpy::check_signals;
+    double t = ::tpystd::math::fsum(::tpy::as_mut_lvalue(std::array<double, 10>{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}));
     std::cout << ::tpy::print_bool(((t > 0.999999) && (t < 1.000001))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(::tpystd::math::sumprod(std::array<double, 3>{1.0, 2.0, 3.0}, std::array<double, 3>{4.0, 5.0, 6.0})) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float(::tpystd::math::dist(std::array<double, 2>{0.0, 0.0}, std::array<double, 2>{3.0, 4.0})) << "\n" << ::tpy::check_signals;

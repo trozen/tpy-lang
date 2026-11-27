@@ -443,7 +443,7 @@ void main() {
         }
     }
     {
-        auto __tmp_1 = std::array<std::string, 2>{"x", "yy"};
+        std::array<std::string, 2> __tmp_1 = std::array<std::string, 2>{"x", "yy"};
         auto __src_30 = ::tpyapp::main::gen_protocol(__tmp_1);
         auto&& __itr_30 = ::tpy::__iter__(__src_30);
         for (;;) {
@@ -493,13 +493,11 @@ void main() {
         }
         std::move(__result);
     })) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(bx)) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = std::array<std::string, 2>{"b", "a"};
-    auto __tmp_3 = Bag();
-    auto __tmp_4 = ::tpyapp::main::words();
-    std::cout << "protocol" << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_2)) << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_3)) << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_4)) << "\n" << ::tpy::check_signals;
-    auto __tmp_5 = ::tpyapp::main::words();
-    auto __tmp_6 = ::tpy::__iter__(std::array<std::string, 2>{"m", "n"});
-    std::cout << "iterator_param" << " " << ::tpy::ListPrinter(::tpyapp::main::drain(__tmp_5)) << " " << ::tpy::ListPrinter(::tpyapp::main::drain(__tmp_6)) << "\n" << ::tpy::check_signals;
+    auto __tmp_2 = ::tpyapp::main::words();
+    std::cout << "protocol" << " " << ::tpy::ListPrinter(::tpyapp::main::ups(::tpy::as_mut_lvalue(std::array<std::string, 2>{"b", "a"}))) << " " << ::tpy::ListPrinter(::tpyapp::main::ups(::tpy::as_mut_lvalue(Bag()))) << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_2)) << "\n" << ::tpy::check_signals;
+    auto __tmp_3 = ::tpyapp::main::words();
+    auto __tmp_4 = ::tpy::__iter__(std::array<std::string, 2>{"m", "n"});
+    std::cout << "iterator_param" << " " << ::tpy::ListPrinter(::tpyapp::main::drain(__tmp_3)) << " " << ::tpy::ListPrinter(::tpyapp::main::drain(__tmp_4)) << "\n" << ::tpy::check_signals;
     Src s4 = Src();
     std::cout << "member_stmt" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;

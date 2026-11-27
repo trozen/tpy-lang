@@ -38,11 +38,10 @@ void test_lazy_for_loop() {
 //     # Pass repeat literal directly to Iterable param
 //     consume([3] * 4)
 void test_direct_iterable_arg() {
-    auto __tmp_1 = ({
+    ::tpyapp::main::consume(::tpy::as_mut_lvalue(({
         int32_t __rep_0 = 3;
         ::tpy::array_from_index<int32_t, 4>([&](std::size_t) -> int32_t { return __rep_0; });
-    });
-    ::tpyapp::main::consume(__tmp_1);
+    })));
 }
 
 // def test_print_lazy_repeat() -> None:

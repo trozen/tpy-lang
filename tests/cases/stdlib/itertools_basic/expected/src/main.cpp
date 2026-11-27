@@ -132,7 +132,7 @@ void main() {
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         {
-            auto __tmp_4 = std::array<int32_t, 3>{1, 2, 3};
+            std::array<int32_t, 3> __tmp_4 = std::array<int32_t, 3>{1, 2, 3};
             auto __tmp_5 = ::tpystd::itertools::cycle<int32_t>(__tmp_4);
             auto __obj_7 = ::tpystd::itertools::islice<int32_t>(__tmp_5, 7);
             auto __beg_7 = __obj_7.begin();
@@ -162,7 +162,7 @@ void main() {
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         {
-            auto __tmp_7 = std::array<int32_t, 5>{10, 20, 30, 40, 50};
+            std::array<int32_t, 5> __tmp_7 = std::array<int32_t, 5>{10, 20, 30, 40, 50};
             auto __obj_9 = ::tpystd::itertools::islice<int32_t>(__tmp_7, 3);
             auto __beg_9 = __obj_9.begin();
             auto __end_9 = __obj_9.end();
@@ -176,7 +176,7 @@ void main() {
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         {
-            auto __tmp_8 = std::array<int32_t, 2>{10, 20};
+            std::array<int32_t, 2> __tmp_8 = std::array<int32_t, 2>{10, 20};
             auto __obj_10 = ::tpystd::itertools::islice<int32_t>(__tmp_8, 5);
             auto __beg_10 = __obj_10.begin();
             auto __end_10 = __obj_10.end();
@@ -190,7 +190,7 @@ void main() {
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         {
-            auto __tmp_9 = std::array<int32_t, 3>{10, 20, 30};
+            std::array<int32_t, 3> __tmp_9 = std::array<int32_t, 3>{10, 20, 30};
             auto __obj_11 = ::tpystd::itertools::islice<int32_t>(__tmp_9, 0);
             auto __beg_11 = __obj_11.begin();
             auto __end_11 = __obj_11.end();

@@ -14,7 +14,7 @@ namespace tpyapp::main {
 void read_basic() {
     std::string_view data = "a,b,c\n1,2,3\nx,y,z\n";
     {
-        auto __tmp_1 = ::tpystd::io::StringIO(data);
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(data);
         auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
@@ -35,7 +35,7 @@ void read_basic() {
 void read_quoted() {
     std::string_view data = "1,\"two, comma\",3\r\n\"q \"\"x\"\"\",\"ln\nbrk\",z\r\n";
     {
-        auto __tmp_1 = ::tpystd::io::StringIO(data);
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(data);
         auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
@@ -52,7 +52,7 @@ void read_quoted() {
 //         print("|".join(row))
 void read_custom_delim() {
     {
-        auto __tmp_1 = ::tpystd::io::StringIO("a;b;c\n");
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO("a;b;c\n");
         auto __src_0 = ::tpystd::csv::reader(__tmp_1, ";");
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
@@ -69,7 +69,7 @@ void read_custom_delim() {
 //         print("|".join(row))
 void read_skipinitialspace() {
     {
-        auto __tmp_1 = ::tpystd::io::StringIO("a,  b,   c\n");
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO("a,  b,   c\n");
         auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
@@ -86,7 +86,7 @@ void read_skipinitialspace() {
 //         print(len(row), "[" + "|".join(row) + "]")
 void read_empty_fields() {
     {
-        auto __tmp_1 = ::tpystd::io::StringIO("a,,c\n,,\n");
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO("a,,c\n,,\n");
         auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
@@ -109,7 +109,7 @@ void read_empty_fields() {
 //     print("empty-input rows:", count)
 void read_blank_and_empty() {
     {
-        auto __tmp_1 = ::tpystd::io::StringIO("a\n\nb\n");
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO("a\n\nb\n");
         auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
@@ -121,7 +121,7 @@ void read_blank_and_empty() {
     }
     int32_t count = 0;
     {
-        auto __tmp_2 = ::tpystd::io::StringIO("");
+        ::tpystd::io::StringIO __tmp_2 = ::tpystd::io::StringIO("");
         auto __src_2 = ::tpystd::csv::reader(__tmp_2, ",", "\"", true, false);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
@@ -147,7 +147,7 @@ void read_blank_and_empty() {
 void read_then_mutate() {
     std::vector<std::vector<std::string>> rows = std::vector<std::vector<std::string>>{};
     {
-        auto __tmp_1 = ::tpystd::io::StringIO("a,b\nc,d\n");
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO("a,b\nc,d\n");
         auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
@@ -218,7 +218,7 @@ void roundtrip() {
     w.writerow({"Alice", "says, hi"});
     std::string text = out.getvalue();
     {
-        auto __tmp_1 = ::tpystd::io::StringIO(text);
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(text);
         auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {

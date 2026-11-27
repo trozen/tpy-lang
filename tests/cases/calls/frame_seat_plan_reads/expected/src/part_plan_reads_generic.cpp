@@ -159,7 +159,7 @@ __gen_gen_src gen_src(const Src& s) {
 std::vector<int32_t> first_head() {
     std::vector<int32_t> out = std::vector<int32_t>{};
     {
-        auto __tmp_1 = ::tpyapp::part_plan_reads_generic::get_list();
+        std::vector<Src> __tmp_1 = ::tpyapp::part_plan_reads_generic::get_list();
         auto __src_0 = ::tpyapp::part_plan_reads_generic::gen_src(::tpyapp::part_plan_reads_generic::first_item(__tmp_1));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
@@ -261,7 +261,7 @@ std::vector<int32_t> first_method_head() {
     Picker p = Picker();
     std::vector<int32_t> out = std::vector<int32_t>{};
     {
-        auto __tmp_1 = ::tpyapp::part_plan_reads_generic::get_list();
+        std::vector<Src> __tmp_1 = ::tpyapp::part_plan_reads_generic::get_list();
         auto __src_0 = ::tpyapp::part_plan_reads_generic::gen_src(p.first(__tmp_1));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
@@ -278,7 +278,7 @@ std::vector<int32_t> first_method_head() {
 //     # the same call consumed by its statement holds nothing
 //     return first_item(get_list()).n  # tpyc: ok
 int32_t first_stmt() {
-    return ::tpyapp::part_plan_reads_generic::first_item(::tpyapp::part_plan_reads_generic::get_list()).n;
+    return ::tpyapp::part_plan_reads_generic::first_item(::tpy::as_mut_lvalue(::tpyapp::part_plan_reads_generic::get_list())).n;
 }
 
 // def first_lent() -> int32:

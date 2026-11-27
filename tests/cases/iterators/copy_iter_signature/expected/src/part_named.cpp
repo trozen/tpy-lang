@@ -65,7 +65,7 @@ void main() {
     auto it2 = ::tpy::copy_iter(fresh);
     std::cout << "param" << " " << ::tpyapp::part_named::forward(it2) << " " << ::tpy::__getitem__(fresh, 0).v << "\n" << ::tpy::check_signals;
     std::cout << "never consumed" << " " << ::tpyapp::part_named::copies_param(std::vector<::tpyapp::fixtures::Cell>{::tpyapp::fixtures::Cell(3)}) << "\n" << ::tpy::check_signals;
-    auto __tmp_1 = View();
+    View __tmp_1 = View();
     std::cout << "temp generator" << " " << ::tpyapp::part_named::total(::tpy::copy_iter(::tpyapp::part_named::passthru<::tpyapp::fixtures::Cell>(__tmp_1))) << "\n" << ::tpy::check_signals;
 }
 

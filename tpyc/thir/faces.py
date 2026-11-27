@@ -75,8 +75,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # Protocol-slot arg wrap: the @dynamic Adapter / RefAdapter / concrete
     # materialization, and the structural slot's `auto __tmp_N` rvalue temp.
     "argtemp.protocol",
-    "argtemp.marker_protocol_record",  # record rvalue at a structural
-                                    # protocol slot on a qualcall: `auto` temp
     "argtemp.iter_proto",           # gen-factory / iter() / dict-view rvalue
                                     # at a structural slot -> un-spelled
                                     # `auto __tmp_N = <rvalue>;` temp
@@ -84,14 +82,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # returns a separate iterator, at a lazy
                                     # combinator's slot -> a spelled temp, so
                                     # the combinator borrows instead of owning
-    "argtemp.marker_protocol_literal",  # container literal at a PLAIN module
-                                    # callee's structural slot -> the qualcall
-                                    # loop's `auto __tmp_N = <self-spelled>` hoist
     "argtemp.genfac_ref_slot",          # gen-factory rvalue at a generator
                                         # callee's ref iterable slot ->
                                         # `auto __tmp_N = count();`
-    "argtemp.marker_protocol_range",    # range rvalue at the same slot ->
-                                    # `auto __tmp_N = ::tpy::Range<...>(..);`
     "arg.deref_coerce_inline",      # Ptr[T] deref coercion at a record slot
                                     # -> inline `::tpy::deref_check(p)`
     "decl.deref_coerce_alias",      # the same coercion at a borrow local ->

@@ -358,8 +358,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpyapp::main::main();
-    auto __tmp_1 = std::vector<int32_t>{7, 8};
-    std::cout << "module" << " " << ::tpyapp::main::total(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "module" << " " << ::tpyapp::main::total(::tpy::as_mut_lvalue(std::vector<int32_t>{7, 8})) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

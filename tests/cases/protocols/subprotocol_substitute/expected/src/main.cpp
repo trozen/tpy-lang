@@ -61,15 +61,13 @@ void main() {
     std::cout << "offset" << " " << ::tpyapp::main::fwd_offset(::tpy::as_mut_lvalue(Tens())) << "\n" << ::tpy::check_signals;
     Link link = Link(1);
     std::cout << "self" << " " << ::tpyapp::main::fwd_chain(link) << " " << link.n << "\n" << ::tpy::check_signals;
-    auto __tmp_1 = Nine();
-    std::cout << "generic" << " " << ::tpyapp::main::fwd_int_source(::tpy::as_mut_lvalue(Nine())) << " " << ::tpyapp::main::fwd_leaf(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "generic" << " " << ::tpyapp::main::fwd_int_source(::tpy::as_mut_lvalue(Nine())) << " " << ::tpyapp::main::fwd_leaf(::tpy::as_mut_lvalue(Nine())) << "\n" << ::tpy::check_signals;
     std::cout << "keyword" << " " << ::tpyapp::main::fwd_kw(::tpy::as_mut_lvalue(KwImpl())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::add_twice(auto(Meters(2)));
     std::cout << "fields" << " " << ::tpyapp::main::fwd_holders(Box(1), Box(2)) << "\n" << ::tpy::check_signals;
     std::cout << "dynamic" << " " << ::tpyapp::main::fwd_dyn(::tpy::as_mut_lvalue(DynNine{DynNine()})) << "\n" << ::tpy::check_signals;
     std::cout << "diamond" << " " << ::tpyapp::main::fwd_diamond(Fixed()) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = Count();
-    std::cout << "subiter" << " " << ::tpyapp::main::fwd_sub_iter(::tpy::as_mut_lvalue(Count())) << " " << ::tpyapp::main::sum_gen_sub_iter(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "subiter" << " " << ::tpyapp::main::fwd_sub_iter(::tpy::as_mut_lvalue(Count())) << " " << ::tpyapp::main::sum_gen_sub_iter(::tpy::as_mut_lvalue(Count())) << "\n" << ::tpy::check_signals;
     Cells src = Cells();
     ::tpyapp::main::bump_lent(src);
     std::cout << "lent" << " " << ::tpy::__getitem__(src.cells, 0).v << " " << ::tpy::__getitem__(src.cells, 1).v << "\n" << ::tpy::check_signals;

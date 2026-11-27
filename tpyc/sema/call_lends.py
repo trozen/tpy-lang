@@ -80,6 +80,7 @@ from ..typesys import (
     NoneType,
 )
 from ..value_category import (
+    protocol_binding,
     CONTAINER_LITERAL_NODES, CallOperands, ExprTypeOf,
     ValueCategoryAnalyzer, borrowing_ctor_arg, call_operands,
     call_returns_cpp_ref, declared_result_is_value, frame_factory_callee,
@@ -393,7 +394,8 @@ def call_lend_sources(ops: CallOperands,
             # would: it lends only where that twin's would.
             twin = protocol_twin_slot(
                 slot, arg, analyzer, declared_of, frame=True,
-                writes=param_written(fi, idx))
+                writes=param_written(fi, idx),
+                binding=protocol_binding(fi))
             if twin is not slot:
                 if not frame_param_lends(twin):
                     continue
@@ -806,7 +808,8 @@ def _retention_slot(fi: FunctionInfo, index: int, call: TpyExpr | None,
         # the object's own storage.
         if not is_generic_protocol(slot):
             twin = protocol_twin_slot(slot, arg, analyzer, None, frame=False,
-                                      writes=param_written(fi, index))
+                                      writes=param_written(fi, index),
+                                      binding=protocol_binding(fi))
             if twin is not slot:
                 return twin
     if slot is None or owner is None or not contains_type_param(slot):

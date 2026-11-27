@@ -17,7 +17,8 @@ and `registry`. Both the sema `AnalyzerContext` and the codegen
 from enum import Enum, auto
 from typing import Any, Callable, Iterator, NamedTuple, Protocol
 
-from .typesys import element_access, pointer_repr_optional, union_borrow_form
+from .typesys import (element_access, make_list, pointer_repr_optional,
+                      union_borrow_form)
 from .modules.type_resolution import owning_element_slot
 from .typesys import (
     AnyType, FunctionInfo, NominalType, PtrType, ReadonlyType, RefType, TpyType,
@@ -49,7 +50,7 @@ from .parse import (
     TpySlice,
 )
 from .parse.nodes import as_name_read
-from .type_def_registry import (has_view_param_form, is_bool_type,
+from .type_def_registry import (has_view_param_form, is_bool_type, is_array,
                                 is_borrowing_view_type,
                                 is_bytes_type, is_bytes_view_type,
                                 is_string_type,
@@ -1905,10 +1906,19 @@ def is_generic_protocol(slot: TpyType | None) -> bool:
     return proto is not None and bool(proto.type_args)
 
 
+def protocol_binding(fi: FunctionInfo | None) -> bool:
+    """The callee is a body-less binding (`is_bodyless_binding`): its
+    protocol parameter takes no fresh argument as the concrete twin's, since
+    what a binding does with a handed-over rvalue is not a modelled fact.
+    The one answer every `protocol_twin_slot` reader passes as `binding`."""
+    return fi is not None and is_bodyless_binding(fi)
+
+
 def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,
                        analyzer: 'ValueCategoryAnalyzer | None',
                        declared_of: 'DeclaredOf | None', *,
-                       frame: bool, writes: bool) -> TpyType | None:
+                       frame: bool, writes: bool,
+                       binding: bool) -> TpyType | None:
     """The type a structural protocol parameter `slot` holds at
     argument `arg`: its concrete twin, the argument's own held type -- a
     literal as its base type, a `str` / `bytes` local's pending view as the
@@ -1928,10 +1938,13 @@ def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,
     A generic protocol (`Iterable[T]`, a user `Adder[T]`) is the slot
     itself too, but for a reference-type object read in place
     (`_twin_in_place`), which binds every protocol, generic or not, as its
-    twin does. The answer is the same for every callee -- a TPy body, a
-    runtime binding or a user's `@native` / `@cpp_template` declaration --
-    so it reads nothing of the callee and does not depend on which body
-    sema reached first.
+    twin does. A fresh argument (`_twin_fresh`: a comprehension, a literal,
+    a range, a call result) takes its twin too, but only at a callee with a
+    body: a binding (`binding`, `protocol_binding`) keeps its own rows,
+    since what it does with a handed-over rvalue is not a modelled fact.
+    That is the one thing the answer reads of the callee, and it is a
+    signature fact, so it does not depend on which body sema reached
+    first.
 
     The one answer sema's loans, the frame hoist and the lowering's slot
     read: the lowering only refines it with the facts it alone has (a
@@ -1964,7 +1977,13 @@ def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,
         # A literal-seeded local's read is still typed by its literal; the
         # binding holds the container its declaration settled on.
         at = held_type(whole)
-    in_place = _twin_in_place(proto, arg, at, analyzer)
+    if isinstance(name, TpyListComprehension) and is_array(at):
+        # A constant-trip comprehension's fixed-bound array is a declaration's
+        # optimization; at a parameter it builds its list, as at its twin's.
+        at = make_list(unwrap_readonly(at.type_args[0]))
+    in_place = (_twin_in_place(proto, arg, at, analyzer)
+                or (not binding
+                    and _twin_fresh(proto, arg, at, analyzer, frame)))
     if not in_place and (
             is_generic_protocol(proto) or not _has_twin(at, frame) or (
             writes and not frame and at.is_value_type()
@@ -1980,7 +1999,7 @@ def protocol_twin_slot(slot: TpyType | None, arg: TpyExpr | None,
 
 def instantiated_slot(slot: TpyType | None, arg: TpyExpr | None,
                       analyzer: 'ValueCategoryAnalyzer | None', *,
-                      frame: bool) -> TpyType | None:
+                      frame: bool, binding: bool) -> TpyType | None:
     """The type parameter `slot` holds at argument `arg`, as a callee
     reads it (`frame`: a generator or coroutine factory's): a structural
     protocol at its concrete twin (`protocol_twin_slot`), an open `T` at
@@ -1988,7 +2007,7 @@ def instantiated_slot(slot: TpyType | None, arg: TpyExpr | None,
     if slot is None:
         return None
     t = protocol_twin_slot(slot, arg, analyzer, None, frame=frame,
-                           writes=False)
+                           writes=False, binding=binding)
     bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if (isinstance(bare, TypeParamRef) and arg is not None
             and analyzer is not None):
@@ -2010,6 +2029,27 @@ def _twin_in_place(proto: NominalType, arg: TpyExpr, t: TpyType,
         return False
     return (_reference_object(t, records=True)
             and not is_rvalue_source(analyzer, arg))
+
+
+def _twin_fresh(proto: NominalType, arg: TpyExpr, t: TpyType,
+                analyzer: 'ValueCategoryAnalyzer', frame: bool) -> bool:
+    """Argument `arg` of held type `t` is a fresh value (`is_rvalue_source`)
+    a TPy body's protocol parameter takes as its concrete twin's parameter
+    takes it: a reference-type object the call builds, or a value with a
+    twin of its own. Not at an owning element slot (`owning_arg` decides
+    that), nor for a value of the `str` / `bytes` family (its view slot is
+    its own step) or a borrowing view."""
+    if (owning_element_slot(proto, analyzer.registry)
+            or not is_rvalue_source(analyzer, arg)):
+        return False
+    bare = unwrap_qualifiers(t)
+    if has_view_param_form(bare) or is_borrowing_view_type(bare):
+        return False
+    if _reference_object(t, records=True):
+        return True
+    # A frame holding a fresh value by value would move-construct its member
+    # from the parameter, a move the frame's hold of the argument avoids.
+    return not frame and t.is_value_type() and _has_twin(t, frame)
 
 
 class OwningArg(Enum):
@@ -2216,9 +2256,11 @@ def _frame_twin(a: TpyExpr, ptype: 'TpyType | None',
     """The slot a frame holds argument `a` of parameter `ptype` at:
     a structural protocol's concrete twin (`protocol_twin_slot`), None
     where that twin is held by value; any other slot as it is."""
-    # A temporary names no binding: no declared type refines it.
+    # A temporary names no binding: no declared type refines it. A
+    # generator or coroutine factory always has a body, so it is never a
+    # binding (`protocol_binding`) and a fresh argument takes its twin.
     twin = protocol_twin_slot(ptype, a, analyzer, None,
-                              frame=True, writes=False)
+                              frame=True, writes=False, binding=False)
     if twin is ptype:
         return ptype
     return twin if frame_param_lends(twin) else None

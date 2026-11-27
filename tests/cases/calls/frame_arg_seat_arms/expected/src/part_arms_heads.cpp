@@ -77,7 +77,7 @@ int32_t elifp(int32_t k) {
 //     # a comprehension at a generator's `Iterable` parameter, plain body
 //     return sum(g_it([x for x in range(3)]))  # tpyc: ok
 int32_t comp_plain() {
-    auto __tmp_1 = ({
+    std::vector<int32_t> __tmp_1 = ({
         std::vector<int32_t> __result;
         if (3 > 0) __result.reserve(static_cast<size_t>(3));
         for (int32_t x = 0; x < 3; ++x) {

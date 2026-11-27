@@ -43,8 +43,7 @@ void main() {
     ::tpyapp::main::extend_from(nums, more);
     std::cout << ::tpy::ListPrinter(nums) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums2 = {10};
-    auto __tmp_1 = std::array<int32_t, 2>{20, 30};
-    ::tpyapp::main::extend_from(nums2, __tmp_1);
+    ::tpyapp::main::extend_from(nums2, ::tpy::as_mut_lvalue(std::array<int32_t, 2>{20, 30}));
     std::cout << ::tpy::ListPrinter(nums2) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> target = {100};
     std::vector<int32_t> vals = {200, 300};

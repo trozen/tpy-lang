@@ -1,0 +1,3 @@
+bare 6 6
+qual 6 6
+cond 6

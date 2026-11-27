@@ -31,10 +31,9 @@ void main() {
     std::cout << "explicit owning base" << " " << ::tpyapp::fixtures::take(__tmp_2) << "\n" << ::tpy::check_signals;
     auto __tmp_3 = PopBag();
     std::cout << "returned generic owning" << " " << ::tpyapp::fixtures::take_tok(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "returned generic substituted Own" << " " << ::tpyapp::part_source_shapes::first_lent(::tpy::as_mut_lvalue(HolderBag())) << "\n" << ::tpy::check_signals;
     auto __tmp_4 = HolderBag();
-    std::cout << "returned generic substituted Own" << " " << ::tpyapp::part_source_shapes::first_lent(__tmp_4) << "\n" << ::tpy::check_signals;
-    auto __tmp_5 = HolderBag();
-    std::cout << "returned generic substituted Own at owning slot" << " " << ::tpyapp::fixtures::take(__tmp_5) << "\n" << ::tpy::check_signals;
+    std::cout << "returned generic substituted Own at owning slot" << " " << ::tpyapp::fixtures::take(__tmp_4) << "\n" << ::tpy::check_signals;
 }
 
 // from fixtures import Cell, Tok, TokCursor, take, take_tok

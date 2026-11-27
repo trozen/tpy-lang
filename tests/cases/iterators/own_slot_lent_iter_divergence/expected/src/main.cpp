@@ -142,10 +142,10 @@ void free_function(bool c) {
     std::vector<std::vector<int32_t>> gl = ::tpy::construct<std::vector<std::vector<int32_t>>>(::tpyapp::main::gen_gt<int32_t>(1));
     ::tpy::__getitem__(gl, 0).push_back(7);
     std::cout << "free generic generator list()" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = View();
+    View __tmp_3 = View();
     ::tpyapp::fixtures::bump(::tpyapp::fixtures::passthru<std::vector<int32_t>>(__tmp_3));
     std::cout << "free pass-through generic" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;
-    auto __tmp_4 = View();
+    View __tmp_4 = View();
     std::vector<std::vector<int32_t>> pt = ::tpy::construct<std::vector<std::vector<int32_t>>>(::tpyapp::fixtures::passthru<std::vector<int32_t>>(__tmp_4));
     ::tpy::__getitem__(pt, 0).push_back(7);
     std::cout << "free pass-through generic list()" << " " << ::tpy::ListPrinter((*G)) << "\n" << ::tpy::check_signals;

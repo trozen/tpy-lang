@@ -1,0 +1,4 @@
+main::__tpy_init: uncovered (module initialization)
+main::g_it@8:0: uncovered (unsupported parameter type)
+main::outer@13:0: uncovered (stub protocol argument is not a builtin leaf), summary: opaque (stub protocol argument is not a builtin leaf)
+main::main@18:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)

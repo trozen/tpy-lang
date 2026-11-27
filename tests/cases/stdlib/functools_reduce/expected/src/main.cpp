@@ -64,10 +64,8 @@ void main() {
     std::vector<int32_t> built = ::tpystd::functools::reduce__Fn_U_T_Own_U__Iterable_T__U<int32_t, std::vector<int32_t>>([](std::vector<int32_t>& acc, int32_t x) -> std::vector<int32_t> { return (::tpy::list_concat(acc, std::vector<int32_t>{x})); }, nums, init);
     std::cout << ::tpy::ListPrinter(built) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(init) << "\n" << ::tpy::check_signals;
-    auto __tmp_1 = std::array<int32_t, 3>{1, 2, 3};
-    std::cout << ::tpystd::functools::reduce__Fn_U_T_Own_U__Iterable_T__U<int32_t, int32_t>(add, __tmp_1, 0) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = ::tpy::Range<int32_t>(1, 5);
-    std::cout << ::tpystd::functools::reduce__Fn_U_T_Own_U__Iterable_T__U<int32_t, int32_t>(add, __tmp_2, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::functools::reduce__Fn_U_T_Own_U__Iterable_T__U<int32_t, int32_t>(add, ::tpy::as_mut_lvalue(std::array<int32_t, 3>{1, 2, 3}), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::functools::reduce__Fn_U_T_Own_U__Iterable_T__U<int32_t, int32_t>(add, auto(::tpy::Range<int32_t>(1, 5)), 0) << "\n" << ::tpy::check_signals;
     std::vector<std::string> parts = {"foo", "bar", "baz"};
     std::cout << ::tpystd::functools::reduce__Fn_U_T_Own_U__Iterable_T__U<std::string, std::string>([](std::string_view a, std::string_view b) -> std::string { return (::tpy::str_concat(a, b)); }, parts, "") << "\n" << ::tpy::check_signals;
 }

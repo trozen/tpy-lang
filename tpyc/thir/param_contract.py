@@ -53,7 +53,7 @@ from ..typesys import (
     signature_only,
     unwrap_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
-from ..value_category import (ValueCategoryAnalyzer, frame_factory_callee,
+from ..value_category import (protocol_binding, ValueCategoryAnalyzer, frame_factory_callee,
                               carries_borrow,
                               frame_param_lends,
                               peel_coerce,
@@ -249,7 +249,8 @@ def materializes(fi: FunctionInfo | None, ptype: TpyType | None,
             # name's twin is asked at.
             and protocol_twin_slot(ptype, arg, analyzer, None,
                                    frame=frame_captured(fi),
-                                   writes=written) is not ptype):
+                                   writes=written,
+                                   binding=protocol_binding(fi)) is not ptype):
         return Materializer.DEDUCED
     if not isinstance(ptype, TpyType) or not param_takes_ownership(ptype):
         return None
@@ -390,7 +391,8 @@ def instantiated_param(ptype: TpyType | None, operand: TpyExpr | None,
                        ) -> TpyType | None:
     """The type a generator or coroutine factory's parameter `ptype` holds
     at argument `operand` (`instantiated_slot`)."""
-    return instantiated_slot(ptype, operand, analyzer, frame=True)
+    return instantiated_slot(ptype, operand, analyzer, frame=True,
+                             binding=False)
 
 
 def _mixed_tuple(ptype: TpyType | None) -> TupleType | None:

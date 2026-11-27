@@ -57,8 +57,7 @@ void forwarding() {
 //     print("f-bounded", top(s), sub_top(SubScore(9)))
 void f_bounded() {
     Score s = Score(4);
-    auto __tmp_1 = SubScore(9);
-    std::cout << "f-bounded" << " " << ::tpyapp::main::top(s) << " " << ::tpyapp::main::sub_top(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "f-bounded" << " " << ::tpyapp::main::top(s) << " " << ::tpyapp::main::sub_top(::tpy::as_mut_lvalue(SubScore(9))) << "\n" << ::tpy::check_signals;
 }
 
 // def via_top(t: Top) -> int32:
@@ -221,8 +220,7 @@ void main() {
         }
     }
     std::cout << "bounded async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::bounded_async<int32_t>(4))) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = Bag(1);
-    std::cout << "cycle" << " " << ::tpyapp::main::cycle(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << "cycle" << " " << ::tpyapp::main::cycle(::tpy::as_mut_lvalue(Bag(1))) << "\n" << ::tpy::check_signals;
     Shadow<int32_t> sh = Shadow<int32_t>(5);
     std::cout << "shadow" << " " << sh.take(::tpy::as_mut_lvalue(Box<int32_t>(6))) << " " << ::tpy::print_bool(sh.same(Box<int32_t>(5), EqBox<int32_t>(5))) << "\n" << ::tpy::check_signals;
 }

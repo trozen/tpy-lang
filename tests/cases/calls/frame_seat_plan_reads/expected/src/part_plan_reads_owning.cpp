@@ -104,8 +104,7 @@ __coro_show show(const Summary& s) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         label = "hello";
-        auto __tmp_1 = std::array<int32_t, 3>{1, 2, 3};
-        t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::part_plan_reads_owning::show(__head_arg_0.emplace(Summary(__tmp_1, label))))));
+        t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::part_plan_reads_owning::show(__head_arg_0.emplace(Summary(::tpy::as_mut_lvalue(std::array<int32_t, 3>{1, 2, 3}), label))))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;

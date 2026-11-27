@@ -45,10 +45,9 @@ namespace tpyapp::main {
 void test_iterable_params() {
     std::vector<int32_t> nums = {10, 20, 30};
     std::cout << ::tpyapp::main::sum_items(nums) << "\n" << ::tpy::check_signals;
-    auto __tmp_1 = ::tpy::Range<int32_t>(5);
-    std::cout << ::tpyapp::main::sum_items(__tmp_1) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = "hello";
-    std::cout << ::tpyapp::main::count_chars(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_items(auto(::tpy::Range<int32_t>(5))) << "\n" << ::tpy::check_signals;
+    auto __tmp_1 = "hello";
+    std::cout << ::tpyapp::main::count_chars(__tmp_1) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> arr = {1, 2, 3};
     std::cout << ::tpyapp::main::sum_items(arr) << "\n" << ::tpy::check_signals;
     std::span<int32_t> sp = std::span<int32_t>(&::tpy::__getitem__(arr, 0), static_cast<size_t>(3));

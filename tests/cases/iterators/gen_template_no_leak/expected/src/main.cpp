@@ -37,7 +37,7 @@ __gen_tag tag(const std::vector<int32_t>& it) {
 //         print(v)
 void main() {
     {
-        auto __tmp_1 = std::array<int32_t, 3>{1, 2, 3};
+        std::array<int32_t, 3> __tmp_1 = std::array<int32_t, 3>{1, 2, 3};
         auto __src_0 = ::tpyapp::main::skip_first<int32_t>(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
@@ -86,7 +86,7 @@ void main() {
     }
     std::cout << "--" << "\n" << ::tpy::check_signals;
     {
-        auto __tmp_3 = std::array<int32_t, 4>{9, 8, 7, 6};
+        std::array<int32_t, 4> __tmp_3 = std::array<int32_t, 4>{9, 8, 7, 6};
         auto __src_8 = ::tpyapp::main::first_n<int32_t>(__tmp_3, 2);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {

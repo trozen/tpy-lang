@@ -48,6 +48,7 @@ from ..typesys import (
     unwrap_send_sync,
 )
 from ..value_category import (
+    protocol_binding,
     OriginKind, call_operands, held_type, frame_factory_callee, frame_receiver_temp,
     frame_param_lends, is_rvalue_source,
     frame_temp_arg_source, head_kept_argument, may_hold_pointer,
@@ -650,7 +651,7 @@ def keep_head_arguments(ctx: SemanticContext, head: TpyExpr) -> None:
         # (`fresh_seat_root`).
         root = fresh_receiver_root(obj, ctx)
         return (root if root is not None and _parameter_borrows(
-            ctx.get_expr_type(root), root, ctx) else None)
+            ctx.get_expr_type(root), root, ctx, binding=False) else None)
 
     def keep(e: TpyExpr) -> None:
         # A kept part already borrows: the object it is part of holds what
@@ -685,8 +686,9 @@ def keep_head_arguments(ctx: SemanticContext, head: TpyExpr) -> None:
                     and not (owning_element_slot(ops.fi.params[idx].type,
                                                  ctx.registry)
                              and owning_arg(ctx, arg) is OwningArg.HANDED_OVER)
-                    and _parameter_borrows(ops.fi.params[idx].type, arg,
-                                           ctx, frame=frame)):
+                    and _parameter_borrows(
+                        ops.fi.params[idx].type, arg, ctx, frame=frame,
+                        binding=protocol_binding(ops.fi))):
                 record(arg)
 
     def visit(e: TpyExpr) -> None:
@@ -816,7 +818,8 @@ _OWN_SCOPES = (TpyLambda, TpyListComprehension, TpySetComprehension,
 
 
 def _parameter_borrows(ptype: TpyType | None, arg: TpyExpr,
-                       ctx: SemanticContext, *, frame: bool = False) -> bool:
+                       ctx: SemanticContext, *, frame: bool = False,
+                       binding: bool) -> bool:
     """Whether a parameter of type `ptype` borrows argument `arg` rather
     than taking a value of its own, at the type the call instantiates it:
     a structural protocol at its concrete twin (`sum(xs)` over `int32`
@@ -824,7 +827,7 @@ def _parameter_borrows(ptype: TpyType | None, arg: TpyExpr,
     predicate of what a callee's result can borrow (`param_type_can_lend`),
     or at a generator or coroutine (`frame`) of what its frame holds by
     reference (`frame_param_lends`: a `str` is copied in)."""
-    t = instantiated_slot(ptype, arg, ctx, frame=frame)
+    t = instantiated_slot(ptype, arg, ctx, frame=frame, binding=binding)
     if t is None:
         return False
     bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))

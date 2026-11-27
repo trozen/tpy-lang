@@ -23,16 +23,12 @@ std::vector<::tpyapp::fixtures::Cell>* G{};
 //     print("value-bound child", sum_value_steps(IntCounter()))  # tpyc: ok
 void main() {
     std::cout << "value-type own" << " " << ::tpyapp::part_value_steps::text_of<TextR>(::tpy::as_mut_lvalue(TextR())) << " " << ::tpyapp::part_value_steps::text_of<TextQ>(::tpy::as_mut_lvalue(TextQ())) << "\n" << ::tpy::check_signals;
+    std::cout << "value step" << " " << ::tpyapp::fixtures::sum_lent(::tpy::as_mut_lvalue(IntCounter())) << "\n" << ::tpy::check_signals;
+    std::cout << "own result" << " " << ::tpyapp::part_value_steps::run_it(::tpy::as_mut_lvalue(Task())) << "\n" << ::tpy::check_signals;
+    std::cout << "own iterator object" << " " << ::tpyapp::fixtures::sum_lent(::tpy::as_mut_lvalue(Holder())) << "\n" << ::tpy::check_signals;
+    std::cout << "mixed" << " " << ::tpyapp::part_value_steps::consume(::tpy::as_mut_lvalue(Lender())) << "\n" << ::tpy::check_signals;
     auto __tmp_1 = IntCounter();
-    std::cout << "value step" << " " << ::tpyapp::fixtures::sum_lent(__tmp_1) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = Task();
-    std::cout << "own result" << " " << ::tpyapp::part_value_steps::run_it(__tmp_2) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = Holder();
-    std::cout << "own iterator object" << " " << ::tpyapp::fixtures::sum_lent(__tmp_3) << "\n" << ::tpy::check_signals;
-    auto __tmp_4 = Lender();
-    std::cout << "mixed" << " " << ::tpyapp::part_value_steps::consume(__tmp_4) << "\n" << ::tpy::check_signals;
-    auto __tmp_5 = IntCounter();
-    std::cout << "value-bound child" << " " << ::tpyapp::part_value_steps::sum_value_steps(__tmp_5) << "\n" << ::tpy::check_signals;
+    std::cout << "value-bound child" << " " << ::tpyapp::part_value_steps::sum_value_steps(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 

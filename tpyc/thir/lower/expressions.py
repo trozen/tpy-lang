@@ -198,6 +198,7 @@ from ...coercions import (wrap_into_any, CoercionContext, coercion_rule,
                           context_free_wrap_template, resolve_coercion)
 from ...compilation_context import get_current_compiler
 from ...value_category import (
+    protocol_binding,
     CONTAINER_LITERAL_NODES, frame_param_lends, place_dies,
     returns_open_type_param,
     property_access_returns_cpp_ref,
@@ -763,7 +764,6 @@ from .checks import (
     _coro_factory_structural_arg,
     _deref_coerce_arg,
     _iter_rvalue_structural_arg,
-    _record_rvalue_structural_arg,
     _opt_own_ptr_opt_name_arg,
     _record_rvalue_source_shape,
     copy_construct_source,
@@ -829,7 +829,6 @@ from .checks import (
     _marker_call_kind,
     _marker_call_supported,
     _marker_reject,
-    _module_qual_ctor_shape,
     _member_gen_call_iterable_ok,
     _method_call_arg_ok,
     _wrapper_ref_tuple_elem_arg,
@@ -1995,24 +1994,6 @@ def _require_method_call_arg(
         raise ThirUnsupported(call_reject_reason("expr.method_call"))
 
 
-def _protocol_spelled_container_cpp(atu: 'TpyType',
-                                    proto: 'NominalType') -> str:
-    """The self-spelled C++ of a container literal hoisted at a protocol
-    slot: an unresolved Int/FloatLiteralType ELEMENT (a call-arg literal
-    sema never slot-resolves) would render its VALUE into the template-arg
-    position (`std::array<1.0, 3>`), so substitute the protocol's element
-    type, keeping the container flavor the resolver chose."""
-    container_type = atu
-    if (isinstance(proto, NominalType) and proto.type_args
-            and len(proto.type_args) == 1
-            and isinstance(atu, NominalType) and atu.type_args):
-        elem = atu.type_args[0]
-        if isinstance(elem, (FloatLiteralType, IntLiteralType)):
-            container_type = replace(
-                atu, type_args=(proto.type_args[0],) + atu.type_args[1:])
-    return container_type.to_cpp()
-
-
 def _ru_wrapper_inline(ru: TpyType, init: THIRExpr, a: TpyExpr,
                        lc: '_LowerCtx', *, mutable: bool = False) -> THIRExpr:
     """A recursive union's wrapper built from `init` for its parameter:
@@ -2047,94 +2028,13 @@ def _lower_marker_method_arg(
         e: TpyMethodCall, a: TpyExpr, ptype: 'TpyType | None', index: int,
         lc: '_LowerCtx', declared: dict[str, TpyType], *,
         kind: 'tuple[str, str]', temp_args: bool,
-        signature: 'CallSignature | None',
-        protocol_hoist: bool = False) -> THIRExpr:
+        signature: 'CallSignature | None') -> THIRExpr:
     """One argument of a receiver-less marker call (module-qualified,
     static, classmethod, super, unbound base) or of a deref-chain method
     call, lowered as a free call's argument of `kind`: the callers pass the
     `@cpp_template` kind for a template callee and the plain kind for every
     other, a `@native` one included. `signature` is the one the call's
     callee publishes."""
-    if protocol_hoist:
-        # The qualcall loop's protocol hoist (a PLAIN module callee only --
-        # native/template callees skip that loop's first pass): a temporary
-        # arg at a structural protocol slot hoists `auto __tmp_N = <rvalue>;`
-        # -- C++ cannot deduce a template param from a braced-init-list, and
-        # the temp must outlive the call. @dynamic slots take the adapter
-        # path ahead of that arm and stay rejected here. The arm claims its
-        # shapes ahead of the arg gate: it fully determines the render and
-        # raises on anything it cannot lower.
-        proto = protocol_slot(ptype)
-        # A const reference binds the fresh argument inline (it deduces the
-        # same type from it) unless the keep plan seats it; a forwarding one
-        # keeps the named temp.
-        inline = (_deduced_const_ref(e.resolved_function_info, index, ptype,
-                                     lc, signature)
-                  and not _seat_needed(a, lc))
-        if (proto is not None and not is_dyn_protocol(proto)
-                and isinstance(a, TpyArrayLiteral)):
-            if not temp_args and not inline:
-                raise ThirUnsupported(
-                    "protocol arg-temp outside a flush position")
-            at = lc.analyzer.get_expr_type(a)
-            at = resolve_pending_container(at, lc.analyzer) or at
-            atu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-            init = _lower_literal_arg(
-                a, atu, lc, declared,
-                "container-literal marker protocol arg on the make path",
-                array_retype=False)
-            if (isinstance(init, THIRContainerLiteral)
-                    and init.typed_brace_cpp is None
-                    and (is_list(atu) or is_array(atu))):
-                init = replace(
-                    init,
-                    typed_brace_cpp=_protocol_spelled_container_cpp(atu,
-                                                                    proto))
-            _witness("argtemp.marker_protocol_literal")
-            if inline:
-                return init
-            return held_temp(THIRArgTemp(result_type=proto, cpp_type=None, init=init,
-                                        form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
-        if (proto is not None
-                and _record_rvalue_structural_arg(a, proto, lc.analyzer)):
-            # A record RVALUE at a structural slot
-            # (`json.load(io.StringIO(s))`): the monomorphized param binds
-            # `T&&`, which the temporary would instantiate at another type,
-            # so the same un-spelled `auto __tmp_N = <rvalue>;` materialize;
-            # a const reference binds it inline.
-            if not temp_args and not inline:
-                raise ThirUnsupported(
-                    "protocol arg-temp outside a flush position")
-            _witness("argtemp.marker_protocol_record")
-            init = _lower_expr(a, lc, declared,
-                               use=_ExprUse(result=_ExprResultUse.STORAGE))
-            if inline:
-                return init
-            return held_temp(THIRArgTemp(
-                result_type=proto, cpp_type=None, init=init,
-                form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
-        if (proto is not None and not is_dyn_protocol(proto)
-                and _native_iterable_range_arg(a, ptype)):
-            # The range-rvalue rung of the same hoist
-            # (`auto __tmp_N = ::tpy::Range<int32_t>(1, 11);`), shape checks
-            # mirroring the free-call native range row.
-            range_fi = a.resolved_function_info
-            if (len(a.args) not in (1, 2, 3) or range_fi is None
-                    or not range_fi.cpp_template
-                    or not _eligible_scalar(_range_counter_type(a,
-                                                                lc.analyzer))):
-                note_detail("call.native_range_shape")
-                raise ThirUnsupported(call_reject_reason("expr.method_call"))
-            if not temp_args and not inline:
-                raise ThirUnsupported(
-                    "protocol arg-temp outside a flush position")
-            _witness("argtemp.marker_protocol_range")
-            init = _lower_range_object(a, lc, declared)
-            if inline:
-                return init
-            return held_temp(THIRArgTemp(result_type=proto, cpp_type=None,
-                                        init=init,
-                                        form=Form.BORROW, loc=getattr(a, "loc", None)), lc, a)
     # A GENERATOR-FACTORY rvalue at a generator callee's by-reference
     # iterable slot (`islice(count(), 4)`): the frame rvalue hoists into
     # a named statement temp (`auto __tmp_N = count();`) so the
@@ -15648,11 +15548,7 @@ def _marker_call_arg(e: TpyMethodCall, a: TpyExpr, i: int,
     return _lower_marker_method_arg(
         e, a, e.resolved_function_info.params[i].type, i, lc, declared,
         kind=mk if mk[0] == "template" else ("plain", ""),
-        temp_args=temp_args, signature=callee.signature,
-        # GENERIC module callees run the same first-pass hoist
-        # (`auto __tmp_N = {literal};` before `cycle<int32_t>(__tmp_N)`);
-        # only native/template callees skip it.
-        protocol_hoist=mk[0] in ("qualified", "generic_qualified"))
+        temp_args=temp_args, signature=callee.signature)
 
 
 def awaited_call_arg(e: 'TpyCall | TpyMethodCall', index: int,
@@ -16543,7 +16439,8 @@ def _structural_protocol_slot(a: TpyExpr, ptype: TpyType,
     an = lc.analyzer
     twin = protocol_twin_slot(ptype, a, an, declared.get,
                               frame=contract.frame_captured,
-                              writes=contract.written)
+                              writes=contract.written,
+                              binding=protocol_binding(callee_fi))
     if twin is ptype:
         return None
     src = _peel_coerce(a)
@@ -16701,8 +16598,13 @@ def _container_literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
                                          pos=SinkPos.CALL_ARG,
                                          allow_temps=temps)), st, lc)
     lowered = _lower_literal_arg(a, st, lc, declared,
-                                 "container-literal arg on the make path")
-    if (slot.materializer is Materializer.CALLEE
+                                 "container-literal arg on the make path",
+                                 array_retype=not (
+                                     slot.materializer
+                                     is Materializer.DEDUCED))
+    # A deduced parameter deduces no type from a braced list: the literal
+    # spells its resolved container, as a runtime symbol's slot takes it.
+    if (slot.materializer in (Materializer.CALLEE, Materializer.DEDUCED)
             or (callee_fi is not None and binds_runtime_symbol(callee_fi))):
         return _spell_brace(lowered, st, lc)
     return lowered
@@ -18579,15 +18481,6 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     a, lc, declared,
                     use=replace(_NESTED_ARG_USE,
                                 result=_ExprResultUse.BORROW_BIND))
-            elif _module_qual_ctor_shape(a, lc.analyzer):
-                # A module-qualified ctor rvalue (`via_protocol(
-                # io.StringIO("..."))`): the temp is a storage sink taking
-                # the bare call whole, so the marker gate's result check
-                # needs it named -- the record-rvalue temp arm's twin.
-                init = _lower_expr(
-                    a, lc, declared,
-                    use=replace(_NESTED_ARG_USE,
-                                result=_ExprResultUse.STORAGE))
             else:
                 # The temp direct-initializes its storage from the argument,
                 # so a select of fresh operands is built straight into it.

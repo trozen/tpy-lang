@@ -18,18 +18,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    auto __tmp_1 = Counter(0, 5);
-    std::cout << ::tpyapp::main::sum_iter(__tmp_1) << "\n" << ::tpy::check_signals;
-    auto __tmp_2 = Counter(1, 6);
-    std::cout << ::tpyapp::main::sum_iter(__tmp_2) << "\n" << ::tpy::check_signals;
-    auto __tmp_3 = Counter(0, 7);
-    std::cout << ::tpyapp::main::count_iter(__tmp_3) << "\n" << ::tpy::check_signals;
-    auto __tmp_4 = Counter(0, 0);
-    std::cout << ::tpyapp::main::count_iter(__tmp_4) << "\n" << ::tpy::check_signals;
-    auto __tmp_5 = Counter(0, 3);
-    std::cout << ::tpyapp::main::first_or_fallback(__tmp_5, -1) << "\n" << ::tpy::check_signals;
-    auto __tmp_6 = Counter(0, 0);
-    std::cout << ::tpyapp::main::first_or_fallback(__tmp_6, -1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_iter(::tpy::as_mut_lvalue(Counter(0, 5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_iter(::tpy::as_mut_lvalue(Counter(1, 6))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::count_iter(::tpy::as_mut_lvalue(Counter(0, 7))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::count_iter(::tpy::as_mut_lvalue(Counter(0, 0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_or_fallback(::tpy::as_mut_lvalue(Counter(0, 3)), -1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_or_fallback(::tpy::as_mut_lvalue(Counter(0, 0)), -1) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

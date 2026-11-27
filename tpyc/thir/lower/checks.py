@@ -6255,29 +6255,6 @@ def _iter_rvalue_structural_arg(a: TpyExpr, proto,
     return False
 
 
-def _record_rvalue_structural_arg(a: TpyExpr, proto, analyzer) -> bool:
-    """An F1-record RVALUE at a STRUCTURAL protocol slot
-    (`json.load(io.StringIO(s))`): the monomorphized param binds `T&`, which
-    a temporary cannot, so the un-spelled `auto __tmp_N =
-    <rvalue>;` hoists and the name passes -- the `is_temporary_expr` +
-    protocol-slot arm of the arg loop. `auto`, not the record's spelling:
-    the temp's type comes from `temps.create(ptype, ..)`, which spells a
-    protocol slot `auto`. The dynamic flavor takes the adapter machinery
-    instead and stays out."""
-    if is_dyn_protocol(proto):
-        return False
-    if not isinstance(a, (TpyCall, TpyMethodCall)):
-        return False
-    if not is_rvalue_source(analyzer, a):
-        return False
-    at = analyzer.get_expr_type(a)
-    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-           if at is not None else None)
-    if isinstance(atu, OwnType):
-        atu = unwrap_readonly(atu.wrapped)
-    return record_like(atu, analyzer)
-
-
 def _module_qual_ctor_shape(a: TpyExpr, analyzer) -> bool:
     """A module-qualified plain record ctor rvalue (`pcre2.Code(7)` -- a
     TpyMethodCall resolving to `__init__`): the marker "qualified" kind's

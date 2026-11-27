@@ -1787,8 +1787,7 @@ void main() {
     std::cout << "generic_touch:" << " " << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     std::cout << "keep_isinstance:" << " " << ::tpyapp::main::keep_isinstance({::tpy::BigInt(1), static_cast<std::string>("q")}) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::keep_pure({1, 2});
-    auto __tmp_4 = std::array<int32_t, 2>{2, 3};
-    std::cout << "keep_generic_prod:" << " " << ::tpyapp::main::keep_generic_prod(__tmp_4, ::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
+    std::cout << "keep_generic_prod:" << " " << ::tpyapp::main::keep_generic_prod(::tpy::as_mut_lvalue(std::array<int32_t, 2>{2, 3}), ::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__((*G2), 0, ::tpy::BigInt(1));
     ::tpyapp::main::hash_display(W(::tpy::BigInt(1)));
     ::tpy::ordered_map<W, ::tpy::BigInt> keyed = ::tpy::ordered_map<W, ::tpy::BigInt>({{W(::tpy::BigInt(1)), ::tpy::BigInt(5)}});

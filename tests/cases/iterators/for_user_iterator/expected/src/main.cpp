@@ -29,8 +29,7 @@ void __tpy_init() {
             std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
-    auto __tmp_1 = Counter(5);
-    std::cout << ::tpyapp::main::sum_iter(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_iter(::tpy::as_mut_lvalue(Counter(5))) << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = Counter(0);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);

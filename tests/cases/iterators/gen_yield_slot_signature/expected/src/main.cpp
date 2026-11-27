@@ -503,7 +503,7 @@ void main() {
     }
     std::cout << "ro-map-src" << " " << ::tpy::__getitem__(rp, 0).n << "\n" << ::tpy::check_signals;
     {
-        auto __tmp_12 = std::array<int32_t, 2>{3, 4};
+        std::array<int32_t, 2> __tmp_12 = std::array<int32_t, 2>{3, 4};
         auto __src_38 = ::tpyapp::main::ro_map<int32_t, int32_t>(double_, __tmp_12);
         auto&& __itr_38 = ::tpy::__iter__(__src_38);
         for (;;) {

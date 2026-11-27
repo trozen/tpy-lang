@@ -19,7 +19,7 @@ namespace tpyapp::main {
 int32_t _pin_cycle_copy() {
     int32_t total = 0;
     {
-        auto __tmp_1 = std::array<_Cell, 2>{_Cell(1), _Cell(2)};
+        std::array<_Cell, 2> __tmp_1 = std::array<_Cell, 2>{_Cell(1), _Cell(2)};
         auto __tmp_2 = ::tpystd::itertools::cycle<_Cell>(__tmp_1);
         auto __src_0 = ::tpystd::itertools::islice<_Cell>(__tmp_2, 3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

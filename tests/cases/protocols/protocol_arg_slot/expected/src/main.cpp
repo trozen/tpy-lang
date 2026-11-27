@@ -108,8 +108,7 @@ void s_overload() {
 void s_span() {
     std::array<Cell, 2> cs = {Cell(1), Cell(2)};
     ::tpyapp::main::bump_span(cs);
-    auto __tmp_1 = std::array<int32_t, 2>{7, 8};
-    std::cout << "span" << " " << ::tpy::__getitem__(cs, 0).w << " " << ::tpy::__getitem__(cs, 1).w << " " << ::tpyapp::main::read_span(cs) << " " << ::tpyapp::main::first<int32_t>(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "span" << " " << ::tpy::__getitem__(cs, 0).w << " " << ::tpy::__getitem__(cs, 1).w << " " << ::tpyapp::main::read_span(cs) << " " << ::tpyapp::main::first<int32_t>(::tpy::as_mut_lvalue(std::array<int32_t, 2>{7, 8})) << "\n" << ::tpy::check_signals;
 }
 
 // def s_declared() -> None:

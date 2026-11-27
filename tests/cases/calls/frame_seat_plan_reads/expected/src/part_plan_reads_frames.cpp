@@ -183,14 +183,14 @@ __coro_list_head list_head() {
 //     # set and dict comprehensions at that parameter, consumed in the call
 //     return sum(g_it({x for x in range(3)})) + sum(g_it({x: 1 for x in range(4)}))  # tpyc: ok
 int32_t comps() {
-    auto __tmp_1 = ({
+    ::tpy::ordered_set<int32_t> __tmp_1 = ({
         ::tpy::ordered_set<int32_t> __result;
         for (int32_t x = 0; x < 3; ++x) {
             __result.insert(x);
         }
         std::move(__result);
     });
-    auto __tmp_2 = ({
+    ::tpy::ordered_map<int32_t, int32_t> __tmp_2 = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         for (int32_t x = 0; x < 4; ++x) {
             __result.insert_or_assign(x, 1);
