@@ -442,8 +442,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.literal_mangled",       # literal-overloaded member call -> the
                                     # mangled member spelling (`get__lit_age`)
     "call.native_free",             # C++ @native free callee -> `::native(args)`
-    "call.template_arg_dropped",    # @cpp_template never spells {i}: the
-                                    # arg render cannot reach the expansion
     "call.expr_callee",             # computed callable: (callee)(args)
     "call.literal_overload_pin",    # literal pinned to its overloaded slot's type
     "call.native_c_free",           # C-linkage @native free callee -> raw `sym(args)`

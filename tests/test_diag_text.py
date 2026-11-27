@@ -33,6 +33,10 @@ FORBIDDEN = re.compile(
 # the tag alone. Anchored on the prose so that no other trailing parenthetical is skipped.
 REJECT_TAG = re.compile(r"(not yet supported by C\+\+ code generation) \([a-z_]+\.[\w.:]+\)$")
 
+# A diagnostic about a `@cpp_template` body speaks to the author of that C++ text, so
+# its remedy may quote the C++ discard the template has to spell.
+TEMPLATE_REMEDY = re.compile(r"'static_cast<void>\(\{(\d+|self)\}\)'")
+
 # The minimum number of diagnostic lines the walk must see. A path mapping that finds
 # nothing would otherwise report a clean corpus; the real count is in the thousands.
 MIN_DIAG_LINES = 1000
@@ -53,7 +57,10 @@ def test_committed_diagnostics_name_python_constructs() -> None:
             if not line.strip():
                 continue
             seen += 1
-            match = FORBIDDEN.search(REJECT_TAG.sub(r"\1", line))
+            text = REJECT_TAG.sub(r"\1", line)
+            if "@cpp_template" in text:
+                text = TEMPLATE_REMEDY.sub("", text)
+            match = FORBIDDEN.search(text)
             if match:
                 rel = path.relative_to(ROOT)
                 offenders.append(f"{rel}:{lineno}: {match.group(0)!r} in: {line.strip()}")

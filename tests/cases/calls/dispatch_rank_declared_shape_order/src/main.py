@@ -1102,7 +1102,7 @@ class OpMixed:
 
     # A template-backed variant and a bodied one rank as one set.
     @dispatch
-    @cpp_template("{self}.mark()")
+    @cpp_template("(static_cast<void>({0}), {self}.mark())")
     def __iadd__(self, x: float) -> "OpMixed":
         ...
 

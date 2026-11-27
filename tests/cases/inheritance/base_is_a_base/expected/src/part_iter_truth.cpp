@@ -118,7 +118,7 @@ void iter_override_consumers() {
     Sevens xs = Sevens();
     xs.push_back(1);
     std::cout << "in-override" << " " << ::tpy::print_bool(::tpy::seq_contains(xs, 1)) << " " << ::tpy::print_bool(::tpy::seq_contains(xs, 7)) << " " << ::tpy::print_bool(!::tpy::seq_contains(xs, 7)) << "\n" << ::tpy::check_signals;
-    std::cout << "iter-builtins" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_enumerate(xs))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip(xs, xs))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy(xs))) << "\n" << ::tpy::check_signals;
+    std::cout << "iter-builtins" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_enumerate(xs))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip(xs, xs))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>((static_cast<void>(std::monostate{}), ::tpy::builtin_filter_truthy(xs)))) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> w = std::vector<int32_t>{};
     ::tpy::list_extend(w, xs);
     SevStr ss = SevStr();
@@ -164,7 +164,7 @@ void truth_consumers() {
     std::array<Yes, 1> ys = {Yes()};
     std::array<::tpyapp::part_init::SBare, 2> ss = {::tpyapp::part_init::SBare(), ::tpyapp::part_init::SBare()};
     ::tpy::__getitem__(ss, 1).insert(1);
-    std::cout << "truth-consumers" << " " << ::tpy::print_bool(::tpy::builtin_all(ys)) << " " << ::tpy::print_bool(::tpy::builtin_any(ys)) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<Yes>>(::tpy::builtin_filter_truthy(ys))) << " " << ::tpy::__len__(::tpy::construct<std::vector<::tpyapp::part_init::SBare>>(::tpy::builtin_filter_truthy(ss))) << " " << ::tpy::__len__(OvL()) << "\n" << ::tpy::check_signals;
+    std::cout << "truth-consumers" << " " << ::tpy::print_bool(::tpy::builtin_all(ys)) << " " << ::tpy::print_bool(::tpy::builtin_any(ys)) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<Yes>>((static_cast<void>(std::monostate{}), ::tpy::builtin_filter_truthy(ys)))) << " " << ::tpy::__len__(::tpy::construct<std::vector<::tpyapp::part_init::SBare>>((static_cast<void>(std::monostate{}), ::tpy::builtin_filter_truthy(ss)))) << " " << ::tpy::__len__(OvL()) << "\n" << ::tpy::check_signals;
 }
 
 // # an object with an `empty()` method but no `__bool__` / `__len__` is truthy,
@@ -176,7 +176,7 @@ void truth_consumers() {
 void empty_method() {
     std::array<Emp, 1> es = {Emp()};
     ::tpy::Any a = ::tpy::make_any(EmpStr());
-    std::cout << "empty-method" << " " << ::tpy::__len__(::tpy::construct<std::vector<Emp>>(::tpy::builtin_filter_truthy(es))) << " " << (((static_cast<void>(Emp()), true)) ? (std::string_view("y")) : (std::string_view("n"))) << " " << ((::tpy::to_bool(a)) ? (std::string_view("y")) : (std::string_view("n"))) << "\n" << ::tpy::check_signals;
+    std::cout << "empty-method" << " " << ::tpy::__len__(::tpy::construct<std::vector<Emp>>((static_cast<void>(std::monostate{}), ::tpy::builtin_filter_truthy(es)))) << " " << (((static_cast<void>(Emp()), true)) ? (std::string_view("y")) : (std::string_view("n"))) << " " << ((::tpy::to_bool(a)) ? (std::string_view("y")) : (std::string_view("n"))) << "\n" << ::tpy::check_signals;
 }
 
 // # Never run: an inherited user method growing its receiver invalidates a

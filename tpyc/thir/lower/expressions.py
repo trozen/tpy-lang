@@ -367,7 +367,6 @@ from .predicates import (
     _empty_instantiation_family,
     _tuple_opt_elem_subscript,
     opt_element_none_subject,
-    _template_positional_indices,
     _tparam_protocol_field_recv_ok,
     _tparam_protocol_field_over_field_ok,
     _call_ret_union_ok,
@@ -1515,19 +1514,6 @@ def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
         a, ptype, lc.analyzer, declared, lc.prescan.param_names,
         lc.narrow.narrowed, lc.inline_narrowed, lc.names_with("movable"),
         getattr(lc.func, "name", None))
-
-
-def _template_arg_unreferenced(kind: 'tuple[str, str] | None',
-                               arg_index: int) -> bool:
-    """A @cpp_template callee whose body never substitutes `{arg_index}`: the
-    expansion cannot contain that arg's render, so its shape is unobservable
-    (`filter(None, xs)` -> `::tpy::builtin_filter_truthy({1})`, where the
-    `None` predicate selects the callee and then vanishes). Asks the shared
-    brace-grammar scanner rather than testing for a substring -- a `{{0}}`
-    literal-brace escape is not a reference."""
-    if kind is None or kind[0] != "template":
-        return False
-    return arg_index not in _template_positional_indices(kind[1])
 
 
 def _own_opt_ptr_name_move_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -15335,15 +15321,6 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         return _lower_vararg_pack(a, ptype, lc, declared, temp_args=temp_args,
                                   keep=_keep, keep_slot=ptype)
     _refuse_dying_arg(a, ptype, _keep, analyzer)
-    if (kind is not None and kind[0] in ("native", "native_c", "template")
-            and _template_arg_unreferenced(kind, arg_index)):
-        # A @cpp_template that never spells `{i}` DISCARDS this arg's
-        # render (`filter(None, xs)` -> `builtin_filter_truthy({1})`), so
-        # no shape check can matter -- the expansion cannot contain it.
-        _witness("call.template_arg_dropped")
-        return THIRLiteral(result_type=analyzer.get_expr_type(a),
-                           value=None, form=Form.VALUE,
-                           loc=getattr(a, "loc", None))
     native = kind is not None and kind[0] in ("native", "native_c",
                                               "template")
     routed = converted_arg(a, ptype, lc, declared, callee_fi=_callee_fi,

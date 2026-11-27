@@ -20,6 +20,7 @@ from ..typesys import (
 )
 from ..module_names import public_module_name
 from ..identity_map import IdentityMap
+from ..cpp_template import scan_template_placeholders
 from ..type_def_registry import (
     is_bool_type, is_str_type, type_def_of,
     find_factory_by_simple_name, find_factory_in_module,
@@ -186,52 +187,69 @@ def _overload_display(form: OverloadForm) -> str:
     return "@overload stub" if form is OverloadForm.OVERLOAD else "@dispatch variant"
 
 
-def _validate_cpp_template(template: str) -> str | None:
-    """Reject a @cpp_template that repeats a runtime-value placeholder.
+def _template_runtime_slots(params: list, keyword_only_start: int | None,
+                            vararg_name: str | None,
+                            kwarg_name: str | None) -> list[str]:
+    """A signature's runtime-value slots in sema's ParamInfo order --
+    `[fixed..., *args, keyword-only..., **kwargs]` -- which is the order
+    a template's `{N}` indexes."""
+    names = [name for name, _ in params]
+    if vararg_name is not None:
+        at = len(names) if keyword_only_start is None else keyword_only_start
+        names.insert(at, vararg_name)
+    if kwarg_name is not None:
+        names.append(kwarg_name)
+    return names
 
-    Returns an error message, or None if valid. A runtime-value placeholder
-    (`{self}` or a positional `{N}`) is substituted with an *evaluated*
-    argument expression; repeating one double-evaluates that expression --
-    a C-macro footgun (side effects run twice; for a subscript receiver the
-    two evaluations can yield different containers, making std::stable_sort
-    over begin()/end() undefined). Type placeholders (`{cpp}` and named type
-    params like `{T}`) are inert -- resolved before argument expansion -- so
-    repeating them is safe and stays legal. Mirrors expand_cpp_template's
-    grammar (`{{`/`}}` are literal braces). @native binds a typed C++ symbol
-    that evaluates each argument once, so it is the escape hatch.
+
+def _validate_cpp_template(template: str, slots: list[str],
+                           needs_self: bool) -> str | None:
+    """Require a @cpp_template to spell each runtime-value slot exactly once.
+
+    Returns an error message, or None if valid. Every slot of `slots` is an
+    evaluated argument expression: repeating its placeholder double-evaluates
+    it (side effects run twice; for a subscript receiver the two evaluations
+    can yield different containers), and omitting it never evaluates it at
+    all, so the call would silently drop the argument the TPy twin runs.
+    `{self}` is one more slot when `needs_self`. Type placeholders (`{cpp}`,
+    `{T}`) are inert -- resolved before argument expansion -- and may repeat.
     """
-    seen: set[str] = set()
-    i, n = 0, len(template)
-    while i < n:
-        c = template[i]
-        if c == '{':
-            if i + 1 < n and template[i + 1] == '{':
-                i += 2
-                continue
-            close = template.find('}', i + 1)
-            if close == -1:
-                return None  # malformed; expand_cpp_template reports it later
-            field = template[i + 1:close]
-            if field == 'self' or field.isdigit():
-                # Key on the arg index, not the raw text: expand_cpp_template
-                # resolves `{N}` via int(field), so `{0}` and `{00}` are the
-                # same argument and must both count against the one-use limit.
-                key = str(int(field)) if field.isdigit() else field
-                if key in seen:
-                    return (
-                        f"@cpp_template uses runtime-value placeholder "
-                        f"'{{{field}}}' more than once; a repeated placeholder "
-                        f"double-evaluates its argument (side effects run "
-                        f"twice). Use @native to bind a C++ helper that takes "
-                        f"the value as a typed argument instead."
-                    )
-                seen.add(key)
-            i = close + 1
-        elif c == '}' and i + 1 < n and template[i + 1] == '}':
-            i += 2
-        else:
-            i += 1
+    scan = scan_template_placeholders(template)
+    if scan.malformed is not None:
+        return f"@cpp_template: {scan.malformed}"
+    for idx, uses in sorted(scan.positional.items()):
+        if idx >= len(slots):
+            have = (f"parameters {{0}}..{{{len(slots) - 1}}}" if slots
+                    else "no parameters")
+            return (f"@cpp_template placeholder '{{{idx}}}' names no "
+                    f"parameter; the signature has {have}")
+        if uses > 1:
+            return _repeat_message(f"{{{idx}}}")
+    if scan.self_uses and not needs_self:
+        return ("@cpp_template uses '{self}' but the function has no "
+                "receiver")
+    if scan.self_uses > 1:
+        return _repeat_message("{self}")
+    if needs_self and not scan.self_uses:
+        return _omit_message("the receiver 'self'", "{self}")
+    for idx, name in enumerate(slots):
+        if idx not in scan.positional:
+            return _omit_message(f"parameter '{name}'", f"{{{idx}}}")
     return None
+
+
+def _repeat_message(placeholder: str) -> str:
+    return (f"@cpp_template uses runtime-value placeholder '{placeholder}' "
+            f"more than once; a repeated placeholder double-evaluates its "
+            f"argument (side effects run twice). Use @native to bind a C++ "
+            f"helper that takes the value as a typed argument instead.")
+
+
+def _omit_message(what: str, placeholder: str) -> str:
+    return (f"@cpp_template never spells {what} ('{placeholder}'), so its "
+            f"argument would never be evaluated; spell every runtime "
+            f"parameter exactly once, and to discard a value write "
+            f"'static_cast<void>({placeholder})'")
 
 
 def _extract_subscript_slices(node: ast.Subscript) -> list[ast.expr]:
@@ -2892,7 +2910,11 @@ class Parser:
             if not self._is_stub_body(node.body):
                 raise ParseError(
                     f"@cpp_template method '{node.name}' must have `...` body", node)
-            err = _validate_cpp_template(cpp_template)
+            err = _validate_cpp_template(
+                cpp_template,
+                _template_runtime_slots(params, keyword_only_start,
+                                        vararg_name, kwarg_name),
+                needs_self=has_self and node.name != "__init__")
             if err is not None:
                 raise ParseError(err, node)
         self._check_stub_only_kwarg(transient_dec, node, "transient")
@@ -3257,7 +3279,11 @@ class Parser:
             if not is_stub_body:
                 raise ParseError(
                     f"@cpp_template function '{node.name}' must have `...` body", node)
-            err = _validate_cpp_template(cpp_template)
+            err = _validate_cpp_template(
+                cpp_template,
+                _template_runtime_slots(params, keyword_only_start,
+                                        vararg_name, kwarg_name),
+                needs_self=False)
             if err is not None:
                 raise ParseError(err, node)
 

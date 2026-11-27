@@ -3336,9 +3336,9 @@ class SemanticContext:
     # (`landings`: holder -> {role: {path: member}}), published by each
     # settled body and by the defaults' commit; the lowering reads it.
     union_landings: PublishedLandings = field(default_factory=PublishedLandings)
-    # Whether a default's commit publishes its landing
-    # (`default_landings_published`).
-    publish_default_landings: bool = True
+    # Where a default's commit holds its landings instead of publishing
+    # them (`default_landings_held`).
+    held_default_landings: 'list[IdentityMap] | None' = None
     # Each member of a literal source with a record, by its peeled node:
     # the record's key and the member's path in it
     # (`source_records.read_record`).
@@ -4731,19 +4731,27 @@ class SemanticContext:
             landings = self.func.union_landings
             self.func, self.probe_slot = saved_func, saved_probe
             del self.diagnostics[before:]
-            if self.publish_default_landings:
+            if self.held_default_landings is not None:
+                self.held_default_landings.append(landings)
+            else:
                 publish_landings(landings, self.union_landings)
 
     @contextmanager
-    def default_landings_published(self, published: bool) -> Iterator[None]:
-        """Defaults checked in this scope publish their landings only when
-        `published`: a default no C++ renders records none."""
-        saved = self.publish_default_landings
-        self.publish_default_landings = published
+    def default_landings_held(self) -> 'Iterator[list[IdentityMap]]':
+        """Defaults checked in this scope hold their landings in the list
+        yielded, for `publish_held_landings` once it is known whether a C++
+        declaration renders them."""
+        saved = self.held_default_landings
+        held: list[IdentityMap] = []
+        self.held_default_landings = held
         try:
-            yield
+            yield held
         finally:
-            self.publish_default_landings = saved
+            self.held_default_landings = saved
+
+    def publish_held_landings(self, held: 'list[IdentityMap]') -> None:
+        for landings in held:
+            publish_landings(landings, self.union_landings)
 
     def assert_union_boundary(self) -> None:
         """Under the test harness, a committing check that lands a value

@@ -53,7 +53,7 @@ def poke(p: Ptr[int32]) -> None:
 
 
 @value_ptr_coercion
-@cpp_template("(*{0} = 7)")
+@cpp_template("(static_cast<void>({1}), *{0} = 7)")
 def bump(p: Ptr[int32], mode: str) -> int32: ...
 
 

@@ -8244,8 +8244,11 @@ def default_needs_call_site_fill(ptype: TpyType) -> bool:
         # Only NominalType carries the flag; a NoneType/monostate arm does not.
         return isinstance(t, NominalType) and t.is_user_record
 
-    own = isinstance(ptype, OwnType)
-    inner = ptype.wrapped if own else ptype
+    # `readonly` changes access, not the class template the default converts to.
+    inner = unwrap_readonly(ptype)
+    own = isinstance(inner, OwnType)
+    if own:
+        inner = unwrap_readonly(inner.wrapped)
     if isinstance(inner, OptionalType):
         return (own or not inner.uses_pointer_repr()) and _is_record(inner.inner)
     if isinstance(inner, UnionType):
@@ -9745,6 +9748,17 @@ class FunctionInfo:
     def has_keyword_only(self) -> bool:
         """True if this function has keyword-only parameters."""
         return any(p.keyword_only for p in self.params)
+
+    def renders_default(self, default: 'TpyExpr') -> bool:
+        """Whether `default` is a C++ default argument of this callee's
+        declaration; a call omitting it otherwise fills it. A default no
+        parameter of this signature holds (pruned from an overload copy) is
+        rendered by none."""
+        idx = next((i for i, p in enumerate(self.params)
+                    if p.default_expr is default), None)
+        return idx is not None and default_emittable_at(
+            [(p.type, p.default_expr) for p in self.params], idx,
+            self.is_method, self.emits_cpp_defaults)
 
     @property
     def materializes_defaults(self) -> bool:

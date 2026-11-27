@@ -882,7 +882,8 @@ class ProtocolGenerator:
                 call_expr = expand_cpp_template(
                     cpp_tmpl, "t",
                     *(f"std::declval<{concept_param_cpp(ptype)}>()"
-                      for _, ptype in method_sig.params))
+                      for _, ptype in method_sig.params),
+                    unevaluated=True)
             elif (method_sig.name in DUNDER_TO_BINARY_OP
                     and method_sig.name not in ("__floordiv__", "__rfloordiv__")
                     and len(method_sig.params) == 1):

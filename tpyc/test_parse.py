@@ -94,7 +94,7 @@ class TestTransientKwarg:
         "@native(\"K\")\n"
         "class K:\n"
         "    @native(\"k_m\", transient=True)\n    def m(self) -> int32: ...\n"
-        "    @cpp_template(\"{0}.n\", transient=True)\n    def t(self) -> int32: ...\n")
+        "    @cpp_template(\"{self}.n\", transient=True)\n    def t(self) -> int32: ...\n")
 
     def test_parsed_on_native_and_template_stubs(self, extern_parser):
         module = extern_parser().parse(self.STUBS, module_name="main")
@@ -537,35 +537,66 @@ class TestProtocolOnlyDecoratorRejected:
 
 
 class TestValidateCppTemplate:
-    """`_validate_cpp_template` rejects a repeated runtime-value placeholder
-    ({self}/{N}); type placeholders ({cpp}, {T}) and single use stay legal."""
+    """`_validate_cpp_template` requires each runtime-value slot ({self}/{N})
+    exactly once; type placeholders ({cpp}, {T}) are free to repeat."""
+
+    @staticmethod
+    def _v(tmpl: str, n: int = 1, needs_self: bool = False) -> str | None:
+        return _validate_cpp_template(tmpl, [f"p{i}" for i in range(n)],
+                                      needs_self)
 
     def test_single_use_ok(self):
-        assert _validate_cpp_template("{self}[{0}] = {1}") is None
+        assert self._v("{self}[{0}] = {1}", 2, needs_self=True) is None
 
     def test_repeated_positional_rejected(self):
-        assert _validate_cpp_template("{0} + {0}") is not None
+        assert "more than once" in self._v("{0} + {0}")
 
     def test_repeated_self_rejected(self):
-        assert _validate_cpp_template(
-            "std::stable_sort({self}.begin(), {self}.end())") is not None
+        assert "more than once" in self._v(
+            "std::stable_sort({self}.begin(), {self}.end())", 0,
+            needs_self=True)
 
     def test_index_normalized_before_dedup(self):
         # {0} and {00} are the same argument to expand_cpp_template (int(field)),
         # so a template mixing them must still be rejected.
-        assert _validate_cpp_template("{0} + {00}") is not None
+        assert "more than once" in self._v("{0} + {00}")
 
     def test_repeat_detected_across_literal_braces(self):
-        assert _validate_cpp_template("{{ return {0} + {0}; }}") is not None
+        assert "more than once" in self._v("{{ return {0} + {0}; }}")
 
     def test_repeated_type_placeholder_ok(self):
         # {cpp} and named type params are inert (resolved before arg expansion).
-        assert _validate_cpp_template("static_cast<{cpp}>(static_cast<{cpp}>({0}))") is None
-        assert _validate_cpp_template("::tpy::construct<{T}, {T}>({0})") is None
+        assert self._v("static_cast<{cpp}>(static_cast<{cpp}>({0}))") is None
+        assert self._v("::tpy::construct<{T}, {T}>({0})") is None
 
-    def test_malformed_defers_to_expand(self):
-        # An unmatched brace is expand_cpp_template's diagnostic, not ours.
-        assert _validate_cpp_template("{0} + {") is None
+    def test_omitted_positional_rejected(self):
+        err = self._v("f({0})", 2)
+        assert "parameter 'p1'" in err and "static_cast<void>({1})" in err
+
+    def test_omitted_self_rejected(self):
+        err = self._v("f({0})", 1, needs_self=True)
+        assert "receiver" in err and "static_cast<void>({self})" in err
+
+    def test_explicit_discard_ok(self):
+        assert self._v("(static_cast<void>({0}), f({1}))", 2) is None
+
+    def test_literal_brace_is_not_a_use(self):
+        assert "parameter 'p0'" in self._v("{{0}}")
+
+    def test_out_of_range_rejected(self):
+        assert "names no parameter" in self._v("f({0}, {1})", 1)
+
+    def test_self_without_receiver_rejected(self):
+        assert "no receiver" in self._v("{self}.f({0})", 1)
+
+    def test_malformed_rejected(self):
+        assert "unmatched '{'" in self._v("{0} + {")
+        assert "unmatched '}'" in self._v("{0} }")
+        assert "invalid placeholder" in self._v("T{}({0})")
+
+    def test_non_ascii_digit_is_malformed(self):
+        # str.isdigit() holds for a superscript, which int() refuses.
+        assert "invalid placeholder '{\u00b2}'" in self._v("{\u00b2}")
 
     def test_method_site_rejects_via_parser(self):
         # Exercises the method decorator call site (distinct from the free-fn site).
@@ -577,6 +608,49 @@ class TestValidateCppTemplate:
                 "class K:\n"
                 "    @cpp_template(\"{self} + {self}\")\n"
                 "    def dbl(self) -> int32: ...\n")
+
+    @pytest.mark.parametrize("src, expect", [
+        # *args and keyword-only slots number as sema's ParamInfo order.
+        ("@cpp_template(\"f({0}, {1}, {2}, {3})\")\n"
+         "def g(a: int32, *xs: int32, k: int32, **kw: Unpack[TD]) -> None: ...\n",
+         None),
+        ("@cpp_template(\"f({0}, {1})\")\n"
+         "def g(a: int32, *, k: int32 = 1) -> None: ...\n", None),
+        ("@cpp_template(\"f({0})\")\n"
+         "def g(a: int32, *, k: int32 = 1) -> None: ...\n", "parameter 'k'"),
+        ("@cpp_template(\"f({0})\")\n"
+         "def g(a: int32, *xs: int32) -> None: ...\n", "parameter 'xs'"),
+        ("class K:\n"
+         "    @cpp_template(\"K({0})\")\n"
+         "    def __init__(self, a: int32) -> None: ...\n", None),
+        ("class K:\n"
+         "    @staticmethod\n"
+         "    @cpp_template(\"f({0})\")\n"
+         "    def s(a: int32) -> None: ...\n", None),
+        ("class K:\n"
+         "    @classmethod\n"
+         "    @cpp_template(\"f({self})\")\n"
+         "    def c(cls) -> None: ...\n", "no receiver"),
+        ("class K:\n"
+         "    @cpp_template(\"({0} * 2)\")\n"
+         "    def m(self, a: int32) -> int32: ...\n",
+         "never spells the receiver 'self'"),
+        ("class K:\n"
+         "    @property\n"
+         "    @cpp_template(\"7\")\n"
+         "    def p(self) -> int32: ...\n", "receiver"),
+    ])
+    def test_signature_slots_via_parser(self, src, expect):
+        full = ("from tpy.extern import cpp_template\n"
+                "from tpy import int32\n"
+                "from typing import TypedDict, Unpack\n"
+                "class TD(TypedDict):\n"
+                "    z: int32\n" + src)
+        if expect is None:
+            Parser().parse(full, module_name="m")
+        else:
+            with pytest.raises(ParseError, match=expect):
+                Parser().parse(full, module_name="m")
 
 
 # The expression node classes `Parser._parse_expr` lowers (FormattedValue

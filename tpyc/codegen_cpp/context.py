@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Callable, Iterator, Mapping, TextIO, TYPE_CHECKING
 
+from ..cpp_template import scan_template_placeholders
 from ..typesys import pointer_repr_optional, element_access
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, SelfType,
@@ -147,7 +148,8 @@ def resumable_struct_name(name: str, owner_record: str | None = None,
 
 
 def expand_cpp_template(template: str, self_val: 'str | None' = None, *args: str,
-                        self_type: 'TpyType | None' = None) -> str:
+                        self_type: 'TpyType | None' = None,
+                        unevaluated: bool = False) -> str:
     """Substitute {self}, {cpp}, and positional {0}, {1}, ... into a
     @cpp_template body.
 
@@ -158,6 +160,12 @@ def expand_cpp_template(template: str, self_val: 'str | None' = None, *args: str
     and never re-scanned, so C++ braces inside an argument (e.g.
     `std::vector<int>{30}`) can't be mistaken for placeholders. self_val
     is None for free functions (no receiver); a {self} is then an error.
+    Every passed positional operand must be substituted: an operand the
+    template never spells would never be evaluated, so that is an internal
+    error. The receiver is exempt: a static / class method template called
+    through an instance spells no {self} (BUGS.md#static-template-call-drops-receiver).
+    `unevaluated` marks an unevaluated context (a concept requirement over
+    `std::declval` operands), where an unspelled operand runs nothing.
     """
     if self_type is not None and "{cpp}" in template:
         template = template.replace("{cpp}", self_type.to_cpp())
@@ -190,7 +198,7 @@ def expand_cpp_template(template: str, self_val: 'str | None' = None, *args: str
                 # caller had no type context -- preserve it literally rather
                 # than erroring, leaving the malformed C++ for the C++ compiler.
                 out.append('{cpp}')
-            elif field.isdigit():
+            elif field.isascii() and field.isdigit():
                 idx = int(field)
                 if idx >= len(args):
                     raise CodeGenError(
@@ -215,6 +223,16 @@ def expand_cpp_template(template: str, self_val: 'str | None' = None, *args: str
         else:
             out.append(c)
             i += 1
+    used = scan_template_placeholders(template).positional
+    dropped = [f"{{{k}}}" for k in range(len(args)) if k not in used]
+    if dropped and not unevaluated:
+        # Local: `thir` imports this module.
+        from ..thir.reject import internal_error
+        raise internal_error(
+            "template.operand_dropped",
+            f"C++ template never substitutes operand(s) "
+            f"{', '.join(dropped)}, so they would not be evaluated: "
+            f"{template}", None)
     return ''.join(out)
 
 

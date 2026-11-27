@@ -1998,7 +1998,8 @@ class SemanticAnalyzer:
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = func.is_consuming
 
-        self._validate_named_defaults(func)
+        self._validate_named_defaults(
+            func, body_function_info(self.ctx.registry, func))
         if not func.is_genexpr:
             self._note_signature_formations(func, resolved_params)
 
@@ -2265,7 +2266,8 @@ class SemanticAnalyzer:
         self.function_escape_hoisted_vars.update(
             self.ctx.nested_def_hoisted_vars)
 
-    def _validate_named_defaults(self, func: TpyFunction) -> None:
+    def _validate_named_defaults(self, func: TpyFunction,
+                                 info: 'FunctionInfo | None') -> None:
         """Type-check a default that names a constant -- `def f(x: T =
         NAME)`, `x: T = m.NAME` -- against its parameter: the referent
         `resolve_default` stamped, whose type an inferred global has only
@@ -2278,7 +2280,11 @@ class SemanticAnalyzer:
                 continue
             refusal = default_refusal(self.ctx, self.compat, default, ptype)
             if refusal is None:
-                commit_default_landing(self.ctx, self.compat, default, ptype)
+                with self.ctx.default_landings_held() as landings:
+                    commit_default_landing(self.ctx, self.compat, default,
+                                           ptype)
+                if info is not None and info.renders_default(default):
+                    self.ctx.publish_held_landings(landings)
             else:
                 self.compat.check_type_compatible(
                     refusal.actual, refusal.target,
@@ -3350,7 +3356,9 @@ class SemanticAnalyzer:
             prev_consuming = self.ctx.in_consuming_method
             self.ctx.in_consuming_method = method.is_consuming
 
-            self._validate_named_defaults(method)
+            self._validate_named_defaults(
+                method, body_method_info(
+                    self.ctx.registry.get_record(record.name), method))
             self._note_signature_formations(method, resolved_params)
 
             # Shared core: bind params, prescan, analyze body

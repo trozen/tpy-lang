@@ -73,7 +73,7 @@ void address_taken() {
     }
     int32_t n = 0;
     std::string_view s = "r";
-    (*&n = 7);
+    (static_cast<void>(s), *&n = 7);
     std::cout << "non-ptr argument" << " " << n << " " << ::tpyapp::main::require_r(s) << "\n" << ::tpy::check_signals;
     int32_t v = 0;
     std::array<int32_t*, 1> __tmp_1{&v};
@@ -85,7 +85,7 @@ void address_taken() {
     }
     int32_t k = 0;
     std::string_view t = "r";
-    (*&k = 7);
+    (static_cast<void>(t), *&k = 7);
     std::cout << "keyword ptr" << " " << k << " " << ::tpyapp::main::lit0__int32(k) << " " << ::tpyapp::main::require_r(t) << "\n" << ::tpy::check_signals;
 }
 

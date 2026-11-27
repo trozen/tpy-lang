@@ -961,8 +961,8 @@ For more involved transformations (computed expressions, multi-step conversions)
 
 `@cpp_template("...")` (from `tpy.extern`) replaces a call with an inline C++ expression. The template body substitutes placeholders:
 
-- `{self}` -- the receiver (methods only; an error in a free function)
-- `{0}`, `{1}`, ... -- positional arguments
+- `{self}` -- the receiver (instance methods and property accessors; an error in a free function, a `@staticmethod`, a `@classmethod` and `__init__`)
+- `{0}`, `{1}`, ... -- the runtime parameters in declaration order: the positional ones (defaulted ones included), then the `*args` pack, the keyword-only ones and the `**kwargs` object
 - `{cpp}` -- the C++ spelling of the (substituted) return type
 - `{T}` / type-param names -- substituted with the inferred type argument
 
@@ -979,9 +979,11 @@ To emit a **literal** C++ brace (aggregate-init, a lambda body, a scope, a GCC s
 def lambda_sum(a: int32, b: int32) -> int32: ...
 ```
 
-A lone unescaped brace (or an out-of-range `{N}`) is a compile-time diagnostic, not an internal error.
+A lone unescaped brace, an empty `{}` and a `{N}` past the last parameter are refused at parse time.
 
-**A runtime-value placeholder (`{self}` or `{N}`) may appear at most once.** Substitution is a textual paste with no evaluate-once binding, so a repeated value placeholder would evaluate its argument twice -- side effects run twice, and a repeated side-effecting receiver makes `std::stable_sort({self}.begin(), {self}.end())` undefined (the two evaluations can view different containers). The compiler rejects this at parse time. Type placeholders (`{cpp}`, `{T}`) are inert and may repeat freely. When you need an evaluated argument more than once, bind a typed C++ helper with `@native` -- it evaluates each argument once by construction.
+**Every runtime parameter appears exactly once.** Each runtime-value placeholder (`{self}` and every `{N}` of the signature) is the argument expression pasted in, with no evaluate-once binding, so the template decides how often the argument runs. The compiler refuses a template that repeats one -- the argument would run twice, and a repeated side-effecting receiver makes `std::stable_sort({self}.begin(), {self}.end())` undefined (the two evaluations can view different containers) -- and one that leaves one out, which would never run it, where the TPy function with the same signature does. A template that needs only the selection a parameter makes (`filter(None, xs)`) spells the discard: `(static_cast<void>({0}), ::tpy::builtin_filter_truthy({1}))`. Type placeholders (`{cpp}`, `{T}`) are inert and may repeat freely. When you need an evaluated argument more than once, bind a typed C++ helper with `@native` -- it evaluates each argument once by construction.
+
+The rule counts placeholders, not evaluations: a placeholder under `?:`, `&&` / `||`, `sizeof`, `decltype` or inside a C++ comment is the template's own statement of when (or whether) the argument runs, and the compiler takes it as written.
 
 ---
 

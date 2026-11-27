@@ -78,7 +78,7 @@ from ..parse.nodes import (COPY_HOOK, INIT_METHOD, DefaultReferent,
                           NON_CONSTANT_DEFAULT_MSG, OverloadForm,
                           SourceLocation,
                           is_base_init_call, walk_body_stmts, written_names)
-from ..identity_map import IdentitySet
+from ..identity_map import IdentityMap, IdentitySet
 from ..parse.parser import auto_declare_fields_from_init, reorder_fields_by_init
 from ..namespace import NameBinding, BindingKind
 from .send_chain import why_not_send, why_not_sync, render_chain
@@ -460,9 +460,14 @@ class _DefaultSite:
     scope_record: str | None
     members_typed: bool
     overload_copy: 'FunctionInfo | None' = None
-    # A `typing.overload` stub's or implementation's own defaults are
-    # checked where written, but only the copies' render.
-    rendered: bool = True
+    # The signature whose C++ declaration renders the defaults it can
+    # (`FunctionInfo.renders_default`); a default it does not render (a call
+    # omitting it fills it) publishes no landing. None when no declaration
+    # renders any: a `typing.overload` stub's or implementation's own
+    # (checked where written, but only the copies' render), a protocol's --
+    # and for an overload copy, whose signature is read from the registry
+    # at resolution (`_registered_copy`).
+    declaration: 'FunctionInfo | None' = None
 
 
 def resolve_default(ctx: 'SemanticContext', expr: TpyExpr,
@@ -4850,12 +4855,13 @@ class TypeRegistrar:
         """Queue the defaults of registered signature `info` for
         `resolve_defaults`. `scope_record` is the class whose body defines a
         method, the first scope a default's names resolve in."""
+        copy = (info if info.body is not None
+                and info.body.overload_stub is not None else None)
         self._queue_default_site(_DefaultSite(
             [(pi.name, pi.type, pi.default_expr) for pi in info.params],
             scope_record, members_typed=True,
-            overload_copy=(info if info.body is not None
-                           and info.body.overload_stub is not None
-                           else None)))
+            overload_copy=copy,
+            declaration=None if copy is not None else info))
 
     def _defer_protocol_defaults(self, methods: 'list[MethodSignature]') -> None:
         """Queue a protocol's method defaults: resolved where the protocol
@@ -4888,17 +4894,33 @@ class TypeRegistrar:
         self._drained_peers = cycle_peers
         sites, self._default_sites = self._default_sites, []
         for site in sites:
+            # Whether a slot's default renders is settled only once every
+            # slot of the site is: a later default pruned from an overload
+            # copy or read from a cycle peer takes the earlier ones out of
+            # the trailing suffix C++ defaults need. So each slot's landings
+            # are held until then.
+            held: list[tuple[TpyExpr, list[IdentityMap]]] = []
             for pname, ptype, default in site.slots:
                 if default is None:
                     continue
-                if site.overload_copy is not None:
-                    modules = self._resolve_copy_default(site, ptype, default)
-                else:
-                    with self.ctx.default_landings_published(site.rendered):
+                with self.ctx.default_landings_held() as landings:
+                    if site.overload_copy is not None:
+                        modules = self._resolve_copy_default(site, ptype,
+                                                             default)
+                    else:
                         modules = self._resolve_slot_default(site, pname,
                                                              ptype, default)
                 if modules & cycle_peers:
                     require_current_compiler().cycle_peer_defaults.add(default)
+                held.append((default, landings))
+            declaration = (self._registered_copy(site)[0]
+                           if site.overload_copy is not None
+                           else site.declaration)
+            if declaration is None:
+                continue
+            for default, landings in held:
+                if declaration.renders_default(default):
+                    self.ctx.publish_held_landings(landings)
 
     def _resolve_copy_default(self, site: _DefaultSite,
                               ptype: 'TpyType | None',
@@ -5397,15 +5419,13 @@ class TypeRegistrar:
             slots = [x for i in range(len(stub.params))
                      if (x := slot(stub, i)) is not None]
             if slots:
-                self._queue_default_site(_DefaultSite(slots, scope,
-                                                      members_typed=True,
-                                                      rendered=False))
+                self._queue_default_site(_DefaultSite(
+                    slots, scope, members_typed=True))
         slots = [x for i in range(len(impl.params))
                  if (x := slot(impl, i)) is not None]
         if slots:
-            self._queue_default_site(_DefaultSite(slots, scope,
-                                                  members_typed=False,
-                                                  rendered=False))
+            self._queue_default_site(_DefaultSite(
+                slots, scope, members_typed=False))
 
     def _refuse_constructor_set(self, record: TpyRecord) -> None:
         """A construction names what it builds, so a class takes one

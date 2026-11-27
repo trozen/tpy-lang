@@ -455,7 +455,7 @@ class Sink:
     @native("push_ptr")
     def stash_ptr(self, p: Ptr[readonly[ValSub]]) -> None: ...
 
-    @cpp_template("{self}.push_back({0})")
+    @cpp_template("(static_cast<void>({1}), {self}.push_back({0}))")
     def __setitem__(self, text: StrView, v: int32) -> None: ...
 
     @cpp_template("{self}.push_back({0})")

@@ -57,7 +57,12 @@ class TestExpandCppTemplate:
         assert result == "arr[i] = val"
 
     def test_no_placeholders(self):
-        assert expand_cpp_template("std::sort()", "x") == "std::sort()"
+        assert expand_cpp_template("std::sort()") == "std::sort()"
+
+    def test_unsubstituted_receiver_accepted(self):
+        # A static method template called through an instance spells no
+        # receiver (BUGS.md#static-template-call-drops-receiver).
+        assert expand_cpp_template("({0} * 2)", "x", "3") == "(3 * 2)"
 
     def test_repeated_placeholder(self):
         result = expand_cpp_template("{self} + {self}", "a")
@@ -71,9 +76,10 @@ class TestExpandCppTemplate:
         with pytest.raises(CodeGenError, match=r"\{1\}"):
             expand_cpp_template("{self}.f({0}, {1})", "obj", "a")
 
-    def test_extra_args_ok(self):
-        result = expand_cpp_template("{self}.f({0})", "obj", "a", "unused")
-        assert result == "obj.f(a)"
+    def test_unsubstituted_arg_raises(self):
+        # The extra argument would never be evaluated.
+        with pytest.raises(CodeGenError, match=r"never substitutes .*\{1\}"):
+            expand_cpp_template("{self}.f({0})", "obj", "a", "unused")
 
     def test_cpp_braces_in_substituted_value(self):
         """C++ initializer braces in substituted values must not trigger false positives."""
@@ -114,3 +120,7 @@ class TestExpandCppTemplate:
     def test_unmatched_close_brace_raises(self):
         with pytest.raises(CodeGenError, match=r"Unmatched '\}'"):
             expand_cpp_template("foo({0}) }", None, "x")
+
+    def test_non_ascii_digit_raises(self):
+        with pytest.raises(CodeGenError, match=r"Invalid placeholder"):
+            expand_cpp_template("f({\u00b2})", None, "x")

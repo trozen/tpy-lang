@@ -53,6 +53,7 @@ from ...parse.nodes import (
 )
 from ...modules.defs import (BINOP_TO_METHOD, UNCHECKED_GETITEM_CPP_TEMPLATE,
                              get_dunder_cpp_template)
+from ...cpp_template import scan_template_placeholders
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    numeric_literal_type)
@@ -10615,33 +10616,6 @@ def _native_iterable_genexpr_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     pb = _protocol_binding(ptype)
     return pb is not None and pb.name == "Iterable"
 
-def _template_positional_indices(tmpl: str) -> 'set[int]':
-    """The positional placeholder indices a `@cpp_template` body actually
-    substitutes. Walks the same brace grammar `_positional_only_template`
-    does, so a `{{0}}` literal-brace escape is NOT counted as a reference --
-    which a substring test would get wrong."""
-    seen: set[int] = set()
-    i, n = 0, len(tmpl)
-    while i < n:
-        c = tmpl[i]
-        if c == "{":
-            if i + 1 < n and tmpl[i + 1] == "{":
-                i += 2
-                continue
-            close = tmpl.find("}", i + 1)
-            if close == -1:
-                break
-            field = tmpl[i + 1:close]
-            if field.isdigit():
-                seen.add(int(field))
-            i = close + 1
-        elif c == "}" and i + 1 < n and tmpl[i + 1] == "}":
-            i += 2
-        else:
-            i += 1
-    return seen
-
-
 def _positional_only_template(tmpl: str, n_args: int) -> bool:
     """Whether a `@cpp_template` body contains only in-range positional
     placeholders (`{0}`, `{1}`, ...) and `{{`/`}}` literal-brace escapes --
@@ -10649,28 +10623,9 @@ def _positional_only_template(tmpl: str, n_args: int) -> bool:
     substitution context. A surviving named field (`{cpp}`, `{self}`, a type
     param) means sema's substitution did not fully resolve the template, so
     the call rejects."""
-    i, n = 0, len(tmpl)
-    while i < n:
-        c = tmpl[i]
-        if c == "{":
-            if i + 1 < n and tmpl[i + 1] == "{":
-                i += 2
-                continue
-            close = tmpl.find("}", i + 1)
-            field = tmpl[i + 1:close] if close != -1 else ""
-            if not field.isdigit() or int(field) >= n_args:
-                return False
-            i = close + 1
-        elif c == "}":
-            # Only the `}}` escape is admitted; a lone `}` (which expand would
-            # pass through literally) never occurs in a real template -- reject
-            # conservatively.
-            if not (i + 1 < n and tmpl[i + 1] == "}"):
-                return False
-            i += 2
-        else:
-            i += 1
-    return True
+    found = scan_template_placeholders(tmpl)
+    return (found.malformed is None and not found.self_uses
+            and not found.named and all(k < n_args for k in found.positional))
 
 def _ctor_arg_slot_ok(ptype: TpyType | None, analyzer) -> bool:
     """A scalar-ctor param slot the arg passes bare: a value scalar /

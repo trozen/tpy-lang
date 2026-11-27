@@ -5,7 +5,7 @@ from tpy import int32, Ptr, Send, take_ptr
 from tpy.extern import cpp_template
 
 
-@cpp_template("{0}")
+@cpp_template("(static_cast<void>({1}), {0})")
 def ident_send[T](p: Ptr[int32], witness: T) -> Ptr[Send[T]]: ...
 
 

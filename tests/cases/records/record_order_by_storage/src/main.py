@@ -502,7 +502,7 @@ class InlFirst:
     N: Final[int32] = 5
 
     @dispatch
-    @cpp_template("static_cast<int32_t>(7)")
+    @cpp_template("(static_cast<void>({self}), static_cast<void>({0}), static_cast<int32_t>(7))")
     def pick(self, value: Ptr[InlOuter.Inner]) -> int32: ...  # tpyc: ok
 
     @dispatch

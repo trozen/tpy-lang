@@ -1650,7 +1650,7 @@ class char(Sized, Equatable, Stringable, Representable):
     @pure
     def __eq__(self, other: char) -> bool: ...
 
-    @cpp_template("1")
+    @cpp_template("(static_cast<void>({self}), 1)")
     @readonly
     @pure
     def __len__(self) -> int32: ...

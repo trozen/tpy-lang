@@ -1009,7 +1009,7 @@ class Pass[T]:
     def __iter__(self) -> Iterator[T]: ...
 
     @readonly
-    @cpp_template("({0})", result={"x": "borrow"})
+    @cpp_template("(static_cast<void>({self}), ({0}))", result={"x": "borrow"})
     def same(self, x: StrView) -> StrView: ...
 
 def f(p: Pass[str], x: StrView) -> int:
@@ -1018,8 +1018,8 @@ def f(p: Pass[str], x: StrView) -> int:
 
 
 IDENTITY_METHOD_OWNED_SOURCE = IDENTITY_METHOD_SOURCE.replace(
-    '@cpp_template("({0})", result={"x": "borrow"})\n    def same(self, x: StrView) -> StrView: ...',
-    '@cpp_template("({0})")\n    def same(self, x: str) -> str: ...').replace(
+    '@cpp_template("(static_cast<void>({self}), ({0}))", result={"x": "borrow"})\n    def same(self, x: StrView) -> StrView: ...',
+    '@cpp_template("(static_cast<void>({self}), ({0}))")\n    def same(self, x: str) -> str: ...').replace(
     "def f(p: Pass[str], x: StrView) -> int:", "def f(p: Pass[str], x: str) -> int:")
 
 
@@ -1032,7 +1032,9 @@ def test_a_method_identity_template_at_a_by_value_result_is_read_as_fresh() -> N
     fn, = (fn for fn in ctx.thir_functions.values() if fn.name == "f")
     with activate_compiler(compiler):
         callee = _method_stub(fn)
-        assert callee.receiver and callee.result_origins == frozenset({1})
+        # A method template spells its receiver too, so it is no bare
+        # rendering of its argument; with no `result=` it declares no origin.
+        assert callee.receiver and callee.result_origins == frozenset()
         summary = stub_summary(callee)
         assert isinstance(summary, MIRCallSummary) and summary.returns == frozenset()
 

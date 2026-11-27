@@ -5,7 +5,7 @@ from tpy import int32, Ptr, take_ptr
 from tpy.extern import cpp_template
 
 
-@cpp_template("nullptr")
+@cpp_template("(static_cast<void>({0}), static_cast<void>({1}), nullptr)")
 def ident_opt[T](p: Ptr[int32], witness: T) -> Ptr[T | None]: ...
 
 

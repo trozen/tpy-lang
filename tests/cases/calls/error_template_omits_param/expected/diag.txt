@@ -1,0 +1,1 @@
+main.py:8: error: @cpp_template never spells parameter 'b' ('{1}'), so its argument would never be evaluated; spell every runtime parameter exactly once, and to discard a value write 'static_cast<void>({1})'

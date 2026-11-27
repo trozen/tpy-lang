@@ -1,0 +1,49 @@
+union evaluated
+union done
+discard evaluated
+discard done
+kwonly evaluated
+kwonly done
+pack evaluated
+pack done
+kwdefault 2
+kwargs evaluated
+kwargs done
+method receiver evaluated
+method evaluated
+method done
+property receiver evaluated
+setter evaluated
+property done
+static evaluated
+classmethod evaluated
+static done
+static class evaluated
+classmethod class evaluated
+static class done
+static add evaluated
+static add done
+static neg done
+static floordiv evaluated
+static floordiv 5
+readonly receiver evaluated
+readonly touch evaluated
+mutable receiver evaluated
+mutable touch evaluated
+auto_readonly done
+direct getitem evaluated
+direct getitem 35
+proto subscript 41
+copy free 1 1
+copy method 2 2
+kept suffix 2
+kept suffix method 2
+named slots 15
+named method 15
+boxed 1 4
+boxed readonly 2 5
+boxed optional 3 6
+copy constant 7 7
+native default done
+cycle 2 3 1
+cycle method 4

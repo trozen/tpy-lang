@@ -479,7 +479,7 @@ class SystemExit(BaseException):
     def __init__(self, code: str, /) -> None: ...
 
     @dispatch
-    @cpp_template("tpy::SystemExit(std::monostate{})")
+    @cpp_template("tpy::SystemExit({0})")
     def __init__(self, code: None, /) -> None: ...
 
     @dispatch

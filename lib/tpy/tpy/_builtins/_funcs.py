@@ -740,7 +740,7 @@ def filter[T](function: Fn[[T], bool], iterable: Iterable[T], /) -> Iterator[T]:
 
 @dispatch
 @readonly
-@cpp_template("::tpy::builtin_filter_truthy({1})", result={"iterable": "adopts"})
+@cpp_template("(static_cast<void>({0}), ::tpy::builtin_filter_truthy({1}))", result={"iterable": "adopts"})
 def filter[T](function: None, iterable: Iterable[T], /) -> Iterator[T]: ...
 
 
