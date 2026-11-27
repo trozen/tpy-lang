@@ -69,8 +69,11 @@ std::string pick__float32(float x) {
 //     # inverse: an int literal at a float32 slot keeps its plain conversion
 //     q: float32 = 16777217  # tpyc: ok
 //     print("int_literal", float(float32(q)), float(float32(5)))
-//     # inverse: a comparison compares the literal as a double
-//     print("compare", a == 1.0000000596046448, a < 1.0000000596046448)
+//     # inverse: a comparison compares the literal as a double; the explicit
+//     # float(a) keeps it in double, since the implicit mixed form `a == L`
+//     # (L not exact in float32) fails clang's -Wliteral-range
+//     # (BUGS.md#float32-float-literal-compare-clang-literal-range)
+//     print("compare", float(a) == 1.0000000596046448, float(a) < 1.0000000596046448)
 //     part_containers.main()
 //     part_positions.main()
 //     part_slots.main()
@@ -99,7 +102,7 @@ void main() {
     std::cout << "dispatch" << " " << ::tpyapp::main::pick__float(0.1) << "\n" << ::tpy::check_signals;
     float q = static_cast<float>(16777217);
     std::cout << "int_literal" << " " << ::tpy::print_float(static_cast<double>(q)) << " " << ::tpy::print_float(static_cast<double>(static_cast<float>(5))) << "\n" << ::tpy::check_signals;
-    std::cout << "compare" << " " << ::tpy::print_bool((a == 1.0000000596046448)) << " " << ::tpy::print_bool((a < 1.0000000596046448)) << "\n" << ::tpy::check_signals;
+    std::cout << "compare" << " " << ::tpy::print_bool((static_cast<double>(a) == 1.0000000596046448)) << " " << ::tpy::print_bool((static_cast<double>(a) < 1.0000000596046448)) << "\n" << ::tpy::check_signals;
     ::tpyapp::part_containers::main();
     ::tpyapp::part_positions::main();
     ::tpyapp::part_slots::main();

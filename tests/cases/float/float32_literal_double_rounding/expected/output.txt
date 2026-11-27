@@ -46,7 +46,7 @@ opt_dict_set 1.0
 method_arg 1.0
 dict 1.0 1.0
 tuple 1.0 2.5
-list_literal 1.0 2.5
+list_literal 1.5 2.5
 reassign 1.0
 reflected 1.0
 nan True

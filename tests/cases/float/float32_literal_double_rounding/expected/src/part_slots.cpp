@@ -79,9 +79,11 @@ double show(std::optional<float> o) {
 //     print("dict", float(float32(d["a"])), float(float32(d["b"])))
 //     t: tuple[float32, float32] = (1.0000000596046448, 2.5)  # tpyc: ok
 //     print("tuple", float(float32(t[0])), float(float32(t[1])))
-//     # renders the literals bare, which C++ narrows to the same value
-//     # (BUGS.md#float32-literal-slot-retype-skipped)
-//     ls: list[float32] = [1.0000000596046448, 2.5]  # tpyc: ok
+//     # a list literal renders its elements bare
+//     # (BUGS.md#float32-literal-slot-retype-skipped); a value float32 does
+//     # not hold exactly would fail the build under clang's
+//     # -Wimplicit-float-conversion, so these are exact
+//     ls: list[float32] = [1.5, 2.5]  # tpyc: ok
 //     print("list_literal", float(float32(ls[0])), float(float32(ls[1])))
 //     b = float32(0.0)
 //     b = 1.0000000596046448  # tpyc: ok
@@ -124,7 +126,7 @@ void main() {
     std::cout << "dict" << " " << ::tpy::print_float(static_cast<double>(::tpy::__getitem__(d, "a"))) << " " << ::tpy::print_float(static_cast<double>(::tpy::__getitem__(d, "b"))) << "\n" << ::tpy::check_signals;
     std::tuple<float, float> t = std::tuple<float, float>{static_cast<float>(1.0000000596046448), static_cast<float>(2.5)};
     std::cout << "tuple" << " " << ::tpy::print_float(static_cast<double>(std::get<0>(t))) << " " << ::tpy::print_float(static_cast<double>(std::get<1>(t))) << "\n" << ::tpy::check_signals;
-    std::vector<float> ls = {1.0000000596046448, 2.5};
+    std::vector<float> ls = {1.5, 2.5};
     std::cout << "list_literal" << " " << ::tpy::print_float(static_cast<double>(::tpy::__getitem__(ls, 0))) << " " << ::tpy::print_float(static_cast<double>(::tpy::__getitem__(ls, 1))) << "\n" << ::tpy::check_signals;
     float b = static_cast<float>(0.0);
     b = static_cast<float>(1.0000000596046448);
