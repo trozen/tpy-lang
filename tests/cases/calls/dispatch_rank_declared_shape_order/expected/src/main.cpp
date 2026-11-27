@@ -606,7 +606,7 @@ void coerce_base_vs_proto() {
     int8_t n8 = 1;
     ::tpy::BigInt k = ::tpy::BigInt(1);
     std::cout << "coerce_base_vs_proto:" << " " << ::tpyapp::main::cbp__Animal__int64(d, static_cast<int64_t>(n8)) << " " << ::tpyapp::main::cbp__Animal__int64(d, (k).to_fixed_check<int64_t>()) << " " << ::tpyapp::main::cbp_via(d, n8) << " " << d.hits << "\n" << ::tpy::check_signals;
-    std::cout << "coerce_base_vs_proto:" << " " << ::tpyapp::main::cbf__Animal__float32(d, 1.5f) << " " << d.hits << "\n" << ::tpy::check_signals;
+    std::cout << "coerce_base_vs_proto:" << " " << ::tpyapp::main::cbf__Animal__float32(d, static_cast<float>(1.5)) << " " << d.hits << "\n" << ::tpy::check_signals;
     std::cout << "coerce_base_vs_proto:" << " " << ::tpyapp::main::cbp__Animal__int64(d, static_cast<int64_t>(n8)) << " " << d.hits << "\n" << ::tpy::check_signals;
 }
 
@@ -664,7 +664,7 @@ void coerce_generic_shapes() {
     std::cout << "coerce_generic_shapes:" << " " << ::tpyapp::main::cgt__Iterable_T__int64<int32_t>(xs, static_cast<int64_t>(n8)) << "\n" << ::tpy::check_signals;
     std::cout << "coerce_generic_shapes:" << " " << ::tpyapp::main::csg__list_T__int64<int32_t>(ys, static_cast<int64_t>(n8)) << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
     std::cout << "coerce_generic_shapes:" << " " << ::tpyapp::main::cst__list_T__int64<int32_t>(zs, static_cast<int64_t>(n8)) << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
-    std::cout << "coerce_generic_shapes:" << " " << ::tpyapp::main::csf__list_T__float32<int32_t>(xs, 1.5f) << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
+    std::cout << "coerce_generic_shapes:" << " " << ::tpyapp::main::csf__list_T__float32<int32_t>(xs, static_cast<float>(1.5)) << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def coerce_proto_vs_t() -> None:
@@ -684,7 +684,7 @@ void coerce_proto_vs_t() {
 //     print("coerce_literal_vs_str:", cls("r", n8), clf("r", 1.5))  # tpyc: ok
 void coerce_literal_vs_str() {
     int8_t n8 = 1;
-    std::cout << "coerce_literal_vs_str:" << " " << ::tpyapp::main::cls__lit_r__w("r", static_cast<int64_t>(n8)) << " " << ::tpyapp::main::clf__lit_r__w("r", 1.5f) << "\n" << ::tpy::check_signals;
+    std::cout << "coerce_literal_vs_str:" << " " << ::tpyapp::main::cls__lit_r__w("r", static_cast<int64_t>(n8)) << " " << ::tpyapp::main::clf__lit_r__w("r", static_cast<float>(1.5)) << "\n" << ::tpy::check_signals;
 }
 
 // def coerce_optional_base() -> None:
@@ -971,7 +971,7 @@ void operators_literal(std::string_view one, std::string_view mode) {
 //     # double: BUGS.md#int-float-compare-rounds-bigint, float32 face).
 //     print("operators_builtin:", 16777217 ** y)  # tpyc: ok
 void operators_builtin() {
-    float y = 1.5f;
+    float y = static_cast<float>(1.5);
     std::cout << "operators_builtin:" << " " << ::tpy::print_float(static_cast<double>((std::pow(static_cast<float>(16777217), y)))) << "\n" << ::tpy::check_signals;
 }
 

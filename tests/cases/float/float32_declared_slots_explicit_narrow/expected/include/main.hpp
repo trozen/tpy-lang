@@ -127,7 +127,7 @@ inline Sample::Sample(double wide)
 //     self.v *= 2.0  # tpyc: ok
 inline void Sample::scale(double wide) {
     this->v = static_cast<float>((static_cast<double>(this->v) * (wide)));
-    this->v = (this->v) * (2.0f);
+    this->v = (this->v) * (static_cast<float>(2.0));
 }
 void __tpy_init();
 } // namespace tpyapp::main

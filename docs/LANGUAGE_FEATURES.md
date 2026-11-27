@@ -925,7 +925,7 @@ y = 2.0             # float (default)
 z: float32 = 2.0    # float32 -- annotation forces adaptation
 ```
 
-This means `float32` arithmetic stays in single precision without requiring explicit `float32(...)` wrappers on every literal. A `float` VALUE is another matter: it never narrows into a `float32` slot of any kind implicitly (`z = y`, `show(y)` with `show(x: float32)`, `return y` from `-> float32`, a `float32` field or element), so a `float32` accumulator fed by a `float`-returning function spells the rounding -- `acc = float32(acc + math.sqrt(v))` -- exactly as an `int32` accumulator fed by `int64` values spells `int32(...)`.
+This means `float32` arithmetic stays in single precision without requiring explicit `float32(...)` wrappers on every literal. The literal is still a `float` converted at that slot, as Python's `float32(float(L))`: C++ `static_cast<float>(0.1)` at every slot and at `float32(0.1)`, never the `f` suffix, which rounds the decimal text once and differs at a float32 midpoint (`float32(1.0000000596046448)` is `1.0`). A few sinks still render a float literal bare (BUGS.md#float32-literal-slot-retype-skipped). A `float` VALUE is another matter: it never narrows into a `float32` slot of any kind implicitly (`z = y`, `show(y)` with `show(x: float32)`, `return y` from `-> float32`, a `float32` field or element), so a `float32` accumulator fed by a `float`-returning function spells the rounding -- `acc = float32(acc + math.sqrt(v))` -- exactly as an `int32` accumulator fed by `int64` values spells `int32(...)`.
 
 ### Strings
 - **Working**: `str` type -- context-dependent: `std::string` by default, `std::string_view` for parameters

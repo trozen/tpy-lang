@@ -16,8 +16,8 @@ namespace tpyapp::main {
 //     u = 0  # tpyc: ok
 //     print("uint8", ~u)
 void main() {
-    float f = 0.1f;
-    f = 0.1f;
+    float f = static_cast<float>(0.1);
+    f = static_cast<float>(0.1);
     std::cout << "float32" << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << "\n" << ::tpy::check_signals;
     uint8_t u = 3;
     u = 0;

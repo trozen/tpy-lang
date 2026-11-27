@@ -31,7 +31,7 @@ Cell mk_cell() {
 //     print("free", a, b, c, d)
 void free_positions() {
     bool a = ::tpyapp::main::anyslot<int32_t>("free", 42);
-    bool b = ::tpyapp::main::anyslot<float>("free", 2.25f);
+    bool b = ::tpyapp::main::anyslot<float>("free", static_cast<float>(2.25));
     bool c = ::tpyapp::main::anyslot<std::string>("free", "lit");
     bool d = ::tpyapp::main::anyslot<std::monostate>("free", std::monostate{});
     std::cout << "free" << " " << ::tpy::print_bool(a) << " " << ::tpy::print_bool(b) << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << "\n" << ::tpy::check_signals;

@@ -194,12 +194,12 @@ void timedelta_ops() {
 //     print("builtin:", k + 3, 3 << k, n + 3, a + n)  # tpyc: ok
 void builtin_rows() {
     double x = 1.5;
-    float y = 1.5f;
+    float y = static_cast<float>(1.5);
     int64_t k = 7;
     ::tpy::BigInt n = ::tpy::BigInt(10);
     int32_t a = 4;
     std::cout << "builtin:" << " " << ::tpy::print_float(((x) * (1000))) << " " << ::tpy::print_float(((2) * (x))) << " " << ::tpy::print_float((std::pow(x, 2))) << "\n" << ::tpy::check_signals;
-    std::cout << "builtin:" << " " << ::tpy::print_float(static_cast<double>(((y) * (3)))) << " " << ::tpy::print_float(static_cast<double>(((y) * (2.0f)))) << " " << ::tpy::print_float(static_cast<double>(((2.0f) * (y)))) << "\n" << ::tpy::check_signals;
+    std::cout << "builtin:" << " " << ::tpy::print_float(static_cast<double>(((y) * (3)))) << " " << ::tpy::print_float(static_cast<double>(((y) * (static_cast<float>(2.0))))) << " " << ::tpy::print_float(static_cast<double>(((static_cast<float>(2.0)) * (y)))) << "\n" << ::tpy::check_signals;
     std::cout << "builtin:" << " " << ::tpy::print_float(((1) + (2.0))) << " " << ::tpy::print_float((std::pow(2.0, 70))) << "\n" << ::tpy::check_signals;
     std::cout << "builtin:" << " " << (::tpy::add_check<int64_t>(k, 3)) << " " << (::tpy::lshift_check<int64_t>(3, k)) << " " << ((n) + (::tpy::BigInt(3))) << " " << ((::tpy::BigInt(a)) + (n)) << "\n" << ::tpy::check_signals;
 }

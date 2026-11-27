@@ -501,7 +501,9 @@ COERCIONS: list[Coercion] = [
         from_type=_is(FloatLiteralType),
         to_type=is_float32_type,
         check_range=float_literal_fits_float,
-        codegen=lambda e, _a, _b, _c: e,  # identity: gen_expr provides 'f' suffix
+        # Identity: the literal is retyped at its slot and renders as its
+        # double converted.
+        codegen=lambda e, _a, _b, _c: e,
     ),
 
     # float32 coercions (widening to float32)

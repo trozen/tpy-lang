@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 // X: Final[float32] = float32(0.5)
-inline constexpr float X = 0.5f;
+inline constexpr float X = static_cast<float>(0.5);
 // Y: Final[int64] = int64(42)
 inline constexpr int64_t Y = 42;
 // BASE: Final[int32] = 10

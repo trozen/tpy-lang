@@ -100,7 +100,7 @@ void main() {
     std::cout << "str" << " " << std::string(::tpy::__str__(y)) << " " << (::tpy::str_concat("a", std::string(::tpy::__str__(y)))) << " " << std::format("{}", ::tpy::float_to_str(y)) << "\n" << ::tpy::check_signals;
     std::cout << "exp" << " " << std::string(::tpy::__str__(1.2345678901234568e+17)) << " " << std::string(::tpy::__str__(1e+22)) << " " << std::string(::tpy::__str__(1e-05)) << " " << std::string(::tpy::__str__(-(0.0))) << " " << std::string(::tpy::__str__(2.0)) << "\n" << ::tpy::check_signals;
     std::cout << "nonfinite" << " " << std::string(::tpy::__str__(::tpystd::math::inf)) << " " << std::string(::tpy::__str__(-(::tpystd::math::inf))) << " " << std::string(::tpy::__str__(::tpystd::math::nan)) << " " << (::tpy::str_concat("x", std::string(::tpy::__str__(::tpystd::math::inf)))) << "\n" << ::tpy::check_signals;
-    float f = 0.1f;
+    float f = static_cast<float>(0.1);
     std::cout << "f32" << " " << std::string(::tpy::__str__(f)) << " " << std::format("{}", ::tpy::float_to_str(static_cast<double>(f))) << " " << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show<float>(f);
     ::tpyapp::main::show<double>(y);

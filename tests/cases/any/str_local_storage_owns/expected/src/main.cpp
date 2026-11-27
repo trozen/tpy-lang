@@ -120,7 +120,7 @@ void main() {
     }
     ::tpy::Any i = ::tpy::make_any(int64_t(1));
     ::tpy::Any u = ::tpy::make_any(uint8_t(3));
-    ::tpy::Any f = ::tpy::make_any(float(1.5f));
+    ::tpy::Any f = ::tpy::make_any(float(static_cast<float>(1.5)));
     std::cout << "scalars" << " " << ::tpy::any_cast_or_panic<int64_t>(i) << " " << static_cast<int>(::tpy::any_cast_or_panic<uint8_t>(u)) << " " << ::tpy::print_float(static_cast<double>(::tpy::any_cast_or_panic<float>(f))) << "\n" << ::tpy::check_signals;
     ::tpy::Any lit = ::tpy::make_any(std::string("lit"));
     std::cout << "literal" << " " << ::tpy::any_cast_or_panic<std::string>(lit) << "\n" << ::tpy::check_signals;

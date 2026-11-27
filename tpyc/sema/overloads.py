@@ -258,13 +258,11 @@ def _structural_match(arg: TpyType, param: TpyType, inherits: Inherits) -> bool:
 
 
 class LiteralHomes(NamedTuple):
-    """Where a numeric literal argument of a ranked call is at home: an int
-    literal at `int_home`, a float literal at `float_home` -- the default
-    int width and `float` (`call_ranking`), or at a constructor of a numeric
-    type the type it builds, for literals of its own kind
-    (`CallRanking.at_home`). None defers to the default."""
+    """Where an int literal argument of a ranked call is at home: the
+    default int width (`call_ranking`), or at a constructor of an integer
+    type the type it builds (`CallRanking.at_home`). None defers to the
+    default. A float literal is always at home in `float`."""
     int_home: TpyType | None = None
-    float_home: TpyType | None = None
 
 
 def _scalar_widening_cost(
@@ -304,11 +302,9 @@ def _scalar_widening_cost(
             return 0
         return _scalar_widening_cost(home, expected, default_int_type)
     if isinstance(actual, FloatLiteralType):
-        home = (homes.float_home if homes is not None
-                and homes.float_home is not None else FLOAT)
-        if expected == home:
+        if expected == FLOAT:
             return 0
-        return _scalar_widening_cost(home, expected, default_int_type)
+        return _scalar_widening_cost(FLOAT, expected, default_int_type)
     a_tr = int_traits_of(actual)
     e_tr = int_traits_of(expected)
     if is_big_int_type(actual):
@@ -1491,14 +1487,11 @@ class CallRanking(NamedTuple):
             self, readonly_receiver=is_readonly_receiver)
 
     def at_home(self, built: TpyType) -> 'CallRanking':
-        """This ranking at a constructor call of numeric type `built`: a
-        literal of its own kind is at home there (`float32(1.5)` takes its
-        `x: float32` variant, `int8(100)` binds `T = int8`), as an
+        """This ranking at a constructor call of integer type `built`: an
+        int literal is at home there (`int8(100)` binds `T = int8`), as an
         operator literal's home is the other operand
-        (`operators.literal_home`); a literal of the other kind keeps its
-        own (`float(5)` ranks the int literal at the default int)."""
-        if is_any_float_type(built):
-            return self._replace(homes=self.homes._replace(float_home=built))
+        (`operators.literal_home`). A float literal is a `float` at every
+        constructor, so `float32(0.1)` converts it as `float32(v)` does."""
         return self._replace(homes=self.homes._replace(int_home=built))
 
     def admits(self, arg_type: TpyType, param_type: TpyType) -> bool:

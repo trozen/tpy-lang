@@ -266,7 +266,7 @@ int32_t alias_shadow() {
 //     print("module", uint16, float64)
 void main() {
     std::cout << "widths" << " " << ::tpyapp::main::widths(1, 2, 3, 4) << "\n" << ::tpy::check_signals;
-    std::cout << "ctor" << " " << 7 << " " << static_cast<int>(255) << " " << ::tpy::print_float(static_cast<double>(1.5f)) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor" << " " << 7 << " " << static_cast<int>(255) << " " << ::tpy::print_float(static_cast<double>(static_cast<float>(1.5))) << "\n" << ::tpy::check_signals;
     std::cout << "enum" << " " << Level::HIGH << " " << static_cast<int>(static_cast<int8_t>(Level::LOW)) << "\n" << ::tpy::check_signals;
     std::cout << "bound" << " " << ::tpyapp::main::same<int32_t>(21) << " " << ::tpyapp::main::same<uint64_t>(3) << "\n" << ::tpy::check_signals;
     std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<uint8_t>>(::tpyapp::main::bytes_of(3))) << "\n" << ::tpy::check_signals;

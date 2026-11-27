@@ -231,10 +231,10 @@ void nested_declared(std::vector<double>& xs, int32_t a) {
 //     e = {"k": 0.5}  # tpyc: ok
 //     print("float32_width", e["k"])
 void float32_width() {
-    ::tpy::ordered_map<std::string, float> __slot_1 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}});
+    ::tpy::ordered_map<std::string, float> __slot_1 = ::tpy::ordered_map<std::string, float>({{"a", static_cast<float>(0.25)}});
     ::tpy::ordered_map<std::string, float>* e = &__slot_1;
     std::optional<::tpy::ordered_map<std::string, float>> __slot_2;
-    e = &*(__slot_2 = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}}));
+    e = &*(__slot_2 = ::tpy::ordered_map<std::string, float>({{"k", static_cast<float>(0.5)}}));
     std::cout << "float32_width" << " " << ::tpy::print_float(static_cast<double>(::tpy::__getitem__((*e), "k"))) << "\n" << ::tpy::check_signals;
 }
 
@@ -358,8 +358,8 @@ __gen_gen_body gen_body(const std::vector<double>& fs) {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        e = &*(__ptr_slot_f0 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}}));
-        e = &*(__ptr_slot_f1 = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}}));
+        e = &*(__ptr_slot_f0 = ::tpy::ordered_map<std::string, float>({{"a", static_cast<float>(0.25)}}));
+        e = &*(__ptr_slot_f1 = ::tpy::ordered_map<std::string, float>({{"k", static_cast<float>(0.5)}}));
         __state = S_DONE;
         double __tpy_async_ret = (static_cast<double>(::tpy::__getitem__((*e), "k")) + (::tpy::__getitem__(fs, 0)));
         return ::tpystd::tpy::Poll<double>::ready(std::move(__tpy_async_ret));
@@ -558,8 +558,8 @@ void overload_args_pick(int32_t n) {
     double y = 0.5;
     y = ::tpyapp::main::tot2__list_float(::tpyapp::main::empty_list<double>(3));
     std::cout << "args_pick_nested" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
-    float x = 0.5f;
-    x = ::tpyapp::main::width_h__float32(0.25f);
+    float x = static_cast<float>(0.5);
+    x = ::tpyapp::main::width_h__float32(static_cast<float>(0.25));
     std::cout << "args_pick_float32" << " " << ::tpy::print_float(static_cast<double>(x)) << "\n" << ::tpy::check_signals;
     int64_t w = 0;
     w = ::tpyapp::main::width_g__int64(static_cast<int64_t>(3000000000));
@@ -629,8 +629,8 @@ void overload_fills() {
     std::cout << "fill_generic_method" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     y = ::tpyapp::main::keep__float(::tpyapp::main::tot3__dict_str_float(::tpy::ordered_map<std::string, double>()));
     std::cout << "fill_nested_overload" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
-    float z = 0.5f;
-    z = ::tpyapp::main::f32d__dict_str_float32(::tpy::ordered_map<std::string, float>({{"k", 0.25f}}));
+    float z = static_cast<float>(0.5);
+    z = ::tpyapp::main::f32d__dict_str_float32(::tpy::ordered_map<std::string, float>({{"k", static_cast<float>(0.25)}}));
     std::cout << "fill_float32_width" << " " << ::tpy::print_float(static_cast<double>(z)) << "\n" << ::tpy::check_signals;
 }
 
@@ -724,10 +724,10 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     G = 0.5;
     ::tpyapp::main::main();
-    static ::tpy::ordered_map<std::string, float> __global_slot_1 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}});
+    static ::tpy::ordered_map<std::string, float> __global_slot_1 = ::tpy::ordered_map<std::string, float>({{"a", static_cast<float>(0.25)}});
     mod_e = &__global_slot_1;
     static std::optional<::tpy::ordered_map<std::string, float>> __global_slot_2;
-    mod_e = &*(__global_slot_2 = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}}));
+    mod_e = &*(__global_slot_2 = ::tpy::ordered_map<std::string, float>({{"k", static_cast<float>(0.5)}}));
     std::cout << "module" << " " << ::tpy::print_float(static_cast<double>(::tpy::__getitem__((*mod_e), "k"))) << "\n" << ::tpy::check_signals;
 }
 

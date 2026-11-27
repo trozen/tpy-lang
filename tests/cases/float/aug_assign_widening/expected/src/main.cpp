@@ -52,8 +52,8 @@ double float_of_int_seed(const ::tpy::BigInt& n) {
 //     x *= 2.0
 //     return x
 float float32_stays() {
-    float x = 1.5f;
-    x = (x) * (2.0f);
+    float x = static_cast<float>(1.5);
+    x = (x) * (static_cast<float>(2.0));
     return x;
 }
 

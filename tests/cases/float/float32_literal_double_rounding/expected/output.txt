@@ -1,0 +1,52 @@
+ctor 1.0
+ctor_var 1.0
+local 1.0
+param 1.0
+return 1.0
+field 1.0
+neg -1.0 -1.0
+operand 1.0
+augassign 1.0
+global 1.0 final 1.0
+overflow inf
+inf inf inf
+exact 1.5 0.10000000149011612
+dispatch float
+int_literal 16777216.0 5.0
+compare False True
+append 1.0
+index 0 count 1
+set_in True
+opt_local 1.0
+opt_reassign 1.0
+opt_param 1.0
+opt_return 1.0
+union 1.0
+comprehension 1.0
+own_insert 1.0
+own_set_add [1.0]
+own_setdefault 1.0
+own_arg 1.0
+generator [1.0, 1.0, 1.0]
+async 2.0
+async_return 1.0
+opt_eq False False
+opt_ne True True
+opt_eq01 False True
+opt_eq_neg False True
+opt_eq_plus False True
+opt_eq_minus False True
+opt_eq_int True False
+opt_eq_plus False True
+opt_eq_minus False True
+opt_eq_int False True
+opt_list [1.0, 1.0]
+opt_list_neg -1.0
+opt_dict_set 1.0
+method_arg 1.0
+dict 1.0 1.0
+tuple 1.0 2.5
+list_literal 1.0 2.5
+reassign 1.0
+reflected 1.0
+nan True

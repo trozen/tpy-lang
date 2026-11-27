@@ -43,7 +43,7 @@ void test_set_inferred() {
 //     y = x if True else 2.0  # tpyc: type(float32)
 //     print(y)
 void test_ternary_float_literal() {
-    float x = 1.0f;
+    float x = static_cast<float>(1.0);
     float y = x;
     std::cout << ::tpy::print_float(static_cast<double>(y)) << "\n" << ::tpy::check_signals;
 }

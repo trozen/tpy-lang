@@ -37,11 +37,11 @@ void main() {
     std::cout << ::tpy::print_float((::tpy::fmod(7.0, -(3.0)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float((::tpy::fmod(-(0.0), 3.0))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float((::tpy::fmod(0.0, -(3.0)))) << "\n" << ::tpy::check_signals;
-    float af = -(7.0f);
-    float bf = 3.0f;
+    float af = static_cast<float>(-(7.0));
+    float bf = static_cast<float>(3.0);
     std::cout << ::tpy::print_float(static_cast<double>((::tpy::fmod_f32(af, bf)))) << "\n" << ::tpy::check_signals;
-    float cf = 7.0f;
-    float df = -(3.0f);
+    float cf = static_cast<float>(7.0);
+    float df = static_cast<float>(-(3.0));
     std::cout << ::tpy::print_float(static_cast<double>((::tpy::fmod_f32(cf, df)))) << "\n" << ::tpy::check_signals;
 }
 

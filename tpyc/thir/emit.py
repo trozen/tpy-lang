@@ -611,9 +611,10 @@ def _emit_literal(lit: THIRLiteral) -> str:
         return "std::nullopt" if lit.form is Form.STORAGE else "nullptr"
     if isinstance(v, float):
         # repr() is the shortest round-tripping form and a valid C++
-        # double literal; a float32-typed
-        # literal (retyped at lowering from its float_literal_to_float32
-        # coerce) takes the `f` suffix.
+        # double literal. A float32-typed literal (retyped at its slot) is
+        # Python's `float32(float(L))`: the double converted, never the
+        # text rounded once to float (an `f` suffix rounds differently at
+        # a float32 midpoint).
         rendered = repr(v)
         f32 = is_float32_type(lit.result_type)
         if rendered in ("inf", "-inf", "nan"):
@@ -628,7 +629,7 @@ def _emit_literal(lit: THIRLiteral) -> str:
                    else f"std::numeric_limits<{base}>::infinity()")
             return f"(-{lim})" if rendered == "-inf" else lim
         if f32:
-            return rendered + "f"
+            return f"static_cast<float>({rendered})"
         return rendered
     if isinstance(v, int):
         return lit.int_cpp if lit.int_cpp is not None else str(v)

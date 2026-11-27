@@ -54,7 +54,7 @@ int64_t wide() {
 // def f32() -> float32:
 //     return 1.5
 float f32() {
-    return 1.5f;
+    return static_cast<float>(1.5);
 }
 
 // def big(v: list[int64]) -> None:
@@ -464,7 +464,7 @@ void float_pos() {
 void float32_pos() {
     std::vector<float> fs = std::vector<float>{};
     fs.push_back(::tpyapp::main::f32());
-    fs.push_back(0.5);
+    fs.push_back(static_cast<float>(0.5));
     std::cout << "float32:" << " " << ::tpy::ListPrinter(fs) << "\n" << ::tpy::check_signals;
 }
 

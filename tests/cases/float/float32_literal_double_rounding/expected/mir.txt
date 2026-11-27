@@ -1,0 +1,27 @@
+main::__tpy_init: uncovered (module initialization)
+main::take@22:0: covered (storage: no_proof_required), summary: known
+main::ret@26:0: covered (storage: no_proof_required), summary: known
+main::pick@32:0: uncovered (no body to lower)
+main::pick@37:0: uncovered (no body to lower)
+main::main@41:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+main::Box.__init__@17:4: covered (storage: no_proof_required), summary: known
+part_containers::__tpy_init: uncovered (module initialization)
+part_containers::opt_param@6:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+part_containers::own_take@10:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_containers::opt_ret@14:0: uncovered (unsupported return type), summary: opaque (unsupported return type)
+part_containers::main@18:0: uncovered (unsupported expression), summary: opaque (unsupported expression)
+part_positions::__tpy_init: uncovered (module initialization)
+part_positions::take@8:0: covered (storage: no_proof_required), summary: known
+part_positions::gen@12:0: covered (storage: no_facts: storage facts have not been published)
+part_positions::coro@20:0: uncovered (async body)
+part_positions::coro32@26:0: uncovered (async body)
+part_positions::main@32:0: uncovered (print argument needs a scalar leaf), summary: opaque (print argument needs a scalar leaf)
+part_slots::__tpy_init: uncovered (module initialization)
+part_slots::opt_eq@8:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+part_slots::opt_eq01@14:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+part_slots::opt_eq_neg01@18:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+part_slots::opt_eq_signed@23:0: uncovered (uncertified binary operation), summary: opaque (uncertified binary operation)
+part_slots::own_opt@34:0: uncovered (unsupported parameter type), summary: opaque (unsupported parameter type)
+part_slots::show@43:0: uncovered (unsupported expression type), summary: opaque (unsupported expression type)
+part_slots::main@47:0: uncovered (call needs finalized known summary), summary: opaque (call needs finalized known summary)
+part_slots::C.m@39:4: covered (storage: no_proof_required), summary: opaque (summary record: missing constructor definition)

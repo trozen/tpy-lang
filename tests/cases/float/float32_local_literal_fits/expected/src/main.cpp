@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def f32() -> float32:
 //     return float32(1.5)
 float f32() {
-    return 1.5f;
+    return static_cast<float>(1.5);
 }
 
 // # the constructor first binding gives the local float32: the later literal
@@ -21,9 +21,9 @@ float f32() {
 //     f = 0.5  # tpyc: ok
 //     print("declared", f * 3)
 void declared() {
-    float f = 0.1f;
+    float f = static_cast<float>(0.1);
     std::cout << "declared" << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << "\n" << ::tpy::check_signals;
-    f = 0.5f;
+    f = static_cast<float>(0.5);
     std::cout << "declared" << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << "\n" << ::tpy::check_signals;
 }
 
@@ -41,7 +41,7 @@ void declared() {
 void nonlocal_store() {
     float v = ::tpyapp::main::f32();
     auto reset = [&v]() {
-        v = 0.25f;
+        v = static_cast<float>(0.25);
     };
     reset();
     std::cout << "nonlocal" << " " << ::tpy::print_float(static_cast<double>(((v) * (2)))) << "\n" << ::tpy::check_signals;
@@ -53,7 +53,7 @@ void nonlocal_store() {
 //     f = 1e400  # tpyc: ok
 //     print("infinite", f)
 void infinite() {
-    float f = 1.5f;
+    float f = static_cast<float>(1.5);
     f = std::numeric_limits<float>::infinity();
     std::cout << "infinite" << " " << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
 }

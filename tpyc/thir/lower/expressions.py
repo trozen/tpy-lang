@@ -2764,8 +2764,14 @@ def _opt_scalar_eq_pair(
         return None
     if ro is None and not plain_ok(e.right, rt, lo):
         return None
-    l_tgt = ro.inner if ro is not None and lo is None else None
-    r_tgt = lo.inner if lo is not None and ro is None else None
+    # A float literal (`L`, `-L`, `+L`) compares as the double it is, as the
+    # scalar compare arm renders it, never converted to a float32 payload.
+    l_tgt = (ro.inner if ro is not None and lo is None
+             and not isinstance(analyzer.get_expr_type(e.left),
+                                FloatLiteralType) else None)
+    r_tgt = (lo.inner if lo is not None and ro is None
+             and not isinstance(analyzer.get_expr_type(e.right),
+                                FloatLiteralType) else None)
     return (l_tgt, r_tgt)
 
 
@@ -10666,7 +10672,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # render target-less (bare `{10, 20}` into the
         # vector's brace init) -- but a demoted/annotated ARRAY's and a set's
         # DO thread the element target (probe-verified: `std::array` elements
-        # take the float32 `f` suffix / `::tpy::BigInt(N)` wraps a vector's
+        # take the float32 cast / `::tpy::BigInt(N)` wraps a vector's
         # elements never get), so retype keys on the RESOLVED container kind,
         # not the literal's source shape.
         args = getattr(container_type, "type_args", None)
@@ -11750,7 +11756,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         if (e.coercion.name in (_FLOAT32_LIT_COERCION, _BIGINT_LIT_COERCION)
                 and isinstance(inner, THIRLiteral)):
             # The coerce target forwards into the literal render (the
-            # float32 `f` suffix / the BigInt ctor wraps). Only a literal source
+            # float32 cast / the BigInt ctor wraps). Only a literal source
             # reaches here; other shapes reject during child lowering.
             inner = replace(inner, result_type=rtype)
         if (e.coercion.name in (_INT_LIT_COERCION, _BIGINT_LIT_COERCION)
@@ -17629,9 +17635,10 @@ def _literal_at_slot(a: TpyExpr, slot: Slot, ptype: TpyType,
                                           slot_u if isinstance(a, TpyBinOp)
                                           and is_fixed_int_type(slot_u)
                                           else None)))
-    if isinstance(slot_u, OwnType):
+    if (isinstance(slot_u, OwnType)
+            and _float32_literal_payload(slot_u) is None):
         # An owned slot's literal renders bare: the raw slot is no
-        # numeric target.
+        # numeric target. A float32 payload converts its float literal.
         return lowered
     return _slot_literal_retype(lowered, ptype, lc)
 
@@ -19053,8 +19060,8 @@ def _lower_call_arg_rows(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # `Record&` and reads bare. Kept as its own arm so the receiver
         # picks the nested-arg use rather than a name-shape ladder below.
         return _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
-    # A float literal into a float32 (or Own[float32]) slot renders with the
-    # `f` suffix, and an int literal into a FREE-call BigInt slot takes the
+    # A float literal into a float32 (or Own[float32]) slot renders as its
+    # double converted, and an int literal into a FREE-call BigInt slot takes the
     # ctor wrap -- the param type threads into the render. A
     # METHOD arg's int literal stays BARE: the fixed-int arg conversion
     # emits IntLiterals as plain C++ integers
@@ -20847,7 +20854,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     """`a if c else b` -> `((cond) ? (then) : (else))`.
     The arm slot is the ternary's OWN resolved type (`branch_target =
     result_type` -- the consumer's target is ignored), so the target-typed
-    literal renders (BigInt ctor wrap, float32 `f` suffix, char literal)
+    literal renders (BigInt ctor wrap, float32 cast, char literal)
     thread from here, not from the position. For an owned-str result with
     mixed view/owned arms, the view arm materializes (`std::string(a)`) so
     the C++ ternary deduces std::string -- a str literal is const char* in
@@ -21405,9 +21412,8 @@ def _pinned_literal_arg(a: TpyExpr, ptype: 'TpyType | None', fi,
     an int slot the typed render (`static_cast<int16_t>(3)`,
     `::tpy::BigInt(3)`), any other its target-less render converted to the
     slot's type (`_pinned_literal_conversion`: `static_cast<double>(3)`;
-    a float at a `float32` slot `static_cast<float>(0.1)`) -- Python makes the binary64 value first and
-    rounds that to float32, while the `f` suffix rounds the decimal text
-    once (BUGS.md#float32-literal-single-rounding); an Optional slot the
+    a float at a `float32` slot `static_cast<float>(0.1)`, the binary64
+    value rounded to float32 as Python does); an Optional slot the
     optional type itself (`std::optional<double>(0.1)`), since a payload
     value loses to a plain variant's standard conversion; a value-union
     slot the union over the member sema chose
@@ -21545,27 +21551,39 @@ def _pinned_literal_conversion(v: 'THIRExpr', payload: TpyType,
                       wrap=wrap, loc=loc)
 
 
+def _float32_literal_payload(slot: TpyType) -> 'TpyType | None':
+    """The float32 a float literal at `slot` converts to: the slot's shape
+    under its ownership / access wrappers and an Optional, when that is
+    float32. None otherwise."""
+    st = repr_shape(slot)
+    if isinstance(st, OptionalType):
+        st = repr_shape(st.inner)
+    return st if is_float32_type(st) else None
+
+
 def _slot_literal_retype(v: 'THIRExpr | None',
                          slot: 'TpyType | None',
                          lc: '_LowerCtx') -> 'THIRExpr | None':
     """Target threading for target-typed literal renders:
-    a float literal against a float32 slot takes the `f` suffix; an integer
+    a float literal against a float32 slot is typed float32 (rendered as
+    its double converted); an integer
     literal takes fixed-width casts/suffixes or BigInt constructor wraps.
     The slot type threads at decl inits/reassigns, returns,
     call/ctor args, field writes, MIL inits, container elements, and
     resolved-binop operands (the receiver/param targets) --
     comparison operands do NOT thread it (the compare block renders literal
-    operands bare; a fixed-int/double context absorbs them). Applied
+    operands bare; a fixed-int/double context absorbs them). An Optional
+    float32 slot's literal lands in its payload. Applied
     post-lowering: only a float/int THIRLiteral is retyped, every other node
     passes through."""
     if slot is None or not isinstance(slot, TpyType):
         return v
-    st = repr_shape(slot)
+    st = _float32_literal_payload(slot) or repr_shape(slot)
     if (isinstance(v, THIRUnaryArith) and isinstance(v.operand, THIRLiteral)
             and isinstance(v.operand.value, float) and is_float32_type(st)):
-        # A negated float literal (`-3.0` into a float32 slot): the `f` suffix
-        # keys on the operand literal's type, so thread the slot into it, the
-        # same target render the unary operand takes (`-(3.0f)`).
+        # A negated float literal (`-3.0` into a float32 slot): the float32
+        # render keys on the operand literal's type, so thread the slot into
+        # it, the same target render the unary operand takes.
         return replace(v, operand=replace(v.operand, result_type=st))
     if (isinstance(v, THIRBinOp) and v.both_literal_int_operands
             and is_fixed_int_type(st)):

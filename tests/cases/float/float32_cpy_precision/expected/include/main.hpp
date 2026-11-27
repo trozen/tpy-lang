@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Meter& obj) {
 
 // def __init__(self) -> None:
 //     self.total = float32(0.0)
-inline Meter::Meter() : total(0.0f) {}
+inline Meter::Meter() : total(static_cast<float>(0.0)) {}
 
 // def add(self, v: float32) -> None:
 //     self.total = self.total + v

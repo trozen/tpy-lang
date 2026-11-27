@@ -908,12 +908,14 @@ lower numeric value beats higher):
 
 **A literal's home.** A numeric literal's home is where it ranks
 `EXACT_CONCRETE` without a width cost: an int literal at the default int,
-a float literal at `float` (`CallRanking.homes`). At a constructor of a
-numeric type `T` (`int8(...)`, `float32(...)`), `T` is the home of
-literals of its own kind only, as an operator literal's home is the other
-operand: `float32(1.5)` takes its `x: float32` variant and `int8(100)`
-binds its generic conversion at `T = int8`, while the int literal of `float(5)` keeps the int home
-and renders its conversion. A literal binds a type parameter at its home
+a float literal at `float` (`CallRanking.homes`). At a constructor of an
+integer type `T` (`int8(...)`, `int`), `T` is the home of an int literal,
+as an operator literal's home is the other operand: `int8(100)` binds its
+generic conversion at `T = int8`. A float literal is at home in `float`
+at every constructor, so `float32(0.1)` takes its `x: float` variant, as
+`float32(v)` does (`static_cast<float>(0.1)`, Python's
+`float32(float(L))`), and the int literal of `float(5)` / `float32(5)`
+keeps the int home and renders its conversion. A literal binds a type parameter at its home
 too, when the home holds its value (the coercion row's range, as at an
 operator), else at the default int, and at `int` beyond it
 (`CallRanking.literal_type`, the one resolver every inference site of a

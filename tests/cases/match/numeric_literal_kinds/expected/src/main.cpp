@@ -478,7 +478,7 @@ void main() {
     std::cout << "free-int-at-bool" << " " << ::tpyapp::main::lits_at_bool(true) << " " << ::tpyapp::main::lits_at_bool(false) << "\n" << ::tpy::check_signals;
     std::cout << "free-float-at-bool" << " " << ::tpyapp::main::float_lit_at_bool(true) << " " << ::tpyapp::main::float_lit_at_bool(false) << "\n" << ::tpy::check_signals;
     std::cout << "free-float-at-bigint" << " " << ::tpyapp::main::float_lit_at_bigint(::tpy::BigInt(2)) << " " << ::tpyapp::main::float_lit_at_bigint(::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
-    std::cout << "free-int-at-f32" << " " << ::tpyapp::main::int_lit_at_f32(1.0f) << " " << ::tpyapp::main::int_lit_at_f32(2.0f) << "\n" << ::tpy::check_signals;
+    std::cout << "free-int-at-f32" << " " << ::tpyapp::main::int_lit_at_f32(static_cast<float>(1.0)) << " " << ::tpyapp::main::int_lit_at_f32(static_cast<float>(2.0)) << "\n" << ::tpy::check_signals;
     std::cout << "or-alt" << " " << ::tpyapp::main::or_alt(1) << " " << ::tpyapp::main::or_alt(2) << " " << ::tpyapp::main::or_alt(3) << "\n" << ::tpy::check_signals;
     std::cout << "as-alt" << " " << ::tpyapp::main::as_alt(2) << " " << ::tpyapp::main::as_alt(1) << "\n" << ::tpy::check_signals;
     std::cout << "guarded" << " " << ::tpyapp::main::guarded_label(2, true) << " " << ::tpyapp::main::guarded_label(2, false) << " " << ::tpyapp::main::guarded_label(1, true) << "\n" << ::tpy::check_signals;

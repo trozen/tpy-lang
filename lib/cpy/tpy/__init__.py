@@ -195,12 +195,15 @@ elif _FAST:
 else:
     class float32(float):
         """Single-precision float: every value and every arithmetic result is
-        rounded through IEEE binary32, as the C++ `float` is. An operand that
-        is a plain `float` is rounded too, so a literal like `f + 0.5` matches
-        TPy, where the literal takes float32; a `float`-typed VARIABLE operand
-        yields a double in TPy but a float32 here
-        (BUGS.md#cpy-float32-double-precision). repr/str stay float's,
-        printing the widened double exactly as the C++ runtime does."""
+        rounded through IEEE binary32, as the C++ `float` is. A plain `float`
+        operand is not rounded first: the double result is. TPy
+        converts a literal operand to float32 before the operation
+        (`f + 0.1` is `f + float32(0.1)`), so the two agree only where the
+        operand is exact in float32 or the result rounding absorbs the
+        operand's; a `float`-typed VARIABLE operand yields a double in TPy
+        but a float32 here (BUGS.md#cpy-float32-double-precision). repr/str
+        stay float's, printing the widened double exactly as the C++
+        runtime does."""
 
         def __new__(cls, value=0.0, /):
             return super().__new__(cls, _to_f32(float(value)))

@@ -98,9 +98,9 @@ extern "C" int32_t doubled(int32_t x) {
 void main() {
     std::vector<int32_t> xs = {7, 8};
     int32_t* p = xs.data();
-    sink(-1, -2, -3, -4, 1, 2, 3, 4, 0.5f, 1.25, true, ::tpy::char_from_str("z"), p);
+    sink(-1, -2, -3, -4, 1, 2, 3, 4, static_cast<float>(0.5), 1.25, true, ::tpy::char_from_str("z"), p);
     std::cout << echo_i64(99) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_float(static_cast<double>(echo_f32(1.5f))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(echo_f32(static_cast<float>(1.5)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(echo_bool(false)) << "\n" << ::tpy::check_signals;
     std::cout << echo_char(::tpy::char_from_str("q")) << "\n" << ::tpy::check_signals;
     std::cout << echo_ptr(p)[1] << "\n" << ::tpy::check_signals;

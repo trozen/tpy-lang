@@ -13,13 +13,13 @@ double accepts_float(double x) {
 // def accepts_f32(x: float32) -> float32:
 //     return x + float32(1.0)
 float accepts_f32(float x) {
-    return ((x) + (1.0f));
+    return ((x) + (static_cast<float>(1.0)));
 }
 
 // def returns_f32() -> float32:
 //     return float32(3.0)
 float returns_f32() {
-    return 3.0f;
+    return static_cast<float>(3.0);
 }
 
 // def test_widening_assignment() -> None:
@@ -28,7 +28,7 @@ float returns_f32() {
 //     b: float = a  # tpyc: ok
 //     print(b)
 void test_widening_assignment() {
-    float a = 2.5f;
+    float a = static_cast<float>(2.5);
     double b = static_cast<double>(a);
     std::cout << ::tpy::print_float(b) << "\n" << ::tpy::check_signals;
 }
@@ -55,7 +55,7 @@ void test_narrowing_assignment() {
 //     r2 = accepts_f32(float32(w))  # tpyc: type(float32)
 //     print(r2)
 void test_param_coercion() {
-    float v = 4.0f;
+    float v = static_cast<float>(4.0);
     double r = ::tpyapp::main::accepts_float(static_cast<double>(v));
     std::cout << ::tpy::print_float(r) << "\n" << ::tpy::check_signals;
     double w = 4.0;
@@ -85,8 +85,8 @@ void test_return_coercion() {
 //     f = a + int32(5)  # tpyc: type(float32)
 //     print(f)
 void test_mixed_type_inference() {
-    float a = 1.0f;
-    float b = 2.0f;
+    float a = static_cast<float>(1.0);
+    float b = static_cast<float>(2.0);
     float c = ((a) + (b));
     std::cout << ::tpy::print_float(static_cast<double>(c)) << "\n" << ::tpy::check_signals;
     double d = 3.0;
@@ -122,8 +122,8 @@ void test_int_to_float32_coercion() {
 //     c: float = b + 1.0
 //     print(c)
 void test_chained_coercion() {
-    float a = 1.5f;
-    double b = static_cast<double>(((a) * (2.0f)));
+    float a = static_cast<float>(1.5);
+    double b = static_cast<double>(((a) * (static_cast<float>(2.0))));
     double c = ((b) + (1.0));
     std::cout << ::tpy::print_float(c) << "\n" << ::tpy::check_signals;
 }

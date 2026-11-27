@@ -29,7 +29,7 @@ void show(float x) {
 float rescale(float x, double wide) {
     x = static_cast<float>(wide);
     x = static_cast<float>((static_cast<double>(x) * (wide)));
-    x = (x) * (2.0f);
+    x = (x) * (static_cast<float>(2.0));
     return x;
 }
 
@@ -41,14 +41,14 @@ float rescale(float x, double wide) {
 //         acc *= 0.5  # tpyc: ok
 //     return acc
 float accumulate(const std::vector<float>& xs, double step) {
-    float acc = 0.0f;
+    float acc = static_cast<float>(0.0);
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         float x = *__beg_0;
         acc = static_cast<float>((static_cast<double>(acc) + (((::tpy::stdlib::math::checked_sqrt(static_cast<double>(x))) * (step)))));
-        acc = (acc) * (0.5f);
+        acc = (acc) * (static_cast<float>(0.5));
     }
     return acc;
 }
@@ -145,18 +145,18 @@ float bump(float x, double wide) {
 //     print("accumulate:", accumulate(s.xs, wide))
 void main(double wide) {
     float a = static_cast<float>(wide);
-    float b = 0.25f;
+    float b = static_cast<float>(0.25);
     float c = a;
     std::cout << "local:" << " " << ::tpy::print_float(static_cast<double>(a)) << " " << ::tpy::print_float(static_cast<double>(b)) << " " << ::tpy::print_float(static_cast<double>(c)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show(static_cast<float>(wide));
-    ::tpyapp::main::show(0.75f);
+    ::tpyapp::main::show(static_cast<float>(0.75));
     std::cout << "return:" << " " << ::tpy::print_float(static_cast<double>(::tpyapp::main::narrow(wide))) << "\n" << ::tpy::check_signals;
     std::cout << "param:" << " " << ::tpy::print_float(static_cast<double>(::tpyapp::main::rescale(a, wide))) << "\n" << ::tpy::check_signals;
     Sample s = Sample(wide);
     s.scale(wide);
     std::cout << "field:" << " " << ::tpy::print_float(static_cast<double>(s.v)) << " " << ::tpy::ListPrinter(s.xs) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(s.xs, 0, static_cast<float>(wide));
-    s.xs.push_back(0.125);
+    s.xs.push_back(static_cast<float>(0.125));
     ::tpy::ordered_map<std::string, float> d = ::tpy::ordered_map<std::string, float>({{"k", static_cast<float>(wide)}});
     std::cout << "element:" << " " << ::tpy::ListPrinter(s.xs) << " " << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     std::vector<float> ys = ({

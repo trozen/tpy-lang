@@ -76,7 +76,7 @@ void families() {
     double inf = std::numeric_limits<double>::infinity();
     std::cout << "float" << " " << ::tpyapp::main::gs<double>(f) << " " << std::string(::tpy::__str__(f)) << " " << ::tpyapp::main::gs<double>(huge) << " " << std::string(::tpy::__str__(huge)) << " " << ::tpyapp::main::gs<double>(whole) << " " << std::string(::tpy::__str__(whole)) << "\n" << ::tpy::check_signals;
     std::cout << "float" << " " << ::tpyapp::main::gs<double>(nan) << " " << std::string(::tpy::__str__(nan)) << " " << ::tpyapp::main::gs<double>(inf) << " " << std::string(::tpy::__str__(inf)) << " " << std::string(::tpy::__str__(-(inf))) << "\n" << ::tpy::check_signals;
-    float f32 = 0.1f;
+    float f32 = static_cast<float>(0.1);
     std::cout << "float32" << " " << ::tpyapp::main::gs<float>(f32) << " " << std::string(::tpy::__str__(f32)) << "\n" << ::tpy::check_signals;
     bool b = true;
     std::cout << "bool" << " " << ::tpyapp::main::gs<bool>(b) << " " << std::string(::tpy::__str__(b)) << " " << std::string(::tpy::__str__(false)) << "\n" << ::tpy::check_signals;
@@ -167,7 +167,7 @@ void temporaries() {
 //     print("lit", str(int64(-2 ** 63)))  # tpyc: ok
 void literals() {
     std::cout << "lit" << " " << std::string(::tpy::__str__(7)) << " " << std::string(::tpy::__str__(-1)) << " " << std::string(::tpy::__str__(-5)) << " " << std::string(::tpy::__str__(static_cast<uint32_t>(4000000000))) << "\n" << ::tpy::check_signals;
-    std::cout << "lit" << " " << std::string(::tpy::__str__(::tpy::BigInt::from_str("1180591620717411303424"))) << " " << std::string(::tpy::__str__(1.5)) << " " << std::string(::tpy::__str__(1.5f)) << " " << std::string(::tpy::__str__(true)) << " " << std::string(::tpy::__str__("lit")) << "\n" << ::tpy::check_signals;
+    std::cout << "lit" << " " << std::string(::tpy::__str__(::tpy::BigInt::from_str("1180591620717411303424"))) << " " << std::string(::tpy::__str__(1.5)) << " " << std::string(::tpy::__str__(static_cast<float>(1.5))) << " " << std::string(::tpy::__str__(true)) << " " << std::string(::tpy::__str__("lit")) << "\n" << ::tpy::check_signals;
     std::cout << "lit" << " " << std::string(::tpy::__str__(static_cast<int64_t>((-9223372036854775807LL - 1)))) << "\n" << ::tpy::check_signals;
 }
 

@@ -226,7 +226,7 @@ void main() {
     std::cout << "builtins:" << " " << ::tpy::ListPrinter((::tpy::list_concat(std::vector<double>{1.5}, std::vector<double>{2.5}))) << "\n" << ::tpy::check_signals;
     float f = ::tpyapp::main::first_of<float>(::tpy::as_mut_lvalue(std::vector<float>{1.5, 2.5}));
     std::cout << "float32_dest:" << " " << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
-    float h = ::tpyapp::main::ident<float>(0.25f);
+    float h = ::tpyapp::main::ident<float>(static_cast<float>(0.25));
     std::cout << "float32_dest:" << " " << ::tpy::print_float(static_cast<double>(h)) << "\n" << ::tpy::check_signals;
 }
 

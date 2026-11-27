@@ -19,7 +19,7 @@ int32_t pick__int32__int32(int32_t x, int32_t y) {
 void main() {
     int32_t a = ::tpyapp::main::use<int32_t>(1, 2);
     std::cout << a << "\n" << ::tpy::check_signals;
-    float f = ::tpyapp::main::use<float>(1.5f, 2.5f);
+    float f = ::tpyapp::main::use<float>(static_cast<float>(1.5), static_cast<float>(2.5));
     std::cout << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
 }
 

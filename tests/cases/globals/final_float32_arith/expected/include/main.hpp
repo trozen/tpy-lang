@@ -9,9 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 // A: Final[float32] = float32(1.5)
-inline constexpr float A = 1.5f;
+inline constexpr float A = static_cast<float>(1.5);
 // B: Final[float32] = float32(2.5)
-inline constexpr float B = 2.5f;
+inline constexpr float B = static_cast<float>(2.5);
 // SUM: Final[float32] = A + B
 inline constexpr float SUM = ((A) + (B));
 // DIFF: Final[float32] = A - B

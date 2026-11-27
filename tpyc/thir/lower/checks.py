@@ -7897,7 +7897,7 @@ def _float_literal_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     """A bare float literal (FloatLiteralType -- sema leaves it unwrapped in a
     matching float slot) into a float param slot: a double slot renders
     repr(v) bare (`_emit_literal`'s float arm); a float32 slot takes the
-    `f` suffix via the
+    float32 cast via the
     `_slot_literal_retype` at `_lower_call_arg`'s tail. inf/nan literals
     (`1e400`) reject during literal lowering."""
     if not _float_literal_operand(a, analyzer):
@@ -7911,7 +7911,7 @@ def _float_literal_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
         # unary arm's resolved-dunder path to `THIRUnaryArith('-({0})', 1.0)`.
         # The inner literal
         # lowers UNtargeted (a bare double), so a float32 slot -- which needs
-        # the `1.0f` suffix from a threaded target -- stays off this arm.
+        # the float32 cast from a threaded target -- stays off this arm.
         return is_float_type(pt) and not is_float32_type(pt)
     return is_float_type(pt)
 
@@ -10302,7 +10302,7 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
     LAZY fallback arg loop, whose renders are the FREE call's, not the record
     method's. Two consequences this gate must honor: literal args take their
     slot's coercion (an int literal into a BigInt slot wraps, a float literal
-    into a float32 slot gets the `f` suffix) rather than the method path's
+    into a float32 slot converts its double) rather than the method path's
     target-less spelling, and `overloaded_call` is never threaded -- harmless,
     since the literal pin fires only on overload sets, which reject here.
 

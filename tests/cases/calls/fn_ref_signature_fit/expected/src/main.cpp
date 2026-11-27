@@ -438,7 +438,7 @@ void main() {
     std::cout << "nested" << " " << ::tpyapp::main::call32(nested, 5) << "\n" << ::tpy::check_signals;
     std::cout << "bigint" << " " << ::tpyapp::main::callbig(big, 5) << "\n" << ::tpy::check_signals;
     std::cout << "int-float" << " " << ::tpy::print_float(::tpyapp::main::callfi(half, 3)) << "\n" << ::tpy::check_signals;
-    std::cout << "float" << " " << ::tpy::print_float(::tpyapp::main::callf(half, 3.0f)) << "\n" << ::tpy::check_signals;
+    std::cout << "float" << " " << ::tpy::print_float(::tpyapp::main::callf(half, static_cast<float>(3.0))) << "\n" << ::tpy::check_signals;
     std::cout << "ret-widen" << " " << ::tpyapp::main::callc32(ret8, 1) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::callv(shout, 4);
     std::function<int64_t(int64_t)> h = wide;

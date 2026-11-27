@@ -216,7 +216,7 @@ void star() {
 //     w: float32 | float = float32(1.5)  # tpyc: ok
 //     print("shapes-float32", isinstance(w, float32))
 void float_exact() {
-    ::tpy::Union<double, float> w = 1.5f;
+    ::tpy::Union<double, float> w = static_cast<float>(1.5);
     std::cout << "shapes-float32" << " " << ::tpy::print_bool(true) << "\n" << ::tpy::check_signals;
 }
 

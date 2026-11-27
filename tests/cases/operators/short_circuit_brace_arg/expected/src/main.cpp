@@ -42,7 +42,7 @@ int8_t take_i8(std::vector<int8_t>& o) {
 //     o.append(4.0)
 //     return o[0]
 float take_f32(std::vector<float>& o) {
-    o.push_back(4.0);
+    o.push_back(static_cast<float>(4.0));
     return ::tpy::__getitem__(o, 0);
 }
 
@@ -178,7 +178,7 @@ bool narrow_int(bool flag) {
 // def narrow_float(flag: bool) -> float32:
 //     return take_f32([1.0, 2.0]) if flag else float32(0.0)  # tpyc: ok
 float narrow_float(bool flag) {
-    return ((flag) ? (::tpyapp::main::take_f32(::tpy::as_mut_lvalue(std::vector<float>{1.0, 2.0}))) : (0.0f));
+    return ((flag) ? (::tpyapp::main::take_f32(::tpy::as_mut_lvalue(std::vector<float>{1.0, 2.0}))) : (static_cast<float>(0.0)));
 }
 
 // def fixed_array(flag: bool) -> int64:

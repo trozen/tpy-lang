@@ -54,7 +54,7 @@ int64_t wide() {
 // def f32() -> float32:
 //     return 0.25
 float f32() {
-    return 0.25f;
+    return static_cast<float>(0.25);
 }
 
 // def pairs64(v: list[tuple[int64, int32]]) -> None:
@@ -616,7 +616,7 @@ void tuple_sinks_pos() {
 //     print("float32_member:", fs)
 void float32_member_pos() {
     std::vector<std::tuple<float, int32_t>> fs = {std::tuple<float, int32_t>{::tpyapp::main::f32(), 1}};
-    fs.push_back(std::tuple<float, int32_t>{0.5f, 2});
+    fs.push_back(std::tuple<float, int32_t>{static_cast<float>(0.5), 2});
     std::cout << "float32_member:" << " " << ::tpy::ListPrinter(fs) << "\n" << ::tpy::check_signals;
 }
 

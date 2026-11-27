@@ -54,8 +54,8 @@ void main() {
 //     print("float32_needles:", 0.1 in t, 0.3 in t, 0.2 in t)  # tpyc: ok
 //     print("float32_needles:", (0.1, 1) in keys, keys[(0.3, 2)], len(keys))  # tpyc: ok
 void float32_needles() {
-    ::tpy::ordered_set<float> t = ::tpy::ordered_set<float>({0.1f, 0.5f, 0.3f});
-    ::tpy::ordered_map<std::tuple<float, int32_t>, std::string> keys = ::tpy::ordered_map<std::tuple<float, int32_t>, std::string>({{std::tuple<float, int32_t>{0.1f, 1}, "a"}});
+    ::tpy::ordered_set<float> t = ::tpy::ordered_set<float>({static_cast<float>(0.1), static_cast<float>(0.5), static_cast<float>(0.3)});
+    ::tpy::ordered_map<std::tuple<float, int32_t>, std::string> keys = ::tpy::ordered_map<std::tuple<float, int32_t>, std::string>({{std::tuple<float, int32_t>{static_cast<float>(0.1), 1}, "a"}});
     ::tpy::__setitem__(keys, std::tuple<double, int32_t>{0.3, 2}, "b");
     std::cout << "float32_needles:" << " " << ::tpy::print_bool((t.contains(0.1))) << " " << ::tpy::print_bool((t.contains(0.3))) << " " << ::tpy::print_bool((t.contains(0.2))) << "\n" << ::tpy::check_signals;
     std::cout << "float32_needles:" << " " << ::tpy::print_bool((keys.contains(std::tuple<double, int32_t>{0.1, 1}))) << " " << ::tpy::__getitem__(keys, std::tuple<double, int32_t>{0.3, 2}) << " " << ::tpy::__len__(keys) << "\n" << ::tpy::check_signals;

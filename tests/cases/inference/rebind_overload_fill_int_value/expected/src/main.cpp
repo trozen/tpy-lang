@@ -25,7 +25,7 @@ std::string f32d__str(std::string_view s) {
 //     z = f32d({"k": 1})  # tpyc: ok
 //     print(z == 1.0)
 void rebind() {
-    float z = 0.5f;
+    float z = static_cast<float>(0.5);
     z = ::tpyapp::main::f32d__dict_str_float32(::tpy::ordered_map<std::string, float>({{"k", 1}}));
     std::cout << ::tpy::print_bool((z == 1.0)) << "\n" << ::tpy::check_signals;
 }

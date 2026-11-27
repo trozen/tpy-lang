@@ -617,9 +617,9 @@ void float_literal(int16_t a16, int32_t a32, float f32) {
     int32_t c = static_cast<int32_t>(a16);
     c = ::tpy::add_check<int32_t>(c, 10);
     float f = f32;
-    f = 0.5f;
+    f = static_cast<float>(0.5);
     float g = f32;
-    g = (g) * (0.1f);
+    g = (g) * (static_cast<float>(0.1));
     int32_t h = a32;
     h = 10;
     h = static_cast<int32_t>(a16);
@@ -651,8 +651,8 @@ void first_declares() {
     x = 10;
     int32_t y = 10;
     y = static_cast<int32_t>(3);
-    float f = 1.5f;
-    f = 0.5f;
+    float f = static_cast<float>(1.5);
+    f = static_cast<float>(0.5);
     std::cout << "first_declares" << " " << static_cast<int>(x) << " " << y << " " << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
 }
 
@@ -905,7 +905,7 @@ void first_unchanged(const std::vector<uint8_t>& data) {
 //     x = float32(wide)  # tpyc: ok
 //     print("first_float_explicit", x)
 void first_float_explicit(double wide) {
-    float x = 1.5f;
+    float x = static_cast<float>(1.5);
     x = static_cast<float>(wide);
     std::cout << "first_float_explicit" << " " << ::tpy::print_float(static_cast<double>(x)) << "\n" << ::tpy::check_signals;
 }
@@ -1222,7 +1222,7 @@ void main() {
     ::tpy::BigInt u = ::tpyapp::main::uses({10, 20}, 5);
     std::cout << "uses" << " " << u << "\n" << ::tpy::check_signals;
     ::tpyapp::main::declared_aug();
-    ::tpyapp::main::float_literal(15, 7, 1.5f);
+    ::tpyapp::main::float_literal(15, 7, static_cast<float>(1.5));
     ::tpyapp::main::first_declares();
     ::tpyapp::main::first_use_before();
     ::tpyapp::main::first_value(4);

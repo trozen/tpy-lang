@@ -220,7 +220,7 @@ __gen_gen gen(const C& c, const std::vector<int32_t>& xs) {
 void main() {
     int32_t n32 = 5;
     int8_t n8 = 5;
-    float f32 = 2.5f;
+    float f32 = static_cast<float>(2.5);
     int32_t m = 2;
     B b = B();
     W w = W();

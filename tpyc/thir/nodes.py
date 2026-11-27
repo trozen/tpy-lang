@@ -433,7 +433,7 @@ class THIRLiteral(THIRExpr):
 
     @property
     def rendered_type(self) -> 'TpyType | None':
-        # A float32-typed float literal takes the `f` suffix (`emit`).
+        # A float32-typed float literal renders as its double converted (`emit`).
         return literal_token_type(
             self.value, float32=self.result_type is not None
             and is_float32_type(self.result_type))
@@ -1392,7 +1392,7 @@ class THIRCall(THIRExpr):
     @property
     def _spells_its_argument(self) -> bool:
         """A constructor whose template renders its argument unchanged
-        (`renders_its_argument`: `float32(1.5)` is `1.5f`): its render has
+        (`renders_its_argument`: `float32(x)` of a float32 `x` is `x`): its render has
         the argument's type."""
         return renders_its_argument(self.cpp_template) and len(self.args) == 1
 

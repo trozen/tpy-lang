@@ -200,7 +200,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
     std::string name = "";
     int32_t age = 0;
     double score = 0.0;
-    float precision = 0.0f;
+    float precision = static_cast<float>(0.0);
     bool active = false;
     ::tpy::BigInt big_id = ::tpy::BigInt(0);
     std::optional<Role> role = std::nullopt;

@@ -14,13 +14,13 @@ namespace tpyapp::main {
 //     g = float32(2.0) ** uint64(3)  # tpyc: type(float32)
 //     print(a, b, c, d, e, f, g)
 void forward() {
-    float a = ((10.0f) + static_cast<float>(5));
-    float b = ((10.0f) - static_cast<float>(3));
-    float c = ((4.0f) * static_cast<float>(3));
-    float d = (::tpy::truediv_f32(12.0f, static_cast<float>(4)));
-    float e = (::tpy::floordiv_f32(13.0f, static_cast<float>(5)));
-    float f = (::tpy::fmod_f32(13.0f, static_cast<float>(5)));
-    float g = (std::pow(2.0f, static_cast<float>(3)));
+    float a = ((static_cast<float>(10.0)) + static_cast<float>(5));
+    float b = ((static_cast<float>(10.0)) - static_cast<float>(3));
+    float c = ((static_cast<float>(4.0)) * static_cast<float>(3));
+    float d = (::tpy::truediv_f32(static_cast<float>(12.0), static_cast<float>(4)));
+    float e = (::tpy::floordiv_f32(static_cast<float>(13.0), static_cast<float>(5)));
+    float f = (::tpy::fmod_f32(static_cast<float>(13.0), static_cast<float>(5)));
+    float g = (std::pow(static_cast<float>(2.0), static_cast<float>(3)));
     std::cout << ::tpy::print_float(static_cast<double>(a)) << " " << ::tpy::print_float(static_cast<double>(b)) << " " << ::tpy::print_float(static_cast<double>(c)) << " " << ::tpy::print_float(static_cast<double>(d)) << " " << ::tpy::print_float(static_cast<double>(e)) << " " << ::tpy::print_float(static_cast<double>(f)) << " " << ::tpy::print_float(static_cast<double>(g)) << "\n" << ::tpy::check_signals;
 }
 
@@ -34,13 +34,13 @@ void forward() {
 //     g = uint64(2) ** float32(3.0)  # tpyc: type(float32)
 //     print(a, b, c, d, e, f, g)
 void reverse() {
-    float a = (static_cast<float>(5) + (10.0f));
-    float b = (static_cast<float>(3) - (10.0f));
-    float c = (static_cast<float>(3) * (4.0f));
-    float d = (::tpy::truediv_f32(static_cast<float>(12), 4.0f));
-    float e = (::tpy::floordiv_f32(static_cast<float>(13), 5.0f));
-    float f = (::tpy::fmod_f32(static_cast<float>(13), 5.0f));
-    float g = (std::pow(static_cast<float>(2), 3.0f));
+    float a = (static_cast<float>(5) + (static_cast<float>(10.0)));
+    float b = (static_cast<float>(3) - (static_cast<float>(10.0)));
+    float c = (static_cast<float>(3) * (static_cast<float>(4.0)));
+    float d = (::tpy::truediv_f32(static_cast<float>(12), static_cast<float>(4.0)));
+    float e = (::tpy::floordiv_f32(static_cast<float>(13), static_cast<float>(5.0)));
+    float f = (::tpy::fmod_f32(static_cast<float>(13), static_cast<float>(5.0)));
+    float g = (std::pow(static_cast<float>(2), static_cast<float>(3.0)));
     std::cout << ::tpy::print_float(static_cast<double>(a)) << " " << ::tpy::print_float(static_cast<double>(b)) << " " << ::tpy::print_float(static_cast<double>(c)) << " " << ::tpy::print_float(static_cast<double>(d)) << " " << ::tpy::print_float(static_cast<double>(e)) << " " << ::tpy::print_float(static_cast<double>(f)) << " " << ::tpy::print_float(static_cast<double>(g)) << "\n" << ::tpy::check_signals;
 }
 
@@ -51,7 +51,7 @@ void reverse() {
 //     y *= uint32(2)
 //     print(y)
 void augmented() {
-    float y = 20.0f;
+    float y = static_cast<float>(20.0);
     y = (y) + static_cast<float>(5);
     y = (y) - static_cast<float>(5);
     y = (y) * static_cast<float>(2);

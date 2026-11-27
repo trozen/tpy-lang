@@ -66,8 +66,8 @@ void families() {
     double nz = -(0.0);
     double nan = std::numeric_limits<double>::quiet_NaN();
     std::cout << "float" << " " << ::tpy::print_bool(::tpyapp::main::gb<double>(f)) << " " << ::tpy::print_bool(::tpy::__bool__(f)) << " " << ::tpy::print_bool(::tpyapp::main::gb<double>(nz)) << " " << ::tpy::print_bool(::tpy::__bool__(nz)) << " " << ::tpy::print_bool(::tpyapp::main::gb<double>(nan)) << " " << ::tpy::print_bool(::tpy::__bool__(nan)) << "\n" << ::tpy::check_signals;
-    float f32 = 0.0f;
-    std::cout << "float32" << " " << ::tpy::print_bool(::tpyapp::main::gb<float>(f32)) << " " << ::tpy::print_bool(::tpy::__bool__(f32)) << " " << ::tpy::print_bool(::tpy::__bool__(2.5f)) << "\n" << ::tpy::check_signals;
+    float f32 = static_cast<float>(0.0);
+    std::cout << "float32" << " " << ::tpy::print_bool(::tpyapp::main::gb<float>(f32)) << " " << ::tpy::print_bool(::tpy::__bool__(f32)) << " " << ::tpy::print_bool(::tpy::__bool__(static_cast<float>(2.5))) << "\n" << ::tpy::check_signals;
     bool t = true;
     std::cout << "bool" << " " << ::tpy::print_bool(::tpyapp::main::gb<bool>(t)) << " " << ::tpy::print_bool(::tpy::__bool__(t)) << " " << ::tpy::print_bool(::tpy::__bool__(false)) << " " << ::tpy::print_bool(false) << "\n" << ::tpy::check_signals;
     std::string_view s = "";

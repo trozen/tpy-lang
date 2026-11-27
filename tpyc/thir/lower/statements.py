@@ -11045,7 +11045,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # A char-annotated decl init lowers target-aware: `c: char = 'x'` ->
             # `char c = 'x';` (the decl type threads into the render);
             # a float literal into a float32 binding (annotated decl or
-            # reassign of a float32 local) takes the `f` suffix the same way.
+            # reassign of a float32 local) takes the float32 cast the same way.
             # A flushable statement position: a direct call init may hoist
             # arg temps (temp_args, inert for non-call inits).
             src = _peel_stale_view_owned_coerce(
@@ -11677,7 +11677,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     # renders bare and std::optional's converting ctor
                     # wraps it -- the same row the append/insert arg table
                     # already admits for this slot.
-                    value = _lower_expr(v, lc, declared)
+                    value = _slot_literal_retype(
+                        _lower_expr(v, lc, declared), eu, lc)
                     _witness("setitem.optval_scalar")
                 elif not isinstance(v, TpyNoneLiteral):
                     note_detail("setitem.optval_value_shape")

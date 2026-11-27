@@ -34,7 +34,7 @@ from ..typesys import (
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     CallableType, is_fn_type, unwrap_ref_type,
     is_any_int_type,
-    is_callable_type, is_float_type, is_any_float_type, is_readonly_span, varargs_is_readonly, unwrap_qualifiers,
+    is_callable_type, is_float_type, is_readonly_span, varargs_is_readonly, unwrap_qualifiers,
     PendingContainerType,
     unwrap_send_sync,
     param_has_mutable_borrow_surface, contains_type_param,
@@ -4735,13 +4735,12 @@ class CallAnalyzer:
                            ) -> OverloadPick:
         """The ranking's pick among the `__init__` overloads of a
         template-constructed type (`int8(x)`) for the argument types
-        `args`: ranked as every overloaded call is (`CallRanking`); a
-        numeric literal is at home in the numeric type the call builds
+        `args`: ranked as every overloaded call is (`CallRanking`); an
+        int literal is at home in the integer type the call builds
         (`built`), so `int8(100)` binds `T = int8`. Raises
         OverloadAmbiguityError."""
         ranking = self.ranking()
         if built is not None and (is_fixed_int_type(built)
-                                  or is_any_float_type(built)
                                   or is_big_int_type(built)):
             ranking = ranking.at_home(built)
         return ranking.rank(init_overloads, args)

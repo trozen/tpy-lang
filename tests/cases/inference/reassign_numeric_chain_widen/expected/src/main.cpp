@@ -25,7 +25,7 @@ void __tpy_init() {
     x = ::tpy::BigInt(20);
     std::cout << x << "\n" << ::tpy::check_signals;
     f = 0.0;
-    f = static_cast<double>(3.0f);
+    f = static_cast<double>(static_cast<float>(3.0));
     f = 1.5;
     std::cout << ::tpy::print_float(f) << "\n" << ::tpy::check_signals;
 }

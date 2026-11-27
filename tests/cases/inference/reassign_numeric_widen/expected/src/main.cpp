@@ -166,10 +166,10 @@ void test_declared_float_global() {
 //     e = {"k": 0.5}  # tpyc: ok
 //     print("hint_float32", e)
 void test_hint_float32_literal() {
-    ::tpy::ordered_map<std::string, float> __slot_1 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}});
+    ::tpy::ordered_map<std::string, float> __slot_1 = ::tpy::ordered_map<std::string, float>({{"a", static_cast<float>(0.25)}});
     ::tpy::ordered_map<std::string, float>* e = &__slot_1;
     std::optional<::tpy::ordered_map<std::string, float>> __slot_2;
-    e = &*(__slot_2 = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}}));
+    e = &*(__slot_2 = ::tpy::ordered_map<std::string, float>({{"k", static_cast<float>(0.5)}}));
     std::cout << "hint_float32" << " " << ::tpy::DictPrinter((*e)) << "\n" << ::tpy::check_signals;
 }
 
@@ -286,7 +286,7 @@ void __tpy_init() {
 
     G = 1.5;
     ::tpyapp::main::test_int_widen(2);
-    ::tpyapp::main::test_float_stays_float(1.0f);
+    ::tpyapp::main::test_float_stays_float(static_cast<float>(1.0));
     ::tpyapp::main::test_bigint_absorbs_fixedint();
     ::tpyapp::main::test_unsigned_joins_default(2);
     ::tpyapp::main::test_order_free_join(1, 2);

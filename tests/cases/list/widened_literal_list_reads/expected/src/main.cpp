@@ -244,9 +244,9 @@ void first_binding() {
     ys.push_back(7);
     int8_t n = ::tpy::__getitem__(ys, 1);
     int32_t wide = (::tpy::add_check<int32_t>(static_cast<int32_t>(::tpy::__getitem__(ys, 0)), 300));
-    float f = 1.5f;
+    float f = static_cast<float>(1.5);
     std::vector<float> fs = {f};
-    fs.push_back(0.25);
+    fs.push_back(static_cast<float>(0.25));
     float x = ::tpy::__getitem__(fs, 1);
     std::vector<int32_t> zs = {1};
     zs.push_back(static_cast<int32_t>(a));

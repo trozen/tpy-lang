@@ -52,8 +52,8 @@ namespace tpyapp::main {
 //     print("free_function:", echo(k))  # tpyc: ok
 void free_function() {
     std::vector<float> fs = {0.5, 1.5};
-    float k = 1.5f;
-    std::cout << "free_function:" << " " << ::tpy::print_bool(::tpyapp::main::has_item<float>(fs, k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item<float>(fs, 2.25f)) << "\n" << ::tpy::check_signals;
+    float k = static_cast<float>(1.5);
+    std::cout << "free_function:" << " " << ::tpy::print_bool(::tpyapp::main::has_item<float>(fs, k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item<float>(fs, static_cast<float>(2.25))) << "\n" << ::tpy::check_signals;
     std::cout << "free_function:" << " " << ::tpy::print_float(static_cast<double>(::tpyapp::main::echo<float>(k))) << "\n" << ::tpy::check_signals;
 }
 
@@ -66,9 +66,9 @@ void free_function() {
 //     # pinned here as today's render, not as a value-form subject.
 //     print("method:", c.get(), hit is not None, miss is None)
 void method() {
-    Cell<float> c = Cell<float>(1.5f);
-    float* hit = c.find(1.5f);
-    float* miss = c.find(2.25f);
+    Cell<float> c = Cell<float>(static_cast<float>(1.5));
+    float* hit = c.find(static_cast<float>(1.5));
+    float* miss = c.find(static_cast<float>(2.25));
     std::cout << "method:" << " " << ::tpy::print_float(static_cast<double>(c.get())) << " " << ::tpy::print_bool((hit != nullptr)) << " " << ::tpy::print_bool((miss == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
@@ -95,7 +95,7 @@ void enum_instantiation() {
 //     except StopIteration:
 //         print("generator_frame: stop")
 void generator_frame() {
-    float v = 1.5f;
+    float v = static_cast<float>(1.5);
     __gen_hold<float> it = ::tpyapp::main::hold<float>(v);
     float first;
     float second;
@@ -105,7 +105,7 @@ void generator_frame() {
             if (!__try_tmp_2.has_value()) goto __except_1;
             first = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        v = 2.5f;
+        v = static_cast<float>(2.5);
         {
             auto __try_tmp_3 = ::tpy::next(it);
             if (!__try_tmp_3.has_value()) goto __except_1;
